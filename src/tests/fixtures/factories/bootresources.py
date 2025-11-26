@@ -13,6 +13,7 @@ async def create_test_bootresource_entry(
     rtype: BootResourceType,
     name: str,
     architecture: str,
+    selection_id: int | None = None,
     **extra_details,
 ) -> BootResource:
     now = utcnow()
@@ -24,6 +25,7 @@ async def create_test_bootresource_entry(
         "architecture": architecture,
         "base_image": "",
         "rolling": False,
+        "selection_id": selection_id,
         "extra": {},
     }
 

@@ -17,6 +17,7 @@ from maasservicelayer.models.image_manifests import ImageManifest
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.simplestreams.models import (
     BootloaderProduct,
+    BootloaderVersion,
     Datatype,
     SimpleStreamsBootloaderProductList,
 )
@@ -139,7 +140,17 @@ class TestBootSourceCacheService:
                             "bootloader-type": "uefi",
                             "label": "stable",
                             "os": "grub-efi-signed",
-                            "versions": [],
+                            "versions": [
+                                BootloaderVersion(
+                                    **{
+                                        "version_name": "20251125",
+                                        "grub2-signed": None,
+                                        "grub2": None,
+                                        "syslinux": None,
+                                        "shim-signed": None,
+                                    }
+                                )
+                            ],
                         }
                     )
                 ],

@@ -191,7 +191,6 @@ class TestBootResourceSetsService:
                     [
                         BootResourceSetClauseFactory.with_resource_id(1),
                         BootResourceSetClauseFactory.with_version("foo"),
-                        BootResourceSetClauseFactory.with_label("stable"),
                     ]
                 )
             ),
@@ -225,7 +224,6 @@ class TestBootResourceSetsService:
                     [
                         BootResourceSetClauseFactory.with_resource_id(1),
                         BootResourceSetClauseFactory.with_version("foo"),
-                        BootResourceSetClauseFactory.with_label("stable"),
                     ]
                 )
             ),

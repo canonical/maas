@@ -73,7 +73,12 @@ class SyncSelectionParam:
 
 
 @dataclass
-class CleanupOldBootResourceSetsParam:
+class DeletePendingFilesParam:
+    resources: list[ResourceDownloadParam]
+
+
+@dataclass
+class CleanupBootResourceSetsParam:
     selection_id: int
 
 

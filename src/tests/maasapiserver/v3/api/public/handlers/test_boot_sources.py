@@ -16,6 +16,8 @@ from maasapiserver.v3.api.public.models.requests.boot_sources import (
 from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
     BootSourceSelectionListResponse,
     BootSourceSelectionResponse,
+    BootSourceSelectionStatusListResponse,
+    BootSourceSelectionStatusResponse,
 )
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceAvailableImageListResponse,
@@ -46,12 +48,18 @@ from maasservicelayer.models.bootsources import (
     BootSource,
     BootSourceAvailableImage,
 )
-from maasservicelayer.models.bootsourceselections import BootSourceSelection
+from maasservicelayer.models.bootsourceselections import (
+    BootSourceSelection,
+    BootSourceSelectionStatus,
+    SelectionStatus,
+    SelectionUpdateStatus,
+)
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
+    BootSourceSelectionStatusService,
 )
 from maasservicelayer.services.image_manifests import ImageManifestsService
 from maasservicelayer.services.temporal import TemporalService
@@ -571,6 +579,14 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         return [
             Endpoint(method="GET", path=f"{self.BASE_PATH}/1/selections"),
             Endpoint(method="GET", path=f"{self.BASE_PATH}/1/selections/10"),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1/selections/10:check_status",
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{V3_API_PREFIX}/boot_source_selection_statuses",
+            ),
         ]
 
     @pytest.fixture
@@ -580,6 +596,13 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1/selections/10"),
             Endpoint(
                 method="DELETE", path=f"{self.BASE_PATH}/1/selections/10"
+            ),
+            Endpoint(
+                method="POST", path=f"{self.BASE_PATH}/1/selections/1:sync"
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}/1/selections/1:stop_sync",
             ),
         ]
 
@@ -848,6 +871,18 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.boot_source_selection_status = Mock(
+            BootSourceSelectionStatusService
+        )
+        services_mock.boot_source_selection_status.get_by_id.return_value = (
+            BootSourceSelectionStatus(
+                id=TEST_BOOTSOURCESELECTION.id,
+                status=SelectionStatus.WAITING_FOR_DOWNLOAD,
+                update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                sync_percentage=0.0,
+                selected=True,
+            )
+        )
 
         services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.workflow_status.return_value = (
@@ -862,7 +897,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
         json_response = response.json()
         assert json_response["monitor_url"] == (
-            f"{self.BASE_PATH}/1/selections/1:status"
+            f"{self.BASE_PATH}/1/selections/1:check_status"
         )
 
         services_mock.temporal.workflow_status.assert_called_once_with(
@@ -886,6 +921,18 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.boot_source_selection_status = Mock(
+            BootSourceSelectionStatusService
+        )
+        services_mock.boot_source_selection_status.get_by_id.return_value = (
+            BootSourceSelectionStatus(
+                id=TEST_BOOTSOURCESELECTION.id,
+                status=SelectionStatus.WAITING_FOR_DOWNLOAD,
+                update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                sync_percentage=0.0,
+                selected=True,
+            )
+        )
 
         services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.workflow_status.return_value = (
@@ -898,12 +945,112 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
         assert response.status_code == 303
         assert response.headers["Location"] == (
-            f"{self.BASE_PATH}/1/selections/1:status"
+            f"{self.BASE_PATH}/1/selections/1:check_status"
         )
 
         services_mock.temporal.workflow_status.assert_called_once_with(
             f"{SYNC_SELECTION_WORKFLOW_NAME}:1"
         )
+        services_mock.temporal.register_workflow_call.assert_not_called()
+
+    async def test_sync_selection_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = None
+        services_mock.boot_source_selection_status = Mock(
+            BootSourceSelectionStatusService
+        )
+        services_mock.temporal = Mock(TemporalService)
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/1/selections/1:sync",
+        )
+
+        assert response.status_code == 404
+
+        services_mock.boot_source_selection_status.get_by_id.assert_not_called()
+        services_mock.temporal.workflow_status.assert_not_called()
+        services_mock.temporal.register_workflow_call.assert_not_called()
+
+    async def test_sync_selection_not_selected(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+
+        services_mock.boot_source_selection_status = Mock(
+            BootSourceSelectionStatusService
+        )
+        services_mock.boot_source_selection_status.get_by_id.return_value = (
+            BootSourceSelectionStatus(
+                id=TEST_BOOTSOURCESELECTION.id,
+                status=SelectionStatus.WAITING_FOR_DOWNLOAD,
+                update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                sync_percentage=0.0,
+                selected=False,
+            )
+        )
+        services_mock.temporal = Mock(TemporalService)
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/1/selections/1:sync",
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.details[0].message == (
+            "Only the selected boot source selections can be synchronized."
+        )
+        services_mock.temporal.workflow_status.assert_not_called()
+        services_mock.temporal.register_workflow_call.assert_not_called()
+
+    async def test_sync_selection_up_to_date(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+
+        services_mock.boot_source_selection_status = Mock(
+            BootSourceSelectionStatusService
+        )
+        services_mock.boot_source_selection_status.get_by_id.return_value = (
+            BootSourceSelectionStatus(
+                id=TEST_BOOTSOURCESELECTION.id,
+                status=SelectionStatus.READY,
+                update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                sync_percentage=100.0,
+                selected=True,
+            )
+        )
+        services_mock.temporal = Mock(TemporalService)
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/1/selections/1:sync",
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.details[0].message == (
+            "The boot source selection is already up to date."
+        )
+        services_mock.temporal.workflow_status.assert_not_called()
         services_mock.temporal.register_workflow_call.assert_not_called()
 
     async def test_stop_sync_selection_stops_workflow(
@@ -968,3 +1115,184 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             "Selection is not being synchronized."
         )
         services_mock.temporal.get_temporal_client.assert_not_called()
+
+    async def test_selection_status_get_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+        services_mock.boot_source_selection_status = Mock(
+            BootSourceSelectionStatusService
+        )
+        services_mock.boot_source_selection_status.get_by_id.return_value = (
+            BootSourceSelectionStatus(
+                id=TEST_BOOTSOURCESELECTION.id,
+                status=SelectionStatus.DOWNLOADING,
+                update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                sync_percentage=50.0,
+                selected=True,
+            )
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/1/selections/1:check_status"
+        )
+        assert response.status_code == 200
+        selection_status_response = BootSourceSelectionStatusResponse(
+            **response.json()
+        )
+        assert (
+            selection_status_response.selection_id
+            == TEST_BOOTSOURCESELECTION.id
+        )
+        assert selection_status_response.status == SelectionStatus.DOWNLOADING
+        assert (
+            selection_status_response.update_status
+            == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
+        )
+        assert selection_status_response.sync_percentage == 50.0
+
+    async def test_selection_status_get_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = None
+        services_mock.boot_source_selection_status = Mock(
+            BootSourceSelectionStatusService
+        )
+        services_mock.boot_source_selection_status.get_by_id.return_value = (
+            None
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/1/selections/1:check_status"
+        )
+        assert response.status_code == 404
+
+    async def test_list_selection_status_one_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_many.return_value = [
+            TEST_BOOTSOURCESELECTION
+        ]
+        services_mock.boot_source_selection_status = Mock(
+            BootSourceSelectionStatusService
+        )
+        services_mock.boot_source_selection_status.list.return_value = ListResult[
+            BootSourceSelectionStatus
+        ](
+            items=[
+                BootSourceSelectionStatus(
+                    id=TEST_BOOTSOURCESELECTION.id,
+                    status=SelectionStatus.DOWNLOADING,
+                    update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                    sync_percentage=50.0,
+                    selected=True,
+                )
+            ],
+            total=1,
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{V3_API_PREFIX}/boot_source_selection_statuses?page=1&size=1&id={TEST_BOOTSOURCESELECTION.id}"
+        )
+        assert response.status_code == 200
+        list_response = BootSourceSelectionStatusListResponse(
+            **response.json()
+        )
+
+        assert len(list_response.items) == 1
+        assert list_response.items[0].status == SelectionStatus.DOWNLOADING
+        assert (
+            list_response.items[0].update_status
+            == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
+        )
+
+    async def test_list_selection_status_another_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_many.return_value = [
+            TEST_BOOTSOURCESELECTION,
+            TEST_BOOTSOURCESELECTION,
+        ]
+        services_mock.boot_source_selection_status = Mock(
+            BootSourceSelectionStatusService
+        )
+        services_mock.boot_source_selection_status.list.return_value = ListResult[
+            BootSourceSelectionStatus
+        ](
+            items=[
+                BootSourceSelectionStatus(
+                    id=TEST_BOOTSOURCESELECTION.id,
+                    status=SelectionStatus.DOWNLOADING,
+                    update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                    sync_percentage=50.0,
+                    selected=True,
+                )
+            ],
+            total=2,
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{V3_API_PREFIX}/boot_source_selection_statuses?page=1&size=1&id={TEST_BOOTSOURCESELECTION.id}&id=2"
+        )
+        assert response.status_code == 200
+        list_response = BootSourceSelectionStatusListResponse(
+            **response.json()
+        )
+
+        assert len(list_response.items) == 1
+        assert list_response.next is not None
+        assert list_response.next == (
+            f"{V3_API_PREFIX}/boot_source_selection_statuses?page=2&size=1&id={TEST_BOOTSOURCESELECTION.id}&id=2"
+        )
+
+    async def test_list_selection_status_empty(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_many.return_value = []
+        services_mock.boot_source_selection_status = Mock(
+            BootSourceSelectionStatusService
+        )
+        services_mock.boot_source_selection_status.list.return_value = (
+            ListResult[BootSourceSelectionStatus](
+                items=[],
+                total=0,
+            )
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{V3_API_PREFIX}/boot_source_selection_statuses?page=1&size=1"
+        )
+        assert response.status_code == 200
+        list_response = BootSourceSelectionStatusListResponse(
+            **response.json()
+        )
+
+        assert len(list_response.items) == 0
+        assert list_response.next is None

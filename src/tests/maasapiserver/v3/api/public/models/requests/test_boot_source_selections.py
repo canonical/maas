@@ -2,7 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasapiserver.v3.api.public.models.requests.boot_source_selections import (
+    BootSourceSelectionFilterParams,
     BootSourceSelectionRequest,
+)
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionStatusClauseFactory,
 )
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.utils.date import utcnow
@@ -31,3 +35,18 @@ class TestBootSourceSelectionRequest:
         assert builder.os == "ubuntu"
         assert builder.release == "noble"
         assert builder.arch == "amd64"
+
+
+class TestBootSourceSelectionFilterParams:
+    def test_to_clause(self):
+        filters = BootSourceSelectionFilterParams(ids=[1, 2, 3])
+        clause = filters.to_clause()
+        assert clause is not None
+        assert clause == BootSourceSelectionStatusClauseFactory.with_ids(
+            [1, 2, 3]
+        )
+
+    def test_to_href_format(self):
+        filters = BootSourceSelectionFilterParams(ids=[1, 2, 3])
+        href = filters.to_href_format()
+        assert href == "id=1&id=2&id=3"

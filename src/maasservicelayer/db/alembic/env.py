@@ -68,6 +68,7 @@ def do_run_migrations(connection: Connection) -> None:
 def include_object(object, name, type_, reflected, compare_to):
     # Exclude database views from autogeneration
     VIEW_NAMES = {
+        "maasserver_bootsourceselectionstatus_view",
         "maasserver_discovery",
         "maasserver_routable_pairs",
         "maasserver_podhost",

@@ -1,9 +1,12 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from operator import eq
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.enums.boot_resources import BootResourceFileType
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
@@ -12,14 +15,39 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
     BootSourceSelectionsRepository,
+    BootSourceSelectionStatusClauseFactory,
+    BootSourceSelectionStatusRepository,
 )
-from maasservicelayer.models.bootsourceselections import BootSourceSelection
+from maasservicelayer.db.tables import BootResourceTable
+from maasservicelayer.models.bootresources import BootResource
+from maasservicelayer.models.bootsourceselections import (
+    BootSourceSelection,
+    BootSourceSelectionStatus,
+    SelectionStatus,
+    SelectionUpdateStatus,
+)
 from tests.fixtures.factories.boot_sources import create_test_bootsource_entry
+from tests.fixtures.factories.bootresourcefiles import (
+    create_test_bootresourcefile_entry,
+)
+from tests.fixtures.factories.bootresourcefilesync import (
+    create_test_bootresourcefilesync_entry,
+)
+from tests.fixtures.factories.bootresourcesets import (
+    create_test_bootresourceset_entry,
+)
 from tests.fixtures.factories.bootsourceselections import (
     create_test_bootsourceselection_entry,
 )
+from tests.fixtures.factories.bootsourceselectionview import (
+    create_test_selection_status_entry,
+)
+from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.maasapiserver.fixtures.db import Fixture
-from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
+from tests.maasservicelayer.db.repositories.base import (
+    ReadOnlyRepositoryCommonTests,
+    RepositoryCommonTests,
+)
 
 
 class TestBootSourceSelectionClauseFactory:
@@ -28,6 +56,12 @@ class TestBootSourceSelectionClauseFactory:
         assert str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_bootsourceselection.id = 1")
+
+    def test_with_ids(self) -> None:
+        clause = BootSourceSelectionClauseFactory.with_ids([1, 2])
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsourceselection.id IN (1, 2)")
 
     def test_with_boot_source_id(self) -> None:
         clause = BootSourceSelectionClauseFactory.with_boot_source_id(1)
@@ -176,3 +210,193 @@ class TestBootSourceSelectionRepository:
         assert len(selections) == 1
         assert selection_1 not in selections
         assert selection_2 in selections
+
+
+class TestBootSourceSelectionStatusClauseFactory:
+    def test_with_ids(self) -> None:
+        clause = BootSourceSelectionStatusClauseFactory.with_ids([1, 2])
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsourceselectionstatus_view.id IN (1, 2)")
+
+
+class TestCommonBootSourceSelectionStatusRepository(
+    ReadOnlyRepositoryCommonTests[BootSourceSelectionStatus]
+):
+    @pytest.fixture
+    def repository_instance(
+        self, db_connection: AsyncConnection
+    ) -> BootSourceSelectionStatusRepository:
+        return BootSourceSelectionStatusRepository(
+            Context(connection=db_connection)
+        )
+
+    @pytest.fixture
+    async def _setup_test_list(
+        self, fixture: Fixture, num_objects: int
+    ) -> list[BootSourceSelectionStatus]:
+        region = await create_test_region_controller_entry(
+            fixture,
+        )
+        boot_source = await create_test_bootsource_entry(
+            fixture,
+            name="test-boot-source",
+            url="http://example.com",
+            priority=1,
+        )
+        return [
+            await create_test_selection_status_entry(
+                fixture,
+                os="ubuntu",
+                release=f"noble-{i}",
+                arch="amd64",
+                boot_source=boot_source,
+                region_controller=region,
+            )
+            for i in range(num_objects)
+        ]
+
+    @pytest.fixture
+    async def created_instance(
+        self, fixture: Fixture
+    ) -> BootSourceSelectionStatus:
+        return await create_test_selection_status_entry(
+            fixture,
+            release="jammy",
+        )
+
+
+class TestBootSourceSelectionStatusRepository:
+    @pytest.fixture
+    def repository(
+        self, db_connection: AsyncConnection
+    ) -> BootSourceSelectionStatusRepository:
+        return BootSourceSelectionStatusRepository(
+            Context(connection=db_connection)
+        )
+
+    async def test_ready(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        created = await create_test_selection_status_entry(fixture)
+        fetched = await repository.get_by_id(created.id)
+
+        assert fetched is not None
+        assert fetched.status == SelectionStatus.READY
+        assert (
+            fetched.update_status == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
+        )
+        assert fetched.sync_percentage == 100.0
+
+    async def test_downloading(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        created = await create_test_selection_status_entry(
+            fixture, file_size=1024, sync_size=512
+        )
+        fetched = await repository.get_by_id(created.id)
+
+        assert fetched is not None
+        assert fetched.status == SelectionStatus.DOWNLOADING
+        assert (
+            fetched.update_status == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
+        )
+        assert fetched.sync_percentage == 50.0
+
+    async def test_waiting_for_download(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        created = await create_test_selection_status_entry(
+            fixture, sync_size=0
+        )
+        fetched = await repository.get_by_id(created.id)
+
+        assert fetched is not None
+        assert fetched.status == SelectionStatus.WAITING_FOR_DOWNLOAD
+        assert (
+            fetched.update_status == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
+        )
+        assert fetched.sync_percentage == 0.0
+
+    async def test_update_available(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        created = await create_test_selection_status_entry(
+            fixture, cache_version="2", set_version="1"
+        )
+        fetched = await repository.get_by_id(created.id)
+
+        assert fetched is not None
+        assert fetched.status == SelectionStatus.READY
+        assert fetched.update_status == SelectionUpdateStatus.UPDATE_AVAILABLE
+        assert fetched.sync_percentage == 100.0
+
+    async def test_downloading_update(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        region_controller = await create_test_region_controller_entry(fixture)
+        created = await create_test_selection_status_entry(
+            fixture,
+            cache_version="2",
+            set_version="1",
+            region_controller=region_controller,
+        )
+        boot_resource = (
+            await fixture.get_typed(
+                BootResourceTable.name,
+                BootResource,
+                eq(BootResourceTable.c.selection_id, created.id),
+            )
+        )[0]
+
+        # create a boot resource set with the same version of the cache
+        boot_resource_set = await create_test_bootresourceset_entry(
+            fixture, version="2", label="stable", resource_id=boot_resource.id
+        )
+        boot_resource_file = await create_test_bootresourcefile_entry(
+            fixture,
+            filename="file",
+            filetype=BootResourceFileType.SQUASHFS_IMAGE,
+            sha256="abc123",
+            size=1024,
+            filename_on_disk="file",
+            resource_set_id=boot_resource_set.id,
+        )
+        # currently downloading as the size is less than the file size
+        await create_test_bootresourcefilesync_entry(
+            fixture,
+            size=512,
+            file_id=boot_resource_file.id,
+            region_id=region_controller["id"],
+        )
+
+        fetched = await repository.get_by_id(created.id)
+
+        assert fetched is not None
+        assert fetched.status == SelectionStatus.READY
+        assert fetched.update_status == SelectionUpdateStatus.DOWNLOADING
+        assert fetched.sync_percentage == 50.0
+
+    async def test_selected(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        boot_source_1 = await create_test_bootsource_entry(
+            fixture, name="source-1", url="http://example.com/1", priority=1
+        )
+        boot_source_2 = await create_test_bootsource_entry(
+            fixture, name="source-2", url="http://example.com/2", priority=2
+        )
+        s1 = await create_test_selection_status_entry(
+            fixture, boot_source=boot_source_1
+        )
+        s2 = await create_test_selection_status_entry(
+            fixture, boot_source=boot_source_2
+        )
+        not_selected = await repository.get_by_id(s1.id)
+        selected = await repository.get_by_id(s2.id)
+
+        assert selected is not None
+        assert not_selected is not None
+
+        assert selected.selected is True
+        assert not_selected.selected is False

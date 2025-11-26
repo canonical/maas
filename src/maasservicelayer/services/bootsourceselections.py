@@ -15,6 +15,7 @@ from maasservicelayer.db.repositories.bootsourcecache import (
 )
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionsRepository,
+    BootSourceSelectionStatusRepository,
 )
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
@@ -23,11 +24,26 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
-from maasservicelayer.models.bootsourceselections import BootSourceSelection
-from maasservicelayer.services.base import BaseService, ServiceCache
+from maasservicelayer.models.bootsourceselections import (
+    BootSourceSelection,
+    BootSourceSelectionStatus,
+)
+from maasservicelayer.services.base import (
+    BaseService,
+    ReadOnlyService,
+    ServiceCache,
+)
 from maasservicelayer.services.bootresources import BootResourceService
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.events import EventsService
+
+
+class BootSourceSelectionStatusService(
+    ReadOnlyService[
+        BootSourceSelectionStatus,
+        BootSourceSelectionStatusRepository,
+    ]
+): ...
 
 
 class BootSourceSelectionsService(

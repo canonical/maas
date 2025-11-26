@@ -11,17 +11,27 @@ from maasservicelayer.builders.bootsourceselections import (
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionsRepository,
+    BootSourceSelectionStatusRepository,
 )
 from maasservicelayer.exceptions.catalog import BadRequestException
-from maasservicelayer.models.bootsourceselections import BootSourceSelection
+from maasservicelayer.models.bootsourceselections import (
+    BootSourceSelection,
+    BootSourceSelectionStatus,
+    SelectionStatus,
+    SelectionUpdateStatus,
+)
 from maasservicelayer.services.bootresources import BootResourceService
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
+    BootSourceSelectionStatusService,
 )
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.utils.date import utcnow
-from tests.maasservicelayer.services.base import ServiceCommonTests
+from tests.maasservicelayer.services.base import (
+    ReadOnlyServiceCommonTests,
+    ServiceCommonTests,
+)
 
 
 @pytest.mark.asyncio
@@ -182,3 +192,21 @@ class TestBootSourceSelectionsService:
     ) -> None:
         await service.get_all_highest_priority()
         service.repository.get_all_highest_priority.assert_awaited_once()
+
+
+class TestBootSourceSelectionStatusService(ReadOnlyServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BootSourceSelectionStatusService:
+        return BootSourceSelectionStatusService(
+            context=Context(),
+            repository=Mock(BootSourceSelectionStatusRepository),
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> BootSourceSelectionStatus:
+        return BootSourceSelectionStatus(
+            id=1,
+            status=SelectionStatus.DOWNLOADING,
+            update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+            sync_percentage=50.0,
+        )

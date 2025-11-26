@@ -11,10 +11,12 @@ from temporalio.client import WorkflowExecutionStatus
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
     NotFoundBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.boot_source_selections import (
+    BootSourceSelectionFilterParams,
     BootSourceSelectionRequest,
 )
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
@@ -28,6 +30,8 @@ from maasapiserver.v3.api.public.models.responses.base import (
 from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
     BootSourceSelectionListResponse,
     BootSourceSelectionResponse,
+    BootSourceSelectionStatusListResponse,
+    BootSourceSelectionStatusResponse,
     BootSourceSelectionSyncResponse,
 )
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
@@ -60,6 +64,10 @@ from maasservicelayer.exceptions.catalog import (
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import CONFLICT_VIOLATION_TYPE
+from maasservicelayer.models.bootsourceselections import (
+    SelectionStatus,
+    SelectionUpdateStatus,
+)
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -495,6 +503,7 @@ class BootSourcesHandler(Handler):
                 },
             },
             404: {"model": NotFoundBodyResponse},
+            409: {"model": ConflictBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=202,
@@ -523,8 +532,37 @@ class BootSourcesHandler(Handler):
         if not boot_source_selection:
             raise NotFoundException()
 
-        monitor_url = f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/{id}:status"
+        selection_status = (
+            await services.boot_source_selection_status.get_by_id(
+                boot_source_selection.id
+            )
+        )
 
+        assert selection_status is not None
+        if selection_status.selected is False:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CONFLICT_VIOLATION_TYPE,
+                        message="Only the selected boot source selections can be synchronized.",
+                    )
+                ]
+            )
+        elif (
+            selection_status.status == SelectionStatus.READY
+            and selection_status.update_status
+            == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
+        ):
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CONFLICT_VIOLATION_TYPE,
+                        message="The boot source selection is already up to date.",
+                    )
+                ]
+            )
+
+        monitor_url = f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/{boot_source_selection.id}:check_status"
         status = await services.temporal.workflow_status(
             f"{SYNC_SELECTION_WORKFLOW_NAME}:{boot_source_selection.id}"
         )
@@ -546,8 +584,8 @@ class BootSourcesHandler(Handler):
         tags=TAGS,
         responses={
             202: {},
-            400: {},
             404: {"model": NotFoundBodyResponse},
+            409: {"model": ConflictBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=202,
@@ -592,6 +630,94 @@ class BootSourcesHandler(Handler):
                     message="Selection is not being synchronized.",
                 )
             ]
+        )
+
+    @handler(
+        path="/boot_sources/{boot_source_id}/selections/{id}:check_status",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": BootSourceSelectionStatusResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def check_status_bootsource_bootsourceselection(
+        self,
+        boot_source_id: int,
+        id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceSelectionStatusResponse:
+        boot_source_selection = await services.boot_source_selections.get_one(
+            QuerySpec(
+                where=BootSourceSelectionClauseFactory.and_clauses(
+                    [
+                        BootSourceSelectionClauseFactory.with_id(id),
+                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                            boot_source_id
+                        ),
+                    ]
+                )
+            )
+        )
+        if not boot_source_selection:
+            raise NotFoundException()
+
+        status = await services.boot_source_selection_status.get_by_id(
+            boot_source_selection.id
+        )
+
+        assert status is not None
+        return BootSourceSelectionStatusResponse.from_model(status)
+
+    @handler(
+        path="/boot_source_selection_statuses",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": BootSourceSelectionStatusResponse,
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def check_statuses_bootsource_bootsourceselection(
+        self,
+        ids: BootSourceSelectionFilterParams = Depends(),  # noqa: B008
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootSourceSelectionStatusListResponse:
+        statuses = await services.boot_source_selection_status.list(
+            page=pagination_params.page,
+            size=pagination_params.size,
+            query=QuerySpec(where=ids.to_clause()),
+        )
+
+        next_link = None
+        if statuses.has_next(pagination_params.page, pagination_params.size):
+            next_link = (
+                f"{V3_API_PREFIX}/boot_source_selection_statuses?"
+                f"{pagination_params.to_next_href_format()}"
+            )
+            if query_filters := ids.to_href_format():
+                next_link += f"&{query_filters}"
+
+        return BootSourceSelectionStatusListResponse(
+            items=[
+                BootSourceSelectionStatusResponse.from_model(status)
+                for status in statuses.items
+            ],
+            next=next_link,
+            total=statuses.total,
         )
 
     @handler(

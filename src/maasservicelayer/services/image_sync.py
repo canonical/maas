@@ -601,15 +601,15 @@ class ImageSyncService(Service):
 
         return resources_to_download
 
-    async def delete_old_boot_resource_sets_for_selection(
+    async def cleanup_boot_resource_sets_for_selection(
         self, selection_id: int
     ) -> None:
-        """Deletes the old boot resource sets.
+        """Deletes the old and incomplete boot resource sets.
 
         It cleans all the boot resources related to the `selection_id` passed.
-        For each boot resource, the most recent complete resource set is found,
-        then all the others are deleted.
-
+        For each boot resource, the most recent complete resource set is found
+        (if any) and kept, all the others are deleted. Incomplete resource sets
+        are always deleted.
         """
         query = QuerySpec(
             where=BootResourceClauseFactory.and_clauses(

@@ -135,7 +135,6 @@ class BootResourceSetsService(
                         BootResourceSetClauseFactory.with_version(
                             latest_version
                         ),
-                        BootResourceSetClauseFactory.with_label(product.label),
                     ]
                 )
             ),

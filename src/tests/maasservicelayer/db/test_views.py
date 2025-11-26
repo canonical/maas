@@ -14,6 +14,7 @@ class TestViews:
         "maasserver_routable_pairs",
         "maasserver_podhost",
         "maasserver_ui_subnet_view",
+        "maasserver_bootsourceselectionstatus_view",
     ]
 
     async def test_each_view_can_be_used(self, db_connection: AsyncConnection):

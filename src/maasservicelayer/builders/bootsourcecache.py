@@ -65,6 +65,7 @@ class BootSourceCacheBuilder(ResourceBuilder):
     def _from_simplestreams_bootloader_product(
         cls, product: BootloaderProduct, boot_source_id: int
     ) -> set[Self]:
+        latest_version = product.get_latest_version().version_name
         return {
             cls(
                 os=product.os,
@@ -74,6 +75,7 @@ class BootSourceCacheBuilder(ResourceBuilder):
                 label=product.label,
                 bootloader_type=product.bootloader_type,
                 boot_source_id=boot_source_id,
+                latest_version=latest_version,
                 kflavor="bootloader",
                 extra={},
             )
@@ -92,6 +94,7 @@ class BootSourceCacheBuilder(ResourceBuilder):
         if product.subarch in hwe_archs and "generic" in product.subarches:
             subarches.append("generic")
         subarches = set(subarches)
+        latest_version = product.get_latest_version().version_name
         builders = {
             cls(
                 os=product.os,
@@ -104,6 +107,7 @@ class BootSourceCacheBuilder(ResourceBuilder):
                 release_title=product.release_title,
                 support_eol=product.support_eol,
                 kflavor=product.kflavor,
+                latest_version=latest_version,
                 extra={},
             )
             for subarch in subarches
@@ -114,6 +118,7 @@ class BootSourceCacheBuilder(ResourceBuilder):
     def _from_simplestreams_single_file_product(
         cls, product: SingleFileProduct, boot_source_id: int
     ) -> set[Self]:
+        latest_version = product.get_latest_version().version_name
         return {
             cls(
                 os=product.os,
@@ -124,6 +129,7 @@ class BootSourceCacheBuilder(ResourceBuilder):
                 boot_source_id=boot_source_id,
                 release_title=product.release_title,
                 support_eol=product.support_eol,
+                latest_version=latest_version,
                 kflavor="generic",
                 extra={},
             )

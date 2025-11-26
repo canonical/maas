@@ -7,18 +7,29 @@ from typing import List
 from sqlalchemy import func, select, Table
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
-from maasservicelayer.db.repositories.base import BaseRepository
+from maasservicelayer.db.repositories.base import (
+    BaseRepository,
+    ReadOnlyRepository,
+)
 from maasservicelayer.db.tables import (
+    BootSourceSelectionStatusView,
     BootSourceSelectionTable,
     BootSourceTable,
 )
-from maasservicelayer.models.bootsourceselections import BootSourceSelection
+from maasservicelayer.models.bootsourceselections import (
+    BootSourceSelection,
+    BootSourceSelectionStatus,
+)
 
 
 class BootSourceSelectionClauseFactory(ClauseFactory):
     @classmethod
     def with_id(cls, id: int) -> Clause:
         return Clause(condition=eq(BootSourceSelectionTable.c.id, id))
+
+    @classmethod
+    def with_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=BootSourceSelectionTable.c.id.in_(ids))
 
     @classmethod
     def with_boot_source_id(cls, boot_source_id: int) -> Clause:
@@ -112,3 +123,19 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
         raise NotImplementedError(
             "Update is not supported for bootsourceselections"
         )
+
+
+class BootSourceSelectionStatusClauseFactory(ClauseFactory):
+    @classmethod
+    def with_ids(cls, ids: List[int]) -> Clause:
+        return Clause(condition=BootSourceSelectionStatusView.c.id.in_(ids))
+
+
+class BootSourceSelectionStatusRepository(
+    ReadOnlyRepository[BootSourceSelectionStatus]
+):
+    def get_repository_table(self) -> Table:
+        return BootSourceSelectionStatusView
+
+    def get_model_factory(self) -> type[BootSourceSelectionStatus]:
+        return BootSourceSelectionStatus

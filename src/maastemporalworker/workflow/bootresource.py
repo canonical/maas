@@ -32,8 +32,9 @@ from maascommon.enums.notifications import (
 )
 from maascommon.workflows.bootresource import (
     CLEANUP_TIMEOUT,
-    CleanupOldBootResourceSetsParam,
+    CleanupBootResourceSetsParam,
     DELETE_BOOTRESOURCE_WORKFLOW_NAME,
+    DeletePendingFilesParam,
     DISK_TIMEOUT,
     DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
     DOWNLOAD_TIMEOUT,
@@ -58,8 +59,14 @@ from maascommon.workflows.bootresource import (
 )
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootresourcefiles import (
+    BootResourceFileClauseFactory,
+)
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
+)
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
 )
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
@@ -96,7 +103,12 @@ GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME = (
     "get-files-to-download-for-selection"
 )
 GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME = "get-local-boot-resources"
-CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME = "cleanup-old-boot-resources"
+DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME = (
+    "delete-pending-files-for-selection"
+)
+CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME = (
+    "cleanup-boot-resource-sets-for-selection"
+)
 GET_SYNCED_REGIONS_ACTIVITY_NAME = "get-synced-regions"
 REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME = "register-error-notification"
 DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME = "discard-error-notification"
@@ -352,6 +364,47 @@ class BootResourcesActivity(ActivityBase):
             )
             assert selection is not None
 
+            # Remove any existing boot resources related to a selection with
+            # the same os/arch/release. This can happen when there is a clash
+            # between selections. (e.g. two selections for ubuntu/20.04/amd64
+            # from different boot sources).
+            # NOTE: We are assuming that the higher priority selection will be
+            # the only one to be downloaded, i.e. we don't allow the user to
+            # start a sync selection workflow for a lower priority selection.
+            # This is enforced at the API level and in the master-image-sync wf.
+            if (
+                existing_selection
+                := await services.boot_source_selections.get_one(
+                    query=QuerySpec(
+                        where=BootSourceSelectionClauseFactory.and_clauses(
+                            [
+                                BootSourceSelectionClauseFactory.with_os(
+                                    selection.os
+                                ),
+                                BootSourceSelectionClauseFactory.with_arch(
+                                    selection.arch
+                                ),
+                                BootSourceSelectionClauseFactory.with_release(
+                                    selection.release
+                                ),
+                                BootSourceSelectionClauseFactory.not_clause(
+                                    BootSourceSelectionClauseFactory.with_id(
+                                        selection.id
+                                    )
+                                ),
+                            ]
+                        )
+                    )
+                )
+            ):
+                await services.boot_resources.delete_many(
+                    query=QuerySpec(
+                        where=BootResourceClauseFactory.with_selection_id(
+                            existing_selection.id
+                        )
+                    )
+                )
+
             boot_source = await services.boot_sources.get_by_id(
                 selection.boot_source_id
             )
@@ -418,17 +471,34 @@ class BootResourcesActivity(ActivityBase):
                     )
             return GetLocalBootResourcesParamReturnValue(resources=resources)
 
-    @activity_defn_with_context(name=CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME)
-    async def cleanup_old_boot_resource_sets_for_selection(
+    @activity_defn_with_context(
+        name=DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME
+    )
+    async def delete_pending_files(
+        self, param: DeletePendingFilesParam
+    ) -> None:
+        file_ids = []
+        for res in param.resources:
+            file_ids.extend(res.rfile_ids)
+
+        async with self.start_transaction() as services:
+            await services.boot_resource_files.delete_many(
+                query=QuerySpec(
+                    where=BootResourceFileClauseFactory.with_ids(file_ids)
+                )
+            )
+
+    @activity_defn_with_context(
+        name=CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME
+    )
+    async def cleanup_boot_resource_sets_for_selection(
         self,
-        param: CleanupOldBootResourceSetsParam,
+        param: CleanupBootResourceSetsParam,
     ) -> None:
         async with self.start_transaction() as services:
-            await services.image_sync.delete_old_boot_resource_sets_for_selection(
+            await services.image_sync.cleanup_boot_resource_sets_for_selection(
                 param.selection_id
             )
-            # Deletion of files is handled by the temporal service, so we have to manually call post_commit
-            await services.temporal.post_commit()
 
     @activity_defn_with_context(name=REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME)
     async def register_error_notification(self, err_msg: str) -> None:
@@ -699,19 +769,33 @@ class SyncSelectionWorkflow:
             for res in resources_to_download
         ]
 
-        if download_and_sync_jobs:
-            logger.info(
-                f"Syncing {len(download_and_sync_jobs)} resources from upstream"
+        try:
+            if download_and_sync_jobs:
+                logger.info(
+                    f"Syncing {len(download_and_sync_jobs)} resources from upstream"
+                )
+                await asyncio.gather(*download_and_sync_jobs)
+        except (ActivityError, ChildWorkflowError, WorkflowFailureError) as ex:
+            # In case of a failure we delete all the files that were downloading
+            await workflow.execute_activity(
+                DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME,
+                arg=DeletePendingFilesParam(resources=resources_to_download),
+                start_to_close_timeout=CLEANUP_TIMEOUT,
+                retry_policy=RetryPolicy(maximum_attempts=3),
             )
-            await asyncio.gather(*download_and_sync_jobs)
+            raise ex
+        finally:
+            # we do the cleanup even if some downloads failed. This will delete
+            # the boot resource sets that aren't complete ensuring the db
+            # status is consistent with the actual state of the files on disk.
+            await workflow.execute_activity(
+                CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME,
+                arg=CleanupBootResourceSetsParam(
+                    selection_id=param.selection_id
+                ),
+                start_to_close_timeout=CLEANUP_TIMEOUT,
+            )
 
-        await workflow.execute_activity(
-            CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME,
-            arg=CleanupOldBootResourceSetsParam(
-                selection_id=param.selection_id
-            ),
-            start_to_close_timeout=CLEANUP_TIMEOUT,
-        )
         logger.info(
             f"Downloaded and synchronized all images for selection with id {param.selection_id}"
         )
@@ -734,7 +818,9 @@ class MasterImageSyncWorkflow:
                 # It follows the parent close policy. Now that we have granular
                 # control over selections, we don't make things "smart" by not
                 # canceling workflows when we cancel the master image sync wf.
-                parent_close_policy=ParentClosePolicy.TERMINATE,
+                # We use the REQUEST_CANCEL policy to ensure that child workflows
+                # are gracefully cancelled and can cleanup properly.
+                parent_close_policy=ParentClosePolicy.REQUEST_CANCEL,
                 task_queue=REGION_TASK_QUEUE,
             )
         except WorkflowAlreadyStartedError:

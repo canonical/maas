@@ -25,6 +25,7 @@ from maasservicelayer.services import (
     StaticIPAddressService,
     VlansService,
 )
+from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 import maastemporalworker.workflow.activity as activity_module
 from maastemporalworker.workflow.configure import (
@@ -51,10 +52,12 @@ from tests.maasapiserver.fixtures.db import Fixture
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("maasdb")
 class TestConfigureAgentActivity:
-    async def test_get_rack_controller(self, monkeypatch):
-        mock_services = Mock(ServiceCollectionV3)
-        mock_services.vlans = Mock(VlansService)
-        mock_services.vlans.get_node_vlans.return_value = [
+    async def test_get_rack_controller(
+        self, services_mock: ServiceCollectionV3, monkeypatch
+    ):
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.get_node_vlans.return_value = [
             Vlan(
                 id=1,
                 vid=0,
@@ -66,9 +69,9 @@ class TestConfigureAgentActivity:
                 updated=utcnow(),
             )
         ]
-        mock_services.produce.return_value = mock_services
+        services_mock.produce.return_value = services_mock
         monkeypatch.setattr(
-            activity_module, "ServiceCollectionV3", mock_services
+            activity_module, "ServiceCollectionV3", services_mock
         )
 
         services_cache = CacheForServices()
@@ -83,7 +86,7 @@ class TestConfigureAgentActivity:
             GetRackControllerVLANsInput(system_id="abc")
         )
         assert result == GetRackControllerVLANsResult([1])
-        mock_services.vlans.get_node_vlans.assert_called_once_with(
+        services_mock.vlans.get_node_vlans.assert_called_once_with(
             query=QuerySpec(
                 where=VlansClauseFactory.and_clauses(
                     [
@@ -103,10 +106,12 @@ class TestConfigureAgentActivity:
             )
         )
 
-    async def test_get_region_controller_endpoints(self, monkeypatch):
-        mock_services = Mock(ServiceCollectionV3)
-        mock_services.staticipaddress = Mock(StaticIPAddressService)
-        mock_services.staticipaddress.get_for_nodes.return_value = [
+    async def test_get_region_controller_endpoints(
+        self, services_mock: ServiceCollectionV3, monkeypatch
+    ):
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.staticipaddress = Mock(StaticIPAddressService)
+        services_mock.staticipaddress.get_for_nodes.return_value = [
             StaticIPAddress(
                 id=0,
                 ip=IPv4Address("10.0.0.1"),
@@ -125,9 +130,9 @@ class TestConfigureAgentActivity:
             ),
         ]
 
-        mock_services.produce.return_value = mock_services
+        services_mock.produce.return_value = services_mock
         monkeypatch.setattr(
-            activity_module, "ServiceCollectionV3", mock_services
+            activity_module, "ServiceCollectionV3", services_mock
         )
 
         services_cache = CacheForServices()
@@ -145,7 +150,7 @@ class TestConfigureAgentActivity:
                 "http://[2001:0:130f::9c0:876a:130b]:5240/MAAS/",
             ]
         )
-        mock_services.staticipaddress.get_for_nodes.assert_called_once_with(
+        services_mock.staticipaddress.get_for_nodes.assert_called_once_with(
             query=QuerySpec(
                 where=StaticIPAddressClauseFactory.or_clauses(
                     [

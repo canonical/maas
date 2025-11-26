@@ -49,6 +49,9 @@ class ActivityBase:
     async def start_transaction(self) -> AsyncIterator[ServiceCollectionV3]:
         async with self._start_transaction() as conn:
             context = Context(connection=conn)
-            yield await ServiceCollectionV3.produce(
+            services = await ServiceCollectionV3.produce(
                 context=context, cache=self.services_cache
             )
+            yield services
+            # Run the post commit hooks for temporal services
+            await services.temporal.post_commit()

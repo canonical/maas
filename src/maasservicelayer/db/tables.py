@@ -378,6 +378,16 @@ BootSourceSelectionTable = Table(
     ),
 )
 
+BootSourceSelectionStatusView = Table(
+    "maasserver_bootsourceselectionstatus_view",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("status", String(64), nullable=False),
+    Column("update_status", String(64), nullable=False),
+    Column("sync_percentage", Float, nullable=False),
+    Column("selected", Boolean, nullable=False),
+)
+
 BootstrapTokenTable = Table(
     "maasserver_bootstraptoken",
     METADATA,

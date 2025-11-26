@@ -207,7 +207,8 @@ async def main() -> None:
                 boot_res_activity.get_synced_regions_for_file,
                 boot_res_activity.get_all_highest_priority_selections,
                 boot_res_activity.get_manually_uploaded_resources,
-                boot_res_activity.cleanup_old_boot_resource_sets_for_selection,
+                boot_res_activity.delete_pending_files,
+                boot_res_activity.cleanup_boot_resource_sets_for_selection,
                 boot_res_activity.register_error_notification,
                 boot_res_activity.discard_error_notification,
                 # Configuration activities

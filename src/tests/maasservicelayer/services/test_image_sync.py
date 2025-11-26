@@ -1111,7 +1111,7 @@ class TestIntegrationImageSyncService:
         }
         assert {r.sha256 for r in resources_to_download} == sha256s
 
-    async def test_delete_old_boot_resource_sets_for_selection(
+    async def test_cleanup_boot_resource_sets_for_selection(
         self,
         fixture: Fixture,
         test_boot_source_1: BootSource,
@@ -1219,7 +1219,7 @@ class TestIntegrationImageSyncService:
 
         services.boot_resource_files.temporal_service = Mock(TemporalService)
 
-        await services.image_sync.delete_old_boot_resource_sets_for_selection(
+        await services.image_sync.cleanup_boot_resource_sets_for_selection(
             selection.id
         )
 

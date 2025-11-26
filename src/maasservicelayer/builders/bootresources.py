@@ -97,7 +97,7 @@ class BootResourceBuilder(ResourceBuilder):
             rtype=BootResourceType.SYNCED,
             name=f"{product.os}/{product.release}",
             architecture=f"{product.arch}/{product.subarch}",
-            kflavor=None,
+            kflavor="generic",
             bootloader_type=None,
             alias=f"{product.os}/{product.version}",
             extra={"subarches": product.subarches},

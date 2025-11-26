@@ -28,7 +28,8 @@ from maascommon.enums.notifications import (
     NotificationComponent,
 )
 from maascommon.workflows.bootresource import (
-    CleanupOldBootResourceSetsParam,
+    CleanupBootResourceSetsParam,
+    DeletePendingFilesParam,
     DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
     GetFilesToDownloadForSelectionParam,
     GetFilesToDownloadReturnValue,
@@ -48,6 +49,9 @@ from maasservicelayer.db import Database
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
+)
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
 )
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
@@ -94,8 +98,9 @@ from maastemporalworker.worker import (
 from maastemporalworker.workflow.api_client import MAASAPIClient
 from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
-    CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME,
+    CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME,
     DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME,
+    DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME,
     DeleteBootResourceWorkflow,
     DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME,
     DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,
@@ -723,6 +728,18 @@ class TestGetFilesToDownloadForSelectionActivity:
         services_mock.boot_source_selections.get_by_id.return_value = (
             boot_source_selection
         )
+        services_mock.boot_source_selections.get_one.return_value = (
+            BootSourceSelection(
+                id=2,
+                os="ubuntu",
+                arch="amd64",
+                release="noble",
+                boot_source_id=2,
+            )
+        )
+
+        services_mock.boot_resources = Mock(BootResourceService)
+
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_by_id.return_value = boot_source
         services_mock.image_manifests = Mock(ImageManifestsService)
@@ -752,6 +769,33 @@ class TestGetFilesToDownloadForSelectionActivity:
 
         services_mock.boot_source_selections.get_by_id.assert_awaited_once_with(
             1
+        )
+        services_mock.boot_source_selections.get_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootSourceSelectionClauseFactory.and_clauses(
+                    [
+                        BootSourceSelectionClauseFactory.with_os(
+                            boot_source_selection.os
+                        ),
+                        BootSourceSelectionClauseFactory.with_arch(
+                            boot_source_selection.arch
+                        ),
+                        BootSourceSelectionClauseFactory.with_release(
+                            boot_source_selection.release
+                        ),
+                        BootSourceSelectionClauseFactory.not_clause(
+                            BootSourceSelectionClauseFactory.with_id(
+                                boot_source_selection.id
+                            )
+                        ),
+                    ]
+                )
+            )
+        )
+        services_mock.boot_resources.delete_many.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.with_selection_id(2)
+            )
         )
         services_mock.boot_sources.get_by_id.assert_awaited_once_with(1)
         services_mock.image_manifests.get_or_fetch.assert_awaited_once_with(
@@ -841,6 +885,22 @@ class TestGetManuallyUploadedResourcesActivity:
         )
 
 
+class TestDeletePendingFilesForSelectionActivity:
+    async def test_calls_image_sync_service(
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
+        activity_env: ActivityEnvironment,
+    ) -> None:
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+
+        await activity_env.run(
+            boot_activities.delete_pending_files,
+            DeletePendingFilesParam(resources=[]),
+        )
+        services_mock.boot_resource_files.delete_many.assert_awaited_once()
+
+
 class TestCleanupOldBootResourcesActivity:
     async def test_calls_image_sync_service(
         self,
@@ -852,11 +912,10 @@ class TestCleanupOldBootResourcesActivity:
         services_mock.temporal = Mock(TemporalService)
 
         await activity_env.run(
-            boot_activities.cleanup_old_boot_resource_sets_for_selection,
-            CleanupOldBootResourceSetsParam(selection_id=1),
+            boot_activities.cleanup_boot_resource_sets_for_selection,
+            CleanupBootResourceSetsParam(selection_id=1),
         )
-        services_mock.image_sync.delete_old_boot_resource_sets_for_selection.assert_awaited_once()
-        services_mock.temporal.post_commit.assert_awaited_once()
+        services_mock.image_sync.cleanup_boot_resource_sets_for_selection.assert_awaited_once()
 
 
 class TestGetAllHighestPrioritySelectionsActivity:
@@ -1023,10 +1082,16 @@ class MockActivities:
     ) -> GetLocalBootResourcesParamReturnValue:
         return self.get_manually_uploaded_resources_result
 
-    @activity.defn(name=CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME)
-    async def cleanup_old_boot_resource_sets_for_selection(
+    @activity.defn(name=DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME)
+    async def delete_pending_files(
+        self, param: DeletePendingFilesParam
+    ) -> None:
+        pass
+
+    @activity.defn(name=CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME)
+    async def cleanup_boot_resource_sets_for_selection(
         self,
-        param: CleanupOldBootResourceSetsParam,
+        param: CleanupBootResourceSetsParam,
     ) -> None:
         pass
 
@@ -1126,7 +1191,8 @@ async def _shared_queue_worker(
             mock_activities.get_synced_regions_for_file,
             mock_activities.get_all_highest_priority_selections,
             mock_activities.get_manually_uploaded_resources,
-            mock_activities.cleanup_old_boot_resource_sets_for_selection,
+            mock_activities.delete_pending_files,
+            mock_activities.cleanup_boot_resource_sets_for_selection,
             mock_activities.register_error_notification,
             mock_activities.discard_error_notification,
         ],
@@ -1412,7 +1478,7 @@ class TestSyncSelectionWorkflow:
                 GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME,
                 DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,  # SyncBootResources wf
                 GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME,  # SyncBootResources wf
-                CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME,
+                CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME,
             ]
         )
 
@@ -1451,7 +1517,7 @@ class TestSyncSelectionWorkflow:
                 GET_SYNCED_REGIONS_ACTIVITY_NAME,  # SyncBootResources wf
                 DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,  # SyncBootResources wf
                 DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,  # SyncBootResources wf
-                CLEANUP_OLD_BOOT_RESOURCES_ACTIVITY_NAME,
+                CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME,
             ]
         )
 
@@ -1463,6 +1529,38 @@ class TestSyncSelectionWorkflow:
                 DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
                 DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
             ]
+        )
+
+    async def test_files_are_deleted_if_wf_cancelled(
+        self,
+        client: Client,
+        single_region_workers,
+        mock_activities: MockActivities,
+        temporal_calls: TemporalCalls,
+    ) -> None:
+        async def mocked_download(param: ResourceDownloadParam):
+            await asyncio.sleep(5)
+            return True
+
+        mock_activities.download_bootresourcefile_result = mocked_download
+        workflow_handle = await client.start_workflow(
+            SyncSelectionWorkflow.run,
+            SyncSelectionParam(selection_id=1),
+            id="test-cancelled-cleanup",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        await asyncio.sleep(2)
+        await workflow_handle.cancel()
+
+        with pytest.raises(WorkflowFailureError):
+            await workflow_handle.result()
+
+        temporal_calls.assert_activity_called_once(
+            DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME
+        )
+        temporal_calls.assert_activity_called_once(
+            CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME
         )
 
 

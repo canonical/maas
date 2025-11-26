@@ -23,6 +23,7 @@ from maasservicelayer.db.repositories.bootsourcecache import (
 from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionsRepository,
+    BootSourceSelectionStatusRepository,
 )
 from maasservicelayer.db.repositories.bootstraptokens import (
     BootstrapTokensRepository,
@@ -116,6 +117,7 @@ from maasservicelayer.services.bootresourcesets import BootResourceSetsService
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
 from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
+    BootSourceSelectionStatusService,
 )
 from maasservicelayer.services.bootstraptoken import BootstrapTokensService
 from maasservicelayer.services.configurations import ConfigurationsService
@@ -228,6 +230,7 @@ class ServiceCollectionV3:
     boot_sources: BootSourcesService
     boot_source_cache: BootSourceCacheService
     boot_source_selections: BootSourceSelectionsService
+    boot_source_selection_status: BootSourceSelectionStatusService
     bootstraptokens: BootstrapTokensService
     database_configurations: DatabaseConfigurationsService
     configurations: ConfigurationsService
@@ -384,6 +387,12 @@ class ServiceCollectionV3:
         services.boot_source_cache = BootSourceCacheService(
             context=context,
             repository=BootSourceCacheRepository(context),
+        )
+        services.boot_source_selection_status = (
+            BootSourceSelectionStatusService(
+                context=context,
+                repository=BootSourceSelectionStatusRepository(context),
+            )
         )
         services.boot_source_selections = BootSourceSelectionsService(
             context=context,
