@@ -6,7 +6,7 @@
 from django.contrib.auth.models import AnonymousUser
 
 from maascommon.events import AUDIT
-from maascommon.logging.security import AUTHZ_ADMIN, SECURITY
+from maascommon.logging.security import ADMIN, AUTHZ_ADMIN, SECURITY, USER
 from maasserver.models.event import Event
 from maasserver.utils import get_remote_ip
 from provisioningserver.events import EVENT_DETAILS
@@ -55,4 +55,12 @@ def create_audit_event(
         logger.info(
             f"{AUTHZ_ADMIN}:{event_type.title()}:{action}:{id}",
             type=SECURITY,
+            userID=user.username if user else None,
+            role=ADMIN
+            if user and user.is_superuser
+            else USER
+            if user
+            else None,
+            useragent=user_agent,
+            request_remote_ip=ip_address,
         )

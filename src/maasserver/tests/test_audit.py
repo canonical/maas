@@ -5,6 +5,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
 
 from maascommon.events import AUDIT
+from maascommon.logging.security import USER
 from maasserver import audit as audit_module
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT_CHOICES
@@ -91,12 +92,22 @@ class TestCreateAuditEvent(MAASServerTestCase):
         self.assertEqual("", event.user_agent)
 
     def test_create_audit_event_creates_security_log(self):
+        request = HttpRequest()
+        request.user = factory.make_User(username="testuser")
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         mock_logger = self.patch(audit_module, "logger")
         create_audit_event(
-            EVENT_TYPES.SETTINGS, endpoint, action="testaction", id="testid"
+            EVENT_TYPES.SETTINGS,
+            endpoint,
+            action="testaction",
+            id="testid",
+            request=request,
         )
         mock_logger.info.assert_called_once_with(
             f"{audit_module.AUTHZ_ADMIN}:{EVENT_TYPES.SETTINGS.title()}:testaction:testid",
             type=audit_module.SECURITY,
+            userID="testuser",
+            role=USER,
+            useragent="",
+            request_remote_ip=None,
         )
