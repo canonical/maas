@@ -26,6 +26,8 @@ from maasapiserver.v3.api.public.models.responses.base import (
 from maasapiserver.v3.api.public.models.responses.boot_resources import (
     BootResourceListResponse,
     BootResourceResponse,
+    CustomImagesStatusListResponse,
+    CustomImagesStatusResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -389,3 +391,44 @@ class BootResourcesHandler(Handler):
             etag_if_match=etag_if_match,
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/custom_images",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": CustomImagesStatusListResponse,
+            },
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_custom_images_status(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> CustomImagesStatusListResponse:
+        statuses = await services.boot_resources.list_custom_images_status(
+            page=pagination_params.page,
+            size=pagination_params.size,
+        )
+
+        next_link = None
+        if statuses.has_next(pagination_params.page, pagination_params.size):
+            next_link = (
+                f"{V3_API_PREFIX}/custom_images?"
+                f"{pagination_params.to_next_href_format()}"
+            )
+
+        return CustomImagesStatusListResponse(
+            items=[
+                CustomImagesStatusResponse.from_model(status)
+                for status in statuses.items
+            ],
+            next=next_link,
+            total=statuses.total,
+        )

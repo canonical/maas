@@ -6,11 +6,10 @@ from maasapiserver.v3.api.public.models.responses.boot_source_selections import 
     BootSourceSelectionStatusResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
     BootSourceSelectionStatus,
-    SelectionStatus,
-    SelectionUpdateStatus,
 )
 
 
@@ -42,8 +41,8 @@ class TestBootSourceSelectionStatusResponse:
     def test_from_model(self) -> None:
         status = BootSourceSelectionStatus(
             id=1,
-            status=SelectionStatus.READY,
-            update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+            status=ImageStatus.READY,
+            update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
             sync_percentage=100.0,
             selected=True,
         )

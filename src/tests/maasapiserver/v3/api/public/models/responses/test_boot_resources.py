@@ -2,13 +2,18 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 from maasapiserver.v3.api.public.models.responses.boot_resources import (
     BootResourceResponse,
+    CustomImagesStatusResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import (
     BOOT_RESOURCE_TYPE_DICT,
     BootResourceType,
+    ImageStatus,
 )
-from maasservicelayer.models.bootresources import BootResource
+from maasservicelayer.models.bootresources import (
+    BootResource,
+    CustomBootResourceStatus,
+)
 from maasservicelayer.utils.date import utcnow
 
 
@@ -51,4 +56,29 @@ class TestBootResourceResponse:
         assert (
             boot_resource_response.hal_links.self.href  # pyright: ignore[reportOptionalMemberAccess]
             == f"{V3_API_PREFIX}/boot_resources/{boot_resource.id}"
+        )
+
+
+class TestCustomImagesStatusResponse:
+    def test_from_model(self) -> None:
+        status = CustomBootResourceStatus(
+            id=1,
+            name="custom/image",
+            architecture="amd64/generic",
+            status=ImageStatus.READY,
+            sync_percentage=100.0,
+        )
+
+        custom_image_status_response = CustomImagesStatusResponse.from_model(
+            status=status,
+        )
+
+        assert status.id == custom_image_status_response.boot_resource_id
+        assert status.name == custom_image_status_response.name
+        assert status.architecture == custom_image_status_response.architecture
+
+        assert status.status == custom_image_status_response.status
+        assert (
+            status.sync_percentage
+            == custom_image_status_response.sync_percentage
         )

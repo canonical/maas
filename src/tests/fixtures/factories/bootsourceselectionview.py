@@ -4,12 +4,12 @@
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
+    ImageStatus,
+    ImageUpdateStatus,
 )
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelectionStatus,
-    SelectionStatus,
-    SelectionUpdateStatus,
 )
 from tests.fixtures.factories.boot_sources import create_test_bootsource_entry
 from tests.fixtures.factories.bootresourcefiles import (
@@ -108,16 +108,16 @@ async def create_test_selection_status_entry(
     )
 
     if sync_size == 0:
-        status = SelectionStatus.WAITING_FOR_DOWNLOAD
+        status = ImageStatus.WAITING_FOR_DOWNLOAD
     elif sync_size < file_size:
-        status = SelectionStatus.DOWNLOADING
+        status = ImageStatus.DOWNLOADING
     else:
-        status = SelectionStatus.READY
+        status = ImageStatus.READY
 
     if set_version >= cache_version:
-        update_status = SelectionUpdateStatus.NO_UPDATES_AVAILABLE
+        update_status = ImageUpdateStatus.NO_UPDATES_AVAILABLE
     else:
-        update_status = SelectionUpdateStatus.UPDATE_AVAILABLE
+        update_status = ImageUpdateStatus.UPDATE_AVAILABLE
 
     return BootSourceSelectionStatus(
         id=selection.id,

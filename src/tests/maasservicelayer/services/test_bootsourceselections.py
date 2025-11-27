@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
@@ -17,8 +18,6 @@ from maasservicelayer.exceptions.catalog import BadRequestException
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
     BootSourceSelectionStatus,
-    SelectionStatus,
-    SelectionUpdateStatus,
 )
 from maasservicelayer.services.bootresources import BootResourceService
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
@@ -206,7 +205,7 @@ class TestBootSourceSelectionStatusService(ReadOnlyServiceCommonTests):
     def test_instance(self) -> BootSourceSelectionStatus:
         return BootSourceSelectionStatus(
             id=1,
-            status=SelectionStatus.DOWNLOADING,
-            update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+            status=ImageStatus.DOWNLOADING,
+            update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
             sync_percentage=50.0,
         )

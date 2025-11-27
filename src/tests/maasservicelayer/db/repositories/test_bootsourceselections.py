@@ -6,7 +6,11 @@ from operator import eq
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maascommon.enums.boot_resources import BootResourceFileType
+from maascommon.enums.boot_resources import (
+    BootResourceFileType,
+    ImageStatus,
+    ImageUpdateStatus,
+)
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
@@ -23,8 +27,6 @@ from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
     BootSourceSelectionStatus,
-    SelectionStatus,
-    SelectionUpdateStatus,
 )
 from tests.fixtures.factories.boot_sources import create_test_bootsource_entry
 from tests.fixtures.factories.bootresourcefiles import (
@@ -282,10 +284,8 @@ class TestBootSourceSelectionStatusRepository:
         fetched = await repository.get_by_id(created.id)
 
         assert fetched is not None
-        assert fetched.status == SelectionStatus.READY
-        assert (
-            fetched.update_status == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
-        )
+        assert fetched.status == ImageStatus.READY
+        assert fetched.update_status == ImageUpdateStatus.NO_UPDATES_AVAILABLE
         assert fetched.sync_percentage == 100.0
 
     async def test_downloading(
@@ -297,10 +297,8 @@ class TestBootSourceSelectionStatusRepository:
         fetched = await repository.get_by_id(created.id)
 
         assert fetched is not None
-        assert fetched.status == SelectionStatus.DOWNLOADING
-        assert (
-            fetched.update_status == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
-        )
+        assert fetched.status == ImageStatus.DOWNLOADING
+        assert fetched.update_status == ImageUpdateStatus.NO_UPDATES_AVAILABLE
         assert fetched.sync_percentage == 50.0
 
     async def test_waiting_for_download(
@@ -312,10 +310,8 @@ class TestBootSourceSelectionStatusRepository:
         fetched = await repository.get_by_id(created.id)
 
         assert fetched is not None
-        assert fetched.status == SelectionStatus.WAITING_FOR_DOWNLOAD
-        assert (
-            fetched.update_status == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
-        )
+        assert fetched.status == ImageStatus.WAITING_FOR_DOWNLOAD
+        assert fetched.update_status == ImageUpdateStatus.NO_UPDATES_AVAILABLE
         assert fetched.sync_percentage == 0.0
 
     async def test_update_available(
@@ -327,8 +323,8 @@ class TestBootSourceSelectionStatusRepository:
         fetched = await repository.get_by_id(created.id)
 
         assert fetched is not None
-        assert fetched.status == SelectionStatus.READY
-        assert fetched.update_status == SelectionUpdateStatus.UPDATE_AVAILABLE
+        assert fetched.status == ImageStatus.READY
+        assert fetched.update_status == ImageUpdateStatus.UPDATE_AVAILABLE
         assert fetched.sync_percentage == 100.0
 
     async def test_downloading_update(
@@ -373,8 +369,8 @@ class TestBootSourceSelectionStatusRepository:
         fetched = await repository.get_by_id(created.id)
 
         assert fetched is not None
-        assert fetched.status == SelectionStatus.READY
-        assert fetched.update_status == SelectionUpdateStatus.DOWNLOADING
+        assert fetched.status == ImageStatus.READY
+        assert fetched.update_status == ImageUpdateStatus.DOWNLOADING
         assert fetched.sync_percentage == 50.0
 
     async def test_selected(

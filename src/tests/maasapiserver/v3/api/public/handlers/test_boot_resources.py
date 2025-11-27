@@ -13,6 +13,7 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.responses.boot_resources import (
     BootResourceListResponse,
     BootResourceResponse,
+    CustomImagesStatusListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import (
@@ -40,7 +41,10 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
-from maasservicelayer.models.bootresources import BootResource
+from maasservicelayer.models.bootresources import (
+    BootResource,
+    CustomBootResourceStatus,
+)
 from maasservicelayer.models.bootresourcesets import BootResourceSet
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.services import ServiceCollectionV3
@@ -722,3 +726,90 @@ class TestBootResourcesApi(ApiCommonTests):
             id=2,
             etag_if_match=wrong_etag,
         )
+
+
+class TestCustomImagessApi(ApiCommonTests):
+    BASE_PATH = f"{V3_API_PREFIX}/custom_images"
+
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="GET", path=self.BASE_PATH),
+        ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
+    async def test_list_custom_images_status_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list_custom_images_status.return_value = (
+            ListResult[CustomBootResourceStatus](
+                items=[
+                    CustomBootResourceStatus(
+                        id=1,
+                        name="custom-image-1",
+                        architecture="amd64/generic",
+                        sync_percentage=100.0,
+                        status="Ready",
+                    )
+                ],
+                total=2,
+            )
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{V3_API_PREFIX}/custom_images?size=1"
+        )
+
+        assert response.status_code == 200
+
+        custom_images_status_response = CustomImagesStatusListResponse(
+            **response.json()
+        )
+
+        assert custom_images_status_response.total == 2
+        assert len(custom_images_status_response.items) == 1
+        assert (
+            custom_images_status_response.next
+            == f"{self.BASE_PATH}?page=2&size=1"
+        )
+
+    async def test_list_custom_images_status_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list_custom_images_status.return_value = (
+            ListResult[CustomBootResourceStatus](
+                items=[
+                    CustomBootResourceStatus(
+                        id=1,
+                        name="custom-image-1",
+                        architecture="amd64/generic",
+                        sync_percentage=100.0,
+                        status="Ready",
+                    )
+                ],
+                total=1,
+            )
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{V3_API_PREFIX}/custom_images?size=1"
+        )
+
+        assert response.status_code == 200
+
+        custom_images_status_response = CustomImagesStatusListResponse(
+            **response.json()
+        )
+
+        assert custom_images_status_response.total == 1
+        assert len(custom_images_status_response.items) == 1
+        assert custom_images_status_response.next is None

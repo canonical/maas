@@ -3,14 +3,22 @@
 from datetime import datetime
 from typing import Optional, Self
 
+from pydantic import BaseModel
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
     HalResponse,
     PaginatedResponse,
 )
-from maascommon.enums.boot_resources import BOOT_RESOURCE_TYPE_DICT
-from maasservicelayer.models.bootresources import BootResource
+from maascommon.enums.boot_resources import (
+    BOOT_RESOURCE_TYPE_DICT,
+    ImageStatus,
+)
+from maasservicelayer.models.bootresources import (
+    BootResource,
+    CustomBootResourceStatus,
+)
 
 
 class BootResourceResponse(HalResponse[BaseHal]):
@@ -44,3 +52,31 @@ class BootResourceResponse(HalResponse[BaseHal]):
 
 class BootResourceListResponse(PaginatedResponse[BootResourceResponse]):
     kind = "BootResourceList"
+
+
+class CustomImagesStatusResponse(BaseModel):
+    kind = "CustomImagesStatus"
+    boot_resource_id: int
+    name: str
+    architecture: str
+    status: ImageStatus
+    sync_percentage: float
+
+    @classmethod
+    def from_model(
+        cls,
+        status: CustomBootResourceStatus,
+    ):
+        return cls(
+            boot_resource_id=status.id,
+            name=status.name,
+            architecture=status.architecture,
+            status=status.status,
+            sync_percentage=status.sync_percentage,
+        )
+
+
+class CustomImagesStatusListResponse(
+    PaginatedResponse[CustomImagesStatusResponse]
+):
+    kind = "CustomImagesStatusList"

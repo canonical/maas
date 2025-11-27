@@ -3,11 +3,21 @@
 
 from datetime import datetime
 
-from maascommon.enums.boot_resources import BootResourceType
+from pydantic import BaseModel
+
+from maascommon.enums.boot_resources import BootResourceType, ImageStatus
 from maasservicelayer.models.base import (
     generate_builder,
     MaasTimestampedBaseModel,
 )
+
+
+class CustomBootResourceStatus(BaseModel):
+    id: int
+    name: str
+    architecture: str
+    status: ImageStatus
+    sync_percentage: float
 
 
 @generate_builder()

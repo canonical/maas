@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+
 from pydantic import BaseModel
 
 from maasapiserver.v3.api.public.models.responses.base import (
@@ -9,11 +10,10 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
+from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
     BootSourceSelectionStatus,
-    SelectionStatus,
-    SelectionUpdateStatus,
 )
 
 
@@ -59,8 +59,8 @@ class BootSourceSelectionSyncResponse(BaseModel):
 class BootSourceSelectionStatusResponse(BaseModel):
     kind = "BootSourceSelectionStatus"
     selection_id: int
-    status: SelectionStatus
-    update_status: SelectionUpdateStatus
+    status: ImageStatus
+    update_status: ImageUpdateStatus
     sync_percentage: float
     selected: bool
 

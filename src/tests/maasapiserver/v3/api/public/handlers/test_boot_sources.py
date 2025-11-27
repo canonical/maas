@@ -26,6 +26,7 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
     UISourceAvailableImageListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
 from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
@@ -54,8 +55,6 @@ from maasservicelayer.models.bootsources import (
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
     BootSourceSelectionStatus,
-    SelectionStatus,
-    SelectionUpdateStatus,
 )
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.boot_sources import BootSourcesService
@@ -888,8 +887,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selection_status.get_by_id.return_value = (
             BootSourceSelectionStatus(
                 id=TEST_BOOTSOURCESELECTION.id,
-                status=SelectionStatus.WAITING_FOR_DOWNLOAD,
-                update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                status=ImageStatus.WAITING_FOR_DOWNLOAD,
+                update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
                 sync_percentage=0.0,
                 selected=True,
             )
@@ -938,8 +937,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selection_status.get_by_id.return_value = (
             BootSourceSelectionStatus(
                 id=TEST_BOOTSOURCESELECTION.id,
-                status=SelectionStatus.WAITING_FOR_DOWNLOAD,
-                update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                status=ImageStatus.WAITING_FOR_DOWNLOAD,
+                update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
                 sync_percentage=0.0,
                 selected=True,
             )
@@ -1006,8 +1005,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selection_status.get_by_id.return_value = (
             BootSourceSelectionStatus(
                 id=TEST_BOOTSOURCESELECTION.id,
-                status=SelectionStatus.WAITING_FOR_DOWNLOAD,
-                update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                status=ImageStatus.WAITING_FOR_DOWNLOAD,
+                update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
                 sync_percentage=0.0,
                 selected=False,
             )
@@ -1044,8 +1043,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selection_status.get_by_id.return_value = (
             BootSourceSelectionStatus(
                 id=TEST_BOOTSOURCESELECTION.id,
-                status=SelectionStatus.READY,
-                update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                status=ImageStatus.READY,
+                update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
                 sync_percentage=100.0,
                 selected=True,
             )
@@ -1144,8 +1143,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selection_status.get_by_id.return_value = (
             BootSourceSelectionStatus(
                 id=TEST_BOOTSOURCESELECTION.id,
-                status=SelectionStatus.DOWNLOADING,
-                update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
+                status=ImageStatus.DOWNLOADING,
+                update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
                 sync_percentage=50.0,
                 selected=True,
             )
@@ -1162,10 +1161,10 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             selection_status_response.selection_id
             == TEST_BOOTSOURCESELECTION.id
         )
-        assert selection_status_response.status == SelectionStatus.DOWNLOADING
+        assert selection_status_response.status == ImageStatus.DOWNLOADING
         assert (
             selection_status_response.update_status
-            == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
+            == ImageUpdateStatus.NO_UPDATES_AVAILABLE
         )
         assert selection_status_response.sync_percentage == 50.0
 
@@ -1204,19 +1203,19 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
-        services_mock.boot_source_selection_status.list.return_value = ListResult[
-            BootSourceSelectionStatus
-        ](
-            items=[
-                BootSourceSelectionStatus(
-                    id=TEST_BOOTSOURCESELECTION.id,
-                    status=SelectionStatus.DOWNLOADING,
-                    update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
-                    sync_percentage=50.0,
-                    selected=True,
-                )
-            ],
-            total=1,
+        services_mock.boot_source_selection_status.list.return_value = (
+            ListResult[BootSourceSelectionStatus](
+                items=[
+                    BootSourceSelectionStatus(
+                        id=TEST_BOOTSOURCESELECTION.id,
+                        status=ImageStatus.DOWNLOADING,
+                        update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
+                        sync_percentage=50.0,
+                        selected=True,
+                    )
+                ],
+                total=1,
+            )
         )
 
         response = await mocked_api_client_user.get(
@@ -1228,10 +1227,10 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         )
 
         assert len(list_response.items) == 1
-        assert list_response.items[0].status == SelectionStatus.DOWNLOADING
+        assert list_response.items[0].status == ImageStatus.DOWNLOADING
         assert (
             list_response.items[0].update_status
-            == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
+            == ImageUpdateStatus.NO_UPDATES_AVAILABLE
         )
 
     async def test_list_selection_status_another_page(
@@ -1249,19 +1248,19 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
-        services_mock.boot_source_selection_status.list.return_value = ListResult[
-            BootSourceSelectionStatus
-        ](
-            items=[
-                BootSourceSelectionStatus(
-                    id=TEST_BOOTSOURCESELECTION.id,
-                    status=SelectionStatus.DOWNLOADING,
-                    update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
-                    sync_percentage=50.0,
-                    selected=True,
-                )
-            ],
-            total=2,
+        services_mock.boot_source_selection_status.list.return_value = (
+            ListResult[BootSourceSelectionStatus](
+                items=[
+                    BootSourceSelectionStatus(
+                        id=TEST_BOOTSOURCESELECTION.id,
+                        status=ImageStatus.DOWNLOADING,
+                        update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
+                        sync_percentage=50.0,
+                        selected=True,
+                    )
+                ],
+                total=2,
+            )
         )
 
         response = await mocked_api_client_user.get(
@@ -1322,19 +1321,19 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
-        services_mock.boot_source_selection_status.list.return_value = ListResult[
-            BootSourceSelectionStatus
-        ](
-            items=[
-                BootSourceSelectionStatus(
-                    id=TEST_BOOTSOURCESELECTION.id,
-                    status=SelectionStatus.DOWNLOADING,
-                    update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
-                    sync_percentage=50.0,
-                    selected=True,
-                )
-            ],
-            total=1,
+        services_mock.boot_source_selection_status.list.return_value = (
+            ListResult[BootSourceSelectionStatus](
+                items=[
+                    BootSourceSelectionStatus(
+                        id=TEST_BOOTSOURCESELECTION.id,
+                        status=ImageStatus.DOWNLOADING,
+                        update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
+                        sync_percentage=50.0,
+                        selected=True,
+                    )
+                ],
+                total=1,
+            )
         )
 
         response = await mocked_api_client_user.get(
@@ -1362,19 +1361,19 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
-        services_mock.boot_source_selection_status.list.return_value = ListResult[
-            BootSourceSelectionStatus
-        ](
-            items=[
-                BootSourceSelectionStatus(
-                    id=TEST_BOOTSOURCESELECTION.id,
-                    status=SelectionStatus.DOWNLOADING,
-                    update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
-                    sync_percentage=50.0,
-                    selected=True,
-                )
-            ],
-            total=0,
+        services_mock.boot_source_selection_status.list.return_value = (
+            ListResult[BootSourceSelectionStatus](
+                items=[
+                    BootSourceSelectionStatus(
+                        id=TEST_BOOTSOURCESELECTION.id,
+                        status=ImageStatus.DOWNLOADING,
+                        update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
+                        sync_percentage=50.0,
+                        selected=True,
+                    )
+                ],
+                total=0,
+            )
         )
 
         response = await mocked_api_client_user.get(
@@ -1404,19 +1403,19 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
-        services_mock.boot_source_selection_status.list.return_value = ListResult[
-            BootSourceSelectionStatus
-        ](
-            items=[
-                BootSourceSelectionStatus(
-                    id=TEST_BOOTSOURCESELECTION.id,
-                    status=SelectionStatus.DOWNLOADING,
-                    update_status=SelectionUpdateStatus.NO_UPDATES_AVAILABLE,
-                    sync_percentage=50.0,
-                    selected=True,
-                )
-            ],
-            total=0,
+        services_mock.boot_source_selection_status.list.return_value = (
+            ListResult[BootSourceSelectionStatus](
+                items=[
+                    BootSourceSelectionStatus(
+                        id=TEST_BOOTSOURCESELECTION.id,
+                        status=ImageStatus.DOWNLOADING,
+                        update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
+                        sync_percentage=50.0,
+                        selected=True,
+                    )
+                ],
+                total=0,
+            )
         )
 
         response = await mocked_api_client_user.get(

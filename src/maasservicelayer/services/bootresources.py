@@ -10,7 +10,11 @@ from maasservicelayer.db.repositories.bootresources import (
 from maasservicelayer.db.repositories.bootresourcesets import (
     BootResourceSetClauseFactory,
 )
-from maasservicelayer.models.bootresources import BootResource
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.bootresources import (
+    BootResource,
+    CustomBootResourceStatus,
+)
 from maasservicelayer.services.base import BaseService, ServiceCache
 from maasservicelayer.services.bootresourcesets import BootResourceSetsService
 from maasservicelayer.utils.date import utcnow
@@ -161,3 +165,8 @@ class BootResourceService(
                     max_idx = set_idx
 
         return "%s.%d" % (version_name, max_idx + 1)
+
+    async def list_custom_images_status(
+        self, page: int, size: int
+    ) -> ListResult[CustomBootResourceStatus]:
+        return await self.repository.list_custom_images_status(page, size)

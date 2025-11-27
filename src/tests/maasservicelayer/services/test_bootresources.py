@@ -458,3 +458,14 @@ class TestBootResourceService:
         expected_version_name = f"{current_date_string}.{set_count}"
 
         assert version_name == expected_version_name
+
+    async def test_list_custom_images_status(
+        self,
+        mock_repository: Mock,
+        service: BootResourceService,
+    ) -> None:
+        mock_repository.list_custom_images_status.return_value = []
+
+        await service.list_custom_images_status(page=1, size=10)
+
+        mock_repository.list_custom_images_status.assert_awaited_once()

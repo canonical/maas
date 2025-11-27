@@ -47,6 +47,7 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
 from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
@@ -67,10 +68,6 @@ from maasservicelayer.exceptions.catalog import (
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import CONFLICT_VIOLATION_TYPE
-from maasservicelayer.models.bootsourceselections import (
-    SelectionStatus,
-    SelectionUpdateStatus,
-)
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -595,9 +592,9 @@ class BootSourcesHandler(Handler):
                 ]
             )
         elif (
-            selection_status.status == SelectionStatus.READY
+            selection_status.status == ImageStatus.READY
             and selection_status.update_status
-            == SelectionUpdateStatus.NO_UPDATES_AVAILABLE
+            == ImageUpdateStatus.NO_UPDATES_AVAILABLE
         ):
             raise ConflictException(
                 details=[

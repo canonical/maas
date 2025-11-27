@@ -14,7 +14,9 @@ from maasservicelayer.db.repositories.bootresources import (
 from maasservicelayer.models.bootresources import BootResource
 from tests.fixtures.factories.bootresources import (
     create_test_bootresource_entry,
+    create_test_custom_bootresource_status_entry,
 )
+from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
@@ -59,7 +61,7 @@ class TestBootResourceClauseFactory:
         ) == ("maasserver_bootresource.id IN (1, 2, 3)")
 
 
-class TestBootResourceRepository(RepositoryCommonTests[BootResource]):
+class TestCommonBootResourceRepository(RepositoryCommonTests[BootResource]):
     @pytest.fixture
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
@@ -109,3 +111,53 @@ class TestBootResourceRepository(RepositoryCommonTests[BootResource]):
         self, repository_instance, instance_builder
     ):
         raise NotImplementedError()
+
+
+class TestBootResourceRepository:
+    @pytest.fixture
+    def repository(
+        self, db_connection: AsyncConnection
+    ) -> BootResourcesRepository:
+        return BootResourcesRepository(Context(connection=db_connection))
+
+    async def list_get_custom_images_status(
+        self,
+        repository: BootResourcesRepository,
+        fixture: Fixture,
+    ):
+        region_controller = await create_test_region_controller_entry(
+            fixture,
+        )
+        resource_ready = await create_test_custom_bootresource_status_entry(
+            fixture,
+            name="custom-image-1",
+            architecture="amd64/generic",
+            region_controller=region_controller,
+        )
+
+        resource_downloading = (
+            await create_test_custom_bootresource_status_entry(
+                fixture,
+                name="custom-image-2",
+                architecture="amd64/generic",
+                region_controller=region_controller,
+                sync_size=512,
+            )
+        )
+
+        resource_waiting = await create_test_custom_bootresource_status_entry(
+            fixture,
+            name="custom-image-3",
+            architecture="amd64/generic",
+            region_controller=region_controller,
+            sync_size=0,
+        )
+
+        status_list = await repository.list_custom_images_status(
+            page=1, size=10
+        )
+        assert len(status_list.items) == 3
+
+        assert resource_ready in status_list.items
+        assert resource_downloading in status_list.items
+        assert resource_waiting in status_list.items

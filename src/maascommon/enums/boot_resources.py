@@ -74,3 +74,15 @@ class BootResourceFileType(StrEnum):
     # tar.xz of files which need to be extracted so the files are usable
     # by MAAS
     ARCHIVE_TAR_XZ = "archive.tar.xz"
+
+
+class ImageStatus(StrEnum):
+    READY = "Ready"
+    DOWNLOADING = "Downloading"
+    WAITING_FOR_DOWNLOAD = "Waiting for download"
+
+
+class ImageUpdateStatus(StrEnum):
+    DOWNLOADING = "Downloading"
+    UPDATE_AVAILABLE = "Update available"
+    NO_UPDATES_AVAILABLE = "No updates available"
