@@ -1,6 +1,8 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import List, Sequence
+
 from maascommon.enums.events import EventTypeEnum
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
@@ -66,6 +68,20 @@ class BootSourceSelectionsService(
         self.events_service = events_service
         self.boot_source_cache_service = boot_source_cache_service
         self.boot_resource_service = boot_resource_service
+
+    async def _delete_related_boot_resources(
+        self, selections: Sequence[BootSourceSelection]
+    ) -> None:
+        selection_ids = {selection.id for selection in selections}
+        if not selection_ids:
+            return
+        await self.boot_resource_service.delete_many(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.with_selection_ids(
+                    selection_ids
+                )
+            )
+        )
 
     async def update_by_id(self, id, builder, etag_if_match=None):
         raise NotImplementedError(
@@ -153,13 +169,20 @@ class BootSourceSelectionsService(
     async def pre_delete_hook(
         self, resource_to_be_deleted: BootSourceSelection
     ) -> None:
-        await self.boot_resource_service.delete_many(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_selection_id(
-                    resource_to_be_deleted.id
-                )
-            )
-        )
+        await self._delete_related_boot_resources([resource_to_be_deleted])
+
+    async def pre_delete_many_hook(
+        self, resources: List[BootSourceSelection]
+    ) -> None:
+        await self._delete_related_boot_resources(resources)
+
+    async def post_delete_many_hook(
+        self, resources: List[BootSourceSelection]
+    ) -> None:
+        """FIXME: We iterate over each resource because post_delete_hook only creates
+        a single event and bulk creation is not yet supported."""
+        for resource in resources:
+            await self.post_delete_hook(resource)
 
     async def post_delete_hook(self, resource: BootSourceSelection) -> None:
         await self.events_service.record_event(

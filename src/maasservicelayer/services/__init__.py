@@ -360,6 +360,7 @@ class ServiceCollectionV3:
         services.image_manifests = ImageManifestsService(
             context=context,
             configurations_service=services.configurations,
+            msm_service=services.msm,
             repository=ImageManifestsRepository(context),
         )
         services.boot_resource_file_sync = BootResourceFileSyncService(

@@ -11,7 +11,7 @@ from datetime import timedelta
 import ssl
 from typing import Any
 
-from aiohttp import ClientSession, ClientTimeout, FormData, TCPConnector
+from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from sqlalchemy.ext.asyncio import AsyncConnection
 import structlog
 from temporalio import workflow
@@ -21,7 +21,6 @@ from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ParentClosePolicy
 import yaml
 
-from apiclient.maas_client import MAASOAuth
 from maascommon.constants import SYSTEM_CA_FILE
 from maascommon.workflows.msm import (
     MachinesCountByStatus,
@@ -30,23 +29,15 @@ from maascommon.workflows.msm import (
     MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
     MSM_TOKEN_REFRESH_WORKFLOW_NAME,
     MSMConnectorParam,
-    MSMDeleteBootSourcesParam,
-    MSMDeleteSelectionsParam,
     MSMEnrolParam,
-    MSMGetMSMBootSourceParam,
     MSMHeartbeatParam,
     MSMRestoreDefaultBootSourceParam,
     MSMSetBootSourceParam,
     MSMTokenRefreshParam,
 )
+from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.db import Database
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootsources import (
-    BootSourcesClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-)
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.worker import REGION_TASK_QUEUE
@@ -80,13 +71,11 @@ MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME = "msm-get-heartbeat-data"
 MSM_SEND_HEARTBEAT_ACTIVITY_NAME = "msm-send-heartbeat"
 MSM_SEND_ENROL_ACTIVITY_NAME = "msm-send-enrol"
 MSM_SET_BOOT_SOURCE_ACTIVITY_NAME = "msm-set-bootsource"
-MSM_GET_BOOT_SOURCES_ACTIVITY_NAME = "msm-get-bootsources"
+
 MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME = "msm-delete-bootsources"
 MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME = (
     "msm-restore-default-bootsource"
 )
-MSM_DELETE_SELECTIONS_ACTIVITY_NAME = "msm-delete-selections"
-MSM_GET_MSM_BOOT_SOURCE_ACTIVITY_NAME = "msm-get-msm-boot-source"
 
 
 # Activities parameters
@@ -245,56 +234,6 @@ class MSMConnectorActivity(ActivityBase):
                 },
             )
 
-    @activity_defn_with_context(name=MSM_GET_BOOT_SOURCES_ACTIVITY_NAME)
-    async def get_bootsources(self) -> list[int]:
-        """Get Boot Sources that existed before enrollment."""
-        async with self.start_transaction() as services:
-            api_key = await services.users.get_MAAS_user_apikey()
-            key, token, secret = api_key.split(":")
-            oauth = MAASOAuth(key, token, secret)
-            maas_base_url = await services.configurations.get("maas_url")
-            maas_url = f"{maas_base_url}/api/2.0/boot-sources/"
-            headers = {}
-            oauth.sign_request(maas_url, headers)
-            async with self._session.get(
-                maas_url, headers=headers
-            ) as response:
-                body = await response.text()
-                if response.status != 200:
-                    raise ApplicationError(
-                        f"got unexpected return code: HTTP {response.status}, {body}"
-                    )
-                boot_sources = await response.json()
-                return [bs["id"] for bs in boot_sources]
-
-    @activity_defn_with_context(name=MSM_DELETE_SELECTIONS_ACTIVITY_NAME)
-    async def delete_selections(self, input: MSMDeleteSelectionsParam) -> None:
-        """Delete boot source selections."""
-        async with self.start_transaction() as services:
-            await services.boot_source_selections.delete_many(
-                QuerySpec(
-                    BootSourceSelectionClauseFactory.with_boot_source_id(
-                        input.boot_source_id
-                    )
-                )
-            )
-
-    @activity_defn_with_context(name=MSM_GET_MSM_BOOT_SOURCE_ACTIVITY_NAME)
-    async def get_msm_boot_source_id(
-        self, input: MSMGetMSMBootSourceParam
-    ) -> int:
-        """Retrieve the boot source ID of MSM."""
-        async with self.start_transaction() as services:
-            source_url = input.sm_url + MSM_SS_EP
-            boot_source = await services.boot_sources.get_one(
-                QuerySpec(BootSourcesClauseFactory.with_url(source_url))
-            )
-            if boot_source is None:
-                raise ApplicationError(
-                    f"Could not retrieve MSM boot source (url {source_url})"
-                )
-            return boot_source.id
-
     @activity_defn_with_context(
         name=MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME
     )
@@ -304,57 +243,22 @@ class MSMConnectorActivity(ActivityBase):
             await services.image_sync.ensure_boot_source_definition()
 
     @activity_defn_with_context(name=MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME)
-    async def delete_bootsources(
-        self, input: MSMDeleteBootSourcesParam
-    ) -> None:
-        """Delete old boot sources.
-
-        Args:
-            input (MSMDeleteBootSourcesParam): list of IDs to delete
-        """
+    async def delete_bootsources(self) -> None:
+        """Delete all existing boot sources."""
         async with self.start_transaction() as services:
-            api_key = await services.users.get_MAAS_user_apikey()
-            key, token, secret = api_key.split(":")
-            oauth = MAASOAuth(key, token, secret)
-            maas_base_url = await services.configurations.get("maas_url")
-            for id in input.ids:
-                maas_url = f"{maas_base_url}/api/2.0/boot-sources/{id}/"
-                headers = {}
-                oauth.sign_request(maas_url, headers)
-                async with self._session.delete(
-                    maas_url, headers=headers
-                ) as response:
-                    if response.status != 204:
-                        body = await response.text()
-                        raise ApplicationError(
-                            f"got unexpected return code: HTTP {response.status}, {body}"
-                        )
+            await services.boot_sources.delete_many(QuerySpec())
 
     @activity_defn_with_context(name=MSM_SET_BOOT_SOURCE_ACTIVITY_NAME)
     async def set_bootsource(self, input: MSMSetBootSourceParam) -> None:
         async with self.start_transaction() as services:
-            api_key = await services.users.get_MAAS_user_apikey()
-            key, token, secret = api_key.split(":")
-            oauth = MAASOAuth(key, token, secret)
-            maas_base_url = await services.configurations.get("maas_url")
-            maas_url = f"{maas_base_url}/api/2.0/boot-sources/"
-            headers = {}
-            oauth.sign_request(maas_url, headers)
-            data = {
-                "url": input.sm_url + MSM_SS_EP,
-                "keyring_data": b" ",
-            }
-            form_data = FormData()
-            for key, value in data.items():
-                form_data.add_field(name=key, value=value)
-            async with self._session.post(
-                maas_url, data=form_data, headers=headers
-            ) as response:
-                if response.status != 201:
-                    body = await response.text()
-                    raise ApplicationError(
-                        f"got unexpected return code: HTTP {response.status}, {body}"
-                    )
+            builder = BootSourceBuilder(
+                url=input.sm_url + MSM_SS_EP,
+                keyring_filename="",
+                keyring_data=b"",
+                priority=1,
+                skip_keyring_verification=True,
+            )
+            await services.boot_sources.create(builder)
 
     @activity_defn_with_context(name=MSM_GET_ENROL_ACTIVITY_NAME)
     async def get_enrol(self) -> dict[str, Any]:
@@ -529,8 +433,8 @@ class MSMEnrolSiteWorkflow:
             start_to_close_timeout=MSM_TIMEOUT,
         )
 
-        current_boot_sources = await workflow.execute_activity(
-            MSM_GET_BOOT_SOURCES_ACTIVITY_NAME,
+        await workflow.execute_activity(
+            MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME,
             start_to_close_timeout=MSM_TIMEOUT,
         )
 
@@ -539,12 +443,6 @@ class MSMEnrolSiteWorkflow:
             MSMSetBootSourceParam(
                 sm_url=param.url,
             ),
-            start_to_close_timeout=MSM_TIMEOUT,
-        )
-
-        await workflow.execute_activity(
-            MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME,
-            MSMDeleteBootSourcesParam(ids=current_boot_sources),
             start_to_close_timeout=MSM_TIMEOUT,
         )
 
@@ -592,19 +490,8 @@ class MSMRestoreDefaultBootSourceWorkflow:
 
     @workflow_run_with_context
     async def run(self, input: MSMRestoreDefaultBootSourceParam) -> None:
-        msm_source_id = await workflow.execute_activity(
-            MSM_GET_MSM_BOOT_SOURCE_ACTIVITY_NAME,
-            MSMGetMSMBootSourceParam(sm_url=input.sm_url),
-            start_to_close_timeout=MSM_TIMEOUT,
-        )
-        await workflow.execute_activity(
-            MSM_DELETE_SELECTIONS_ACTIVITY_NAME,
-            MSMDeleteSelectionsParam(boot_source_id=msm_source_id),
-            start_to_close_timeout=MSM_TIMEOUT,
-        )
         await workflow.execute_activity(
             MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME,
-            MSMDeleteBootSourcesParam(ids=[msm_source_id]),
             start_to_close_timeout=MSM_TIMEOUT,
         )
         await workflow.execute_activity(

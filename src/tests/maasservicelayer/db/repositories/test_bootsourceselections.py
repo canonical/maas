@@ -71,6 +71,12 @@ class TestBootSourceSelectionClauseFactory:
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_bootsourceselection.boot_source_id = 1")
 
+    def test_with_boot_source_ids(self) -> None:
+        clause = BootSourceSelectionClauseFactory.with_boot_source_ids([1, 2])
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsourceselection.boot_source_id IN (1, 2)")
+
     def test_with_os(self) -> None:
         clause = BootSourceSelectionClauseFactory.with_os("ubuntu")
         assert str(

@@ -3,6 +3,7 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Iterable
 
 import aiofiles
 
@@ -23,6 +24,7 @@ from maasservicelayer.models.configurations import (
 from maasservicelayer.models.image_manifests import ImageManifest
 from maasservicelayer.services.base import Service, ServiceCache
 from maasservicelayer.services.configurations import ConfigurationsService
+from maasservicelayer.services.msm import MSMService, MSMStatusEnum
 from maasservicelayer.simplestreams.client import (
     SimpleStreamsClient,
     SimpleStreamsClientException,
@@ -36,11 +38,13 @@ class ImageManifestsService(Service):
         context: Context,
         repository: ImageManifestsRepository,
         configurations_service: ConfigurationsService,
+        msm_service: MSMService,
         cache: ServiceCache | None = None,
     ):
         super().__init__(context, cache)
         self.repository = repository
         self.configurations_service = configurations_service
+        self.msm_service = msm_service
 
     async def _get_http_proxy(self) -> str | None:
         """Returns the http proxy to be used to download images metadata."""
@@ -51,6 +55,16 @@ class ImageManifestsService(Service):
         ):
             return None
         return await self.configurations_service.get(HttpProxyConfig.name)
+
+    async def _get_bearer_token(self, url: str) -> str | None:
+        msm_status = await self.msm_service.get_status()
+        if (
+            msm_status
+            and msm_status.running == MSMStatusEnum.CONNECTED
+            and url.startswith(msm_status.sm_url)
+        ):
+            return msm_status.sm_jwt
+        return None
 
     @asynccontextmanager
     async def _get_keyring_file(
@@ -87,6 +101,7 @@ class ImageManifestsService(Service):
         keyring_data: bytes | None = None,
     ) -> list[SourceAvailableImage]:
         http_proxy = await self._get_http_proxy()
+        token = await self._get_bearer_token(source_url)
 
         async with self._get_keyring_file(
             keyring_path, keyring_data
@@ -95,6 +110,7 @@ class ImageManifestsService(Service):
                 url=source_url,
                 http_proxy=http_proxy,
                 keyring_file=keyring_file,
+                bearer_auth=token,
             ) as client:
                 products_list = await client.get_all_products()
 
@@ -118,6 +134,7 @@ class ImageManifestsService(Service):
             A list of simplestreams products.
         """
         http_proxy = await self._get_http_proxy()
+        token = await self._get_bearer_token(boot_source.url)
 
         async with self._get_keyring_file(
             boot_source.keyring_filename, boot_source.keyring_data
@@ -127,6 +144,7 @@ class ImageManifestsService(Service):
                 http_proxy=http_proxy,
                 keyring_file=keyring_file,
                 skip_pgp_verification=boot_source.skip_keyring_verification,
+                bearer_auth=token,
             ) as client:
                 products_list = await client.get_all_products()
 
@@ -194,6 +212,9 @@ class ImageManifestsService(Service):
 
     async def update(self, builder: ImageManifestBuilder) -> ImageManifest:
         return await self.repository.update(builder)
+
+    async def delete_many(self, boot_source_ids: Iterable[int]) -> None:
+        await self.repository.delete_many_by_boot_source_ids(boot_source_ids)
 
     async def delete(self, boot_source_id: int) -> None:
         return await self.repository.delete(boot_source_id)

@@ -81,16 +81,18 @@ class TestBootSourcesService(ServiceCommonTests):
 
         boot_source_cache_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=BootSourceCacheClauseFactory.with_boot_source_id(
-                    boot_source.id
+                where=BootSourceCacheClauseFactory.with_boot_source_ids(
+                    [boot_source.id]
                 )
             )
         )
         boot_source_selections_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=BootSourceSelectionClauseFactory.with_boot_source_id(
-                    boot_source.id
+                where=BootSourceSelectionClauseFactory.with_boot_source_ids(
+                    [boot_source.id]
                 )
             )
         )
-        image_manifests_service.delete.assert_called_once_with(boot_source.id)
+        image_manifests_service.delete_many.assert_called_once_with(
+            {boot_source.id}
+        )

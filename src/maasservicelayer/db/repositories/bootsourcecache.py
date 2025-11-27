@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
+from typing import Iterable
 
 from sqlalchemy import desc, not_, select, Table
 from sqlalchemy.sql.functions import count
@@ -46,6 +47,14 @@ class BootSourceCacheClauseFactory(ClauseFactory):
     def with_boot_source_id(cls, boot_source_id: int) -> Clause:
         return Clause(
             condition=eq(BootSourceCacheTable.c.boot_source_id, boot_source_id)
+        )
+
+    @classmethod
+    def with_boot_source_ids(cls, boot_source_ids: Iterable[int]) -> Clause:
+        return Clause(
+            condition=BootSourceCacheTable.c.boot_source_id.in_(
+                boot_source_ids
+            )
         )
 
     @classmethod

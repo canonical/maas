@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from typing import List, Sequence
+
 import structlog
 
 from maascommon.enums.events import EventTypeEnum
@@ -47,6 +49,29 @@ class BootSourcesService(
         self.events_service = events_service
         self.image_manifests_service = image_manifests_service
 
+    async def _cascade_delete_dependents(
+        self, resources: Sequence[BootSource]
+    ) -> None:
+        boot_source_ids = {resource.id for resource in resources}
+        if not boot_source_ids:
+            return
+
+        await self.boot_source_cache_service.delete_many(
+            query=QuerySpec(
+                where=BootSourceCacheClauseFactory.with_boot_source_ids(
+                    boot_source_ids
+                )
+            )
+        )
+        await self.boot_source_selections_service.delete_many(
+            query=QuerySpec(
+                where=BootSourceSelectionClauseFactory.with_boot_source_ids(
+                    boot_source_ids
+                )
+            )
+        )
+        await self.image_manifests_service.delete_many(boot_source_ids)
+
     async def post_create_hook(self, resource: BootSource) -> None:
         await super().post_create_hook(resource)
         await self.events_service.record_event(
@@ -67,25 +92,19 @@ class BootSourcesService(
         )
 
     async def post_delete_hook(self, resource: BootSource) -> None:
-        # cascade delete
-        await self.boot_source_cache_service.delete_many(
-            query=QuerySpec(
-                where=BootSourceCacheClauseFactory.with_boot_source_id(
-                    resource.id
-                )
-            )
-        )
-        await self.boot_source_selections_service.delete_many(
-            query=QuerySpec(
-                where=BootSourceSelectionClauseFactory.with_boot_source_id(
-                    resource.id
-                )
-            )
-        )
-
-        await self.image_manifests_service.delete(resource.id)
-
+        await self._cascade_delete_dependents([resource])
         await self.events_service.record_event(
             event_type=EventTypeEnum.BOOT_SOURCE,
             event_description=f"Deleted boot source {resource.url}",
         )
+
+    async def post_delete_many_hook(self, resources: List[BootSource]) -> None:
+        if not resources:
+            return
+
+        await self._cascade_delete_dependents(resources)
+        for resource in resources:
+            await self.events_service.record_event(
+                event_type=EventTypeEnum.BOOT_SOURCE,
+                event_description=f"Deleted boot source {resource.url}",
+            )

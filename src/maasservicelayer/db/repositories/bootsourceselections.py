@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import List
+from typing import Iterable, List
 
 from sqlalchemy import func, select, Table
 
@@ -36,6 +36,14 @@ class BootSourceSelectionClauseFactory(ClauseFactory):
         return Clause(
             condition=eq(
                 BootSourceSelectionTable.c.boot_source_id, boot_source_id
+            )
+        )
+
+    @classmethod
+    def with_boot_source_ids(cls, boot_source_ids: Iterable[int]) -> Clause:
+        return Clause(
+            condition=BootSourceSelectionTable.c.boot_source_id.in_(
+                boot_source_ids
             )
         )
 

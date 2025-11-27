@@ -60,6 +60,18 @@ class TestBootResourceClauseFactory:
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_bootresource.id IN (1, 2, 3)")
 
+    def test_with_selection_id(self) -> None:
+        clause = BootResourceClauseFactory.with_selection_id(5)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootresource.selection_id = 5")
+
+    def test_with_selection_ids(self) -> None:
+        clause = BootResourceClauseFactory.with_selection_ids([1, 2])
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootresource.selection_id IN (1, 2)")
+
 
 class TestCommonBootResourceRepository(RepositoryCommonTests[BootResource]):
     @pytest.fixture

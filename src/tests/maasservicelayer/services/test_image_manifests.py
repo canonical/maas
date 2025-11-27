@@ -20,6 +20,7 @@ from maasservicelayer.models.image_manifests import ImageManifest
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.image_manifests import ImageManifestsService
+from maasservicelayer.services.msm import MSMService
 from maasservicelayer.simplestreams.client import (
     SIGNED_INDEX_PATH,
     SimpleStreamsClient,
@@ -59,11 +60,13 @@ class TestImageManifestsService:
     async def _setup(self):
         self.configurations_service = Mock(ConfigurationsService)
         self.repository = Mock(ImageManifestsRepository)
+        self.msm = Mock(MSMService)
 
         self.service = ImageManifestsService(
             context=Context(),
             repository=self.repository,
             configurations_service=self.configurations_service,
+            msm_service=self.msm,
         )
 
     @pytest.mark.parametrize(
@@ -305,6 +308,12 @@ class TestImageManifestsService:
     async def test_delete(self) -> None:
         await self.service.delete(1)
         self.repository.delete.assert_awaited_once_with(1)
+
+    async def test_delete_many(self) -> None:
+        await self.service.delete_many([1, 2])
+        self.repository.delete_many_by_boot_source_ids.assert_awaited_once_with(
+            [1, 2]
+        )
 
 
 class TestIntegrationImageManifestsService:

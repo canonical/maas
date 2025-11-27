@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
+from typing import Iterable
 
 from sqlalchemy import case, desc, func, select, Table
 
@@ -64,6 +65,12 @@ class BootResourceClauseFactory(ClauseFactory):
     def with_selection_id(cls, selection_id: int) -> Clause:
         return Clause(
             condition=eq(BootResourceTable.c.selection_id, selection_id)
+        )
+
+    @classmethod
+    def with_selection_ids(cls, selection_ids: Iterable[int]) -> Clause:
+        return Clause(
+            condition=BootResourceTable.c.selection_id.in_(selection_ids)
         )
 
 

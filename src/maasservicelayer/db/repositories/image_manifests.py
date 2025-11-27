@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
+from typing import Iterable
 
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError
@@ -81,6 +82,17 @@ class ImageManifestsRepository(Repository):
                 ]
             )
         return ImageManifest(**result._asdict())
+
+    async def delete_many_by_boot_source_ids(
+        self, boot_source_ids: Iterable[int]
+    ) -> None:
+        ids = set(boot_source_ids)
+        if not ids:
+            return
+        stmt = delete(ImageManifestTable).where(
+            ImageManifestTable.c.boot_source_id.in_(ids)
+        )
+        await self.execute_stmt(stmt)
 
     async def delete(self, boot_source_id: int) -> None:
         stmt = delete(ImageManifestTable).where(

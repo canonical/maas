@@ -64,20 +64,5 @@ class MSMSetBootSourceParam:
 
 
 @dataclasses.dataclass
-class MSMDeleteBootSourcesParam:
-    ids: list[int]
-
-
-@dataclasses.dataclass
-class MSMDeleteSelectionsParam:
-    boot_source_id: int
-
-
-@dataclasses.dataclass
-class MSMGetMSMBootSourceParam:
-    sm_url: str
-
-
-@dataclasses.dataclass
 class MSMRestoreDefaultBootSourceParam:
     sm_url: str
