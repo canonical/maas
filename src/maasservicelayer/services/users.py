@@ -392,5 +392,8 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
                 )
         return await super().post_update_hook(old_resource, updated_resource)
 
+    async def count_by_provider(self, provider_id: int) -> int:
+        return await self.repository.count_by_provider(provider_id=provider_id)
+
     async def clear_all_sessions(self) -> None:
         await self.repository.clear_all_sessions()

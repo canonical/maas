@@ -38,9 +38,12 @@ class OAuthProviderResponse(BaseModel):
     enabled: bool
     id: int
     metadata: ProviderMetadata
+    user_count: int | None
 
     @classmethod
-    def from_model(cls, provider: OAuthProvider) -> typing.Self:
+    def from_model(
+        cls, provider: OAuthProvider, user_count: int | None = None
+    ) -> typing.Self:
         return cls(
             name=provider.name,
             client_id=provider.client_id,
@@ -51,6 +54,7 @@ class OAuthProviderResponse(BaseModel):
             enabled=provider.enabled,
             metadata=provider.metadata,
             id=provider.id,
+            user_count=user_count,
         )
 
 

@@ -154,6 +154,41 @@ class AuthHandler(Handler):
         )
 
     @handler(
+        path="/auth/oauth/providers/{provider_id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": OAuthProviderResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def get_oauth_provider_by_id(
+        self,
+        provider_id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> OAuthProviderResponse:
+        if provider := await services.external_oauth.get_by_id(id=provider_id):
+            user_count = await services.users.count_by_provider(
+                provider_id=provider.id
+            )
+            return OAuthProviderResponse.from_model(
+                provider=provider, user_count=user_count
+            )
+
+        raise NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                    message="No OIDC provider with the given ID was found.",
+                )
+            ]
+        )
+
+    @handler(
         path="/auth/oauth/providers",
         methods=["GET"],
         tags=TAGS,
@@ -241,8 +276,14 @@ class AuthHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> OAuthProviderResponse:
         if provider := await services.external_oauth.get_provider():
+            user_count = await services.users.count_by_provider(
+                provider_id=provider.id
+            )
             response.headers["ETag"] = provider.etag()
-            return OAuthProviderResponse.from_model(provider=provider)
+            return OAuthProviderResponse.from_model(
+                provider=provider,
+                user_count=user_count,
+            )
         raise NotFoundException(
             details=[
                 BaseExceptionDetail(

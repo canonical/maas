@@ -39,6 +39,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     ETAG_PRECONDITION_VIOLATION_TYPE,
+    MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
@@ -54,6 +55,7 @@ from maasservicelayer.services.external_auth import (
     ExternalAuthService,
     ExternalOAuthService,
 )
+from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 
 TEST_PROVIDER_1 = OAuthProvider(
@@ -662,9 +664,12 @@ class TestAuthApi:
             ),
         )
         services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.users = Mock(UsersService)
         services_mock.external_oauth.get_provider.return_value = (
             created_provider
         )
+        services_mock.users.count_by_provider.return_value = 5
+
         response = await mocked_api_client_admin.get(
             f"{self.BASE_PATH}/oauth:is_active"
         )
@@ -681,6 +686,7 @@ class TestAuthApi:
             "enabled": created_provider.enabled,
             "id": created_provider.id,
             "metadata": created_provider.metadata,
+            "user_count": 5,
         }
 
     async def test_get_active_oauth_provider_not_found(
@@ -699,3 +705,52 @@ class TestAuthApi:
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 404
+
+    async def test_get_oauth_provider_by_id_success(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.users = Mock(UsersService)
+        services_mock.external_oauth.get_by_id.return_value = TEST_PROVIDER_1
+        services_mock.users.count_by_provider.return_value = 3
+
+        response = await mocked_api_client_admin.get(
+            f"{self.BASE_PATH}/oauth/providers/1",
+        )
+
+        assert response.status_code == 200
+
+        provider_response = OAuthProviderResponse(**response.json())
+
+        assert provider_response.kind == "AuthProvider"
+        assert provider_response.id == TEST_PROVIDER_1.id
+        assert provider_response.name == TEST_PROVIDER_1.name
+        assert provider_response.client_id == TEST_PROVIDER_1.client_id
+        assert provider_response.user_count == 3
+
+    async def test_get_oauth_provider_by_id_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.get_by_id.return_value = None
+
+        response = await mocked_api_client_admin.get(
+            f"{self.BASE_PATH}/oauth/providers/999",
+        )
+
+        assert response.status_code == 404
+
+        error_response = ErrorBodyResponse(**response.json())
+        details = error_response.details
+        assert details is not None
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+        assert details[0].type == MISSING_PROVIDER_CONFIG_VIOLATION_TYPE
+        assert (
+            details[0].message
+            == "No OIDC provider with the given ID was found."
+        )

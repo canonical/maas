@@ -668,3 +668,13 @@ class TestUsersService:
     ):
         await users_service.clear_all_sessions()
         users_repository.clear_all_sessions.assert_awaited_once()
+
+    async def test_count_by_provider(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        users_repository.count_by_provider.return_value = 5
+        count = await users_service.count_by_provider(provider_id=1)
+        users_repository.count_by_provider.assert_called_once_with(
+            provider_id=1
+        )
+        assert count == 5

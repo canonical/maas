@@ -222,6 +222,15 @@ class UsersRepository(BaseRepository[User]):
             total=total,
         )
 
+    async def count_by_provider(self, provider_id: int) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(UserProfileTable)
+            .where(eq(UserProfileTable.c.provider_id, provider_id))
+        )
+        count = (await self.execute_stmt(stmt)).scalar_one()
+        return count
+
     def _user_with_summary_stmt(self) -> Select:
         return (
             select(

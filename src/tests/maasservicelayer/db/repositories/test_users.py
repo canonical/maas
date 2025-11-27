@@ -288,3 +288,35 @@ class TestUsersRepository:
             user.id
         )
         assert user_with_summary is None
+
+    async def test_count_by_provider(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user1 = await create_test_user(fixture, username="user1")
+        user2 = await create_test_user(fixture, username="user2")
+        user3 = await create_test_user(fixture, username="user3")
+
+        provider1_id = 1
+        provider2_id = 2
+
+        await create_test_user_profile(
+            fixture, user_id=user1.id, provider_id=provider1_id
+        )
+        await create_test_user_profile(
+            fixture, user_id=user2.id, provider_id=provider1_id
+        )
+        await create_test_user_profile(
+            fixture, user_id=user3.id, provider_id=provider2_id
+        )
+
+        users_repository = UsersRepository(Context(connection=db_connection))
+
+        count_provider1 = await users_repository.count_by_provider(
+            provider1_id
+        )
+        count_provider2 = await users_repository.count_by_provider(
+            provider2_id
+        )
+
+        assert count_provider1 == 2
+        assert count_provider2 == 1
