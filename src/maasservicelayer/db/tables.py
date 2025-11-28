@@ -2218,6 +2218,39 @@ StaticRouteTable = Table(
     Index("maasserver_staticroute_destination_id_4d1b294b", "destination_id"),
 )
 
+SwitchTable = Table(
+    "maasserver_switch",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(255), nullable=False),
+    Column("mac_address", Text, nullable=False),
+    Column("ip_address", INET, nullable=True),
+    Column("model", String(255), nullable=True),
+    Column("manufacturer", String(255), nullable=True),
+    Column("description", Text, nullable=False),
+    Column(
+        "vlan_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_vlan.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=True,
+    ),
+    Column(
+        "subnet_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_subnet.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=True,
+    ),
+    UniqueConstraint("mac_address"),
+    Index("maasserver_switch_vlan_id_idx", "vlan_id"),
+    Index("maasserver_switch_subnet_id_idx", "subnet_id"),
+)
+
 SubnetTable = Table(
     "maasserver_subnet",
     METADATA,
