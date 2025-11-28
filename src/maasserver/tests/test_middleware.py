@@ -11,6 +11,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse
 
+from maascommon.logging.security import AUTHZ_FAIL, SECURITY
 from maascommon.tracing import set_trace_id
 from maasserver import middleware as middleware_module
 from maasserver.exceptions import MAASAPIException, MAASAPINotFound
@@ -222,6 +223,26 @@ class TestExceptionMiddleware(MAASServerTestCase):
                 response.status_code,
                 response.content.decode(settings.DEFAULT_CHARSET),
             ),
+        )
+
+    def test_PermissionDenied_creates_log(self):
+        logger = self.patch(middleware_module, "logger")
+        error_message = factory.make_string()
+        exception = PermissionDenied(error_message)
+        request = self.make_fake_request()
+        request.user = factory.make_User()
+        self.process_exception(request, exception)
+        logger.warn.assert_called_once_with(
+            AUTHZ_FAIL,
+            type=SECURITY,
+            userID=request.user.username,
+            role=middleware_module.ADMIN
+            if request.user.is_superuser
+            else middleware_module.USER,
+            useragent=request.META.get("HTTP_USER_AGENT", "unknown"),
+            request_remote_ip=request.META.get("REMOTE_ADDR", "unknown"),
+            request_path=request.path,
+            request_method=request.method,
         )
 
     def test_api_500_error_is_logged(self):

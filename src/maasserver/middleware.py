@@ -25,6 +25,7 @@ from django.http import (
 from django.urls import get_resolver, get_urlconf, reverse
 from django.utils.encoding import force_str
 
+from maascommon.logging.security import ADMIN, AUTHZ_FAIL, SECURITY, USER
 from maascommon.tracing import get_trace_id, set_trace_id
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.exceptions import MAASAPIException
@@ -169,6 +170,18 @@ class ExceptionMiddleware:
                     content_type="text/plain; charset=%s" % encoding,
                 )
         elif isinstance(exception, PermissionDenied):
+            user = getattr(request, "user", None)
+            username = user.username if user else None
+            logger.warn(
+                AUTHZ_FAIL,
+                type=SECURITY,
+                userID=username,
+                role=ADMIN if user and user.is_superuser else USER,
+                useragent=request.META.get("HTTP_USER_AGENT", "unknown"),
+                request_remote_ip=request.META.get("REMOTE_ADDR", "unknown"),
+                request_path=request.path,
+                request_method=request.method,
+            )
             if settings.DEBUG:
                 self.log_exception(exception)
             return HttpResponseForbidden(

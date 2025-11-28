@@ -179,7 +179,15 @@ class LogFormatter:
             "thread": f"{threading.current_thread().name}:{threading.current_thread().ident}",
         }
         # Add security logging items if they exist
-        security_items = ["type", "userID", "role"]
+        security_items = [
+            "type",
+            "userID",
+            "role",
+            "request_path",
+            "useragent",
+            "request_method",
+            "request_remote_ip",
+        ]
         extra_records = {
             item: event[item] for item in security_items if item in event
         }
