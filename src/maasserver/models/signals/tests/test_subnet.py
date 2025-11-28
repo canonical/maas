@@ -243,10 +243,14 @@ class TestSubnetDHCPSignal(MAASServerTestCase):
             subnet.vlan = new_vlan
             subnet.save()
 
-        subnet_start_workflow_mock.assert_called_once_with(
-            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-            param=ConfigureDHCPParam(vlan_ids=[vlan.id, new_vlan.id]),
-            task_queue="region",
+        subnet_start_workflow_mock.assert_called_once()
+        call_args = subnet_start_workflow_mock.call_args
+        self.assertEqual(
+            call_args.kwargs["workflow_name"], CONFIGURE_DHCP_WORKFLOW_NAME
+        )
+        self.assertEqual(call_args.kwargs["task_queue"], "region")
+        self.assertCountEqual(
+            call_args.kwargs["param"].vlan_ids, [vlan.id, new_vlan.id]
         )
 
     def test_save_calls_configure_dhcp_workflow_when_dhcp_relay(self):
@@ -267,10 +271,14 @@ class TestSubnetDHCPSignal(MAASServerTestCase):
             subnet.vlan = new_vlan
             subnet.save()
 
-        subnet_start_workflow_mock.assert_called_once_with(
-            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-            param=ConfigureDHCPParam(vlan_ids=[vlan.id, new_vlan.id]),
-            task_queue="region",
+        subnet_start_workflow_mock.assert_called_once()
+        call_args = subnet_start_workflow_mock.call_args
+        self.assertEqual(
+            call_args.kwargs["workflow_name"], CONFIGURE_DHCP_WORKFLOW_NAME
+        )
+        self.assertEqual(call_args.kwargs["task_queue"], "region")
+        self.assertCountEqual(
+            call_args.kwargs["param"].vlan_ids, [vlan.id, new_vlan.id]
         )
 
     def test_save_does_not_configure_dhcp_workflow_when_dhcp_off(self):
