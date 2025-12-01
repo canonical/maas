@@ -291,7 +291,7 @@ func (d *DORAHandler) ServeDHCPv4(ctx context.Context, msg Message) error {
 func (d *DORAHandler) reply(ctx context.Context, ifaceIdx int, addr net.Addr, reply *dhcpv4.DHCPv4) error {
 	sock, err := d.server.GetSocketFor(4, ifaceIdx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error fetching socket for client: %w", err)
 	}
 
 	conn := sock.Conn()
@@ -299,8 +299,11 @@ func (d *DORAHandler) reply(ctx context.Context, ifaceIdx int, addr net.Addr, re
 	buf := reply.ToBytes()
 
 	_, err = conn.WriteTo(buf, addr)
+	if err != nil {
+		return fmt.Errorf("failed to write unicast packet: %w", err)
+	}
 
-	return err
+	return nil
 }
 
 func (d *DORAHandler) replyEth(ctx context.Context, ifaceIdx int, mac net.HardwareAddr, reply *dhcpv4.DHCPv4) error {
@@ -358,7 +361,7 @@ func (d *DORAHandler) replyEth(ctx context.Context, ifaceIdx int, mac net.Hardwa
 		dhcpPkt,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("error serializing ethernet frame: %w", err)
 	}
 
 	data := pktBuf.Bytes()
@@ -371,7 +374,7 @@ func (d *DORAHandler) replyEth(ctx context.Context, ifaceIdx int, mac net.Hardwa
 	defer func() {
 		cErr := syscall.Close(fd)
 		if err == nil && cErr != nil {
-			err = cErr
+			err = fmt.Errorf("error closing raw socket file descriptor: %w", cErr)
 		}
 	}()
 
@@ -401,12 +404,12 @@ func (d *DORAHandler) replyEth(ctx context.Context, ifaceIdx int, mac net.Hardwa
 func getServerAddr(msg Message) (net.IP, error) {
 	iface, err := net.InterfaceByIndex(int(msg.IfaceIdx))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find server interface: %w", err)
 	}
 
 	addrs, err := iface.Addrs()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch server interface addresses: %w", err)
 	}
 
 	var serverIP net.IP
@@ -432,18 +435,20 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 		err   error
 	)
 
+	log.Debug().Msg("handling discover")
+
 	err = d.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		offer, err = d.allocator.GetOfferFromDiscover(ctx, tx, msg.Pkt4, int(msg.IfaceIdx), msg.SrcMAC)
 
 		return err
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("error allocating IP address: %w", err)
 	}
 
 	serverIP, err := getServerAddr(msg)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting server address: %w", err)
 	}
 
 	reply, err := dhcpv4.New(
@@ -455,7 +460,7 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 		dhcpv4.WithHwAddr(msg.Pkt4.ClientHWAddr),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating DHCP OFFER packet: %w", err)
 	}
 
 	for optCode, optValue := range offer.Options {
@@ -464,7 +469,7 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 		if marshaler, ok := optionMarshalers[getDHCPv4OptionType(optCode)]; ok {
 			value, err = marshaler(optValue)
 			if err != nil {
-				return err
+				return fmt.Errorf("error formating DHCP option %d: %w", optCode, err)
 			}
 		}
 
@@ -478,6 +483,8 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 	if d.discoverReplyOverride != nil {
 		return d.discoverReplyOverride(ctx, int(msg.IfaceIdx), reply)
 	}
+
+	log.Debug().Msg("sending offer")
 
 	return d.replyEth(ctx, int(msg.IfaceIdx), reply.ClientHWAddr, reply)
 }
@@ -508,8 +515,13 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 					LeaseTime: int64(lease.Lifetime),
 				},
 			)
+			if err != nil {
+				err = fmt.Errorf("failed to report lease: %w", err)
+			}
 		}
 	}()
+
+	log.Debug().Msg("handling request")
 
 	requestedIPBytes, ok := msg.Pkt4.Options[uint8(dhcpv4.OptionRequestedIPAddress)]
 	if !ok || (len(requestedIPBytes) != 4 && len(requestedIPBytes) != 16) {
@@ -521,15 +533,13 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 	err = d.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		lease, err = d.allocator.ACKLease(ctx, tx, requestedIP, msg.Pkt4.ClientHWAddr)
 		if err != nil {
-			log.Err(err).Send()
-
 			if errors.Is(err, sql.ErrNoRows) {
-				return err
+				return fmt.Errorf("ack'ing non-existent lease: %w", err)
 			}
 
 			err = d.allocator.NACKLease(ctx, tx, msg.Pkt4.YourIPAddr, msg.Pkt4.ClientHWAddr)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to nack lease: %w", err)
 			}
 
 			reply, err = dhcpv4.New(
@@ -537,13 +547,13 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 				dhcpv4.WithMessageType(dhcpv4.MessageTypeNak),
 			)
 
-			return err
+			return fmt.Errorf("failed to create NACK packet: %w", err)
 		} else {
 			var serverIP net.IP
 
 			serverIP, err = getServerAddr(msg)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to get server address: %w", err)
 			}
 
 			reply, err = dhcpv4.New(
@@ -553,12 +563,15 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 				dhcpv4.WithClientIP(msg.Pkt4.ClientIPAddr),
 				dhcpv4.WithYourIP(lease.IP.To4()),
 			)
+			if err != nil {
+				return fmt.Errorf("failed to create ACK packet: %w", err)
+			}
 
-			return err
+			return nil
 		}
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("error ack'ing lease: %w", err)
 	}
 
 	for optCode, optValue := range lease.Options {
@@ -567,7 +580,7 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 		if marshaler, ok := optionMarshalers[getDHCPv4OptionType(optCode)]; ok {
 			value, err = marshaler(optValue)
 			if err != nil {
-				return err
+				return fmt.Errorf("error formating DHCP option %d: %w", optCode, err)
 			}
 		}
 
@@ -578,12 +591,14 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 		}
 	}
 
+	log.Debug().Msg("sending ack")
+
 	if d.requestReplyOverride != nil {
 		return d.requestReplyOverride(ctx, reply)
 	}
 
 	if reply.ClientIPAddr.To4().Equal(net.IPv4zero) {
-		return d.replyEth(ctx, int(msg.IfaceIdx), msg.SrcMAC, reply)
+		return d.replyEth(ctx, int(msg.IfaceIdx), reply.ClientHWAddr, reply)
 	}
 
 	addr := &net.UDPAddr{

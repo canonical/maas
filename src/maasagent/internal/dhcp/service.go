@@ -375,7 +375,7 @@ func (s *DHCPService) startInternalServer(ctx context.Context, lr LeaseReporter)
 
 	allocator4, err := newDQLiteAllocator4()
 	if err != nil {
-		return err
+		return fmt.Errorf("error initializing allocator: %w", err)
 	}
 
 	handler4 := NewDORAHandler(allocator4, lr)
@@ -395,7 +395,7 @@ func (s *DHCPService) startInternalServer(ctx context.Context, lr LeaseReporter)
 
 	s.server, err = NewServer(s.activeInterfaces, xdpProg, handler4, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("error initializing dhcp server: %w", err)
 	}
 
 	s.expirationHandler = newExpirationHandler(expirationInterval)
@@ -403,7 +403,7 @@ func (s *DHCPService) startInternalServer(ctx context.Context, lr LeaseReporter)
 	go func() {
 		err := s.server.Serve(ctx)
 		if err != nil {
-			log.Err(err).Send()
+			log.Err(err).Msg("error starting DHCP server")
 		}
 	}()
 
@@ -424,23 +424,23 @@ func (s *DHCPService) start() error {
 
 	if err = syscall.Unlink(sockPath); err != nil {
 		if !os.IsNotExist(err) {
-			return err
+			return fmt.Errorf("error unlinking dhcp notification socket: %w", err)
 		}
 	}
 
 	addr, err := net.ResolveUnixAddr("unixgram", sockPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to resolve unix socket addr: %w", err)
 	}
 
 	s.notificationSock, err = net.ListenUnixgram("unixgram", addr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to listen on dhcp notification socket: %w", err)
 	}
 
 	// The dhcpd socket must be world readable/writable
 	if err = os.Chmod(sockPath, 0666); err != nil { //nolint:gosec // ignore G302
-		return err
+		return fmt.Errorf("failed to change dhcp notification socket permissions: %w", err)
 	}
 
 	notificationListener := dhcpd.NewNotificationListener(s.notificationSock,
@@ -457,8 +457,7 @@ func (s *DHCPService) start() error {
 
 		err = s.serverStart(ctx, notificationListener)
 		if err != nil {
-			log.Err(err).Send()
-			return err
+			return fmt.Errorf("failed to start dhcp server: %w", err)
 		}
 	}
 
@@ -475,7 +474,7 @@ func (s *DHCPService) stop(ctx context.Context) error {
 	if s.server != nil {
 		err := s.server.Close()
 		if err != nil {
-			return err
+			return fmt.Errorf("error shutting down DHCP server: %w", err)
 		}
 
 		s.server = nil
@@ -488,7 +487,7 @@ func (s *DHCPService) stop(ctx context.Context) error {
 	if s.notificationSock != nil {
 		err := s.notificationSock.Close()
 		if err != nil {
-			return err
+			return fmt.Errorf("error shutting down notification listener: %w", err)
 		}
 	}
 
@@ -762,6 +761,17 @@ type ConfigDQLiteParam struct {
 	HostReservations  []HostData      `json:"host_reservations"`
 	DefaultDNSServers []string        `json:"default_dns_servers"`
 	NTPServers        []string        `json:"ntp_servers"`
+}
+
+// ConfigureDQLiteDirect is for the DHCP test server, where configuration
+// is called directly, and not through temporal
+func (s *DHCPService) ConfigureDQLiteDirect(ctx context.Context, param ConfigDQLiteParam) error {
+	s.activeInterfaces = make([]string, len(param.Interfaces))
+	for i, iface := range param.Interfaces {
+		s.activeInterfaces[i] = iface.Name
+	}
+
+	return s.configureDQLite(ctx, param)
 }
 
 func (s *DHCPService) configureDQLite(ctx context.Context, param ConfigDQLiteParam) error {

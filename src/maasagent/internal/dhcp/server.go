@@ -19,7 +19,9 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
+	"os"
 	"runtime"
 	"sync"
 
@@ -145,6 +147,8 @@ func (s *Server) listen6(iface *net.Interface) error {
 
 func (s *Server) Listen() error {
 	for _, iface := range s.ifaces {
+		log.Info().Msgf("listening on %s", iface.Name)
+
 		addrs, err := iface.Addrs()
 		if err != nil {
 			return err
@@ -217,7 +221,9 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) Serve(ctx context.Context) error {
-	if s.xdpProg != nil && len(s.links) > 0 {
+	log.Info().Msg("serving DHCP")
+
+	if os.Getenv("MAAS_DHCP_XDP_DISABLED") != "1" && s.xdpProg != nil && len(s.links) > 0 {
 		return s.serveXDP(ctx)
 	} else {
 		return s.serveSockets(ctx)
@@ -264,9 +270,11 @@ func (s *Server) serveXDP(ctx context.Context) error {
 					idx int
 				)
 
+				log.Debug().Msg("received DHCP packet via XDP")
+
 				n, err := binary.Decode(pkt.RawSample[idx:idx+4], binary.LittleEndian, &msg.IfaceIdx)
 				if err != nil {
-					readErrs <- err
+					readErrs <- fmt.Errorf("error reading interface info: %w", err)
 					return
 				}
 
@@ -277,7 +285,7 @@ func (s *Server) serveXDP(ctx context.Context) error {
 
 				n, err = binary.Decode(pkt.RawSample[idx:idx+2], binary.LittleEndian, &msg.SrcPort)
 				if err != nil {
-					readErrs <- err
+					readErrs <- fmt.Errorf("error reading port info: %w", err)
 					return
 				}
 
@@ -298,7 +306,7 @@ func (s *Server) serveXDP(ctx context.Context) error {
 
 					msg.Pkt4, err = dhcpv4.FromBytes(pkt.RawSample[idx:])
 					if err != nil {
-						readErrs <- err
+						readErrs <- fmt.Errorf("error parsing DHCPv4 packet: %w", err)
 						return
 					}
 				} else {
@@ -306,7 +314,7 @@ func (s *Server) serveXDP(ctx context.Context) error {
 
 					msg.Pkt6, err = dhcpv6.FromBytes(pkt.RawSample[idx:])
 					if err != nil {
-						readErrs <- err
+						readErrs <- fmt.Errorf("error parsing DHCPv6 packet: %w", err)
 						return
 					}
 				}
@@ -318,7 +326,7 @@ func (s *Server) serveXDP(ctx context.Context) error {
 				}
 
 				if err != nil {
-					log.Err(err).Send()
+					log.Err(err).Msg("error handling DHCP packet")
 				}
 			}()
 		}
@@ -326,7 +334,11 @@ func (s *Server) serveXDP(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		if err = ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
+			return err
+		}
+
+		return nil
 	case err = <-readErrs:
 		return err
 	}
@@ -355,9 +367,11 @@ func (s *Server) serveSockets(ctx context.Context) error {
 
 					n, addr, err := conn.ReadFrom(buf)
 					if err != nil {
-						errChan <- err
-						return
+						log.Err(err).Msg("error reading DHCP packet")
+						continue
 					}
+
+					log.Debug().Msg("received DHCP packet via raw socket")
 
 					msg := Message{
 						IfaceIdx: uint32(s.IfaceIdx()), //nolint:gosec // this interface indexes never overflow uint32
@@ -378,8 +392,8 @@ func (s *Server) serveSockets(ctx context.Context) error {
 					}
 
 					if err != nil {
-						errChan <- err
-						return
+						log.Err(err).Msg("error parsing DHCP packet")
+						continue
 					}
 
 					msgs <- msg
@@ -391,7 +405,11 @@ func (s *Server) serveSockets(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
+				return err
+			}
+
+			return nil
 		case msg := <-msgs:
 			err := s.inflight.Acquire(ctx, 1)
 			if err != nil {
@@ -404,7 +422,7 @@ func (s *Server) serveSockets(ctx context.Context) error {
 
 					err := s.handler4.ServeDHCPv4(ctx, msg)
 					if err != nil {
-						log.Err(err).Send()
+						log.Err(err).Msg("error handling DHCPv4 packet")
 					}
 				}()
 			} else {
@@ -413,7 +431,7 @@ func (s *Server) serveSockets(ctx context.Context) error {
 
 					err := s.handler6.ServeDHCPv6(ctx, msg)
 					if err != nil {
-						log.Err(err).Send()
+						log.Err(err).Msg("error handling DHCPv6 packet")
 					}
 				}()
 			}

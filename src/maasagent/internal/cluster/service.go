@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"time"
 
 	"github.com/canonical/microcluster/v2/microcluster"
 	"github.com/canonical/microcluster/v2/state"
@@ -179,29 +180,63 @@ func (s *ClusterService) configure(ctx tworkflow.Context, config ClusterServiceC
 	return nil
 }
 
+// ConfigureDirect is for the dhcp test server where the cluster is being configured outside of temporal
+func (s *ClusterService) ConfigureDirect(ctx context.Context) error {
+	return s.cluster.Start(ctx, microcluster.DaemonArgs{
+		Version:          "UNKNOWN",
+		Debug:            zerolog.GlobalLevel() == zerolog.DebugLevel,
+		ExtensionsSchema: schemaExtensions,
+		Hooks:            s.clusterHooks,
+	})
+}
+
+func (s *ClusterService) Ready(ctx context.Context) error {
+	return s.cluster.Ready(ctx)
+}
+
 // OnStart executes in microcluster's start hook and checks if there is an existing daemon configuration
 // this allows us to confirm whether there is an existing cluster configuration (single host, or multi-member)
 // or if one is needed to be created.
 func (s *ClusterService) OnStart(ctx context.Context) error {
+	// TODO: allow selecting interface used for clustering
+	address := lxdutil.CanonicalNetworkAddress(lxdutil.NetworkInterfaceAddress(), clusteringPort)
+
 	_, err := os.Stat(s.dataPathFactory(daemonConf))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			// TODO: allow selecting interface used for clustering
-			address := lxdutil.CanonicalNetworkAddress(lxdutil.NetworkInterfaceAddress(), clusteringPort)
-
+			// Bootstrap local cluster
 			err = s.cluster.NewCluster(ctx, s.systemID, address, nil)
 		}
 
 		return err
+	} else {
+		tokens, err := s.cluster.ListJoinTokens(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, token := range tokens {
+			if time.Since(token.ExpiresAt) >= 0 {
+				// join existing cluster
+				err = s.cluster.JoinCluster(ctx, s.systemID, address, token.Token, nil)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			}
+		}
 	}
 
-	// TODO join existing cluster
+	// TODO join new cluster
 
 	return nil
 }
 
 func (s *ClusterService) stop() {
-	s.cancel()
+	if s.cancel != nil {
+		s.cancel()
+	}
 }
 
 func (s *ClusterService) Error() error {

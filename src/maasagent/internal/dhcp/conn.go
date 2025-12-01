@@ -16,6 +16,7 @@
 package dhcp
 
 import (
+	"fmt"
 	"net"
 	"os"
 
@@ -57,7 +58,7 @@ func newDHCPConn(iface *net.Interface, af int, sockaddr unix.Sockaddr,
 ) (net.PacketConn, error) {
 	fd, err := unix.Socket(af, unix.SOCK_DGRAM, unix.IPPROTO_UDP)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed opening DHCP socket: %w", err)
 	}
 
 	f := os.NewFile(uintptr(fd), "")
@@ -74,11 +75,11 @@ func newDHCPConn(iface *net.Interface, af int, sockaddr unix.Sockaddr,
 	}
 
 	if err := unix.BindToDevice(fd, iface.Name); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to bind to interface: %w", err)
 	}
 
 	if err := unix.Bind(fd, sockaddr); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to bind to sockaddr %s: %w", sockaddr, err)
 	}
 
 	return net.FilePacketConn(f)
