@@ -365,7 +365,7 @@ def get_boot_config_for_machine(
     try:
         # For custom ephemeral deployments return the image subarch as it is.
         # Otherwise, retrieve the working kernel.
-        if not machine.ephemeral_deploy or boot_osystem == "ubuntu":
+        if not machine.ephemeral_deploy or final_osystem == "ubuntu":
             subarch = get_working_kernel(
                 subarch,
                 machine.min_hwe_kernel,
@@ -790,12 +790,16 @@ def get_config(
             )
         )
 
-    # For custom image ephemeral deployments we use the default (ubuntu) commissioning os/distro kernel
-    if is_ephemeral and kernel_osystem != "ubuntu":
-        kernel_osystem, kernel_release = (
-            configs["commissioning_osystem"],
-            configs["commissioning_distro_series"],
-        )
+    # If this is an ephemeral deployment of a non-official ubuntu image
+    if is_ephemeral and final_osystem != "ubuntu":
+        # If boot_osystem != "ubuntu", it means we have to use the commissioning kernel/series. Otherwise, the image was a
+        # custom ubuntu image or another image with base_image ubuntu and we'll use it to select the right kernel.
+        if boot_osystem != "ubuntu":
+            kernel_osystem, kernel_release = (
+                configs["commissioning_osystem"],
+                configs["commissioning_distro_series"],
+            )
+
         kernel, initrd, boot_dtb, _ = get_boot_filenames(
             arch, subarch, kernel_osystem, kernel_release
         )
