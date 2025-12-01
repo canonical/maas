@@ -48,6 +48,7 @@ DNS_CONFIG_PARAMS = (
     "dnssec_validation",
     "dns_trusted_acl",
     "default_dns_ttl",
+    "allow_only_trusted_transfers",
     "windows_kms_host",
     "maas_internal_domain",
 )

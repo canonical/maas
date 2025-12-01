@@ -12,6 +12,11 @@ zone "{{zoneinfo.zone_name}}" {
     allow-update {
         key maas.;
     };
+    {{if allow_only_trusted_transfers}}
+    allow-transfer {
+        trusted;
+    };
+    {{endif}}
 };
 {{endfor}}
 {{endfor}}

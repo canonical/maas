@@ -42,6 +42,7 @@ from maasserver.utils.osystems import (
 )
 from maasservicelayer.models.configurations import (
     ActiveDiscoveryIntervalConfig,
+    AllowOnlyTrustedTransfersConfig,
     AutoVlanCreationConfig,
     BootImagesAutoImportConfig,
     BootImagesNoProxyConfig,
@@ -472,6 +473,15 @@ CONFIG_ITEMS = {
             "label": NTPExternalOnlyConfig.description,
             "required": False,
             "help_text": NTPExternalOnlyConfig.help_text,
+        },
+    },
+    AllowOnlyTrustedTransfersConfig.name: {
+        "default": AllowOnlyTrustedTransfersConfig.default,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": AllowOnlyTrustedTransfersConfig.description,
+            "required": False,
+            "help_text": AllowOnlyTrustedTransfersConfig.help_text,
         },
     },
     RemoteSyslogConfig.name: {

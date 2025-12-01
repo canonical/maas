@@ -266,6 +266,16 @@ class DNSTrustedAclConfig(Config[Optional[str]]):
         return host
 
 
+class AllowOnlyTrustedTransfersConfig(Config[Optional[bool]]):
+    name: ClassVar[str] = "allow_only_trusted_transfers"
+    default: ClassVar[bool] = False
+    description: ClassVar[str] = "Allow only trusted zone transfers"
+    help_text: ClassVar[Optional[str]] = (
+        "A boolean value to allow only zone transfers from trusted sources. If set to false, zone transfers from all sources will be allowed"
+    )
+    value: Optional[bool] = Field(default=default, description=description)
+
+
 class RemoteSyslogConfig(Config[Optional[str]]):
     name: ClassVar[str] = "remote_syslog"
     default: ClassVar[Optional[str]] = None
@@ -1096,6 +1106,7 @@ class ConfigFactory:
         DNSSECValidationConfig.name: DNSSECValidationConfig,
         MAASInternalDomainConfig.name: MAASInternalDomainConfig,
         DNSTrustedAclConfig.name: DNSTrustedAclConfig,
+        AllowOnlyTrustedTransfersConfig.name: AllowOnlyTrustedTransfersConfig,
         RemoteSyslogConfig.name: RemoteSyslogConfig,
         MAASSyslogPortConfig.name: MAASSyslogPortConfig,
         ActiveDiscoveryIntervalConfig.name: ActiveDiscoveryIntervalConfig,
