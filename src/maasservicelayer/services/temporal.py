@@ -20,6 +20,10 @@ from maastemporalworker.worker import (
 )
 
 
+class TemporalServiceException(Exception):
+    """Generic Temporal Service Exception."""
+
+
 @dataclass(slots=True)
 class TemporalServiceCache(ServiceCache):
     temporal_client: Client | None = None
@@ -46,14 +50,24 @@ class TemporalService(Service):
     ) -> tuple[Any, WorkflowExecutionDescription]:
         client = await self.get_temporal_client()
         handle = client.get_workflow_handle(workflow_id)
-        result = await handle.query(query)
+        try:
+            result = await handle.query(query)
+        except RPCError:
+            raise TemporalServiceException(
+                f"Failed to query workflow {workflow_id}"
+            ) from None
         description = await handle.describe()
         return result, description
 
     async def cancel_workflow(self, workflow_id: str) -> None:
         client = await self.get_temporal_client()
         handle = client.get_workflow_handle(workflow_id)
-        return await handle.cancel()
+        try:
+            return await handle.cancel()
+        except RPCError:
+            raise TemporalServiceException(
+                f"Failed to cancel workflow {workflow_id}"
+            ) from None
 
     async def workflow_status(
         self, workflow_id: str

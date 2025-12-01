@@ -9,7 +9,6 @@ from jose import jwt
 from jose.exceptions import JWTClaimsError
 import structlog
 from temporalio.common import WorkflowIDReusePolicy
-from temporalio.service import RPCError
 
 from maascommon.enums.msm import MSMStatusEnum
 from maascommon.workflows.msm import (
@@ -29,7 +28,10 @@ from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services.base import Service, ServiceCache
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.secrets import SecretsService
-from maasservicelayer.services.temporal import TemporalService
+from maasservicelayer.services.temporal import (
+    TemporalService,
+    TemporalServiceException,
+)
 from maastemporalworker.worker import REGION_TASK_QUEUE
 from provisioningserver.utils.env import MAAS_UUID
 
@@ -166,10 +168,13 @@ class MSMService(Service):
         if not msm_creds:
             return None
 
-        pending, description = await self.temporal_service.query_workflow(
-            f"{MSM_ENROL_SITE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
-            MSMTemporalQuery.IS_PENDING,
-        )
+        try:
+            pending, description = await self.temporal_service.query_workflow(
+                f"{MSM_ENROL_SITE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+                MSMTemporalQuery.IS_PENDING,
+            )
+        except TemporalServiceException:
+            return None
 
         if pending:
             return MSMStatus(
@@ -216,7 +221,7 @@ class MSMService(Service):
         for wf in workflows_to_cancel:
             try:
                 await self.temporal_service.cancel_workflow(wf)
-            except RPCError:
+            except TemporalServiceException:
                 # some of these workflows may be done or not started,
                 # simply continue if they don't exist.
                 continue
