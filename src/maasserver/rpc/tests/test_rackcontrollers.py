@@ -3,7 +3,7 @@
 
 
 import random
-from unittest.mock import sentinel
+from unittest.mock import Mock, patch, sentinel
 from urllib.parse import urlparse
 
 from fixtures import FakeLogger
@@ -21,6 +21,8 @@ from maasserver.rpc.rackcontrollers import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks, reload_object
+from maasservicelayer.models.agents import Agent
+from maasservicelayer.services.agents import AgentsService
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoSuchScope
@@ -190,6 +192,103 @@ class TestRegisterRackController(MAASServerTestCase):
             existing_machine.system_id, rack_controller.system_id
         )
         self.assertTrue(rack_controller.should_be_dynamically_deleted())
+
+    @patch("maasserver.rpc.rackcontrollers.service_layer")
+    def test_creates_new_rackcontroller_and_registers_maas_agent(
+        self, mock_service_layer
+    ):
+        mock_service_layer.ensure_connection.return_value = None
+        agent_uuid = factory.make_UUID()
+        mock_agents_service = Mock(AgentsService)
+        mock_agent = Mock(Agent)
+        mock_agent.id = 12
+        mock_agents_service.get_one = mock_agent
+        mock_agents_service.update_by_id = Mock()
+        mock_service_layer.services.agents = mock_agents_service
+
+        rack_mac = factory.make_mac_address()
+        interfaces = {
+            factory.make_name("eth0"): {
+                "type": "physical",
+                "mac_address": rack_mac,
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            }
+        }
+
+        with post_commit_hooks:
+            register(interfaces=interfaces, agent_uuid=agent_uuid)
+
+        mock_agents_service.update_by_id.assert_called_once()
+
+    @patch("maasserver.rpc.rackcontrollers.service_layer")
+    def test_logs_creating_new_rackcontroller_and_registering_maas_agent(
+        self, mock_service_layer
+    ):
+        logger = self.useFixture(FakeLogger("maas"))
+
+        mock_service_layer.ensure_connection.return_value = None
+        agent_uuid = factory.make_UUID()
+        mock_agents_service = Mock(AgentsService)
+        mock_agent = Mock(Agent)
+        mock_agent.id = 12
+        mock_agents_service.get_one = mock_agent
+        mock_agents_service.update_by_id = Mock()
+        mock_service_layer.services.agents = mock_agents_service
+        hostname = factory.make_name("hostname")
+
+        with post_commit_hooks:
+            rack_registered = register(
+                hostname=hostname, agent_uuid=agent_uuid
+            )
+
+        self.assertIn(
+            f"Linked agent '{agent_uuid}' to rack controller '{hostname}' "
+            f"(id: {rack_registered.id})",
+            logger.output,
+        )
+
+    @patch("maasserver.rpc.rackcontrollers.service_layer")
+    def test_registers_agent_without_matching_agent_uuid(
+        self, mock_service_layer
+    ):
+        mock_service_layer.ensure_connection.return_value = None
+        agent_uuid = factory.make_UUID()
+        mock_agents_service = Mock(AgentsService)
+        mock_agent = Mock(Agent)
+        mock_agent.id = 12
+        mock_agents_service.get_one = Mock(return_value=None)
+        mock_service_layer.services.agents = mock_agents_service
+        hostname = factory.make_name("hostname")
+
+        with post_commit_hooks:
+            register(hostname=hostname, agent_uuid=agent_uuid)
+
+        mock_agents_service.update_by_id.assert_not_called()
+
+    @patch("maasserver.rpc.rackcontrollers.service_layer")
+    def test_logs_registering_agent_without_matching_agent_uuid(
+        self, mock_service_layer
+    ):
+        logger = self.useFixture(FakeLogger("maas"))
+
+        mock_service_layer.ensure_connection.return_value = None
+        agent_uuid = factory.make_UUID()
+        mock_agents_service = Mock(AgentsService)
+        mock_agent = Mock(Agent)
+        mock_agent.id = 12
+        mock_agents_service.get_one = Mock(return_value=None)
+        mock_service_layer.services.agents = mock_agents_service
+        hostname = factory.make_name("hostname")
+
+        with post_commit_hooks:
+            register(hostname=hostname, agent_uuid=agent_uuid)
+
+        self.assertIn(
+            f"Agent with UUID '{agent_uuid}' not found during registration",
+            logger.output,
+        )
 
     def test_always_has_current_commissioning_script_set(self):
         load_builtin_scripts()

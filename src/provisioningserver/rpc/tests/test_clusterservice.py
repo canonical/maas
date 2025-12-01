@@ -1737,6 +1737,7 @@ class TestClusterClient(TestClusterClientBase):
             url=urlparse(maas_url),
             beacon_support=True,
             version=str(get_running_version()),
+            agent_uuid=None,
         )
 
 

@@ -68,6 +68,8 @@ class RegisterRackController(amp.Command):
         (b"url", ParsedURL(optional=True)),
         (b"beacon_support", amp.Boolean(optional=True)),
         (b"version", amp.Unicode(optional=True)),
+        # UUID of a MAAS Agent previously enrolled but not yet registered
+        (b"agent_uuid", amp.Unicode(optional=True)),
     ]
     response = [
         (b"system_id", amp.Unicode()),
