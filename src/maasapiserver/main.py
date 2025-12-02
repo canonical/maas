@@ -68,7 +68,9 @@ def config_uvicorn_logging(level=logging.INFO) -> None:
     )
 
 
-def craft_public_app(db: Database) -> App:
+def craft_public_app(
+    db: Database, transaction_middleware_class: type = TransactionMiddleware
+) -> App:
     cache = CacheForServices()
     return App(
         "MAASAPIServer",
@@ -88,7 +90,7 @@ def craft_public_app(db: Database) -> App:
                 ),
             ),
             MiddlewareHandler(ServicesMiddleware, cache=cache),
-            MiddlewareHandler(TransactionMiddleware, db=db),
+            MiddlewareHandler(transaction_middleware_class, db=db),
             MiddlewareHandler(ExceptionMiddleware),
             MiddlewareHandler(ContextMiddleware),
         ],

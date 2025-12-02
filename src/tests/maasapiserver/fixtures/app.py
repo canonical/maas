@@ -20,7 +20,6 @@ from maasapiserver.common.middlewares.exceptions import (
     ExceptionMiddleware,
 )
 from maasapiserver.main import craft_public_app
-from maasapiserver.settings import Config
 from maasapiserver.v3.api.internal.handlers import APIv3Internal
 from maasapiserver.v3.api.public.handlers import APIv3, APIv3UI
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
@@ -249,12 +248,13 @@ async def mocked_api_client_admin_rbac(
 
 @pytest.fixture
 async def api_app(
-    test_config: Config,
     transaction_middleware_class: type,
     db: Database,
 ) -> Iterator[FastAPI]:
     """The API application."""
-    app = craft_public_app(db)
+    app = craft_public_app(
+        db=db, transaction_middleware_class=transaction_middleware_class
+    )
     yield app.fastapi_app
 
 
