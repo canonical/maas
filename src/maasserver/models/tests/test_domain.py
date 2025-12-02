@@ -142,6 +142,22 @@ class TestDomainManager(MAASServerTestCase):
         factory.make_ForwardDNSServer(ip_address=fwd_ip, domains=[domain1])
         self.assertCountEqual(Domain.objects.get_forward_domains(), [domain1])
 
+    def test_get_all_with_resource_record_count(self):
+        default_domain = Domain.objects.get_default_domain()
+        factory.make_DNSResource(default_domain)
+        domain = factory.make_Domain()
+
+        domains = Domain.objects.get_all_with_resource_record_count()
+
+        self.assertEqual(len(domains), 2)
+        for d in domains:
+            if d.id == default_domain.id:
+                self.assertEqual(d.resource_record_count, 1)
+            elif d.id == domain.id:
+                self.assertEqual(d.resource_record_count, 0)
+            else:
+                self.fail(f"Unexpected domain id: {d.id}")
+
 
 class TestDomain(MAASServerTestCase):
     def test_creates_domain(self):

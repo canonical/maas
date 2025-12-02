@@ -25,6 +25,7 @@ from maasserver.exceptions import MAASAPIValidationError, Unauthorized
 from maasserver.forms import TagForm
 from maasserver.models import (
     Device,
+    Domain,
     Machine,
     Node,
     RackController,
@@ -192,10 +193,15 @@ class TagHandler(OperationsHandler):
         )
         nodes = nodes.select_related(*NODES_SELECT_RELATED)
         nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
+        # Fetch all the domains in a single query
+        domains = list(Domain.objects.get_all_with_resource_record_count())
+        domain_map = {d.id: d for d in domains}
+
         # Set related node parents so no extra queries are needed.
         for node in nodes:
             for block_device in node.current_config.blockdevice_set.all():
                 block_device.node = node
+            node.domain = domain_map.get(node.domain_id)
         return [node.as_self() for node in nodes]
 
     @operation(idempotent=True)
