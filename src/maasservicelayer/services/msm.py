@@ -174,7 +174,9 @@ class MSMService(Service):
                 MSMTemporalQuery.IS_PENDING,
             )
         except TemporalServiceException:
-            return None
+            # workflow is not running, enrolment is likely complete
+            pending = False
+            description = None
 
         if pending:
             return MSMStatus(
@@ -186,10 +188,16 @@ class MSMService(Service):
                 else None,
             )
 
-        running, description = await self.temporal_service.query_workflow(
-            f"{MSM_HEARTBEAT_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
-            MSMTemporalQuery.IS_RUNNING,
-        )
+        try:
+            running, description = await self.temporal_service.query_workflow(
+                f"{MSM_HEARTBEAT_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+                MSMTemporalQuery.IS_RUNNING,
+            )
+        except TemporalServiceException:
+            logger.warning("Failed to query heartbeat workflow")
+            running = False
+            description = None
+
         if running:
             return MSMStatus(
                 sm_url=msm_creds["url"],
