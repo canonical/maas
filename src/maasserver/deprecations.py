@@ -1,11 +1,15 @@
 # Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import os
+
+from django.conf import settings
+
 from maasserver.models.controllerinfo import get_maas_version
 from maasserver.utils.orm import get_database_owner, postgresql_major_version
 from provisioningserver.logger import LegacyLogger
 
-DEPRECATION_URL = "https://maas.io/deprecations/{id}"
+DEPRECATION_URL = "https://canonical.com/maas/deprecations/{id}"
 
 
 class Deprecation:
@@ -33,6 +37,13 @@ class Deprecation:
 
 # all known deprecation notices
 DEPRECATIONS = {
+    "CURTIN_PRESEEDS": Deprecation(
+        id="MD7",
+        since="3.8",
+        description="Curtin preseeds are deprecated and is scheduled for removal in an upcoming release.",
+        link_text="How to replace Curtin Preseeds",
+        dismissable=True,
+    ),
     "DHCP_SNIPPETS": Deprecation(
         id="MD6",
         since="3.6",
@@ -72,6 +83,19 @@ def get_deprecations():
         deprecations.append(DEPRECATIONS["POSTGRES_OLDER_THAN_16"])
     if get_database_owner() == "postgres":
         deprecations.append(DEPRECATIONS["WRONG_MAAS_DATABASE_OWNER"])
+
+    has_custom_preseeds = False
+    for location in settings.PRESEED_TEMPLATE_LOCATIONS:
+        if os.path.isdir(location):
+            for filename in os.listdir(location):
+                if filename.startswith("curtin_userdata"):
+                    has_custom_preseeds = True
+                    break
+        if has_custom_preseeds:
+            break
+    if has_custom_preseeds:
+        deprecations.append(DEPRECATIONS["CURTIN_PRESEEDS"])
+
     return deprecations
 
 

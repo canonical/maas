@@ -284,7 +284,7 @@ class TestInnerStartUp(MAASServerTestCase):
         mock_log = self.patch(start_up, "log")
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
-        self.assertEqual(mock_log.msg.call_count, 2)
+        self.assertEqual(mock_log.msg.call_count, 3)
 
     def test_updates_version(self):
         with post_commit_hooks:

@@ -1,3 +1,7 @@
+import os
+
+from django.conf import settings
+
 from maasserver import deprecations
 from maasserver.deprecations import (
     Deprecation,
@@ -46,6 +50,26 @@ class TestGetDeprecations(MAASServerTestCase):
             DEPRECATIONS["WRONG_MAAS_DATABASE_OWNER"], get_deprecations()
         )
 
+    def test_curtin_preseeds_included_if_custom_preseeds_exist(self):
+        self.patch(
+            settings,
+            "PRESEED_TEMPLATE_LOCATIONS",
+            ["/path/to/location1", "/path/to/location2"],
+        )
+        self.patch(os.path, "isdir").return_value = True
+        self.patch(os, "listdir").return_value = ["curtin_userdata"]
+        self.assertIn(DEPRECATIONS["CURTIN_PRESEEDS"], get_deprecations())
+
+    def test_curtin_preseeds_not_included_if_no_custom_preseeds(self):
+        self.patch(
+            settings,
+            "PRESEED_TEMPLATE_LOCATIONS",
+            ["/path/to/location1", "/path/to/location2"],
+        )
+        self.patch(os.path, "isdir").return_value = True
+        self.patch(os, "listdir").return_value = ["no_curtin_file"]
+        self.assertNotIn(DEPRECATIONS["CURTIN_PRESEEDS"], get_deprecations())
+
 
 class TestLogDeprecations(MAASTestCase):
     def test_log_deprecations(self):
@@ -61,7 +85,7 @@ class TestLogDeprecations(MAASTestCase):
         [event] = events
         self.assertEqual(
             event["_message_0"],
-            "Deprecation MD123 (https://maas.io/deprecations/MD123): "
+            "Deprecation MD123 (https://canonical.com/maas/deprecations/MD123): "
             "something is deprecated",
         )
 
@@ -82,7 +106,8 @@ class TestSyncDeprecationNotifications(MAASServerTestCase):
         self.assertTrue(notification1.admins)
         self.assertFalse(notification1.users)
         self.assertIn(
-            "https://maas.io/deprecations/MD123", notification1.message
+            "https://canonical.com/maas/deprecations/MD123",
+            notification1.message,
         )
         self.assertNotIn(
             "Please contact your MAAS administrator.", notification1.message
