@@ -24,9 +24,12 @@ from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.external_oauth import (
     OAuth2Client,
+    OAuthIDToken,
     OAuthInitiateData,
+    OAuthTokenData,
 )
 from maasservicelayer.auth.jwt import JWT, UserRole
+from maasservicelayer.auth.oidc_jwt import OAuthAccessToken
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadGatewayException,
@@ -39,6 +42,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     ETAG_PRECONDITION_VIOLATION_TYPE,
+    INVALID_TOKEN_VIOLATION_TYPE,
     MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
@@ -754,3 +758,126 @@ class TestAuthApi:
             details[0].message
             == "No OIDC provider with the given ID was found."
         )
+
+    # GET /auth/oauth/callback
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.set_auth_cookie"
+    )
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.get_cookie"
+    )
+    async def test_handle_oauth_callback_success_when_access_token_is_string(
+        self,
+        cookie_manager_get_cookie: MagicMock,
+        cookie_manager_set_auth_cookie: MagicMock,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ) -> None:
+        cookie_manager_get_cookie.side_effect = [
+            "stored_state",
+            "stored_nonce",
+        ]
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.get_callback.return_value = (
+            OAuthTokenData(
+                access_token="abc123",
+                id_token=OAuthIDToken(
+                    claims=Mock(), encoded="def123", provider=TEST_PROVIDER_1
+                ),
+                refresh_token="ghi123",
+            )
+        )
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/oauth/callback?state=stored_state&code=auth_code"
+        )
+        assert response.status_code == 204
+        services_mock.external_oauth.get_callback.assert_called_once_with(
+            code="auth_code", nonce="stored_nonce"
+        )
+        cookie_manager_set_auth_cookie.assert_any_call(
+            key=MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN, value="abc123"
+        )
+        cookie_manager_set_auth_cookie.assert_any_call(
+            key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN, value="def123"
+        )
+        cookie_manager_set_auth_cookie.assert_any_call(
+            key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN, value="ghi123"
+        )
+
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.set_auth_cookie"
+    )
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.get_cookie"
+    )
+    async def test_handle_oauth_callback_success_when_access_token_is_not_string(
+        self,
+        cookie_manager_get_cookie: MagicMock,
+        cookie_manager_set_auth_cookie: MagicMock,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ) -> None:
+        cookie_manager_get_cookie.side_effect = [
+            "stored_state",
+            "stored_nonce",
+        ]
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.external_oauth.get_callback.return_value = (
+            OAuthTokenData(
+                access_token=OAuthAccessToken(
+                    claims=Mock(), encoded="abc123", provider=TEST_PROVIDER_1
+                ),
+                id_token=OAuthIDToken(
+                    claims=Mock(), encoded="def123", provider=TEST_PROVIDER_1
+                ),
+                refresh_token="ghi123",
+            )
+        )
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/oauth/callback?state=stored_state&code=auth_code"
+        )
+        assert response.status_code == 204
+        services_mock.external_oauth.get_callback.assert_called_once_with(
+            code="auth_code", nonce="stored_nonce"
+        )
+        cookie_manager_set_auth_cookie.assert_any_call(
+            key=MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN, value="abc123"
+        )
+        cookie_manager_set_auth_cookie.assert_any_call(
+            key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN, value="def123"
+        )
+        cookie_manager_set_auth_cookie.assert_any_call(
+            key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN, value="ghi123"
+        )
+
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.get_cookie"
+    )
+    async def test_handle_oauth_callback_invalid_state(
+        self,
+        cookie_manager_get_cookie: MagicMock,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ) -> None:
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        cookie_manager_get_cookie.side_effect = [
+            "stored_state",
+            "stored_nonce",
+        ]
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/oauth/callback?state=some_state&code=auth_code"
+        )
+
+        error_response = ErrorBodyResponse(**response.json())
+        details = error_response.details
+
+        services_mock.external_oauth.get_callback.assert_not_called()
+        assert response.status_code == 401
+        assert error_response.kind == "Error"
+        assert error_response.code == 401
+        assert details is not None
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+        assert details[0].message == "Invalid or missing OAuth state/nonce."

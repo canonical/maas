@@ -36,8 +36,10 @@ from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
+    UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
+    INVALID_TOKEN_VIOLATION_TYPE,
     MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
@@ -152,6 +154,59 @@ class AuthHandler(Handler):
             auth_url=data.authorization_url,
             provider_name=client.get_provider_name(),
         )
+
+    @handler(
+        path="/auth/oauth/callback",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            204: {},
+            401: {"model": UnauthorizedBodyResponse},
+        },
+        status_code=204,
+    )
+    async def handle_oauth_callback(
+        self,
+        code: str,
+        state: str,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
+    ) -> Response:
+        """Handle the OAuth callback by exchanging the authorization code for tokens."""
+        stored_state = cookie_manager.get_cookie(
+            key=MAASOAuth2Cookie.AUTH_STATE
+        )
+        stored_nonce = cookie_manager.get_cookie(
+            key=MAASOAuth2Cookie.AUTH_NONCE
+        )
+        if not stored_state or not stored_nonce or stored_state != state:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="Invalid or missing OAuth state/nonce.",
+                    )
+                ]
+            )
+
+        tokens = await services.external_oauth.get_callback(
+            code=code, nonce=stored_nonce
+        )
+        cookie_manager.set_auth_cookie(
+            value=tokens.access_token
+            if isinstance(tokens.access_token, str)
+            else tokens.access_token.encoded,
+            key=MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN,
+        )
+        cookie_manager.set_auth_cookie(
+            value=tokens.id_token.encoded,
+            key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN,
+        )
+        cookie_manager.set_auth_cookie(
+            value=tokens.refresh_token,
+            key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN,
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
         path="/auth/oauth/providers/{provider_id}",
@@ -321,7 +376,7 @@ class AuthHandler(Handler):
         methods=["DELETE"],
         tags=TAGS,
         responses={
-            200: {"model": OAuthProviderResponse},
+            204: {},
             404: {"model": NotFoundBodyResponse},
         },
         status_code=204,

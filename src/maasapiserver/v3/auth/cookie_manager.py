@@ -10,11 +10,17 @@ from maasservicelayer.utils.encryptor import Encryptor
 
 MAAS_STATE_COOKIE_NAME = "maas.auth_state_cookie"
 MAAS_NONCE_COOKIE_NAME = "maas.auth_nonce_cookie"
+MAAS_OAUTH2_ACCESS_TOKEN_COOKIE_NAME = "maas.oauth2_access_token_cookie"
+MAAS_OAUTH2_ID_TOKEN_COOKIE_NAME = "maas.oauth2_id_token_cookie"
+MAAS_OAUTH2_REFRESH_TOKEN_COOKIE_NAME = "maas.oauth2_refresh_token_cookie"
 
 
 class MAASOAuth2Cookie(StrEnum):
     AUTH_STATE = MAAS_STATE_COOKIE_NAME
     AUTH_NONCE = MAAS_NONCE_COOKIE_NAME
+    OAUTH2_ACCESS_TOKEN = MAAS_OAUTH2_ACCESS_TOKEN_COOKIE_NAME
+    OAUTH2_ID_TOKEN = MAAS_OAUTH2_ID_TOKEN_COOKIE_NAME
+    OAUTH2_REFRESH_TOKEN = MAAS_OAUTH2_REFRESH_TOKEN_COOKIE_NAME
 
 
 class EncryptedCookieManager:
