@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict VVNApn0cuhc28wfXOkLBWGnsu8Fe0zMzB7SBAkMmfW5qzZltXgHAEBbh6jc3nbL
+\restrict 1XbWEwuYcY7gZMDDSECNfURrVV1K2k7UN9gdYdAL5LuF0F49vnfuNxI06ayZreJ
 
 -- Dumped from database version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
 -- Dumped by pg_dump version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
@@ -4986,6 +4986,97 @@ ALTER TABLE public.maasserver_bootsourceselection ALTER COLUMN id ADD GENERATED 
 
 
 --
+-- Name: maasserver_bootsourceselectionstatus_view; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
+ WITH sync_stats AS (
+         SELECT rset.resource_id,
+            rset.id AS set_id,
+            rset.version,
+            COALESCE((((sum(filesync.size) * (100)::numeric) / sum(file.size)) / (NULLIF(( SELECT count(*) AS count
+                   FROM public.maasserver_node
+                  WHERE (maasserver_node.node_type = ANY (ARRAY[3, 4]))), 0))::numeric), (0)::numeric) AS sync_percentage
+           FROM ((public.maasserver_bootresourcefilesync filesync
+             JOIN public.maasserver_bootresourcefile file ON ((file.id = filesync.file_id)))
+             JOIN public.maasserver_bootresourceset rset ON ((rset.id = file.resource_set_id)))
+          GROUP BY rset.resource_id, rset.id, rset.version
+        ), latest_versions AS (
+         SELECT res.id AS resource_id,
+            cache.latest_version
+           FROM (public.maasserver_bootsourcecache cache
+             JOIN public.maasserver_bootresource res ON ((((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND ((((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text))) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
+        ), resource_set_counts AS (
+         SELECT sync_stats.resource_id,
+            count(*) AS set_count
+           FROM sync_stats
+          GROUP BY sync_stats.resource_id
+        ), resource_status AS (
+         SELECT DISTINCT ON (ss.resource_id) ss.resource_id,
+            ss.set_id,
+            ss.version,
+            lv.latest_version,
+            ss.sync_percentage,
+                CASE
+                    WHEN ((rsc.set_count = 1) AND (ss.sync_percentage = (0)::numeric)) THEN 'Waiting for download'::text
+                    WHEN ((rsc.set_count = 1) AND (ss.sync_percentage < (100)::numeric)) THEN 'Downloading'::text
+                    WHEN ((rsc.set_count = 1) AND (ss.sync_percentage = (100)::numeric)) THEN 'Ready'::text
+                    WHEN (rsc.set_count = 2) THEN 'Ready'::text
+                    ELSE 'Waiting for download'::text
+                END AS status,
+                CASE
+                    WHEN (rsc.set_count = 2) THEN 'Downloading'::text
+                    WHEN (lv.latest_version IS NULL) THEN 'No updates available'::text
+                    WHEN ((ss.version)::text >= (lv.latest_version)::text) THEN 'No updates available'::text
+                    WHEN ((ss.version)::text < (lv.latest_version)::text) THEN 'Update available'::text
+                    ELSE 'No updates available'::text
+                END AS update_status
+           FROM ((sync_stats ss
+             JOIN latest_versions lv ON ((lv.resource_id = ss.resource_id)))
+             JOIN resource_set_counts rsc ON ((rsc.resource_id = ss.resource_id)))
+          ORDER BY ss.resource_id, ss.set_id DESC
+        ), selection_resources AS (
+         SELECT sel.id AS selection_id,
+            res.id AS resource_id,
+            rs.status,
+            rs.update_status,
+            rs.sync_percentage
+           FROM ((public.maasserver_bootsourceselection sel
+             LEFT JOIN public.maasserver_bootresource res ON ((res.selection_id = sel.id)))
+             LEFT JOIN resource_status rs ON ((rs.resource_id = res.id)))
+        ), selection_rank AS (
+         SELECT sel.id AS selection_id,
+            source.priority,
+            row_number() OVER (PARTITION BY sel.os, sel.arch, sel.release ORDER BY source.priority DESC) AS rank
+           FROM (public.maasserver_bootsourceselection sel
+             JOIN public.maasserver_bootsource source ON ((source.id = sel.boot_source_id)))
+        )
+ SELECT selection_resources.selection_id AS id,
+        CASE
+            WHEN (count(selection_resources.resource_id) = 0) THEN 'Waiting for download'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Waiting for download'::text)) = count(*)) THEN 'Waiting for download'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Downloading'::text)) > 0) THEN 'Downloading'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Ready'::text)) = count(*)) THEN 'Ready'::text
+            ELSE 'Waiting for download'::text
+        END AS status,
+        CASE
+            WHEN (count(selection_resources.resource_id) = 0) THEN 'No updates available'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Downloading'::text)) > 0) THEN 'Downloading'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Update available'::text)) > 0) THEN 'Update available'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'No updates available'::text)) = count(*)) THEN 'No updates available'::text
+            ELSE 'No updates available'::text
+        END AS update_status,
+    COALESCE((avg(selection_resources.sync_percentage))::numeric(10,2), 0.00) AS sync_percentage,
+        CASE
+            WHEN (selection_rank.rank = 1) THEN true
+            ELSE false
+        END AS selected
+   FROM (selection_resources
+     JOIN selection_rank ON ((selection_rank.selection_id = selection_resources.selection_id)))
+  GROUP BY selection_resources.selection_id, selection_rank.rank;
+
+
+--
 -- Name: maasserver_bootstraptoken; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8174,7 +8265,7 @@ ALTER TABLE ONLY temporal.buffered_events ALTER COLUMN id SET DEFAULT nextval('t
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0010
+0011
 \.
 
 
@@ -16577,5 +16668,5 @@ ALTER TABLE ONLY public.piston3_token
 -- PostgreSQL database dump complete
 --
 
-\unrestrict VVNApn0cuhc28wfXOkLBWGnsu8Fe0zMzB7SBAkMmfW5qzZltXgHAEBbh6jc3nbL
+\unrestrict 1XbWEwuYcY7gZMDDSECNfURrVV1K2k7UN9gdYdAL5LuF0F49vnfuNxI06ayZreJ
 
