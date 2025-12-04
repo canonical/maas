@@ -494,6 +494,53 @@ class TestGetConfig(MAASServerTestCase):
             f"/custom/{arch}/generic/rocky8", config["xinstall_path"]
         )
 
+    def test_custom_ubuntu_ephemeral_deployment_base_image(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node_with_extra(
+            status=NODE_STATUS.DEPLOYED,
+            netboot=False,
+            ephemeral_deploy=True,
+            boot_cluster_ip=local_ip,
+            osystem="custom",
+            distro_series="my-custom-ubuntu",
+        )
+        arch = node.architecture.split("/")[0]
+        mac = node.get_boot_interface().mac_address
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        commissioning_image = factory.make_default_ubuntu_release_bootable(
+            arch=arch
+        )
+        factory.make_usable_boot_resource(
+            name="my-custom-ubuntu",
+            architecture=f"{arch}/generic",
+            image_filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+            base_image=commissioning_image.name,
+        )
+
+        config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac
+        )
+        self.assertEqual(config["osystem"], "ubuntu")
+        self.assertEqual(config["release"], "jammy")
+        self.assertEqual(config["arch"], arch)
+        self.assertEqual(config["subarch"], "generic")
+        self.assertEqual(
+            config["kernel_osystem"],
+            commissioning_image.name.split("/")[0],
+        )
+        self.assertEqual(
+            config["kernel_release"],
+            commissioning_image.name.split("/")[1],
+        )
+        self.assertEqual(config["purpose"], "xinstall")
+        self.assertIn(f"/ubuntu/{arch}/hwe-", config["kernel"])
+        self.assertIn(f"/ubuntu/{arch}/hwe-", config["initrd"])
+        self.assertIn(
+            f"/custom/{arch}/generic/my-custom-ubuntu", config["xinstall_path"]
+        )
+
     # See https://github.com/canonical/cloud-init/issues/4418 for more details
     def test_preseed_url_not_using_domain_names_for_custom_ephemeral_deployments(
         self,
