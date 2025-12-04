@@ -152,6 +152,19 @@ class DomainManager(Manager, DomainQueriesMixin):
         else:
             raise PermissionDenied()
 
+    def get_all_with_resource_record_count(self):
+        return (
+            Domain.objects.all()
+            .prefetch_related("globaldefault_set")
+            .annotate(
+                resource_record_count=Coalesce(
+                    Count("dnsresource__ip_addresses", distinct=True)
+                    + Count("dnsresource__dnsdata", distinct=True),
+                    0,
+                )
+            )
+        )
+
 
 class Domain(CleanSave, TimestampedModel):
     """A `Domain`.
@@ -248,21 +261,21 @@ class Domain(CleanSave, TimestampedModel):
     @property
     def resource_record_count(self):
         """How many total Resource Records come from non-Nodes."""
-        # check if dnsresource_set has already been fetched
-        if hasattr(self, "dnsresource_set"):
-            count = 0
-            for resource in self.dnsresource_set.all():
-                count += len(resource.ip_addresses.all())
-                count += len(resource.dnsdata_set.all())
-            return count
+        if hasattr(self, "_resource_record_count"):
+            return self._resource_record_count
 
         return self.dnsresource_set.aggregate(
-            total_count=Coalesce(
+            count=Coalesce(
                 Count("ip_addresses", distinct=True)
                 + Count("dnsdata", distinct=True),
                 0,
             )
-        )["total_count"]
+        )["count"]
+
+    @resource_record_count.setter
+    def resource_record_count(self, value):
+        """The setter allows us to set the property through an annotated value."""
+        self._resource_record_count = value
 
     @property
     def forward_dns_servers(self):

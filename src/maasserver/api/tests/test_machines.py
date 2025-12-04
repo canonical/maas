@@ -523,6 +523,8 @@ class TestMachinesAPI(APITestCase.ForUser):
             queries_count.append(counter.count)
             machines_count.append(len(result))
 
+        default_domain = Domain.objects.get_default_domain()
+        factory.make_DNSResource(domain=default_domain)
         vlan = factory.make_VLAN(space=factory.make_Space())
         node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
         factory.make_VirtualBlockDevice(node=node)
