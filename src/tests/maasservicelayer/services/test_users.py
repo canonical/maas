@@ -678,3 +678,15 @@ class TestUsersService:
             provider_id=1
         )
         assert count == 5
+
+    async def test_is_oidc_user(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        users_repository.get_user_profile.return_value = TEST_USER_PROFILE
+
+        is_oidc = await users_service.is_oidc_user(email="testuser")
+
+        users_repository.get_user_profile.assert_called_once_with(
+            username="testuser"
+        )
+        assert not is_oidc

@@ -395,5 +395,9 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
     async def count_by_provider(self, provider_id: int) -> int:
         return await self.repository.count_by_provider(provider_id=provider_id)
 
+    async def is_oidc_user(self, email: str) -> bool:
+        user_profile = await self.repository.get_user_profile(username=email)
+        return True if (user_profile and user_profile.provider_id) else False
+
     async def clear_all_sessions(self) -> None:
         await self.repository.clear_all_sessions()

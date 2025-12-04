@@ -19,7 +19,7 @@ from maasapiserver.v3.api.public.models.requests.external_auth import (
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
-    AuthProviderInfoResponse,
+    AuthInfoResponse,
     OAuthProviderResponse,
     OAuthProvidersListResponse,
 )
@@ -118,21 +118,28 @@ class AuthHandler(Handler):
         )
 
     @handler(
-        path="/auth/oauth/authorization_url",
+        path="/auth/login_info",
         methods=["GET"],
         tags=TAGS,
         responses={
-            200: {"model": AuthProviderInfoResponse},
+            200: {"model": AuthInfoResponse},
             404: {"model": NotFoundBodyResponse},
         },
         status_code=200,
     )
-    async def initiate_oauth_flow(
+    async def initiate_auth_flow(
         self,
+        email: str,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
     ):
-        """Initiate the OAuth flow by generating the authorization URL and setting the necessary security cookies."""
+        """Initiate the OAuth flow by generating the authorization URL and setting the necessary security cookies,
+        if the user is an OIDC user."""
+        is_oidc_user = await services.users.is_oidc_user(email)
+        if not is_oidc_user:
+            return AuthInfoResponse(
+                is_oidc=False,
+            )
         client = await services.external_oauth.get_client()
         if not client:
             raise NotFoundException(
@@ -150,9 +157,10 @@ class AuthHandler(Handler):
         cookie_manager.set_auth_cookie(
             value=data.nonce, key=MAASOAuth2Cookie.AUTH_NONCE
         )
-        return AuthProviderInfoResponse(
+        return AuthInfoResponse(
             auth_url=data.authorization_url,
             provider_name=client.get_provider_name(),
+            is_oidc=True,
         )
 
     @handler(

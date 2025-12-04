@@ -1279,6 +1279,7 @@ class TestExternalOAuthService(ServiceCommonTests):
                     is_staff=False,
                     is_active=True,
                     last_login=now,
+                    date_joined=now,
                 ),
                 False,
             )
@@ -1313,6 +1314,7 @@ class TestExternalOAuthService(ServiceCommonTests):
                 is_staff=False,
                 is_superuser=False,
                 last_login=now,
+                date_joined=now,
             ),
         )
         service_instance.users_service.update_profile.assert_not_called()
@@ -1366,6 +1368,7 @@ class TestExternalOAuthService(ServiceCommonTests):
                     is_staff=False,
                     is_active=True,
                     last_login=now,
+                    date_joined=now,
                 ),
                 True,
             )
@@ -1400,6 +1403,7 @@ class TestExternalOAuthService(ServiceCommonTests):
                 is_staff=False,
                 is_superuser=False,
                 last_login=now,
+                date_joined=now,
             ),
         )
         service_instance.users_service.update_profile.assert_awaited_once_with(

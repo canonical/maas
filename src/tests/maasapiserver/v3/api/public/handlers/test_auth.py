@@ -249,11 +249,11 @@ class TestAuthApi:
         assert error_response.kind == "Error"
         assert error_response.code == 401
 
-    # GET /auth/oauth/authorization_url
+    # GET /auth/login_info
     @patch(
         "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.set_auth_cookie"
     )
-    async def test_get_oauth_initiate_success(
+    async def test_get_oauth_initiate_success_oidc(
         self,
         cookie_manager_set_auth_cookie: MagicMock,
         services_mock: ServiceCollectionV3,
@@ -261,6 +261,8 @@ class TestAuthApi:
     ) -> None:
         cookie_manager_set_auth_cookie.return_value = None
         services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.users = Mock(UsersService)
+        services_mock.users.is_oidc_user.return_value = True
         client_mock = Mock(OAuth2Client(TEST_PROVIDER_1))
         returned_data = OAuthInitiateData(
             authorization_url="https://example.com/auth?state=abc123&nonce=def123",
@@ -272,7 +274,7 @@ class TestAuthApi:
         services_mock.external_oauth.get_client.return_value = client_mock
 
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/oauth/authorization_url"
+            f"{self.BASE_PATH}/login_info?email=test@example.com"
         )
 
         assert response.status_code == 200
@@ -295,16 +297,35 @@ class TestAuthApi:
         mocked_api_client: AsyncClient,
     ):
         services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.users = Mock(UsersService)
+        services_mock.users.is_oidc_user.return_value = True
         services_mock.external_oauth.get_client.return_value = None
-
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/oauth/authorization_url"
+            f"{self.BASE_PATH}/login_info?email=test@example.com"
         )
 
         assert response.status_code == 404
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 404
+
+    async def test_get_oauth_initiate_not_oidc_user(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.users = Mock(UsersService)
+        services_mock.users.is_oidc_user.return_value = False
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/login_info?email=test@example.com"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["auth_url"] is None
+        assert data["provider_name"] is None
+        assert data["is_oidc"] is False
 
     # GET /auth/oauth/providers
     async def test_list_oauth_providers_200_no_other_page(

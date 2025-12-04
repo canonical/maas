@@ -514,6 +514,7 @@ class ExternalOAuthService(
                 is_staff=False,
                 is_superuser=False,
                 last_login=utcnow(),
+                date_joined=utcnow(),
             ),
         )
         if newly_created:

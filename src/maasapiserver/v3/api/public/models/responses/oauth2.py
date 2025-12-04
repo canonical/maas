@@ -19,12 +19,13 @@ class AccessTokenResponse(BaseModel):
     access_token: str
 
 
-class AuthProviderInfoResponse(BaseModel):
-    """Content for a response returning info about a pre-configured OIDC provider"""
+class AuthInfoResponse(BaseModel):
+    """Content for a response returning authentication flow information."""
 
-    kind = "AuthProviderInfo"
-    auth_url: str
-    provider_name: str
+    kind = "AuthInfo"
+    auth_url: str | None = None
+    provider_name: str | None = None
+    is_oidc: bool
 
 
 class OAuthProviderResponse(BaseModel):
