@@ -50,7 +50,7 @@ class DomainsHandler(OperationsHandler):
         domain objects.
         @success-example "success-json" [exkey=domains-read] placeholder text
         """
-        return Domain.objects.all().prefetch_related("globaldefault_set")
+        return Domain.objects.get_all_with_resource_record_count()
 
     @admin_method
     def create(self, request):
