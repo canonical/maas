@@ -26,6 +26,8 @@ import (
 
 	"github.com/canonical/microcluster/v2/state"
 	"github.com/rs/zerolog/log"
+
+	"maas.io/core/src/maasagent/internal/dhcpd"
 )
 
 const (
@@ -36,9 +38,10 @@ const (
 )
 
 type ExpirationHandler struct {
-	clusterState state.State
-	tick         *time.Ticker
-	stateLock    sync.RWMutex
+	clusterState  state.State
+	leaseReporter LeaseReporter
+	tick          *time.Ticker
+	stateLock     sync.RWMutex
 }
 
 func newExpirationHandler(sweepInterval time.Duration) *ExpirationHandler {
@@ -134,11 +137,14 @@ func (e *ExpirationHandler) expireLeases(ctx context.Context, tx *sql.Tx, leaseR
 	}
 
 	for _, lease := range leases {
+		ip := lease.IP.String()
+		mac := lease.MACAddress.String()
+
 		_, err := tx.ExecContext(
 			ctx,
 			insertExpirationStmt,
-			lease.IP.String(),
-			lease.MACAddress.String(),
+			ip,
+			mac,
 			lease.DUID,
 			epoch,
 		)
@@ -146,7 +152,21 @@ func (e *ExpirationHandler) expireLeases(ctx context.Context, tx *sql.Tx, leaseR
 			return fmt.Errorf("error writing expirations: %w", err)
 		}
 
-		// TODO report expiration if report true
+		ipVer := "ipv6"
+		if lease.IP.To4() != nil {
+			ipVer = "ipv4"
+		}
+
+		err = e.leaseReporter.EnqueueLeaseNotification(ctx, &dhcpd.Notification{
+			Action:    "expiry",
+			IPFamily:  ipVer,
+			MAC:       mac,
+			IP:        ip,
+			Timestamp: epoch,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

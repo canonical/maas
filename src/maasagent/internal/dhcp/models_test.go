@@ -19,39 +19,16 @@ import (
 	"context"
 	"database/sql"
 	"net"
-	"os"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"maas.io/core/src/maasagent/internal/cluster"
+	testdb "maas.io/core/src/maasagent/internal/testing/db"
 )
 
-func setupSchema(ctx context.Context, tx *sql.Tx) error {
-	return cluster.SchemaAppendDHCP(ctx, tx)
-}
-
-func withTestDatabase(t testing.TB) (*sql.DB, error) {
-	f, err := os.CreateTemp(t.TempDir(), t.Name()+".db")
-	if err != nil {
-		return nil, err
-	}
-
-	if err = f.Close(); err != nil {
-		return nil, err
-	}
-
-	db, err := sql.Open("sqlite3", f.Name())
-	if err != nil {
-		return nil, err
-	}
-
-	return db, nil
-}
-
 func TestVlanScanRow(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -99,7 +76,7 @@ func TestVlanScanRow(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -124,7 +101,7 @@ func TestVlanScanRow(t *testing.T) {
 }
 
 func TestVlanLoadOptions(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -178,7 +155,7 @@ func TestVlanLoadOptions(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -206,7 +183,7 @@ func TestVlanLoadOptions(t *testing.T) {
 }
 
 func TestInterfaceScanRow(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -248,7 +225,7 @@ func TestInterfaceScanRow(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -273,7 +250,7 @@ func TestInterfaceScanRow(t *testing.T) {
 }
 
 func TestSubnetScanRow(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	_, testCidr, _ := net.ParseCIDR("10.0.0.0/24")
@@ -316,7 +293,7 @@ func TestSubnetScanRow(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -341,7 +318,7 @@ func TestSubnetScanRow(t *testing.T) {
 }
 
 func TestSubnetLoadOptions(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -395,7 +372,7 @@ func TestSubnetLoadOptions(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -423,7 +400,7 @@ func TestSubnetLoadOptions(t *testing.T) {
 }
 
 func TestIPRangeScanRow(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -468,7 +445,7 @@ func TestIPRangeScanRow(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -493,7 +470,7 @@ func TestIPRangeScanRow(t *testing.T) {
 }
 
 func TestIPRangeLoadOptions(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -547,7 +524,7 @@ func TestIPRangeLoadOptions(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -575,7 +552,7 @@ func TestIPRangeLoadOptions(t *testing.T) {
 }
 
 func TestHostReservationScanRow(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testMac, _ := net.ParseMAC("ab:cd:ef:00:11:22")
@@ -618,7 +595,7 @@ func TestHostReservationScanRow(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -643,7 +620,7 @@ func TestHostReservationScanRow(t *testing.T) {
 }
 
 func TestHostReservationLoadOptions(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -751,7 +728,7 @@ func TestHostReservationLoadOptions(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -779,7 +756,7 @@ func TestHostReservationLoadOptions(t *testing.T) {
 }
 
 func TestLeaseScanRow(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testMac, _ := net.ParseMAC("ab:cd:ef:00:11:22")
@@ -827,7 +804,7 @@ func TestLeaseScanRow(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -852,7 +829,7 @@ func TestLeaseScanRow(t *testing.T) {
 }
 
 func TestLeaseLoadOptions(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -946,7 +923,7 @@ func TestLeaseLoadOptions(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)
@@ -974,7 +951,7 @@ func TestLeaseLoadOptions(t *testing.T) {
 }
 
 func TestExpirationScanRow(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testMac, _ := net.ParseMAC("ab:cd:ef:00:11:22")
@@ -1017,7 +994,7 @@ func TestExpirationScanRow(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.in)

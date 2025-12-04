@@ -34,10 +34,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"maas.io/core/src/maasagent/internal/cluster"
+	"maas.io/core/src/maasagent/internal/dhcpd"
+	testdb "maas.io/core/src/maasagent/internal/testing/db"
 )
 
+type mockLeaseReporter struct {
+	LeaseReporter
+	notifications []*dhcpd.Notification
+}
+
+func (m *mockLeaseReporter) EnqueueLeaseNotification(_ context.Context, notification *dhcpd.Notification) error {
+	m.notifications = append(m.notifications, notification)
+
+	return nil
+}
+
 func testExpireLeases(t *testing.T, leaseState LeaseState, oppositeState LeaseState, expireFn func(context.Context, *sql.Tx, time.Time) error) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -238,7 +251,7 @@ func testExpireLeases(t *testing.T, leaseState LeaseState, oppositeState LeaseSt
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			for _, lease := range tc.in.leases {
@@ -306,19 +319,23 @@ func testExpireLeases(t *testing.T, leaseState LeaseState, oppositeState LeaseSt
 }
 
 func TestExpireUnackedLeases(t *testing.T) {
-	eh := &ExpirationHandler{}
+	eh := &ExpirationHandler{
+		leaseReporter: &mockLeaseReporter{},
+	}
 
 	testExpireLeases(t, LeaseStateOffered, LeaseStateAcked, eh.expireUnackedLeases)
 }
 
 func TestExpireAckedLeases(t *testing.T) {
-	eh := &ExpirationHandler{}
+	eh := &ExpirationHandler{
+		leaseReporter: &mockLeaseReporter{},
+	}
 
 	testExpireLeases(t, LeaseStateAcked, LeaseStateOffered, eh.expireAckedLeases)
 }
 
 func TestExpire(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -476,7 +493,7 @@ func TestExpire(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			for _, lease := range tc.in.leases {
@@ -502,7 +519,9 @@ func TestExpire(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			eh := &ExpirationHandler{}
+			eh := &ExpirationHandler{
+				leaseReporter: &mockLeaseReporter{},
+			}
 
 			err = eh.expire(ctx, tx, tc.in.ts)
 			if err != nil {
@@ -559,7 +578,7 @@ func uint32ToIPv4(val uint32) net.IP {
 func benchmarkExpire(b *testing.B, count int) {
 	ctx := b.Context()
 
-	db, err := withTestDatabase(b)
+	db, err := testdb.WithTestDatabase(b)
 	require.NoError(b, err)
 
 	tx, err := db.BeginTx(ctx, nil)
@@ -569,7 +588,7 @@ func benchmarkExpire(b *testing.B, count int) {
 		tx.Rollback()
 	})
 
-	err = setupSchema(ctx, tx)
+	err = testdb.SetupSchema(ctx, tx)
 	require.NoError(b, err)
 
 	baseIPInt := ipv4ToUint32(net.ParseIP("10.0.0.1"))
@@ -762,7 +781,7 @@ func benchmarkExpireDQLite(b *testing.B, count int) {
 		tx.Rollback()
 	})
 
-	err = setupSchema(ctx, tx)
+	err = testdb.SetupSchema(ctx, tx)
 	require.NoError(b, err)
 
 	baseIPInt := ipv4ToUint32(net.ParseIP("10.0.0.1"))

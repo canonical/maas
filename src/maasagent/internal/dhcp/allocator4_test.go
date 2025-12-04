@@ -28,10 +28,11 @@ import (
 	"github.com/insomniacslk/dhcp/iana"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	testdb "maas.io/core/src/maasagent/internal/testing/db"
 )
 
 func TestAllocator4GetOfferFromDiscover(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	hostname, err := os.Hostname()
@@ -223,7 +224,7 @@ func TestAllocator4GetOfferFromDiscover(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.data)
@@ -248,7 +249,7 @@ func TestAllocator4GetOfferFromDiscover(t *testing.T) {
 }
 
 func TestGetVLANForAllocation(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	hostname, err := os.Hostname()
@@ -330,7 +331,7 @@ func TestGetVLANForAllocation(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.data)
@@ -355,7 +356,7 @@ func TestGetVLANForAllocation(t *testing.T) {
 }
 
 func TestGetLeaseIfExists(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -449,7 +450,7 @@ func TestGetLeaseIfExists(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.data)
@@ -474,7 +475,7 @@ func TestGetLeaseIfExists(t *testing.T) {
 }
 
 func TestGetHostReservationIfExists(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -562,7 +563,7 @@ func TestGetHostReservationIfExists(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.data)
@@ -587,7 +588,7 @@ func TestGetHostReservationIfExists(t *testing.T) {
 }
 
 func TestGetIPRangeForAllocation(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -655,7 +656,7 @@ func TestGetIPRangeForAllocation(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.data)
@@ -680,7 +681,7 @@ func TestGetIPRangeForAllocation(t *testing.T) {
 }
 
 func TestGetIPForAllocation(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -766,7 +767,7 @@ func TestGetIPForAllocation(t *testing.T) {
 				tx.Rollback()
 			})
 
-			err = setupSchema(ctx, tx)
+			err = testdb.SetupSchema(ctx, tx)
 			require.NoError(t, err)
 
 			_, err = tx.ExecContext(ctx, tc.data)
@@ -791,7 +792,7 @@ func TestGetIPForAllocation(t *testing.T) {
 }
 
 func TestSetIPRangeFull(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -812,7 +813,7 @@ func TestSetIPRangeFull(t *testing.T) {
 		tx.Rollback()
 	})
 
-	require.NoError(t, setupSchema(ctx, tx))
+	require.NoError(t, testdb.SetupSchema(ctx, tx))
 
 	_, err = tx.ExecContext(ctx, `
 	INSERT INTO vlan VALUES (1, 0, NULL);
@@ -838,7 +839,7 @@ func TestSetIPRangeFull(t *testing.T) {
 }
 
 func TestCreateOfferedLease(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	testcases := map[string]struct {
@@ -940,7 +941,7 @@ func TestCreateOfferedLease(t *testing.T) {
 				tx.Rollback()
 			})
 
-			require.NoError(t, setupSchema(ctx, tx))
+			require.NoError(t, testdb.SetupSchema(ctx, tx))
 
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
@@ -969,7 +970,7 @@ func TestCreateOfferedLease(t *testing.T) {
 }
 
 func TestAckLease(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	now := time.Now().Unix() - 1 // execution can be fast enough that we get the same timestamp twice
@@ -1044,7 +1045,7 @@ func TestAckLease(t *testing.T) {
 				tx.Rollback()
 			})
 
-			require.NoError(t, setupSchema(ctx, tx))
+			require.NoError(t, testdb.SetupSchema(ctx, tx))
 
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
@@ -1073,7 +1074,7 @@ func TestAckLease(t *testing.T) {
 }
 
 func TestNACKRelease(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	hostname, err := os.Hostname()
@@ -1141,7 +1142,7 @@ func TestNACKRelease(t *testing.T) {
 				tx.Rollback()
 			})
 
-			require.NoError(t, setupSchema(ctx, tx))
+			require.NoError(t, testdb.SetupSchema(ctx, tx))
 
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
@@ -1169,7 +1170,7 @@ func TestNACKRelease(t *testing.T) {
 }
 
 func TestUpdateForRenewal(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	now := time.Now().Unix() - 1 // execution can be fast enough that we get the same timestamp twice
@@ -1233,7 +1234,7 @@ func TestUpdateForRenewal(t *testing.T) {
 				tx.Rollback()
 			})
 
-			require.NoError(t, setupSchema(ctx, tx))
+			require.NoError(t, testdb.SetupSchema(ctx, tx))
 
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
@@ -1263,7 +1264,7 @@ func TestUpdateForRenewal(t *testing.T) {
 }
 
 func TestRelease(t *testing.T) {
-	db, err := withTestDatabase(t)
+	db, err := testdb.WithTestDatabase(t)
 	require.NoError(t, err)
 
 	now := time.Now().Unix() - 1 // execution can be fast enough that we get the same timestamp twice
@@ -1338,7 +1339,7 @@ func TestRelease(t *testing.T) {
 				tx.Rollback()
 			})
 
-			require.NoError(t, setupSchema(ctx, tx))
+			require.NoError(t, testdb.SetupSchema(ctx, tx))
 
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
