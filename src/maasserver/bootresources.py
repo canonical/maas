@@ -1384,7 +1384,12 @@ def initialize_image_storage(region: RegionController):
             file__in=missing, region=region
         ).delete()
 
-    existing_files = set(target_dir.iterdir())
+    # TODO: Modify this when we have a better way to handle custom bootloaders
+    # don't delete custom dir, contains custom bootloaders
+    existing_files = {
+        file for file in target_dir.iterdir() if not file.name == "custom"
+    }
+
     for file in existing_files - expected_files:
         maaslog.warning(
             f"removing unexpected {file} file from the image storage"

@@ -272,6 +272,8 @@ class TestInitialiseImageStorage:
     ):
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
+        custom_dir = image_store_dir / "custom"
+        custom_dir.mkdir(parents=True)
         extra_file = image_store_dir / "abcde"
         extra_file.write_text("some content")
         extra_dir = image_store_dir / "somedir"
@@ -286,6 +288,7 @@ class TestInitialiseImageStorage:
         assert not extra_file.exists()
         assert not extra_dir.exists()
         assert not extra_symlink.exists()
+        assert custom_dir.exists()
 
     def test_remove_extra_symlink(
         self, controller, image_store_dir: Path, tmp_path, mocker
