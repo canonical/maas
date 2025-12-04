@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict 1XbWEwuYcY7gZMDDSECNfURrVV1K2k7UN9gdYdAL5LuF0F49vnfuNxI06ayZreJ
+\restrict uIKD981yDnha550sN9QGaeUVhxIKfVlGidq6L70vX7Gonx9ITiWt3AXDm4n4JUE
 
--- Dumped from database version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
--- Dumped by pg_dump version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
+-- Dumped from database version 16.11 (Ubuntu 16.11-0ubuntu0.24.04.1)
+-- Dumped by pg_dump version 16.11 (Ubuntu 16.11-0ubuntu0.24.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5005,7 +5005,7 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
          SELECT res.id AS resource_id,
             cache.latest_version
            FROM (public.maasserver_bootsourcecache cache
-             JOIN public.maasserver_bootresource res ON ((((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND ((((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text))) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
+             JOIN public.maasserver_bootresource res ON ((((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND (((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text)) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
         ), resource_set_counts AS (
          SELECT sync_stats.resource_id,
             count(*) AS set_count
@@ -16668,5 +16668,5 @@ ALTER TABLE ONLY public.piston3_token
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 1XbWEwuYcY7gZMDDSECNfURrVV1K2k7UN9gdYdAL5LuF0F49vnfuNxI06ayZreJ
+\unrestrict uIKD981yDnha550sN9QGaeUVhxIKfVlGidq6L70vX7Gonx9ITiWt3AXDm4n4JUE
 
