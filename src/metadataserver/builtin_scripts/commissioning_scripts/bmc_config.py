@@ -202,6 +202,10 @@ class IPMIBase(BMCConfig):
                 # Some BMC require a longer password https://bugs.launchpad.net/maas/+bug/1993916/
                 self._generate_random_password(min_length=16, max_length=20),
                 self._generate_random_password(with_special_chars=True),
+                # Support DGX H200 https://bugs.launchpad.net/maas/+bug/2130621
+                self._generate_random_password(
+                    min_length=13, max_length=20, with_special_chars=True
+                ),
             ]
         else:
             passwords = [self.password]
