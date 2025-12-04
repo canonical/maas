@@ -44,7 +44,7 @@ from maasserver.exceptions import (
 from maasserver.fields import MAC_FIELD_RE, normalise_macaddress
 from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.forms.ephemeral import TestForm
-from maasserver.models import Filesystem, Interface, Node, OwnerData
+from maasserver.models import Domain, Filesystem, Interface, Node, OwnerData
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.models.scriptset import get_status_from_qs
 from maasserver.node_constraint_filter_forms import ReadNodesForm
@@ -64,7 +64,6 @@ NODES_SELECT_RELATED = (
     "owner",
     "zone",
     "boot_disk__node_config__node",
-    "domain",
     "pool",
     "current_config",
     "boot_interface__node_config__node",
@@ -95,9 +94,6 @@ def blockdev_prefetch(expression):
 
 
 NODES_PREFETCH = [
-    "domain__dnsresource_set__ip_addresses",
-    "domain__dnsresource_set__dnsdata_set",
-    "domain__globaldefault_set",
     "ownerdata_set",
     "gateway_link_ipv4__subnet",
     "gateway_link_ipv6__subnet",
@@ -781,6 +777,10 @@ class NodesHandler(OperationsHandler):
 
         """
 
+        # Fetch all the domains in a single query
+        domains = list(Domain.objects.get_all_with_resource_record_count())
+        domain_map = {d.id: d for d in domains}
+
         if self.base_model == Node:
             # Avoid circular dependencies
             from maasserver.api.devices import DevicesHandler
@@ -802,7 +802,7 @@ class NodesHandler(OperationsHandler):
                     .order_by("id"),
                 )
             )
-            return nodes
+
         else:
             form = ReadNodesForm(data=request.GET)
             if not form.is_valid():
@@ -816,7 +816,11 @@ class NodesHandler(OperationsHandler):
             nodes = nodes.annotate(
                 virtualmachine_id=Coalesce("virtualmachine__id", None)
             )
-            return nodes
+        # Assign the correct domain to each node. Manually setting the domain
+        # object avoids extra work by Piston when serializing the nodes.
+        for node in nodes:
+            node.domain = domain_map.get(node.domain_id)
+        return nodes
 
     @operation(idempotent=True)
     def is_registered(self, request):
