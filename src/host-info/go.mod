@@ -4,7 +4,7 @@ go 1.18
 
 require github.com/canonical/lxd v0.0.0-20230929073242-10f6cd4bf1a0
 
-replace github.com/canonical/lxd => github.com/canonical/lxd4maas v0.0.0-20250530093944-03973e503919
+replace github.com/canonical/lxd => github.com/canonical/lxd4maas v0.0.0-20251204094752-6d5ec27d5b37
 
 require (
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e // indirect

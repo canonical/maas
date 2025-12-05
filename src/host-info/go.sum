@@ -1,5 +1,5 @@
-github.com/canonical/lxd4maas v0.0.0-20250530093944-03973e503919 h1:zuRyAHVpsq4vy988eBWaf3nTJ1UMaY/pELSgU0PTkTU=
-github.com/canonical/lxd4maas v0.0.0-20250530093944-03973e503919/go.mod h1:/lJ1suHbUSZn1VgwfWEcjkddHk4JeLTjtBwFPY0Eb7o=
+github.com/canonical/lxd4maas v0.0.0-20251204094752-6d5ec27d5b37 h1:pUT+QjTVbdclp275NbGC68qrPI8Nl56wkw9uyCNHcns=
+github.com/canonical/lxd4maas v0.0.0-20251204094752-6d5ec27d5b37/go.mod h1:/lJ1suHbUSZn1VgwfWEcjkddHk4JeLTjtBwFPY0Eb7o=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e h1:vUmf0yezR0y7jJ5pceLHthLaYf4bA5T14B6q39S4q2Q=
 github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e/go.mod h1:YTIHhz/QFSYnu/EhlF2SpU2Uk+32abacUYA5ZPljz1A=
