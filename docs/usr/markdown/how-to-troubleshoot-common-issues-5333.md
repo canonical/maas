@@ -874,7 +874,7 @@ MAAS is sending out DHCP leases to both a BMC and a machine set to PXE boot, but
    - Check the [MAAS log files](https://canonical.com/maas/docs/how-to-use-logging) for any errors or warnings that might indicate issues with DHCP or PXE boot.
 
 8. **Documentation and guides:**
-   - Refer to the [official MAAS documentation](https://canonical.com/maas/docs/about-dhcp-in-maas) for detailed information on how MAAS works with DHCP and how to properly configure and troubleshoot it.
+   - Refer to the [official MAAS documentation](https://canonical.com/maas/docs/about-maas-networking#p-20679-dhcp) for detailed information on how MAAS works with DHCP and how to properly configure and troubleshoot it.
 
 **Example command for checking DHCP leases:**
    - View the `dhcpd.leases` file to ensure that leases are being given out:

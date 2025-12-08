@@ -143,7 +143,7 @@ This method backs up only the PostgreSQL database and key MAAS configuration/dat
    sudo -u postgres psql -f <backup-path>/<dump.sql> postgres
    ```
 
-4.  Install [MAAS from packages](https://canonical.com/maas/docs/how-to-install-maas#p-9034-install-maas-snap-or-packages).
+4.  Install [MAAS from packages](https://canonical.com/maas/docs/how-to-get-maas-up-and-running#p-9034-install-maas-snap-or-packages).
 
 5.  Stop MAAS services:
    ```bash

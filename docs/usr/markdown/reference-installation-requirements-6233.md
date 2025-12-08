@@ -48,7 +48,7 @@ Too few database connections tend do produce errors:
 
 ## MAAS, NTP, and chrony
 
-Conflicts can arise between Ubuntu's default `systemd-timesyncd` and MAAS `chrony`.  Consult the MAAS [installation guide](https://canonical.com/maas/docs/how-to-install-maas) for solutions.
+Conflicts can arise between Ubuntu's default `systemd-timesyncd` and MAAS `chrony`.  Consult the MAAS [installation guide](https://canonical.com/maas/docs/how-to-get-maas-up-and-running) for solutions.
 
 ## Test environment
 

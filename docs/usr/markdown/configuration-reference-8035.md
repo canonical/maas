@@ -91,7 +91,7 @@ The following tables may be needed to manage MAAS interfaces.
 | `mtu`                   | Max transmission unit size  | No     | Integer           |
 | `accept_ra`             | Accept router adverts       | No     | Boolean           |
 
-> *See [Bond two interfaces](https://canonical.com/maas/docs/how-to-manage-maas-networks#p-9070-bond-two-interfaces) for instructions on how to use and apply these parameters.*
+> *See [Bond two interfaces](https://canonical.com/maas/docs/how-to-manage-networks#p-9070-bond-two-interfaces) for instructions on how to use and apply these parameters.*
 
 ### Physical interface parameters 
 | key         | value                    | format  | type     |

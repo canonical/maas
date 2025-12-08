@@ -150,7 +150,7 @@ The MAAS 3.4 release expands Packer support to include SUSE Linux Enterprise Ser
 
 MAAS will run on [just about any modern hardware configuration](https://canonical.com/maas/docs/installation-requirements).
 
-- [How to do a fresh install of MAAS 3.4](https://canonical.com/maas/docs/how-to-install-maas): Use the tabs to select snaps or packages.
+- [How to do a fresh install of MAAS 3.4](https://canonical.com/maas/docs/how-to-get-maas-up-and-running): Use the tabs to select snaps or packages.
 
 - [How to upgrade from an earlier version to MAAS 3.4](https://canonical.com/maas/docs/how-to-upgrade-maas): Use the tabs to select snaps or packages.
 

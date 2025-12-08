@@ -142,7 +142,7 @@ Improved capabilities include the following:
 
 - [UI performance improvements for large machine counts](#heading--UI-performance-improvements): We've improved the performance of the UI machine list for large (>10000 machines) MAAS instances.  The machine list now goes live just a few seconds after the first visible page loads, with the rest of the list loading in background.
 
-- [Enhanced MIB support for Windows OS images](#heading--Enhanced-MIB-support-for-Windows-OS-images): The [procedure](https://canonical.com/maas/docs/customising-images-for-specific-needs#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
+- [Enhanced MIB support for Windows OS images](#heading--Enhanced-MIB-support-for-Windows-OS-images): The [procedure](https://canonical.com/maas/docs/how-to-build-custom-images#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
 
 Greatly expanded documentation sections include:
 
@@ -150,7 +150,7 @@ Greatly expanded documentation sections include:
 
 - [Improved MAAS event documentation](#heading--Improved-MAAS-event-documentation): MAAS event documentation has been expanded to include [much better explanations](https://canonical.com/maas/docs/an-overview-of-maas-events) of MAAS events, including many examples.
 
-- [Improved MAAS audit event documentation](#heading--Improved-MAAS-audit-event-documentation): MAAS audit event documentation has been greatly expanded to include [much better explanations](https://canonical.com/maas/docs/understanding-audit-events) of MAAS audit events, including many examples and use cases.
+- [Improved MAAS audit event documentation](#heading--Improved-MAAS-audit-event-documentation): MAAS audit event documentation has been greatly expanded to include [much better explanations](https://canonical.com/maas/docs/about-maas-events#p-13512-about-audit-events) of MAAS audit events, including many examples and use cases.
 
 Several forward-looking improvements are included as well:
 
@@ -193,7 +193,7 @@ The following table describes the expanded filter set for the MAAS machine list:
 - Items marked "Grp" can be used to group machines, instead of the default machine status.
 - Items marked "Man" must be manually entered, i.e., they are not in the UI filter drop-down, but can be entered in the "Search" box if properly formatted (as in the examples given).
 
-See [How to search MAAS](https://canonical.com/maas/docs/locating-and-searching-for-machines) for more details on how to use these parameters.
+See [How to search MAAS](https://canonical.com/maas/docs/how-to-manage-machines#p-9078-discover-and-find-machines) for more details on how to use these parameters.
 
 
 | Parameter (bold) w/example           | Shows nodes…  | Dyn | Grp | Man |
@@ -303,7 +303,7 @@ In MAAS 3.2 and earlier, machine search and filter requires that all machines be
 
 ### Enhanced MIB support for Windows OS images
 
-The [procedure](https://canonical.com/maas/docs/customising-images-for-specific-needs#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
+The [procedure](https://canonical.com/maas/docs/how-to-build-custom-images#heading--custom-windows-images) for creating custom Windows OS images has been thoroughly updated and verified.
 
 #### Ten words or less
 
@@ -491,7 +491,7 @@ Additional examples and techniques are provided as part of this new documentatio
 
 ### Improved MAAS audit event documentation
 
-MAAS audit event documentation has been greatly expanded to include [much better explanations](https://canonical.com/maas/docs/understanding-audit-events) of MAAS audit events, including [detailed examples of how to reconstruct machine life-cycles](https://canonical.com/maas/docs/auditing-maas-operations#heading--How-to-audit-a-machines-life-cycle-with-audit-events) in the updated version of "[How to work with audit event logs](https://canonical.com/maas/docs/auditing-maas-operations)".
+MAAS audit event documentation has been greatly expanded to include [much better explanations](https://canonical.com/maas/docs/about-maas-events#p-13512-about-audit-events) of MAAS audit events, including [detailed examples of how to reconstruct machine life-cycles](https://canonical.com/maas/docs/how-to-use-logging#p-14514-auditing-maas#heading--How-to-audit-a-machines-life-cycle-with-audit-events) in the updated version of "[How to work with audit event logs](https://canonical.com/maas/docs/how-to-use-logging#p-14514-auditing-maas)".
 
 #### Ten words or less
 
@@ -568,7 +568,7 @@ Later on in the documentation, we walk through a sample of audit events and demo
 
 #### Auditing with finesse
 
-As part of the updates to our "[How to work with audit event logs](https://canonical.com/maas/docs/auditing-maas-operations)", we've tried to offer you some finesse in reconstructing machine life-cycles.  We've shown how to combine various levels of MAAS event queries with standard command line utilities to produce clear audit trails such as this one:
+As part of the updates to our "[How to work with audit event logs](https://canonical.com/maas/docs/how-to-use-logging#p-14514-auditing-maas)", we've tried to offer you some finesse in reconstructing machine life-cycles.  We've shown how to combine various levels of MAAS event queries with standard command line utilities to produce clear audit trails such as this one:
 
 ```nohighlight
 418606  ERROR    Marking node broken               Wed, 17 Nov. 2021 00:02:52  A Physical Interface requires a MAC address.

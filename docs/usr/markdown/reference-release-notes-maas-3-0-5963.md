@@ -288,7 +288,7 @@ Here are the bugs that have been 'Fix Released' in MAAS 3.0 RC1:
 [#1926510](https://bugs.launchpad.net/bugs/1926510)|dhcp subnet snippets are NOT inside the pool block|Undecided|
 [#1927559](https://bugs.launchpad.net/bugs/1927559)|Default logical volume size too big in UI|Undecided|
 [#1928024](https://bugs.launchpad.net/bugs/1928024)|UI states commissioning/testing scripts were never uploaded|Undecided|
-[#1928226](https://bugs.launchpad.net/bugs/1928226)|Information "not available" indicates that it''s an error of some sort|Undecided|
+[#1928226](https://bugs.launchpad.net/bugs/1928226)|Information "not available" indicates that it's an error of some sort|Undecided|
 [#1928235](https://bugs.launchpad.net/bugs/1928235)|notes field won't update properly: MAAS 3.0 RC]()|Undecided|
 [#1928324](https://bugs.launchpad.net/bugs/1928324)|updating a machine zone or resource pool doesn't refresh details|Undecided|
 

@@ -11,7 +11,6 @@ Every feature available in the UI is also accessible through the MAAS API and CL
 - [Learn how to login to the MAAS API](https://maas.io/docs/how-to-authenticate-to-the-maas-api).
 - [Manage your API profile](https://maas.io/docs/profile).
 - [Discover MAAS API calls](https://maas.io/docs/api).
-- [Get extended help with MAAS CLI commands](https://maas.io/docs/cli-reference).
 
 ## Configuration guides
 
@@ -46,5 +45,5 @@ There is always that one, elusive parameter, easy to forget amid many other deta
 - [MAAS metrics](https://canonical.com/maas/docs/reference-maas-metrics) offer more than three dozen specific cluster and performance metrics, each with their own type, units, and labels.
 - MAAS can talk to more than twenty different kinds of [power drivers](https://canonical.com/maas/docs/reference-power-drivers), each with numerous parameters that must be correctly specified.
 - When deploying a machine, curtin can apply any one of five different [standard storage layouts](https://canonical.com/maas/docs/reference-maas-storage#p-17455-standard-storage-layouts) and many combinations of [custom layouts](https://canonical.com/maas/docs/reference-maas-storage#p-17455-custom-storage-layouts) to match provisioning requirements.
-- MAAS [specialty tags](https://canonical.com/maas/docs/reference-device-labels) define and apply special configurations for kernels, networks, storage, and more specific attributes.
+- MAAS [specialty tags](https://canonical.com/maas/docs/tag) define and apply special configurations for kernels, networks, storage, and more specific attributes.
 

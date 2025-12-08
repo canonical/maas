@@ -89,9 +89,9 @@ Following on from MAAS 2.7, we are happy to announce that MAAS 2.8 is now availa
 
 - [What are the new features and fixes for 2.8?](#heading--2-8-release-notes)
 - [What known issues should I be aware of?](#heading--2-8-known-issues)
-- [How do I install MAAS 2.8 as a snap?](https://canonical.com/maas/docs/how-to-install-maas)
+- [How do I install MAAS 2.8 as a snap?](https://canonical.com/maas/docs/how-to-get-maas-up-and-running)
 - [How do I upgrade my MAAS 2.7 snap to a MAAS 2.8 snap?](https://canonical.com/maas/docs/how-to-upgrade-maas)
-- [How do I install MAAS 2.8 from packages?](https://canonical.com/maas/docs/how-to-install-maas)
+- [How do I install MAAS 2.8 from packages?](https://canonical.com/maas/docs/how-to-get-maas-up-and-running)
 - [What bugs were fixed in this release?](#heading--bug-fixes)
 
 ### LXD support (Beta)
