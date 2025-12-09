@@ -591,6 +591,52 @@ class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
                             "content": yaml.safe_dump(
                                 {"network": {"version": 2}}
                             ),
+                            "permissions": "0600",
+                        },
+                    ],
+                ),
+                (
+                    "runcmd",
+                    [
+                        "rm -rf /run/netplan",
+                        "rm -rf /etc/netplan/50-cloud-init.yaml",
+                        "netplan apply --debug",
+                    ],
+                ),
+            ],
+        )
+
+    def test_yields_configuration_when_node_is_ephemeral_deployment_with_custom_ubuntu_image(
+        self,
+    ):
+        factory.make_custom_boot_resource(
+            name="my-noble",
+            architecture="amd64/generic",
+            base_image="ubuntu/jammy",
+        )
+        node = factory.make_Node(
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            status=NODE_STATUS.DEPLOYING,
+            architecture="amd64/generic",
+            osystem="custom",
+            distro_series="my-noble",
+        )
+        config = list(
+            generate_ephemeral_deployment_network_configuration(node)
+        )
+        self.assertEqual(
+            config,
+            [
+                (
+                    "write_files",
+                    [
+                        {
+                            "path": "/etc/netplan/50-maas.yaml",
+                            "content": yaml.safe_dump(
+                                {"network": {"version": 2}}
+                            ),
+                            "permissions": "0600",
                         },
                     ],
                 ),
