@@ -444,9 +444,12 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
                 (
                     "runcmd",
                     [
-                        "apt autoremove --purge --yes lxd lxd-client lxcfs",
-                        "snap install lxd --channel=5.21/stable",
+                        "apt-get autoremove --purge --yes lxd || true",
+                        "apt-get autoremove --purge --yes lxd-client || true",
+                        "apt-get autoremove --purge --yes lxcfs || true",
+                        "timeout 600 bash -c 'until snap install lxd --channel=5.21/stable; do sleep 10; done'",
                         "snap refresh lxd --channel=5.21/stable",
+                        "lxd waitready -t 300",
                         "lxd init --auto --network-address=[::]",
                         "lxc project create maas",
                         "lxc config trust add /root/lxd.crt --restricted --projects maas",
