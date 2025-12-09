@@ -74,12 +74,12 @@ func TestRewriteHandler(t *testing.T) {
 		},
 		"custom bootloaders are not modified": {
 			in: in{
-				url: "http://example.com/boot-resources/custom/bootx64.efi",
+				url: "http://example.com/boot-resources/custom-bootloaders/bootx64.efi",
 				rules: []*RewriteRule{
-					NewRewriteRule(regexp.MustCompile(".*/custom/(.*)"), "/boot-resources/custom/$1"),
+					NewRewriteRule(regexp.MustCompile(".*/custom-bootloaders/(.*)"), "/boot-resources/custom-bootloaders/$1"),
 				},
 			},
-			out: "/boot-resources/custom/bootx64.efi",
+			out: "/boot-resources/custom-bootloaders/bootx64.efi",
 		},
 	}
 
