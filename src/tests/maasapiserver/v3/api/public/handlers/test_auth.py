@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from json import dumps as _dumps
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -902,3 +902,39 @@ class TestAuthApi:
         assert details is not None
         assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
         assert details[0].message == "Invalid or missing OAuth state/nonce."
+
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.clear_cookie"
+    )
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.get_cookie"
+    )
+    async def test_get_logout_success(
+        self,
+        cookie_manager_get_cookie: MagicMock,
+        cookie_manager_clear_cookie: MagicMock,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ) -> None:
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        cookie_manager_get_cookie.side_effect = ["abc123", "def123"]
+        cookie_manager_clear_cookie.side_effect = [None, None, None]
+        services_mock.external_oauth.revoke_token = AsyncMock(
+            return_value=None
+        )
+
+        response = await mocked_api_client.post(f"{self.BASE_PATH}/logout")
+
+        cookie_manager_clear_cookie.assert_any_call(
+            key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN
+        )
+        cookie_manager_clear_cookie.assert_any_call(
+            key=MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN
+        )
+        cookie_manager_clear_cookie.assert_any_call(
+            key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN
+        )
+        services_mock.external_oauth.revoke_token.assert_awaited_once_with(
+            id_token="abc123", refresh_token="def123"
+        )
+        assert response.status_code == 204

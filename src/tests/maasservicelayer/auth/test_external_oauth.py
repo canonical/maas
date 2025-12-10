@@ -451,3 +451,72 @@ class TestOauth2Client:
                 url="https://issuer.com/some_endpoint",
             )
         client.client.get.assert_awaited_once()
+
+    async def test_revoke_token_no_endpoint(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        client._revoke_token = AsyncMock(return_value=None)
+
+        await client.revoke_token(token="abc123")
+
+        client._revoke_token.assert_not_awaited()
+
+    async def test_revoke_token_has_endpoint(self) -> None:
+        revoke_url = "https://issuer.com/revoke"
+        TEST_PROVIDER.metadata.revocation_endpoint = revoke_url
+        client = OAuth2Client(TEST_PROVIDER)
+        client._revoke_token = AsyncMock(return_value=None)
+
+        await client.revoke_token(token="abc123")
+
+        client._revoke_token.assert_awaited_once_with(
+            url=revoke_url, token="abc123"
+        )
+
+    async def test__revoke_token_success(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        test_response = Response(
+            status_code=200,
+            content='{"key": "value"}',
+            request=Request("POST", url="https://issuer.com/some_endpoint"),
+        )
+        req_data = {"token": "abc123", "token_type_hint": "refresh_token"}
+        client.client.post = AsyncMock(return_value=test_response)
+
+        await client._revoke_token(
+            url="https://issuer.com/revoke", token="abc123"
+        )
+
+        client.client.post.assert_awaited_once_with(
+            url="https://issuer.com/revoke", data=req_data
+        )
+
+    async def test__revoke_token_failure(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        test_response = Response(
+            status_code=500,
+            content="Internal Server Error",
+            request=Request("GET", url="https://issuer.com/some_endpoint"),
+        )
+        client.client.post = AsyncMock(return_value=test_response)
+
+        with pytest.raises(HTTPStatusError):
+            await client._revoke_token(
+                url="https://issuer.com/some_endpoint", token="abc123"
+            )
+
+    @patch("maasservicelayer.auth.oidc_jwt.OAuthIDToken.from_token")
+    async def test_parse_raw_id_token(
+        self, mock_from_token: MagicMock
+    ) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        mock_jwks = Mock(KeySet)
+        client._get_provider_jwks = AsyncMock(return_value=mock_jwks)
+
+        await client.parse_raw_id_token(id_token="abc123")
+
+        mock_from_token.assert_called_once_with(
+            provider=TEST_PROVIDER,
+            encoded="abc123",
+            jwks=mock_jwks,
+            skip_validation=True,
+        )

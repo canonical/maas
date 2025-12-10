@@ -3,7 +3,8 @@
 
 from typing import Any
 
-from maasservicelayer.models.tokens import Token
+from maasservicelayer.models.tokens import OIDCRevokedToken, Token
+from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -24,3 +25,19 @@ async def create_test_user_token(
 
     [created_token] = await fixture.create("piston3_token", [token])
     return Token(**created_token)
+
+
+async def create_test_revoked_token(
+    fixture: Fixture, **extra_details: Any
+) -> OIDCRevokedToken:
+    revoked_token = {
+        "token_hash": "abc123",
+        "revoked_at": utcnow(),
+        "user_email": "test@abc.com",
+        "provider_id": 1,
+    }
+    revoked_token.update(extra_details)
+    [created_revoked_token] = await fixture.create(
+        "maasserver_oidcrevokedtoken", [revoked_token]
+    )
+    return OIDCRevokedToken(**created_revoked_token)

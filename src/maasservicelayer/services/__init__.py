@@ -96,7 +96,10 @@ from maasservicelayer.db.repositories.subnet_utilization import (
 )
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.db.repositories.tags import TagsRepository
-from maasservicelayer.db.repositories.tokens import TokensRepository
+from maasservicelayer.db.repositories.tokens import (
+    OIDCRevokedTokenRepository,
+    TokensRepository,
+)
 from maasservicelayer.db.repositories.ui_subnets import UISubnetsRepository
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
@@ -183,7 +186,10 @@ from maasservicelayer.services.subnet_utilization import (
 from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.services.tags import TagsService
 from maasservicelayer.services.temporal import TemporalService
-from maasservicelayer.services.tokens import TokensService
+from maasservicelayer.services.tokens import (
+    OIDCRevokedTokenService,
+    TokensService,
+)
 from maasservicelayer.services.ui_subnets import UISubnetsService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.services.vlans import VlansService
@@ -260,6 +266,7 @@ class ServiceCollectionV3:
     nodegrouptorackcontrollers: NodeGroupToRackControllersService
     nodes: NodesService
     notifications: NotificationsService
+    oidc_revoked_tokens: OIDCRevokedTokenService
     package_repositories: PackageRepositoriesService
     racks: RacksService
     rdns: RDNSService
@@ -479,6 +486,9 @@ class ServiceCollectionV3:
         services.tokens = TokensService(
             context=context, repository=TokensRepository(context)
         )
+        services.oidc_revoked_tokens = OIDCRevokedTokenService(
+            context=context, repository=OIDCRevokedTokenRepository(context)
+        )
         services.consumers = ConsumersService(
             context=context,
             repository=ConsumersRepository(context),
@@ -600,6 +610,7 @@ class ServiceCollectionV3:
             external_oauth_repository=ExternalOAuthRepository(context),
             secrets_service=services.secrets,
             users_service=services.users,
+            revoked_tokens_service=services.oidc_revoked_tokens,
             cache=cache.get(
                 ExternalOAuthService.__name__,
                 ExternalOAuthService.build_cache_object,

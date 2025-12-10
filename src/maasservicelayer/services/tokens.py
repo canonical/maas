@@ -1,10 +1,18 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maasservicelayer.builders.tokens import TokenBuilder
+import hashlib
+
+from maasservicelayer.builders.tokens import (
+    OIDCRevokedTokenBuilder,
+    TokenBuilder,
+)
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.tokens import TokensRepository
-from maasservicelayer.models.tokens import Token
+from maasservicelayer.db.repositories.tokens import (
+    OIDCRevokedTokenRepository,
+    TokensRepository,
+)
+from maasservicelayer.models.tokens import OIDCRevokedToken, Token
 from maasservicelayer.services.base import BaseService
 
 
@@ -22,3 +30,23 @@ class TokensService(BaseService[Token, TokensRepository, TokenBuilder]):
 
     async def get_user_apikeys(self, username: str) -> list[str]:
         return await self.repository.get_user_apikeys(username)
+
+
+class OIDCRevokedTokenService(
+    BaseService[
+        OIDCRevokedToken, OIDCRevokedTokenRepository, OIDCRevokedTokenBuilder
+    ]
+):
+    def __init__(
+        self, context: Context, repository: OIDCRevokedTokenRepository
+    ):
+        super().__init__(context, repository)
+
+    async def create_revoked_token(
+        self, token: str, provider_id: int, email: str
+    ):
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        builder = OIDCRevokedTokenBuilder(
+            provider_id=provider_id, user_email=email, token_hash=token_hash
+        )
+        return await super().create(builder)

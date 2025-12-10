@@ -22,6 +22,7 @@ class ProviderMetadata(BaseModel):
     token_endpoint: str
     userinfo_endpoint: str | None = None
     introspection_endpoint: str | None = None
+    revocation_endpoint: str | None = None
     jwks_uri: str
 
 

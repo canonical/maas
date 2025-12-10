@@ -1635,6 +1635,38 @@ OIDCProviderTable = Table(
     Column("metadata", JSONB, nullable=False),
 )
 
+OIDCRevokedTokenTable = Table(
+    "maasserver_oidcrevokedtoken",
+    METADATA,
+    Column("id", Integer, Identity(), primary_key=True),
+    Column("token_hash", String(64), nullable=False),
+    Column("revoked_at", DateTime(timezone=True), nullable=False),
+    Column(
+        "user_email",
+        String(150),
+        ForeignKey(
+            "auth_user.username", deferrable=True, initially="DEFERRED"
+        ),  # OIDC user profiles have their usernames equal to the email.
+        unique=False,
+        nullable=False,
+    ),
+    Column(
+        "provider_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_oidc_provider.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
+        unique=False,
+    ),
+    UniqueConstraint("token_hash", "provider_id"),
+    Index("maasserver_oidcrevokedtoken_user_email_5f4d1d18", "user_email"),
+    Index("maasserver_oidcrevokedtoken_provider_id_3d1f3f6b", "provider_id"),
+)
+
+
 PackageRepositoryTable = Table(
     "maasserver_packagerepository",
     METADATA,
@@ -1770,6 +1802,7 @@ ResourcePoolTable = Table(
         postgresql_ops={"name": "varchar_pattern_ops"},
     ),
 )
+
 
 RootKeyTable = Table(
     "maasserver_rootkey",

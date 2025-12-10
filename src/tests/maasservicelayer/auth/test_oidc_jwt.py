@@ -68,6 +68,33 @@ class TestBaseOAuthToken:
         assert token.provider == TEST_PROVIDER
 
     @patch("maasservicelayer.auth.oidc_jwt.jwt.decode")
+    @patch("maasservicelayer.auth.oidc_jwt.BaseOAuthToken.validate")
+    async def test_from_token_skips_validation(
+        self,
+        mock_validate: MagicMock,
+        mock_decode: MagicMock,
+    ) -> None:
+        mock_decode.return_value = {
+            "aud": "abc123",
+            "iss": "https://issuer.com",
+            "sub": "user1",
+            "exp": 9999999999,
+            "iat": 1111111111,
+        }
+
+        token = BaseOAuthToken.from_token(
+            provider=TEST_PROVIDER,
+            encoded="fake_token",
+            jwks=TEST_KEYSET,
+            skip_validation=True,
+        )
+
+        mock_validate.assert_not_called()
+        assert token.encoded == "fake_token"
+        assert token.claims["sub"] == "user1"
+        assert token.provider == TEST_PROVIDER
+
+    @patch("maasservicelayer.auth.oidc_jwt.jwt.decode")
     async def test_from_token_decode_error(self, mock_decode: MagicMock):
         mock_decode.side_effect = DecodeError(
             "Failed to decode token: missing required claims."

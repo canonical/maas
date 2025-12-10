@@ -6,6 +6,7 @@ from datetime import timedelta
 import os
 from unittest.mock import ANY, AsyncMock, call, Mock, patch
 
+from authlib.jose import JWTClaims
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from httpx import AsyncClient, HTTPError, Response
 from httpx import Request as HTTPXRequest
@@ -68,6 +69,7 @@ from maasservicelayer.services.external_auth import (
     ExternalOAuthServiceCache,
 )
 from maasservicelayer.services.secrets import SecretNotFound
+from maasservicelayer.services.tokens import OIDCRevokedTokenService
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.encryptor import Encryptor
 from provisioningserver.security import to_bin, to_hex
@@ -834,6 +836,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         return ExternalOAuthService(
             context=Context(),
             external_oauth_repository=Mock(ExternalOAuthRepository),
+            revoked_tokens_service=Mock(OIDCRevokedTokenService),
             secrets_service=Mock(SecretsService),
             users_service=Mock(UsersService),
             cache=Mock(ExternalOAuthServiceCache),
@@ -1417,3 +1420,39 @@ class TestExternalOAuthService(ServiceCommonTests):
         assert data.id_token.encoded == "id_token_value"
         assert data.access_token.encoded == "access_token_value"  # type: ignore
         assert data.refresh_token == "refresh_token_value"
+
+    async def test_revoke_token(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        mock_client = OAuth2Client(provider=test_instance)
+        mock_client.parse_raw_id_token = AsyncMock(
+            return_value=OAuthIDToken(
+                claims=JWTClaims(
+                    header=Mock(), payload={"email": "test@example.com"}
+                ),
+                encoded="id123",
+                provider=test_instance,
+            )
+        )
+        mock_client.revoke_token = AsyncMock(return_value=None)
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+        service_instance.revoked_tokens_service.create_revoked_token = (
+            AsyncMock()
+        )
+
+        await service_instance.revoke_token(
+            id_token="id123", refresh_token="abc123"
+        )
+
+        mock_client.parse_raw_id_token.assert_awaited_once_with(
+            id_token="id123"
+        )
+        service_instance.revoked_tokens_service.create_revoked_token.assert_awaited_once_with(
+            token="abc123",
+            provider_id=1,
+            email="test@example.com",
+        )
+        mock_client.revoke_token.assert_awaited_once_with(token="abc123")

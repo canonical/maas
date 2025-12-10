@@ -89,3 +89,16 @@ class TestCookieManager:
 
         request.cookies.get.assert_called_once_with("missing_key")
         assert result is None
+
+    def test_clear_cookie(self) -> None:
+        request = Mock()
+        response = Mock()
+
+        manager = EncryptedCookieManager(
+            request, response, encryptor=Mock(), ttl_seconds=1200
+        )
+
+        result = manager.clear_cookie("some_key")
+
+        response.delete_cookie.assert_called_once_with(key="some_key")
+        assert result is None

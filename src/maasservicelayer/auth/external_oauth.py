@@ -180,6 +180,19 @@ class OAuth2Client:
             ]
         )
 
+    async def revoke_token(self, token: str) -> None:
+        revoke_url = self.provider.metadata.revocation_endpoint
+        if revoke_url:
+            await self._revoke_token(url=revoke_url, token=token)
+
+    async def parse_raw_id_token(self, id_token: str) -> OAuthIDToken:
+        return OAuthIDToken.from_token(
+            provider=self.provider,
+            encoded=id_token,
+            jwks=await self._get_provider_jwks(),
+            skip_validation=True,
+        )
+
     async def _fetch_and_validate_tokens(
         self, code: str, nonce: str
     ) -> OAuthTokenData:
@@ -298,3 +311,8 @@ class OAuth2Client:
         response = await self.client.get(url=url, headers=headers)
         response.raise_for_status()
         return response.json()
+
+    async def _revoke_token(self, url: str, token: str) -> None:
+        data = {"token": token, "token_type_hint": "refresh_token"}
+        response = await self.client.post(url=url, data=data)
+        response.raise_for_status()

@@ -40,6 +40,10 @@ class BaseOAuthToken:
         aud = self.claims["aud"]
         return aud if isinstance(aud, list) else [aud]
 
+    @cached_property
+    def email(self) -> str:
+        return self.claims["email"]
+
     @classmethod
     def from_token(
         cls,
@@ -47,6 +51,7 @@ class BaseOAuthToken:
         encoded: str,
         jwks: KeySet,
         nonce: str | None = None,
+        skip_validation: bool = False,
     ) -> Self:
         try:
             claims = jwt.decode(encoded, jwks)
@@ -54,6 +59,8 @@ class BaseOAuthToken:
             raise JWTDecodeException() from e
 
         token = cls(claims=claims, encoded=encoded, provider=provider)
+        if skip_validation:
+            return token
         token.validate(nonce=nonce)
 
         return token

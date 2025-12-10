@@ -7,17 +7,28 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
-from maasservicelayer.builders.tokens import TokenBuilder
+from maasservicelayer.builders.tokens import (
+    OIDCRevokedTokenBuilder,
+    TokenBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import Clause, QuerySpec
-from maasservicelayer.db.repositories.base import MultipleResultsException
+from maasservicelayer.db.repositories.base import (
+    AlreadyExistsException,
+    MultipleResultsException,
+)
 from maasservicelayer.db.repositories.tokens import (
+    OIDCRevokedTokenRepository,
     TokenClauseFactory,
     TokensRepository,
 )
-from maasservicelayer.models.tokens import Token
+from maasservicelayer.models.tokens import OIDCRevokedToken, Token
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.consumer import create_test_user_consumer
-from tests.fixtures.factories.token import create_test_user_token
+from tests.fixtures.factories.token import (
+    create_test_revoked_token,
+    create_test_user_token,
+)
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
@@ -168,3 +179,96 @@ class TestConsumersRepository(RepositoryCommonTests[Token]):
         tokens_repository = TokensRepository(Context(connection=db_connection))
         apikeys = await tokens_repository.get_user_apikeys(user.username)
         assert apikeys[0] == apikey
+
+
+@pytest.mark.usefixtures("ensuremaasdb")
+@pytest.mark.asyncio
+class TestOIDCRevokedTokenRepository(RepositoryCommonTests[OIDCRevokedToken]):
+    @pytest.fixture
+    async def _setup_test_list(
+        self, fixture: Fixture, num_objects: int
+    ) -> list[OIDCRevokedToken]:
+        return [
+            await create_test_revoked_token(
+                fixture=fixture, token_hash=f"token_{i}"
+            )
+            for i in range(num_objects)
+        ]
+
+    @pytest.fixture
+    async def repository_instance(
+        self, db_connection: AsyncConnection
+    ) -> OIDCRevokedTokenRepository:
+        return OIDCRevokedTokenRepository(Context(connection=db_connection))
+
+    @pytest.fixture
+    async def instance_builder(
+        self, fixture: Fixture, *args, **kwargs
+    ) -> OIDCRevokedTokenBuilder:
+        return OIDCRevokedTokenBuilder(
+            token_hash="abc123",
+            revoked_at=utcnow(),
+            provider_id=1,
+            user_email="test@abc.com",
+        )
+
+    @pytest.fixture
+    async def instance_builder_model(self) -> type[OIDCRevokedTokenBuilder]:
+        return OIDCRevokedTokenBuilder
+
+    @pytest.fixture
+    async def created_instance(self, fixture: Fixture) -> OIDCRevokedToken:
+        return await create_test_revoked_token(fixture)
+
+    async def test_update_by_id(
+        self, repository_instance, instance_builder
+    ) -> None:
+        created_resource = await repository_instance.create(instance_builder)
+        updated_resource = await repository_instance.update_by_id(
+            created_resource.id, OIDCRevokedTokenBuilder(token_hash="new_hash")
+        )
+        assert updated_resource.token_hash == "new_hash"
+
+    async def test_update_one(
+        self,
+        repository_instance,
+        instance_builder,
+    ) -> None:
+        created_resource = await repository_instance.create(instance_builder)
+        updated_resource = await repository_instance.update_one(
+            QuerySpec(
+                where=Clause(
+                    eq(
+                        repository_instance.get_repository_table().c.id,
+                        created_resource.id,
+                    )
+                )
+            ),
+            OIDCRevokedTokenBuilder(token_hash="new_hash"),
+        )
+        assert updated_resource.token_hash == "new_hash"
+
+    @pytest.mark.parametrize("num_objects", [2])
+    async def test_update_one_multiple_results(
+        self,
+        repository_instance: OIDCRevokedTokenRepository,
+        instance_builder: OIDCRevokedTokenBuilder,
+        _setup_test_list: Sequence[OIDCRevokedToken],
+        num_objects: int,
+    ) -> None:
+        with pytest.raises(AlreadyExistsException):
+            await repository_instance.update_one(QuerySpec(), instance_builder)
+
+    @pytest.mark.parametrize("num_objects", [2])
+    async def test_update_many(
+        self,
+        repository_instance: OIDCRevokedTokenRepository,
+        _setup_test_list: Sequence[OIDCRevokedToken],
+        num_objects: int,
+    ) -> None:
+        builder = OIDCRevokedTokenBuilder(provider_id=2)
+        updated_resources = await repository_instance.update_many(
+            QuerySpec(), builder
+        )
+        assert len(updated_resources) == 2
+        assert all(resource.provider_id == 2 for resource in updated_resources)

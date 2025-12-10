@@ -64,6 +64,7 @@ from maasservicelayer.models.secrets import (
 from maasservicelayer.models.users import User
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
 from maasservicelayer.services.secrets import SecretNotFound, SecretsService
+from maasservicelayer.services.tokens import OIDCRevokedTokenService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.encryptor import Encryptor
@@ -403,6 +404,7 @@ class ExternalOAuthService(
         self,
         context: Context,
         external_oauth_repository: ExternalOAuthRepository,
+        revoked_tokens_service: OIDCRevokedTokenService,
         secrets_service: SecretsService,
         users_service: UsersService,
         cache: ExternalOAuthServiceCache | None = None,
@@ -410,6 +412,7 @@ class ExternalOAuthService(
         super().__init__(context, external_oauth_repository, cache)
         self.secrets_service = secrets_service
         self.users_service = users_service
+        self.revoked_tokens_service = revoked_tokens_service
 
     @staticmethod
     def build_cache_object() -> ExternalOAuthServiceCache:
@@ -526,6 +529,25 @@ class ExternalOAuthService(
             )
 
         return data.tokens
+
+    async def revoke_token(self, id_token: str, refresh_token: str) -> None:
+        client = await self.get_client()
+        if not client:
+            raise PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                        message="No OIDC provider is configured.",
+                    )
+                ]
+            )
+        id_token_object = await client.parse_raw_id_token(id_token=id_token)
+        await self.revoked_tokens_service.create_revoked_token(
+            token=refresh_token,
+            provider_id=client.provider.id,
+            email=id_token_object.email,
+        )
+        await client.revoke_token(token=refresh_token)
 
     @Service.from_cache_or_execute(attr="oauth2_client")
     async def get_client(self) -> OAuth2Client | None:

@@ -400,3 +400,33 @@ class AuthHandler(Handler):
     ) -> Response:
         await services.external_oauth.delete_by_id(provider_id, etag_if_match)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/auth/logout",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            204: {},
+        },
+        status_code=204,
+    )
+    async def logout(
+        self,
+        cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ):
+        id_token, refresh_token = (
+            cookie_manager.get_cookie(key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN),
+            cookie_manager.get_cookie(
+                key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN
+            ),
+        )
+        if id_token and refresh_token:
+            await services.external_oauth.revoke_token(
+                id_token=id_token, refresh_token=refresh_token
+            )
+
+        cookie_manager.clear_cookie(key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN)
+        cookie_manager.clear_cookie(key=MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN)
+        cookie_manager.clear_cookie(key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN)
+        return Response(status_code=204)

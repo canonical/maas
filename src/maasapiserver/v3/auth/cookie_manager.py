@@ -58,3 +58,6 @@ class EncryptedCookieManager:
         if encrypted_value is None:
             return None
         return self.encryptor.decrypt(encrypted_value)
+
+    def clear_cookie(self, key: str) -> None:
+        self.response.delete_cookie(key=key)

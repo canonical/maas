@@ -9,8 +9,13 @@ from sqlalchemy.sql.operators import eq
 from maascommon.enums.token import TokenType
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
-from maasservicelayer.db.tables import ConsumerTable, TokenTable, UserTable
-from maasservicelayer.models.tokens import Token
+from maasservicelayer.db.tables import (
+    ConsumerTable,
+    OIDCRevokedTokenTable,
+    TokenTable,
+    UserTable,
+)
+from maasservicelayer.models.tokens import OIDCRevokedToken, Token
 
 
 class TokenClauseFactory(ClauseFactory):
@@ -72,3 +77,11 @@ class TokensRepository(BaseRepository[Token]):
 
         result = (await self.execute_stmt(stmt)).all()
         return [str(row[0]) for row in result]
+
+
+class OIDCRevokedTokenRepository(BaseRepository[OIDCRevokedToken]):
+    def get_repository_table(self) -> Table:
+        return OIDCRevokedTokenTable
+
+    def get_model_factory(self) -> type[OIDCRevokedToken]:
+        return OIDCRevokedToken
