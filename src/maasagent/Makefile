@@ -18,7 +18,7 @@ export CGO_ENABLED := 1
 export MAKEDIR      = $(CURDIR)
 export GOFLAGS
 
-ARTIFACTS := $(subst /,,$(subst cmd/,,$(wildcard cmd/*/)))
+ARTIFACTS := maas-agent maas-netmon # explicit to exclude maas-dhcp
 
 generated := \
 						 internal/dhcp/xdp/bpf_bpfeb.go \
@@ -39,6 +39,10 @@ build:
 
 $(BUILD_DIR)/%: $(generated) $(deps)
 	$(GO) build -o $(BUILD_DIR)/$* $(LDFLAGS) cmd/$*/*.go
+
+.PHONY: maas-dhcp
+maas-dhcp: $(generated) $(deps)
+	$(GO) build -o $(BUILD_DIR)/maas-dhcp $(LDFLAGS) cmd/maas-dhcp/
 
 .PHONY: install
 install: build
