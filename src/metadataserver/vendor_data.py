@@ -21,7 +21,10 @@ from maasserver.models import Config, NodeKey, NodeMetadata
 from maasserver.models.controllerinfo import get_target_version
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.permissions import NodePermission
-from maasserver.preseed import get_network_yaml_settings
+from maasserver.preseed import (
+    get_base_osystem_series,
+    get_network_yaml_settings,
+)
 from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
@@ -177,8 +180,7 @@ def generate_ephemeral_deployment_network_configuration(node):
     """Generate cloud-init network configuration for ephemeral deployment."""
     if not node.ephemeral_deploy:
         return
-    osystem = node.get_osystem()
-    release = node.get_distro_series()
+    osystem, release = get_base_osystem_series(node)
     network_yaml_settings = get_network_yaml_settings(osystem, release)
     network_config = NodeNetworkConfiguration(
         node,
@@ -195,6 +197,7 @@ def generate_ephemeral_deployment_network_configuration(node):
             {
                 "content": network_config_yaml,
                 "path": "/etc/netplan/50-maas.yaml",
+                "permissions": "0600",
             }
         ],
     )
