@@ -19,7 +19,7 @@ maas config [-h] [--show] [--show-database-password] [--show-secret] [--maas-url
 | --vault-wrapped-token VAULT_WRAPPED_TOKEN | Vault Wrapped Token for AppRole ID. |
 | --vault-secrets-path VAULT_SECRETS_PATH | Path prefix for MAAS secrets in Vault KV storage. |
 | --vault-secrets-mount VAULT_SECRETS_MOUNT | Vault KV mount path. |
-| --secret SECRET | Secret token required for the rack controller to talk to the region controller(s). Only used when in &#39;rack&#39; mode. |
+| --secret SECRET | Secret token required for the rack controller to talk to the region controller(s). Only used when in 'rack' mode. |
 | --num-workers NUM_WORKERS | Number of regiond worker processes to run. |
 | --enable-debug | Enable debug mode for detailed error and log reporting. |
 | --disable-debug | Disable debug mode. |

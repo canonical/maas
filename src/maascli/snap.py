@@ -102,7 +102,7 @@ ARGUMENTS = OrderedDict(
             {
                 "type": int,
                 "help": "Number of regiond worker processes to run.",
-                "for_mode": ["region+rack", "region"],
+                "for_mode": [],
             },
         ),
         (
@@ -112,7 +112,7 @@ ARGUMENTS = OrderedDict(
                 "help": (
                     "Enable debug mode for detailed error and log reporting."
                 ),
-                "for_mode": ["region+rack", "region"],
+                "for_mode": [],
             },
         ),
         (
@@ -120,7 +120,7 @@ ARGUMENTS = OrderedDict(
             {
                 "action": "store_true",
                 "help": "Disable debug mode.",
-                "for_mode": ["region+rack", "region"],
+                "for_mode": [],
             },
         ),
         (
@@ -132,7 +132,7 @@ ARGUMENTS = OrderedDict(
                     "all actions performed. Requires debug to also be True. mode for "
                     "detailed error and log reporting."
                 ),
-                "for_mode": ["region+rack", "region"],
+                "for_mode": [],
             },
         ),
         (
@@ -140,7 +140,7 @@ ARGUMENTS = OrderedDict(
             {
                 "action": "store_true",
                 "help": "Disable query debugging.",
-                "for_mode": ["region+rack", "region"],
+                "for_mode": [],
             },
         ),
     ]

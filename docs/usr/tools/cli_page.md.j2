@@ -24,7 +24,7 @@
 | Option | Effect |
 |---|---|
 {% for row in options %}
-| {{ row.option }} | {{ row.effect }} |
+| {{ row.option }} | {{ row.effect|safe }} |
 {% endfor %}
 
 {% endif %}

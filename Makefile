@@ -500,13 +500,13 @@ print-%:
 cli-docs-introspect:
 	@cd docs/usr/tools \
 		&& PYTHONPATH=$(PWD)/src \
-		   PATH="/snap/bin:$(PWD)/$(VENV)/bin:$(PWD)/$(BIN_DIR):$$PATH" \
+		   PATH="$(PWD)/$(BIN_DIR):$$PATH" \
 		   $(python) maas_cli_introspection.py > $(PWD)/cli.json
 .PHONY: cli-docs-introspect
 
 cli-docs-generate:
 	@PYTHONPATH=$(PWD)/src \
-	  PATH="$(PWD)/$(VENV)/bin:$(PWD)/$(BIN_DIR):$$PATH" \
+	  PATH="$(PWD)/$(BIN_DIR):$$PATH" \
 	  $(python) docs/usr/tools/generate.py \
 	    --source cli.json \
 	    --out docs/usr/markdown \

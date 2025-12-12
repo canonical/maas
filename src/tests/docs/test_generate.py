@@ -4,6 +4,7 @@
 """Tests for `generate` module."""
 
 from pathlib import Path
+import tempfile
 
 import pytest
 
@@ -26,7 +27,7 @@ def test_normalize_text():
 
 def test_bold_list_leaders():
     """Test bolding of list item leaders."""
-    gen = load_module("_generate_module2", TOOLS_DIR / "generate.py")
+    gen = load_module("_generate_module", TOOLS_DIR / "generate.py")
 
     bolded = gen.bold_list_leaders("- Name: description\n  - nested: keep")
     assert "- **Name**: description" in bolded
@@ -35,7 +36,7 @@ def test_bold_list_leaders():
 
 def test_parse_keywords_text():
     """Test parsing of sphinx-style keyword text."""
-    gen = load_module("_generate_module3", TOOLS_DIR / "generate.py")
+    gen = load_module("_generate_module", TOOLS_DIR / "generate.py")
 
     epilog = (
         ":param foo: first line\n"
@@ -55,7 +56,7 @@ def test_parse_keywords_text():
 
 def test_format_usage():
     """Test usage string formatting."""
-    gen = load_module("_generate_module4", TOOLS_DIR / "generate.py")
+    gen = load_module("_generate_module", TOOLS_DIR / "generate.py")
 
     usage = (
         "usage: maas $PROFILE machines read SYSTEM_ID [options]\n"
@@ -69,7 +70,7 @@ def test_format_usage():
 
 def test_extract_positional_args():
     """Test extraction of positional arguments from usage."""
-    gen = load_module("_generate_module5", TOOLS_DIR / "generate.py")
+    gen = load_module("_generate_module", TOOLS_DIR / "generate.py")
 
     usage = "maas $PROFILE machines read SYSTEM_ID [options]"
     args = gen.extract_positional_args(usage, "machines read")
@@ -78,9 +79,16 @@ def test_extract_positional_args():
     )
 
 
+def test_extract_positional_args_top_level_suppressed():
+    """Top-level commands should not inject positional args."""
+    gen = load_module("_generate_module", TOOLS_DIR / "generate.py")
+    usage = "maas login PROFILE URL [CREDENTIALS]"
+    assert gen.extract_positional_args(usage, "login") == []
+
+
 def test_format_options():
     """Test formatting of command options as markdown table."""
-    gen = load_module("_generate_module6", TOOLS_DIR / "generate.py")
+    gen = load_module("_generate_module", TOOLS_DIR / "generate.py")
 
     table = gen.format_options(
         [
@@ -94,7 +102,7 @@ def test_format_options():
 
 def test_format_positional_args():
     """Test formatting of positional arguments as markdown table."""
-    gen = load_module("_generate_module7", TOOLS_DIR / "generate.py")
+    gen = load_module("_generate_module", TOOLS_DIR / "generate.py")
 
     pos = gen.format_positional_args(["system_id", "name"])
     assert "#### Positional arguments" in pos
@@ -104,7 +112,7 @@ def test_format_positional_args():
 
 def test_group_commands_by_resource():
     """Test grouping commands by resource."""
-    gen = load_module("_generate_module8", TOOLS_DIR / "generate.py")
+    gen = load_module("_generate_module", TOOLS_DIR / "generate.py")
 
     cmds = [
         {"key": "maas $PROFILE machines read"},
@@ -116,27 +124,21 @@ def test_group_commands_by_resource():
     assert "login" in groups
 
 
-def test_find_existing_topic_number(tmp_path: Path):
+def test_find_existing_topic_number():
     """Test finding existing topic number from filename."""
-    gen = load_module("_generate_module9", TOOLS_DIR / "generate.py")
+    gen = load_module("_generate_module", TOOLS_DIR / "generate.py")
 
-    outdir = tmp_path
-    (outdir / "machines-12345.md").write_text("x", encoding="utf-8")
-    (outdir / "machine-12345.md").write_text("x", encoding="utf-8")
-    suffix, base_name = gen.find_existing_topic_number("machine", outdir)
-    assert suffix == "12345" and base_name in {"machine", "machines"}
-
-
-def test_extract_positional_args_top_level_suppressed():
-    """Top-level commands should not inject positional args."""
-    gen = load_module("_generate_module10", TOOLS_DIR / "generate.py")
-    usage = "maas login PROFILE URL [CREDENTIALS]"
-    assert gen.extract_positional_args(usage, "login") == []
+    with tempfile.TemporaryDirectory() as tmpdir:
+        outdir = Path(tmpdir)
+        (outdir / "machines-12345.md").write_text("x", encoding="utf-8")
+        (outdir / "machine-12345.md").write_text("x", encoding="utf-8")
+        suffix, base_name = gen.find_existing_topic_number("machine", outdir)
+        assert suffix == "12345" and base_name in {"machine", "machines"}
 
 
-def test_template_renders_additional_info_after_options():
-    """Ensure additional_info paragraph renders after options table."""
-    gen = load_module("_generate_module11", TOOLS_DIR / "generate.py")
+def test_generate_command_markdown():
+    """Test that command markdown is generated correctly."""
+    gen = load_module("_generate_module", TOOLS_DIR / "generate.py")
     env = Environment(
         loader=FileSystemLoader(str(TOOLS_DIR)),
         autoescape=select_autoescape(enabled_extensions=(".j2",)),

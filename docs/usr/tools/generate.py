@@ -6,11 +6,9 @@
 
 import argparse
 import json
-import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -20,16 +18,14 @@ except Exception:
     select_autoescape = None
 
 
-# Dictionary mapping common positional argument names to their descriptions
-POSITIONAL_ARG_DESCRIPTIONS = {
+positional_arg_descriptions = {
     "system_id": "The system ID of the machine/device (e.g., `abc123`)",
     "id": "The ID of the resource (e.g., `1`, `abc123`)",
     "name": "The name of the resource (e.g., `my-machine`, `my-zone`)",
     "data ...": "Additional settings you can add (e.g., `architecture=amd64 hostname=my-machine`)",
 }
 
-# Prefixes to exclude when parsing run modes section
-RUN_MODES_EXCLUDED_PREFIXES = [
+run_modes_excluded_prefixes = [
     "{",
     "}",
     "When installing",
@@ -40,16 +36,13 @@ RUN_MODES_EXCLUDED_PREFIXES = [
     "-h",
 ]
 
-# Prefixes to exclude when parsing positional arguments section
-POSITIONAL_ARGS_EXCLUDED_PREFIXES = [
+positional_args_excluded_prefixes = [
     "{",
     "}",
     "-",
 ]
 
-
-# Top-level commands that should not get positional args injected
-TOP_LEVEL = {
+top_level = {
     "login",
     "logout",
     "list",
@@ -68,23 +61,17 @@ TOP_LEVEL = {
 }
 
 
-def _normalize_period_spacing(text: str) -> str:
+def normalize_period_spacing(text):
     """Normalize spacing after periods to single space."""
-    # Replace multiple spaces after periods with single space
-    # But preserve <br> tags and other HTML entities
-    text = re.sub(r'\.\s{2,}', '. ', text)
-    return text
+    return re.sub(r'\.\s{2,}', '. ', text)
 
 
-def _fix_ellipsis(text: str) -> str:
+def fix_ellipsis(text):
     """Replace '...' with proper ellipsis symbol '…'."""
-    # Replace three dots with ellipsis, but not in code blocks or URLs
-    # Don't replace if it's part of a number or in specific contexts
-    text = re.sub(r'\.\.\.(?!\w)', '…', text)
-    return text
+    return re.sub(r'\.\.\.(?!\w)', '…', text)
 
 
-def _fix_lexical_illusions(text: str) -> str:
+def fix_lexical_illusions(text):
     """Remove repeated words (lexical illusions)."""
     text = re.sub(r'(\d+)\*(\d+)\*(\d+)', r'\1 * \2 * \3', text)
     if re.search(r'[*+\-=/]\s*\d+\s*[*+\-=/]', text):
@@ -102,7 +89,7 @@ def _fix_lexical_illusions(text: str) -> str:
     return text
 
 
-def _fix_curly_quotes(text: str) -> str:
+def fix_curly_quotes(text):
     """Replace straight quotes with curly quotes."""
     if '<br>' in text or '`' not in text:
         left_quote = "\u201C"
@@ -112,14 +99,13 @@ def _fix_curly_quotes(text: str) -> str:
     return text
 
 
-def _fix_weasel_words(text: str) -> str:
+def fix_weasel_words(text):
     """Remove or replace weasel words like 'very'."""
     return re.sub(r'\bvery\s+', '', text, flags=re.IGNORECASE)
 
 
-def _fix_common_misspellings(text: str) -> str:
+def fix_common_misspellings(text):
     """Fix common misspellings found in generated documentation."""
-    # Dictionary of common misspellings: wrong -> correct
     misspellings = {
         'intented': 'intended',
         'sensative': 'sensitive',
@@ -136,50 +122,47 @@ def _fix_common_misspellings(text: str) -> str:
         'dimissing': 'dismissing',
         'transfered': 'transferred',
     }
-    
-    # Use word boundaries to avoid partial matches
+
     for wrong, correct in misspellings.items():
         text = re.sub(r'\b' + re.escape(wrong) + r'\b', correct, text, flags=re.IGNORECASE)
-    
+
     return text
 
 
-def _apply_all_text_fixes(text: str) -> str:
+def apply_all_text_fixes(text):
     """Apply all text normalization fixes."""
     if not text:
         return ""
-    text = _normalize_period_spacing(text)
-    text = _fix_ellipsis(text)
-    text = _fix_lexical_illusions(text)
-    text = _fix_curly_quotes(text)
-    text = _fix_weasel_words(text)
-    text = _fix_common_misspellings(text)
+    text = normalize_period_spacing(text)
+    text = fix_ellipsis(text)
+    text = fix_lexical_illusions(text)
+    text = fix_curly_quotes(text)
+    text = fix_weasel_words(text)
+    text = fix_common_misspellings(text)
     return text
 
 
-def normalize_text(text: str) -> str:
+def normalize_text(text):
     """Normalize text for Markdown output."""
     if not text:
         return ""
     text = re.sub(r"\r\n|\r|\n", "<br>", text.strip()).replace("|", "\\|")
-    return _apply_all_text_fixes(text)
+    return apply_all_text_fixes(text)
 
 
-def escape_md(text: str) -> str:
+def escape_md(text):
+    """Escape markdown pipe characters."""
     if not text:
         return ""
     return text.replace('|', '\\|')
 
 
-def bold_list_leaders(text: str) -> str:
-    """Bold the leader word(s) in list items like "- Name: details".
-
-    Preserves indentation and leaves other lines untouched.
-    """
+def bold_list_leaders(text):
+    """Bold the leader word(s) in list items like "- Name: details"."""
     if not text:
         return text
     lines = text.splitlines()
-    processed: List[str] = []
+    processed = []
     for ln in lines:
         stripped = ln.lstrip()
         indent = (m.group(0) if (m := re.match(r"^\s+", ln)) else "")
@@ -192,61 +175,53 @@ def bold_list_leaders(text: str) -> str:
     return "\n".join(processed)
 
 
-def _parse_param_or_type_line(
-    line: str, prefix: str
-) -> Optional[Tuple[str, str]]:
+def parse_param_or_type_line(line, prefix):
     """Parse a :param or :type line, returning (name, value) or None if invalid."""
     if not line.startswith(prefix):
         return None
     try:
-        after = line[len(prefix) :]
+        after = line[len(prefix):]
         name, value = after.split(":", 1)
         return name.strip(), value.strip()
     except ValueError:
         return None
 
 
-def _collect_continuation_lines(lines: List[str], start_idx: int) -> Tuple[List[str], int]:
+def collect_continuation_lines(lines, start_idx):
     """Collect continuation lines until next :param or :type, returning lines and next index."""
     collected = []
     j = start_idx + 1
     while j < len(lines):
-        nxt = lines[j]
-        nxt_stripped = nxt.strip()
-        if nxt_stripped.startswith(":param ") or nxt_stripped.startswith(":type "):
+        next_line = lines[j]
+        next_stripped = next_line.strip()
+        if next_stripped.startswith(":param ") or next_stripped.startswith(":type "):
             break
-        collected.append(nxt_stripped)
+        collected.append(next_stripped)
         j += 1
     return collected, j
 
 
-def _format_keyword_text(text: str) -> str:
+def format_keyword_text(text):
     """Format keyword text: escape markdown, replace sphinx-style references, convert newlines."""
     text = escape_md(text)
-    try:
-        text = re.sub(r"(?m)^:([a-z0-9_\-]+):", r"**:\1:**", text)
-    except Exception:
-        pass
-    text = _apply_all_text_fixes(text)
+    text = re.sub(r"(?m)^:([a-z0-9_\-]+):", r"**:\1:**", text)
+    text = apply_all_text_fixes(text)
     return "<br>".join(text.splitlines()) if text else ""
 
 
-def _bold_sphinx_directives(text: str) -> str:
+def bold_sphinx_directives(text):
     """Bold Sphinx-style directives like :name: without other formatting."""
-    try:
-        return re.sub(r"(?m)^:([a-z0-9_\-]+):", r"**:\1:**", text)
-    except Exception:
-        return text
+    return re.sub(r"(?m)^:([a-z0-9_\-]+):", r"**:\1:**", text)
 
 
-def _should_blank_overview(overview: str) -> bool:
+def should_blank_overview(overview):
     """Decide whether to blank out overview per formatting heuristic."""
-    if (tmp := overview.replace("<br>", " ").strip()) and ("." not in tmp) and tmp.count(" "):
-        return True
-    return False
+    tmp = overview.replace("<br>", " ").strip()
+    return bool(tmp and "." not in tmp and tmp.count(" "))
 
 
-def _has_positional_section(additional_sections: List[Dict[str, Any]]) -> bool:
+def has_positional_section(additional_sections):
+    """Check if additional_sections contains a positional arguments section."""
     return any(
         isinstance(sec, dict)
         and str(sec.get("title", "")).strip().lower() == "positional arguments"
@@ -254,7 +229,7 @@ def _has_positional_section(additional_sections: List[Dict[str, Any]]) -> bool:
     )
 
 
-def _is_sentence_fragment(sent: str, prev_sentences: List[str], index: int) -> bool:
+def is_sentence_fragment(sent, prev_sentences, index):
     """Check if a sentence is a fragment that should be removed."""
     sent_lower = sent.lower()
     for prev_sent in prev_sentences:
@@ -268,7 +243,7 @@ def _is_sentence_fragment(sent: str, prev_sentences: List[str], index: int) -> b
     return False
 
 
-def _remove_duplicate_sentences(text: str) -> str:
+def remove_duplicate_sentences(text):
     """Remove duplicate sentences and fragments from text."""
     sentences = re.split(r'\.\s+', text)
     seen = set()
@@ -278,7 +253,7 @@ def _remove_duplicate_sentences(text: str) -> str:
         if not sent:
             continue
         sent_lower = sent.lower()
-        if sent_lower not in seen and not _is_sentence_fragment(sent, cleaned, i):
+        if sent_lower not in seen and not is_sentence_fragment(sent, cleaned, i):
             seen.add(sent_lower)
             cleaned.append(sent)
     if cleaned:
@@ -289,32 +264,13 @@ def _remove_duplicate_sentences(text: str) -> str:
     return text
 
 
-def _extract_option_text(opt_text: str, eff_text: str) -> Tuple[str, str]:
-    """Extract option and effect text from potentially malformed input."""
-    if not eff_text and opt_text:
-        if m := re.match(r"^(?P<opt>\S(?:.*?\S)?)\s{2,}(?P<desc>.+)$", opt_text):
-            return m.group("opt"), m.group("desc").strip()
-    if (not eff_text) or eff_text.startswith("Running") or eff_text.startswith("Usage"):
-        if m := re.match(r"^(?P<opt>-?\w+(?:,\s*--\w+)?)\s{2,}(?P<desc>.+)$", opt_text):
-            return m.group("opt"), m.group("desc").strip()
-    return opt_text, eff_text
-
-
-def _normalize_options_list(options: List[Dict[str, Any]]) -> Tuple[List[Dict[str, str]], List[str]]:
+def normalize_options_list(options):
     """Normalize options rows and extract moved notes."""
-    normalized: List[Dict[str, str]] = []
-    moved_notes: List[str] = []
+    normalized = []
+    moved_notes = []
     for row in options:
         opt_text = str(row.get("option", "")).rstrip()
         eff_text = str(row.get("effect", "")).strip()
-
-        opt_text, eff_text = _extract_option_text(opt_text, eff_text)
-
-        if eff_text and "|" in eff_text:
-            eff_text = eff_text.split("|", 1)[0].strip()
-
-        if eff_text and (eff_text.startswith("Running ") or eff_text.startswith("usage")):
-            eff_text = ""
 
         if "If credentials are not provided" in eff_text:
             moved_notes.append(
@@ -323,8 +279,8 @@ def _normalize_options_list(options: List[Dict[str, Any]]) -> Tuple[List[Dict[st
             eff_text = eff_text.split("If credentials are not provided", 1)[0].rstrip()
 
         if eff_text:
-            eff_text = _apply_all_text_fixes(eff_text)
-            eff_text = _remove_duplicate_sentences(eff_text)
+            eff_text = apply_all_text_fixes(eff_text)
+            eff_text = remove_duplicate_sentences(eff_text)
 
         if opt_text:
             normalized.append({"option": opt_text, "effect": eff_text})
@@ -332,7 +288,7 @@ def _normalize_options_list(options: List[Dict[str, Any]]) -> Tuple[List[Dict[st
     return normalized, moved_notes
 
 
-def _remove_optional_prefix(text: str) -> str:
+def remove_optional_prefix(text):
     """Remove leading Optional/Required prefixes from descriptions."""
     while re.match(r'^(Optional|Required)\.\s+', text, flags=re.IGNORECASE):
         text = re.sub(r'^(Optional|Required)\.\s+', '', text, flags=re.IGNORECASE)
@@ -340,32 +296,31 @@ def _remove_optional_prefix(text: str) -> str:
     return text
 
 
-def _clean_lead_text(lead_lines: List[str], parsed_param_names: set) -> str:
+def clean_lead_text(lead_lines, parsed_param_names):
     """Remove parsed :param/:type lines from lead text."""
     cleaned = []
     for line in lead_lines:
         line_stripped = line.strip()
         if line_stripped.startswith(":param "):
-            parsed = _parse_param_or_type_line(line_stripped, ":param ")
+            parsed = parse_param_or_type_line(line_stripped, ":param ")
             if parsed and parsed[0] in parsed_param_names:
                 continue
         if line_stripped.startswith(":type "):
-            parsed = _parse_param_or_type_line(line_stripped, ":type ")
+            parsed = parse_param_or_type_line(line_stripped, ":type ")
             if parsed and parsed[0] in parsed_param_names:
                 continue
         cleaned.append(line)
     lead = "\n".join(cleaned).strip()
     lead = re.sub(r'(:param\s+\w+:\s+(?:Optional|Required))\.\s{2,}', r'\1. ', lead, flags=re.IGNORECASE)
-    lead = _apply_all_text_fixes(lead)
-    return _format_keyword_text(lead)
+    lead = apply_all_text_fixes(lead)
+    return format_keyword_text(lead)
 
 
-def _parse_param_line(lines: List[str], i: int, params: Dict[str, Dict[str, str]], 
-                      param_order: List[str], parsed_param_names: set) -> Tuple[int, Optional[str]]:
+def parse_param_line(lines, i, params, param_order, parsed_param_names):
     """Parse a :param line and return next index and current param name."""
     raw = lines[i]
     line = raw.strip()
-    parsed = _parse_param_or_type_line(line, ":param ")
+    parsed = parse_param_or_type_line(line, ":param ")
     if parsed is None:
         return i + 1, None
     name, desc = parsed
@@ -375,16 +330,16 @@ def _parse_param_line(lines: List[str], i: int, params: Dict[str, Dict[str, str]
         param_order.append(name)
     entry = params[name]
     entry_desc_lines = [desc]
-    continuation_lines, next_idx = _collect_continuation_lines(lines, i)
+    continuation_lines, next_idx = collect_continuation_lines(lines, i)
     entry_desc_lines.extend(continuation_lines)
     desc_text = "\n".join(entry_desc_lines).strip()
-    entry["desc"] = _normalize_period_spacing(desc_text)
+    entry["desc"] = normalize_period_spacing(desc_text)
     return next_idx, name
 
 
-def _parse_type_line(line: str, params: Dict[str, Dict[str, str]], param_order: List[str]) -> bool:
+def parse_type_line(line, params, param_order):
     """Parse a :type line. Returns True if parsed successfully."""
-    parsed = _parse_param_or_type_line(line, ":type ")
+    parsed = parse_param_or_type_line(line, ":type ")
     if parsed is None:
         return False
     name, typ = parsed
@@ -395,26 +350,37 @@ def _parse_type_line(line: str, params: Dict[str, Dict[str, str]], param_order: 
     return True
 
 
-def parse_keywords_text(keywords_text: str) -> Dict[str, Any]:
+def process_continuation_line(raw, current_param, params):
+    """Process a continuation line for current parameter."""
+    if re.match(r"^\s", raw):
+        entry = params.get(current_param, {})
+        desc_text = (entry.get("desc", "") + "\n" + raw.rstrip()).strip()
+        entry["desc"] = normalize_period_spacing(desc_text)
+        params[current_param] = entry
+        return True
+    return False
+
+
+def parse_keywords_text(keywords_text):
     """Parse sphinx-style epilog into structured keywords."""
-    result: Dict[str, Any] = {"lead": "", "params": []}
+    result = {"lead": "", "params": []}
     if not keywords_text:
         return result
 
     lines = keywords_text.splitlines()
-    lead_lines: List[str] = []
-    params: Dict[str, Dict[str, str]] = {}
-    param_order: List[str] = []
-    current_param: Optional[str] = None
+    lead_lines = []
+    params = {}
+    param_order = []
+    current_param = None
     parsed_param_names = set()
 
     i = 0
     while i < len(lines):
         raw = lines[i]
         line = raw.strip()
-        
+
         if line.startswith(":param "):
-            next_idx, param_name = _parse_param_line(lines, i, params, param_order, parsed_param_names)
+            next_idx, param_name = parse_param_line(lines, i, params, param_order, parsed_param_names)
             if param_name:
                 current_param = param_name
                 i = next_idx
@@ -422,7 +388,7 @@ def parse_keywords_text(keywords_text: str) -> Dict[str, Any]:
             lead_lines.append(raw)
             i += 1
         elif line.startswith(":type "):
-            if _parse_type_line(line, params, param_order):
+            if parse_type_line(line, params, param_order):
                 i += 1
                 continue
             lead_lines.append(raw)
@@ -430,28 +396,23 @@ def parse_keywords_text(keywords_text: str) -> Dict[str, Any]:
         else:
             if current_param is None:
                 if line.startswith(":param "):
-                    parsed = _parse_param_or_type_line(line, ":param ")
+                    parsed = parse_param_or_type_line(line, ":param ")
                     if parsed and parsed[0] in parsed_param_names:
                         i += 1
                         continue
                 lead_lines.append(raw)
             else:
-                if re.match(r"^\s", raw):
-                    entry = params.get(current_param, {})
-                    desc_text = (entry.get("desc", "") + "\n" + raw.rstrip()).strip()
-                    entry["desc"] = _normalize_period_spacing(desc_text)
-                    params[current_param] = entry
-                else:
+                if not process_continuation_line(raw, current_param, params):
                     lead_lines.append(raw)
             i += 1
 
     ordered_params = [params[name] for name in param_order]
-    lead = _clean_lead_text(lead_lines, parsed_param_names)
-    
+    lead = clean_lead_text(lead_lines, parsed_param_names)
+
     for e in ordered_params:
-        desc_text = _remove_optional_prefix(e.get("desc", "").strip())
-        desc_text = _apply_all_text_fixes(desc_text)
-        e["desc"] = _format_keyword_text(desc_text)
+        desc_text = remove_optional_prefix(e.get("desc", "").strip())
+        desc_text = apply_all_text_fixes(desc_text)
+        e["desc"] = format_keyword_text(desc_text)
         e["type"] = escape_md(e.get("type", "")).strip()
 
     result["lead"] = lead
@@ -459,7 +420,7 @@ def parse_keywords_text(keywords_text: str) -> Dict[str, Any]:
     return result
 
 
-def format_usage(usage: str, command_path: str) -> str:
+def format_usage(usage, command_path):
     """Format usage string for Markdown."""
     if not usage:
         parts = command_path.split()
@@ -479,7 +440,7 @@ def format_usage(usage: str, command_path: str) -> str:
             usage = usage[:idx].rstrip()
 
     parts = command_path.split()
-    if parts and parts[0] in TOP_LEVEL:
+    if parts and parts[0] in top_level:
         return usage
 
     usage_parts = usage.split()
@@ -490,12 +451,12 @@ def format_usage(usage: str, command_path: str) -> str:
     return usage
 
 
-def format_options(options: List[Dict[str, Any]]) -> str:
+def format_options(options):
     """Format command options as a Markdown table."""
     if not options:
         return ""
 
-    lines: List[str] = []
+    lines = []
     lines.append("#### Command-line options")
     lines.append("| Option | Effect |")
     lines.append("|---|---|")
@@ -507,12 +468,12 @@ def format_options(options: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def extract_positional_args(usage: str, command_path: str) -> List[str]:
+def extract_positional_args(usage, command_path):
     """Extract positional arguments from usage."""
     if not usage:
         return []
     parts = command_path.split()
-    if len(parts) == 1 and parts[0] in TOP_LEVEL:
+    if len(parts) == 1 and parts[0] in top_level:
         return []
     scrubbed = re.sub(r"\[[^\]]*\]", "", usage)
     tokens = scrubbed.split()
@@ -537,7 +498,7 @@ def extract_positional_args(usage: str, command_path: str) -> List[str]:
     ]
 
 
-def format_positional_args(args: List[str]) -> str:
+def format_positional_args(args):
     """Format positional arguments as Markdown table."""
     if not args:
         return ""
@@ -547,7 +508,7 @@ def format_positional_args(args: List[str]) -> str:
     markdown += "|----------|--------|\n"
 
     for arg in args:
-        description = POSITIONAL_ARG_DESCRIPTIONS.get(
+        description = positional_arg_descriptions.get(
             arg, f"The {arg} parameter"
         )
 
@@ -557,7 +518,7 @@ def format_positional_args(args: List[str]) -> str:
     return markdown
 
 
-def _is_malformed_content(content: str) -> bool:
+def is_malformed_content(content):
     """Check if content looks like malformed concatenated text."""
     if re.match(r'^\[--[\w-]+', content.strip()):
         return True
@@ -566,34 +527,30 @@ def _is_malformed_content(content: str) -> bool:
     return False
 
 
-def _clean_additional_sections(additional_sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def clean_additional_sections(additional_sections):
     """Filter and clean additional sections."""
     cleaned = []
-    try:
-        for sec in additional_sections:
-            if isinstance(sec, dict) and isinstance(sec.get("content"), str):
-                content = sec["content"]
-                if sec.get("title") == "additional_info" and _is_malformed_content(content):
-                    continue
-                content = _apply_all_text_fixes(content)
-                sec["content"] = bold_list_leaders(content)
-                if sec["content"].strip():
-                    cleaned.append(sec)
-            else:
+    for sec in additional_sections:
+        if isinstance(sec, dict) and isinstance(sec.get("content"), str):
+            content = sec["content"]
+            if sec.get("title") == "additional_info" and is_malformed_content(content):
+                continue
+            content = apply_all_text_fixes(content)
+            sec["content"] = bold_list_leaders(content)
+            if sec["content"].strip():
                 cleaned.append(sec)
-    except Exception:
-        return additional_sections
+        else:
+            cleaned.append(sec)
     return cleaned
 
 
-def render_with_template(env: Any, context: Dict[str, Any]) -> str:
+def render_with_template(env, context):
+    """Render template with context."""
     template = env.get_template("cli_page.md.j2")
     return template.render(**context)
 
 
-def generate_command_markdown(
-    env: Any, command: Dict[str, Any], command_path: str
-) -> str:
+def generate_command_markdown(env, command, command_path):
     """Generate Markdown content for a single command using Jinja2."""
     overview_raw = command.get("overview", "") or ""
     overview_lines = [
@@ -602,12 +559,13 @@ def generate_command_markdown(
         if not ln.strip().lower().startswith("cli help for:")
     ]
     overview = normalize_text("\n".join(overview_lines))
-    if overview and overview.endswith("<br>") and _should_blank_overview(overview):
+    if overview and overview.endswith("<br>") and should_blank_overview(overview):
         overview = ""
     usage_raw = command.get("usage", "")
     options = command.get("options", [])
     keywords_text = command.get("keywords_text", "")
     keywords = parse_keywords_text(keywords_text)
+    
     usage = format_usage(usage_raw, command_path)
     if overview_lines:
         ov_line = overview_lines[0].strip()
@@ -615,14 +573,14 @@ def generate_command_markdown(
             usage = usage[: -len(ov_line)].rstrip()
 
     additional_sections = command.get("additional_sections", [])
-    has_positional_section = _has_positional_section(additional_sections)
+    has_pos_section = has_positional_section(additional_sections)
     positional_args = (
         []
-        if has_positional_section
+        if has_pos_section
         else extract_positional_args(usage, command_path)
     )
 
-    if (not has_positional_section) and not positional_args and overview:
+    if (not has_pos_section) and not positional_args and overview:
         token_only = re.match(
             r"^[a-z_][a-z0-9_]*(\s+[a-z_][a-z0-9_]*)+$",
             overview.replace("<br>", " "),
@@ -631,7 +589,7 @@ def generate_command_markdown(
             positional_args = overview.replace("<br>", " ").split()
             overview = ""
 
-    normalized_options, moved_notes = _normalize_options_list(options)
+    normalized_options, moved_notes = normalize_options_list(options)
 
     if moved_notes:
         additional_sections.append(
@@ -639,20 +597,20 @@ def generate_command_markdown(
         )
 
     if keywords_text and not (keywords.get("params") or keywords.get("lead")):
-        keywords_text = _apply_all_text_fixes(keywords_text)
-        keywords_text = _bold_sphinx_directives(keywords_text)
+        keywords_text = apply_all_text_fixes(keywords_text)
+        keywords_text = bold_sphinx_directives(keywords_text)
     else:
         keywords_text = ""
 
-    additional_sections = _clean_additional_sections(additional_sections)
+    additional_sections = clean_additional_sections(additional_sections)
 
     context = {
         "overview": overview,
         "usage": usage,
         "positional_args": positional_args,
-        "positional_arg_descriptions": POSITIONAL_ARG_DESCRIPTIONS,
-        "run_modes_excluded_prefixes": RUN_MODES_EXCLUDED_PREFIXES,
-        "positional_args_excluded_prefixes": POSITIONAL_ARGS_EXCLUDED_PREFIXES,
+        "positional_arg_descriptions": positional_arg_descriptions,
+        "run_modes_excluded_prefixes": run_modes_excluded_prefixes,
+        "positional_args_excluded_prefixes": positional_args_excluded_prefixes,
         "options": normalized_options,
         "keywords_text": keywords_text,
         "keywords": keywords,
@@ -663,12 +621,12 @@ def generate_command_markdown(
     return render_with_template(env, context)
 
 
-def path_to_filename(path: str) -> str:
+def path_to_filename(path):
     """Convert command path to filename."""
     return path.replace(" ", "-").lower() + ".md"
 
 
-def pluralize_for_filename(base_name: str) -> str:
+def pluralize_for_filename(base_name):
     """Convert singular filename to plural form for lookup."""
     plural_map = {
         'commissioning-script': 'commissioning-scripts',
@@ -680,9 +638,7 @@ def pluralize_for_filename(base_name: str) -> str:
     return plural_map.get(base_name, base_name)
 
 
-def find_existing_topic_number(
-    base_name: str, output_dir: Path
-) -> Tuple[Optional[str], Optional[str]]:
+def find_existing_topic_number(base_name, output_dir):
     """Find existing file with topic number or return None."""
     if not output_dir.exists():
         return None, None
@@ -706,9 +662,9 @@ def find_existing_topic_number(
     return None, None
 
 
-def singularize_resource(resource: str) -> str:
+def singularize_resource(resource):
     """Singularize a CLI resource token."""
-    curated: Dict[str, str] = {
+    curated = {
         "machines": "machine",
         "nodes": "node",
         "subnets": "subnet",
@@ -756,7 +712,7 @@ def singularize_resource(resource: str) -> str:
     return resource
 
 
-def parse_key_to_group(key: str) -> Tuple[str, Optional[str]]:
+def parse_key_to_group(key):
     """Return (group_name, command_path_for_usage)."""
     parts = key.split()
     if len(parts) >= 3 and parts[0] == "maas":
@@ -777,11 +733,9 @@ def parse_key_to_group(key: str) -> Tuple[str, Optional[str]]:
     return fallback or key, fallback or key
 
 
-def group_commands_by_resource(
-    commands: List[Dict[str, Any]]
-) -> Dict[str, List[Tuple[Dict[str, Any], str]]]:
+def group_commands_by_resource(commands):
     """Group commands by resource base (singular), or by top-level cmd."""
-    groups: Dict[str, List[Tuple[Dict[str, Any], str]]] = {}
+    groups = {}
     for cmd in commands:
         key = str(cmd.get("key", ""))
         group, command_path = parse_key_to_group(key)
@@ -816,7 +770,7 @@ def main():
     )
     args = parser.parse_args()
 
-    nodes: List[Dict[str, Any]] = []
+    nodes = []
     try:
         if args.stdin:
             nodes = json.load(sys.stdin)
@@ -824,21 +778,21 @@ def main():
             with open(args.source, "r", encoding="utf-8") as f:
                 nodes = json.load(f)
         else:
-            print("Error: Provide --stdin or --source")
+            print("Error: Provide --stdin or --source", file=sys.stderr)
             return 2
     except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON: {e}")
+        print(f"Error: Invalid JSON: {e}", file=sys.stderr)
         return 1
 
     if not isinstance(nodes, list) or not nodes:
-        print("Warning: No commands found in input")
+        print("Warning: No commands found in input", file=sys.stderr)
         return 0
 
     output_dir = Path(args.out)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if Environment is None:
-        print("Error: Jinja2 is required to render templates.")
+        print("Error: Jinja2 is required to render templates.", file=sys.stderr)
         return 1
     env = Environment(
         loader=FileSystemLoader(args.template_dir),
@@ -847,13 +801,13 @@ def main():
         lstrip_blocks=True,
     )
 
-    seen_keys: Dict[str, Dict[str, Any]] = {}
+    seen_keys = {}
     for node in nodes:
         k = str(node.get("key", ""))
         if not k:
             continue
         seen_keys[k] = node
-    unique_commands: List[Dict[str, Any]] = [
+    unique_commands = [
         seen_keys[k] for k in sorted(seen_keys.keys())
     ]
 
@@ -887,7 +841,7 @@ def main():
 
         filepath = output_dir / filename
 
-        markdown_parts: List[str] = []
+        markdown_parts = []
         for command, command_path in sorted(
             cmd_list, key=lambda t: (t[1], str(t[0].get("key", "")))
         ):

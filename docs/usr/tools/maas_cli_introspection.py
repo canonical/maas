@@ -8,9 +8,7 @@ import argparse
 import json
 import os
 import re
-import subprocess
 import sys
-from typing import Any, Dict, List, Set
 
 try:
     import importlib.metadata as _ilm
@@ -18,13 +16,10 @@ except ImportError:
     _ilm = None
 
 
-def eprint(msg: str) -> None:
-    sys.stderr.write(msg + "\n")
-# Compiled regexes (shared)
-USAGE_LINE_RE = re.compile(r"^usage\s*:?", re.IGNORECASE)
-OPT_DESC_RE = re.compile(r"^(?P<opt>\S.*?\S)\s{2,}(?P<desc>.+)$")
-# Built-in top-level commands available without profiles
-BUILTINS = {
+re_usage_line = re.compile(r"^usage\s*:?", re.IGNORECASE)
+re_opt_desc = re.compile(r"^(?P<opt>\S.*?\S)\s{2,}(?P<desc>.+)$")
+
+builtins = {
     "login",
     "logout",
     "list",
@@ -42,26 +37,23 @@ BUILTINS = {
     "msm",
 }
 
-# Commands to exclude from shell-discovered top-level list
-PROFILE_COMMANDS = {"admin", "local"}
 
-
-
-def add_repo_src_to_path() -> None:
+def add_repo_src_to_path():
+    """Add repository src directory to Python path."""
     repo_root = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "..", "..")
     )
     src_dir = os.path.join(repo_root, "src")
     if os.path.isdir(src_dir) and src_dir not in sys.path:
         sys.path.insert(0, src_dir)
-        eprint(f"[introspect] Using repo src: {src_dir}")
 
 
-def build_parser(argv0: str = "maas") -> argparse.ArgumentParser:
+def build_parser(argv0="maas"):
+    """Build and return the MAAS CLI argument parser."""
     if _ilm is not None:
         _orig_distribution = getattr(_ilm, "distribution", None)
 
-        def _fake_distribution(name: str):
+        def _fake_distribution(name):
             if name == "maas":
 
                 class _Dummy:
@@ -76,44 +68,71 @@ def build_parser(argv0: str = "maas") -> argparse.ArgumentParser:
 
         if _orig_distribution is not None:
             _ilm.distribution = _fake_distribution
-            eprint(
-                "[introspect] Patched importlib.metadata.distribution "
-                "for 'maas'"
+
+    try:
+        from maascli.parser import prepare_parser
+
+        snap_env_was_set = "SNAP" in os.environ
+        if not snap_env_was_set:
+            try:
+                import maascli.snap
+                os.environ["SNAP"] = "/snap/maas/current"
+                os.environ["SNAP_DATA"] = "/var/snap/maas/current"
+                os.environ["SNAP_COMMON"] = "/var/snap/maas/common"
+            except ImportError:
+                pass
+
+        fake_argv = [argv0]
+        parser = prepare_parser(fake_argv)
+
+        if not snap_env_was_set and "SNAP" in os.environ:
+            del os.environ["SNAP"]
+            if "SNAP_DATA" in os.environ:
+                del os.environ["SNAP_DATA"]
+            if "SNAP_COMMON" in os.environ:
+                del os.environ["SNAP_COMMON"]
+
+        return parser
+    except ImportError:
+        raise
+
+
+def generate_api_description_from_source():
+    """Generate API description from source code without needing a live server."""
+    try:
+        if "DJANGO_SETTINGS_MODULE" not in os.environ:
+            os.environ.setdefault(
+                "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings"
             )
 
-    from maascli.parser import prepare_parser
+        try:
+            import django
+            django.setup()
+        except ImportError:
+            return None
 
-    fake_argv = [argv0]
-    parser = prepare_parser(fake_argv)
-    eprint("[introspect] Parser constructed via maascli.parser.prepare_parser")
-    return parser
+        try:
+            from maasserver.api.doc import get_api_description
+            return get_api_description()
+        except ImportError:
+            return None
+    except Exception:
+        return None
 
 
-def try_register_api_profile(
-    parser: argparse.ArgumentParser,
-) -> bool:
-    """Synthesize profile from API describe/ if no profiles configured."""
+def try_register_api_profile(parser):
+    """Register API profile from source-generated API description."""
     try:
-        from maascli.api import (
-            fetch_api_description,
-            register_resources,
-            profile_help,
-        )
+        from maascli.api import register_resources, profile_help
 
-        # If profiles already exist, nothing to do.
-        has_profile = False
         for action in parser._actions:
             if isinstance(action, argparse._SubParsersAction):
-                for name in action.choices.keys():
-                    if name not in BUILTINS:
-                        has_profile = True
-                        break
-        if has_profile:
-            eprint(
-                "[introspect] Profiles already registered; "
-                "skipping synthetic API profile"
-            )
-            return True
+                if any(name not in builtins for name in action.choices.keys()):
+                    return True
+
+        description = generate_api_description_from_source()
+        if description is None:
+            return False
 
         from maascli.utils import api_url as _normalize_api_url
 
@@ -121,11 +140,6 @@ def try_register_api_profile(
             "MAAS_INTROSPECT_URL", "http://localhost:5240/MAAS/"
         )
         api_base = _normalize_api_url(base_url)
-        eprint(
-            f"[introspect] Fetching API description from: "
-            f"{api_base}describe/"
-        )
-        description = fetch_api_description(api_base)
 
         profile = {
             "name": "local",
@@ -143,34 +157,28 @@ def try_register_api_profile(
             epilog=profile_help,
         )
         register_resources(profile, sub)
-        eprint(
-            "[introspect] Synthetic profile 'local' registered from "
-            "API describe"
-        )
         return True
-    except Exception as exc:
-        eprint(
-            f"[introspect] Could not register synthetic API profile: {exc}"
-        )
+    except Exception:
         return False
 
 
-def get_subparsers(
-    parser: argparse.ArgumentParser,
-) -> List[argparse._SubParsersAction]:
-    subparsers: List[argparse._SubParsersAction] = []
+def get_subparsers(parser):
+    """Extract all subparsers from the argument parser."""
+    subparsers = []
     for action in parser._actions:
         if isinstance(action, argparse._SubParsersAction):
             subparsers.append(action)
     return subparsers
 
 
-def collect_optional_rows(
-    parser: argparse.ArgumentParser,
-) -> List[Dict[str, Any]]:
-    rows: List[Dict[str, Any]] = []
+def collect_optional_rows(parser):
+    """Collect optional argument rows from parser."""
+    rows = []
     for action in parser._get_optional_actions():
         if not getattr(action, "option_strings", None):
+            continue
+        help_text = getattr(action, "help", None)
+        if help_text == argparse.SUPPRESS or help_text == "==SUPPRESS==":
             continue
         option_sig = ", ".join(action.option_strings)
         metavar = None
@@ -182,10 +190,8 @@ def collect_optional_rows(
             metavar = action.dest.upper().replace("-", "_")
         if metavar:
             option_sig = f"{option_sig} {metavar}"
-        help_text = getattr(action, "help", None) or ""
-        help_text = str(help_text)
-        # Escape pipes and normalize whitespace/newlines once
-        help_text = help_text.replace("|", r"\|")
+        help_text = help_text or ""
+        help_text = str(help_text).replace("|", r"\|")
         help_text = "<br>".join(line.strip() for line in help_text.splitlines()).strip()
         rows.append(
             {
@@ -211,13 +217,56 @@ def collect_optional_rows(
     return rows
 
 
-def node_key(path: List[str]) -> str:
+def node_key(path):
+    """Generate a key from a command path."""
     return " ".join(path)
 
 
-def describe_parser(
-    parser: argparse.ArgumentParser, path: List[str]
-) -> Dict[str, Any]:
+def parse_simple_sections(help_text, description):
+    """Parse additional sections from help text (e.g., 'Examples:', 'See also:')."""
+    additional_sections = []
+    lines = help_text.splitlines()
+    current_section = None
+    current_section_content = []
+
+    for line in lines:
+        s = line.strip()
+        if (
+            s.endswith(":")
+            and not s.startswith("-")
+            and s not in ["usage:", "options:", "optional arguments:"]
+        ):
+            if current_section is not None and current_section_content:
+                additional_sections.append(
+                    {
+                        "title": current_section,
+                        "content": "\n".join(current_section_content),
+                    }
+                )
+            current_section = s.rstrip(":")
+            current_section_content = []
+        elif current_section is not None:
+            current_section_content.append(line)
+        elif (
+            s
+            and not s.startswith(("usage", "options", "optional arguments"))
+            and s != description.strip()
+        ):
+            current_section_content.append(line)
+
+    if current_section is not None and current_section_content:
+        additional_sections.append(
+            {
+                "title": current_section,
+                "content": "\n".join(current_section_content),
+            }
+        )
+
+    return additional_sections
+
+
+def describe_parser(parser, path):
+    """Describe a parser node with its usage, options, and metadata."""
     usage = parser.format_usage().strip()
     description = parser.description or ""
     epilog = parser.epilog or ""
@@ -227,61 +276,11 @@ def describe_parser(
 
     additional_sections = []
     if len(path) == 2 and path[0] == "maas":
-        command = path[1]
         try:
-            proc = subprocess.run(
-                ["maas", command, "-h"],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            help_text = proc.stdout or proc.stderr or ""
-
-            lines = help_text.splitlines()
-            current_section = None
-            current_section_content = []
-
-            for line in lines:
-                s = line.strip()
-                if (
-                    s.endswith(":")
-                    and not s.startswith("-")
-                    and s
-                    not in ["usage:", "options:", "optional arguments:"]
-                ):
-                    if current_section is not None and current_section_content:
-                        additional_sections.append(
-                            {
-                                "title": current_section,
-                                "content": "\n".join(current_section_content),
-                            }
-                        )
-                    current_section = s.rstrip(":")
-                    current_section_content = []
-                elif current_section is not None:
-                    current_section_content.append(line)
-                elif (
-                    s
-                    and not s.startswith(
-                        ("usage", "options", "optional arguments")
-                    )
-                    and s != description.strip()
-                ):
-                    current_section_content.append(line)
-
-            if current_section is not None and current_section_content:
-                additional_sections.append(
-                    {
-                        "title": current_section,
-                        "content": "\n".join(current_section_content),
-                    }
-                )
-
-        except Exception as exc:
-            eprint(
-                f"[introspect] Could not get additional sections for "
-                f"'maas {command}': {exc}"
-            )
+            help_text = parser.format_help()
+            additional_sections = parse_simple_sections(help_text, description)
+        except Exception:
+            pass
 
     return {
         "key": node_key(path),
@@ -302,25 +301,20 @@ def describe_parser(
     }
 
 
-def walk(
-    parser: argparse.ArgumentParser, path: List[str]
-) -> Dict[str, Any]:
+def walk(parser, path):
+    """Recursively walk the parser tree and build a node structure."""
     node = describe_parser(parser, path)
     subparsers = get_subparsers(parser)
-    total_children = 0
     for sp in subparsers:
         for name, subparser in sorted(sp.choices.items()):
             child_path = path + [name]
-            eprint(f"[introspect] Descend: {' '.join(child_path)}")
             child_node = walk(subparser, child_path)
             node["children"].append(child_node)
-            total_children += 1
-    if total_children == 0:
-        eprint(f"[introspect] Leaf: {' '.join(path)}")
     return node
 
 
-def flatten(node: Dict[str, Any]) -> List[Dict[str, Any]]:
+def flatten(node):
+    """Flatten a tree of nodes into a list."""
     out = [
         {k: v for k, v in node.items() if k != "children"}
     ]
@@ -329,122 +323,112 @@ def flatten(node: Dict[str, Any]) -> List[Dict[str, Any]]:
     return out
 
 
-def _normalize_drill_down(content: List[str]) -> str:
-    entries: List[str] = []
+def normalize_drill_down(content):
+    """Normalize drill-down section content by pairing commands with descriptions."""
+    entries = []
     i = 0
     while i < len(content):
-        t0 = content[i].strip()
-        if not t0 or t0 == "COMMAND":
+        line_text = content[i].strip()
+        if not line_text or line_text == "COMMAND":
             i += 1
             continue
-        if "  " in t0:
-            entries.append(t0)
+        if "  " in line_text:
+            entries.append(line_text)
             i += 1
             continue
         desc = ""
         if i + 1 < len(content):
-            nxt = content[i + 1]
-            if nxt.startswith(" ") or nxt.startswith("\t"):
-                desc = nxt.strip()
+            next_line = content[i + 1]
+            if next_line.startswith(" ") or next_line.startswith("\t"):
+                desc = next_line.strip()
                 i += 2
             else:
                 i += 1
         else:
             i += 1
         if desc:
-            entries.append(f"{t0}  {desc}")
+            entries.append(f"{line_text}  {desc}")
         else:
-            entries.append(t0)
+            entries.append(line_text)
     return "\n".join(entries)
 
 
-def _normalize_positional_args(content: List[str]) -> str:
-    entries: List[str] = []
-    # Join all content into a single string for processing
+def _parse_positional_args_compact(full_text, matches):
+    """Parse positional args when multiple args are on one line (compact format)."""
+    entries = []
+    for i, match in enumerate(matches):
+        arg_name = match.group(1)
+        desc_start = match.end()
+        desc_end = matches[i + 1].start() if i + 1 < len(matches) else len(full_text)
+        desc = full_text[desc_start:desc_end].strip()
+        if desc.endswith(".") and i + 1 < len(matches):
+            desc = desc[:-1].strip()
+        if desc:
+            entries.append(f"{arg_name}  {desc}")
+        else:
+            entries.append(arg_name)
+    return entries
+
+
+def _parse_positional_args_multiline(content):
+    """Parse positional args when each arg is on separate lines (multiline format)."""
+    entries = []
+    i = 0
+    while i < len(content):
+        head = content[i]
+        head_stripped = head.strip()
+        name = head_stripped
+        first_desc = ""
+        m = re.match(r"^(?P<name>\S.*?)\s{2,}(?P<desc>.+)$", head_stripped)
+        if m:
+            name = m.group("name").strip()
+            first_desc = m.group("desc").strip()
+        if not name:
+            i += 1
+            continue
+        desc_parts = []
+        if first_desc:
+            desc_parts.append(first_desc)
+        j = i + 1
+        while j < len(content):
+            next_line = content[j]
+            if next_line.startswith(" ") or next_line.startswith("\t"):
+                desc_parts.append(next_line.strip())
+                j += 1
+            else:
+                break
+        desc = " ".join(desc_parts).strip()
+        if desc:
+            entries.append(f"{name}  {desc}")
+        else:
+            entries.append(name)
+        i = j
+    return entries
+
+
+def normalize_positional_args(content):
+    """Normalize positional arguments section by extracting argument names and descriptions."""
     full_text = " ".join(line.strip() for line in content if line.strip())
-    
-    # Find all argument boundaries: word followed by 2+ spaces
     matches = list(re.finditer(r'(\S+)\s{2,}', full_text))
-    
+
     if len(matches) > 1:
-        # Multiple args on one line - parse them
-        for i, match in enumerate(matches):
-            arg_name = match.group(1)
-            desc_start = match.end()
-            desc_end = matches[i + 1].start() if i + 1 < len(matches) else len(full_text)
-            desc = full_text[desc_start:desc_end].strip()
-            # Remove trailing period if it's clearly separating from next arg
-            if desc.endswith(".") and i + 1 < len(matches):
-                desc = desc[:-1].strip()
-            if desc:
-                entries.append(f"{arg_name}  {desc}")
-            else:
-                entries.append(arg_name)
+        entries = _parse_positional_args_compact(full_text, matches)
     else:
-        # Original single-arg-per-line logic or single arg
-        i = 0
-        while i < len(content):
-            head = content[i]
-            head_stripped = head.strip()
-            name = head_stripped
-            first_desc = ""
-            m = re.match(
-                r"^(?P<name>\S.*?)\s{2,}(?P<desc>.+)$", head_stripped
-            )
-            if m:
-                name = m.group("name").strip()
-                first_desc = m.group("desc").strip()
-            if not name:
-                i += 1
-                continue
-            desc_parts: List[str] = []
-            if first_desc:
-                desc_parts.append(first_desc)
-            j = i + 1
-            while j < len(content):
-                nxt = content[j]
-                if nxt.startswith(" ") or nxt.startswith("\t"):
-                    desc_parts.append(nxt.strip())
-                    j += 1
-                else:
-                    break
-            desc = " ".join(desc_parts).strip()
-            if desc:
-                entries.append(f"{name}  {desc}")
-            else:
-                entries.append(name)
-            i = j
+        entries = _parse_positional_args_multiline(content)
     
     return "\n".join(entries)
 
 
-def synthesize_top_level_node(command: str) -> Dict[str, Any]:
-    """Build node for top-level command by running 'maas <cmd> -h'."""
-    help_text = ""
-    try:
-        proc = subprocess.run(
-            ["maas", command, "-h"],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        help_text = proc.stdout or proc.stderr or ""
-    except Exception as exc:
-        eprint(f"[introspect] Could not shell 'maas {command} -h': {exc}")
-        help_text = ""
-
-    usage = ""
-    overview = ""
-    lines = help_text.splitlines()
-
-    def _is_usage_line(s: str) -> bool:
-        return USAGE_LINE_RE.match(s) is not None
+def extract_usage_and_overview(lines, command):
+    """Extract usage string and overview description from help text lines."""
+    def is_usage_line(s):
+        return re_usage_line.match(s) is not None
 
     usage_lines = []
     in_usage = False
     for line in lines:
         s = line.strip()
-        if _is_usage_line(s):
+        if is_usage_line(s):
             in_usage = True
             usage_lines.append(s)
             continue
@@ -461,13 +445,13 @@ def synthesize_top_level_node(command: str) -> Dict[str, Any]:
         elif in_usage:
             break
 
-    if usage_lines:
-        usage = " ".join(usage_lines)
+    usage = " ".join(usage_lines) if usage_lines else f"usage: maas {command} [-h]"
 
     in_usage_section = False
+    overview = ""
     for line in lines:
         s = line.strip()
-        if _is_usage_line(s):
+        if is_usage_line(s):
             in_usage_section = True
             continue
         if in_usage_section and s and not s.startswith(
@@ -476,141 +460,46 @@ def synthesize_top_level_node(command: str) -> Dict[str, Any]:
             overview = s
             break
 
-    if not usage:
-        usage = f"usage: maas {command} [-h]"
     if not overview:
         overview = f"CLI help for: maas {command} [-h]"
 
-    options = []
-    additional_sections = []
-    current_section = None
-    current_section_content = []
-    current_section_content_raw: List[str] = []
-    section_raw_lines: Set[str] = set()
-    current_option = None
-    current_desc_lines = []
+    return usage, overview
 
-    in_options = False
-    in_other_section = False
 
-    for line in lines:
-        s = line.strip()
+def finalize_option(current_option, current_desc_lines):
+    """Create option dict from option text and description lines."""
+    desc = " ".join(current_desc_lines).strip()
+    opt_text = current_option
+    if not desc:
+        m = re_opt_desc.match(opt_text) or re.match(
+            r"^(?P<opt>\S.*?\S)\s{2,}(?P<desc>.+)$", opt_text
+        )
+        if m:
+            opt_text = m.group("opt").strip()
+            desc = m.group("desc").strip()
+    return {"option": opt_text, "effect": desc}
 
-        if s.endswith(":") and not s.startswith("-"):
-            if current_section is not None:
-                if current_section in ("options", "optional arguments"):
-                    if current_option is not None:
-                        desc = " ".join(current_desc_lines).strip()
-                        opt_text = current_option
-                        if not desc:
-                            if m := OPT_DESC_RE.match(opt_text):
-                                opt_text = m.group("opt").strip()
-                                desc = m.group("desc").strip()
-                        options.append({"option": opt_text, "effect": desc})
-                else:
-                    if current_section_content:
-                        content = "\n".join(current_section_content)
-                        title_lower = current_section.strip().lower()
-                        if title_lower == "drill down":
-                            content = _normalize_drill_down(
-                                current_section_content
-                            )
-                        elif title_lower == "positional arguments":
-                            content = _normalize_positional_args(
-                                current_section_content
-                            )
-                        additional_sections.append(
-                            {"title": current_section, "content": content}
-                        )
 
-                    # Record raw lines from the section we just finished
-                    for rl in current_section_content_raw:
-                        section_raw_lines.add(rl.strip())
-                    current_section = s.rstrip(":")
-                    current_section_content = []
-                    current_section_content_raw = []
-            # Record raw lines from the previous section when switching
-            if current_section_content_raw:
-                for rl in current_section_content_raw:
-                    section_raw_lines.add(rl.strip())
-            current_section = s.rstrip(":")
-            current_section_content = []
-            current_section_content_raw = []
-            current_option = None
-            current_desc_lines = []
+def finalize_section(
+    current_section,
+    current_section_content,
+    current_section_content_raw,
+    section_raw_lines,
+):
+    """Finalize a section by normalizing content and tracking raw lines."""
+    content = "\n".join(current_section_content)
+    title_lower = current_section.strip().lower()
+    if title_lower == "drill down":
+        content = normalize_drill_down(current_section_content)
+    elif title_lower == "positional arguments":
+        content = normalize_positional_args(current_section_content)
 
-            if current_section in ("options", "optional arguments"):
-                in_options = True
-                in_other_section = False
-            else:
-                in_options = False
-                in_other_section = True
-            continue
+    section_raw_lines.update(rl.strip() for rl in current_section_content_raw)
+    return {"title": current_section, "content": content}
 
-        if in_options:
-            if not s:
-                continue
-            if s.startswith("-"):
-                if current_option is not None:
-                    desc = " ".join(current_desc_lines).strip()
-                    opt_text = current_option
-                    # Check if option line itself contains description
-                    if not desc:
-                        m = re.match(
-                            r"^(?P<opt>\S.*?\S)\s{2,}(?P<desc>.+)$", opt_text
-                        )
-                        if m:
-                            opt_text = m.group("opt").strip()
-                            desc = m.group("desc").strip()
-                    options.append({"option": opt_text, "effect": desc})
-                # Check if the new option line contains description
-                if m := OPT_DESC_RE.match(s):
-                    current_option = m.group("opt").strip()
-                    current_desc_lines = [m.group("desc").strip()]
-                else:
-                    current_option = s
-                    current_desc_lines = []
-            elif current_option is not None:
-                # Only treat indented lines as continuation of the option's description
-                if line.startswith(" ") or line.startswith("\t"):
-                    current_desc_lines.append(s)
-        elif in_other_section:
-            current_section_content.append(line)
-            current_section_content_raw.append(line)
-        else:
-            if s and not s.startswith(
-                ("usage", "options", "optional arguments")
-            ):
-                current_section_content.append(line)
 
-    if current_section is not None:
-        if current_section in ("options", "optional arguments"):
-            if current_option is not None:
-                desc = " ".join(current_desc_lines).strip()
-                opt_text = current_option
-                if not desc:
-                    if m := OPT_DESC_RE.match(opt_text):
-                        opt_text = m.group("opt").strip()
-                        desc = m.group("desc").strip()
-                options.append({"option": opt_text, "effect": desc})
-        else:
-            if current_section_content:
-                content = "\n".join(current_section_content)
-                title_lower = current_section.strip().lower()
-                if title_lower == "drill down":
-                    content = _normalize_drill_down(current_section_content)
-                elif title_lower == "positional arguments":
-                    content = _normalize_positional_args(
-                        current_section_content
-                    )
-                additional_sections.append(
-                    {"title": current_section, "content": content}
-                )
-            # Record raw lines from the final section
-            if current_section_content_raw:
-                for rl in current_section_content_raw:
-                    section_raw_lines.add(rl.strip())
-
+def collect_additional_text(lines, overview, section_raw_lines):
+    """Collect text that doesn't belong to any specific section."""
     additional_text = []
     for line in lines:
         s = line.strip()
@@ -618,17 +507,146 @@ def synthesize_top_level_node(command: str) -> Dict[str, Any]:
             s
             and not s.startswith(("usage", "options", "optional arguments"))
             and not s.endswith(":")
+            and s not in section_raw_lines
+            and s != overview
+            and not s.startswith(("-", "--"))
         ):
-            is_part_of_section = s in section_raw_lines
-            # Skip option signature-style lines (already captured in options table)
-            if not is_part_of_section and s != overview and not s.startswith(("-", "--")):
-                additional_text.append(line)
+            additional_text.append(line)
 
     if additional_text:
-        # Normalize prose into a single paragraph line
         extra = " ".join(l.strip() for l in additional_text if l.strip())
-        extra = extra.replace("|", r"\|")
-        additional_sections.append({"title": "additional_info", "content": extra})
+        return extra.replace("|", r"\|")
+    return ""
+
+
+def handle_section_header(state, line_stripped, section_raw_lines, options, additional_sections):
+    """Handle transition to a new section header. Returns updated parsing state dict."""
+    if state["current_section"] is not None:
+        if state["current_section"] in ("options", "optional arguments"):
+            if state["current_option"] is not None:
+                options.append(finalize_option(
+                    state["current_option"], state["current_desc_lines"]
+                ))
+        elif state["current_section_content"]:
+            additional_sections.append(
+                finalize_section(
+                    state["current_section"],
+                    state["current_section_content"],
+                    state["current_section_content_raw"],
+                    section_raw_lines,
+                )
+            )
+
+    section_raw_lines.update(rl.strip() for rl in state["current_section_content_raw"])
+    new_section = line_stripped.rstrip(":")
+    in_options = new_section in ("options", "optional arguments")
+
+    return {
+        "current_section": new_section,
+        "current_option": None,
+        "current_desc_lines": [],
+        "current_section_content": [],
+        "current_section_content_raw": [],
+        "in_options": in_options,
+        "in_other_section": not in_options,
+    }
+
+
+def process_option_line(line, s, current_option, current_desc_lines, options):
+    """Process a single line in the options section. Returns updated option state."""
+    if not s:
+        return current_option, current_desc_lines
+
+    if s.startswith("-"):
+        if current_option is not None:
+            options.append(finalize_option(current_option, current_desc_lines))
+        if m := re_opt_desc.match(s):
+            return m.group("opt").strip(), [m.group("desc").strip()]
+        return s, []
+    elif current_option is not None and (line.startswith(" ") or line.startswith("\t")):
+        current_desc_lines.append(s)
+
+    return current_option, current_desc_lines
+
+
+def parse_help_sections(lines, overview):
+    """Parse options and additional sections from argparse help text."""
+    options = []
+    additional_sections = []
+    section_raw_lines = set()
+    
+    state = {
+        "current_section": None,
+        "current_section_content": [],
+        "current_section_content_raw": [],
+        "current_option": None,
+        "current_desc_lines": [],
+        "in_options": False,
+        "in_other_section": False,
+    }
+
+    for line in lines:
+        line_stripped = line.strip()
+
+        if line_stripped.endswith(":") and not line_stripped.startswith("-"):
+            state = handle_section_header(
+                state, line_stripped, section_raw_lines, options, additional_sections
+            )
+            continue
+
+        if state["in_options"]:
+            state["current_option"], state["current_desc_lines"] = process_option_line(
+                line, line_stripped, state["current_option"], 
+                state["current_desc_lines"], options
+            )
+        elif state["in_other_section"]:
+            state["current_section_content"].append(line)
+            state["current_section_content_raw"].append(line)
+        else:
+            if line_stripped and not line_stripped.startswith(
+                ("usage", "options", "optional arguments")
+            ):
+                state["current_section_content"].append(line)
+
+    if state["current_section"] is not None:
+        if state["current_section"] in ("options", "optional arguments"):
+            if state["current_option"] is not None:
+                options.append(finalize_option(
+                    state["current_option"], state["current_desc_lines"]
+                ))
+        else:
+            if state["current_section_content"]:
+                additional_sections.append(
+                    finalize_section(
+                        state["current_section"],
+                        state["current_section_content"],
+                        state["current_section_content_raw"],
+                        section_raw_lines,
+                    )
+                )
+
+    additional_text = collect_additional_text(lines, overview, section_raw_lines)
+    if additional_text:
+        additional_sections.append({"title": "additional_info", "content": additional_text})
+
+    return options, additional_sections
+
+
+def synthesize_top_level_node(command, parser):
+    """Build node for top-level command from parser."""
+    help_text = ""
+    try:
+        subparsers = get_subparsers(parser)
+        for sp in subparsers:
+            if command in sp.choices:
+                help_text = sp.choices[command].format_help()
+                break
+    except Exception:
+        pass
+
+    lines = help_text.splitlines()
+    usage, overview = extract_usage_and_overview(lines, command)
+    options, additional_sections = parse_help_sections(lines, overview)
 
     return {
         "key": f"maas {command}",
@@ -645,84 +663,41 @@ def synthesize_top_level_node(command: str) -> Dict[str, Any]:
     }
 
 
-def discover_top_level_from_shell() -> List[str]:
-    """Parse 'maas -h' to discover available top-level commands."""
-    try:
-        proc = subprocess.run(
-            ["maas", "-h"], check=True, capture_output=True, text=True
-        )
-        out = (proc.stdout or proc.stderr or "").splitlines()
-    except Exception as exc:
-        eprint(f"[introspect] Could not shell 'maas -h': {exc}")
-        return []
-
-    commands: List[str] = []
-    in_drill_down = False
-
-    for line in out:
-        s = line.strip()
-
-        if s.lower().startswith("drill down:"):
-            in_drill_down = True
-            continue
-
-        if not in_drill_down:
-            continue
-
-        if not s or s.startswith("http"):
-            break
-
-        if line.startswith("    "):
-            parts = s.split()
-            if parts:
-                cmd = parts[0]
-                if (
-                    cmd.replace("-", "").isalnum()
-                    and len(cmd) > 1
-                    and not cmd.startswith(("-", "--"))
-                    and cmd not in {"COMMAND", "Change", "drill"}
-                    and cmd not in commands
-                ):
-                    commands.append(cmd)
-
-    return [cmd for cmd in commands if cmd not in PROFILE_COMMANDS]
+def discover_top_level_from_parser(parser):
+    """Discover top-level commands from parser."""
+    commands = []
+    subparsers = get_subparsers(parser)
+    for sp in subparsers:
+        for name in sp.choices.keys():
+            if (
+                name.replace("-", "").isalnum()
+                and len(name) > 1
+                and not name.startswith(("-", "--"))
+                and name not in commands
+            ):
+                commands.append(name)
+    return commands
 
 
-def main() -> int:
+def main():
+    """Main entry point for CLI introspection."""
     add_repo_src_to_path()
     try:
         parser = build_parser()
-    except Exception as exc:
-        eprint(f"[introspect] Failed to build parser: {exc}")
+    except Exception:
         return 2
 
     try_register_api_profile(parser)
 
     root_path = ["maas"]
-    eprint("[introspect] Walking argparse tree...")
     root = walk(parser, root_path)
-
     items = flatten(root)
-    eprint(f"[introspect] Commands discovered (nodes): {len(items)}")
 
-    top_level_commands = discover_top_level_from_shell()
-    eprint(
-        f"[introspect] Top-level commands from shell: "
-        f"{top_level_commands}"
-    )
-
-    before = len(items)
+    top_level_commands = discover_top_level_from_parser(parser)
     items = [it for it in items if len(it.get("argv", [])) != 1]
-    removed = before - len(items)
-    eprint(
-        f"[introspect] Removed {removed} argparse-derived top-level nodes"
-    )
 
     for cmd in top_level_commands:
-        eprint(
-            f"[introspect] Synthesizing top-level '{cmd}' from shell help"
-        )
-        items.append(synthesize_top_level_node(cmd))
+        items.append(synthesize_top_level_node(cmd, parser))
 
     json.dump(items, sys.stdout, indent=2)
     sys.stdout.write("\n")
@@ -731,5 +706,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
