@@ -4,6 +4,8 @@
 """Test `api.auth` module."""
 
 from datetime import datetime, timedelta, timezone
+from itertools import product
+from typing import Any, Optional
 from unittest import mock
 
 from django.contrib.auth.models import AnonymousUser
@@ -14,6 +16,7 @@ from maasserver.api.auth import (
     MAASAPIAuthentication,
     OAuthBadRequest,
     OAuthUnauthorized,
+    RequestValidityReport,
 )
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
@@ -33,8 +36,19 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
             "external-auth", {"url": "https://example.com"}
         )
 
-    def make_request(self, user=None):
-        request = factory.make_fake_request("/")
+    def make_request(
+        self,
+        user=None,
+        method: str = "GET",
+        data: Optional[dict[str, str]] = None,
+        headers: Optional[dict[str, Any]] = None,
+    ):
+        request = factory.make_fake_request(
+            "/",
+            method=method,
+            data=data,
+            headers=headers,
+        )
         request.user = user or AnonymousUser()
 
         auth_url = (
@@ -78,7 +92,7 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         mock_token = mock.Mock(user=user)
         request = self.make_request()
 
-        auth.is_valid_request = lambda request: True
+        auth.check_validity = lambda request: RequestValidityReport({}, {}, {})
         auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
         self.assertTrue(auth.is_authenticated(request))
         mock_validate.assert_called_with(
@@ -102,7 +116,7 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         ) - timedelta(days=1)
         mock_token = mock.Mock(user=user)
         request = self.make_request()
-        auth.is_valid_request = lambda request: True
+        auth.check_validity = lambda request: RequestValidityReport({}, {}, {})
         auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
         self.assertFalse(auth.is_authenticated(request))
         # check interval not expired, the user isn't checked
@@ -115,6 +129,99 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
                 admin_group="admins",
             ),
         )
+
+    def test_validity_report(self):
+        params = product(["AUTH_HEADER", "GET", "POST"], [True, False])
+        valid_auth_headers = {
+            "Authorization": 'OAuth oauth_timestamp="1764850000", oauth_consumer_key="_", oauth_token="_", oauth_signature="_", oauth_signature_method="_", oauth_nonce="_"'
+        }
+        invalid_auth_headers = {
+            "Authorization": 'OAuth oauth_timestamp="", oauth_consumer_key="_", oauth_token="_", oauth_signature="_", oauth_signature_method="_", oauth_nonce="_"'
+        }
+
+        valid_request_params = {
+            "oauth_timestamp": "1764850000",
+            "oauth_consumer_key": "_",
+            "oauth_token": "_",
+            "oauth_signature": "_",
+            "oauth_signature_method": "_",
+            "oauth_nonce": "_",
+        }
+        invalid_request_params = {
+            "oauth_timestamp": "",
+            "oauth_consumer_key": "_",
+            "oauth_token": "_",
+            "oauth_signature": "_",
+            "oauth_signature_method": "_",
+            "oauth_nonce": "_",
+        }
+        for method, is_valid in params:
+            with self.subTest(method=method, is_valid=is_valid):
+                if method == "AUTH" and is_valid:
+                    request = self.make_request(
+                        headers=valid_auth_headers,
+                    )
+                    validity_report = MAASAPIAuthentication.check_validity(
+                        request
+                    )
+                    self.assertTrue(validity_report.represents_valid_request())
+                elif method == "AUTH" and not is_valid:
+                    request = self.make_request(
+                        headers=invalid_auth_headers,
+                    )
+                    validity_report = MAASAPIAuthentication.check_validity(
+                        request
+                    )
+                    self.assertFalse(
+                        validity_report.represents_valid_request()
+                    )
+                else:
+                    if is_valid:
+                        request = self.make_request(
+                            method=method, data=valid_request_params
+                        )
+                        validity_report = MAASAPIAuthentication.check_validity(
+                            request
+                        )
+                        self.assertTrue(
+                            validity_report.represents_valid_request()
+                        )
+                    else:
+                        request = self.make_request(
+                            method=method, data=invalid_request_params
+                        )
+                        validity_report = MAASAPIAuthentication.check_validity(
+                            request
+                        )
+                        self.assertFalse(
+                            validity_report.represents_valid_request()
+                        )
+
+    def test_error_message_when_failing_oauth_validation(self):
+        request = self.make_request(
+            headers={
+                "Authorization": 'OAuth oauth_timestamp="", oauth_consumer_key="_", oauth_token="_", oauth_signature="_", oauth_signature_method="_", oauth_nonce="_"'
+            },
+        )
+        report = MAASAPIAuthentication.check_validity(request)
+
+        with self.subTest(param_should_be_in_message=True):
+            self.assertTrue(
+                "oauth_timestamp" in report.generate_error_message()
+            )
+        with self.subTest(param_should_be_in_message=False):
+            self.assertFalse(
+                "oauth_consumer_key" in report.generate_error_message()
+            )
+
+    def test_is_authenticated_external_auth_validate_fail_bad_timestamp(self):
+        auth = MAASAPIAuthentication()
+        request = self.make_request(
+            headers={
+                "Authorization": 'OAuth oauth_timestamp="", oauth_consumer_key="_", oauth_token="_", oauth_signature="_", oauth_signature_method="_", oauth_nonce="_"'
+            },
+        )
+        self.assertRaises(OAuthBadRequest, auth.is_authenticated, request)
 
     def test_is_authenticated_external_auth_user_local(self):
         mock_validate = self.patch(api_auth, "validate_user_external_auth")
@@ -136,7 +243,7 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         user = get_node_init_user()
         request = self.make_request()
         mock_token = mock.Mock(user=user)
-        auth.is_valid_request = lambda request: True
+        auth.check_validity = lambda request: RequestValidityReport({}, {}, {})
         auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
         self.assertTrue(auth.is_authenticated(request))
         mock_validate.assert_not_called()
@@ -149,7 +256,7 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         mock_token = mock.Mock(user=user)
         request = self.make_request()
         auth = MAASAPIAuthentication()
-        auth.is_valid_request = lambda request: True
+        auth.check_validity = lambda request: RequestValidityReport({}, {}, {})
         auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
         self.assertFalse(auth.is_authenticated(request))
 
