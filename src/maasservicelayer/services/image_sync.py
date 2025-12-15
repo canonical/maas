@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import os
 import re
+from urllib.parse import urljoin
 
 from structlog import get_logger
 
@@ -591,7 +592,9 @@ class ImageSyncService(Service):
             resources_to_download.append(
                 ResourceDownloadParam(
                     rfile_ids=[resource_file.id],
-                    source_list=[f"{boot_source.get_base_url()}/{file.path}"],
+                    source_list=[
+                        urljoin(boot_source.get_base_url(), file.path)
+                    ],
                     sha256=resource_file.sha256,
                     filename_on_disk=resource_file.filename_on_disk,
                     total_size=resource_file.size,
