@@ -47,7 +47,7 @@ metadata:
   state: AK
   address: 123 Fake St.
   postal_code: '80205'
-  timezone: US/Denver
+  timezone: America/Denver
 """
 
 
@@ -140,6 +140,32 @@ class TestMSM:
         new_cfg = YAML_CONFIG + "extra: 'field'"
         opts["config_file"] = io.TextIOWrapper(
             io.BytesIO(new_cfg.encode("utf-8")), encoding="utf-8"
+        )
+        with pytest.raises(CommandError, match="Invalid config file"):
+            msm.Command().handle(**opts)
+
+    def test_enrol_invalid_timezone(self, mocker, msm_enrol_mock):
+        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(msm, "prompt_yes_no", return_value=True)
+        opts = self._configure_kwargs()
+        bad_cfg = YAML_CONFIG.replace(
+            "timezone: America/Denver", "timezone: notatimezone"
+        )
+        opts["config_file"] = io.TextIOWrapper(
+            io.BytesIO(bad_cfg.encode("utf-8")), encoding="utf-8"
+        )
+        with pytest.raises(
+            CommandError, match="Invalid timezone: notatimezone"
+        ):
+            msm.Command().handle(**opts)
+
+    def test_enrol_invalid_country(self, mocker, msm_enrol_mock):
+        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(msm, "prompt_yes_no", return_value=True)
+        opts = self._configure_kwargs()
+        bad_cfg = YAML_CONFIG.replace("country: US", "country: USA")
+        opts["config_file"] = io.TextIOWrapper(
+            io.BytesIO(bad_cfg.encode("utf-8")), encoding="utf-8"
         )
         with pytest.raises(CommandError, match="Invalid config file"):
             msm.Command().handle(**opts)

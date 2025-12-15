@@ -391,7 +391,7 @@ RegionControllerRule = Rule(
     Allow("prometheus_client"),
     Allow("provisioningserver|provisioningserver.**"),
     Allow("psycopg2|psycopg2.**"),
-    Allow("pytz.UTC"),
+    Allow("pytz|pytz.UTC"),
     Allow("requests_unixsocket|requests_unixsocket.**"),
     Allow("requests|requests.**"),
     Allow("sqlalchemy|sqlalchemy.**"),

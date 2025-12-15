@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from django.core.management.base import CommandError
 from jose import ExpiredSignatureError, JOSEError, jwt
 from jsonschema import validate, ValidationError
+import pytz
 import yaml
 
 from maascli.init import prompt_yes_no
@@ -38,7 +39,11 @@ class Command(BaseCommandWithConnection):
                             "longitude": {"type": "number"},
                         },
                     },
-                    "country": {"type": "string"},
+                    "country": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 2,
+                    },
                     "note": {"type": "string"},
                     "city": {"type": "string"},
                     "state": {"type": "string"},
@@ -106,6 +111,9 @@ class Command(BaseCommandWithConnection):
             try:
                 cfg = yaml.safe_load(config)
                 validate(cfg, self.CFG_SCHEMA)
+                if tz := cfg.get("metadata").get("timezone"):
+                    if tz not in pytz.all_timezones:
+                        raise CommandError(f"Invalid timezone: {tz}")  # noqa: B904
             except ValidationError as e:
                 raise CommandError(f"Invalid config file: {e.message}")  # noqa: B904
             except yaml.error.MarkedYAMLError as e:
