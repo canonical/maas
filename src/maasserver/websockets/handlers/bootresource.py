@@ -55,6 +55,53 @@ from provisioningserver.logger import LegacyLogger
 log = LegacyLogger()
 
 
+def value_passes_filter_list(filter_list, property_value):
+    """Does the given property of a boot image pass the given filter list?
+
+    The value passes if either it matches one of the entries in the list of
+    filter values, or one of the filter values is an asterisk (`*`).
+    """
+    return "*" in filter_list or property_value in filter_list
+
+
+def value_passes_filter(filter_value, property_value):
+    """Does the given property of a boot image pass the given filter?
+
+    The value passes the filter if either the filter value is an asterisk
+    (`*`) or the value is equal to the filter value.
+    """
+    return filter_value in ("*", property_value)
+
+
+def image_passes_filter(filters, os, arch, subarch, release, label):
+    """Filter a boot image against configured import filters.
+
+    :param filters: A list of dicts describing the filters, as in `boot_merge`.
+        If the list is empty, or `None`, any image matches.  Any entry in a
+        filter may be a string containing just an asterisk (`*`) to denote that
+        the entry will match any value.
+    :param os: The given boot image's operating system.
+    :param arch: The given boot image's architecture.
+    :param subarch: The given boot image's subarchitecture.
+    :param release: The given boot image's OS release.
+    :param label: The given boot image's label.
+    :return: Whether the image matches any of the dicts in `filters`.
+    """
+    if filters is None or len(filters) == 0:
+        return True
+    for filter_dict in filters:
+        item_matches = (
+            value_passes_filter(filter_dict["os"], os)
+            and value_passes_filter(filter_dict["release"], release)
+            and value_passes_filter_list(filter_dict["arches"], arch)
+            and value_passes_filter_list(filter_dict["subarches"], subarch)
+            and value_passes_filter_list(filter_dict["labels"], label)
+        )
+        if item_matches:
+            return True
+    return False
+
+
 def get_distro_series_info_row(series):
     """Returns the distro series row information from python-distro-info."""
     info = UbuntuDistroInfo()
@@ -109,43 +156,50 @@ class BootResourceHandler(Handler):
 
         return sources
 
-    def get_ubuntu_release_selections(self) -> set[str]:
-        """Return list of all selected releases for Ubuntu."""
-        return set(
-            BootSourceSelection.objects.filter(os="ubuntu").values_list(
-                "release", flat=True
-            )
-        )
-
-    def get_unsupported_arches(self, release):
-        # The boot resources front and back end were both built with the idea
-        # that every Ubuntu release is supported on every architecture.
-        # 20.04 and above has dropped i386 support. Due to the way the
-        # websocket is setup its more effecient to get this information
-        # based on version than from the database.
-        try:
-            if release_a_newer_than_b(release, "20.04"):
-                return ["i386"]
-        except ValueError:
-            # Unknown Ubuntu release, should only happen during testing.
-            pass
-        return []
+    def get_ubuntu_release_selections(self):
+        """Return list of all selected releases for Ubuntu. If first item in
+        tuple is true, then all releases are selected by wildcard."""
+        all_selected = False
+        releases = set()
+        for selection in BootSourceSelection.objects.all():
+            if selection.os == "ubuntu":
+                if selection.release == "*":
+                    all_selected = True
+                else:
+                    releases.add(selection.release)
+        return all_selected, releases
 
     def format_ubuntu_releases(self):
         """Return formatted Ubuntu release selections for the template."""
 
+        def get_unsupported_arches(release):
+            # The boot resources front and back end were both built with the idea
+            # that every Ubuntu release is supported on every architecture.
+            # 20.04 and above has dropped i386 support. Due to the way the
+            # websocket is setup its more effecient to get this information
+            # based on version than from the database.
+            try:
+                if release_a_newer_than_b(release, "20.04"):
+                    return ["i386"]
+            except ValueError:
+                # Unknown Ubuntu release, should only happen during testing.
+                pass
+            return []
+
         releases = []
-        selected_releases = self.get_ubuntu_release_selections()
+        all_releases, selected_releases = self.get_ubuntu_release_selections()
         for release in sorted(list(self.ubuntu_releases), reverse=True):
             checked = False
             if release in selected_releases:
                 checked = True
                 selected_releases.remove(release)
+            if not checked and all_releases:
+                checked = True
             releases.append(
                 {
                     "name": release,
                     "title": format_ubuntu_distro_series(release),
-                    "unsupported_arches": self.get_unsupported_arches(release),
+                    "unsupported_arches": get_unsupported_arches(release),
                     "checked": checked,
                     "deleted": False,
                 }
@@ -157,30 +211,38 @@ class BootResourceHandler(Handler):
                 {
                     "name": release,
                     "title": format_ubuntu_distro_series(release),
-                    "unsupported_arches": self.get_unsupported_arches(release),
+                    "unsupported_arches": get_unsupported_arches(release),
                     "checked": True,
                     "deleted": True,
                 }
             )
         return releases
 
-    def get_ubuntu_arch_selections(self) -> set[str]:
-        """Return list of all selected arches for Ubuntu."""
-        return set(
-            BootSourceSelection.objects.filter(os="ubuntu")
-            .values_list("arch", flat=True)
-            .distinct()
-        )
+    def get_ubuntu_arch_selections(self):
+        """Return list of all selected arches for Ubuntu. If first item in
+        tuple is true, then all arches are selected by wildcard."""
+        all_selected = False
+        arches = set()
+        for selection in BootSourceSelection.objects.all():
+            if selection.os == "ubuntu":
+                for arch in selection.arches:
+                    if arch == "*":
+                        all_selected = True
+                    else:
+                        arches.add(arch)
+        return all_selected, arches
 
     def format_ubuntu_arches(self):
         """Return formatted Ubuntu architecture selections for the template."""
         arches = []
-        selected_arches = self.get_ubuntu_arch_selections()
+        all_arches, selected_arches = self.get_ubuntu_arch_selections()
         for arch in sorted(list(self.ubuntu_arches)):
             checked = False
             if arch in selected_arches:
                 checked = True
                 selected_arches.remove(arch)
+            if not checked and all_arches:
+                checked = True
             arches.append(
                 {
                     "name": arch,
@@ -263,13 +325,37 @@ class BootResourceHandler(Handler):
                 resource.downloading = False
                 resource.icon = "succeeded"
 
+    def format_ubuntu_core_images(self):
+        """Return formatted other images for selection."""
+        resources = self.get_other_synced_resources()
+        images = []
+        for image in BootSourceCache.objects.filter(os="ubuntu-core"):
+            resource = self.get_matching_resource_for_image(resources, image)
+            if "title" in image.extra and image.extra != "":
+                title = image.extra["title"]
+            else:
+                osystem = OperatingSystemRegistry["ubuntu-core"]
+                title = osystem.get_release_title(image.release)
+            if title is None:
+                title = f"{image.os}/{image.release}"
+            images.append(
+                {
+                    "name": "%s/%s/%s/%s"
+                    % (image.os, image.arch, image.subarch, image.release),
+                    "title": title,
+                    "checked": True if resource else False,
+                    "deleted": False,
+                }
+            )
+        return images
+
     def format_other_images(self):
         """Return formatted other images for selection."""
         resources = self.get_other_synced_resources()
         images = []
-        qs = BootSourceCache.objects.exclude(Q(os="ubuntu")).filter(
-            bootloader_type=None
-        )
+        qs = BootSourceCache.objects.exclude(
+            Q(os="ubuntu") | Q(os="ubuntu-core")
+        ).filter(bootloader_type=None)
         for image in qs:
             resource = self.get_matching_resource_for_image(resources, image)
             title = None
@@ -617,8 +703,7 @@ class BootResourceHandler(Handler):
             "rack_import_running": False,
             "resources": resources,
             "ubuntu": ubuntu_resources,
-            # we don't support ubuntu core images anymore
-            "ubuntu_core_images": [],
+            "ubuntu_core_images": self.format_ubuntu_core_images(),
             "other_images": self.format_other_images(),
         }
 
@@ -662,19 +747,29 @@ class BootResourceHandler(Handler):
                 # This was a new source, make sure its the only source in the
                 # database. This is because the UI only supports handling one
                 # source at a time.
-                boot_sources_to_delete = BootSource.objects.exclude(
-                    id=source.id
-                )
-                for boot_source in boot_sources_to_delete:
-                    boot_source.delete()
                 create_audit_event(
                     event_type=EVENT_TYPES.BOOT_SOURCE,
                     endpoint=ENDPOINT.UI,
                     request=self.request,
-                    description=f"Created boot source {url} and deleted all the previous boot sources",
+                    description=f"Created boot source {url}",
                     action=CREATED,
                     id=source.id,
                 )
+                boot_sources_to_delete = BootSource.objects.exclude(
+                    id=source.id
+                )
+                # we have to iterate on all the boot sources because `QuerySet.delete()`
+                # "does a bulk delete and does not call any delete() methods on your models."
+                # See: https://docs.djangoproject.com/en/4.2/ref/models/querysets/#delete
+                for boot_source in boot_sources_to_delete:
+                    create_audit_event(
+                        event_type=EVENT_TYPES.BOOT_SOURCE,
+                        endpoint=ENDPOINT.UI,
+                        request=self.request,
+                        description=f"Deleted boot source {boot_source.url}",
+                        action=DELETED,
+                        id=boot_source.id,
+                    )
 
             return source
         else:
@@ -703,35 +798,20 @@ class BootResourceHandler(Handler):
                 releases.add(release)
             else:
                 continue
-
-            arches = osystem.get("arches")
-            if arches in ([], None):
-                # TODO: Constant for all supported arches
-                arches = {
-                    "amd64",
-                    "arm64",
-                    "armhf",
-                    "i386",
-                    "ppc64el",
-                    "s390x",
-                }
-                unsupported = self.get_unsupported_arches(release)
-                arches -= set(unsupported)
-
-            for arch in arches:
-                selection, created = BootSourceSelection.objects.get_or_create(
-                    boot_source=boot_source,
-                    os="ubuntu",
-                    release=release,
-                    arch=arch,
-                )
-                if created:
-                    create_audit_event(
-                        event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
-                        endpoint=ENDPOINT.UI,
-                        request=self.request,
-                        description=f"Created boot source selection for {selection.os}/{selection.release} arch={selection.arch}: {boot_source.url}",
-                    )
+            selection, created = BootSourceSelection.objects.get_or_create(
+                boot_source=boot_source, os="ubuntu", release=release
+            )
+            selection.arches = osystem.get("arches", ["*"])
+            selection.subarches = ["*"]
+            selection.labels = ["*"]
+            selection.save()
+            action = "Created" if created else "Updated"
+            create_audit_event(
+                event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                endpoint=ENDPOINT.UI,
+                request=self.request,
+                description=f"{action} boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {boot_source.url}",
+            )
 
         if releases:
             # Remove all selections, that are not of release.
@@ -748,7 +828,7 @@ class BootResourceHandler(Handler):
                         event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
                         endpoint=ENDPOINT.UI,
                         request=self.request,
-                        description=f"Deleted boot source selection for {selection.os}/{selection.release} arch={selection.arch}",
+                        description=f"Deleted boot source selection for {selection.os}/{selection.release} arches={selection.arches}",
                         action=DELETED,
                         id=selection.pk,
                     )
@@ -763,10 +843,17 @@ class BootResourceHandler(Handler):
         assert self.user.is_superuser, "Permission denied."
 
         current_selection_ids = set()
+
         # Break down the images into os/release with multiple arches.
-        # Create each selection for the source.
+        selections = defaultdict(list)
         for image in params["images"]:
             os, arch, _, release = image.split("/", 4)
+            name = f"{os}/{release}"
+            selections[name].append(arch)
+
+        # Create each selection for the source.
+        for name, arches in selections.items():
+            os, release = name.split("/")
             cache = BootSourceCache.objects.filter(
                 os=os, arch=arch, release=release
             ).first()
@@ -780,7 +867,9 @@ class BootResourceHandler(Handler):
                 boot_source=cache.boot_source,
                 os=os,
                 release=release,
-                arch=arch,
+                arches=arches,
+                subarches=["*"],
+                labels=["*"],
             )
             current_selection_ids.add(selection.id)
             if created:
@@ -788,9 +877,10 @@ class BootResourceHandler(Handler):
                     event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
                     endpoint=ENDPOINT.UI,
                     request=self.request,
-                    description=f"Created boot source selection for {selection.os}/{selection.release} arch={selection.arch}: {cache.boot_source.url}",
+                    description=f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {cache.boot_source.url}",
+                    action=CREATED,
+                    id=selection.id,
                 )
-
         # Delete all the old non-ubuntu selections (i.e. the ones that weren't selected)
         selections_to_delete = BootSourceSelection.objects.exclude(
             os="ubuntu"
@@ -805,7 +895,9 @@ class BootResourceHandler(Handler):
                     event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
                     endpoint=ENDPOINT.UI,
                     request=self.request,
-                    description=f"Deleted boot source selection for {selection.os}/{selection.release} arch={selection.arch}",
+                    description=f"Deleted boot source selection for {selection.os}/{selection.release} arches={selection.arches}",
+                    action=DELETED,
+                    id=selection.id,
                 )
 
         post_commit_do(import_resources)
@@ -874,23 +966,31 @@ class BootResourceHandler(Handler):
         # Convert resource into a set of resources that make up this image.
         # An image in UI is a set of resource each with different subarches
         # and kflavor.
-        resource = BootResource.objects.select_related(
-            "boot_source_selection"
-        ).get(id=params["id"])
+        resource = BootResource.objects.get(id=params["id"])
         if resource.rtype == BOOT_RESOURCE_TYPE.SYNCED:
+            os, release = resource.name.split("/")
+            arch, subarch = resource.architecture.split("/")
             # Remove the selection that provides the initial resource. All
             # other resources will come from the same selection.
-            # This will also delete all the linked boot resources.
-            resource.boot_source_selection.delete()
-            create_audit_event(
-                event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
-                endpoint=ENDPOINT.UI,
-                request=self.request,
-                description=f"Deleted boot source selection for {resource.boot_source_selection.os}/{resource.boot_source_selection.release} arch={resource.boot_source_selection.arch}",
-                action=DELETED,
-                id=params["id"],
-            )
+            for selection in BootSourceSelection.objects.all():
+                if image_passes_filter(
+                    [selection.to_dict()], os, arch, subarch, release, "*"
+                ):
+                    # This selection provided this image, remove it.
+                    # This will also delete all the resources associated
+                    selection.delete()
+                    create_audit_event(
+                        event_type=EVENT_TYPES.BOOT_SOURCE_SELECTION,
+                        endpoint=ENDPOINT.UI,
+                        request=self.request,
+                        description=f"Deleted boot source selection for {selection.os}/{selection.release} arches={selection.arches}",
+                        action=DELETED,
+                        id=params["id"],
+                    )
 
+            # Remove the whole set of resources.
+            # BootResourceFile.objects.filestore_remove_resources(resources)
+            # resources.delete()
         else:
             # Delete just this resource.
             BootResourceFile.objects.filestore_remove_resource(resource)

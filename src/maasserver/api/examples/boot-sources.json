@@ -40,7 +40,15 @@
   "boot-source-sel-read-by-id": {
     "os": "ubuntu",
     "release": "bionic",
-    "arch": "amd64",
+    "arches": [
+      "amd64"
+    ],
+    "subarches": [
+      "*"
+    ],
+    "labels": [
+      "*"
+    ],
     "id": 1,
     "boot_source_id": 1,
     "resource_uri": "/MAAS/api/2.0/boot-sources/1/selections/1/"
@@ -48,7 +56,15 @@
   "boot-source-sel-update": {
     "os": "ubuntu",
     "release": "bionic",
-    "arch": "amd64",
+    "arches": [
+      "amd64"
+    ],
+    "subarches": [
+      "*"
+    ],
+    "labels": [
+      "*"
+    ],
     "id": 1,
     "boot_source_id": 1,
     "resource_uri": "/MAAS/api/2.0/boot-sources/1/selections/1/"
@@ -56,7 +72,15 @@
   "boot-source-sel-create": {
     "os": "ubuntu",
     "release": "bionic",
-    "arch": "amd64",
+    "arches": [
+      "amd64"
+    ],
+    "subarches": [
+      "*"
+    ],
+    "labels": [
+      "*"
+    ],
     "id": 1,
     "boot_source_id": 1,
     "resource_uri": "/MAAS/api/2.0/boot-sources/1/selections/1/"

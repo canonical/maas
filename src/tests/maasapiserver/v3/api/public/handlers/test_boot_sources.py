@@ -101,6 +101,7 @@ TEST_BOOTSOURCESELECTION = BootSourceSelection(
     release="noble",
     arch="amd64",
     boot_source_id=12,
+    legacyselection_id=1,
 )
 
 

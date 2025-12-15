@@ -133,6 +133,7 @@ BOOT_SELECTION_NOBLE_SOURCE_1 = BootSourceSelection(
     release="noble",
     arch="amd64",
     boot_source_id=BOOT_SOURCE_1.id,
+    legacyselection_id=1,
 )
 
 BOOT_SELECTION_NOBLE_SOURCE_2 = BootSourceSelection(
@@ -141,6 +142,7 @@ BOOT_SELECTION_NOBLE_SOURCE_2 = BootSourceSelection(
     release="noble",
     arch="amd64",
     boot_source_id=BOOT_SOURCE_2.id,
+    legacyselection_id=1,
 )
 BOOT_SELECTION_ORACULAR_SOURCE_1 = BootSourceSelection(
     id=2,
@@ -148,6 +150,7 @@ BOOT_SELECTION_ORACULAR_SOURCE_1 = BootSourceSelection(
     release="oracular",
     arch="amd64",
     boot_source_id=BOOT_SOURCE_1.id,
+    legacyselection_id=1,
 )
 
 BOOT_RESOURCE_NOBLE = BootResource(
@@ -641,6 +644,7 @@ class TestImageSyncService:
             release="centos70",
             arch="amd64",
             boot_source_id=1,
+            legacyselection_id=1,
         )
         good = SingleFileProduct(
             product_name="com.ubuntu.maas.stable:centos-bases:7.0:amd64",

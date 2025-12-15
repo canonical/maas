@@ -19,77 +19,59 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Set constraints to immediate. Necessary because all the constraints
-    # defined in Django are of type INITIALLY DEFERRED. This causes problems
-    # when we want to execute more than one statement (e.g. update & alter on
-    # same table) since there will be pending triggers.
-    # Django ticket: https://code.djangoproject.com/ticket/25105
-    # NOTE: `SET CONSTRAINTS` only affects the current transaction,
-    # no need to do any rollback logic.
-    # https://www.postgresql.org/docs/current/sql-set-constraints.html
-    op.execute(
-        "SET CONSTRAINTS maasserver_bootsourceselection_boot_source_id_b911aa0f_fk IMMEDIATE"
-    )
-    op.drop_column("maasserver_bootsourceselection", "labels")
-    op.drop_column("maasserver_bootsourceselection", "subarches")
-
-    op.add_column(
-        "maasserver_bootsourceselection",
-        sa.Column("arch", sa.Text(), nullable=True),
-    )
-
-    op.drop_constraint(
-        "maasserver_bootsourcesel_boot_source_id_os_releas_0b0d402c_uniq",
-        "maasserver_bootsourceselection",
-        type_="unique",
-    )
-
-    # For each existing selection, create a new selection for each arch in arches
     op.execute("""
-    INSERT INTO maasserver_bootsourceselection (created, updated, os, release, arch, boot_source_id)
+    ALTER TABLE maasserver_bootsourceselection RENAME TO maasserver_bootsourceselectionlegacy;
+    """)
+
+    op.create_table(
+        "maasserver_bootsourceselection",
+        sa.Column(
+            "id",
+            sa.BigInteger(),
+            sa.Identity(),
+            primary_key=True,
+            nullable=False,
+        ),
+        sa.Column("created", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("os", sa.String(20), nullable=False),
+        sa.Column("release", sa.String(20), nullable=False),
+        sa.Column("arch", sa.Text(), nullable=False),
+        sa.Column("boot_source_id", sa.BigInteger(), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["boot_source_id"],
+            ["maasserver_bootsource.id"],
+            initially="DEFERRED",
+            deferrable=True,
+        ),
+        sa.Column("legacyselection_id", sa.BigInteger(), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["legacyselection_id"],
+            ["maasserver_bootsourceselectionlegacy.id"],
+            initially="DEFERRED",
+            deferrable=True,
+        ),
+        sa.UniqueConstraint("os", "release", "arch", "boot_source_id"),
+    )
+
+    # For each existing legacy selection, create a new selection for each arch in arches
+    op.execute("""
+    INSERT INTO maasserver_bootsourceselection (created, updated, os, release, arch, boot_source_id, legacyselection_id)
     SELECT
         created,
         updated,
         os,
         release,
         unnest(arches) as arch,
-        boot_source_id
-    FROM maasserver_bootsourceselection
+        boot_source_id,
+        id
+    FROM maasserver_bootsourceselectionlegacy
     WHERE arches IS NOT NULL AND array_length(arches, 1) > 0 AND arches != '{*}';
     """)
 
-    # If arches is set to wildcard, create a selection for all supported arches
-    op.execute("""
-    INSERT INTO maasserver_bootsourceselection (created, updated, os, release, arch, boot_source_id)
-    SELECT
-        created,
-        updated,
-        os,
-        release,
-        unnest('{amd64,arm64,armhf,i386,ppc64el,s390x}'::text[]) as arch,
-        boot_source_id
-    FROM maasserver_bootsourceselection
-    WHERE arches = '{*}'
-    """)
+    # For arches set to wildcard don't do anything. The creation of the necessary
+    # selections will be handled by the fetch-manifest workflow.
 
-    # Delete old records
-    op.execute("""
-    DELETE FROM maasserver_bootsourceselection
-    WHERE arches IS NOT NULL AND array_length(arches, 1) > 0;
-    """)
-
-    # Make arch column NOT NULL and add the new unique constraint
-    op.alter_column("maasserver_bootsourceselection", "arch", nullable=False)
-    op.create_unique_constraint(
-        "maasserver_bootsourceselection_sourceid_os_release_arch_unique",
-        "maasserver_bootsourceselection",
-        ["boot_source_id", "os", "release", "arch"],
-    )
-
-    op.drop_column("maasserver_bootsourceselection", "arches")
-
-    # Add a column to reference the selection. This can be null as the manual uploaded
-    # boot resources don't have a selection.
     op.add_column(
         "maasserver_bootresource",
         sa.Column(

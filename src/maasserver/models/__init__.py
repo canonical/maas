@@ -16,6 +16,7 @@ __all__ = [
     "BootSource",
     "BootSourceCache",
     "BootSourceSelection",
+    "BootSourceSelectionNew",
     "BridgeInterface",
     "CacheSet",
     "Config",
@@ -124,7 +125,10 @@ from maasserver.models.bootresourcefile import (
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.bootsource import BootSource
 from maasserver.models.bootsourcecache import BootSourceCache
-from maasserver.models.bootsourceselection import BootSourceSelection
+from maasserver.models.bootsourceselection import (
+    BootSourceSelection,
+    BootSourceSelectionNew,
+)
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
 from maasserver.models.controllerinfo import ControllerInfo

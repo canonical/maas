@@ -24,3 +24,4 @@ class BootSourceSelection(MaasTimestampedBaseModel):
     release: str
     arch: str
     boot_source_id: int
+    legacyselection_id: int

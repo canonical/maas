@@ -7,7 +7,7 @@ from typing import Iterable
 from sqlalchemy import desc, not_, select, Table
 from sqlalchemy.sql.functions import count
 
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import BootSourceCacheTable
 from maasservicelayer.models.base import ListResult
@@ -194,3 +194,16 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
             BootSourceCacheOSRelease(os=row[0], release=row[1])
             for row in result
         ]
+
+    async def get_supported_arches(
+        self, query: QuerySpec | None = None
+    ) -> list[str]:
+        stmt = (
+            select(BootSourceCacheTable.c.arch)
+            .distinct()
+            .select_from(self.get_repository_table())
+        )
+        if query:
+            stmt = query.enrich_stmt(stmt)
+        result = (await self.execute_stmt(stmt)).all()
+        return [row[0] for row in result]

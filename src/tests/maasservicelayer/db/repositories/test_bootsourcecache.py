@@ -7,6 +7,7 @@ import pytest
 
 from maasservicelayer.builders.bootsourcecache import BootSourceCacheBuilder
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
@@ -659,3 +660,88 @@ class TestBootSourceCacheRepository:
         assert len(result) == 2
         assert BootSourceCacheOSRelease(os="ubuntu", release="focal") in result
         assert BootSourceCacheOSRelease(os="ubuntu", release="noble") in result
+
+    async def test_get_supported_arches(
+        self, fixture: Fixture, repository: BootSourceCacheRepository
+    ) -> None:
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="arm64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="ppc64el",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+
+        result = await repository.get_supported_arches()
+
+        assert set(result) == {"amd64", "arm64", "ppc64el"}
+
+    async def test_get_supported_arches__filtered(
+        self, fixture: Fixture, repository: BootSourceCacheRepository
+    ) -> None:
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="amd64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="focal",
+            release_title="20.04 LTS",
+            arch="arm64",
+            subarch="generic",
+            support_eol=date(year=2025, month=4, day=23),
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="ubuntu",
+            release="noble",
+            release_title="24.04 LTS",
+            arch="ppc64el",
+            subarch="generic",
+            support_eol=date(year=2029, month=5, day=31),
+        )
+
+        result = await repository.get_supported_arches(
+            query=QuerySpec(
+                where=BootSourceCacheClauseFactory.and_clauses(
+                    [
+                        BootSourceCacheClauseFactory.with_os("ubuntu"),
+                        BootSourceCacheClauseFactory.with_release("focal"),
+                    ]
+                )
+            )
+        )
+
+        assert set(result) == {"amd64", "arm64"}

@@ -21,6 +21,7 @@ class TestBootSourceSelectionResponse:
             release="focal",
             arch="amd64",
             boot_source_id=42,
+            legacyselection_id=1,
         )
         response = BootSourceSelectionResponse.from_model(
             boot_source_selection=selection,

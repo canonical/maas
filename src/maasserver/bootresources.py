@@ -66,11 +66,19 @@ log = LegacyLogger()
 
 def import_resources():
     """Starts the master image sync workflow."""
-    return start_workflow(
-        MASTER_IMAGE_SYNC_WORKFLOW_NAME,
-        "master-image-sync",
+    d = execute_workflow(
+        workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+        workflow_id="fetch-manifest",
         id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
     )
+    d.addCallback(
+        lambda _: start_workflow(
+            MASTER_IMAGE_SYNC_WORKFLOW_NAME,
+            "master-image-sync",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+        )
+    )
+    return d
 
 
 def is_import_resources_running():

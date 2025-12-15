@@ -109,6 +109,7 @@ from maasserver.models import (
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.bmc import BMC, BMCRoutableRackControllerRelationship
 from maasserver.models.bootresourceset import XINSTALL_TYPES
+from maasserver.models.bootsourceselection import BootSourceSelectionNew
 from maasserver.models.interface import Interface, InterfaceRelationship
 from maasserver.models.largefile import LargeFile
 from maasserver.models.nodeconfig import NODE_CONFIG_TYPE, NodeConfig
@@ -2344,7 +2345,9 @@ class Factory(maastesting.factory.Factory):
         boot_source=None,
         os=None,
         release=None,
-        arch=None,
+        arches=None,
+        subarches=None,
+        labels=None,
     ):
         """Create a `BootSourceSelection`."""
         if boot_source is None:
@@ -2353,13 +2356,50 @@ class Factory(maastesting.factory.Factory):
             os = self.make_name("os")
         if release is None:
             release = self.make_name("release")
-        if arch is None:
-            arch = self.make_name("arch")
+        if arches is None:
+            arch_count = random.randint(1, 10)
+            arches = [self.make_name("arch") for _ in range(arch_count)]
+        if subarches is None:
+            subarch_count = random.randint(1, 10)
+            subarches = [
+                self.make_name("subarch") for _ in range(subarch_count)
+            ]
+        if labels is None:
+            label_count = random.randint(1, 10)
+            labels = [self.make_name("label") for _ in range(label_count)]
+
         boot_source_selection = BootSourceSelection(
             boot_source=boot_source,
             os=os,
             release=release,
+            arches=arches,
+            subarches=subarches,
+            labels=labels,
+        )
+        boot_source_selection.save()
+        return boot_source_selection
+
+    def make_BootSourceSelectionNew(
+        self,
+        boot_source=None,
+        os=None,
+        release=None,
+        arch=None,
+        legacy_selection=None,
+    ):
+        """Create a `BootSourceSelection`."""
+        if arch is None:
+            arch = self.make_name("arch")
+        if legacy_selection is None:
+            legacy_selection = self.make_BootSourceSelection(
+                boot_source=boot_source, os=os, release=release, arches=[arch]
+            )
+        boot_source_selection = BootSourceSelectionNew(
+            boot_source=legacy_selection.boot_source,
+            os=legacy_selection.os,
+            release=legacy_selection.release,
             arch=arch,
+            legacy_selection=legacy_selection,
         )
         boot_source_selection.save()
         return boot_source_selection

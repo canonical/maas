@@ -15,24 +15,18 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
 )
-from maasserver.models import (
-    BootResource,
-    bootresourcefile,
-    BootSourceSelection,
-    Config,
-)
+from maasserver.models import bootresourcefile, BootSourceSelection, Config
 import maasserver.models.node as node_module
 from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.converters import human_readable_bytes
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import get_one, reload_object
 from maasserver.websockets.base import (
     DATETIME_FORMAT,
     HandlerError,
@@ -186,7 +180,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             boot_source=sources[0],
             os="ubuntu",
             release=selected_release,
-            arch="amd64",
+            arches=["*"],
+            subarches=["*"],
+            labels=["*"],
         )
         self.patch_get_os_info_from_boot_sources(sources, releases=releases)
         response = handler.poll({})
@@ -242,7 +238,10 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         factory.make_BootSourceSelection(
             boot_source=sources[0],
             os="ubuntu",
-            arch=selected_arch,
+            release=["*"],
+            arches=[selected_arch],
+            subarches=["*"],
+            labels=["*"],
         )
         self.patch_get_os_info_from_boot_sources(sources, arches=arches)
         response = handler.poll({})
@@ -738,13 +737,49 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.assertEqual("Synced", resource["status"])
         self.assertEqual("succeeded", resource["icon"])
 
-    def test_ubuntu_core_images_returns_empty_list(self):
+    def test_ubuntu_core_images_returns_images_from_cache(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        factory.make_BootSourceCache(os="ubuntu-core")
+        cache = factory.make_BootSourceCache(os="ubuntu-core")
         response = handler.poll({})
         ubuntu_core_images = response["ubuntu_core_images"]
-        self.assertEqual([], ubuntu_core_images)
+        self.assertEqual(
+            [
+                {
+                    "name": "%s/%s/%s/%s"
+                    % (cache.os, cache.arch, cache.subarch, cache.release),
+                    "title": cache.release,
+                    "checked": False,
+                    "deleted": False,
+                }
+            ],
+            ubuntu_core_images,
+        )
+
+    def test_ubuntu_core_images_returns_image_checked_when_synced(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        cache = factory.make_BootSourceCache(os="ubuntu-core")
+        self.make_other_resource(
+            os=cache.os,
+            arch=cache.arch,
+            subarch=cache.subarch,
+            release=cache.release,
+        )
+        response = handler.poll({})
+        ubuntu_core_images = response["ubuntu_core_images"]
+        self.assertEqual(
+            [
+                {
+                    "name": "%s/%s/%s/%s"
+                    % (cache.os, cache.arch, cache.subarch, cache.release),
+                    "title": cache.release,
+                    "checked": True,
+                    "deleted": False,
+                }
+            ],
+            ubuntu_core_images,
+        )
 
     def test_other_images_returns_images_from_cache(self):
         owner = factory.make_admin()
@@ -794,6 +829,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         factory.make_BootSourceCache(os="ubuntu")
+        factory.make_BootSourceCache(os="ubuntu-core")
         response = handler.poll({})
         self.assertEqual([], response["other_images"])
 
@@ -876,11 +912,7 @@ class TestBootResourceSaveUbuntu(
             {
                 "url": source.url,
                 "osystems": [
-                    {
-                        "osystem": "ubuntu",
-                        "release": release,
-                        "arches": ["amd64"],
-                    }
+                    {"osystem": "ubuntu", "release": release, "arches": []}
                     for release in releases
                 ],
             }
@@ -892,45 +924,31 @@ class TestBootResourceSaveUbuntu(
             releases, [selection.release for selection in selections]
         )
 
-    def test_sets_all_arches_on_selections(self):
+    def test_sets_arches_on_selections(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         source = factory.make_BootSource()
         osystems = [
             {
                 "osystem": "ubuntu",
-                "release": "19.10",
-                "arches": [],
+                "release": factory.make_name("release"),
+                "arches": [factory.make_name("arch") for _ in range(i + 1)],
             }
+            for i in range(3)
         ]
         self.patch_get_os_info_from_boot_sources([source])
         handler.save_ubuntu({"url": source.url, "osystems": osystems})
         selections = BootSourceSelection.objects.filter(boot_source=source)
-
-        self.assertEqual(
-            set([sel.arch for sel in selections]),
-            {"amd64", "arm64", "armhf", "i386", "ppc64el", "s390x"},
-        )
-
-    def test_sets_all_arches_on_selections_release_ge_focal(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        source = factory.make_BootSource()
-        osystems = [
-            {
-                "osystem": "ubuntu",
-                "release": "20.04",
-                "arches": [],
-            }
-        ]
-        self.patch_get_os_info_from_boot_sources([source])
-        handler.save_ubuntu({"url": source.url, "osystems": osystems})
-        selections = BootSourceSelection.objects.filter(boot_source=source)
-
-        self.assertEqual(
-            set([sel.arch for sel in selections]),
-            # No i386 arch
-            {"amd64", "arm64", "armhf", "ppc64el", "s390x"},
+        self.assertCountEqual(
+            [
+                {
+                    "osystem": selection.os,
+                    "release": selection.release,
+                    "arches": selection.arches,
+                }
+                for selection in selections
+            ],
+            osystems,
         )
 
     def test_removes_old_selections(self):
@@ -942,57 +960,71 @@ class TestBootResourceSaveUbuntu(
             boot_source=source,
             os="ubuntu",
             release=factory.make_name("release"),
-            arch=factory.make_name("arch"),
         )
         keep_selection = BootSourceSelection.objects.create(
-            boot_source=source,
-            os="ubuntu",
-            release=release,
-            arch=factory.make_name("arch"),
+            boot_source=source, os="ubuntu", release=release
         )
         self.patch_get_os_info_from_boot_sources([source])
         handler.save_ubuntu(
             {
                 "url": source.url,
                 "osystems": [
-                    {
-                        "osystem": "ubuntu",
-                        "release": release,
-                        "arches": [keep_selection.arch],
-                    }
+                    {"osystem": "ubuntu", "release": release, "arches": []}
                 ],
             }
         )
         self.assertIsNone(reload_object(delete_selection))
         self.assertIsNotNone(reload_object(keep_selection))
 
-    def test_create_audit_event_deleted_selection(self):
+    def test_create_audit_event_updated_and_deleted_selection(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         source = factory.make_BootSource()
         release = factory.make_name("release")
-        delete_selection = BootSourceSelection.objects.create(
+        selection_to_delete = BootSourceSelection.objects.create(
             boot_source=source,
             os="ubuntu",
             release=factory.make_name("release"),
-            arch=factory.make_name("arch"),
         )
         keep_selection = BootSourceSelection.objects.create(
-            boot_source=source,
-            os="ubuntu",
-            release=release,
-            arch=factory.make_name("arch"),
+            boot_source=source, os="ubuntu", release=release
         )
         self.patch_get_os_info_from_boot_sources([source])
         handler.save_ubuntu(
             {
                 "url": source.url,
                 "osystems": [
-                    {
-                        "osystem": "ubuntu",
-                        "release": release,
-                        "arches": [keep_selection.arch],
-                    }
+                    {"osystem": "ubuntu", "release": release, "arches": []}
+                ],
+            }
+        )
+        events = Event.objects.filter(
+            type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
+        )
+        assert len(events) == 2
+        assert (
+            events[0].description
+            == f"Updated boot source selection for {keep_selection.os}/{keep_selection.release} arches={keep_selection.arches}: {source.url}"
+        )
+        assert (
+            events[1].description
+            == f"Deleted boot source selection for {selection_to_delete.os}/{selection_to_delete.release} arches={selection_to_delete.arches}"
+        )
+
+    def test_create_audit_event_only_updated_selection(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        source = factory.make_BootSource()
+        release = factory.make_name("release")
+        keep_selection = BootSourceSelection.objects.create(
+            boot_source=source, os="ubuntu", release=release
+        )
+        self.patch_get_os_info_from_boot_sources([source])
+        handler.save_ubuntu(
+            {
+                "url": source.url,
+                "osystems": [
+                    {"osystem": "ubuntu", "release": release, "arches": []}
                 ],
             }
         )
@@ -1002,7 +1034,7 @@ class TestBootResourceSaveUbuntu(
         assert len(events) == 1
         assert (
             events[0].description
-            == f"Deleted boot source selection for {delete_selection.os}/{delete_selection.release} arch={delete_selection.arch}"
+            == f"Updated boot source selection for {keep_selection.os}/{keep_selection.release} arches={keep_selection.arches}: {source.url}"
         )
 
 
@@ -1044,54 +1076,26 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         handler = BootResourceHandler(owner, {}, None)
         self.assertRaises(AssertionError, handler.save_other, {})
 
-    def test_clears_old_other_selections(self):
+    def test_clears_all_other_os_selections(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         source = factory.make_BootSource()
         ubuntu_selection = BootSourceSelection.objects.create(
-            boot_source=source, os="ubuntu", arch=factory.make_name("arch")
+            boot_source=source, os="ubuntu"
         )
         other_selection = BootSourceSelection.objects.create(
-            boot_source=source,
-            os=factory.make_name("os"),
-            arch=factory.make_name("arch"),
+            boot_source=source, os=factory.make_name("os")
         )
         handler.save_other({"images": []})
         self.assertIsNotNone(reload_object(ubuntu_selection))
         self.assertIsNone(reload_object(other_selection))
 
-    def test_clears_old_other_selections_keep_selected(self):
+    def test_clears_all_other_os_selections_creates_audit_event(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         source = factory.make_BootSource()
-        os = factory.make_name("os")
-        release = factory.make_name("release")
-        arches = [factory.make_name("arch") for _ in range(3)]
-        selection = BootSourceSelection.objects.create(
-            boot_source=source, os=os, release=release, arch=arches[0]
-        )
-        images = []
-        for arch in arches:
-            factory.make_BootSourceCache(
-                boot_source=source, os=os, release=release, arch=arch
-            )
-            images.append(f"{os}/{arch}/subarch/{release}")
-        handler.save_other({"images": images})
-        self.assertIsNotNone(reload_object(selection))
-        selections = BootSourceSelection.objects.filter(
-            boot_source=source, os=os, release=release
-        )
-
-        self.assertEqual(len(selections), len(arches))
-
-    def test_clears_old_other_selections_creates_audit_event(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        source = factory.make_BootSource()
-        to_delete_selection = BootSourceSelection.objects.create(
-            boot_source=source,
-            os=factory.make_name("os"),
-            arch=factory.make_name("arch"),
+        selection_to_delete = BootSourceSelection.objects.create(
+            boot_source=source, os=factory.make_name("os")
         )
         handler.save_other({"images": []})
         events = Event.objects.filter(
@@ -1100,10 +1104,10 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         assert len(events) == 1
         assert (
             events[0].description
-            == f"Deleted boot source selection for {to_delete_selection.os}/{to_delete_selection.release} arch={to_delete_selection.arch}"
+            == f"Deleted boot source selection for {selection_to_delete.os}/{selection_to_delete.release} arches={selection_to_delete.arches}"
         )
 
-    def test_creates_multiple_selection_for_multiple_arches(self):
+    def test_creates_selection_with_multiple_arches(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         source = factory.make_BootSource()
@@ -1118,15 +1122,15 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
             images.append(f"{os}/{arch}/subarch/{release}")
         handler.save_other({"images": images})
 
-        selections = BootSourceSelection.objects.filter(
-            boot_source=source, os=os, release=release, arch__in=arches
-        ).values_list("arch", flat=True)
-        self.assertIsNotNone(selections)
-        self.assertCountEqual(arches, selections)
+        selection = get_one(
+            BootSourceSelection.objects.filter(
+                boot_source=source, os=os, release=release
+            )
+        )
+        self.assertIsNotNone(selection)
+        self.assertCountEqual(arches, selection.arches)
 
-    def test_creates_multiple_selection_for_multiple_arches_creates_audit_event(
-        self,
-    ):
+    def test_creates_selection_with_multiple_arches_creates_audit_event(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         source = factory.make_BootSource()
@@ -1134,11 +1138,8 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         release = factory.make_name("release")
         arches = [factory.make_name("arch") for _ in range(3)]
         images = []
-        non_matching_selection = BootSourceSelection.objects.create(
-            boot_source=source,
-            os=factory.make_name("os"),
-            release=factory.make_name("release"),
-            arch=arches[0],
+        selection_to_delete = BootSourceSelection.objects.create(
+            boot_source=source, os=factory.make_name("os")
         )
         for arch in arches:
             factory.make_BootSourceCache(
@@ -1147,23 +1148,22 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
             images.append(f"{os}/{arch}/subarch/{release}")
         handler.save_other({"images": images})
 
-        selections = BootSourceSelection.objects.filter(
-            boot_source=source, os=os, release=release
+        selection = get_one(
+            BootSourceSelection.objects.filter(
+                boot_source=source, os=os, release=release
+            )
         )
         events = Event.objects.filter(
             type__name=EVENT_TYPES.BOOT_SOURCE_SELECTION
         )
-        assert len(events) == 4
-        descriptions = [e.description for e in events[:3]]
-        for selection in selections:
-            assert (
-                f"Created boot source selection for {selection.os}/{selection.release} arch={selection.arch}: {source.url}"
-                in descriptions
-            )
-        print([e.description for e in events])
+        assert len(events) == 2
         assert (
-            events[3].description
-            == f"Deleted boot source selection for {non_matching_selection.os}/{non_matching_selection.release} arch={non_matching_selection.arch}"
+            events[0].description
+            == f"Created boot source selection for {selection.os}/{selection.release} arches={selection.arches}: {source.url}"
+        )
+        assert (
+            events[1].description
+            == f"Deleted boot source selection for {selection_to_delete.os}/{selection_to_delete.release} arches={selection_to_delete.arches}"
         )
 
     def test_calls_import_resources(self):
@@ -1246,34 +1246,6 @@ class TestBootResourceFetch(MAASServerTestCase):
             source_url=expected_source["url"],
             keyring_path=None,
             keyring_data=expected_source["keyring_data"],
-        )
-
-    def test_keyring_data_and_filename_unset_for_unsigned_stream(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-
-        self.patch(
-            service_layer.services, "image_manifests"
-        ).return_value = Mock(ImageManifestsService)
-        mock_download = self.patch(
-            service_layer.services.image_manifests, "fetch_image_metadata"
-        )
-        mock_download.return_value = []
-        url = "http://example.com/stream/v1/index.json"
-        expected_source = {
-            "url": url,
-        }
-        error = self.assertRaises(
-            HandlerError,
-            handler.fetch,
-            {"url": url},
-        )
-        self.assertEqual("Mirror provides no Ubuntu images.", str(error))
-
-        mock_download.assert_called_once_with(
-            source_url=expected_source["url"],
-            keyring_path=None,
-            keyring_data=None,
         )
 
     def test_raises_error_on_downloading_resources(self):
@@ -1463,33 +1435,6 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
         handler = BootResourceHandler(owner, {}, None)
         self.assertRaises(HandlerValidationError, handler.delete_image, {})
 
-    def test_makes_correct_calls_for_downloading_resources(self):
-        self.useFixture(SignalsDisabled("bootsources"))
-        self.patch(bootresourcefile, "execute_workflow")
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        os = factory.make_name("os")
-        release = factory.make_name("release")
-        arch = factory.make_name("arch")
-        subarches = [factory.make_name("subarch") for _ in range(3)]
-        selection = factory.make_BootSourceSelection(
-            os=os,
-            release=release,
-            arch=arch,
-        )
-        resources = [
-            factory.make_usable_boot_resource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name=f"{os}/{release}",
-                architecture=f"{arch}/{subarch}",
-                boot_source_selection=selection,
-            )
-            for subarch in subarches
-        ]
-        handler.delete_image({"id": resources[0].id})
-        self.assertCountEqual([], reload_objects(BootResource, resources))
-        self.assertIsNone(reload_object(selection))
-
     def test_deletes_uploaded_image(self):
         self.useFixture(SignalsDisabled("bootsources"))
         owner = factory.make_admin()
@@ -1507,7 +1452,6 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
 
     def test_deletes_uploaded_image_creates_audit_events_for_selection(self):
         self.useFixture(SignalsDisabled("bootsources"))
-        self.patch(bootresourcefile, "execute_workflow")
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         source = factory.make_BootSource()
@@ -1515,17 +1459,18 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
         release = factory.make_name("release")
         arch = factory.make_name("arch")
         subarch = factory.make_name("subarch")
-        selection = BootSourceSelection.objects.create(
-            boot_source=source,
-            os=os,
-            release=release,
-            arch=arch,
-        )
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=f"{os}/{release}",
             architecture=f"{arch}/{subarch}",
-            boot_source_selection=selection,
+        )
+        BootSourceSelection.objects.create(
+            boot_source=source,
+            os=os,
+            release=release,
+            arches=[arch],
+            subarches=[subarch],
+            labels=["*"],
         )
         handler.delete_image({"id": resource.id})
         events = Event.objects.filter(
@@ -1534,5 +1479,5 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
         assert len(events) == 1
         assert (
             events[0].description
-            == f"Deleted boot source selection for {os}/{release} arch={arch}"
+            == f"Deleted boot source selection for {os}/{release} arches={[arch]}"
         )

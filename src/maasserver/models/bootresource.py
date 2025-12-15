@@ -502,7 +502,7 @@ class BootResource(CleanSave, TimestampedModel):
     )
 
     boot_source_selection = ForeignKey(
-        "maasserver.BootSourceSelection",
+        "maasserver.BootSourceSelectionNew",
         null=True,
         on_delete=CASCADE,
         db_column="selection_id",

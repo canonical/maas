@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `BootSource`."""
@@ -116,14 +116,15 @@ class TestBootSource(MAASServerTestCase):
             boot_source=boot_source
         )
         bootloaders = []
-        bootloader_type = factory.make_name("bootloader-type")
-        factory.make_BootSourceCache(
-            boot_source=boot_source,
-            bootloader_type=bootloader_type,
-            release=bootloader_type,
-            arch=boot_source_selection.arch,
-        )
-        bootloaders.append(bootloader_type)
+        for arch in boot_source_selection.arches:
+            bootloader_type = factory.make_name("bootloader-type")
+            factory.make_BootSourceCache(
+                boot_source=boot_source,
+                bootloader_type=bootloader_type,
+                release=bootloader_type,
+                arch=arch,
+            )
+            bootloaders.append(bootloader_type)
         self.assertCountEqual(
             [
                 selection["release"]

@@ -362,6 +362,11 @@ class BootResourcesActivity(ActivityBase):
             # don't raise an exception, just create the notification
             await services.image_sync.check_commissioning_series_selected()
 
+            # TODO: MAASENG-5738 remove this
+            await (
+                services.boot_source_selections.ensure_selections_from_legacy()
+            )
+
     @activity_defn_with_context(
         name=GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME
     )

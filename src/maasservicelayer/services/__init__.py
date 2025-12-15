@@ -57,6 +57,9 @@ from maasservicelayer.db.repositories.image_manifests import (
 )
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.repositories.ipranges import IPRangesRepository
+from maasservicelayer.db.repositories.legacybootsourceselections import (
+    LegacyBootSourceSelectionRepository,
+)
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.db.repositories.mdns import MDNSRepository
 from maasservicelayer.db.repositories.neighbours import NeighboursRepository
@@ -152,6 +155,9 @@ from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.leases import LeasesService
+from maasservicelayer.services.legacybootsourceselections import (
+    LegacyBootSourceSelectionService,
+)
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.machines_v2 import MachinesV2Service
 from maasservicelayer.services.mdns import MDNSService
@@ -258,6 +264,7 @@ class ServiceCollectionV3:
     interfaces: InterfacesService
     ipranges: IPRangesService
     leases: LeasesService
+    legacy_boot_source_selections: LegacyBootSourceSelectionService
     machines: MachinesService
     machines_v2: MachinesV2Service
     mdns: MDNSService
@@ -402,12 +409,21 @@ class ServiceCollectionV3:
                 repository=BootSourceSelectionStatusRepository(context),
             )
         )
+        services.legacy_boot_source_selections = (
+            LegacyBootSourceSelectionService(
+                context=context,
+                repository=LegacyBootSourceSelectionRepository(context),
+            )
+        )
         services.boot_source_selections = BootSourceSelectionsService(
             context=context,
             repository=BootSourceSelectionsRepository(context),
             events_service=services.events,
             boot_source_cache_service=services.boot_source_cache,
             boot_resource_service=services.boot_resources,
+            legacy_boot_source_selection_service=(
+                services.legacy_boot_source_selections
+            ),
         )
         services.boot_sources = BootSourcesService(
             context=context,

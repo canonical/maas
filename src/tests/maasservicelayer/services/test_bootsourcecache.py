@@ -176,3 +176,12 @@ class TestBootSourceCacheService:
                 )
             )
         )
+
+    async def test_get_supported_arches(
+        self, service: BootSourceCacheService
+    ) -> None:
+        await service.get_supported_arches(query=QuerySpec())
+
+        service.repository.get_supported_arches.assert_awaited_once_with(
+            query=QuerySpec()
+        )

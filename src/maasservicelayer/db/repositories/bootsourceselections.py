@@ -61,6 +61,15 @@ class BootSourceSelectionClauseFactory(ClauseFactory):
     def with_arch(cls, arch: str) -> Clause:
         return Clause(condition=eq(BootSourceSelectionTable.c.arch, arch))
 
+    @classmethod
+    def with_legacyselection_id(cls, legacyselection_id: int) -> Clause:
+        return Clause(
+            condition=eq(
+                BootSourceSelectionTable.c.legacyselection_id,
+                legacyselection_id,
+            )
+        )
+
 
 class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
     def get_repository_table(self) -> Table:
@@ -104,6 +113,8 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
                 subquery.c.arch,
                 subquery.c.release,
                 subquery.c.boot_source_id,
+                # TODO: MAASENG-5738 remove legacyselection_id
+                subquery.c.legacyselection_id,
             )
             .select_from(subquery)
             .where(eq(subquery.c.rank, 1))

@@ -676,6 +676,9 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.boot_sources.get_many.return_value = [mock_boot_source]
         services_mock.image_manifests = Mock(ImageManifestsService)
         services_mock.boot_source_cache = Mock(BootSourceCacheService)
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
 
         heartbeats = []
         activity_env.on_heartbeat = lambda *args: heartbeats.append(args[0])
@@ -688,6 +691,7 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.boot_source_cache.update_from_image_manifest.assert_awaited_once()
         services_mock.image_sync.sync_boot_source_selections_from_msm.assert_awaited_once()
         services_mock.image_sync.check_commissioning_series_selected.assert_awaited_once()
+        services_mock.boot_source_selections.ensure_selections_from_legacy.assert_awaited_once()
 
     async def test_creates_notification_if_exception_is_raised(
         self,
@@ -713,6 +717,9 @@ class TestFetchManifestAndUpdateCacheActivity:
             SimpleStreamsClientException()
         )
         services_mock.notifications = Mock(NotificationsService)
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
 
         await activity_env.run(boot_activities.fetch_manifest_and_update_cache)
 
@@ -754,6 +761,7 @@ class TestGetFilesToDownloadForSelectionActivity:
             arch="amd64",
             release="noble",
             boot_source_id=boot_source.id,
+            legacyselection_id=1,
         )
 
         mock_product = Mock(BootloaderProduct)
@@ -776,6 +784,7 @@ class TestGetFilesToDownloadForSelectionActivity:
                 arch="amd64",
                 release="noble",
                 boot_source_id=2,
+                legacyselection_id=1,
             )
         )
 

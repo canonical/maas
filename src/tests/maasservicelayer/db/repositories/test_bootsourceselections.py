@@ -127,6 +127,7 @@ class TestCommonBootSourceSelectionRepository(
             release="jammy",
             arch="amd64",
             boot_source_id=1,
+            legacyselection_id=10,
         )
 
     @pytest.fixture

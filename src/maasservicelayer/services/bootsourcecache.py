@@ -128,3 +128,8 @@ class BootSourceCacheService(
 
     async def get_unique_os_releases(self) -> list[BootSourceCacheOSRelease]:
         return await self.repository.get_unique_os_releases()
+
+    async def get_supported_arches(
+        self, query: QuerySpec | None = None
+    ) -> list[str]:
+        return await self.repository.get_supported_arches(query=query)

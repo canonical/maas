@@ -2322,7 +2322,14 @@ class BootSourceSelectionForm(MAASModelForm):
 
     class Meta:
         model = BootSourceSelection
-        fields = ("os", "release", "arch")
+        fields = ("os", "release", "arches", "subarches", "labels")
+
+    # Use UnconstrainedMultipleChoiceField fields for multiple-choices
+    # fields instead of the default as we want to handle
+    # multiple-values submissions.
+    arches = UnconstrainedMultipleChoiceField(label="Architecture list")
+    subarches = UnconstrainedMultipleChoiceField(label="Subarchitecture list")
+    labels = UnconstrainedMultipleChoiceField(label="Label list")
 
     def __init__(self, boot_source=None, **kwargs):
         super().__init__(**kwargs)
@@ -2356,15 +2363,42 @@ class BootSourceSelectionForm(MAASModelForm):
             )
             return cleaned_data
 
-        arches = cache.values_list("arch", flat=True)
+        values = cache.values_list("arch", "subarch", "label")
+        arches, subarches, labels = zip(*values)
 
-        # Validate arch
-        if cleaned_data["arch"] not in arches:
+        # Validate architectures.
+        required_arches_set = {arch for arch in cleaned_data["arches"]}
+        wildcard_arches = "*" in required_arches_set
+        if not wildcard_arches and not required_arches_set <= set(arches):
             set_form_error(
                 self,
-                "arch",
+                "arches",
                 "No available images to download for %s"
-                % cleaned_data["arch"],
+                % cleaned_data["arches"],
+            )
+
+        # Validate subarchitectures.
+        required_subarches_set = {sa for sa in cleaned_data["subarches"]}
+        wildcard_subarches = "*" in required_subarches_set
+        if not wildcard_subarches and not required_subarches_set <= set(
+            subarches
+        ):
+            set_form_error(
+                self,
+                "subarches",
+                "No available images to download for %s"
+                % cleaned_data["subarches"],
+            )
+
+        # Validate labels.
+        required_labels_set = {label for label in cleaned_data["labels"]}
+        wildcard_labels = "*" in required_labels_set
+        if not wildcard_labels and not required_labels_set <= set(labels):
+            set_form_error(
+                self,
+                "labels",
+                "No available images to download for %s"
+                % cleaned_data["labels"],
             )
 
         return cleaned_data

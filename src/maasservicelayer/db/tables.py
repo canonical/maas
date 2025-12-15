@@ -376,8 +376,47 @@ BootSourceSelectionTable = Table(
         "maasserver_bootsourceselection_boot_source_id_b911aa0f",
         "boot_source_id",
     ),
+    # TODO: MAASENG-5738 remove this
+    Column(
+        "legacyselection_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_bootsourceselectionlegacy.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
+    ),
 )
 
+# TODO: MAASENG-5738 remove this
+BootSourceSelectionLegacyTable = Table(
+    "maasserver_bootsourceselectionlegacy",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("os", String(20), nullable=False),
+    Column("release", String(20), nullable=False),
+    Column("arches", ARRAY(Text), nullable=True),
+    Column("subarches", ARRAY(Text), nullable=True),
+    Column("labels", ARRAY(Text), nullable=True),
+    Column(
+        "boot_source_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_bootsource.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
+    ),
+    UniqueConstraint("boot_source_id", "os", "release"),
+    Index(
+        "maasserver_bootsourceselection_boot_source_id_b911aa0f",
+        "boot_source_id",
+    ),
+)
 BootSourceSelectionStatusView = Table(
     "maasserver_bootsourceselectionstatus_view",
     METADATA,
