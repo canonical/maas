@@ -7,13 +7,73 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from maasapiserver.v3.api.public.models.responses.base import PaginatedResponse
+from maasapiserver.v3.api.public.models.responses.base import (
+    BaseHal,
+    BaseHref,
+    HalResponse,
+    PaginatedResponse,
+)
 from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
 from maascommon.utils.converters import human_readable_bytes
+from maascommon.utils.images import format_ubuntu_distro_series
+from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsourceselections import (
+    BootSourceSelection,
     BootSourceSelectionStatistic,
     BootSourceSelectionStatus,
 )
+
+
+class ImageResponse(HalResponse[BaseHal]):
+    kind = "Image"
+    id: int
+    os: str
+    release: str
+    title: str
+    architecture: str
+    boot_source_id: int | None
+
+    @classmethod
+    def from_selection(
+        cls, selection: BootSourceSelection, self_base_hyperlink: str
+    ):
+        return cls(
+            id=selection.id,
+            os=selection.os,
+            release=selection.release,
+            title=format_ubuntu_distro_series(selection.release),
+            architecture=selection.arch,
+            boot_source_id=selection.boot_source_id,
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+                self=BaseHref(
+                    href=f"{self_base_hyperlink.rstrip('/')}/{selection.id}"
+                )
+            ),
+        )
+
+    @classmethod
+    def from_boot_resource(
+        cls, boot_resource: BootResource, self_base_hyperlink: str
+    ):
+        arch, _ = boot_resource.split_arch()
+        osystem, release = boot_resource.name.split("/")
+        return cls(
+            id=boot_resource.id,
+            os=osystem,
+            release=release,
+            title=format_ubuntu_distro_series(release),
+            architecture=arch,
+            boot_source_id=None,
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+                self=BaseHref(
+                    href=f"{self_base_hyperlink.rstrip('/')}/{boot_resource.id}"
+                )
+            ),
+        )
+
+
+class ImageListResponse(PaginatedResponse[ImageResponse]):
+    kind = "ImageList"
 
 
 class ImageStatusResponse(BaseModel):

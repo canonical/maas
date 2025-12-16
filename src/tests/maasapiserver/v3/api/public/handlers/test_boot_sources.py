@@ -13,9 +13,9 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
     BootSourceFetchRequest,
 )
-from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
-    BootSourceSelectionListResponse,
-    BootSourceSelectionResponse,
+from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageListResponse,
+    ImageResponse,
 )
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceAvailableImageListResponse,
@@ -753,9 +753,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             f"{self.BASE_PATH}?page=1&size=1"
         )
         assert response.status_code == 200
-        boot_source_selections_response = BootSourceSelectionListResponse(
-            **response.json()
-        )
+        boot_source_selections_response = ImageListResponse(**response.json())
         assert len(boot_source_selections_response.items) == 1
         assert boot_source_selections_response.total == 1
         assert boot_source_selections_response.next is None
@@ -780,9 +778,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             f"{self.BASE_PATH}?page=1&size=1"
         )
         assert response.status_code == 200
-        boot_sources_response = BootSourceSelectionListResponse(
-            **response.json()
-        )
+        boot_sources_response = ImageListResponse(**response.json())
         assert len(boot_sources_response.items) == 2
         assert boot_sources_response.total == 2
         assert boot_sources_response.next == f"{self.BASE_PATH}?page=2&size=1"
@@ -804,13 +800,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         )
         assert response.status_code == 200
         assert response.headers["ETag"]
-        boot_source_selection_response = BootSourceSelectionResponse(
-            **response.json()
-        )
+        boot_source_selection_response = ImageResponse(**response.json())
         assert boot_source_selection_response.id == TEST_BOOTSOURCESELECTION.id
         assert boot_source_selection_response.os == "ubuntu"
         assert boot_source_selection_response.release == "noble"
-        assert boot_source_selection_response.arch == "amd64"
+        assert boot_source_selection_response.architecture == "amd64"
         assert boot_source_selection_response.boot_source_id == 12
 
     async def test_get_404(
@@ -851,10 +845,10 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             json=jsonable_encoder(create_request),
         )
         assert response.status_code == 201
-        response = BootSourceSelectionResponse(**response.json())
+        response = ImageResponse(**response.json())
         assert response.os == "ubuntu"
         assert response.release == "noble"
-        assert response.arch == "amd64"
+        assert response.architecture == "amd64"
 
     async def test_put_200(
         self,
@@ -887,14 +881,16 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
 
-        updated_boot_source_selection_response = BootSourceSelectionResponse(
+        updated_boot_source_selection_response = ImageResponse(
             **response.json()
         )
         assert updated_boot_source_selection_response.os == updated.os
         assert (
             updated_boot_source_selection_response.release == updated.release
         )
-        assert updated_boot_source_selection_response.arch == updated.arch
+        assert (
+            updated_boot_source_selection_response.architecture == updated.arch
+        )
 
     async def test_put_404(
         self,

@@ -15,14 +15,12 @@ from maasapiserver.v3.api.public.models.requests.boot_source_selections import (
 )
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageListResponse,
+    ImageResponse,
     ImageStatisticListResponse,
     ImageStatisticResponse,
     ImageStatusListResponse,
     ImageStatusResponse,
-)
-from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
-    BootSourceSelectionListResponse,
-    BootSourceSelectionResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -42,7 +40,7 @@ class BootSourceSelectionsHandler(Handler):
         methods=["GET"],
         tags=TAGS,
         responses={
-            200: {"model": BootSourceSelectionListResponse},
+            200: {"model": ImageListResponse},
         },
         status_code=200,
         response_model_exclude_none=True,
@@ -54,16 +52,16 @@ class BootSourceSelectionsHandler(Handler):
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> BootSourceSelectionListResponse:
+    ) -> ImageListResponse:
         boot_source_selections = await services.boot_source_selections.list(
             page=pagination_params.page,
             size=pagination_params.size,
         )
 
-        return BootSourceSelectionListResponse(
+        return ImageListResponse(
             items=[
-                BootSourceSelectionResponse.from_model(
-                    boot_source_selection=boot_source_selection,
+                ImageResponse.from_selection(
+                    selection=boot_source_selection,
                     self_base_hyperlink=f"{V3_API_PREFIX}/selections",
                 )
                 for boot_source_selection in boot_source_selections.items
@@ -84,7 +82,7 @@ class BootSourceSelectionsHandler(Handler):
         methods=["GET"],
         tags=TAGS,
         responses={
-            200: {"model": BootSourceSelectionResponse},
+            200: {"model": ImageResponse},
         },
         status_code=200,
         response_model_exclude_none=True,
@@ -96,14 +94,14 @@ class BootSourceSelectionsHandler(Handler):
         self,
         id: int,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> BootSourceSelectionResponse:
+    ) -> ImageResponse:
         boot_source_selection = (
             await services.boot_source_selections.get_by_id(id)
         )
         if not boot_source_selection:
             raise NotFoundException()
-        return BootSourceSelectionResponse.from_model(
-            boot_source_selection=boot_source_selection,
+        return ImageResponse.from_selection(
+            selection=boot_source_selection,
             self_base_hyperlink=f"{V3_API_PREFIX}/selections/{id}",
         )
 

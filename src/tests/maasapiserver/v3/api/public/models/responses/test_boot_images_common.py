@@ -2,20 +2,74 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageResponse,
     ImageStatisticResponse,
     ImageStatusResponse,
 )
-from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
+from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.boot_resources import (
+    BootResourceType,
+    ImageStatus,
+    ImageUpdateStatus,
+)
 from maascommon.utils.converters import human_readable_bytes
 from maasservicelayer.models.bootresources import (
+    BootResource,
     CustomBootResourceStatistic,
     CustomBootResourceStatus,
 )
 from maasservicelayer.models.bootsourceselections import (
+    BootSourceSelection,
     BootSourceSelectionStatistic,
     BootSourceSelectionStatus,
 )
 from maasservicelayer.utils.date import utcnow
+
+
+class TestImageResponse:
+    def test_from_model__selection(self) -> None:
+        selection = BootSourceSelection(
+            id=1,
+            os="ubuntu",
+            release="noble",
+            arch="amd64",
+            boot_source_id=1,
+            legacyselection_id=1,
+        )
+        response = ImageResponse.from_selection(
+            selection, self_base_hyperlink=f"{V3_API_PREFIX}/selections"
+        )
+        assert response.id == selection.id
+        assert response.os == selection.os
+        assert response.release == selection.release
+        assert response.title == "24.04 LTS"
+        assert response.architecture == selection.arch
+        assert response.boot_source_id == selection.boot_source_id
+        assert response.hal_links.self.href == f"{V3_API_PREFIX}/selections/1"
+
+    def test_from_model__boot_resource(self) -> None:
+        boot_resource = BootResource(
+            id=1,
+            name="custom-ubuntu/noble",
+            architecture="amd64/generic",
+            rtype=BootResourceType.UPLOADED,
+            extra={},
+            rolling=False,
+            base_image="",
+        )
+        response = ImageResponse.from_boot_resource(
+            boot_resource,
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_resources",
+        )
+        assert response.id == boot_resource.id
+        assert response.os == "custom-ubuntu"
+        assert response.release == "noble"
+        assert response.title == "24.04 LTS"
+        assert response.architecture == "amd64"
+        assert response.boot_source_id is None
+        assert (
+            response.hal_links.self.href == f"{V3_API_PREFIX}/boot_resources/1"
+        )
 
 
 class TestImageStatusResponse:

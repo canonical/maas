@@ -26,9 +26,11 @@ from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
+from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageListResponse,
+    ImageResponse,
+)
 from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
-    BootSourceSelectionListResponse,
-    BootSourceSelectionResponse,
     BootSourceSelectionSyncResponse,
 )
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
@@ -278,7 +280,7 @@ class BootSourcesHandler(Handler):
         methods=["GET"],
         tags=TAGS,
         responses={
-            200: {"model": BootSourceSelectionListResponse},
+            200: {"model": ImageListResponse},
             404: {"model": NotFoundBodyResponse},
         },
         status_code=200,
@@ -292,7 +294,7 @@ class BootSourcesHandler(Handler):
         boot_source_id: int,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> BootSourceSelectionListResponse:
+    ) -> ImageListResponse:
         boot_source_selections = await services.boot_source_selections.list(
             page=pagination_params.page,
             size=pagination_params.size,
@@ -305,10 +307,10 @@ class BootSourcesHandler(Handler):
         if not boot_source_selections:
             raise NotFoundException()
 
-        return BootSourceSelectionListResponse(
+        return ImageListResponse(
             items=[
-                BootSourceSelectionResponse.from_model(
-                    boot_source_selection=boot_source_selection,
+                ImageResponse.from_selection(
+                    selection=boot_source_selection,
                     self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/",
                 )
                 for boot_source_selection in boot_source_selections.items
@@ -330,7 +332,7 @@ class BootSourcesHandler(Handler):
         tags=TAGS,
         responses={
             200: {
-                "model": BootSourceSelectionResponse,
+                "model": ImageResponse,
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
@@ -347,7 +349,7 @@ class BootSourcesHandler(Handler):
         id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> BootSourceSelectionResponse:
+    ) -> ImageResponse:
         boot_source_selection = await services.boot_source_selections.get_one(
             QuerySpec(
                 where=BootSourceSelectionClauseFactory.and_clauses(
@@ -364,8 +366,8 @@ class BootSourcesHandler(Handler):
             raise NotFoundException()
 
         response.headers["ETag"] = boot_source_selection.etag()
-        return BootSourceSelectionResponse.from_model(
-            boot_source_selection=boot_source_selection,
+        return ImageResponse.from_selection(
+            selection=boot_source_selection,
             self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/",
         )
 
@@ -374,7 +376,7 @@ class BootSourcesHandler(Handler):
         methods=["POST"],
         tags=TAGS,
         responses={
-            201: {"model": BootSourceSelectionResponse},
+            201: {"model": ImageResponse},
             404: {"model": NotFoundBodyResponse},
         },
         status_code=201,
@@ -387,7 +389,7 @@ class BootSourcesHandler(Handler):
         boot_source_id: int,
         boot_source_selection_request: BootSourceSelectionRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> BootSourceSelectionResponse:
+    ) -> ImageResponse:
         boot_source = await services.boot_sources.get_one(
             query=QuerySpec(
                 where=BootSourcesClauseFactory.with_id(boot_source_id)
@@ -401,8 +403,8 @@ class BootSourcesHandler(Handler):
             builder
         )
 
-        return BootSourceSelectionResponse.from_model(
-            boot_source_selection=boot_source_selection,
+        return ImageResponse.from_selection(
+            selection=boot_source_selection,
             self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections",
         )
 
@@ -441,8 +443,8 @@ class BootSourcesHandler(Handler):
         )
 
         response.headers["ETag"] = boot_source_selection.etag()
-        return BootSourceSelectionResponse.from_model(
-            boot_source_selection=boot_source_selection,
+        return ImageResponse.from_selection(
+            selection=boot_source_selection,
             self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections",
         )
 

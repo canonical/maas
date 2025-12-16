@@ -14,6 +14,7 @@ from maasservicelayer.models.bootresources import BootResource
 
 
 class BootResourceResponse(HalResponse[BaseHal]):
+    # Don't delete this for now, we can re-adapt it for /bootloaders and /selections/{id}/resources
     kind = "BootResource"
 
     id: int

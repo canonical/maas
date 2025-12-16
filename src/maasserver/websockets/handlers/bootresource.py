@@ -7,12 +7,12 @@ import base64
 from collections import defaultdict
 from datetime import datetime
 
-from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from maascommon.logging.security import CREATED, DELETED
 from maascommon.osystem import OperatingSystemRegistry
+from maascommon.utils.images import format_ubuntu_distro_series
 from maasserver.audit import create_audit_event
 from maasserver.bootresources import (
     import_resources,
@@ -100,28 +100,6 @@ def image_passes_filter(filters, os, arch, subarch, release, label):
         if item_matches:
             return True
     return False
-
-
-def get_distro_series_info_row(series):
-    """Returns the distro series row information from python-distro-info."""
-    info = UbuntuDistroInfo()
-    for row in info._avail(info._date):
-        # LP: #1711191 - distro-info 0.16+ no longer returns dictionaries or
-        # lists, and it now returns objects instead. As such, we need to
-        # handle both cases for backwards compatibility.
-        if not isinstance(row, dict):
-            row = row.__dict__
-        if row["series"] == series:
-            return row
-    return None
-
-
-def format_ubuntu_distro_series(series):
-    """Formats the Ubuntu distro series into a version name."""
-    row = get_distro_series_info_row(series)
-    if row is None:
-        return series
-    return row["version"]
 
 
 class BootResourceHandler(Handler):

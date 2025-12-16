@@ -7,13 +7,11 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageListResponse,
     ImageStatisticListResponse,
     ImageStatisticResponse,
     ImageStatusListResponse,
     ImageStatusResponse,
-)
-from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
-    BootSourceSelectionListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
@@ -80,9 +78,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             f"{self.BASE_PATH}?page=1&size=1"
         )
         assert response.status_code == 200
-        boot_source_selections_response = BootSourceSelectionListResponse(
-            **response.json()
-        )
+        boot_source_selections_response = ImageListResponse(**response.json())
         assert len(boot_source_selections_response.items) == 1
         assert boot_source_selections_response.total == 1
         assert boot_source_selections_response.next is None
@@ -106,9 +102,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             f"{self.BASE_PATH}?page=1&size=1"
         )
         assert response.status_code == 200
-        boot_source_selections_response = BootSourceSelectionListResponse(
-            **response.json()
-        )
+        boot_source_selections_response = ImageListResponse(**response.json())
         assert len(boot_source_selections_response.items) == 2
         assert boot_source_selections_response.total == 2
         assert (
@@ -137,9 +131,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             f"{self.BASE_PATH}?size=10"
         )
         assert response.status_code == 200
-        boot_source_selections_response = BootSourceSelectionListResponse(
-            **response.json()
-        )
+        boot_source_selections_response = ImageListResponse(**response.json())
         assert len(boot_source_selections_response.items) == 0
         assert boot_source_selections_response.total == 0
         assert boot_source_selections_response.next is None
