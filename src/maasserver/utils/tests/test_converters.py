@@ -6,7 +6,6 @@
 from textwrap import dedent
 
 from maasserver.utils.converters import (
-    human_readable_bytes,
     machine_readable_bytes,
     round_size_to_nearest_block,
     systemd_interval_to_calendar,
@@ -36,31 +35,6 @@ class TestXMLToYAML(MAASTestCase):
         )
         yml = XMLToYAML(xml)
         self.assertEqual(yml.convert(), expected_result)
-
-
-class TestHumanReadableBytes(MAASTestCase):
-    scenarios = [
-        ("bytes", dict(size=987, output="987", suffix="bytes")),
-        ("kB", dict(size=1000 * 35 + 500, output="35.5", suffix="kB")),
-        ("MB", dict(size=(1000**2) * 28, output="28.0", suffix="MB")),
-        ("GB", dict(size=(1000**3) * 72, output="72.0", suffix="GB")),
-        ("TB", dict(size=(1000**4) * 150, output="150.0", suffix="TB")),
-        ("PB", dict(size=(1000**5), output="1.0", suffix="PB")),
-        ("EB", dict(size=(1000**6), output="1.0", suffix="EB")),
-        ("ZB", dict(size=(1000**7), output="1.0", suffix="ZB")),
-        ("YB", dict(size=(1000**8), output="1.0", suffix="YB")),
-    ]
-
-    def test_returns_size_with_suffix(self):
-        self.assertEqual(
-            f"{self.output} {self.suffix}",
-            human_readable_bytes(self.size),
-        )
-
-    def test_returns_size_without_suffix(self):
-        self.assertEqual(
-            self.output, human_readable_bytes(self.size, include_suffix=False)
-        )
 
 
 class TestMachineReadableBytes(MAASTestCase):

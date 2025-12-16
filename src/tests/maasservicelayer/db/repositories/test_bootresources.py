@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.boot_resources import BootResourceType
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.bootresources import (
@@ -16,7 +17,10 @@ from tests.fixtures.factories.bootresources import (
     create_test_bootresource_entry,
     create_test_custom_bootresource_status_entry,
 )
-from tests.fixtures.factories.node import create_test_region_controller_entry
+from tests.fixtures.factories.node import (
+    create_test_machine_entry,
+    create_test_region_controller_entry,
+)
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
@@ -199,3 +203,91 @@ class TestBootResourceRepository:
         assert resource_ready in status_list.items
         assert resource_downloading in status_list.items
         assert resource_waiting in status_list.items
+
+    async def test_get_custom_image_statistic_by_id(
+        self,
+        repository: BootResourcesRepository,
+        fixture: Fixture,
+    ):
+        region_controller = await create_test_region_controller_entry(
+            fixture,
+        )
+        osystem = "custom"
+        release = "image-1"
+        arch = "amd64/generic"
+        resource = await create_test_custom_bootresource_status_entry(
+            fixture,
+            name=f"{osystem}/{release}",
+            architecture=arch,
+            region_controller=region_controller,
+        )
+
+        for status in (
+            NodeStatus.DEPLOYING,
+            NodeStatus.DEPLOYED,
+            NodeStatus.READY,
+        ):
+            await create_test_machine_entry(
+                fixture,
+                region_id=region_controller["id"],
+                osystem=osystem,
+                distro_series=release,
+                architecture=arch,
+                status=status,
+            )
+
+        stat = await repository.get_custom_image_statistic_by_id(resource.id)
+        assert stat is not None
+        assert stat.id == resource.id
+        assert stat.last_updated is not None
+        assert stat.last_deployed is None
+        assert stat.size == 1024
+        # only deployed and deploying nodes are counted
+        assert stat.node_count == 2
+        # file is of type ROOT_TGZ
+        assert stat.deploy_to_memory is True
+
+    async def test_get_custom_image_statistic_by_id__returns_none(
+        self,
+        repository: BootResourcesRepository,
+    ):
+        stat = await repository.get_custom_image_status_by_id(0)
+        assert stat is None
+
+    async def test_list_custom_image_statistics(
+        self,
+        repository: BootResourcesRepository,
+        fixture: Fixture,
+    ):
+        region_controller = await create_test_region_controller_entry(
+            fixture,
+        )
+        osystem = "custom"
+        release = "image-1"
+        arch = "amd64/generic"
+        await create_test_custom_bootresource_status_entry(
+            fixture,
+            name=f"{osystem}/{release}",
+            architecture=arch,
+            region_controller=region_controller,
+        )
+
+        for status in (
+            NodeStatus.DEPLOYING,
+            NodeStatus.DEPLOYED,
+            NodeStatus.READY,
+        ):
+            await create_test_machine_entry(
+                fixture,
+                region_id=region_controller["id"],
+                osystem=osystem,
+                distro_series=release,
+                architecture=arch,
+                status=status,
+            )
+
+        stats_list = await repository.list_custom_images_statistics(
+            page=1, size=20
+        )
+        assert len(stats_list.items) == 1
+        assert stats_list.total == 1

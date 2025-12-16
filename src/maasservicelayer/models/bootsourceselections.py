@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from datetime import datetime
+
 from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
 from maasservicelayer.models.base import (
     generate_builder,
@@ -11,11 +13,18 @@ from maasservicelayer.models.base import (
 
 
 class BootSourceSelectionStatus(MaasBaseModel):
-    id: int
     status: ImageStatus
     update_status: ImageUpdateStatus
     sync_percentage: float
     selected: bool
+
+
+class BootSourceSelectionStatistic(MaasBaseModel):
+    last_updated: datetime
+    last_deployed: datetime | None
+    size: int
+    node_count: int
+    deploy_to_memory: bool
 
 
 @generate_builder()

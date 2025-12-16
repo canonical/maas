@@ -7,6 +7,8 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageStatisticListResponse,
+    ImageStatisticResponse,
     ImageStatusListResponse,
     ImageStatusResponse,
 )
@@ -22,6 +24,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
+    BootSourceSelectionStatistic,
     BootSourceSelectionStatus,
 )
 from maasservicelayer.services import ServiceCollectionV3
@@ -410,4 +413,128 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             ),
             page=1,
             size=1,
+        )
+
+
+class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
+    BASE_PATH = f"{V3_API_PREFIX}/selection_statistics"
+
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+        ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
+    async def test_get_selection_statistic_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_selection_statistic_by_id.return_value = BootSourceSelectionStatistic(
+            id=TEST_BOOTSOURCESELECTION.id,
+            last_updated=utcnow(),
+            last_deployed=None,
+            size=1024,
+            node_count=2,
+            deploy_to_memory=True,
+        )
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        assert response.status_code == 200
+        selection_statistics_response = ImageStatisticResponse(
+            **response.json()
+        )
+        assert selection_statistics_response.id == TEST_BOOTSOURCESELECTION.id
+        assert selection_statistics_response.node_count == 2
+        assert selection_statistics_response.deploy_to_memory is True
+        assert selection_statistics_response.size == "1.0 kB"
+
+    async def test_get_selection_statistic_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_selection_statistic_by_id.return_value = None
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        assert response.status_code == 404
+
+    async def test_list_selection_statistics_one_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.list_selections_statistics.return_value = ListResult[
+            BootSourceSelectionStatus
+        ](
+            items=[
+                BootSourceSelectionStatistic(
+                    id=TEST_BOOTSOURCESELECTION.id,
+                    last_updated=utcnow(),
+                    last_deployed=None,
+                    size=1024,
+                    node_count=2,
+                    deploy_to_memory=True,
+                )
+            ],
+            total=1,
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?page=1&size=1&id={TEST_BOOTSOURCESELECTION.id}"
+        )
+        assert response.status_code == 200
+        list_response = ImageStatisticListResponse(**response.json())
+
+        assert len(list_response.items) == 1
+        assert list_response.total == 1
+
+    async def test_list_selection_statistics_another_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.list_selections_statistics.return_value = ListResult[
+            BootSourceSelectionStatus
+        ](
+            items=[
+                BootSourceSelectionStatistic(
+                    id=TEST_BOOTSOURCESELECTION.id,
+                    last_updated=utcnow(),
+                    last_deployed=None,
+                    size=1024,
+                    node_count=2,
+                    deploy_to_memory=True,
+                )
+            ],
+            total=2,
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?page=1&size=1&id={TEST_BOOTSOURCESELECTION.id}&id=2"
+        )
+        assert response.status_code == 200
+        list_response = ImageStatisticListResponse(**response.json())
+
+        assert len(list_response.items) == 1
+        assert list_response.next is not None
+        assert list_response.next == (
+            f"{self.BASE_PATH}?page=2&size=1&id={TEST_BOOTSOURCESELECTION.id}&id=2"
         )

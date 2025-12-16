@@ -4,10 +4,12 @@
 import pytest
 
 from maasapiserver.v3.api.public.models.requests.boot_source_selections import (
-    BootSourceSelectionFilterParams,
     BootSourceSelectionRequest,
+    BootSourceSelectionStatisticFilterParams,
+    BootSourceSelectionStatusFilterParams,
 )
 from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
     BootSourceSelectionStatusClauseFactory,
 )
 from maasservicelayer.models.bootsources import BootSource
@@ -39,7 +41,7 @@ class TestBootSourceSelectionRequest:
         assert builder.arch == "amd64"
 
 
-class TestBootSourceSelectionFilterParams:
+class TestBootSourceSelectionStatusFilterParams:
     @pytest.mark.parametrize(
         "ids,selected,expected",
         [
@@ -75,7 +77,9 @@ class TestBootSourceSelectionFilterParams:
         ],
     )
     def test_to_clause(self, ids, selected, expected):
-        filters = BootSourceSelectionFilterParams(ids=ids, selected=selected)
+        filters = BootSourceSelectionStatusFilterParams(
+            ids=ids, selected=selected
+        )
         clause = filters.to_clause()
         assert clause is not None
         assert clause == expected
@@ -106,6 +110,32 @@ class TestBootSourceSelectionFilterParams:
         ],
     )
     def test_to_href_format(self, ids, selected, expected):
-        filters = BootSourceSelectionFilterParams(ids=ids, selected=selected)
+        filters = BootSourceSelectionStatusFilterParams(
+            ids=ids, selected=selected
+        )
+        href = filters.to_href_format()
+        assert href == expected
+
+
+class TestBootSourceSelectionStatisticFilterParams:
+    @pytest.mark.parametrize(
+        "ids,expected",
+        [
+            (None, None),
+            ([1], BootSourceSelectionClauseFactory.with_ids([1])),
+            ([1, 2, 3], BootSourceSelectionClauseFactory.with_ids([1, 2, 3])),
+        ],
+    )
+    def test_to_clause(self, ids, expected):
+        filters = BootSourceSelectionStatisticFilterParams(ids=ids)
+        clause = filters.to_clause()
+        assert clause == expected
+
+    @pytest.mark.parametrize(
+        "ids,expected",
+        [(None, None), ([1], "id=1"), ([1, 2, 3], "id=1&id=2&id=3")],
+    )
+    def test_to_href_format(self, ids, expected):
+        filters = BootSourceSelectionStatisticFilterParams(ids=ids)
         href = filters.to_href_format()
         assert href == expected

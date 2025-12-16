@@ -11,6 +11,7 @@ from maascommon.enums.boot_resources import (
     ImageStatus,
     ImageUpdateStatus,
 )
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
@@ -44,7 +45,10 @@ from tests.fixtures.factories.bootsourceselections import (
 from tests.fixtures.factories.bootsourceselectionview import (
     create_test_selection_status_entry,
 )
-from tests.fixtures.factories.node import create_test_region_controller_entry
+from tests.fixtures.factories.node import (
+    create_test_machine_entry,
+    create_test_region_controller_entry,
+)
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import (
     ReadOnlyRepositoryCommonTests,
@@ -219,6 +223,82 @@ class TestBootSourceSelectionRepository:
         assert len(selections) == 1
         assert selection_1 not in selections
         assert selection_2 in selections
+
+    async def test_get_selection_statistic_by_id(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        region_controller = await create_test_region_controller_entry(
+            fixture,
+        )
+        created = await create_test_selection_status_entry(
+            fixture,
+            region_controller=region_controller,
+            os="ubuntu",
+            release="jammy",
+            arch="amd64",
+        )
+        for status in (
+            NodeStatus.DEPLOYING,
+            NodeStatus.DEPLOYED,
+            NodeStatus.READY,
+        ):
+            await create_test_machine_entry(
+                fixture,
+                region_id=region_controller["id"],
+                osystem="ubuntu",
+                distro_series="jammy",
+                architecture="amd64/generic",
+                status=status,
+            )
+        stat = await repository.get_selection_statistic_by_id(created.id)
+
+        assert stat is not None
+        assert stat.id == created.id
+        assert stat.last_updated is not None
+        assert stat.last_deployed is None
+        assert stat.size == 1024
+        # only deployed and deploying nodes are counted
+        assert stat.node_count == 2
+        # squashfs is present
+        assert stat.deploy_to_memory is True
+
+    async def test_get_selection_statistic_by_id__returns_none(
+        self, repository: BootSourceSelectionStatusRepository
+    ):
+        stat = await repository.get_selection_statistic_by_id(0)
+        assert stat is None
+
+    async def test_list_selection_statistics(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        region_controller = await create_test_region_controller_entry(
+            fixture,
+        )
+        await create_test_selection_status_entry(
+            fixture,
+            region_controller=region_controller,
+            os="ubuntu",
+            release="jammy",
+            arch="amd64",
+        )
+        for status in (
+            NodeStatus.DEPLOYING,
+            NodeStatus.DEPLOYED,
+            NodeStatus.READY,
+        ):
+            await create_test_machine_entry(
+                fixture,
+                region_id=region_controller["id"],
+                osystem="ubuntu",
+                distro_series="jammy",
+                architecture="amd64/generic",
+                status=status,
+            )
+        stats_list = await repository.list_selections_statistics(
+            page=1, size=20
+        )
+        assert len(stats_list.items) == 1
+        assert stats_list.total == 1
 
 
 class TestBootSourceSelectionStatusClauseFactory:

@@ -13,6 +13,7 @@ from maasservicelayer.db.repositories.bootresourcesets import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresources import (
     BootResource,
+    CustomBootResourceStatistic,
     CustomBootResourceStatus,
 )
 from maasservicelayer.services.base import BaseService, ServiceCache
@@ -175,5 +176,17 @@ class BootResourceService(
         self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[CustomBootResourceStatus]:
         return await self.repository.list_custom_images_status(
-            page, size, query
+            page=page, size=size, query=query
+        )
+
+    async def get_custom_image_statistic_by_id(
+        self, id: int
+    ) -> CustomBootResourceStatistic | None:
+        return await self.repository.get_custom_image_statistic_by_id(id)
+
+    async def list_custom_images_statistics(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[CustomBootResourceStatistic]:
+        return await self.repository.list_custom_images_statistics(
+            page=page, size=size, query=query
         )

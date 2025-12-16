@@ -11,6 +11,8 @@ import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageStatisticListResponse,
+    ImageStatisticResponse,
     ImageStatusListResponse,
 )
 from maasapiserver.v3.api.public.models.responses.boot_resources import (
@@ -46,6 +48,7 @@ from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import (
     BootResource,
+    CustomBootResourceStatistic,
     CustomBootResourceStatus,
 )
 from maasservicelayer.models.bootresourcesets import BootResourceSet
@@ -731,7 +734,7 @@ class TestBootResourcesApi(ApiCommonTests):
         )
 
 
-class TestCustomImagessApi(ApiCommonTests):
+class TestCustomImageStatusApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/custom_image_statuses"
 
     @pytest.fixture
@@ -809,3 +812,164 @@ class TestCustomImagessApi(ApiCommonTests):
         assert custom_images_status_response.total == 1
         assert len(custom_images_status_response.items) == 1
         assert custom_images_status_response.next is None
+
+
+class TestCustomImageStatisticsApi(ApiCommonTests):
+    BASE_PATH = f"{V3_API_PREFIX}/custom_image_statistics"
+
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+        ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
+    async def test_list_custom_images_statistics_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list_custom_images_statistics.return_value = ListResult[
+            CustomBootResourceStatistic
+        ](
+            items=[
+                CustomBootResourceStatistic(
+                    id=1,
+                    last_updated=utcnow(),
+                    last_deployed=None,
+                    size=1024,
+                    deploy_to_memory=True,
+                    node_count=2,
+                )
+            ],
+            total=2,
+        )
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+
+        assert response.status_code == 200
+
+        custom_images_statistics_response = ImageStatisticListResponse(
+            **response.json()
+        )
+
+        assert custom_images_statistics_response.total == 2
+        assert len(custom_images_statistics_response.items) == 1
+        assert (
+            custom_images_statistics_response.next
+            == f"{self.BASE_PATH}?page=2&size=1"
+        )
+
+    async def test_list_custom_images_statistics_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list_custom_images_statistics.return_value = ListResult[
+            CustomBootResourceStatistic
+        ](
+            items=[
+                CustomBootResourceStatistic(
+                    id=1,
+                    last_updated=utcnow(),
+                    last_deployed=None,
+                    size=1024,
+                    deploy_to_memory=True,
+                    node_count=2,
+                )
+            ],
+            total=1,
+        )
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+
+        assert response.status_code == 200
+
+        custom_images_statistics_response = ImageStatisticListResponse(
+            **response.json()
+        )
+
+        assert custom_images_statistics_response.total == 1
+        assert len(custom_images_statistics_response.items) == 1
+        assert custom_images_statistics_response.next is None
+
+    async def test_list_custom_images_statistics_filters(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list_custom_images_statistics.return_value = ListResult[
+            CustomBootResourceStatistic
+        ](
+            items=[
+                CustomBootResourceStatistic(
+                    id=1,
+                    last_updated=utcnow(),
+                    last_deployed=None,
+                    size=1024,
+                    deploy_to_memory=True,
+                    node_count=2,
+                )
+            ],
+            total=2,
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?size=1&id=1&id=2"
+        )
+        assert response.status_code == 200
+
+        custom_images_statistics_response = ImageStatisticListResponse(
+            **response.json()
+        )
+
+        assert custom_images_statistics_response.total == 2
+        assert len(custom_images_statistics_response.items) == 1
+        assert custom_images_statistics_response.next is not None
+        assert (
+            custom_images_statistics_response.next
+            == f"{self.BASE_PATH}?page=2&size=1&id=1&id=2"
+        )
+
+    async def test_get_custom_image_statistic_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_custom_image_statistic_by_id.return_value = CustomBootResourceStatistic(
+            id=1,
+            last_updated=utcnow(),
+            last_deployed=None,
+            size=1024,
+            deploy_to_memory=True,
+            node_count=2,
+        )
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+
+        assert response.status_code == 200
+        stat_response = ImageStatisticResponse(**response.json())
+        assert stat_response.id == 1
+
+    async def test_get_custom_image_statistic_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_custom_image_statistic_by_id.return_value = None
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+
+        assert response.status_code == 404
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404

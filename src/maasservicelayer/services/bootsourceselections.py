@@ -34,8 +34,10 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
+    BootSourceSelectionStatistic,
     BootSourceSelectionStatus,
 )
 from maasservicelayer.services.base import (
@@ -395,3 +397,15 @@ class BootSourceSelectionsService(
         priority.
         """
         return await self.repository.get_all_highest_priority()
+
+    async def get_selection_statistic_by_id(
+        self, id: int
+    ) -> BootSourceSelectionStatistic | None:
+        return await self.repository.get_selection_statistic_by_id(id)
+
+    async def list_selections_statistics(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[BootSourceSelectionStatistic]:
+        return await self.repository.list_selections_statistics(
+            page=page, size=size, query=query
+        )

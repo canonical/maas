@@ -480,3 +480,23 @@ class TestBootResourceService:
         await service.list_custom_images_status(page=1, size=10)
 
         mock_repository.list_custom_images_status.assert_awaited_once()
+
+    async def test_get_custom_image_statistic_by_id(
+        self,
+        mock_repository: Mock,
+        service: BootResourceService,
+    ) -> None:
+        await service.get_custom_image_statistic_by_id(1)
+        mock_repository.get_custom_image_statistic_by_id.assert_awaited_once_with(
+            1
+        )
+
+    async def test_list_custom_images_statistic(
+        self,
+        mock_repository: Mock,
+        service: BootResourceService,
+    ) -> None:
+        await service.list_custom_images_statistics(page=1, size=10)
+        mock_repository.list_custom_images_statistics.assert_awaited_once_with(
+            page=1, size=10, query=None
+        )

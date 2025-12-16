@@ -9,6 +9,7 @@ from maasservicelayer.models.base import (
     MaasTimestampedBaseModel,
 )
 from maasservicelayer.models.bootsourceselections import (
+    BootSourceSelectionStatistic,
     BootSourceSelectionStatus,
 )
 
@@ -16,6 +17,9 @@ from maasservicelayer.models.bootsourceselections import (
 class CustomBootResourceStatus(BootSourceSelectionStatus):
     update_status: ImageUpdateStatus = ImageUpdateStatus.NO_UPDATES_AVAILABLE
     selected: bool = True
+
+
+class CustomBootResourceStatistic(BootSourceSelectionStatistic): ...
 
 
 @generate_builder()

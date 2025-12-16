@@ -4,20 +4,31 @@
 from operator import eq
 from typing import Iterable, List
 
-from sqlalchemy import func, select, Table
+from sqlalchemy import desc, func, Select, select, Table
 
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maascommon.enums.boot_resources import (
+    BootResourceFileType,
+    BootResourceType,
+)
+from maascommon.enums.node import NodeStatus
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ReadOnlyRepository,
 )
 from maasservicelayer.db.tables import (
+    BootResourceFileTable,
+    BootResourceSetTable,
+    BootResourceTable,
     BootSourceSelectionStatusView,
     BootSourceSelectionTable,
     BootSourceTable,
+    NodeTable,
 )
+from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
+    BootSourceSelectionStatistic,
     BootSourceSelectionStatus,
 )
 
@@ -141,6 +152,139 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
     async def _update(self, query, builder):
         raise NotImplementedError(
             "Update is not supported for bootsourceselections"
+        )
+
+    def _selection_statistics_stmt(self) -> Select:
+        aggregated_subq = (
+            select(
+                BootResourceTable.c.selection_id.label("selection_id"),
+                func.max(BootResourceTable.c.last_deployed).label(
+                    "last_deployed"
+                ),
+                func.max(BootResourceTable.c.updated).label("last_updated"),
+                func.sum(BootResourceFileTable.c.size).label("size"),
+                # bool_or will return True if any of the files satisfy the condition
+                func.bool_or(
+                    BootResourceFileTable.c.filetype
+                    == BootResourceFileType.SQUASHFS_IMAGE
+                ).label("deploy_to_memory"),
+            )
+            .select_from(BootResourceTable)
+            .join(
+                BootResourceSetTable,
+                BootResourceTable.c.id == BootResourceSetTable.c.resource_id,
+            )
+            .join(
+                BootResourceFileTable,
+                BootResourceFileTable.c.resource_set_id
+                == BootResourceSetTable.c.id,
+            )
+            .where(
+                BootResourceTable.c.rtype == BootResourceType.SYNCED,
+                BootResourceTable.c.bootloader_type.is_(None),
+            )
+            .group_by(BootResourceTable.c.selection_id)
+            .subquery()
+        )
+
+        node_count_subq = (
+            select(
+                BootSourceSelectionTable.c.id.label("selection_id"),
+                func.count(NodeTable.c.id).label("node_count"),
+            )
+            .select_from(BootSourceSelectionTable)
+            .join(
+                NodeTable,
+                (
+                    (BootSourceSelectionTable.c.os == NodeTable.c.osystem)
+                    & (
+                        NodeTable.c.distro_series
+                        == BootSourceSelectionTable.c.release
+                    )
+                    & (
+                        func.substring(
+                            NodeTable.c.architecture,
+                            r"(\w+)/.*",
+                        )
+                        == BootSourceSelectionTable.c.arch
+                    )
+                ),
+                isouter=True,
+            )
+            .where(
+                NodeTable.c.status.in_(
+                    [NodeStatus.DEPLOYED, NodeStatus.DEPLOYING]
+                ),
+            )
+            .group_by(BootSourceSelectionTable.c.id)
+            .subquery()
+        )
+
+        stmt = (
+            select(
+                BootSourceSelectionTable.c.id,
+                aggregated_subq.c.last_updated,
+                aggregated_subq.c.last_deployed,
+                aggregated_subq.c.size,
+                aggregated_subq.c.deploy_to_memory,
+                func.coalesce(node_count_subq.c.node_count, 0).label(
+                    "node_count"
+                ),
+            )
+            .select_from(BootSourceSelectionTable)
+            .join(
+                aggregated_subq,
+                aggregated_subq.c.selection_id
+                == BootSourceSelectionTable.c.id,
+                isouter=True,
+            )
+            .join(
+                node_count_subq,
+                node_count_subq.c.selection_id
+                == BootSourceSelectionTable.c.id,
+                isouter=True,
+            )
+        )
+        return stmt
+
+    async def get_selection_statistic_by_id(
+        self, id: int
+    ) -> BootSourceSelectionStatistic | None:
+        stmt = self._selection_statistics_stmt()
+        stmt = stmt.where(eq(BootSourceSelectionTable.c.id, id))
+        result = (await self.execute_stmt(stmt)).one_or_none()
+
+        if not result:
+            return None
+
+        return BootSourceSelectionStatistic(**result._asdict())
+
+    async def list_selections_statistics(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[BootSourceSelectionStatistic]:
+        total_stmt = select(func.count()).select_from(
+            self.get_repository_table()
+        )
+        if query:
+            total_stmt = query.enrich_stmt(total_stmt)
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
+
+        stmt = self._selection_statistics_stmt()
+        stmt = (
+            stmt.order_by(desc(BootSourceSelectionTable.c.id))
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        if query:
+            stmt = query.enrich_stmt(stmt)
+
+        result = await self.execute_stmt(stmt)
+        return ListResult(
+            items=[
+                BootSourceSelectionStatistic(**row._asdict())
+                for row in result.fetchall()
+            ],
+            total=total,
         )
 
 

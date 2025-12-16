@@ -6,7 +6,12 @@ from typing import Iterable
 
 from sqlalchemy import case, desc, func, Select, select, Table
 
-from maascommon.enums.boot_resources import BootResourceType, ImageStatus
+from maascommon.enums.boot_resources import (
+    BootResourceFileType,
+    BootResourceType,
+    ImageStatus,
+)
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.db.filters import (
     Clause,
     ClauseFactory,
@@ -25,6 +30,7 @@ from maasservicelayer.db.tables import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresources import (
     BootResource,
+    CustomBootResourceStatistic,
     CustomBootResourceStatus,
 )
 
@@ -169,8 +175,7 @@ class BootResourcesRepository(BaseRepository[BootResource]):
         if query:
             total_stmt = query.enrich_stmt(total_stmt)
 
-        total_result = await self.execute_stmt(total_stmt)
-        total = total_result.scalar_one()
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
             stmt.order_by(desc(BootResourceTable.c.id))
@@ -184,6 +189,155 @@ class BootResourcesRepository(BaseRepository[BootResource]):
         return ListResult(
             items=[
                 CustomBootResourceStatus(**row._asdict())
+                for row in result.fetchall()
+            ],
+            total=total,
+        )
+
+    def _custom_image_statistics_stmt(self) -> Select:
+        aggregated_subq = (
+            select(
+                BootResourceTable.c.id,
+                BootResourceTable.c.updated.label("last_updated"),
+                BootResourceTable.c.last_deployed.label("last_deployed"),
+                func.sum(BootResourceFileTable.c.size).label("size"),
+                # bool_or will return True if any of the files satisfy the condition
+                func.bool_or(
+                    BootResourceFileTable.c.filetype.in_(
+                        [
+                            BootResourceFileType.ROOT_TGZ,
+                            BootResourceFileType.ROOT_TXZ,
+                        ]
+                    )
+                ).label("deploy_to_memory"),
+            )
+            .select_from(BootResourceTable)
+            .join(
+                BootResourceSetTable,
+                eq(BootResourceTable.c.id, BootResourceSetTable.c.resource_id),
+            )
+            .join(
+                BootResourceFileTable,
+                eq(
+                    BootResourceFileTable.c.resource_set_id,
+                    BootResourceSetTable.c.id,
+                ),
+            )
+            .where(
+                eq(BootResourceTable.c.rtype, BootResourceType.UPLOADED),
+                BootResourceTable.c.bootloader_type.is_(None),
+            )
+            .group_by(BootResourceTable.c.id)
+            .subquery()
+        )
+
+        node_count_subq = (
+            select(
+                BootResourceTable.c.id,
+                func.count(NodeTable.c.id).label("node_count"),
+            )
+            .select_from(BootResourceTable)
+            .join(
+                NodeTable,
+                (
+                    # Boot resource name is in the format os/series
+                    eq(
+                        BootResourceTable.c.name,
+                        (
+                            NodeTable.c.osystem
+                            + "/"
+                            + NodeTable.c.distro_series
+                        ),
+                    )
+                    &
+                    # Only match the architecture and not the subarch
+                    eq(
+                        func.substring(NodeTable.c.architecture, r"(\w+)/.*"),
+                        func.substring(
+                            BootResourceTable.c.architecture, r"(\w+)/.*"
+                        ),
+                    )
+                    & NodeTable.c.status.in_(
+                        [NodeStatus.DEPLOYED, NodeStatus.DEPLOYING]
+                    )
+                ),
+                isouter=True,
+            )
+            .where(
+                eq(BootResourceTable.c.rtype, BootResourceType.UPLOADED),
+                BootResourceTable.c.bootloader_type.is_(None),
+            )
+            .group_by(BootResourceTable.c.id)
+            .subquery()
+        )
+
+        stmt = (
+            select(
+                BootResourceTable.c.id,
+                aggregated_subq.c.last_updated,
+                aggregated_subq.c.last_deployed,
+                aggregated_subq.c.size,
+                aggregated_subq.c.deploy_to_memory,
+                func.coalesce(node_count_subq.c.node_count, 0).label(
+                    "node_count"
+                ),
+            )
+            .select_from(BootResourceTable)
+            .join(
+                aggregated_subq,
+                eq(aggregated_subq.c.id, BootResourceTable.c.id),
+                isouter=True,
+            )
+            .join(
+                node_count_subq,
+                eq(node_count_subq.c.id, BootResourceTable.c.id),
+                isouter=True,
+            )
+            .where(
+                eq(BootResourceTable.c.rtype, BootResourceType.UPLOADED),
+                BootResourceTable.c.bootloader_type.is_(None),
+            )
+        )
+        return stmt
+
+    async def get_custom_image_statistic_by_id(
+        self, id: int
+    ) -> CustomBootResourceStatistic | None:
+        stmt = self._custom_image_statistics_stmt()
+        stmt = stmt.where(eq(BootResourceTable.c.id, id))
+        result = (await self.execute_stmt(stmt)).one_or_none()
+
+        if not result:
+            return None
+
+        return CustomBootResourceStatistic(**result._asdict())
+
+    async def list_custom_images_statistics(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[CustomBootResourceStatistic]:
+        total_stmt = (
+            select(func.count().label("total"))
+            .select_from(BootResourceTable)
+            .where(BootResourceTable.c.rtype == BootResourceType.UPLOADED)
+        )
+        if query:
+            total_stmt = query.enrich_stmt(total_stmt)
+
+        total = (await self.execute_stmt(total_stmt)).scalar_one()
+
+        stmt = self._custom_image_statistics_stmt()
+        stmt = (
+            stmt.order_by(desc(BootResourceTable.c.id))
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        if query:
+            stmt = query.enrich_stmt(stmt)
+        result = await self.execute_stmt(stmt)
+
+        return ListResult(
+            items=[
+                CustomBootResourceStatistic(**row._asdict())
                 for row in result.fetchall()
             ],
             total=total,

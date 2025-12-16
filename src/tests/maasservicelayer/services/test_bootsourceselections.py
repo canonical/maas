@@ -502,6 +502,22 @@ class TestBootSourceSelectionsService:
                 )
             )
 
+    async def test_get_selection_statistic_by_id(
+        self, service: BootSourceSelectionsService
+    ) -> None:
+        await service.get_selection_statistic_by_id(1)
+        service.repository.get_selection_statistic_by_id.assert_awaited_once_with(
+            1
+        )
+
+    async def test_list_selections_statistics(
+        self, service: BootSourceSelectionsService
+    ) -> None:
+        await service.list_selections_statistics(page=1, size=2, query=None)
+        service.repository.list_selections_statistics.assert_awaited_once_with(
+            page=1, size=2, query=None
+        )
+
 
 class TestBootSourceSelectionStatusService(ReadOnlyServiceCommonTests):
     @pytest.fixture

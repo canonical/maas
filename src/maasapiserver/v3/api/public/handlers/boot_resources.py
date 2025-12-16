@@ -25,6 +25,8 @@ from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
 from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageStatisticListResponse,
+    ImageStatisticResponse,
     ImageStatusListResponse,
     ImageStatusResponse,
 )
@@ -467,3 +469,78 @@ class BootResourcesHandler(Handler):
             raise NotFoundException()
 
         return ImageStatusResponse.from_model(status)
+
+    @handler(
+        path="/custom_image_statistics",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": ImageStatisticListResponse,
+            },
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_custom_images_statistic(
+        self,
+        filters: CustomImageFilterParams = Depends(),  # noqa: B008
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> ImageStatisticListResponse:
+        statistics = (
+            await services.boot_resources.list_custom_images_statistics(
+                page=pagination_params.page,
+                size=pagination_params.size,
+                query=QuerySpec(where=filters.to_clause()),
+            )
+        )
+
+        next_link = None
+        if statistics.has_next(pagination_params.page, pagination_params.size):
+            next_link = (
+                f"{V3_API_PREFIX}/custom_image_statistics?"
+                f"{pagination_params.to_next_href_format()}"
+            )
+            if query_filters := filters.to_href_format():
+                next_link += f"&{query_filters}"
+
+        return ImageStatisticListResponse(
+            items=[
+                ImageStatisticResponse.from_model(statistic)
+                for statistic in statistics.items
+            ],
+            next=next_link,
+            total=statistics.total,
+        )
+
+    @handler(
+        path="/custom_image_statistics/{id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": ImageStatisticResponse,
+            },
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_custom_image_statistic(
+        self,
+        id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> ImageStatisticResponse:
+        statistic = (
+            await services.boot_resources.get_custom_image_statistic_by_id(id)
+        )
+        if not statistic:
+            raise NotFoundException()
+
+        return ImageStatisticResponse.from_model(statistic)

@@ -9,6 +9,10 @@ import re
 from django.conf import settings
 from lxml import etree
 
+from maascommon.utils.converters import (
+    human_readable_bytes as human_readable_bytes_common,
+)
+
 
 class XMLToYAML:
     """Convert XML to YAML."""
@@ -58,21 +62,7 @@ def human_readable_bytes(num_bytes, include_suffix=True):
     :param include_suffix: Whether to include the computed suffix in the
         output.
     """
-    # Case is important: 1kB is 1000 bytes, whereas 1KB is 1024 bytes. See
-    # https://en.wikipedia.org/wiki/Byte#Unit_symbol
-    for unit in ["bytes", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]:
-        if abs(num_bytes) < 1000.0 or unit == "YB":
-            if include_suffix:
-                if unit == "bytes":
-                    return f"{num_bytes:.0f} {unit}"
-                else:
-                    return f"{num_bytes:.1f} {unit}"
-            else:
-                if unit == "bytes":
-                    return "%.0f" % num_bytes
-                else:
-                    return "%.1f" % num_bytes
-        num_bytes /= 1000.0
+    return human_readable_bytes_common(num_bytes, include_suffix)
 
 
 def machine_readable_bytes(humanized):

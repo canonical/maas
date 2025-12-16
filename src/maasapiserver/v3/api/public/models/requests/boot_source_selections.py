@@ -10,6 +10,7 @@ from maasservicelayer.builders.bootsourceselections import (
 )
 from maasservicelayer.db.filters import Clause
 from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
     BootSourceSelectionStatusClauseFactory,
 )
 from maasservicelayer.models.bootsources import BootSource
@@ -37,7 +38,7 @@ class BootSourceSelectionRequest(BaseModel):
         )
 
 
-class BootSourceSelectionFilterParams(BaseModel):
+class BootSourceSelectionStatusFilterParams(BaseModel):
     ids: list[int] | None = Field(
         Query(
             default=None,
@@ -83,3 +84,23 @@ class BootSourceSelectionFilterParams(BaseModel):
         if tokens:
             return "&".join(tokens)
         return ""
+
+
+class BootSourceSelectionStatisticFilterParams(BaseModel):
+    ids: list[int] | None = Field(
+        Query(
+            default=None,
+            alias="id",
+            description="Filter by Boot Source Selection ID",
+        )
+    )
+
+    def to_clause(self) -> Clause | None:
+        if self.ids is not None:
+            return BootSourceSelectionClauseFactory.with_ids(self.ids)
+        return None
+
+    def to_href_format(self) -> str | None:
+        if self.ids is not None:
+            return "&".join([f"id={id}" for id in self.ids])
+        return None
