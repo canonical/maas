@@ -166,7 +166,14 @@ class BootResourceService(
 
         return "%s.%d" % (version_name, max_idx + 1)
 
+    async def get_custom_image_status_by_id(
+        self, id: int
+    ) -> CustomBootResourceStatus | None:
+        return await self.repository.get_custom_image_status_by_id(id)
+
     async def list_custom_images_status(
-        self, page: int, size: int
+        self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[CustomBootResourceStatus]:
-        return await self.repository.list_custom_images_status(page, size)
+        return await self.repository.list_custom_images_status(
+            page, size, query
+        )

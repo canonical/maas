@@ -18,16 +18,19 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.boot_resources import (
     BootResourceCreateRequest,
     BootResourceFileTypeChoice,
+    CustomImageFilterParams,
 )
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
+from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageStatusListResponse,
+    ImageStatusResponse,
+)
 from maasapiserver.v3.api.public.models.responses.boot_resources import (
     BootResourceListResponse,
     BootResourceResponse,
-    CustomImagesStatusListResponse,
-    CustomImagesStatusResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -393,12 +396,12 @@ class BootResourcesHandler(Handler):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
-        path="/custom_images",
+        path="/custom_image_statuses",
         methods=["GET"],
         tags=TAGS,
         responses={
             200: {
-                "model": CustomImagesStatusListResponse,
+                "model": ImageStatusListResponse,
             },
         },
         response_model_exclude_none=True,
@@ -409,26 +412,58 @@ class BootResourcesHandler(Handler):
     )
     async def list_custom_images_status(
         self,
+        filters: CustomImageFilterParams = Depends(),  # noqa: B008
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> CustomImagesStatusListResponse:
+    ) -> ImageStatusListResponse:
         statuses = await services.boot_resources.list_custom_images_status(
             page=pagination_params.page,
             size=pagination_params.size,
+            query=QuerySpec(where=filters.to_clause()),
         )
 
         next_link = None
         if statuses.has_next(pagination_params.page, pagination_params.size):
             next_link = (
-                f"{V3_API_PREFIX}/custom_images?"
+                f"{V3_API_PREFIX}/custom_image_statuses?"
                 f"{pagination_params.to_next_href_format()}"
             )
+            if query_filters := filters.to_href_format():
+                next_link += f"&{query_filters}"
 
-        return CustomImagesStatusListResponse(
+        return ImageStatusListResponse(
             items=[
-                CustomImagesStatusResponse.from_model(status)
+                ImageStatusResponse.from_model(status)
                 for status in statuses.items
             ],
             next=next_link,
             total=statuses.total,
         )
+
+    @handler(
+        path="/custom_image_statuses/{id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": ImageStatusResponse,
+            },
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_custom_image_status(
+        self,
+        id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> ImageStatusResponse:
+        status = await services.boot_resources.get_custom_image_status_by_id(
+            id
+        )
+        if not status:
+            raise NotFoundException()
+
+        return ImageStatusResponse.from_model(status)

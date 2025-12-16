@@ -10,15 +10,18 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageStatusListResponse,
+)
 from maasapiserver.v3.api.public.models.responses.boot_resources import (
     BootResourceListResponse,
     BootResourceResponse,
-    CustomImagesStatusListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
+    ImageStatus,
 )
 from maascommon.workflows.bootresource import (
     ResourceDownloadParam,
@@ -729,12 +732,13 @@ class TestBootResourcesApi(ApiCommonTests):
 
 
 class TestCustomImagessApi(ApiCommonTests):
-    BASE_PATH = f"{V3_API_PREFIX}/custom_images"
+    BASE_PATH = f"{V3_API_PREFIX}/custom_image_statuses"
 
     @pytest.fixture
     def user_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
         ]
 
     @pytest.fixture
@@ -752,23 +756,19 @@ class TestCustomImagessApi(ApiCommonTests):
                 items=[
                     CustomBootResourceStatus(
                         id=1,
-                        name="custom-image-1",
-                        architecture="amd64/generic",
                         sync_percentage=100.0,
-                        status="Ready",
+                        status=ImageStatus.READY,
                     )
                 ],
                 total=2,
             )
         )
 
-        response = await mocked_api_client_user.get(
-            f"{V3_API_PREFIX}/custom_images?size=1"
-        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
 
         assert response.status_code == 200
 
-        custom_images_status_response = CustomImagesStatusListResponse(
+        custom_images_status_response = ImageStatusListResponse(
             **response.json()
         )
 
@@ -790,23 +790,19 @@ class TestCustomImagessApi(ApiCommonTests):
                 items=[
                     CustomBootResourceStatus(
                         id=1,
-                        name="custom-image-1",
-                        architecture="amd64/generic",
                         sync_percentage=100.0,
-                        status="Ready",
+                        status=ImageStatus.READY,
                     )
                 ],
                 total=1,
             )
         )
 
-        response = await mocked_api_client_user.get(
-            f"{V3_API_PREFIX}/custom_images?size=1"
-        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
 
         assert response.status_code == 200
 
-        custom_images_status_response = CustomImagesStatusListResponse(
+        custom_images_status_response = ImageStatusListResponse(
             **response.json()
         )
 

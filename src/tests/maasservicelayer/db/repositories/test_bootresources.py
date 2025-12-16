@@ -132,7 +132,33 @@ class TestBootResourceRepository:
     ) -> BootResourcesRepository:
         return BootResourcesRepository(Context(connection=db_connection))
 
-    async def list_get_custom_images_status(
+    async def test_get_custom_image_status_by_id(
+        self,
+        repository: BootResourcesRepository,
+        fixture: Fixture,
+    ):
+        region_controller = await create_test_region_controller_entry(
+            fixture,
+        )
+        resource_ready = await create_test_custom_bootresource_status_entry(
+            fixture,
+            name="custom-image-1",
+            architecture="amd64/generic",
+            region_controller=region_controller,
+        )
+        fetched = await repository.get_custom_image_status_by_id(
+            resource_ready.id
+        )
+        assert fetched == resource_ready
+
+    async def test_get_custom_image_status_by_id__returns_none(
+        self,
+        repository: BootResourcesRepository,
+    ):
+        fetched = await repository.get_custom_image_status_by_id(0)
+        assert fetched is None
+
+    async def test_list_get_custom_images_status(
         self,
         repository: BootResourcesRepository,
         fixture: Fixture,

@@ -4,8 +4,8 @@ from enum import StrEnum
 import re
 from typing import Annotated
 
-from fastapi import Header
-from pydantic import BaseModel
+from fastapi import Header, Query
+from pydantic import BaseModel, Field
 
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
@@ -17,7 +17,7 @@ from maascommon.osystem import (
     OperatingSystemRegistry,
 )
 from maasservicelayer.builders.bootresources import BootResourceBuilder
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
 )
@@ -295,3 +295,23 @@ class BootResourceCreateRequest(BaseModel):
             created=now,
             updated=now,
         )
+
+
+class CustomImageFilterParams(BaseModel):
+    ids: list[int] | None = Field(
+        Query(
+            default=None,
+            alias="id",
+            description="Filter by Custom Image ID",
+        )
+    )
+
+    def to_clause(self) -> Clause | None:
+        if self.ids is not None:
+            return BootResourceClauseFactory.with_ids(self.ids)
+        return None
+
+    def to_href_format(self) -> str | None:
+        if self.ids is not None:
+            return "&".join([f"id={id}" for id in self.ids])
+        return None

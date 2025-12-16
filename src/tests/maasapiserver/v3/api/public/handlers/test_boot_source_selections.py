@@ -6,10 +6,12 @@ from unittest.mock import Mock
 from httpx import AsyncClient
 import pytest
 
+from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageStatusListResponse,
+    ImageStatusResponse,
+)
 from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
     BootSourceSelectionListResponse,
-    BootSourceSelectionStatusListResponse,
-    BootSourceSelectionStatusResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
@@ -174,13 +176,8 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 200
-        selection_status_response = BootSourceSelectionStatusResponse(
-            **response.json()
-        )
-        assert (
-            selection_status_response.selection_id
-            == TEST_BOOTSOURCESELECTION.id
-        )
+        selection_status_response = ImageStatusResponse(**response.json())
+        assert selection_status_response.id == TEST_BOOTSOURCESELECTION.id
         assert selection_status_response.status == ImageStatus.DOWNLOADING
         assert (
             selection_status_response.update_status
@@ -230,9 +227,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             f"{self.BASE_PATH}?page=1&size=1&id={TEST_BOOTSOURCESELECTION.id}"
         )
         assert response.status_code == 200
-        list_response = BootSourceSelectionStatusListResponse(
-            **response.json()
-        )
+        list_response = ImageStatusListResponse(**response.json())
 
         assert len(list_response.items) == 1
         assert list_response.items[0].status == ImageStatus.DOWNLOADING
@@ -268,9 +263,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             f"{self.BASE_PATH}?page=1&size=1&id={TEST_BOOTSOURCESELECTION.id}&id=2"
         )
         assert response.status_code == 200
-        list_response = BootSourceSelectionStatusListResponse(
-            **response.json()
-        )
+        list_response = ImageStatusListResponse(**response.json())
 
         assert len(list_response.items) == 1
         assert list_response.next is not None
@@ -297,9 +290,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             f"{self.BASE_PATH}?page=1&size=1"
         )
         assert response.status_code == 200
-        list_response = BootSourceSelectionStatusListResponse(
-            **response.json()
-        )
+        list_response = ImageStatusListResponse(**response.json())
 
         assert len(list_response.items) == 0
         assert list_response.next is None

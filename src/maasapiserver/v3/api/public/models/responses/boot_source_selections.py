@@ -10,11 +10,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
-from maasservicelayer.models.bootsourceselections import (
-    BootSourceSelection,
-    BootSourceSelectionStatus,
-)
+from maasservicelayer.models.bootsourceselections import BootSourceSelection
 
 
 class BootSourceSelectionResponse(HalResponse[BaseHal]):
@@ -54,28 +50,3 @@ class BootSourceSelectionListResponse(
 class BootSourceSelectionSyncResponse(BaseModel):
     kind = "BootSourceSelectionSync"
     monitor_url: str
-
-
-class BootSourceSelectionStatusResponse(BaseModel):
-    kind = "BootSourceSelectionStatus"
-    selection_id: int
-    status: ImageStatus
-    update_status: ImageUpdateStatus
-    sync_percentage: float
-    selected: bool
-
-    @classmethod
-    def from_model(cls, status: BootSourceSelectionStatus):
-        return cls(
-            selection_id=status.id,
-            status=status.status,
-            update_status=status.update_status,
-            sync_percentage=status.sync_percentage,
-            selected=status.selected,
-        )
-
-
-class BootSourceSelectionStatusListResponse(
-    PaginatedResponse[BootSourceSelectionStatusResponse]
-):
-    kind = "BootSourceSelectionStatusList"

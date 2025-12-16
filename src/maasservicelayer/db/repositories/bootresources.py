@@ -4,7 +4,7 @@
 from operator import eq
 from typing import Iterable
 
-from sqlalchemy import case, desc, func, select, Table
+from sqlalchemy import case, desc, func, Select, select, Table
 
 from maascommon.enums.boot_resources import BootResourceType, ImageStatus
 from maasservicelayer.db.filters import (
@@ -12,6 +12,7 @@ from maasservicelayer.db.filters import (
     ClauseFactory,
     OrderByClause,
     OrderByClauseFactory,
+    QuerySpec,
 )
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -58,7 +59,7 @@ class BootResourceClauseFactory(ClauseFactory):
         return Clause(condition=eq(BootResourceTable.c.rtype, rtype))
 
     @classmethod
-    def with_ids(cls, ids: set[int]) -> Clause:
+    def with_ids(cls, ids: Iterable[int]) -> Clause:
         return Clause(condition=BootResourceTable.c.id.in_(ids))
 
     @classmethod
@@ -95,9 +96,7 @@ class BootResourcesRepository(BaseRepository[BootResource]):
     def get_model_factory(self) -> type[BootResource]:
         return BootResource
 
-    async def list_custom_images_status(
-        self, page: int, size: int
-    ) -> ListResult[CustomBootResourceStatus]:
+    def _custom_image_status_stmt(self) -> Select:
         sync_percentage_expr = (
             func.sum(BootResourceFileSyncTable.c.size)
             * 100
@@ -110,19 +109,9 @@ class BootResourcesRepository(BaseRepository[BootResource]):
             )
         )
 
-        total_stmt = (
-            select(func.count().label("total"))
-            .select_from(BootResourceTable)
-            .where(BootResourceTable.c.rtype == BootResourceType.UPLOADED)
-        )
-        total_result = await self.execute_stmt(total_stmt)
-        total = total_result.scalar_one()
-
         stmt = (
             select(
                 BootResourceTable.c.id,
-                BootResourceTable.c.name,
-                BootResourceTable.c.architecture,
                 sync_percentage_expr.label("sync_percentage"),
                 case(
                     (sync_percentage_expr == 100.0, ImageStatus.READY),
@@ -151,13 +140,45 @@ class BootResourcesRepository(BaseRepository[BootResource]):
             .where(BootResourceTable.c.rtype == BootResourceType.UPLOADED)
             .group_by(
                 BootResourceTable.c.id,
-                BootResourceTable.c.name,
-                BootResourceTable.c.architecture,
             )
-            .order_by(desc(BootResourceTable.c.id))
+        )
+        return stmt
+
+    async def get_custom_image_status_by_id(
+        self, id: int
+    ) -> CustomBootResourceStatus | None:
+        stmt = self._custom_image_status_stmt()
+        stmt = stmt.where(eq(BootResourceTable.c.id, id))
+        result = (await self.execute_stmt(stmt)).one_or_none()
+
+        if not result:
+            return None
+
+        return CustomBootResourceStatus(**result._asdict())
+
+    async def list_custom_images_status(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[CustomBootResourceStatus]:
+        stmt = self._custom_image_status_stmt()
+
+        total_stmt = (
+            select(func.count().label("total"))
+            .select_from(BootResourceTable)
+            .where(BootResourceTable.c.rtype == BootResourceType.UPLOADED)
+        )
+        if query:
+            total_stmt = query.enrich_stmt(total_stmt)
+
+        total_result = await self.execute_stmt(total_stmt)
+        total = total_result.scalar_one()
+
+        stmt = (
+            stmt.order_by(desc(BootResourceTable.c.id))
             .offset((page - 1) * size)
             .limit(size)
         )
+        if query:
+            stmt = query.enrich_stmt(stmt)
         result = await self.execute_stmt(stmt)
 
         return ListResult(

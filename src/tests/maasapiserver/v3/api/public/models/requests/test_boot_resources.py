@@ -7,9 +7,13 @@ import pytest
 from maasapiserver.v3.api.public.models.requests.boot_resources import (
     BootResourceCreateRequest,
     BootResourceFileTypeChoice,
+    CustomImageFilterParams,
 )
 from maascommon.enums.boot_resources import BootResourceType
 from maasservicelayer.builders.bootresources import BootResourceBuilder
+from maasservicelayer.db.repositories.bootresources import (
+    BootResourceClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsources import BootSourceCacheOSRelease
@@ -583,3 +587,27 @@ class TestBootResourceCreateRequest:
             )
 
         assert validation_exception.value.details[0].field == "architecture"
+
+
+class TestCustomImageFilterParams:
+    @pytest.mark.parametrize(
+        "ids,expected",
+        [
+            (None, None),
+            ([1], BootResourceClauseFactory.with_ids([1])),
+            ([1, 2, 3], BootResourceClauseFactory.with_ids([1, 2, 3])),
+        ],
+    )
+    def test_to_clause(self, ids, expected):
+        filters = CustomImageFilterParams(ids=ids)
+        clause = filters.to_clause()
+        assert clause == expected
+
+    @pytest.mark.parametrize(
+        "ids,expected",
+        [(None, None), ([1], "id=1"), ([1, 2, 3], "id=1&id=2&id=3")],
+    )
+    def test_to_href_format(self, ids, expected):
+        filters = CustomImageFilterParams(ids=ids)
+        href = filters.to_href_format()
+        assert href == expected

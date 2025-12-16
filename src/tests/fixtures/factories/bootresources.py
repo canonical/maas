@@ -97,7 +97,7 @@ async def create_test_custom_bootresource_status_entry(
         region_id=region_controller["id"],
     )
 
-    if sync_size == 100:
+    if sync_size == file_size:
         status = ImageStatus.READY
     elif sync_size == 0:
         status = ImageStatus.WAITING_FOR_DOWNLOAD
@@ -106,8 +106,6 @@ async def create_test_custom_bootresource_status_entry(
 
     return CustomBootResourceStatus(
         id=boot_resource.id,
-        name=name,
-        architecture=architecture,
         status=status,
         sync_percentage=(sync_size / file_size) * 100,
     )

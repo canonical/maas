@@ -13,11 +13,13 @@ from maasapiserver.v3.api.public.models.requests.boot_source_selections import (
     BootSourceSelectionFilterParams,
 )
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
+from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageStatusListResponse,
+    ImageStatusResponse,
+)
 from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
     BootSourceSelectionListResponse,
     BootSourceSelectionResponse,
-    BootSourceSelectionStatusListResponse,
-    BootSourceSelectionStatusResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -108,7 +110,7 @@ class BootSourceSelectionsHandler(Handler):
         tags=TAGS,
         responses={
             200: {
-                "model": BootSourceSelectionStatusResponse,
+                "model": ImageStatusListResponse,
             },
             404: {"model": NotFoundBodyResponse},
         },
@@ -123,7 +125,7 @@ class BootSourceSelectionsHandler(Handler):
         filters: BootSourceSelectionFilterParams = Depends(),  # noqa: B008
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> BootSourceSelectionStatusListResponse:
+    ) -> ImageStatusListResponse:
         statuses = await services.boot_source_selection_status.list(
             page=pagination_params.page,
             size=pagination_params.size,
@@ -139,9 +141,9 @@ class BootSourceSelectionsHandler(Handler):
             if query_filters := filters.to_href_format():
                 next_link += f"&{query_filters}"
 
-        return BootSourceSelectionStatusListResponse(
+        return ImageStatusListResponse(
             items=[
-                BootSourceSelectionStatusResponse.from_model(status)
+                ImageStatusResponse.from_model(status)
                 for status in statuses.items
             ],
             next=next_link,
@@ -153,7 +155,7 @@ class BootSourceSelectionsHandler(Handler):
         methods=["GET"],
         tags=TAGS,
         responses={
-            200: {"model": BootSourceSelectionStatusResponse},
+            200: {"model": ImageStatusResponse},
             404: {"model": NotFoundBodyResponse},
         },
         response_model_exclude_none=True,
@@ -166,10 +168,10 @@ class BootSourceSelectionsHandler(Handler):
         self,
         id: int,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> BootSourceSelectionStatusResponse:
+    ) -> ImageStatusResponse:
         status = await services.boot_source_selection_status.get_by_id(id)
 
         if not status:
             raise NotFoundException()
 
-        return BootSourceSelectionStatusResponse.from_model(status)
+        return ImageStatusResponse.from_model(status)

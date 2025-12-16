@@ -3,14 +3,9 @@
 
 from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
     BootSourceSelectionResponse,
-    BootSourceSelectionStatusResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
-from maasservicelayer.models.bootsourceselections import (
-    BootSourceSelection,
-    BootSourceSelectionStatus,
-)
+from maasservicelayer.models.bootsourceselections import BootSourceSelection
 
 
 class TestBootSourceSelectionResponse:
@@ -36,21 +31,3 @@ class TestBootSourceSelectionResponse:
             response.hal_links.self.href
             == f"{V3_API_PREFIX}/boot_sources/1/selections/1"
         )
-
-
-class TestBootSourceSelectionStatusResponse:
-    def test_from_model(self) -> None:
-        status = BootSourceSelectionStatus(
-            id=1,
-            status=ImageStatus.READY,
-            update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
-            sync_percentage=100.0,
-            selected=True,
-        )
-
-        response = BootSourceSelectionStatusResponse.from_model(status=status)
-        assert response.selection_id == status.id
-        assert response.status == status.status
-        assert response.update_status == status.update_status
-        assert response.sync_percentage == status.sync_percentage
-        assert response.selected == status.selected
