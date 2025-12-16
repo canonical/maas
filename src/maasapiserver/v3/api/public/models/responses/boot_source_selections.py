@@ -48,7 +48,7 @@ class BootSourceSelectionResponse(HalResponse[BaseHal]):
 class BootSourceSelectionListResponse(
     PaginatedResponse[BootSourceSelectionResponse]
 ):
-    kind = "BootSourcesList"
+    kind = "BootSourceSelectionList"
 
 
 class BootSourceSelectionSyncResponse(BaseModel):
