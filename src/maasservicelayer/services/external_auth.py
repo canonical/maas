@@ -19,7 +19,11 @@ from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
-from maasservicelayer.auth.external_oauth import OAuth2Client, OAuthTokenData
+from maasservicelayer.auth.external_oauth import (
+    OAuth2Client,
+    OAuthRefreshData,
+    OAuthTokenData,
+)
 from maasservicelayer.auth.macaroons.checker import AsyncChecker
 from maasservicelayer.auth.macaroons.locator import AsyncThirdPartyLocator
 from maasservicelayer.auth.macaroons.macaroon_client import (
@@ -490,15 +494,6 @@ class ExternalOAuthService(
 
     async def get_callback(self, code: str, nonce: str) -> OAuthTokenData:
         client = await self.get_client()
-        if not client:
-            raise PreconditionFailedException(
-                details=[
-                    BaseExceptionDetail(
-                        type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
-                        message="No OIDC provider is configured.",
-                    )
-                ]
-            )
 
         data = await client.callback(code=code, nonce=nonce)
         user, newly_created = await self.users_service.get_or_create(
@@ -532,15 +527,6 @@ class ExternalOAuthService(
 
     async def revoke_token(self, id_token: str, refresh_token: str) -> None:
         client = await self.get_client()
-        if not client:
-            raise PreconditionFailedException(
-                details=[
-                    BaseExceptionDetail(
-                        type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
-                        message="No OIDC provider is configured.",
-                    )
-                ]
-            )
         id_token_object = await client.parse_raw_id_token(id_token=id_token)
         await self.revoked_tokens_service.create_revoked_token(
             token=refresh_token,
@@ -549,11 +535,69 @@ class ExternalOAuthService(
         )
         await client.revoke_token(token=refresh_token)
 
+    async def validate_access_token(self, access_token: str) -> None:
+        client = await self.get_client()
+        try:
+            await client.validate_access_token(access_token=access_token)
+        except Exception as e:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="The provided access token is invalid.",
+                    )
+                ]
+            ) from e
+
+    async def refresh_access_token(
+        self, refresh_token: str
+    ) -> OAuthRefreshData:
+        client = await self.get_client()
+        try:
+            tokens = await client.refresh_access_token(
+                refresh_token=refresh_token
+            )
+        except Exception as e:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="The provided refresh token is invalid.",
+                    )
+                ]
+            ) from e
+        return tokens
+
+    async def get_user_from_id_token(self, id_token: str) -> User | None:
+        client = await self.get_client()
+        try:
+            claims = await client.parse_raw_id_token(id_token=id_token)
+            user = await self.users_service.get_by_username(
+                username=claims.email
+            )
+        except Exception as e:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="Failed to parse ID token.",
+                    )
+                ]
+            ) from e
+        return user
+
     @Service.from_cache_or_execute(attr="oauth2_client")
-    async def get_client(self) -> OAuth2Client | None:
+    async def get_client(self) -> OAuth2Client:
         provider = await self.get_provider()
         if not provider:
-            return None
+            raise PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                        message="No OIDC provider is configured.",
+                    )
+                ]
+            )
         return OAuth2Client(provider)
 
     @Service.from_cache_or_execute(attr="httpx_client")

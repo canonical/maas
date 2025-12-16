@@ -55,6 +55,12 @@ class OAuthCallbackData:
     user_info: OAuthUserData
 
 
+@dataclass
+class OAuthRefreshData:
+    access_token: str
+    refresh_token: str
+
+
 class OAuth2Client:
     """
     Creates an OAuth2 Client that can interact with an external OIDC provider.
@@ -191,6 +197,33 @@ class OAuth2Client:
             encoded=id_token,
             jwks=await self._get_provider_jwks(),
             skip_validation=True,
+        )
+
+    async def refresh_access_token(
+        self, refresh_token: str
+    ) -> OAuthRefreshData:
+        try:
+            tokens = await self.client.refresh_token(
+                url=self.provider.metadata.token_endpoint,
+                refresh_token=refresh_token,
+            )
+        except HTTPStatusError as e:
+            raise BadGatewayException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
+                        message="Failed to refresh tokens from OIDC server.",
+                    )
+                ]
+            ) from e
+
+        await self.validate_access_token(access_token=tokens["access_token"])
+        # Some providers may return a new refresh token
+        new_refresh_token = tokens.get("refresh_token", refresh_token)
+
+        return OAuthRefreshData(
+            access_token=tokens["access_token"],
+            refresh_token=new_refresh_token,
         )
 
     async def _fetch_and_validate_tokens(

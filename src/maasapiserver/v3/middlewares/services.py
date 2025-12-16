@@ -8,6 +8,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
+from maasapiserver.v3.auth.cookie_manager import EncryptedCookieManager
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 
@@ -44,4 +45,7 @@ class ServicesMiddleware(BaseHTTPMiddleware):
             cache=self.services_cache,
         )
         request.state.services = services
+        encryptor = await request.state.services.external_oauth.get_encryptor()
+        cookie_manager = EncryptedCookieManager(request, Response(), encryptor)
+        request.state.cookie_manager = cookie_manager
         return await call_next(request)

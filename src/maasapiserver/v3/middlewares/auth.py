@@ -17,6 +17,7 @@ from starlette.types import ASGIApp
 import structlog
 
 from maasapiserver.common.utils.http import extract_absolute_uri
+from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.logging.security import (
     ADMIN,
@@ -29,6 +30,7 @@ from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
+from maasservicelayer.auth.external_oauth import OAuthRefreshData
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
 from maasservicelayer.auth.macaroons.macaroon_client import (
     CandidAsyncClient,
@@ -145,7 +147,7 @@ class MacaroonAuthenticationProvider:
         self, request: Request, macaroons: list[list[Macaroon]]
     ) -> AuthenticatedUser:
         """
-        Returns the authenticated user. Raise an exception if the macaroon is not valid, is expired or is invalid.
+        Returns the authenticated user. Raises an exception if the macaroon is invalid or expired.
         """
         try:
             user = await request.state.services.external_auth.login(
@@ -352,6 +354,88 @@ class MacaroonAuthenticationProvider:
         )
 
 
+class OIDCAuthenticationProvider(AuthenticationProvider):
+    async def authenticate(
+        self, request: Request, token: str
+    ) -> AuthenticatedUser:
+        """
+        Returns the authenticated user. Raises an exception if the token is invalid or expired.
+        """
+        access_token = token
+        id_token = request.state.cookie_manager.get_cookie(
+            MAASOAuth2Cookie.OAUTH2_ID_TOKEN
+        )
+        refresh_token = request.state.cookie_manager.get_cookie(
+            MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN
+        )
+
+        if not id_token or not refresh_token:
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="Missing id_token or refresh_token cookies.",
+                    )
+                ]
+            )
+
+        if not await self._is_token_valid(request, access_token):
+            # Try to refresh the access token, if it is no longer valid
+            tokens = await self._refresh_access_token(request, refresh_token)
+            request.state.cookie_manager.set_auth_cookie(
+                value=tokens.access_token,
+                key=MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN,
+            )
+            # Some providers issue a new refresh token as well.
+            if tokens.refresh_token != refresh_token:
+                request.state.cookie_manager.set_auth_cookie(
+                    value=tokens.refresh_token,
+                    key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN,
+                )
+
+        user: User = (
+            await request.state.services.external_oauth.get_user_from_id_token(
+                id_token=id_token
+            )
+        )
+
+        return AuthenticatedUser(
+            id=user.id,
+            username=user.username,
+            roles=(
+                {UserRole.ADMIN, UserRole.USER}
+                if user.is_superuser
+                else {UserRole.USER}
+            ),
+        )
+
+    async def _is_token_valid(self, request: Request, token: str) -> bool:
+        try:
+            await request.state.services.external_oauth.validate_access_token(
+                access_token=token
+            )
+            return True
+        except UnauthorizedException:
+            return False
+
+    async def _refresh_access_token(
+        self, request: Request, refresh_token: str
+    ) -> OAuthRefreshData:
+        try:
+            return await request.state.services.external_oauth.refresh_access_token(
+                refresh_token=refresh_token
+            )
+        except UnauthorizedException as e:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="Please sign in again to continue.",
+                    )
+                ]
+            ) from e
+
+
 class AuthenticationProvidersCache:
     # All the 3 auth provider will never be None at runtime (see src/maasapiserver/main.py:113)
     # We default them to None to easily use this in tests.
@@ -362,6 +446,7 @@ class AuthenticationProvidersCache:
         ] = None,  # pyright: ignore [reportArgumentType]
         session_authentication_provider: AuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
         macaroon_authentication_provider: MacaroonAuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
+        oidc_authentication_provider: OIDCAuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
     ):
         self.jwt_authentication_providers_cache: Dict[
             str, JWTAuthenticationProvider
@@ -377,6 +462,7 @@ class AuthenticationProvidersCache:
         self.macaroon_authentication_provider = (
             macaroon_authentication_provider
         )
+        self.oidc_authentication_provider = oidc_authentication_provider
 
     def get(self, key: str) -> JWTAuthenticationProvider | None:
         return self.jwt_authentication_providers_cache.get(key, None)
@@ -386,6 +472,9 @@ class AuthenticationProvidersCache:
 
     def get_macaroon_provider(self) -> MacaroonAuthenticationProvider:
         return self.macaroon_authentication_provider
+
+    def get_oidc_provider(self) -> OIDCAuthenticationProvider:
+        return self.oidc_authentication_provider
 
     def add(self, provider: JWTAuthenticationProvider) -> None:
         self.jwt_authentication_providers_cache[provider.get_issuer()] = (
@@ -422,6 +511,9 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
 
         auth_header = request.headers.get("Authorization", None)
         sessionid = request.cookies.get("sessionid", None)
+        access_token = request.state.cookie_manager.get_cookie(
+            MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN
+        )
 
         user = None
         # TODO: once the UI moves to the new authentication mechanism, we should drop the support for the django session here.
@@ -429,7 +521,9 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
         #
         # If no sessionid nor auth_header nor macaroon is specified then the request is unauthenticated and we let the handler
         # decide wether or not to serve it.
-        if sessionid:
+        if access_token:
+            user = await self._oidc_authentication(request, access_token)
+        elif sessionid:
             user = await self._session_authentication(request, sessionid)
         elif auth_header and auth_header.lower().startswith("bearer "):
             user = await self._jwt_authentication(request, auth_header)
@@ -495,3 +589,9 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
     ) -> AuthenticatedUser:
         macaroon_provider = self.providers_cache.get_macaroon_provider()
         return await macaroon_provider.authenticate(request, macaroons)
+
+    async def _oidc_authentication(
+        self, request: Request, token: str
+    ) -> AuthenticatedUser:
+        oidc_provider = self.providers_cache.get_oidc_provider()
+        return await oidc_provider.authenticate(request, token)

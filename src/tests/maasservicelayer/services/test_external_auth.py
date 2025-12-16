@@ -22,6 +22,7 @@ from maasservicelayer.auth.external_oauth import (
     OAuthAccessToken,
     OAuthCallbackData,
     OAuthIDToken,
+    OAuthRefreshData,
     OAuthTokenData,
     OAuthUserData,
 )
@@ -49,6 +50,7 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
+    INVALID_TOKEN_VIOLATION_TYPE,
     MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
     PRECONDITION_FAILED,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
@@ -959,9 +961,12 @@ class TestExternalOAuthService(ServiceCommonTests):
         service_instance.cache = service_instance.build_cache_object()
         service_instance.get_provider = AsyncMock(return_value=None)
 
-        client = await service_instance.get_client()
-
-        assert client is None
+        with pytest.raises(PreconditionFailedException) as exc_info:
+            await service_instance.get_client()
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].message == "No OIDC provider is configured."
+        assert details[0].type == MISSING_PROVIDER_CONFIG_VIOLATION_TYPE
 
     async def test_update_provider_success(
         self,
@@ -1220,23 +1225,6 @@ class TestExternalOAuthService(ServiceCommonTests):
         client2 = await service_instance.get_httpx_client()
         assert client1 is client2
 
-    async def test_get_callback_raises_exception(
-        self,
-        service_instance: ExternalOAuthService,
-        test_instance: OAuthProvider,
-    ) -> None:
-        service_instance.cache = service_instance.build_cache_object()
-        service_instance.get_client = AsyncMock(return_value=None)
-
-        with pytest.raises(PreconditionFailedException) as exc_info:
-            await service_instance.get_callback(
-                code="auth_code", nonce="nonce_value"
-            )
-        details = exc_info.value.details
-        assert details is not None
-        assert details[0].message == "No OIDC provider is configured."
-        assert details[0].type == MISSING_PROVIDER_CONFIG_VIOLATION_TYPE
-
     async def test_get_callback_user_exists(
         self,
         service_instance: ExternalOAuthService,
@@ -1456,3 +1444,147 @@ class TestExternalOAuthService(ServiceCommonTests):
             email="test@example.com",
         )
         mock_client.revoke_token.assert_awaited_once_with(token="abc123")
+
+    async def test_validate_access_token(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        mock_client = OAuth2Client(provider=test_instance)
+        mock_client.validate_access_token = AsyncMock(
+            side_effect=UnauthorizedException()
+        )
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await service_instance.validate_access_token(
+                access_token="invalid_token"
+            )
+            mock_client.validate_access_token.assert_awaited_once_with(
+                access_token="invalid_token"
+            )
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].message == "The provided access token is invalid."
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+
+    async def test_refresh_access_token_success(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        mock_client = OAuth2Client(provider=test_instance)
+        mock_client.refresh_access_token = AsyncMock(
+            return_value=OAuthRefreshData(
+                access_token="new_access_token",
+                refresh_token="new_refresh_token",
+            )
+        )
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+
+        tokens = await service_instance.refresh_access_token(
+            refresh_token="valid_refresh_token"
+        )
+
+        mock_client.refresh_access_token.assert_awaited_once_with(
+            refresh_token="valid_refresh_token"
+        )
+        assert isinstance(tokens, OAuthRefreshData)
+        assert tokens.access_token == "new_access_token"
+        assert tokens.refresh_token == "new_refresh_token"
+
+    async def test_refresh_access_token_failure(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        mock_client = OAuth2Client(provider=test_instance)
+        mock_client.refresh_access_token = AsyncMock(
+            side_effect=UnauthorizedException()
+        )
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await service_instance.refresh_access_token(
+                refresh_token="invalid_refresh_token"
+            )
+            mock_client.refresh_access_token.assert_awaited_once_with(
+                refresh_token="invalid_refresh_token"
+            )
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].message == "The provided refresh token is invalid."
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+
+    async def test_get_user_from_id_token_success(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        mock_client = AsyncMock()
+        mock_client.parse_raw_id_token = AsyncMock(
+            return_value=OAuthIDToken(
+                claims=JWTClaims(
+                    header=Mock(),
+                    payload={
+                        "email": "user@example.com",
+                        "given_name": "John",
+                        "family_name": "Doe",
+                    },
+                ),
+                encoded="id_token_value",
+                provider=test_instance,
+            )
+        )
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+        mock_user = User(
+            id=1,
+            username="user@example.com",
+            email="user@example.com",
+            password="",
+            is_superuser=False,
+            first_name="John",
+            last_name="Doe",
+            is_staff=False,
+            is_active=True,
+            last_login=utcnow(),
+            date_joined=utcnow(),
+        )
+        service_instance.users_service.get_by_username = AsyncMock(
+            return_value=mock_user
+        )
+
+        user = await service_instance.get_user_from_id_token(
+            id_token="valid_id_token"
+        )
+        mock_client.parse_raw_id_token.assert_awaited_once_with(
+            id_token="valid_id_token"
+        )
+        service_instance.users_service.get_by_username.assert_awaited_once_with(
+            username="user@example.com"
+        )
+        assert user == mock_user
+
+    async def test_get_user_from_id_token_failure(
+        self,
+        service_instance: ExternalOAuthService,
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        mock_client = AsyncMock()
+        mock_client.parse_raw_id_token = AsyncMock(
+            side_effect=UnauthorizedException()
+        )
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await service_instance.get_user_from_id_token(
+                id_token="invalid_id_token"
+            )
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].message == "Failed to parse ID token."
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE

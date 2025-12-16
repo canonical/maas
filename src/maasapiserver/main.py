@@ -42,6 +42,7 @@ from maasapiserver.v3.middlewares.auth import (
     DjangoSessionAuthenticationProvider,
     LocalAuthenticationProvider,
     MacaroonAuthenticationProvider,
+    OIDCAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
 from maasapiserver.v3.middlewares.client_certificate import (
@@ -87,6 +88,7 @@ def craft_public_app(
                     ],
                     session_authentication_provider=DjangoSessionAuthenticationProvider(),
                     macaroon_authentication_provider=MacaroonAuthenticationProvider(),
+                    oidc_authentication_provider=OIDCAuthenticationProvider(),
                 ),
             ),
             MiddlewareHandler(ServicesMiddleware, cache=cache),

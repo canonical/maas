@@ -520,3 +520,48 @@ class TestOauth2Client:
             jwks=mock_jwks,
             skip_validation=True,
         )
+
+    async def test_refresh_access_token_success(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        client.client.refresh_token = AsyncMock(
+            return_value={
+                "access_token": "new_access_token_value",
+                "id_token": "new_id_token_value",
+                "refresh_token": "new_refresh_token_value",
+            }
+        )
+        client.validate_access_token = AsyncMock(
+            return_value="new_access_token_value"
+        )
+
+        tokens = await client.refresh_access_token(
+            refresh_token="old_refresh_token_value",
+        )
+
+        assert tokens.access_token == "new_access_token_value"
+        assert tokens.refresh_token == "new_refresh_token_value"
+        client.client.refresh_token.assert_awaited_once_with(
+            url=TEST_PROVIDER.metadata.token_endpoint,
+            refresh_token="old_refresh_token_value",
+        )
+
+    async def test_refresh_access_token_failure(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        client.client.refresh_token = AsyncMock(
+            side_effect=HTTPStatusError(
+                "Error refreshing tokens",
+                request=Request("POST", url="https://issuer.com/token"),
+                response=Response(status_code=400),
+            )
+        )
+
+        with pytest.raises(BadGatewayException) as exc_info:
+            await client.refresh_access_token(
+                refresh_token="old_refresh_token_value",
+            )
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].type == PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE
+        assert (
+            details[0].message == "Failed to refresh tokens from OIDC server."
+        )

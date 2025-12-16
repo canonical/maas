@@ -25,6 +25,7 @@ from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
 )
+from maasapiserver.v3.auth.cookie_manager import EncryptedCookieManager
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
@@ -32,6 +33,7 @@ from maasapiserver.v3.middlewares.auth import (
     EXTERNAL_USER_CHECK_INTERVAL,
     LocalAuthenticationProvider,
     MacaroonAuthenticationProvider,
+    OIDCAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
 from maasapiserver.v3.middlewares.context import (
@@ -49,6 +51,7 @@ from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
+from maasservicelayer.auth.external_oauth import OAuthRefreshData
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
 from maasservicelayer.auth.macaroons.macaroon_client import (
     CandidAsyncClient,
@@ -68,15 +71,20 @@ from maasservicelayer.db import Database
 from maasservicelayer.db.tables import UserTable
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
     DischargeRequiredException,
     ForbiddenException,
     UnauthorizedException,
 )
+from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.auth import AuthService
-from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services.external_auth import (
+    ExternalAuthService,
+    ExternalOAuthService,
+)
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.user import (
@@ -101,6 +109,21 @@ def _make_user(is_superuser: bool = False) -> User:
     )
 
 
+def _make_oidc_user(is_superuser: bool = False) -> User:
+    return User(
+        id=0,
+        username="user@example.com",
+        email="user@example.com",
+        password="password",
+        is_superuser=is_superuser,
+        first_name="oidc_name",
+        last_name="oidc_last_name",
+        is_staff=False,
+        is_active=True,
+        date_joined=utcnow(),
+    )
+
+
 @pytest.fixture
 def auth_app(
     db: Database,
@@ -116,6 +139,7 @@ def auth_app(
             jwt_authentication_providers=[LocalAuthenticationProvider()],
             session_authentication_provider=DjangoSessionAuthenticationProvider(),
             macaroon_authentication_provider=MacaroonAuthenticationProvider(),
+            oidc_authentication_provider=OIDCAuthenticationProvider(),
         ),
     )
     app.add_middleware(ServicesMiddleware, cache=services_cache)
@@ -328,6 +352,7 @@ class TestV3AuthenticationMiddleware:
         authentication_providers_cache = AuthenticationProvidersCache(
             jwt_authentication_providers=None,
             session_authentication_provider=None,
+            oidc_authentication_provider=None,
             macaroon_authentication_provider=macaroon_auth_provider_mock,
         )
         auth_middleware = V3AuthenticationMiddleware(
@@ -337,12 +362,52 @@ class TestV3AuthenticationMiddleware:
         request_mock = Mock(Request)
         request_mock.headers = {}
         request_mock.cookies = {}
+        request_mock.state.cookie_manager.get_cookie.return_value = None
         call_next_mock = AsyncMock(Callable)
 
         await auth_middleware.dispatch(request_mock, call_next_mock)
         assert request_mock.state.authenticated_user == authenticated_user
         call_next_mock.assert_called_once_with(request_mock)
         macaroon_auth_provider_mock.authenticate.assert_called_once()
+
+    async def test_authentication_with_oidc(
+        self, fixture: Fixture, auth_client: AsyncClient
+    ) -> None:
+        oidc_user = await create_test_user(
+            fixture,
+            username="user@example.com",
+            email="user@example.com",
+            first_name="John",
+            last_name="Doe",
+            is_superuser=False,
+        )
+        oidc_auth_provider_mock = Mock(OIDCAuthenticationProvider)
+        authenticated_user = AuthenticatedUser(
+            id=oidc_user.id,
+            username=oidc_user.username,
+            roles={UserRole.USER},
+        )
+        oidc_auth_provider_mock.authenticate.return_value = authenticated_user
+        authentication_providers_cache = AuthenticationProvidersCache(
+            jwt_authentication_providers=None,
+            session_authentication_provider=None,
+            macaroon_authentication_provider=None,
+            oidc_authentication_provider=oidc_auth_provider_mock,
+        )
+        auth_middleware = V3AuthenticationMiddleware(
+            app=None, providers_cache=authentication_providers_cache
+        )
+        request_mock = Mock(Request)
+        request_mock.headers = {}
+        request_mock.cookies = {}
+        request_mock.state.cookie_manager.get_cookie.return_value = (
+            "valid_oidc_token"
+        )
+        call_next_mock = AsyncMock(Callable)
+        await auth_middleware.dispatch(request_mock, call_next_mock)
+        assert request_mock.state.authenticated_user == authenticated_user
+        call_next_mock.assert_called_once_with(request_mock)
+        oidc_auth_provider_mock.authenticate.assert_called_once()
 
 
 class TestAuthenticationProvidersCache:
@@ -353,15 +418,18 @@ class TestAuthenticationProvidersCache:
 
         session_provider = DjangoSessionAuthenticationProvider()
         macaroon_provider = MacaroonAuthenticationProvider()
+        oidc_authentication_provider = OIDCAuthenticationProvider()
         cache = AuthenticationProvidersCache(
             jwt_authentication_providers=[LocalAuthenticationProvider()],
             session_authentication_provider=session_provider,
             macaroon_authentication_provider=macaroon_provider,
+            oidc_authentication_provider=oidc_authentication_provider,
         )
         assert cache.size() == 1
         assert cache.get(LocalAuthenticationProvider.get_issuer()) is not None
         assert cache.get_session_provider() is session_provider
         assert cache.get_macaroon_provider() is macaroon_provider
+        assert cache.get_oidc_provider() is oidc_authentication_provider
 
     def test_get(self):
         provider = LocalAuthenticationProvider()
@@ -945,3 +1013,117 @@ class TestValidateUserExternalAuthRbac:
         )
         assert validated_user is None
         self.client.get_user_details.assert_called_once_with(user.username)
+
+
+class TestOIDCAuthenticationProvider:
+    def mock_request(self) -> Mock:
+        request = Mock(Request)
+        request.state.services.external_oauth = Mock(ExternalOAuthService)
+        request.state.cookie_manager = Mock(EncryptedCookieManager)
+        request.state.cookie_manager.get_cookie = Mock()
+        request.state.cookie_manager.get_cookie.side_effect = [
+            "idtoken",
+            "refreshtoken",
+        ]
+        request.state.cookie_manager.set_auth_cookie = Mock()
+        return request
+
+    async def test_dispatch_with_valid_token(self) -> None:
+        user = _make_oidc_user()
+        request = self.mock_request()
+        request.state.services.external_oauth.get_user_from_id_token.return_value = user
+
+        provider = OIDCAuthenticationProvider()
+        provider._is_token_valid = AsyncMock(return_value=True)
+        provider._refresh_access_token = AsyncMock()
+
+        authenticated_user = await provider.authenticate(
+            request, "accesstoken"
+        )
+
+        provider._is_token_valid.assert_awaited_once_with(
+            request, "accesstoken"
+        )
+        provider._refresh_access_token.assert_not_awaited()
+        assert authenticated_user.username == "user@example.com"
+        assert authenticated_user.roles == {UserRole.USER}
+        request.state.cookie_manager.set_auth_cookie.assert_not_called()
+
+    async def test_dispatch_refreshes_token_with_new_refresh_token(
+        self,
+    ) -> None:
+        user = _make_oidc_user()
+        request = self.mock_request()
+        request.state.services.external_oauth.get_user_from_id_token.return_value = user
+
+        provider = OIDCAuthenticationProvider()
+        provider._is_token_valid = AsyncMock(return_value=False)
+        provider._refresh_access_token = AsyncMock(
+            return_value=OAuthRefreshData("newaccesstoken", "newrefreshtoken")
+        )
+
+        authenticated_user = await provider.authenticate(
+            request, "accesstoken"
+        )
+
+        assert authenticated_user.username == "user@example.com"
+        assert authenticated_user.roles == {UserRole.USER}
+        provider._is_token_valid.assert_awaited_once_with(
+            request, "accesstoken"
+        )
+        provider._refresh_access_token.assert_awaited_once_with(
+            request, "refreshtoken"
+        )
+        request.state.cookie_manager.set_auth_cookie.assert_any_call(
+            value="newaccesstoken", key="maas.oauth2_access_token_cookie"
+        )
+        request.state.cookie_manager.set_auth_cookie.assert_any_call(
+            value="newrefreshtoken", key="maas.oauth2_refresh_token_cookie"
+        )
+
+    async def test_dispatch_refreshes_token_with_same_refresh_token(
+        self,
+    ) -> None:
+        user = _make_oidc_user()
+        request = self.mock_request()
+        request.state.services.external_oauth.get_user_from_id_token.return_value = user
+
+        provider = OIDCAuthenticationProvider()
+        provider._is_token_valid = AsyncMock(return_value=False)
+        provider._refresh_access_token = AsyncMock(
+            return_value=OAuthRefreshData("newaccesstoken", "refreshtoken")
+        )
+
+        authenticated_user = await provider.authenticate(
+            request, "accesstoken"
+        )
+
+        assert authenticated_user.username == "user@example.com"
+        assert authenticated_user.roles == {UserRole.USER}
+        provider._is_token_valid.assert_awaited_once_with(
+            request, "accesstoken"
+        )
+        provider._refresh_access_token.assert_awaited_once_with(
+            request, "refreshtoken"
+        )
+        request.state.cookie_manager.set_auth_cookie.assert_called_once_with(
+            value="newaccesstoken", key="maas.oauth2_access_token_cookie"
+        )
+
+    async def test_dispatch_with_missing_cookies(self) -> None:
+        request = self.mock_request()
+        request.state.cookie_manager.get_cookie.side_effect = [
+            None,
+            None,
+        ]
+
+        provider = OIDCAuthenticationProvider()
+
+        with pytest.raises(BadRequestException) as exc_info:
+            await provider.authenticate(request, "accesstoken")
+        details = exc_info.value.details
+        assert details is not None
+        assert (
+            details[0].message == "Missing id_token or refresh_token cookies."
+        )
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
