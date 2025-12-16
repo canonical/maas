@@ -183,27 +183,31 @@ func (l *NotificationListener) syncWithoutDB(ctx context.Context) error {
 
 		if now-notification.Timestamp > 1 {
 			batch = append(batch, notification)
-			l.queue.Push(notification)
-		}
-
-		if len(batch) == 0 {
-			l.pool.Put(&batch)
 			continue
 		}
 
-		copied := make([]*Notification, len(batch))
-		copy(copied, batch)
-		l.pool.Put(&batch)
+		l.queue.Push(notification)
 
-		err := l.fn(ctx, copied)
-		if err != nil { // failed to send, push leases back
-			for _, n := range copied {
-				heap.Push(l.queue, n)
-			}
+		break
+	}
+
+	if len(batch) == 0 {
+		l.pool.Put(&batch)
+		return nil
+	}
+
+	copied := make([]*Notification, len(batch))
+	copy(copied, batch)
+	l.pool.Put(&batch)
+
+	err := l.fn(ctx, copied)
+	if err != nil { // failed to send, push leases back
+		for _, n := range copied {
+			heap.Push(l.queue, n)
 		}
 	}
 
-	return nil
+	return err
 }
 
 func (l *NotificationListener) syncWithDB(ctx context.Context, tx *sql.Tx) error {
