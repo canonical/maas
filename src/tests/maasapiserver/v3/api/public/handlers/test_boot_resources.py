@@ -17,6 +17,10 @@ from maasapiserver.v3.api.public.models.responses.boot_images_common import (
     ImageStatisticResponse,
     ImageStatusListResponse,
 )
+from maasapiserver.v3.api.public.models.responses.boot_resources import (
+    BootloaderListResponse,
+    BootloaderResponse,
+)
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
@@ -928,6 +932,142 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
     ) -> None:
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_custom_image_statistic_by_id.return_value = None
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+
+        assert response.status_code == 404
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+
+class TestBootloadersApi(ApiCommonTests):
+    BASE_PATH = f"{V3_API_PREFIX}/bootloaders"
+
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+        ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
+    @pytest.fixture
+    def bootloader(self) -> BootResource:
+        now = utcnow()
+        return BootResource(
+            id=1,
+            created=now,
+            updated=now,
+            name="grub-efi/uefi",
+            architecture="amd64/generic",
+            extra={},
+            rtype=BootResourceType.UPLOADED,
+            rolling=False,
+            base_image="",
+            kflavor=None,
+            bootloader_type="uefi",
+            alias=None,
+            last_deployed=None,
+        )
+
+    async def test_list_bootloaders_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+        bootloader: BootResource,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootResource
+        ](
+            items=[bootloader],
+            total=2,
+        )
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+
+        assert response.status_code == 200
+
+        bootloaders_response = BootloaderListResponse(**response.json())
+
+        assert bootloaders_response.total == 2
+        assert len(bootloaders_response.items) == 1
+        assert bootloaders_response.next == f"{self.BASE_PATH}?page=2&size=1"
+
+        services_mock.boot_resources.list.assert_awaited_once_with(
+            page=1,
+            size=1,
+            query=QuerySpec(
+                where=BootResourceClauseFactory.not_clause(
+                    BootResourceClauseFactory.with_bootloader_type(None)
+                )
+            ),
+        )
+
+    async def test_list_bootloaders_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+        bootloader: BootResource,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootResource
+        ](
+            items=[bootloader],
+            total=1,
+        )
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+
+        assert response.status_code == 200
+
+        bootloaders_response = BootloaderListResponse(**response.json())
+
+        assert bootloaders_response.total == 1
+        assert len(bootloaders_response.items) == 1
+        assert bootloaders_response.next is None
+
+    async def test_get_bootloader_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+        bootloader: BootResource,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = bootloader
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+
+        assert response.status_code == 200
+        stat_response = BootloaderResponse(**response.json())
+        assert stat_response.id == 1
+        services_mock.boot_resources.get_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.not_clause(
+                            BootResourceClauseFactory.with_bootloader_type(
+                                None
+                            )
+                        ),
+                        BootResourceClauseFactory.with_id(1),
+                    ]
+                )
+            )
+        )
+
+    async def test_get_bootloader_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = None
 
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
 

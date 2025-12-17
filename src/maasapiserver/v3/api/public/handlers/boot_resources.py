@@ -32,6 +32,10 @@ from maasapiserver.v3.api.public.models.responses.boot_images_common import (
     ImageStatusListResponse,
     ImageStatusResponse,
 )
+from maasapiserver.v3.api.public.models.responses.boot_resources import (
+    BootloaderListResponse,
+    BootloaderResponse,
+)
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import (
@@ -549,3 +553,102 @@ class CustomImagesHandler(Handler):
             raise NotFoundException()
 
         return ImageStatisticResponse.from_model(statistic)
+
+
+class BootloadersHandler(Handler):
+    """Bootloaders API handler."""
+
+    TAGS = ["Bootloaders"]
+
+    @handler(
+        path="/bootloaders",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": BootloaderListResponse,
+            }
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_bootloaders(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootloaderListResponse:
+        bootloaders = await services.boot_resources.list(
+            page=pagination_params.page,
+            size=pagination_params.size,
+            query=QuerySpec(
+                where=BootResourceClauseFactory.not_clause(
+                    BootResourceClauseFactory.with_bootloader_type(None)
+                )
+            ),
+        )
+        return BootloaderListResponse(
+            items=[
+                BootloaderResponse.from_model(
+                    boot_resource=bootloader,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/bootloaders",
+                )
+                for bootloader in bootloaders.items
+            ],
+            total=bootloaders.total,
+            next=(
+                f"{V3_API_PREFIX}/bootloaders?"
+                f"{pagination_params.to_next_href_format()}"
+                if bootloaders.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
+        )
+
+    @handler(
+        path="/bootloaders/{bootloader_id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": BootloaderResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_bootloader(
+        self,
+        bootloader_id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootloaderResponse:
+        bootloader = await services.boot_resources.get_one(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.not_clause(
+                            BootResourceClauseFactory.with_bootloader_type(
+                                None
+                            )
+                        ),
+                        BootResourceClauseFactory.with_id(bootloader_id),
+                    ]
+                )
+            )
+        )
+        if bootloader is None:
+            raise NotFoundException()
+        response.headers["ETag"] = bootloader.etag()
+        return BootloaderResponse.from_model(
+            boot_resource=bootloader,
+            self_base_hyperlink=f"{V3_API_PREFIX}/bootloaders",
+        )

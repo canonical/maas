@@ -1,6 +1,7 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 from maasapiserver.v3.api.public.models.responses.boot_resources import (
+    BootloaderResponse,
     BootResourceResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -51,4 +52,37 @@ class TestBootResourceResponse:
         assert (
             boot_resource_response.hal_links.self.href  # pyright: ignore[reportOptionalMemberAccess]
             == f"{V3_API_PREFIX}/boot_resources/{boot_resource.id}"
+        )
+
+
+class TestBootloaderResponse:
+    def test_from_model(self) -> None:
+        now = utcnow()
+        boot_resource = BootResource(
+            id=1,
+            created=now,
+            updated=now,
+            name="grub-efi/uefi",
+            architecture="amd64/generic",
+            extra={},
+            rtype=BootResourceType.UPLOADED,
+            rolling=False,
+            base_image="",
+            kflavor=None,
+            bootloader_type="uefi",
+            alias=None,
+            last_deployed=None,
+        )
+        bootloader_response = BootloaderResponse.from_model(
+            boot_resource=boot_resource,
+            self_base_hyperlink=f"{V3_API_PREFIX}/bootloaders",
+        )
+
+        assert bootloader_response.id == boot_resource.id
+        assert bootloader_response.name == "grub-efi"
+        assert bootloader_response.architecture == "amd64"
+        assert bootloader_response.bootloader_type == "uefi"
+        assert (
+            bootloader_response.hal_links.self.href  # pyright: ignore[reportOptionalMemberAccess]
+            == f"{V3_API_PREFIX}/bootloaders/{boot_resource.id}"
         )

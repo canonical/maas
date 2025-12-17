@@ -84,6 +84,12 @@ class BootResourceClauseFactory(ClauseFactory):
             condition=BootResourceTable.c.selection_id.in_(selection_ids)
         )
 
+    @classmethod
+    def with_bootloader_type(cls, bootloader_type: str | None) -> Clause:
+        return Clause(
+            condition=eq(BootResourceTable.c.bootloader_type, bootloader_type)
+        )
+
 
 class BootResourceOrderByClauses(OrderByClauseFactory):
     @staticmethod

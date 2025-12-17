@@ -45,3 +45,33 @@ class BootResourceResponse(HalResponse[BaseHal]):
 
 class BootResourceListResponse(PaginatedResponse[BootResourceResponse]):
     kind = "BootResourceList"
+
+
+class BootloaderResponse(HalResponse[BaseHal]):
+    kind = "Bootloader"
+    id: int
+    name: str
+    architecture: str
+    bootloader_type: str
+
+    @classmethod
+    def from_model(
+        cls, boot_resource: BootResource, self_base_hyperlink: str
+    ) -> Self:
+        name = boot_resource.name.split("/")[0]
+        arch, _ = boot_resource.split_arch()
+        return cls(
+            id=boot_resource.id,
+            name=name,
+            architecture=arch,
+            bootloader_type=boot_resource.bootloader_type,
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+                self=BaseHref(
+                    href=f"{self_base_hyperlink.rstrip('/')}/{boot_resource.id}"
+                )
+            ),
+        )
+
+
+class BootloaderListResponse(PaginatedResponse[BootloaderResponse]):
+    kind = "BootloaderList"
