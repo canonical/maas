@@ -443,7 +443,7 @@ snap-clean:
 .PHONY: snap-clean
 
 snap:
-	$(snapcraft)
+	$(snapcraft) pack
 .PHONY: snap
 
 SNAP_DEV_DIR = dev-snap
@@ -464,7 +464,7 @@ $(SNAP_UNPACKED_DIR_MARKER): $(SNAP_FILE)
 	touch $@
 
 $(SNAP_FILE):
-	$(snapcraft) -o $(SNAP_FILE)
+	$(snapcraft) pack -o $(SNAP_FILE)
 
 snap-tree-sync: RSYNC := rsync -v -r -u -l -t -W -L
 snap-tree-sync: $(UI_BUILD) clean-agent go-bins $(SNAP_UNPACKED_DIR_MARKER)
