@@ -4,7 +4,7 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import Depends, Header, Query, Request, Response
+from fastapi import Depends, Header, Request, Response
 from starlette import status
 import structlog
 
@@ -25,20 +25,17 @@ from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
 from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageListResponse,
+    ImageResponse,
     ImageStatisticListResponse,
     ImageStatisticResponse,
     ImageStatusListResponse,
     ImageStatusResponse,
 )
-from maasapiserver.v3.api.public.models.responses.boot_resources import (
-    BootResourceListResponse,
-    BootResourceResponse,
-)
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
-    BootResourceStrType,
     BootResourceType,
 )
 from maascommon.workflows.bootresource import (
@@ -83,16 +80,11 @@ from provisioningserver.utils.env import MAAS_ID
 
 logger = structlog.get_logger()
 
-TYPE_MAPPING = {
-    BootResourceStrType.SYNCED: BootResourceType.SYNCED,
-    BootResourceStrType.UPLOADED: BootResourceType.UPLOADED,
-}
 
+class CustomImagesHandler(Handler):
+    """CustomImages API handler."""
 
-class BootResourcesHandler(Handler):
-    """BootResources API handler."""
-
-    TAGS = ["BootResources"]
+    TAGS = ["CustomImages"]
 
     CHUNK_SIZE = 4 * 1024 * 1024
 
@@ -107,12 +99,12 @@ class BootResourcesHandler(Handler):
         return filetype_filename.get(filetype, filetype)
 
     @handler(
-        path="/boot_resources",
+        path="/custom_images",
         methods=["POST"],
         tags=TAGS,
         responses={
             201: {
-                "model": BootResourceResponse,
+                "model": ImageResponse,
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             400: {"model": BadRequestBodyResponse},
@@ -137,13 +129,13 @@ class BootResourcesHandler(Handler):
             }
         },
     )
-    async def upload_boot_resource(
+    async def upload_custom_image(
         self,
         create_request: Annotated[BootResourceCreateRequest, Depends()],
         request: Request,
         response: Response,
         services: Annotated[ServiceCollectionV3, Depends(services)],
-    ) -> BootResourceResponse:
+    ) -> ImageResponse:
         now = utcnow()
 
         boot_resource = await services.boot_resources.create(
@@ -278,18 +270,18 @@ class BootResourcesHandler(Handler):
         )
 
         response.headers["ETag"] = boot_resource.etag()
-        return BootResourceResponse.from_model(
+        return ImageResponse.from_boot_resource(
             boot_resource=boot_resource,
-            self_base_hyperlink=f"{V3_API_PREFIX}/boot_resources",
+            self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
         )
 
     @handler(
-        path="/boot_resources",
+        path="/custom_images",
         methods=["GET"],
         tags=TAGS,
         responses={
             200: {
-                "model": BootResourceListResponse,
+                "model": ImageListResponse,
             },
         },
         response_model_exclude_none=True,
@@ -298,36 +290,31 @@ class BootResourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def list_boot_resources(
+    async def list_custom_images(
         self,
-        type: Annotated[
-            BootResourceStrType | None,
-            Query(description="Filter boot resources of a particular type"),
-        ] = None,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> BootResourceListResponse:
-        query_spec = QuerySpec()
-        if type:
-            query_spec = QuerySpec(
-                where=BootResourceClauseFactory.with_rtype(TYPE_MAPPING[type]),
-            )
+    ) -> ImageListResponse:
         boot_resources = await services.boot_resources.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=query_spec,
+            query=QuerySpec(
+                where=BootResourceClauseFactory.with_rtype(
+                    BootResourceType.UPLOADED
+                )
+            ),
         )
-        return BootResourceListResponse(
+        return ImageListResponse(
             items=[
-                BootResourceResponse.from_model(
+                ImageResponse.from_boot_resource(
                     boot_resource=boot_resource,
-                    self_base_hyperlink=f"{V3_API_PREFIX}/boot_resources",
+                    self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
                 )
                 for boot_resource in boot_resources.items
             ],
             total=boot_resources.total,
             next=(
-                f"{V3_API_PREFIX}/boot_resources?"
+                f"{V3_API_PREFIX}/custom_images?"
                 + f"{pagination_params.to_next_href_format()}"
                 if boot_resources.has_next(
                     pagination_params.page, pagination_params.size
@@ -337,12 +324,12 @@ class BootResourcesHandler(Handler):
         )
 
     @handler(
-        path="/boot_resources/{boot_resource_id}",
+        path="/custom_images/{boot_resource_id}",
         methods=["GET"],
         tags=TAGS,
         responses={
             200: {
-                "model": BootResourceResponse,
+                "model": ImageResponse,
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
@@ -353,25 +340,34 @@ class BootResourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
-    async def get_boot_resource_by_id(
+    async def get_custom_image_by_id(
         self,
         boot_resource_id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> BootResourceResponse:
-        boot_resource = await services.boot_resources.get_by_id(
-            id=boot_resource_id
+    ) -> ImageResponse:
+        boot_resource = await services.boot_resources.get_one(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_id(boot_resource_id),
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.UPLOADED
+                        ),
+                    ]
+                )
+            ),
         )
         if boot_resource is None:
             raise NotFoundException()
         response.headers["ETag"] = boot_resource.etag()
-        return BootResourceResponse.from_model(
+        return ImageResponse.from_boot_resource(
             boot_resource=boot_resource,
-            self_base_hyperlink=f"{V3_API_PREFIX}/boot_resources",
+            self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
         )
 
     @handler(
-        path="/boot_resources/{boot_resource_id}",
+        path="/custom_images/{boot_resource_id}",
         methods=["DELETE"],
         tags=TAGS,
         responses={
@@ -385,14 +381,23 @@ class BootResourcesHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
-    async def delete_boot_resource_by_id(
+    async def delete_custom_image_by_id(
         self,
         boot_resource_id: int,
         etag_if_match: str | None = Header(alias="if-match", default=None),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
-        await services.boot_resources.delete_by_id(
-            id=boot_resource_id,
+        await services.boot_resources.delete_one(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_id(boot_resource_id),
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.UPLOADED
+                        ),
+                    ]
+                )
+            ),
             etag_if_match=etag_if_match,
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)

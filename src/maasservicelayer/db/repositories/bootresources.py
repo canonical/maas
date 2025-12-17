@@ -65,6 +65,10 @@ class BootResourceClauseFactory(ClauseFactory):
         return Clause(condition=eq(BootResourceTable.c.rtype, rtype))
 
     @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(BootResourceTable.c.id, id))
+
+    @classmethod
     def with_ids(cls, ids: Iterable[int]) -> Clause:
         return Clause(condition=BootResourceTable.c.id.in_(ids))
 

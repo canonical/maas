@@ -11,13 +11,11 @@ import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.responses.boot_images_common import (
+    ImageListResponse,
+    ImageResponse,
     ImageStatisticListResponse,
     ImageStatisticResponse,
     ImageStatusListResponse,
-)
-from maasapiserver.v3.api.public.models.responses.boot_resources import (
-    BootResourceListResponse,
-    BootResourceResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import (
@@ -147,8 +145,8 @@ class MockTemporaryFile:
         return False
 
 
-class TestBootResourcesApi(ApiCommonTests):
-    BASE_PATH = f"{V3_API_PREFIX}/boot_resources"
+class TestCustomImagesApi(ApiCommonTests):
+    BASE_PATH = f"{V3_API_PREFIX}/custom_images"
 
     @pytest.fixture
     def user_endpoints(self) -> list[Endpoint]:
@@ -183,7 +181,7 @@ class TestBootResourcesApi(ApiCommonTests):
     @patch(
         "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
     )
-    async def test_upload_boot_resource(
+    async def test_upload_custom_image(
         self,
         request_to_builder_mock: MagicMock,
         async_local_file_mock: MagicMock,
@@ -265,13 +263,19 @@ class TestBootResourcesApi(ApiCommonTests):
 
         assert response.status_code == 201
 
-        boot_resource_response = BootResourceResponse(**response.json())
+        boot_resource_response = ImageResponse(**response.json())
 
-        assert boot_resource_response.type == "Uploaded"
-        assert boot_resource_response.name == TEST_BOOT_RESOURCE_1.name
+        assert (
+            boot_resource_response.os
+            == TEST_BOOT_RESOURCE_1.name.split("/")[0]
+        )
+        assert (
+            boot_resource_response.release
+            == TEST_BOOT_RESOURCE_1.name.split("/")[1]
+        )
         assert (
             boot_resource_response.architecture
-            == TEST_BOOT_RESOURCE_1.architecture
+            == TEST_BOOT_RESOURCE_1.split_arch()[0]
         )
 
         services_mock.boot_resource_file_sync.get_or_create.assert_called_once()
@@ -297,7 +301,7 @@ class TestBootResourcesApi(ApiCommonTests):
     @patch(
         "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
     )
-    async def test_upload_boot_resource_400_sha_does_not_match(
+    async def test_upload_custom_image_400_sha_does_not_match(
         self,
         request_to_builder_mock: MagicMock,
         async_local_file_mock: MagicMock,
@@ -362,7 +366,7 @@ class TestBootResourcesApi(ApiCommonTests):
     @patch(
         "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
     )
-    async def test_upload_boot_resource_400_size_does_not_match(
+    async def test_upload_custom_image_400_size_does_not_match(
         self,
         request_to_builder_mock: MagicMock,
         async_local_file_mock: MagicMock,
@@ -424,7 +428,7 @@ class TestBootResourcesApi(ApiCommonTests):
     @patch(
         "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
     )
-    async def test_upload_boot_resource_507_insufficient_disk_space(
+    async def test_upload_custom_image_507_insufficient_disk_space(
         self,
         request_to_builder_mock: MagicMock,
         statvfs_mock: MagicMock,
@@ -473,7 +477,7 @@ class TestBootResourcesApi(ApiCommonTests):
         assert error_response.code == 507
         assert error_response.kind == "Error"
 
-    async def test_list_boot_resources_200_no_other_page(
+    async def test_list_custom_images_200_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
@@ -487,13 +491,13 @@ class TestBootResourcesApi(ApiCommonTests):
 
         assert response.status_code == 200
 
-        boot_sources_response = BootResourceListResponse(**response.json())
+        boot_sources_response = ImageListResponse(**response.json())
 
         assert len(boot_sources_response.items) == 1
         assert boot_sources_response.total == 1
         assert boot_sources_response.next is None
 
-    async def test_list_boot_resources_200_other_page(
+    async def test_list_custom_images_200_other_page(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
@@ -507,7 +511,7 @@ class TestBootResourcesApi(ApiCommonTests):
 
         assert response.status_code == 200
 
-        boot_resources_response = BootResourceListResponse(**response.json())
+        boot_resources_response = ImageListResponse(**response.json())
 
         assert len(boot_resources_response.items) == 2
         assert boot_resources_response.total == 2
@@ -515,81 +519,13 @@ class TestBootResourcesApi(ApiCommonTests):
             boot_resources_response.next == f"{self.BASE_PATH}?page=2&size=1"
         )
 
-    async def test_list_boot_resources_200_with_type_has_items(
+    async def test_get_custom_image_by_id_200(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.list.return_value = ListResult[
-            BootResource
-        ](items=[TEST_BOOT_RESOURCE_2], total=1)
-
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}?type=uploaded&size=1"
-        )
-
-        assert response.status_code == 200
-
-        boot_resource_list_response = BootResourceListResponse(
-            **response.json()
-        )
-
-        assert len(boot_resource_list_response.items) == 1
-        assert boot_resource_list_response.total == 1
-        assert boot_resource_list_response.next is None
-
-        services_mock.boot_resources.list.assert_called_once_with(
-            page=1,
-            size=1,
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_rtype(
-                    BootResourceType.UPLOADED
-                ),
-            ),
-        )
-
-    async def test_list_boot_resources_200_with_type_no_items(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
-    ) -> None:
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.list.return_value = ListResult[
-            BootResource
-        ](items=[], total=0)
-
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}?type=synced&size=1"
-        )
-
-        assert response.status_code == 200
-
-        boot_resource_list_response = BootResourceListResponse(
-            **response.json()
-        )
-
-        assert len(boot_resource_list_response.items) == 0
-        assert boot_resource_list_response.total == 0
-        assert boot_resource_list_response.next is None
-
-        services_mock.boot_resources.list.assert_called_once_with(
-            page=1,
-            size=1,
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_rtype(
-                    BootResourceType.SYNCED
-                ),
-            ),
-        )
-
-    async def test_get_boot_resource_by_id_200(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
-    ) -> None:
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_by_id.return_value = (
+        services_mock.boot_resources.get_one.return_value = (
             TEST_BOOT_RESOURCE_1
         )
 
@@ -598,17 +534,17 @@ class TestBootResourcesApi(ApiCommonTests):
         assert response.status_code == 200
         assert "ETag" in response.headers
 
-        boot_resource_response = BootResourceResponse(**response.json())
+        boot_resource_response = ImageResponse(**response.json())
 
         assert boot_resource_response.id == 1
 
-    async def test_get_boot_resource_by_id_404(
+    async def test_get_custom_image_by_id_404(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_by_id.return_value = None
+        services_mock.boot_resources.get_one.return_value = None
 
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}/3")
 
@@ -619,16 +555,13 @@ class TestBootResourcesApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 404
 
-    async def test_delete_boot_resources_204(
+    async def test_delete_custom_images_204(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_by_id.return_value = (
-            TEST_BOOT_RESOURCE_2
-        )
-        services_mock.boot_resources.delete_by_id.return_value = (
+        services_mock.boot_resources.delete_one.return_value = (
             TEST_BOOT_RESOURCE_2
         )
 
@@ -636,12 +569,21 @@ class TestBootResourcesApi(ApiCommonTests):
 
         assert response.status_code == 204
 
-        services_mock.boot_resources.delete_by_id.assert_called_once_with(
-            id=1,
+        services_mock.boot_resources.delete_one.assert_called_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_id(1),
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.UPLOADED
+                        ),
+                    ]
+                )
+            ),
             etag_if_match=None,
         )
 
-    async def test_delete_boot_resources_204_by_etag(
+    async def test_delete_custom_images_204_by_etag(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
@@ -649,10 +591,7 @@ class TestBootResourcesApi(ApiCommonTests):
         correct_etag = "correct_etag"
 
         services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_by_id.return_value = (
-            TEST_BOOT_RESOURCE_2
-        )
-        services_mock.boot_resources.delete_by_id.return_value = (
+        services_mock.boot_resources.delete_one.return_value = (
             TEST_BOOT_RESOURCE_2
         )
 
@@ -663,19 +602,27 @@ class TestBootResourcesApi(ApiCommonTests):
 
         assert response.status_code == 204
 
-        services_mock.boot_resources.delete_by_id.assert_called_once_with(
-            id=1,
+        services_mock.boot_resources.delete_one.assert_called_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_id(1),
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.UPLOADED
+                        ),
+                    ]
+                )
+            ),
             etag_if_match=correct_etag,
         )
 
-    async def test_delete_boot_resources_404(
+    async def test_delete_custom_images_404(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_by_id.return_value = None
-        services_mock.boot_resources.delete_by_id.side_effect = (
+        services_mock.boot_resources.delete_one.side_effect = (
             NotFoundException()
         )
 
@@ -689,22 +636,28 @@ class TestBootResourcesApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 404
 
-        services_mock.boot_resources.delete_by_id.assert_called_once_with(
-            id=2,
+        services_mock.boot_resources.delete_one.assert_called_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_id(2),
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.UPLOADED
+                        ),
+                    ]
+                )
+            ),
             etag_if_match=None,
         )
 
-    async def test_delete_boot_resources_412_wrong_etag(
+    async def test_delete_custom_images_412_wrong_etag(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         wrong_etag = "wrong_etag"
         services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_by_id.return_value = (
-            TEST_BOOT_RESOURCE_2
-        )
-        services_mock.boot_resources.delete_by_id.side_effect = PreconditionFailedException(
+        services_mock.boot_resources.delete_one.side_effect = PreconditionFailedException(
             details=[
                 BaseExceptionDetail(
                     type=ETAG_PRECONDITION_VIOLATION_TYPE,
@@ -728,8 +681,17 @@ class TestBootResourcesApi(ApiCommonTests):
             error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE  # pyright: ignore[reportOptionalSubscript]
         )
 
-        services_mock.boot_resources.delete_by_id.assert_called_once_with(
-            id=2,
+        services_mock.boot_resources.delete_one.assert_called_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_id(2),
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.UPLOADED
+                        ),
+                    ]
+                )
+            ),
             etag_if_match=wrong_etag,
         )
 
