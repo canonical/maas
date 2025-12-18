@@ -105,6 +105,16 @@ class TestStaticRoutesRepository(RepositoryCommonTests[StaticRoute]):
         pass
 
     @pytest.mark.skip(reason="Not implemented yet")
+    async def test_create_many(self, repository_instance, instance_builder):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_create_many_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
     async def test_exists_found(self, repository_instance, created_instance):
         pass
 

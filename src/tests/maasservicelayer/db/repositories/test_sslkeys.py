@@ -71,6 +71,16 @@ class TestSSLKeyRepository(RepositoryCommonTests[SSLKey]):
     ):
         pass
 
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_create_many(self, repository_instance, instance_builder):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_create_many_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        pass
+
     @pytest.mark.skip(reason="Does not apply to SSL keys")
     async def test_update_by_id(self, repository_instance, instance_builder):
         raise NotImplementedError()

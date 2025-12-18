@@ -92,6 +92,16 @@ class TestSshKeysRepository(RepositoryCommonTests[SshKey]):
     ):
         raise NotImplementedError()
 
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_create_many(self, repository_instance, instance_builder):
+        raise NotImplementedError()
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_create_many_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        raise NotImplementedError()
+
     @pytest.mark.skip(reason="Does not apply to ssh keys")
     async def test_update_one(self, repository_instance, instance_builder):
         raise NotImplementedError()

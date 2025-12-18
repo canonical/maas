@@ -170,6 +170,14 @@ class TestIPRangesRepository(RepositoryCommonTests[IPRange]):
     ):
         pass
 
+    @pytest.mark.skip
+    async def test_create_many_duplicated(
+        self,
+        repository_instance: IPRangesRepository,
+        instance_builder: IPRangeBuilder,
+    ):
+        pass
+
     async def test_get_dyanmic_range_for_ip(
         self, db_connection: AsyncConnection, fixture: Fixture
     ):

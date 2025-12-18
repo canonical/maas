@@ -70,6 +70,12 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
     ):
         pass
 
+    @pytest.mark.skip(reason="Not applicable")
+    async def test_create_many_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        pass
+
     async def test_get_dnsresources_in_domain_for_ip(
         self, repository_instance: DNSResourceRepository, fixture: Fixture
     ) -> None:

@@ -197,6 +197,12 @@ class TestCommonBootSourceCacheRepository(
     ):
         raise NotImplementedError()
 
+    @pytest.mark.skip(reason="Does not apply to boot source cache")
+    async def test_create_many_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        raise NotImplementedError()
+
 
 class TestBootSourceCacheRepository:
     @pytest.fixture

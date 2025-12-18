@@ -149,6 +149,12 @@ class TestCommonBootResourceRepository(RepositoryCommonTests[BootResource]):
     ):
         raise NotImplementedError()
 
+    @pytest.mark.skip(reason="Doesn't apply to boot resources")
+    async def test_create_many_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        raise NotImplementedError()
+
 
 class TestBootResourceRepository:
     @pytest.fixture

@@ -51,3 +51,9 @@ class TestFabricsRepository(RepositoryCommonTests[Fabric]):
         self, repository_instance, instance_builder
     ):
         pass
+
+    @pytest.mark.skip(reason="Does not apply to fabrics.")
+    async def test_create_many_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        pass

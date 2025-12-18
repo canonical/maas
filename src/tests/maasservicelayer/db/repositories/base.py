@@ -227,6 +227,35 @@ class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
         with pytest.raises(AlreadyExistsException):
             await repository_instance.create(instance_builder)
 
+    async def test_create_many(
+        self,
+        repository_instance: BaseRepository,
+        instance_builder: ResourceBuilder,
+    ):
+        created_resources = await repository_instance.create_many(
+            [instance_builder]
+        )
+        assert len(created_resources) == 1
+        created_resource = created_resources[0].dict()
+        if repository_instance.has_timestamped_fields:
+            # We can expect these fields to be populated
+            assert created_resource["created"] is not None
+            assert created_resource["updated"] is not None
+
+        for key, value in instance_builder.dict().items():
+            if not isinstance(value, Unset):
+                assert created_resource[key] == value
+
+    async def test_create_many_duplicated(
+        self,
+        repository_instance: BaseRepository,
+        instance_builder: ResourceBuilder,
+    ):
+        with pytest.raises(AlreadyExistsException):
+            await repository_instance.create_many(
+                [instance_builder, instance_builder]
+            )
+
     async def test_delete_one(
         self, repository_instance: BaseRepository, created_instance: T
     ):

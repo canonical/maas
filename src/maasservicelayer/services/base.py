@@ -190,6 +190,22 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         await self.post_create_hook(created_resource)
         return created_resource
 
+    async def pre_create_many_hook(self, builders: List[B]) -> None:
+        return None
+
+    async def post_create_many_hook(self, resource: List[M]) -> None:
+        return None
+
+    async def create_many(self, builders: List[B]) -> List[M]:
+        await self.pre_create_many_hook(builders)
+        created_resources = await self.repository.create_many(
+            builders=builders
+        )
+        for res in created_resources:
+            self.log(CREATED, res.id)
+        await self.post_create_many_hook(created_resources)
+        return created_resources
+
     async def get_or_create(
         self, query: QuerySpec, builder: B
     ) -> Tuple[M, bool]:

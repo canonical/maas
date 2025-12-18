@@ -79,6 +79,17 @@ class ServiceCommonTests(ReadOnlyServiceCommonTests):
             builder=builder
         )
 
+    async def test_create_many(
+        self, service_instance, test_instance, builder_model
+    ):
+        service_instance.repository.create_many.return_value = [test_instance]
+        builder = builder_model()
+        objs = await service_instance.create_many([builder])
+        assert objs == [test_instance]
+        service_instance.repository.create_many.assert_awaited_once_with(
+            builders=[builder]
+        )
+
     async def test_list(self, service_instance):
         service_instance.repository.list.return_value = []
         objects = await service_instance.list(

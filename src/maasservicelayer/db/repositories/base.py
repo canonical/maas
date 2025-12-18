@@ -2,6 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 import ipaddress
 from operator import eq
 from typing import Any, Generic, List, Sequence, TypeVar
@@ -254,6 +255,35 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
         try:
             result = (await self.execute_stmt(stmt)).one()
             return self.get_model_factory()(**result._asdict())
+        except IntegrityError:
+            self._raise_already_existing_exception()
+
+    async def create_many(
+        self, builders: Iterable[ResourceBuilder]
+    ) -> List[T]:
+        now = utcnow()
+        resources = []
+        for builder in builders:
+            resource = self.mapper.build_resource(builder)
+            if self.has_timestamped_fields:
+                resource["created"] = resource.get("created", now)
+                resource["updated"] = resource.get("updated", now)
+            resources.append(resource)
+
+        # This is the SQLAlchemy way to execute bulk insert statements, known as
+        # the executemany pattern. The query will be optimized by SQLAlchemy.
+        # See: https://docs.sqlalchemy.org/en/20/tutorial/dbapi_transactions.html#sending-multiple-parameters
+        stmt = (
+            insert(self.get_repository_table())
+            .returning(self.get_repository_table())
+            .values([resource.get_values() for resource in resources])
+        )
+
+        try:
+            result = (await self.execute_stmt(stmt)).all()
+            return [
+                self.get_model_factory()(**row._asdict()) for row in result
+            ]
         except IntegrityError:
             self._raise_already_existing_exception()
 

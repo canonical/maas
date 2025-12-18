@@ -131,6 +131,14 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
     async def test_create_duplicated(self):
         pass
 
+    @pytest.mark.skip(reason="Not applicable")
+    async def test_create_many(self):
+        pass
+
+    @pytest.mark.skip(reason="Not applicable")
+    async def test_create_many_duplicated(self):
+        pass
+
     @pytest.mark.skip(reason="Not implemented yet")
     async def test_delete_one(self):
         pass

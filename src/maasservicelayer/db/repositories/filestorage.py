@@ -52,6 +52,11 @@ class FileStorageRepository(BaseRepository[FileStorage]):
             "Create is not supported for file storage. Use `create_or_update`."
         )
 
+    async def create_many(self, builders):
+        raise NotImplementedError(
+            "Create is not supported for file storage. Use `create_or_update`."
+        )
+
     async def create_or_update(
         self, builder: FileStorageBuilder
     ) -> FileStorage:

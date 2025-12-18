@@ -242,6 +242,28 @@ class TestFilestorageRepository(RepositoryCommonTests[FileStorage]):
                 instance_builder,
             )
 
+    async def test_create_many(
+        self,
+        repository_instance: BaseRepository,
+        instance_builder: ResourceBuilder,
+    ):
+        with pytest.raises(NotImplementedError):
+            return await super().test_create_many(
+                repository_instance,
+                instance_builder,
+            )
+
+    async def test_create_many_duplicated(
+        self,
+        repository_instance: BaseRepository,
+        instance_builder: ResourceBuilder,
+    ):
+        with pytest.raises(NotImplementedError):
+            return await super().test_create_many_duplicated(
+                repository_instance,
+                instance_builder,
+            )
+
     async def test_create_or_update_adds_new_file(
         self,
         repository_instance: FileStorageRepository,

@@ -166,3 +166,9 @@ class TestScriptResultsRepository(RepositoryCommonTests[ScriptResult]):
         self, repository_instance, instance_builder
     ):
         raise NotImplementedError()
+
+    @pytest.mark.skip(reason="There's no constraint in the DB for this table")
+    async def test_create_many_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        raise NotImplementedError()
