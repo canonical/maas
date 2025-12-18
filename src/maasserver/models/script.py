@@ -53,9 +53,11 @@ def translate_script_type(script_type):
         return SCRIPT_TYPE.COMMISSIONING
     elif script_type == "release":
         return SCRIPT_TYPE.RELEASE
+    elif script_type == "deployment":
+        return SCRIPT_TYPE.DEPLOYMENT
     else:
         raise ValidationError(
-            "Script type must be commissioning, testing or release"
+            "Script type must be commissioning, testing, release or deployment"
         )
 
 

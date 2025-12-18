@@ -115,6 +115,7 @@ class DeviceHandler(NodeHandler):
             "current_testing_script_set",
             "current_installation_script_set",
             "current_release_script_set",
+            "current_deployment_script_set",
             "memory",
             "power_state",
             "routers",

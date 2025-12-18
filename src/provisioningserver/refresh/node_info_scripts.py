@@ -33,6 +33,7 @@ GET_FRUID_DATA_OUTPUT_NAME = "maas-get-fruid-api-data"
 KERNEL_CMDLINE_OUTPUT_NAME = "maas-kernel-cmdline"
 SERIAL_PORTS_OUTPUT_NAME = "maas-serial-ports"
 LLDP_OUTPUT_NAME = "maas-capture-lldpd"
+CURTIN_INSTALL = "50-curtin-install"
 
 
 def null_hook(node, output, exit_status):

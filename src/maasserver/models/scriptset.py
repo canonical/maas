@@ -125,6 +125,8 @@ def translate_result_type(result_type):
             return RESULT_TYPE.INSTALLATION
         case "release":
             return RESULT_TYPE.RELEASE
+        case "deployment":
+            return RESULT_TYPE.DEPLOYMENT
         case _:
             raise ValidationError("Invalid result type name")
 
@@ -262,6 +264,23 @@ class ScriptSetManager(Manager):
         self._clean_old(node, RESULT_TYPE.RELEASE, script_set)
         return script_set
 
+    def create_deployment_script_set(self, node):
+        """
+        Create a new deployment ScriptSet with ScriptResults that includes all the deployment scripts.
+        """
+        script_set = self.create(
+            node=node,
+            result_type=RESULT_TYPE.DEPLOYMENT,
+            power_state_before_transition=node.power_state,
+        )
+        scripts = Script.objects.filter(
+            script_type=SCRIPT_TYPE.DEPLOYMENT,
+        )
+        for script in scripts:
+            script_set.add_pending_script(script)
+        self._clean_old(node, RESULT_TYPE.DEPLOYMENT, script_set)
+        return script_set
+
     def create_deployed_machine_script_set(self, machine):
         """Setup ScriptSet for a brown-field deployment.
 
@@ -322,6 +341,8 @@ class ScriptSetManager(Manager):
                 script_type = SCRIPT_TYPE.COMMISSIONING
             case RESULT_TYPE.RELEASE:
                 script_type = SCRIPT_TYPE.RELEASE
+            case RESULT_TYPE.DEPLOYMENT:
+                script_type = SCRIPT_TYPE.DEPLOYMENT
             case _:
                 script_type = SCRIPT_TYPE.TESTING
         qs = Script.objects.filter(
@@ -345,6 +366,7 @@ class ScriptSetManager(Manager):
             RESULT_TYPE.TESTING: "max_node_testing_results",
             RESULT_TYPE.INSTALLATION: "max_node_installation_results",
             RESULT_TYPE.RELEASE: "max_node_release_results",
+            RESULT_TYPE.DEPLOYMENT: "max_node_deployment_results",
         }
         limit = Config.objects.get_config(config_var[result_type])
 

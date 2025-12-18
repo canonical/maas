@@ -1477,6 +1477,14 @@ NodeTable = Table(
         ),
         nullable=True,
     ),
+    Column(
+        "current_deployment_script_set_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_scriptset.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=True,
+    ),
     Column("install_rackd", Boolean, nullable=False),
     Column("locked", Boolean, nullable=False),
     Column(

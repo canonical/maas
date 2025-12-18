@@ -440,11 +440,11 @@ def get_curtin_merged_config(request, node):
     return config
 
 
-def get_curtin_userdata(request, node):
-    """Return the curtin user-data.
+def get_curtin_installer(request, node):
+    """Return the curtin installer.
 
-    :param node: The node for which to generate the user-data.
-    :return: The rendered user-data string.
+    :param node: The node for which to generate the installer.
+    :return: The rendered script to execute the installer.
     :rtype: unicode.
     """
     # Pack the curtin and the configuration into a script to execute on the

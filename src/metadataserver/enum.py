@@ -20,7 +20,6 @@ __all__ = [
     "SIGNAL_STATUS_CHOICES",
 ]
 
-
 from maascommon.enums.node import HardwareDeviceTypeEnum
 from maascommon.enums.scriptresult import ScriptStatus
 from provisioningserver.enum import enum_choices
@@ -36,6 +35,7 @@ class SIGNAL_STATUS:
     INSTALLING = "INSTALLING"
     APPLYING_NETCONF = "APPLYING_NETCONF"
     RELEASING = "RELEASING"
+    DEPLOYING = "DEPLOYING"
 
 
 SIGNAL_STATUS_CHOICES = enum_choices(SIGNAL_STATUS)
@@ -46,12 +46,14 @@ class SCRIPT_TYPE:
     # 1 is skipped to keep numbering the same as RESULT_TYPE
     TESTING = 2
     RELEASE = 3
+    DEPLOYMENT = 4
 
 
 SCRIPT_TYPE_CHOICES = (
     (SCRIPT_TYPE.COMMISSIONING, "Commissioning script"),
     (SCRIPT_TYPE.TESTING, "Testing script"),
     (SCRIPT_TYPE.RELEASE, "Release script"),
+    (SCRIPT_TYPE.DEPLOYMENT, "Deployment script"),
 )
 
 
@@ -60,6 +62,7 @@ class RESULT_TYPE:
     INSTALLATION = 1
     TESTING = 2
     RELEASE = 3
+    DEPLOYMENT = 4
 
 
 RESULT_TYPE_CHOICES = (
@@ -67,6 +70,7 @@ RESULT_TYPE_CHOICES = (
     (RESULT_TYPE.INSTALLATION, "Installation"),
     (RESULT_TYPE.TESTING, "Testing"),
     (RESULT_TYPE.RELEASE, "Release"),
+    (RESULT_TYPE.DEPLOYMENT, "Deployment"),
 )
 
 
@@ -103,7 +107,6 @@ SCRIPT_STATUS_CHOICES = (
     ),
 )
 
-
 # ScriptResult statuses which are considered running.
 SCRIPT_STATUS_RUNNING = {
     SCRIPT_STATUS.APPLYING_NETCONF,
@@ -114,7 +117,6 @@ SCRIPT_STATUS_RUNNING = {
 SCRIPT_STATUS_RUNNING_OR_PENDING = SCRIPT_STATUS_RUNNING.union(
     {SCRIPT_STATUS.PENDING}
 )
-
 
 # ScriptResult statuses which are considered failed.
 SCRIPT_STATUS_FAILED = {

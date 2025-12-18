@@ -1,4 +1,4 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Help functioners to send commissioning data to MAAS region."""
@@ -67,7 +67,10 @@ class Credentials:
     def __repr__(self):
         return "{name}({keys})".format(
             name=self.__class__.__name__,
-            keys=", ".join(f"{key}={getattr(self, key)}" for key in self.KEYS),
+            keys=", ".join(
+                "{key}={value}".format(key=key, value=getattr(self, key))
+                for key in self.KEYS
+            ),
         )
 
     @classmethod

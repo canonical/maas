@@ -438,7 +438,7 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "script_type": [
-                    "Script type must be commissioning, testing or release"
+                    "Script type must be commissioning, testing, release or deployment"
                 ]
             },
             form.errors,

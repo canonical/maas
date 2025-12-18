@@ -77,7 +77,7 @@ from maasserver.node_status import (
 )
 from maasserver.populate_tags import populate_tags_for_single_node
 from maasserver.preseed import (
-    get_curtin_userdata,
+    get_curtin_installer,
     get_enlist_preseed,
     get_network_yaml_settings,
     get_preseed,
@@ -549,7 +549,7 @@ class VersionIndexHandler(MetadataViewHandler):
         """Read the metadata index for this version."""
         check_version(version)
         node = get_queried_node(request, for_mac=mac)
-        if NodeUserData.objects.has_user_data(node):
+        if NodeUserData.objects.has_any_user_data(node):
             shown_subfields = self.subfields
         else:
             shown_subfields = list(self.subfields)
@@ -1097,6 +1097,34 @@ class EnlistUserDataHandler(OperationsHandler):
         )
 
 
+def prepare_user_data(user_data):
+    # user-data must be sent as plain text or MIME encoded. If the
+    # user uploaded user_data base64 encoded decode it.
+    try:
+        # Check if its valid base64 data with no new lines or spaces.
+        user_data_decoded = base64.b64decode(user_data, validate=True)
+        user_data_stripped = None
+    except Exception:
+        # Check if its valid base64 data with new lines or spaces.
+        try:
+            # Remove new lines and spaces, validator chokes on them.
+            user_data_stripped = "".join(
+                [x.strip() for x in user_data.decode().split()]
+            ).encode()
+            user_data_decoded = base64.b64decode(
+                user_data_stripped, validate=True
+            )
+        except Exception:
+            # Data can't be decoded either way, send it as is.
+            user_data_decoded = None
+    # If the encoded user_data is the same as the decoded data its base64 encoded.
+    if user_data_decoded is not None and base64.b64encode(
+        user_data_decoded
+    ) in {user_data, user_data_stripped}:
+        user_data = user_data_decoded
+    return user_data
+
+
 class UserDataHandler(MetadataViewHandler):
     """User-data blob for a given version."""
 
@@ -1131,33 +1159,23 @@ class UserDataHandler(MetadataViewHandler):
                     node=node, request=request
                 )
             else:
-                user_data = NodeUserData.objects.get_user_data(node)
-                # user-data must be sent as plain text or MIME encoded. If the
-                # user uploaded user_data base64 encoded decode it.
-                try:
-                    # Check if its valid base64 data with no new lines or spaces.
-                    user_data_decoded = base64.b64decode(
-                        user_data, validate=True
+                # The machine has rebooted and asked for the user data. The deployment has been already marked as completed and
+                # we have to serve the user data for the user environment.
+                if node.status in (
+                    NODE_STATUS.DEPLOYED,
+                    NODE_STATUS.DEPLOYING,
+                ):
+                    user_data = (
+                        NodeUserData.objects.get_user_data_for_user_env(node)
                     )
-                    user_data_stripped = None
-                except Exception:
-                    # Check if its valid base64 data with new lines or spaces.
-                    try:
-                        # Remove new lines and spaces, validator chokes on them.
-                        user_data_stripped = "".join(
-                            [x.strip() for x in user_data.decode().split()]
-                        ).encode()
-                        user_data_decoded = base64.b64decode(
-                            user_data_stripped, validate=True
+                else:
+                    # In all the other cases, serve the user data for the ephemeral environment.
+                    user_data = (
+                        NodeUserData.objects.get_user_data_for_ephemeral_env(
+                            node
                         )
-                    except Exception:
-                        # Data can't be decoded either way, send it as is.
-                        user_data_decoded = None
-                # If the encoded user_data is the same as the decoded data its base64 encoded.
-                if user_data_decoded is not None and base64.b64encode(
-                    user_data_decoded
-                ) in {user_data, user_data_stripped}:
-                    user_data = user_data_decoded
+                    )
+                user_data = prepare_user_data(user_data)
             if node.status == NODE_STATUS.COMMISSIONING:
                 # Create a status message for GATHERING_INFO.
                 Event.objects.create_node_event(
@@ -1179,7 +1197,18 @@ class CurtinUserDataHandler(MetadataViewHandler):
     def read(self, request, version, mac=None):
         check_version(version)
         node = get_queried_node(request, for_mac=mac)
-        user_data = get_curtin_userdata(request, node)
+        user_data = NodeUserData.objects.get_user_data_for_ephemeral_env(node)
+        user_data = prepare_user_data(user_data)
+        return HttpResponse(user_data, content_type="application/octet-stream")
+
+
+class CurtinInstallerHandler(MetadataViewHandler):
+    """Craft the curtin installer for the authenticated node. This is requested by the 50-curtin-install deployment script."""
+
+    def read(self, request, version, mac=None):
+        check_version(version)
+        node = get_queried_node(request, for_mac=mac)
+        user_data = get_curtin_installer(request, node)
         return HttpResponse(user_data, content_type="application/octet-stream")
 
 
@@ -1489,6 +1518,17 @@ class MAASScriptsHandler(OperationsHandler):
                 )
                 if meta_data:
                     tar_meta_data["release_scripts"] = sorted(
+                        meta_data, key=itemgetter("name", "script_result_id")
+                    )
+            elif node.status == NODE_STATUS.DEPLOYING:
+                meta_data = self._add_script_set_to_tar(
+                    node.current_deployment_script_set,
+                    tar,
+                    "deployment",
+                    mtime,
+                )
+                if meta_data:
+                    tar_meta_data["deployment_scripts"] = sorted(
                         meta_data, key=itemgetter("name", "script_result_id")
                     )
             else:

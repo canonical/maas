@@ -371,7 +371,12 @@ class TestCommissionAction(MAASServerTestCase):
             action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         node_start.assert_called_once_with(
-            admin, ANY, ANY, allow_power_cycle=True, config=ANY
+            user=admin,
+            user_data_for_ephemeral_env=ANY,
+            user_data_for_user_env=None,
+            old_status=ANY,
+            allow_power_cycle=True,
+            config=ANY,
         )
 
     def test_Commission_starts_commissioning(self):
@@ -408,7 +413,12 @@ class TestCommissionAction(MAASServerTestCase):
         self.assertEqual(node.current_testing_script_set_id, script_sets[1].id)
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         node_start.assert_called_once_with(
-            admin, ANY, ANY, allow_power_cycle=True, config=ANY
+            user=admin,
+            user_data_for_ephemeral_env=ANY,
+            user_data_for_user_env=None,
+            old_status=ANY,
+            allow_power_cycle=True,
+            config=ANY,
         )
 
     def test_Commission_logs_audit_event(self):
@@ -1208,6 +1218,7 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
         self.patch(node_module.Node, "_temporal_deploy")
 
     def test_Deploy_returns_error_when_no_more_static_IPs(self):
+        load_builtin_scripts()
         user = factory.make_User()
         request = factory.make_fake_request("/")
         request.user = user
@@ -1693,8 +1704,9 @@ class TestReleaseAction(MAASServerTestCase):
 
         self.assertEqual(node.status, NODE_STATUS.DISK_ERASING)
         node_start.assert_called_once_with(
-            user,
-            user_data=ANY,
+            user=user,
+            user_data_for_ephemeral_env=ANY,
+            user_data_for_user_env=None,
             old_status=old_status,
             allow_power_cycle=True,
             config=ANY,

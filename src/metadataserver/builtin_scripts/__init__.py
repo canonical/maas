@@ -15,6 +15,7 @@ from maasserver.models.script import Script
 from provisioningserver.refresh.node_info_scripts import (
     BMC_DETECTION,
     COMMISSIONING_OUTPUT_NAME,
+    CURTIN_INSTALL,
     DHCP_EXPLORE_OUTPUT_NAME,
     GET_FRUID_DATA_OUTPUT_NAME,
     KERNEL_CMDLINE_OUTPUT_NAME,
@@ -43,6 +44,7 @@ class BuiltinScript:
             "commissioning_scripts",
             "testing_scripts",
             "release_scripts",
+            "deployment_scripts",
             # Controllers run a subset of commissioning scripts but don't
             # have the ability to download commissioning scripts from the
             # metadata server. Since rack controllers can be installed
@@ -195,6 +197,11 @@ BUILTIN_SCRIPTS = [
     BuiltinScript(
         name="wipe-disks",
         filename="maas_wipe.py",
+    ),
+    # Deployment scripts
+    BuiltinScript(
+        name=CURTIN_INSTALL,
+        filename="curtin_install.py",
     ),
 ]
 

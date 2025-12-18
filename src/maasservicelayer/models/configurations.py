@@ -589,6 +589,18 @@ class MaxNodeReleaseResultsConfig(Config[Optional[int]]):
     )
 
 
+class MaxNodeDeploymentResultsConfig(Config[Optional[int]]):
+    name: ClassVar[str] = "max_node_deployment_results"
+    default: ClassVar[Optional[int]] = 3
+    description: ClassVar[str] = (
+        "The maximum number of deployment result runs which are stored"
+    )
+    help_text: ClassVar[Optional[str]] = ""
+    value: Optional[int] = Field(
+        default=default, description=description, ge=1
+    )
+
+
 class SubnetIPExhaustionThresholdCountConfig(Config[Optional[int]]):
     name: ClassVar[str] = "subnet_ip_exhaustion_threshold_count"
     default: ClassVar[Optional[int]] = 16
@@ -1138,6 +1150,7 @@ class ConfigFactory:
         MaxNodeTestingResultsConfig.name: MaxNodeTestingResultsConfig,
         MaxNodeInstallationResultsConfig.name: MaxNodeInstallationResultsConfig,
         MaxNodeReleaseResultsConfig.name: MaxNodeReleaseResultsConfig,
+        MaxNodeDeploymentResultsConfig.name: MaxNodeDeploymentResultsConfig,
         SubnetIPExhaustionThresholdCountConfig.name: SubnetIPExhaustionThresholdCountConfig,
         ReleaseNotificationsConfig.name: ReleaseNotificationsConfig,
         UseRackProxyConfig.name: UseRackProxyConfig,

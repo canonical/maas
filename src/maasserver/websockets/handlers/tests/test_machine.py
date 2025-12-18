@@ -236,6 +236,9 @@ class TestMachineHandlerUtils:
             "current_installation_script_set": (
                 node.current_installation_script_set_id
             ),
+            "current_deployment_script_set": (
+                node.current_deployment_script_set_id
+            ),
             "installation_status": (
                 handler.dehydrate_script_set_status(
                     node.current_installation_script_set

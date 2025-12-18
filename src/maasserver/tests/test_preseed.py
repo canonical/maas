@@ -52,9 +52,9 @@ from maasserver.preseed import (
     get_curtin_config,
     get_curtin_context,
     get_curtin_image,
+    get_curtin_installer,
     get_curtin_installer_url,
     get_curtin_merged_config,
-    get_curtin_userdata,
     get_custom_image_dependency_validation,
     get_enlist_preseed,
     get_netloc_and_path,
@@ -1267,7 +1267,7 @@ class TestGetCurtinUserData(BootImageHelperMixin, MAASServerTestCase):
         mock_compose_network = self.patch(
             preseed_module, "compose_curtin_network_config"
         )
-        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        user_data = get_curtin_installer(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         mock_compose_storage.assert_called_once_with(node)
         mock_compose_network.assert_called_once_with(
@@ -1293,7 +1293,7 @@ class TestGetCurtinUserData(BootImageHelperMixin, MAASServerTestCase):
         mock_compose_storage = self.patch(
             preseed_module, "compose_curtin_storage_config"
         )
-        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        user_data = get_curtin_installer(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         mock_compose_storage.assert_called_once_with(node)
 
@@ -1306,7 +1306,7 @@ class TestGetCurtinUserData(BootImageHelperMixin, MAASServerTestCase):
         mock_compose_network = self.patch(
             preseed_module, "compose_curtin_network_config"
         )
-        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        user_data = get_curtin_installer(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         mock_compose_network.assert_called_once_with(
             node, version=ANY, source_routing=ANY
@@ -1322,7 +1322,7 @@ class TestGetCurtinUserData(BootImageHelperMixin, MAASServerTestCase):
         mock_compose_network = self.patch(
             preseed_module, "compose_curtin_network_config"
         )
-        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        user_data = get_curtin_installer(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         mock_compose_network.assert_called_once_with(
             node, version=2, source_routing=ANY
@@ -1338,7 +1338,7 @@ class TestGetCurtinUserData(BootImageHelperMixin, MAASServerTestCase):
         mock_compose_network = self.patch(
             preseed_module, "compose_curtin_network_config"
         )
-        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        user_data = get_curtin_installer(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         mock_compose_network.assert_called_once_with(
             node, version=1, source_routing=ANY
@@ -1359,7 +1359,7 @@ class TestGetCurtinUserData(BootImageHelperMixin, MAASServerTestCase):
         mock_compose_storage = self.patch(
             preseed_module, "compose_curtin_storage_config"
         )
-        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        user_data = get_curtin_installer(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         mock_compose_storage.assert_called_once_with(node)
 
@@ -1378,7 +1378,7 @@ class TestGetCurtinUserData(BootImageHelperMixin, MAASServerTestCase):
         mock_compose_storage = self.patch(
             preseed_module, "compose_curtin_storage_config"
         )
-        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        user_data = get_curtin_installer(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
         mock_compose_storage.assert_not_called()
 
@@ -1436,7 +1436,7 @@ class TestGetCurtinUserDataOS(BootImageHelperMixin, MAASServerTestCase):
         )
         arch, subarch = node.split_arch()
         self.make_boot_image_for_node(node, "xinstall")
-        user_data = get_curtin_userdata(make_HttpRequest(), node)
+        user_data = get_curtin_installer(make_HttpRequest(), node)
 
         # Just check that the user data looks good.
         self.assertIn("PREFIX='curtin'", user_data)

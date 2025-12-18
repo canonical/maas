@@ -920,7 +920,8 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            user_data, NodeUserData.objects.get_user_data(machine)
+            user_data,
+            NodeUserData.objects.get_user_data_for_user_env(machine),
         )
 
     def test_POST_deploy_stores_user_data_plain_text(self):
@@ -979,7 +980,8 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            user_data.encode(), NodeUserData.objects.get_user_data(machine)
+            user_data.encode(),
+            NodeUserData.objects.get_user_data_for_user_env(machine),
         )
 
     def test_POST_deploy_passes_comment(self):
@@ -3029,6 +3031,7 @@ class TestMachineAPITransactional(APITransactionTestCase.ForUser):
     def setUp(self):
         super().setUp()
         self.patch(staticipaddress_module, "post_commit_do")
+        load_builtin_scripts()
 
     def test_POST_start_returns_error_when_static_ips_exhausted(self):
         self.patch(node_module, "power_driver_check")

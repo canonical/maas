@@ -3455,9 +3455,11 @@ class TestRunScriptsFromMetadata(MAASTestCase):
         with_commissioning=True,
         with_testing=True,
         with_release=False,
+        with_deployment=False,
         commissioning_scripts=None,
         testing_scripts=None,
         release_scripts=None,
+        deployment_scripts=None,
     ):
         index_json = {}
         if with_commissioning:
@@ -3472,6 +3474,11 @@ class TestRunScriptsFromMetadata(MAASTestCase):
             if release_scripts is None:
                 release_scripts = make_scripts(with_config=False)
             index_json["release_scripts"] = release_scripts
+        if with_deployment:
+            if deployment_scripts is None:
+                deployment_scripts = make_scripts(with_config=False)
+            index_json["deployment_scripts"] = deployment_scripts
+
         with open(os.path.join(scripts_dir, "index.json"), "w") as f:
             f.write(json.dumps({"1.0": index_json}))
         return index_json
@@ -3490,7 +3497,9 @@ class TestRunScriptsFromMetadata(MAASTestCase):
     def test_run_scripts_from_metadata(self):
         scripts_dir = self.useFixture(TempDirectory()).path
         self.mock_run_scripts.return_value = 0
-        index_json = self.make_index_json(scripts_dir, with_release=True)
+        index_json = self.make_index_json(
+            scripts_dir, with_release=True, with_deployment=True
+        )
         mock_download_and_extract_tar = self.patch(
             maas_run_remote_scripts, "download_and_extract_tar"
         )
@@ -3527,6 +3536,13 @@ class TestRunScriptsFromMetadata(MAASTestCase):
             scripts_dir,
             None,
             index_json["release_scripts"],
+            True,
+        )
+        self.mock_run_scripts.assert_any_call(
+            config,
+            scripts_dir,
+            None,
+            index_json["deployment_scripts"],
             True,
         )
         self.mock_signal.assert_any_call(

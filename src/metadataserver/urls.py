@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API URLs."""
@@ -10,6 +10,7 @@ from maasserver.api.support import OperationsResource
 from metadataserver.api import (
     AnonMetaDataHandler,
     CommissioningScriptsHandler,
+    CurtinInstallerHandler,
     CurtinUserDataHandler,
     EnlistMetaDataHandler,
     EnlistUserDataHandler,
@@ -31,6 +32,9 @@ user_data_handler = OperationsResource(
 )
 curtin_user_data_handler = OperationsResource(
     CurtinUserDataHandler, authentication=api_auth
+)
+curtin_installer_handler = OperationsResource(
+    CurtinInstallerHandler, authentication=api_auth
 )
 version_index_handler = OperationsResource(
     VersionIndexHandler, authentication=api_auth
@@ -110,6 +114,12 @@ node_patterns = [
 # really curtin-specific, all the other end-points are similar to the
 # normal metadata API.
 curtin_patterns = [
+    # Deployments scripts
+    re_path(
+        r"^[/]*curtin/(?P<version>[^/]+)/maas-scripts",
+        maas_scripts_handler,
+        name="curtin-maas-scripts",
+    ),
     re_path(
         r"^[/]*curtin/(?P<version>[^/]+)/meta-data/(?P<item>.*)$",
         meta_data_handler,
@@ -119,6 +129,11 @@ curtin_patterns = [
         r"^[/]*curtin/(?P<version>[^/]+)/user-data$",
         curtin_user_data_handler,
         name="curtin-metadata-user-data",
+    ),
+    re_path(
+        r"^[/]*curtin/(?P<version>[^/]+)/curtin-installer$",
+        curtin_installer_handler,
+        name="curtin-installer",
     ),
     re_path(
         r"^[/]*curtin/(?P<version>[^/]+)/",

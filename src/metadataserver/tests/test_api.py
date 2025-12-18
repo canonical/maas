@@ -801,7 +801,9 @@ class TestMetadataCommon(MAASServerTestCase):
 
     def test_version_index_shows_user_data_if_available(self):
         node = factory.make_Node()
-        NodeUserData.objects.set_user_data(node, b"User data for node")
+        NodeUserData.objects.set_user_data_for_ephemeral_env(
+            node, b"User data for node"
+        )
         client = make_node_client(node)
         view_name = self.get_metadata_name("-version")
         url = reverse(view_name, args=["latest"])
@@ -1053,7 +1055,9 @@ class TestMetadataUserData(MAASServerTestCase):
 
     def test_user_data_view_returns_binary_data_and_creates_sts_msg(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        NodeUserData.objects.set_user_data_for_ephemeral_env(
+            node, sample_binary_data
+        )
         client = make_node_client(node)
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         event = Event.objects.last()
@@ -1067,7 +1071,9 @@ class TestMetadataUserData(MAASServerTestCase):
 
     def test_poweroff_user_data_returned_if_unexpected_status(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
-        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        NodeUserData.objects.set_user_data_for_ephemeral_env(
+            node, sample_binary_data
+        )
         client = make_node_client(node)
         user_data = factory.make_name("user data").encode("ascii")
         self.patch(
@@ -1101,7 +1107,9 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
             NODE_STATUS, but_not=[NODE_STATUS.DEPLOYING]
         )
         node = factory.make_Node(status=status)
-        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        NodeUserData.objects.set_user_data_for_ephemeral_env(
+            node, sample_binary_data
+        )
         client = make_node_client(node)
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual(http.client.OK, response.status_code)
@@ -1110,7 +1118,9 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
     def test_request_causes_status_change_if_deploying(self):
         signal_workflow = self.patch(node_module, "signal_workflow")
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
-        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        NodeUserData.objects.set_user_data_for_user_env(
+            node, sample_binary_data
+        )
         client = make_node_client(node)
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual(http.client.OK, response.status_code)
@@ -1123,7 +1133,9 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, install_kvm=True
         )
-        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        NodeUserData.objects.set_user_data_for_user_env(
+            node, sample_binary_data
+        )
         client = make_node_client(node)
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual(http.client.OK, response.status_code)
@@ -1137,7 +1149,9 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, register_vmhost=True
         )
-        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        NodeUserData.objects.set_user_data_for_user_env(
+            node, sample_binary_data
+        )
         client = make_node_client(node)
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual(http.client.OK, response.status_code)
@@ -1149,7 +1163,7 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         signal_workflow = self.patch(node_module, "signal_workflow")
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         user_data = factory.make_name("user_data").encode()
-        NodeUserData.objects.set_user_data(node, user_data)
+        NodeUserData.objects.set_user_data_for_user_env(node, user_data)
         client = make_node_client(node)
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual(http.client.OK, response.status_code)
@@ -1163,7 +1177,9 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         signal_workflow = self.patch(node_module, "signal_workflow")
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         user_data = factory.make_name("user_data").encode()
-        NodeUserData.objects.set_user_data(node, base64.b64encode(user_data))
+        NodeUserData.objects.set_user_data_for_user_env(
+            node, base64.b64encode(user_data)
+        )
         client = make_node_client(node)
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual(http.client.OK, response.status_code)
@@ -1180,7 +1196,9 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         b64_user_data = base64.b64encode(user_data).decode()
         mid = len(b64_user_data) // 2
         b64_user_data = b64_user_data[:mid] + "\n" + b64_user_data[mid:]
-        NodeUserData.objects.set_user_data(node, b64_user_data.encode())
+        NodeUserData.objects.set_user_data_for_user_env(
+            node, b64_user_data.encode()
+        )
         client = make_node_client(node)
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual(http.client.OK, response.status_code)
@@ -1194,15 +1212,36 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
 class TestCurtinMetadataUserData(MAASServerTestCase):
     """Tests for the curtin-metadata user-data API endpoint."""
 
-    def test_curtin_user_data_view_returns_curtin_data(self):
+    def test_curtin_user_data_view_returns_maas_scripts(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING
+        )
+        iface = node.get_boot_interface()
+        user_data = factory.make_string().encode("ascii")
+        NodeUserData.objects.set_user_data_for_ephemeral_env(
+            iface.node_config.node, user_data
+        )
+        url = reverse("curtin-metadata-user-data", args=["latest"])
+        client = make_node_client(node)
+        response = client.get(url)
+        self.assertEqual(
+            (http.client.OK, user_data),
+            (response.status_code, response.content),
+        )
+
+
+class TestCurtinInstallerMetadata(MAASServerTestCase):
+    """Tests for the curtin-installer API endpoint."""
+
+    def test_curtin_installer_returns_curtin_data(self):
         # This should be in a reusable place - when we just run this
         # test, it takes ~1s to calculate the API description.
         self.patch(support, "get_api_description").return_value = {
             "hash": "0xDEADBEEF"
         }
         node = factory.make_Node()
-        url = reverse("curtin-metadata-user-data", args=["latest"])
-        userdata = self.patch(api, "get_curtin_userdata")
+        url = reverse("curtin-installer", args=["latest"])
+        userdata = self.patch(api, "get_curtin_installer")
         client = make_node_client(node)
 
         response = client.get(url)
@@ -2533,6 +2572,61 @@ class TestMAASScripts(MAASServerTestCase):
 
     def test_returns_release_scripts_when_erasing_disks(self):
         self._test_release_scripts_are_returned(NODE_STATUS.DISK_ERASING)
+
+    def test_deployment_scripts_are_returned(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True
+        )
+
+        script = factory.make_Script(script_type=SCRIPT_TYPE.DEPLOYMENT)
+        factory.make_ScriptResult(
+            script_set=node.current_deployment_script_set,
+            script=script,
+            status=SCRIPT_STATUS.PENDING,
+        )
+
+        response = make_node_client(node=node).get(
+            reverse("curtin-maas-scripts", args=["latest"])
+        )
+        self.assertEqual(
+            http.client.OK,
+            response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content),
+        )
+        self.assertEqual("application/x-tar", response["Content-Type"])
+        tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        # The + 1 is for the index.json file.
+        self.assertEqual(
+            node.current_deployment_script_set.scriptresult_set.count() + 1,
+            len(tar.getmembers()),
+        )
+
+        deployment_meta_data = self.validate_scripts(
+            node.current_deployment_script_set,
+            "deployment",
+            tar,
+            start_time,
+            end_time,
+        )
+
+        meta_data = json.loads(
+            tar.extractfile("index.json").read().decode("utf-8")
+        )
+
+        self.assertDictEqual(
+            {
+                "1.0": {
+                    "deployment_scripts": sorted(
+                        deployment_meta_data,
+                        key=itemgetter("name", "script_result_id"),
+                    )
+                }
+            },
+            meta_data,
+        )
 
 
 class TestMAASScriptsProperties(MAASServerTestCase):
@@ -3950,7 +4044,9 @@ class TestByMACMetadataAPI(MAASServerTestCase):
         )
         iface = node.get_boot_interface()
         user_data = factory.make_string().encode("ascii")
-        NodeUserData.objects.set_user_data(iface.node_config.node, user_data)
+        NodeUserData.objects.set_user_data_for_ephemeral_env(
+            iface.node_config.node, user_data
+        )
         url = reverse(
             "metadata-user-data-by-mac", args=["latest", iface.mac_address]
         )

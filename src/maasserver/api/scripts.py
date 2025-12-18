@@ -59,7 +59,7 @@ class NodeScriptsHandler(OperationsHandler):
 
         @param (string) "type" [required=false] The script_type defines when
         the script should be used: ``commissioning`` or ``testing`` or
-        ``release``.  Defaults to ``testing``.
+        ``release` or ``deployment``.  Defaults to ``testing``.
 
         @param (string) "hardware_type" [required=false] The hardware_type
         defines what type of hardware the script is assoicated with. May be

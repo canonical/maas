@@ -299,6 +299,10 @@ class NodeHandler(OperationsHandler):
         return node.current_installation_script_set_id
 
     @classmethod
+    def current_deployment_result_id(handler, node):
+        return node.current_deployment_script_set_id
+
+    @classmethod
     def commissioning_status(handler, node):
         get_cached_script_results(node)
         return get_status_from_qs(node._cached_commissioning_script_results)

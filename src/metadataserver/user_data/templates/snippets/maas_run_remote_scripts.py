@@ -5,7 +5,7 @@
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2017-2020 Canonical
+# Copyright (C) 2017-2025 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -148,7 +148,11 @@ def download_and_extract_tar(url, creds, scripts_dir):
     The URL may contain a compressed or uncompressed tar. Returns false when
     there is no content.
     """
-    sys.stdout.write(f"Downloading and extracting {url} to {scripts_dir}\n")
+    sys.stdout.write(
+        "Downloading and extracting {url} to {scripts_dir}\n".format(
+            url=url, scripts_dir=scripts_dir
+        )
+    )
     sys.stdout.flush()
     ret = geturl(url, creds)
     if ret.status == int(http.client.NO_CONTENT):
@@ -821,7 +825,9 @@ def parse_parameters(script, scripts_dir):
                         or model == blockdev.get("model_enc")
                     ) and serial == blockdev["serial"]:
                         value["path"] = value["input"] = (
-                            f"/dev/{blockdev['name']}"
+                            "/dev/{blockdev_name}".format(
+                                blockdev_name=blockdev["name"]
+                            )
                         )
                 if "id_path" in value and "path" not in value:
                     # some devices, such as RAID controllers, may have multiple serials
@@ -833,11 +839,13 @@ def parse_parameters(script, scripts_dir):
                 ret += argument_format.format(**value).split()
             except KeyError:
                 raise KeyError(  # noqa: B904
-                    f"Storage device '{model}' with serial '{serial}' not found!\n\n"
+                    "Storage device '{model}' with serial '{serial}' not found!\n\n"
                     "This indicates the storage device has been removed or "
                     "the OS is unable to find it due to a hardware failure. "
                     "Please re-commission this node to re-discover the "
-                    "storage devices, or delete this device manually."
+                    "storage devices, or delete this device manually.".format(
+                        model=model, serial=serial
+                    )
                 )
         elif param_type == "interface":
             value = param["value"]
@@ -855,17 +863,22 @@ def parse_parameters(script, scripts_dir):
                 ret += argument_format.format(**value).split()
             except KeyError:
                 raise KeyError(  # noqa: B904
-                    f"Interface device {value['name']} (vendor: {value['vendor']} "
-                    f"product: {value['product']}) with MAC address "
-                    f"{value['mac_address']} has not been found!\n\n"
+                    "Interface device {name} (vendor: {vendor} "
+                    "product: {product}) with MAC address "
+                    "{mac_address} has not been found!\n\n"
                     "This indicates the interface has been removed or the OS "
                     "is unable to find it due to a hardware failure. Please "
                     "re-commision this node to re-discover the interfaces or "
-                    "delete this interface manually."
+                    "delete this interface manually.".format(
+                        name=value["name"],
+                        vendor=value["vendor"],
+                        product=value["product"],
+                        mac_address=value["mac_address"],
+                    )
                 )
         else:
             argument_format = param.get(
-                "argument_format", f"--{key}={{input}}"
+                "argument_format", "--{key}={{input}}".format(key=key)
             )
             value = param["value"] if "value" in param else param["default"]
             ret += argument_format.format(input=value).split()
@@ -1571,8 +1584,29 @@ def run_scripts_from_metadata(
                 config.credentials,
                 "FAILED",
             )
-        return fail_count
+            return fail_count
 
+    deployment_scripts = scripts.get("deployment_scripts")
+    if deployment_scripts is not None:
+        if send_result:
+            signal_wrapper(
+                config.metadata_url, config.credentials, "DEPLOYING"
+            )
+
+        sys.stdout.write("Starting deployment scripts...\n")
+        sys.stdout.flush()
+        fail_count += run_scripts(
+            config, scripts_dir, out_dir, deployment_scripts, send_result
+        )
+        if fail_count:
+            output_and_send(
+                "%d deployment scripts failed to run" % fail_count,
+                send_result,
+                config.metadata_url,
+                config.credentials,
+                "FAILED",
+            )
+            return fail_count
     return fail_count
 
 
@@ -1717,18 +1751,21 @@ def main():
     url = config.metadata_url
     creds = config.credentials
 
-    if not creds.token_secret and get_maas_machines(
-        url,
-        {
-            "op": "is_registered",
-            "mac_address": get_mac_addresses_for_enlistment(),
-        },
-    ):
-        print("Machine is already registered on %s" % url)
-        time.sleep(10)
-        return 0
+    if not creds.token_secret:
+        if get_maas_machines(
+            url,
+            {
+                "op": "is_registered",
+                "mac_address": get_mac_addresses_for_enlistment(),
+            },
+        ):
+            print("Machine is already registered on %s" % url)
+            time.sleep(10)
+            return 0
+        else:
+            print("Enlisting machine..")
     else:
-        print("Enlisting machine...")
+        print("Downloading and executing scripts...")
 
     # Disable the OOM killer on the runner process, the OOM killer will still
     # go after any tests spawned.
@@ -1747,9 +1784,9 @@ def main():
     if not args.no_send:
         heart_beat.start()
 
-    scripts_dir = os.path.join(args.storage_directory, "scripts")
+    scripts_dir = os.path.join(str(args.storage_directory), "scripts")
     os.makedirs(scripts_dir, exist_ok=True)
-    out_dir = os.path.join(args.storage_directory, "out")
+    out_dir = os.path.join(str(args.storage_directory), "out")
     os.makedirs(out_dir, exist_ok=True)
 
     has_content = True

@@ -507,7 +507,7 @@ class TestStatusWorkerService(MAASServerTestCase):
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status
         )
-        for script_result in node.get_latest_script_results:
+        for script_result in node.get_latest_commissioning_script_results:
             self.assertEqual(SCRIPT_STATUS.ABORTED, script_result.status)
 
     def test_status_commissioning_failure_ignored_when_rebooting_running(self):

@@ -39,7 +39,7 @@ def test_translate_script_type_valid(value, script_type):
         (132, "Invalid script type numeric value."),
         (
             "invalid-type",
-            "Script type must be commissioning, testing or release",
+            "Script type must be commissioning, testing, release or deployment",
         ),
     ],
 )

@@ -35,7 +35,10 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
 )
 from provisioningserver.events import EVENT_TYPES
-from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+from provisioningserver.refresh.node_info_scripts import (
+    CURTIN_INSTALL,
+    NODE_INFO_SCRIPTS,
+)
 
 
 def make_SystemNodeMetadata(node):
@@ -1002,6 +1005,32 @@ class TestScriptSetManager(MAASServerTestCase):
             ScriptSet.objects.filter(
                 result_type=RESULT_TYPE.INSTALLATION
             ).all(),
+        )
+
+    def test_create_deployment_script_set_all_scripts_are_included(self):
+        load_builtin_scripts()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.DEPLOYMENT)
+        node = factory.make_Node()
+
+        script_set = ScriptSet.objects.create_deployment_script_set(node)
+        self.assertCountEqual(
+            [CURTIN_INSTALL, script.name],
+            [script_result.name for script_result in script_set],
+        )
+        self.assertEqual(RESULT_TYPE.DEPLOYMENT, script_set.result_type)
+
+    def test_create_deployment_script_set_cleans_up_per_node(self):
+        Config.objects.set_config("max_node_deployment_results", 1)
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        ScriptSet.objects.create_deployment_script_set(node1)
+        script_set1 = ScriptSet.objects.create_deployment_script_set(node1)
+        ScriptSet.objects.create_deployment_script_set(node2)
+        script_set2 = ScriptSet.objects.create_deployment_script_set(node2)
+        # older results are deleted by node
+        self.assertCountEqual(
+            [script_set1, script_set2],
+            ScriptSet.objects.filter(result_type=RESULT_TYPE.DEPLOYMENT).all(),
         )
 
     def test_create_deployed_machine_script_set_scripts(self):

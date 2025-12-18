@@ -604,6 +604,12 @@ class Factory(maastesting.factory.Factory):
             release_script_set.save()
             node.current_release_script_set = release_script_set
 
+            deployment_script_set = (
+                ScriptSet.objects.create_deployment_script_set(node)
+            )
+            deployment_script_set.save()
+            node.current_deployment_script_set = deployment_script_set
+
             with post_commit_hooks:
                 node.save()
         # Update the 'updated'/'created' fields with a call to 'update'
@@ -1018,6 +1024,32 @@ class Factory(maastesting.factory.Factory):
             last_ping=last_ping, node=node, result_type=result_type
         )
 
+    def _convert_script_type_to_result_type(self, script_type: SCRIPT_TYPE):
+        if script_type == SCRIPT_TYPE.COMMISSIONING:
+            return RESULT_TYPE.COMMISSIONING
+        elif script_type == SCRIPT_TYPE.TESTING:
+            return RESULT_TYPE.TESTING
+        elif script_type == SCRIPT_TYPE.RELEASE:
+            return RESULT_TYPE.RELEASE
+        elif script_type == SCRIPT_TYPE.DEPLOYMENT:
+            return RESULT_TYPE.DEPLOYMENT
+        else:
+            raise ValueError("Invalid script type")
+
+    def _convert_result_type_to_script_type(self, result_type: RESULT_TYPE):
+        if result_type == RESULT_TYPE.COMMISSIONING:
+            return SCRIPT_TYPE.COMMISSIONING
+        elif result_type == RESULT_TYPE.TESTING:
+            return SCRIPT_TYPE.TESTING
+        elif result_type == RESULT_TYPE.RELEASE:
+            return SCRIPT_TYPE.RELEASE
+        elif result_type == RESULT_TYPE.DEPLOYMENT:
+            return SCRIPT_TYPE.DEPLOYMENT
+        elif result_type == RESULT_TYPE.INSTALLATION:
+            return SCRIPT_TYPE.DEPLOYMENT
+        else:
+            raise ValueError("Invalid result type")
+
     def make_ScriptResult(
         self,
         script_set=None,
@@ -1037,21 +1069,19 @@ class Factory(maastesting.factory.Factory):
     ):
         if script_set is None:
             if script is not None:
-                script_set_type = (
-                    RESULT_TYPE.TESTING
-                    if script.script_type == SCRIPT_TYPE.TESTING
-                    else RESULT_TYPE.COMMISSIONING
+                script_set_type = self._convert_script_type_to_result_type(
+                    script.script_type
                 )
+
             else:
                 script_set_type = None
             script_set = self.make_ScriptSet(result_type=script_set_type)
         if script is None and script_name is None:
-            if script_set.result_type == RESULT_TYPE.COMMISSIONING:
-                script = self.make_Script(
-                    script_type=SCRIPT_TYPE.COMMISSIONING
+            script = self.make_Script(
+                script_type=self._convert_result_type_to_script_type(
+                    script_set.result_type
                 )
-            else:
-                script = self.make_Script(script_type=SCRIPT_TYPE.TESTING)
+            )
         if script is not None:
             script_name = script.name
         if status is None:
