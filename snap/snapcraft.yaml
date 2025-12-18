@@ -165,7 +165,6 @@ parts:
       - python3-pylxd
       - python3-pymacaroons # for macaroonbakery
       - python3-pyparsing
-      - python3-pypureomapi
       - python3-pyrsistent # for jsonschema
       - python3-pythonjsonlogger
       - python3-pyvmomi

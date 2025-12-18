@@ -7,12 +7,18 @@ import base64
 from collections import defaultdict, namedtuple
 from itertools import groupby
 from operator import itemgetter
+import secrets
 from typing import Iterable, Optional, Union
 
 from django.db.models import Q
 from netaddr import IPAddress, IPNetwork
 
 from maascommon.workflows.dhcp import CONFIGURE_DHCP_WORKFLOW_NAME
+from maasserver.dhcpd.config import (
+    compose_conditional_bootloader,
+    get_config_v4,
+    get_config_v6,
+)
 from maasserver.dns.zonegenerator import (
     get_dns_search_paths,
     get_dns_server_addresses,
@@ -34,14 +40,18 @@ from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils.orm import transactional
 from maasserver.workflow import start_workflow
 from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
-from provisioningserver.dhcp.config import get_config_v4, get_config_v6
-from provisioningserver.dhcp.omapi import generate_omapi_key
+from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import synchronous
 
 log = LegacyLogger()
+
+
+def generate_omapi_key() -> str:
+    """Generate a base64-encoded key to use for OMAPI access."""
+    return base64.b64encode(secrets.token_bytes(64)).decode("ascii")
 
 
 def get_omapi_key():
@@ -429,7 +439,6 @@ def make_pools_for_subnet(subnet, dhcp_snippets, failover_peer=None):
 
 
 def make_subnet_config(
-    rack_controller,
     subnet,
     default_dns_servers: Optional[list],
     ntp_servers: Union[list, dict],
@@ -438,6 +447,7 @@ def make_subnet_config(
     failover_peer=None,
     subnets_dhcp_snippets: list = None,
     peer_rack=None,
+    ip_addresses=None,
 ):
     """Return DHCP subnet configuration dict for a rack interface.
 
@@ -488,6 +498,24 @@ def make_subnet_config(
                 subnet_only_dhcp_snippets.append(snippet)
         subnets_dhcp_snippets = subnet_only_dhcp_snippets
 
+    next_server = None
+    bootloader = None
+    if ip_addresses:
+        for ip_address in ip_addresses:
+            if ip_address in ip_network:
+                found_ip_address = ip_address
+                break
+        else:
+            # Just pick one
+            found_ip_address = ip_addresses[0]
+
+        next_server = found_ip_address
+        bootloader = compose_conditional_bootloader(
+            ip_network.version == 6,
+            found_ip_address,
+            subnet.disabled_boot_architectures,
+        )
+
     subnet_config = {
         "subnet": str(ip_network.network),
         "subnet_mask": str(ip_network.netmask),
@@ -507,7 +535,8 @@ def make_subnet_config(
             for dhcp_snippet in subnets_dhcp_snippets
             if dhcp_snippet.subnet == subnet
         ],
-        "disabled_boot_architectures": subnet.disabled_boot_architectures,
+        "next_server": str(next_server),
+        "bootloader": bootloader,
     }
     if search_list is not None:
         subnet_config["search_list"] = search_list
@@ -670,6 +699,18 @@ def get_dhcp_configure_for(
         if dhcp_snippet.node is not None
     ]
 
+    ip_addresses = []
+    if interface:
+        ip_addresses = [
+            IPAddress(ipaddress.ip)
+            for ipaddress in interface.ip_addresses.all()
+        ]
+        ip_addresses = [
+            ip_address
+            for ip_address in ip_addresses
+            if ip_address.version == ip_version
+        ]
+
     # Generate the shared network configurations.
     subnet_configs = []
     for subnet in subnets:
@@ -678,7 +719,6 @@ def get_dhcp_configure_for(
         )
         subnet_configs.append(
             make_subnet_config(
-                rack_controller,
                 subnet,
                 maas_dns_servers,
                 ntp_servers,
@@ -687,6 +727,7 @@ def get_dhcp_configure_for(
                 peer_name,
                 subnets_dhcp_snippets,
                 peer_rack,
+                ip_addresses,
             )
         )
 
@@ -868,6 +909,10 @@ def generate_dhcp_configuration(rack_controller):
 
     result = {}
 
+    running_in_snap = (
+        rack_controller.info.install_type == CONTROLLER_INSTALL_TYPE.SNAP
+    )
+
     result["dhcpd"] = base64.b64encode(
         get_config_v4(
             template_name="dhcpd.conf.template",
@@ -876,6 +921,7 @@ def generate_dhcp_configuration(rack_controller):
             shared_networks=config.shared_networks_v4,
             hosts=config.hosts_v4,
             omapi_key=config.omapi_key,
+            running_in_snap=running_in_snap,
         ).encode("utf-8")
     ).decode("utf-8")
 
@@ -891,6 +937,7 @@ def generate_dhcp_configuration(rack_controller):
             shared_networks=config.shared_networks_v6,
             hosts=config.hosts_v6,
             omapi_key=config.omapi_key,
+            running_in_snap=running_in_snap,
         ).encode("utf-8")
     ).decode("utf-8")
 

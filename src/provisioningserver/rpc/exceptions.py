@@ -60,10 +60,6 @@ class CommissionNodeFailed(Exception):
     """Failure to commission node."""
 
 
-class CannotConfigureDHCP(Exception):
-    """Failure while configuring a DHCP server."""
-
-
 class CannotCreateHostMap(Exception):
     """The host map could not be created."""
 

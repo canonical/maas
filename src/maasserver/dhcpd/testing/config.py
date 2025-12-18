@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test helpers related to DHCP configuration."""
@@ -10,8 +10,8 @@ from fixtures import Fixture
 from netaddr import IPAddress
 from testtools.monkey import patch
 
+from maasserver.dhcpd import config
 from maastesting.factory import factory
-from provisioningserver.dhcp import config
 
 
 def fix_shared_networks_failover(shared_networks, failover_peers):
