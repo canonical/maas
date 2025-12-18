@@ -61,6 +61,7 @@ Considering MAAS for your next project? [Get in touch](https://canonical.com/maa
 |2 | how-to-set-up-air-gapped-maas | [Set up air-gapped MAAS](https://canonical.com/maas/docs/how-to-set-up-air-gapped-maas)|
 |2 | how-to-script-maas-with-python | [Script MAAS with Python](https://canonical.com/maas/docs/how-to-script-maas-with-python)|
 |2 | how-to-deploy-vms-on-ibm-z | [Deploy VMs on IBM Z](https://canonical.com/maas/docs/how-to-deploy-vms-on-ibm-z)|
+|2 | how-to-deploy-dpus-in-maas | [Deploy DPUs in MAAS](https://canonical.com/maas/docs/how-to-deploy-dpus-in-maas)|
 |1 | reference | [Reference](https://canonical.com/maas/docs/reference)|
 |2 | release-notes-and-upgrade-instructions | [Release notes](https://canonical.com/maas/docs/release-notes-and-upgrade-instructions)|
 |2 | supported-maas-versions | [Supported MAAS versions](https://canonical.com/maas/docs/supported-maas-versions)|
