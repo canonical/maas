@@ -76,6 +76,27 @@ class TestBootResourceClauseFactory:
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_bootresource.selection_id IN (1, 2)")
 
+    def test_with_bootloader_type(self) -> None:
+        clause = BootResourceClauseFactory.with_bootloader_type(None)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootresource.bootloader_type IS NULL")
+
+    def test_with_selection_boot_source_id(self) -> None:
+        clause = BootResourceClauseFactory.with_selection_boot_source_id(5)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsourceselection.boot_source_id = 5")
+        compiled_joins = [
+            str(_join.compile(compile_kwargs={"literal_binds": True}))
+            for _join in clause.joins
+        ]
+        assert len(compiled_joins) == 1
+        assert (
+            "maasserver_bootsourceselection JOIN maasserver_bootresource ON maasserver_bootsourceselection.id = maasserver_bootresource.selection_id"
+            in compiled_joins
+        )
+
 
 class TestCommonBootResourceRepository(RepositoryCommonTests[BootResource]):
     @pytest.fixture

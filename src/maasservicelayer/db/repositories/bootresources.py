@@ -4,7 +4,7 @@
 from operator import eq
 from typing import Iterable
 
-from sqlalchemy import case, desc, func, Select, select, Table
+from sqlalchemy import case, desc, func, join, Select, select, Table
 
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
@@ -25,6 +25,7 @@ from maasservicelayer.db.tables import (
     BootResourceFileTable,
     BootResourceSetTable,
     BootResourceTable,
+    BootSourceSelectionTable,
     NodeTable,
 )
 from maasservicelayer.models.base import ListResult
@@ -88,6 +89,24 @@ class BootResourceClauseFactory(ClauseFactory):
     def with_bootloader_type(cls, bootloader_type: str | None) -> Clause:
         return Clause(
             condition=eq(BootResourceTable.c.bootloader_type, bootloader_type)
+        )
+
+    @classmethod
+    def with_selection_boot_source_id(cls, boot_source_id: int) -> Clause:
+        return Clause(
+            condition=eq(
+                BootSourceSelectionTable.c.boot_source_id, boot_source_id
+            ),
+            joins=[
+                join(
+                    BootSourceSelectionTable,
+                    BootResourceTable,
+                    eq(
+                        BootSourceSelectionTable.c.id,
+                        BootResourceTable.c.selection_id,
+                    ),
+                )
+            ],
         )
 
 

@@ -13,13 +13,6 @@ class BootResourceType(IntEnum):
     UPLOADED = 2  # uploaded by user
 
 
-# A means of gets a human-readble string from boot resource type.
-BOOT_RESOURCE_TYPE_DICT = {
-    BootResourceType.SYNCED: "Synced",
-    BootResourceType.UPLOADED: "Uploaded",
-}
-
-
 class BootResourceStrType(StrEnum):
     """Possible selections for the type of `BootResource`."""
 

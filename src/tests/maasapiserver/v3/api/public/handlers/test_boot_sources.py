@@ -17,6 +17,10 @@ from maasapiserver.v3.api.public.models.responses.boot_images_common import (
     ImageListResponse,
     ImageResponse,
 )
+from maasapiserver.v3.api.public.models.responses.boot_resources import (
+    BootResourceListResponse,
+    BootResourceResponse,
+)
 from maasapiserver.v3.api.public.models.responses.boot_sources import (
     BootSourceAvailableImageListResponse,
     BootSourceResponse,
@@ -24,7 +28,11 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
     UISourceAvailableImageListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
+from maascommon.enums.boot_resources import (
+    BootResourceType,
+    ImageStatus,
+    ImageUpdateStatus,
+)
 from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
@@ -32,6 +40,9 @@ from maascommon.workflows.bootresource import (
     SyncSelectionParam,
 )
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootresources import (
+    BootResourceClauseFactory,
+)
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
@@ -45,6 +56,7 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsources import (
     BootSource,
     BootSourceAvailableImage,
@@ -99,6 +111,22 @@ TEST_BOOTSOURCESELECTION = BootSourceSelection(
     arch="amd64",
     boot_source_id=12,
     legacyselection_id=1,
+)
+
+TEST_BOOT_RESOURCE = BootResource(
+    id=3,
+    created=utcnow(),
+    updated=utcnow(),
+    name="ubuntu/noble",
+    architecture="amd64/hwe-24.04",
+    extra={"subarches": "generic,hwe-24.04,ga-24.04"},
+    rtype=BootResourceType.SYNCED,
+    rolling=False,
+    base_image="",
+    kflavor=None,
+    bootloader_type=None,
+    alias=None,
+    last_deployed=None,
 )
 
 
@@ -1238,3 +1266,157 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             "Selection is not being synchronized."
         )
         services_mock.temporal.get_temporal_client.assert_not_called()
+
+
+class TestBootSourceSelectionResourcesApi(ApiCommonTests):
+    BASE_PATH = f"{V3_API_PREFIX}/boot_sources/1/selections/2/resources"
+
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/10"),
+        ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
+    async def test_list_resources_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+        services_mock.boot_resources = Mock(BootSourceSelectionsService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootSourceSelection
+        ](items=[TEST_BOOT_RESOURCE], total=1)
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?page=1&size=1"
+        )
+        assert response.status_code == 200
+        boot_resource_list_response = BootResourceListResponse(
+            **response.json()
+        )
+        assert len(boot_resource_list_response.items) == 1
+        assert boot_resource_list_response.total == 1
+        assert boot_resource_list_response.next is None
+
+        services_mock.boot_source_selections.get_one.assert_awaited_once_with(
+            QuerySpec(
+                where=BootSourceSelectionClauseFactory.and_clauses(
+                    [
+                        BootSourceSelectionClauseFactory.with_id(2),
+                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                            1
+                        ),
+                    ]
+                )
+            )
+        )
+        services_mock.boot_resources.list.assert_awaited_once_with(
+            page=1,
+            size=1,
+            query=QuerySpec(
+                where=BootResourceClauseFactory.with_selection_id(2)
+            ),
+        )
+
+    async def test_list_resources_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+        services_mock.boot_resources = Mock(BootSourceSelectionsService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootSourceSelection
+        ](items=[TEST_BOOT_RESOURCE], total=2)
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?page=1&size=1"
+        )
+        assert response.status_code == 200
+        boot_sources_response = BootResourceListResponse(**response.json())
+        assert len(boot_sources_response.items) == 1
+        assert boot_sources_response.total == 2
+        assert boot_sources_response.next == f"{self.BASE_PATH}?page=2&size=1"
+
+        services_mock.boot_source_selections.get_one.assert_awaited_once_with(
+            QuerySpec(
+                where=BootSourceSelectionClauseFactory.and_clauses(
+                    [
+                        BootSourceSelectionClauseFactory.with_id(2),
+                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                            1
+                        ),
+                    ]
+                )
+            )
+        )
+        services_mock.boot_resources.list.assert_awaited_once_with(
+            page=1,
+            size=1,
+            query=QuerySpec(
+                where=BootResourceClauseFactory.with_selection_id(2)
+            ),
+        )
+
+    async def test_get_resource_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootSourceSelectionsService)
+        services_mock.boot_resources.get_one.return_value = TEST_BOOT_RESOURCE
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/3")
+        assert response.status_code == 200
+        assert response.headers["ETag"]
+        boot_resource_response = BootResourceResponse(**response.json())
+        assert boot_resource_response.id == TEST_BOOT_RESOURCE.id
+        assert boot_resource_response.os == "ubuntu"
+        assert boot_resource_response.release == "noble"
+        assert boot_resource_response.architecture == "amd64"
+        assert boot_resource_response.sub_architecture == "hwe-24.04"
+
+        services_mock.boot_resources.get_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_selection_boot_source_id(
+                            1
+                        ),
+                        BootResourceClauseFactory.with_selection_id(2),
+                        BootResourceClauseFactory.with_id(3),
+                    ]
+                )
+            ),
+        )
+
+    async def test_get_resource_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootSourceSelectionsService)
+        services_mock.boot_resources.get_one.return_value = None
+
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/459")
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404

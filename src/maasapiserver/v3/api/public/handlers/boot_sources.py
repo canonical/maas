@@ -30,6 +30,10 @@ from maasapiserver.v3.api.public.models.responses.boot_images_common import (
     ImageListResponse,
     ImageResponse,
 )
+from maasapiserver.v3.api.public.models.responses.boot_resources import (
+    BootResourceListResponse,
+    BootResourceResponse,
+)
 from maasapiserver.v3.api.public.models.responses.boot_source_selections import (
     BootSourceSelectionSyncResponse,
 )
@@ -55,6 +59,9 @@ from maascommon.workflows.bootresource import (
 )
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootresources import (
+    BootResourceClauseFactory,
+)
 from maasservicelayer.db.repositories.bootsources import (
     BootSourcesClauseFactory,
 )
@@ -484,6 +491,117 @@ class BootSourcesHandler(Handler):
             etag_if_match=etag_if_match,
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/boot_sources/{boot_source_id}/selections/{selection_id}/resources",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": BootResourceListResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=200,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_bootsource_bootsourceselection_resources(
+        self,
+        boot_source_id: int,
+        selection_id: int,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootResourceListResponse:
+        boot_source_selection = await services.boot_source_selections.get_one(
+            QuerySpec(
+                where=BootSourceSelectionClauseFactory.and_clauses(
+                    [
+                        BootSourceSelectionClauseFactory.with_id(selection_id),
+                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                            boot_source_id
+                        ),
+                    ]
+                )
+            )
+        )
+        if not boot_source_selection:
+            raise NotFoundException()
+
+        resources = await services.boot_resources.list(
+            page=pagination_params.page,
+            size=pagination_params.size,
+            query=QuerySpec(
+                where=BootResourceClauseFactory.with_selection_id(selection_id)
+            ),
+        )
+
+        return BootResourceListResponse(
+            items=[
+                BootResourceResponse.from_model(
+                    boot_resource=res,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/{selection_id}/resources",
+                )
+                for res in resources.items
+            ],
+            next=(
+                f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/{selection_id}/resources?"
+                f"{pagination_params.to_next_href_format()}"
+                if resources.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
+            total=resources.total,
+        )
+
+    @handler(
+        path="/boot_sources/{boot_source_id}/selections/{selection_id}/resources/{id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {"model": BootResourceResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=200,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_bootsource_bootsourceselection_resource(
+        self,
+        boot_source_id: int,
+        selection_id: int,
+        id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootResourceResponse:
+        resource = await services.boot_resources.get_one(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_selection_boot_source_id(
+                            boot_source_id
+                        ),
+                        BootResourceClauseFactory.with_selection_id(
+                            selection_id
+                        ),
+                        BootResourceClauseFactory.with_id(id),
+                    ]
+                )
+            ),
+        )
+
+        if not resource:
+            raise NotFoundException()
+
+        response.headers["ETag"] = resource.etag()
+
+        return BootResourceResponse.from_model(
+            boot_resource=resource,
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/{selection_id}/resources",
+        )
 
     @handler(
         path="/boot_sources/{boot_source_id}/selections/{id}:sync",

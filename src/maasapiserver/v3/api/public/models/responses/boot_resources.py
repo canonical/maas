@@ -1,7 +1,6 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-from datetime import datetime
-from typing import Optional, Self
+from typing import Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -9,32 +8,29 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maascommon.enums.boot_resources import BOOT_RESOURCE_TYPE_DICT
 from maasservicelayer.models.bootresources import BootResource
 
 
 class BootResourceResponse(HalResponse[BaseHal]):
-    # Don't delete this for now, we can re-adapt it for /bootloaders and /selections/{id}/resources
     kind = "BootResource"
-
     id: int
-    name: str
+    os: str
+    release: str
     architecture: str
-    type: str
-    extra: dict
-    last_deployed: Optional[datetime]
+    sub_architecture: str
 
     @classmethod
     def from_model(
         cls, boot_resource: BootResource, self_base_hyperlink: str
     ) -> Self:
+        os, release = boot_resource.name.split("/", maxsplit=1)
+        arch, subarch = boot_resource.split_arch()
         return cls(
             id=boot_resource.id,
-            name=boot_resource.name,
-            architecture=boot_resource.architecture,
-            type=BOOT_RESOURCE_TYPE_DICT[boot_resource.rtype],
-            extra=boot_resource.extra,
-            last_deployed=boot_resource.last_deployed,
+            os=os,
+            release=release,
+            architecture=arch,
+            sub_architecture=subarch,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{boot_resource.id}"
