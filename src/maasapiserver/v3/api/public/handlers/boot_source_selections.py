@@ -2,9 +2,10 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from fastapi import Depends
+from fastapi import Depends, Query, Response
 from fastapi.exceptions import RequestValidationError
-from pydantic import ValidationError
+from pydantic import conlist, ValidationError
+from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -31,6 +32,9 @@ from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -152,6 +156,33 @@ class BootSourceSelectionsHandler(Handler):
             next=None,
             total=len(boot_source_selections),
         )
+
+    @handler(
+        path="/selections",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+        },
+        status_code=204,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def bulk_delete_selections(
+        self,
+        ids: conlist(int, min_items=1, unique_items=True) = Query(  # pyright: ignore[reportInvalidTypeForm] # noqa: B008
+            description="ids of selections to delete", alias="id"
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        await services.boot_source_selections.delete_many(
+            query=QuerySpec(
+                where=BootSourceSelectionClauseFactory.with_ids(ids)
+            )
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
         path="/selection_statuses",

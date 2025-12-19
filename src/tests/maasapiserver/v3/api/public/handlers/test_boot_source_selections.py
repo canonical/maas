@@ -21,6 +21,7 @@ from maasservicelayer.builders.bootsourceselections import (
 )
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
     BootSourceSelectionStatusClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
@@ -67,6 +68,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     def admin_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="POST", path=self.BASE_PATH),
+            Endpoint(method="DELETE", path=self.BASE_PATH),
         ]
 
     async def test_list_no_other_page(
@@ -242,6 +244,26 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         )
         assert response.status_code == 422
         services_mock.boot_source_selections.create_many.assert_not_awaited()
+
+    async def test_bulk_delete(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.delete_many.return_value = None
+        # httpx.delete doesn't support json
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}?id=1&id=2"
+        )
+        assert response.status_code == 204
+        services_mock.boot_source_selections.delete_many.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootSourceSelectionClauseFactory.with_ids([1, 2])
+            )
+        )
 
 
 class TestBootSourceSelectionStatusesApi(ApiCommonTests):
