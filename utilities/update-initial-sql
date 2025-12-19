@@ -27,4 +27,4 @@ msg "upgrading schema"
 bin/maas-region dbupgrade
 
 msg "dumping updated database file"
-pg_dump "$PGDATABASE" --no-owner --no-privileges --format=plain -f "$sql_dump_file"
+pg_dump "$PGDATABASE" --no-owner --no-privileges --format=plain --restrict-key=jDB4gdI1N8dbUCAC3vcdCvWs48TBU3tT39yhtb0ijqwqYnAc3QoCur8LfK1MnsD -f "$sql_dump_file"
