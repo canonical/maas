@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test cases for dhcp.config"""
@@ -17,21 +17,20 @@ from fixtures import FakeLogger
 import netaddr
 from testtools.content import Content, text_content, UTF8_TEXT
 
-from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
-from maastesting.utils import running_in_docker
-from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.dhcp import config
-from provisioningserver.dhcp.config import _get_addresses
-from provisioningserver.dhcp.testing.config import (
+from maasserver.dhcpd import config
+from maasserver.dhcpd.config import _get_addresses
+from maasserver.dhcpd.testing.config import (
     fix_shared_networks_failover,
     make_failover_peer_config,
     make_global_dhcp_snippets,
     make_host,
     make_shared_network,
 )
+from maastesting.factory import factory
+from maastesting.testcase import MAASTestCase
+from maastesting.utils import running_in_docker
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.utils import flatten
-import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.text import quote
 
@@ -76,6 +75,7 @@ def make_sample_params_only(
         "hosts": [make_host(ipv6=ipv6) for _ in range(3)],
         "global_dhcp_snippets": make_global_dhcp_snippets(),
         "ipv6": ipv6,
+        "running_in_snap": factory.pick_bool(),
     }
 
 
@@ -233,7 +233,7 @@ class TestGetConfig(MAASTestCase):
         self.assertEqual(tblines[0], "Traceback (most recent call last):\n")
         self.assertEqual(
             tblines[-1],
-            "provisioningserver.dhcp.config.DHCPConfigError: Failed to render DHCP configuration.\n",
+            "maasserver.dhcpd.config.DHCPConfigError: Failed to render DHCP configuration.\n",
         )
         above_exception = "\nThe above exception was the direct cause of the following exception:\n\n"
         self.assertIn(above_exception, tblines)
@@ -242,23 +242,6 @@ class TestGetConfig(MAASTestCase):
             tblines[idx - 1],
             rf"KeyError\('mac at line \d+ column \d+ in file .*{self.template}'\)",
         )
-
-    def test_includes_compose_conditional_bootloader(self):
-        params = make_sample_params(self, ipv6=self.ipv6)
-        rack_ip = params["shared_networks"][0]["subnets"][0]["router_ip"]
-        self.patch(net_utils, "get_all_interface_addresses").return_value = [
-            netaddr.IPAddress(rack_ip)
-        ]
-        bootloader = config.compose_conditional_bootloader(
-            ipv6=self.ipv6, rack_ip=rack_ip
-        )
-        rendered = config.get_config(self.template, **params)
-        validate_dhcpd_configuration(self, rendered, self.ipv6)
-        self.assertIn(bootloader, rendered)
-        # Verify that "/images/" is automatically added to bootloaders
-        # loaded over HTTP. This ensures nginx handles the result without
-        # bothering rackd.
-        self.assertIn("/images/bootx64.efi", rendered)
 
     def test_renders_dns_servers_as_comma_separated_list(self):
         params = make_sample_params(self, ipv6=self.ipv6)
@@ -434,36 +417,6 @@ class TestGetConfig(MAASTestCase):
                         subnet["subnet_mask"],
                     )
                 self.assertIn(expected, config_output)
-
-
-class TestGetConfigIPv4(MAASTestCase):
-    """Tests for `get_config`."""
-
-    def test_includes_next_server_in_config_from_all_addresses(self):
-        params = make_sample_params(self, ipv6=False)
-        subnet = params["shared_networks"][0]["subnets"][0]
-        next_server_ip = factory.pick_ip_in_network(
-            netaddr.IPNetwork(subnet["subnet_cidr"])
-        )
-        self.patch(net_utils, "get_all_interface_addresses").return_value = [
-            next_server_ip
-        ]
-        config_output = config.get_config("dhcpd.conf.template", **params)
-        validate_dhcpd_configuration(self, config_output, False)
-        self.assertIn("next-server %s;" % next_server_ip, config_output)
-
-    def test_includes_next_server_in_config_from_interface_addresses(self):
-        params = make_sample_params(self, ipv6=False, with_interface=True)
-        subnet = params["shared_networks"][0]["subnets"][0]
-        next_server_ip = factory.pick_ip_in_network(
-            netaddr.IPNetwork(subnet["subnet_cidr"])
-        )
-        self.patch(
-            net_utils, "get_all_addresses_for_interface"
-        ).return_value = [next_server_ip]
-        config_output = config.get_config("dhcpd.conf.template", **params)
-        validate_dhcpd_configuration(self, config_output, False)
-        self.assertIn("next-server %s;" % next_server_ip, config_output)
 
 
 class Test_process_shared_network_v6(MAASTestCase):
