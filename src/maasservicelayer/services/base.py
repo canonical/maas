@@ -193,7 +193,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
     async def pre_create_many_hook(self, builders: List[B]) -> None:
         return None
 
-    async def post_create_many_hook(self, resource: List[M]) -> None:
+    async def post_create_many_hook(self, resources: List[M]) -> None:
         return None
 
     async def create_many(self, builders: List[B]) -> List[M]:

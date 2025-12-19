@@ -138,6 +138,19 @@ class BootSourceSelectionsService(
             f"in boot source with ID {resource.boot_source_id}",
         )
 
+    async def pre_create_many_hook(
+        self, builders: List[BootSourceSelectionBuilder]
+    ) -> None:
+        for builder in builders:
+            await self.pre_create_hook(builder)
+
+    async def post_create_many_hook(
+        self, resources: List[BootSourceSelection]
+    ) -> None:
+        for resource in resources:
+            # TODO: create_many for events
+            await self.post_create_hook(resource)
+
     async def ensure_boot_source_cache_exists(
         self, builder: BootSourceSelectionBuilder
     ):

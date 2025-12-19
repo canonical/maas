@@ -3,15 +3,20 @@
 
 
 from fastapi import Depends
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
     NotFoundBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.boot_source_selections import (
     BootSourceSelectionStatisticFilterParams,
     BootSourceSelectionStatusFilterParams,
+    BulkSelectionRequest,
+    SelectionRequest,
 )
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.boot_images_common import (
@@ -103,6 +108,49 @@ class BootSourceSelectionsHandler(Handler):
         return ImageResponse.from_selection(
             selection=boot_source_selection,
             self_base_hyperlink=f"{V3_API_PREFIX}/selections/{id}",
+        )
+
+    @handler(
+        path="/selections",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            200: {"model": ImageListResponse},
+            409: {"model": ConflictBodyResponse},
+        },
+        status_code=200,
+        response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def bulk_create_selections(
+        self,
+        selections_to_create: list[SelectionRequest],
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> ImageListResponse:
+        # we don't use BulkSelectionRequest directly because we want to pass a
+        # list of selections in the body, rather than passing {"selections":[...]}
+        try:
+            bulk_create_request = BulkSelectionRequest(
+                selections=selections_to_create
+            )
+        except ValidationError as e:
+            raise RequestValidationError(errors=e.errors()) from None
+        builders = bulk_create_request.get_builders()
+        boot_source_selections = (
+            await services.boot_source_selections.create_many(builders)
+        )
+        return ImageListResponse(
+            items=[
+                ImageResponse.from_selection(
+                    selection=boot_source_selection,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/selections",
+                )
+                for boot_source_selection in boot_source_selections
+            ],
+            next=None,
+            total=len(boot_source_selections),
         )
 
     @handler(

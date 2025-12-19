@@ -93,6 +93,15 @@ class TestCommonBootSourceSelectionsService(ServiceCommonTests):
             builder=builder
         )
 
+    async def test_create_many(
+        self, service_instance, test_instance, builder_model
+    ):
+        service_instance._ensure_legacy_selection_exists = AsyncMock()
+        service_instance.ensure_boot_source_cache_exists = AsyncMock()
+        return await super().test_create_many(
+            service_instance, test_instance, builder_model
+        )
+
     async def test_create_with_available_boot_resource(
         self, service_instance, test_instance, builder_model
     ):

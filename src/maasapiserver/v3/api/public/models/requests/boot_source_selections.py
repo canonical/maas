@@ -16,7 +16,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 from maasservicelayer.models.bootsources import BootSource
 
 
-class BootSourceSelectionRequest(BaseModel):
+class BaseSelectionRequest(BaseModel):
     os: str = Field(
         description="The OS (e.g. ubuntu, centos) for which to import resources."
     )
@@ -27,6 +27,8 @@ class BootSourceSelectionRequest(BaseModel):
         description="The architecture list for which to import resources.",
     )
 
+
+class BootSourceSelectionRequest(BaseSelectionRequest):
     def to_builder(
         self, boot_source: BootSource
     ) -> BootSourceSelectionBuilder:
@@ -36,6 +38,31 @@ class BootSourceSelectionRequest(BaseModel):
             arch=self.arch,
             boot_source_id=boot_source.id,
         )
+
+
+class SelectionRequest(BaseSelectionRequest):
+    boot_source_id: int = Field(
+        description="The id of the boot source that this selection refers to"
+    )
+
+    def to_builder(self) -> BootSourceSelectionBuilder:
+        return BootSourceSelectionBuilder(
+            os=self.os,
+            release=self.release,
+            arch=self.arch,
+            boot_source_id=self.boot_source_id,
+        )
+
+
+class BulkSelectionRequest(BaseModel):
+    selections: list[SelectionRequest] = Field(
+        description="Boot source selections to create",
+        min_items=1,
+        unique_items=True,
+    )
+
+    def get_builders(self) -> list[BootSourceSelectionBuilder]:
+        return [s.to_builder() for s in self.selections]
 
 
 class BootSourceSelectionStatusFilterParams(BaseModel):

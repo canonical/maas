@@ -3,6 +3,7 @@
 
 from unittest.mock import Mock
 
+from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
 import pytest
 
@@ -15,10 +16,14 @@ from maasapiserver.v3.api.public.models.responses.boot_images_common import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
+from maasservicelayer.builders.bootsourceselections import (
+    BootSourceSelectionBuilder,
+)
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionStatusClauseFactory,
 )
+from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
@@ -60,7 +65,9 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return []
+        return [
+            Endpoint(method="POST", path=self.BASE_PATH),
+        ]
 
     async def test_list_no_other_page(
         self,
@@ -135,6 +142,106 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         assert len(boot_source_selections_response.items) == 0
         assert boot_source_selections_response.total == 0
         assert boot_source_selections_response.next is None
+
+    async def test_bulk_create_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.create_many.return_value = [
+            TEST_BOOTSOURCESELECTION
+        ]
+
+        bulk_create_request = [
+            {
+                "os": TEST_BOOTSOURCESELECTION.os,
+                "release": TEST_BOOTSOURCESELECTION.release,
+                "arch": TEST_BOOTSOURCESELECTION.arch,
+                "boot_source_id": TEST_BOOTSOURCESELECTION.boot_source_id,
+            }
+        ]
+
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(bulk_create_request)
+        )
+        boot_source_selections_response = ImageListResponse(**response.json())
+        assert len(boot_source_selections_response.items) == 1
+        assert boot_source_selections_response.total == 1
+
+        services_mock.boot_source_selections.create_many.assert_awaited_once_with(
+            [
+                BootSourceSelectionBuilder(
+                    os=TEST_BOOTSOURCESELECTION.os,
+                    release=TEST_BOOTSOURCESELECTION.release,
+                    arch=TEST_BOOTSOURCESELECTION.arch,
+                    boot_source_id=TEST_BOOTSOURCESELECTION.boot_source_id,
+                )
+            ]
+        )
+
+    async def test_bulk_create_409(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.create_many.side_effect = (
+            AlreadyExistsException()
+        )
+
+        bulk_create_request = [
+            {
+                "os": TEST_BOOTSOURCESELECTION.os,
+                "release": TEST_BOOTSOURCESELECTION.release,
+                "arch": TEST_BOOTSOURCESELECTION.arch,
+                "boot_source_id": TEST_BOOTSOURCESELECTION.boot_source_id,
+            }
+        ]
+
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(bulk_create_request)
+        )
+        assert response.status_code == 409
+
+    @pytest.mark.parametrize(
+        "bulk_create_request",
+        [
+            [],  # empty list
+            [  # non-unique values
+                {
+                    "os": "os",
+                    "release": "release",
+                    "arch": "arch",
+                    "boot_source_id": "id",
+                },
+                {
+                    "os": "os",
+                    "release": "release",
+                    "arch": "arch",
+                    "boot_source_id": "id",
+                },
+            ],
+        ],
+    )
+    async def test_bulk_create_422(
+        self,
+        bulk_create_request: list,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(bulk_create_request)
+        )
+        assert response.status_code == 422
+        services_mock.boot_source_selections.create_many.assert_not_awaited()
 
 
 class TestBootSourceSelectionStatusesApi(ApiCommonTests):
