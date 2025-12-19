@@ -418,6 +418,239 @@ class TestGetConfig(MAASTestCase):
                     )
                 self.assertIn(expected, config_output)
 
+    def test_renders_multiple_host_entries_for_vlan_interfaces(self):
+        """Test host entries for VLAN interfaces with shared MAC.
+
+        When a machine has multiple interfaces (physical + VLANs) sharing
+        the same MAC address, each interface should get its own host
+        declaration with a unique hostname and fixed IP address.
+        """
+        params = make_sample_params(self, ipv6=self.ipv6)
+
+        # Add machine with 4 interfaces sharing same MAC (physical + VLANs)
+        shared_mac = "00:16:3e:db:77:26"
+        vlan_hosts = [
+            {
+                "host": "valid-gnat-enp5s0",
+                "mac": shared_mac,
+                "ip": "2001:db8:1::10" if self.ipv6 else "10.178.148.10",
+                "dhcp_snippets": [],
+            },
+            {
+                "host": "valid-gnat-enp5s0-100",
+                "mac": shared_mac,
+                "ip": "2001:db8:2::10" if self.ipv6 else "10.20.0.10",
+                "dhcp_snippets": [],
+            },
+            {
+                "host": "valid-gnat-enp5s0-200",
+                "mac": shared_mac,
+                "ip": "2001:db8:3::10" if self.ipv6 else "10.30.0.10",
+                "dhcp_snippets": [],
+            },
+            {
+                "host": "valid-gnat-enp5s0-300",
+                "mac": shared_mac,
+                "ip": "2001:db8:4::10" if self.ipv6 else "10.40.0.10",
+                "dhcp_snippets": [],
+            },
+        ]
+        params["hosts"].extend(vlan_hosts)
+
+        config_output = config.get_config(self.template, **params)
+        validate_dhcpd_configuration(self, config_output, self.ipv6)
+
+        # Verify each VLAN interface entry is present
+        for host in vlan_hosts:
+            expected_hostname = (
+                f"{host['host']}-{shared_mac.replace(':', '-')}"
+            )
+            self.assertIn(f"host {expected_hostname}", config_output)
+            if self.ipv6:
+                self.assertIn(f"fixed-address6 {host['ip']};", config_output)
+            else:
+                self.assertIn(f"fixed-address {host['ip']};", config_output)
+
+        # Verify all 4 host declarations are present
+        mac_count = config_output.count(f"hardware ethernet {shared_mac};")
+        self.assertEqual(
+            mac_count,
+            4,
+            f"Expected 4 host declarations for MAC {shared_mac}, "
+            f"found {mac_count}",
+        )
+
+    def test_renders_multiple_reserved_ips_same_mac(self):
+        """Test reserved IPs with same MAC on different subnets.
+
+        When multiple reserved IPs exist for the same MAC address across
+        different subnets, each reservation should get its own host
+        declaration with unique hostname.
+        """
+        params = make_sample_params(self, ipv6=self.ipv6)
+
+        # Add reserved IPs for same MAC on different subnets
+        reserved_mac = "00:16:3e:a0:54:e2"
+        reserved_hosts = [
+            {
+                "host": "rsvd-4",
+                "mac": reserved_mac,
+                "ip": "2001:db8:2::30" if self.ipv6 else "10.20.0.30",
+                "dhcp_snippets": [],
+            },
+            {
+                "host": "rsvd-5",
+                "mac": reserved_mac,
+                "ip": "2001:db8:3::30" if self.ipv6 else "10.30.0.30",
+                "dhcp_snippets": [],
+            },
+            {
+                "host": "rsvd-6",
+                "mac": reserved_mac,
+                "ip": "2001:db8:4::30" if self.ipv6 else "10.40.0.30",
+                "dhcp_snippets": [],
+            },
+        ]
+        params["hosts"].extend(reserved_hosts)
+
+        config_output = config.get_config(self.template, **params)
+        validate_dhcpd_configuration(self, config_output, self.ipv6)
+
+        # Verify each reserved IP entry is present
+        for host in reserved_hosts:
+            expected_hostname = (
+                f"{host['host']}-{reserved_mac.replace(':', '-')}"
+            )
+            self.assertIn(f"host {expected_hostname}", config_output)
+            if self.ipv6:
+                self.assertIn(f"fixed-address6 {host['ip']};", config_output)
+            else:
+                self.assertIn(f"fixed-address {host['ip']};", config_output)
+
+        # Verify all 3 reserved IP declarations are present
+        mac_count = config_output.count(f"hardware ethernet {reserved_mac};")
+        self.assertEqual(
+            mac_count,
+            3,
+            f"Expected 3 host declarations for MAC {reserved_mac}, "
+            f"found {mac_count}",
+        )
+
+    def test_host_declarations_have_unique_names_with_mac_suffix(self):
+        """Test that all host declarations have unique names.
+
+        Host declaration names must be unique and include MAC address
+        suffix to ensure uniqueness when multiple entries share the
+        same MAC.
+        """
+        params = make_sample_params(self, ipv6=self.ipv6)
+
+        # Add hosts with same MAC but different interface names
+        shared_mac = "00:16:3e:ab:cd:ef"
+        hosts_with_shared_mac = [
+            {
+                "host": "machine-eth0",
+                "mac": shared_mac,
+                "ip": "2001:db8:1::20" if self.ipv6 else "10.178.148.20",
+                "dhcp_snippets": [],
+            },
+            {
+                "host": "machine-eth0-100",
+                "mac": shared_mac,
+                "ip": "2001:db8:2::20" if self.ipv6 else "10.20.0.20",
+                "dhcp_snippets": [],
+            },
+        ]
+        params["hosts"].extend(hosts_with_shared_mac)
+
+        config_output = config.get_config(self.template, **params)
+        validate_dhcpd_configuration(self, config_output, self.ipv6)
+
+        # Extract all host declaration names
+        host_pattern = r"^host\s+([\w\-]+)\s*\{$"
+        host_names = re.findall(host_pattern, config_output, re.MULTILINE)
+
+        # Verify all host names are unique
+        self.assertEqual(
+            len(host_names),
+            len(set(host_names)),
+            f"Duplicate host names found: {host_names}",
+        )
+
+        # Verify MAC suffix is present in host names
+        mac_suffix = shared_mac.replace(":", "-")
+        for host in hosts_with_shared_mac:
+            expected_name = f"{host['host']}-{mac_suffix}"
+            self.assertIn(
+                expected_name,
+                host_names,
+                f"Expected host name '{expected_name}' not found",
+            )
+
+    def test_vlan_interface_hosts_maintain_dhcp_snippets(self):
+        """Test DHCP snippets preserved for VLAN interface hosts.
+
+        When generating multiple host declarations for VLAN interfaces,
+        each should maintain its own DHCP snippets if present.
+        """
+        params = make_sample_params(self, ipv6=self.ipv6)
+
+        shared_mac = "00:16:3e:11:22:33"
+        vlan_hosts = [
+            {
+                "host": "node-eth0",
+                "mac": shared_mac,
+                "ip": "2001:db8:1::60" if self.ipv6 else "10.178.148.60",
+                "dhcp_snippets": [
+                    {
+                        "name": "snippet-vlan0",
+                        "description": "Snippet for untagged VLAN",
+                        "value": "# VLAN 0 configuration",
+                    }
+                ],
+            },
+            {
+                "host": "node-eth0-100",
+                "mac": shared_mac,
+                "ip": "2001:db8:2::60" if self.ipv6 else "10.20.0.60",
+                "dhcp_snippets": [
+                    {
+                        "name": "snippet-vlan100",
+                        "description": "Snippet for VLAN 100",
+                        "value": "# VLAN 100 configuration",
+                    }
+                ],
+            },
+        ]
+        params["hosts"].extend(vlan_hosts)
+
+        config_output = config.get_config(self.template, **params)
+        validate_dhcpd_configuration(self, config_output, self.ipv6)
+
+        # Verify each snippet is present in configuration
+        for host in vlan_hosts:
+            expected_hostname = (
+                f"{host['host']}-{shared_mac.replace(':', '-')}"
+            )
+            host_start = config_output.find(f"host {expected_hostname}")
+            self.assertNotEqual(
+                host_start,
+                -1,
+                f"Host {expected_hostname} not found in configuration",
+            )
+
+            # Verify snippets appear after their host declaration
+            for dhcp_snippet in host["dhcp_snippets"]:
+                snippet_pos = config_output.find(
+                    dhcp_snippet["value"], host_start
+                )
+                self.assertNotEqual(
+                    snippet_pos,
+                    -1,
+                    f"DHCP snippet '{dhcp_snippet['value']}' not found "
+                    f"for host {expected_hostname}",
+                )
+
 
 class Test_process_shared_network_v6(MAASTestCase):
     """Tests for `_process_network_parameters_v6`."""
