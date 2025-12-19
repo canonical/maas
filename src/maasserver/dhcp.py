@@ -413,7 +413,7 @@ def make_hosts_for_subnets(
         if reserved_ip.mac_address not in known_mac_addresses:
             hosts.append(
                 {
-                    "host": "",
+                    "host": "rsvd-%d" % (reserved_ip.id),
                     "mac": reserved_ip.mac_address,
                     "ip": reserved_ip.ip,
                     "dhcp_snippets": [],

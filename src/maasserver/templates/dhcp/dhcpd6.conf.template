@@ -115,7 +115,7 @@ shared-network {{shared_network["name"]}} {
 #
 {{for host in hosts}}
 # {{host['host']}}
-host {{host['mac'].replace(":", "-")}} {
+host {{host['host']}}-{{host['mac'].replace(":", "-")}} {
    #
    # Node DHCP snippets
    #
