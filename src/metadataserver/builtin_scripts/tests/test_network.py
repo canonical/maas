@@ -2979,6 +2979,19 @@ class TestGetInterfaceDependencies(MAASTestCase):
             dependencies,
         )
 
+    def test_bridge_null_upper_devices(self):
+        data = FakeCommissioningData()
+        data.create_bridge_network("br0", parents=[])
+        rendered_data = data.render()
+        rendered_data["networks"]["br0"]["bridge"]["upper_devices"] = None
+        dependencies = get_interface_dependencies(rendered_data)
+        self.assertEqual(
+            {
+                "br0": [],
+            },
+            dependencies,
+        )
+
     def test_bond(self):
         data = FakeCommissioningData()
         data.create_physical_network("eth0")
@@ -2994,6 +3007,19 @@ class TestGetInterfaceDependencies(MAASTestCase):
                 "eth1": [],
                 "eth2": [],
                 "bond0": ["eth0", "eth1"],
+            },
+            dependencies,
+        )
+
+    def test_bond_null_lower_devices(self):
+        data = FakeCommissioningData()
+        data.create_bond_network("bond0", parents=[])
+        rendered_data = data.render()
+        rendered_data["networks"]["bond0"]["bond"]["lower_devices"] = None
+        dependencies = get_interface_dependencies(rendered_data)
+        self.assertEqual(
+            {
+                "bond0": [],
             },
             dependencies,
         )
