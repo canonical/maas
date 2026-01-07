@@ -36,6 +36,9 @@ from maasservicelayer.db.repositories.dhcpsnippets import (
     DhcpSnippetsRepository,
 )
 from maasservicelayer.db.repositories.discoveries import DiscoveriesRepository
+from maasservicelayer.db.repositories.django_session import (
+    DjangoSessionRepository,
+)
 from maasservicelayer.db.repositories.dnsdata import DNSDataRepository
 from maasservicelayer.db.repositories.dnspublications import (
     DNSPublicationRepository,
@@ -133,6 +136,7 @@ from maasservicelayer.services.database_configurations import (
 )
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.discoveries import DiscoveriesService
+from maasservicelayer.services.django_session import DjangoSessionService
 from maasservicelayer.services.dnsdata import DNSDataService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.dnsresourcerecordsets import (
@@ -249,6 +253,7 @@ class ServiceCollectionV3:
     consumers: ConsumersService
     dhcpsnippets: DhcpSnippetsService
     discoveries: DiscoveriesService
+    django_session: DjangoSessionService
     dnsdata: DNSDataService
     dnspublications: DNSPublicationsService
     dnsresources: DNSResourcesService
@@ -316,6 +321,9 @@ class ServiceCollectionV3:
             database_configurations_repository=DatabaseConfigurationsRepository(
                 context
             ),
+        )
+        services.django_session = DjangoSessionService(
+            repository=DjangoSessionRepository(context), context=context
         )
         services.service_status = ServiceStatusService(
             context=context,

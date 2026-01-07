@@ -7,6 +7,7 @@ from typing import Any
 from django.core import signing
 
 from maascommon.enums.sshkeys import SshKeysProtocolType
+from maasservicelayer.models.django_session import DjangoSession
 from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.utils.date import utcnow
@@ -40,7 +41,7 @@ async def create_test_session(
     user_id: int,
     session_id: str = "a-b-c",
     expire_date: datetime = utcnow() + timedelta(days=1),  # noqa: B008
-) -> None:
+) -> DjangoSession:
     signer = signing.TimestampSigner(
         key="<UNUSED>",
         salt="django.contrib.sessions.SessionStore",
@@ -52,7 +53,7 @@ async def create_test_session(
         },
         serializer=signing.JSONSerializer,
     )
-    await fixture.create(
+    [created_session] = await fixture.create(
         "django_session",
         {
             "session_key": session_id,
@@ -60,6 +61,7 @@ async def create_test_session(
             "session_data": session_data,
         },
     )
+    return DjangoSession(**created_session)
 
 
 async def create_test_user_profile(
