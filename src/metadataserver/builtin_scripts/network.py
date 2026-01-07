@@ -30,9 +30,11 @@ def get_interface_dependencies(data):
     dependencies = {name: [] for name in data["networks"]}
     for name, network in data["networks"].items():
         if network["bridge"]:
-            parents = network["bridge"]["upper_devices"]
+            # upper_devices can be None, see LP: #2137017
+            parents = network["bridge"]["upper_devices"] or []
         elif network["bond"]:
-            parents = network["bond"]["lower_devices"]
+            # lower_devices can be None, see LP: #2137017
+            parents = network["bond"]["lower_devices"] or []
         elif network["vlan"]:
             parents = [network["vlan"]["lower_device"]]
         else:
@@ -449,10 +451,12 @@ def update_child_interface(node, name, network, links):
     :param network: Network settings from commissioning data.
     """
     if network["bridge"]:
-        parents = network["bridge"]["upper_devices"]
+        # upper_devices can be None, see LP: #2137017
+        parents = network["bridge"]["upper_devices"] or []
         child_type = BridgeInterface
     elif network["bond"]:
-        parents = network["bond"]["lower_devices"]
+        # lower_devices can be None, see LP: #2137017
+        parents = network["bond"]["lower_devices"] or []
         child_type = BondInterface
     else:
         raise RuntimeError(f"Unknown child interface: {network}")

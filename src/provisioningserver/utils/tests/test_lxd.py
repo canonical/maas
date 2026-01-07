@@ -524,6 +524,34 @@ class TestParseLXDNetworks(MAASTestCase):
             },
         )
 
+    def test_networks_bond_null_lower_devices(self):
+        network_details = {
+            "bond0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": {
+                    "lower_devices": None,
+                },
+                "bridge": None,
+                "vlan": None,
+            },
+        }
+        networks = parse_lxd_networks(network_details)
+        self.assertEqual(
+            networks,
+            {
+                "bond0": {
+                    "type": "bond",
+                    "enabled": True,
+                    "addresses": [],
+                    "mac": "00:00:00:00:00:01",
+                    "parents": [],
+                },
+            },
+        )
+
     def test_networks_bridge(self):
         network_details = {
             "br0": {
@@ -548,6 +576,34 @@ class TestParseLXDNetworks(MAASTestCase):
                     "addresses": [],
                     "mac": "00:00:00:00:00:01",
                     "parents": ["eth0", "eth1"],
+                },
+            },
+        )
+
+    def test_networks_bridge_null_upper_devices(self):
+        network_details = {
+            "br0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": {
+                    "upper_devices": None,
+                },
+                "vlan": None,
+            },
+        }
+        networks = parse_lxd_networks(network_details)
+        self.assertEqual(
+            networks,
+            {
+                "br0": {
+                    "type": "bridge",
+                    "enabled": True,
+                    "addresses": [],
+                    "mac": "00:00:00:00:00:01",
+                    "parents": [],
                 },
             },
         )
