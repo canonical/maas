@@ -161,7 +161,21 @@ def auth_app(
 
 
 @pytest.fixture
-async def auth_client(
+async def auth_client(auth_app: FastAPI) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(app=auth_app, base_url="http://test/") as client:
+        yield client
+
+
+@pytest.fixture
+async def auth_client_candid(
+    auth_app: FastAPI, enable_candid
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(app=auth_app, base_url="http://test/") as client:
+        yield client
+
+
+@pytest.fixture
+async def auth_client_rbac(
     auth_app: FastAPI, enable_rbac
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(app=auth_app, base_url="http://test/") as client:
@@ -224,8 +238,56 @@ class TestPermissionsFunctions:
         )
         assert user_response.status_code == 200
 
+    async def test_get_user_candid(
+        self, auth_client_candid: AsyncClient
+    ) -> None:
+        user_response = await auth_client_candid.post(
+            f"{V3_API_PREFIX}/user",
+            json=self._build_request("test", {UserRole.USER}),
+        )
+        assert user_response.status_code == 200
+        authenticated_user = AuthenticatedUser(**user_response.json())
+        assert authenticated_user.username == "test"
+        assert authenticated_user.roles == {UserRole.USER}
+        assert authenticated_user.rbac_permissions is None
+
+        user_response = await auth_client_candid.post(
+            f"{V3_API_PREFIX}/admin_permissions",
+            json=self._build_request("test", {UserRole.USER}),
+        )
+        assert user_response.status_code == 403
+        user_response = await auth_client_candid.post(
+            f"{V3_API_PREFIX}/admin_permissions",
+            json=self._build_request("test", {UserRole.ADMIN}),
+        )
+        assert user_response.status_code == 200
+
+        user_response = await auth_client_candid.post(
+            f"{V3_API_PREFIX}/rbac_pools",
+            json=self._build_request("test", {UserRole.USER}),
+        )
+        assert user_response.status_code == 200
+        authenticated_user = AuthenticatedUser(**user_response.json())
+        assert authenticated_user.rbac_permissions is None
+
+        user_response = await auth_client_candid.post(
+            f"{V3_API_PREFIX}/rbac_admin_pools",
+            json=self._build_request("test", {UserRole.USER}),
+        )
+        assert user_response.status_code == 200
+        authenticated_user = AuthenticatedUser(**user_response.json())
+        assert authenticated_user.rbac_permissions is None
+
+        user_response = await auth_client_candid.post(
+            f"{V3_API_PREFIX}/rbac_no_permissions",
+            json=self._build_request("test", {UserRole.USER}),
+        )
+        assert user_response.status_code == 200
+        authenticated_user = AuthenticatedUser(**user_response.json())
+        assert authenticated_user.rbac_permissions is None
+
     async def test_get_user_rbac(
-        self, auth_client: AsyncClient, mock_aioresponse
+        self, auth_client_rbac: AsyncClient, mock_aioresponse
     ) -> None:
         def mock_allowed_for_user_endpoint(
             perms: list[RbacPermission], response_ids: list[list]
@@ -240,7 +302,7 @@ class TestPermissionsFunctions:
             payload = {k: v for (k, v) in zip(perms, response_ids)}
             mock_aioresponse.get(endpoint, payload=payload)
 
-        user_response = await auth_client.post(
+        user_response = await auth_client_rbac.post(
             f"{V3_API_PREFIX}/user",
             json=self._build_request("test", {UserRole.USER}),
         )
@@ -259,7 +321,7 @@ class TestPermissionsFunctions:
             ],
             [[""], [1, 2], [3], [4]],
         )
-        user_response = await auth_client.post(
+        user_response = await auth_client_rbac.post(
             f"{V3_API_PREFIX}/rbac_pools",
             json=self._build_request("test", {UserRole.USER}),
         )
@@ -278,7 +340,7 @@ class TestPermissionsFunctions:
         )
 
         mock_allowed_for_user_endpoint([RbacPermission.EDIT], [[""]])
-        user_response = await auth_client.post(
+        user_response = await auth_client_rbac.post(
             f"{V3_API_PREFIX}/rbac_admin_pools",
             json=self._build_request("test", {UserRole.USER}),
         )
@@ -294,7 +356,7 @@ class TestPermissionsFunctions:
             is True
         )
 
-        user_response = await auth_client.post(
+        user_response = await auth_client_rbac.post(
             f"{V3_API_PREFIX}/rbac_no_permissions",
             json=self._build_request("test", {UserRole.USER}),
         )
