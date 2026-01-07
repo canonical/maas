@@ -92,6 +92,18 @@ class CustomImagesHandler(Handler):
 
     CHUNK_SIZE = 4 * 1024 * 1024
 
+    def get_handlers(self):
+        return [
+            "list_custom_images_status",
+            "get_custom_image_status",
+            "list_custom_images_statistic",
+            "get_custom_image_statistic",
+            "upload_custom_image",
+            "list_custom_images",
+            "get_custom_image_by_id",
+            "delete_custom_image_by_id",
+        ]
+
     def _get_uploaded_filename(self, filetype: BootResourceFileType) -> str:
         # Root tarball images need to have a proper extension to work for
         # ephemeral deployments.
@@ -407,7 +419,7 @@ class CustomImagesHandler(Handler):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
-        path="/custom_image_statuses",
+        path="/custom_images/statuses",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -436,7 +448,7 @@ class CustomImagesHandler(Handler):
         next_link = None
         if statuses.has_next(pagination_params.page, pagination_params.size):
             next_link = (
-                f"{V3_API_PREFIX}/custom_image_statuses?"
+                f"{V3_API_PREFIX}/custom_images/statuses?"
                 f"{pagination_params.to_next_href_format()}"
             )
             if query_filters := filters.to_href_format():
@@ -452,7 +464,7 @@ class CustomImagesHandler(Handler):
         )
 
     @handler(
-        path="/custom_image_statuses/{id}",
+        path="/custom_images/statuses/{id}",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -480,7 +492,7 @@ class CustomImagesHandler(Handler):
         return ImageStatusResponse.from_model(status)
 
     @handler(
-        path="/custom_image_statistics",
+        path="/custom_images/statistics",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -511,7 +523,7 @@ class CustomImagesHandler(Handler):
         next_link = None
         if statistics.has_next(pagination_params.page, pagination_params.size):
             next_link = (
-                f"{V3_API_PREFIX}/custom_image_statistics?"
+                f"{V3_API_PREFIX}/custom_images/statistics?"
                 f"{pagination_params.to_next_href_format()}"
             )
             if query_filters := filters.to_href_format():
@@ -527,7 +539,7 @@ class CustomImagesHandler(Handler):
         )
 
     @handler(
-        path="/custom_image_statistics/{id}",
+        path="/custom_images/statistics/{id}",
         methods=["GET"],
         tags=TAGS,
         responses={

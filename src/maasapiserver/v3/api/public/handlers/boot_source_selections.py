@@ -44,6 +44,18 @@ class BootSourceSelectionsHandler(Handler):
 
     TAGS = ["BootSourceSelections"]
 
+    def get_handlers(self):
+        return [
+            "list_selection_status",
+            "get_selection_status",
+            "list_selection_statistic",
+            "get_selection_statistic",
+            "list_selections",
+            "get_selection",
+            "bulk_create_selections",
+            "bulk_delete_selections",
+        ]
+
     @handler(
         path="/selections",
         methods=["GET"],
@@ -185,7 +197,7 @@ class BootSourceSelectionsHandler(Handler):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
-        path="/selection_statuses",
+        path="/selections/statuses",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -215,7 +227,7 @@ class BootSourceSelectionsHandler(Handler):
         next_link = None
         if statuses.has_next(pagination_params.page, pagination_params.size):
             next_link = (
-                f"{V3_API_PREFIX}/selection_statuses?"
+                f"{V3_API_PREFIX}/selections/statuses?"
                 f"{pagination_params.to_next_href_format()}"
             )
             if query_filters := filters.to_href_format():
@@ -231,7 +243,7 @@ class BootSourceSelectionsHandler(Handler):
         )
 
     @handler(
-        path="/selection_statuses/{id}",
+        path="/selections/statuses/{id}",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -257,7 +269,7 @@ class BootSourceSelectionsHandler(Handler):
         return ImageStatusResponse.from_model(status)
 
     @handler(
-        path="/selection_statistics",
+        path="/selections/statistics",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -289,7 +301,7 @@ class BootSourceSelectionsHandler(Handler):
         next_link = None
         if statistics.has_next(pagination_params.page, pagination_params.size):
             next_link = (
-                f"{V3_API_PREFIX}/selection_statistics?"
+                f"{V3_API_PREFIX}/selections/statistics?"
                 f"{pagination_params.to_next_href_format()}"
             )
             if query_filters := filters.to_href_format():
@@ -305,7 +317,7 @@ class BootSourceSelectionsHandler(Handler):
         )
 
     @handler(
-        path="/selection_statistics/{id}",
+        path="/selections/statistics/{id}",
         methods=["GET"],
         tags=TAGS,
         responses={

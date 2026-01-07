@@ -267,7 +267,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
 
 class TestBootSourceSelectionStatusesApi(ApiCommonTests):
-    BASE_PATH = f"{V3_API_PREFIX}/selection_statuses"
+    BASE_PATH = f"{V3_API_PREFIX}/selections/statuses"
 
     @pytest.fixture
     def user_endpoints(self) -> list[Endpoint]:
@@ -538,7 +538,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
 
 class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
-    BASE_PATH = f"{V3_API_PREFIX}/selection_statistics"
+    BASE_PATH = f"{V3_API_PREFIX}/selections/statistics"
 
     @pytest.fixture
     def user_endpoints(self) -> list[Endpoint]:

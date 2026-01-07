@@ -701,7 +701,7 @@ class TestCustomImagesApi(ApiCommonTests):
 
 
 class TestCustomImageStatusApi(ApiCommonTests):
-    BASE_PATH = f"{V3_API_PREFIX}/custom_image_statuses"
+    BASE_PATH = f"{V3_API_PREFIX}/custom_images/statuses"
 
     @pytest.fixture
     def user_endpoints(self) -> list[Endpoint]:
@@ -781,7 +781,7 @@ class TestCustomImageStatusApi(ApiCommonTests):
 
 
 class TestCustomImageStatisticsApi(ApiCommonTests):
-    BASE_PATH = f"{V3_API_PREFIX}/custom_image_statistics"
+    BASE_PATH = f"{V3_API_PREFIX}/custom_images/statistics"
 
     @pytest.fixture
     def user_endpoints(self) -> list[Endpoint]:
