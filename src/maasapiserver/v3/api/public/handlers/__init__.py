@@ -27,6 +27,9 @@ from maasapiserver.v3.api.public.handlers.machines import MachinesHandler
 from maasapiserver.v3.api.public.handlers.notifications import (
     NotificationsHandler,
 )
+from maasapiserver.v3.api.public.handlers.onie import (
+    OnieHandler,
+)
 from maasapiserver.v3.api.public.handlers.package_repositories import (
     PackageRepositoriesHandler,
 )
@@ -71,6 +74,7 @@ APIv3 = API(
         IPRangesHandler(),
         MachinesHandler(),
         NotificationsHandler(),
+        OnieHandler(),
         PackageRepositoriesHandler(),
         RacksHandler(),
         ReservedIPsHandler(),
