@@ -7,6 +7,7 @@ from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.api import services
 from maasapiserver.v3.auth.openapi import OpenapiOAuth2PasswordBearer
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.auth.external_auth import ExternalAuthType
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
@@ -109,7 +110,10 @@ def check_permissions(
                         )
                     ]
                 )
-        if external_auth_info:
+        if (
+            external_auth_info
+            and external_auth_info.type == ExternalAuthType.RBAC
+        ):
             # Initialize an empty object. The permissions will be populated if the handler has requested some.
             authenticated_user.rbac_permissions = RBACPermissionsPools()
             # really pyright?
