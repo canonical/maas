@@ -69,9 +69,6 @@ CONDITIONAL_BOOTLOADER = tempita.Template(
 {{if user_class}}
 {{if user_class=="iPXE"}}
   {{behaviour}} option user-class = \"{{user_class}}\" or (exists ipxe.http and ( exists ipxe.bzimage or exists ipxe.efi )) {
-{{else}}
-  {{behaviour}} option user-class = \"{{user_class}}\" {
-{{endif}}
     # {{name}}
     filename \"{{bootloader}}\";
     {{if path_prefix}}
@@ -88,6 +85,12 @@ CONDITIONAL_BOOTLOADER = tempita.Template(
     option vendor-class-identifier "HTTPClient";
     {{endif}}
 }
+{{elif user_class=="ONIE"}}
+  {{behaviour}} substring(option vendor-class-identifier, 0, 11) = \"onie_vendor\" {
+    option vivso.iana 01:01:01;
+    option onie.installer_url = \"{{bootloader}}\";
+  }
+{{endif}}
 {{else}}
 {{behaviour}} option arch = {{arch_octet}} {
     # {{name}}

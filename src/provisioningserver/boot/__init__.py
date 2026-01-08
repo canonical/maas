@@ -14,7 +14,7 @@ import tempita
 from tftp.backend import IReader
 from zope.interface import implementer
 
-from maascommon.bootmethods import BootMethodMetadata
+from maascommon.bootmethods import BootMethodMetadata, ONIEBootMetadata
 from maascommon.utils.registry import Registry
 from provisioningserver.config import debug_enabled
 from provisioningserver.events import EVENT_TYPES, try_send_rack_event
@@ -259,8 +259,14 @@ from provisioningserver.boot.windows import (  # noqa:E402 isort:skip
     WindowsPXEBootMethod,
 )
 
+
+class ONIEBootMethod(BootMethod, ONIEBootMetadata):
+    pass
+
+
 builtin_boot_methods = [
     IPXEBootMethod(),
+    ONIEBootMethod(),
     PXEBootMethod(),
     UEFIAMD64BootMethod(),
     UEFIAMD64HTTPBootMethod(),

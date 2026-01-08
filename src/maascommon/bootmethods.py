@@ -108,6 +108,40 @@ class IPXEBootMetadata(BootMethodMetadata):
         return "iPXE"
 
 
+class ONIEBootMetadata(BootMethodMetadata):
+    path_prefix_http = True
+    absolute_url_as_filename = True
+
+    @property
+    def name(self) -> str:
+        return "onie"
+
+    @property
+    def bios_boot_method(self) -> str:
+        return "onie"
+
+    @property
+    def template_subdir(self) -> str:
+        return "onie"
+
+    @property
+    def bootloader_arches(self) -> list:
+        return []
+
+    @property
+    def bootloader_path(self) -> str:
+        return "/MAAS/a/v3/onie-installer"
+
+    @property
+    def arch_octet(self) -> None:
+        return None
+
+    # XXX: user_class isn't the right term. Probably needs to have a type property instead?
+    @property
+    def user_class(self) -> str:
+        return "ONIE"
+
+
 class PXEBootMetadata(BootMethodMetadata):
     path_prefix_http = True
     path_prefix_force = True
@@ -404,6 +438,7 @@ class WindowsPXEBootMetadata(BootMethodMetadata):
 
 BOOT_METHODS_METADATA: list[BootMethodMetadata] = [
     IPXEBootMetadata(),
+    ONIEBootMetadata(),
     PXEBootMetadata(),
     UefiAmd64BootMetadata(),
     UefiAmd64HttpBootMetadata(),

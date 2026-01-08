@@ -31,6 +31,25 @@ option ipxe.bzimage   code 24 = unsigned integer 8;
 option ipxe.efi       code 36 = unsigned integer 8;
 
 #
+# ONIE configuration
+#
+# Create an option namespace called ONIE
+option space onie code width 1 length width 1;
+
+# Define the code names and data types within the ONIE namespace
+option onie.installer_url code 1 = text;
+option onie.updater_url   code 2 = text;
+option onie.machine       code 3 = text;
+option onie.arch          code 4 = text;
+option onie.machine_rev   code 5 = text;
+
+# Package the ONIE namespace into option 125
+option space vivso code width 4 length width 1;
+option vivso.onie code 42623 = encapsulate onie;
+option vivso.iana code 0 = string;
+option op125 code 125 = encapsulate vivso;
+
+#
 # Global DHCP snippets
 #
 {{if len(global_dhcp_snippets) == 0}}
