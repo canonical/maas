@@ -4,7 +4,7 @@
 from enum import Enum
 import os
 from pathlib import Path
-from typing import assert_never
+from typing import Iterator, assert_never
 
 from fastapi import Depends, Request
 from fastapi.responses import StreamingResponse
@@ -65,6 +65,21 @@ class Installer(Enum):
                     key="1",
                     owner_id=None,
                 )
+            case Installer.SONIC:
+                raise NotImplementedError
+            case _:
+                assert_never(self)
+
+    # TODO: Implement based on where the installers are.
+    def bytes_stream(self) -> Iterator[bytes]:
+        match self:
+            case Installer.DELL:
+                with open(
+                    _SNAP_COMMON.joinpath("dell.bin"),
+                    "rb",
+                ) as file:
+                    while chunk := file.read(_FIVE_MB):
+                        yield chunk
             case Installer.SONIC:
                 raise NotImplementedError
             case _:
@@ -132,13 +147,4 @@ class NOSInstallerHandler(Handler):
                 self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
             )
         else:
-
-            def iterfile_dell():
-                with open(
-                    _SNAP_COMMON.joinpath("dell.bin"),
-                    "rb",
-                ) as file:
-                    while chunk := file.read(_FIVE_MB):
-                        yield chunk
-
-            return StreamingResponse(content=iterfile_dell())
+            return StreamingResponse(content=installer.bytes_stream())
