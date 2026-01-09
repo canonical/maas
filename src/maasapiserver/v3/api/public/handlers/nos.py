@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from enum import Enum
+import os
+from pathlib import Path
 from typing import assert_never
 
 from fastapi import Depends, Request
@@ -19,6 +21,9 @@ from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.models.filestorage import FileStorage
 from maasservicelayer.services import ServiceCollectionV3
+
+_FIVE_MB = 5 * (2**10) * (2**10)
+_SNAP_COMMON = Path(os.environ.get("SNAP_COMMON", ""))
 
 
 class OnieHeaders(BaseModel):
@@ -56,7 +61,7 @@ class Installer(Enum):
                 return FileStorage(
                     id=1000,
                     filename="dell",
-                    content=bytes("test", encoding="utf8"),
+                    content=bytes('echo "Hello, world!"', encoding="utf8"),
                     key="1",
                     owner_id=None,
                 )
@@ -118,10 +123,6 @@ class NOSInstallerHandler(Handler):
         request: Request,
     ):
         installer = get_installer(request)
-        storage = installer.storage()
-
-        def iterfile():
-            yield storage.content
 
         accept_header = request.headers.get("Accept")
 
@@ -131,4 +132,13 @@ class NOSInstallerHandler(Handler):
                 self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
             )
         else:
-            return StreamingResponse(content=iterfile())
+
+            def iterfile_dell():
+                with open(
+                    _SNAP_COMMON.joinpath("dell.bin"),
+                    "rb",
+                ) as file:
+                    while chunk := file.read(_FIVE_MB):
+                        yield chunk
+
+            return StreamingResponse(content=iterfile_dell())
