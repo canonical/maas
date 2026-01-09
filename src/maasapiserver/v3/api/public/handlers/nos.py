@@ -4,8 +4,14 @@
 from enum import Enum
 import os
 from pathlib import Path
-from typing import assert_never, Iterator, Protocol
+from typing import (
+    AsyncGenerator,
+    AsyncIterator,
+    assert_never,
+    Protocol,
+)
 
+import aiofiles
 from fastapi import Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
@@ -55,7 +61,7 @@ class OnieHeaders(BaseModel):
 class Installer(Protocol):
     """Provides the bytes of the binary associated to an installer."""
 
-    def bytes_stream(self) -> Iterator[bytes]: ...
+    def bytes_stream(self) -> AsyncIterator[bytes]: ...
 
 
 class InstallerEnum(Enum):
@@ -65,15 +71,19 @@ class InstallerEnum(Enum):
     SONIC = "SONIC"
 
     # TODO: Implement based on where the installers are.
-    def bytes_stream(self) -> Iterator[bytes]:
+    def bytes_stream(self) -> AsyncIterator[bytes]:
         match self:
             case InstallerEnum.DELL:
-                with open(
-                    _SNAP_COMMON.joinpath("dell.bin"),
-                    "rb",
-                ) as file:
-                    while chunk := file.read(_FIVE_MB):
-                        yield chunk
+
+                async def gen():
+                    async with aiofiles.open(
+                        _SNAP_COMMON.joinpath("dell.bin"),
+                        "rb",
+                    ) as file:
+                        while chunk := await file.read(_FIVE_MB):
+                            yield chunk
+
+                return gen()
             case InstallerEnum.SONIC:
                 raise NotImplementedError
             case _:
@@ -143,7 +153,7 @@ class NOSInstallerHandler(Handler):
             # )
         ],
     )
-    def get_installer(
+    async def get_installer(
         self,
         request: Request,
     ):
