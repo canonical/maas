@@ -1,6 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import timedelta
 from json import dumps as _dumps
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
@@ -49,12 +50,14 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.django_session import DjangoSession
 from maasservicelayer.models.external_auth import (
     OAuthProvider,
     ProviderMetadata,
 )
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.auth import AuthService
+from maasservicelayer.services.django_session import DjangoSessionService
 from maasservicelayer.services.external_auth import (
     ExternalAuthService,
     ExternalOAuthService,
@@ -803,7 +806,9 @@ class TestAuthApi:
             OAuthTokenData(
                 access_token="abc123",
                 id_token=OAuthIDToken(
-                    claims=Mock(), encoded="def123", provider=TEST_PROVIDER_1
+                    claims=Mock(),
+                    encoded="def123",
+                    provider=TEST_PROVIDER_1,
                 ),
                 refresh_token="ghi123",
             )
@@ -847,10 +852,14 @@ class TestAuthApi:
         services_mock.external_oauth.get_callback.return_value = (
             OAuthTokenData(
                 access_token=OAuthAccessToken(
-                    claims=Mock(), encoded="abc123", provider=TEST_PROVIDER_1
+                    claims=Mock(),
+                    encoded="abc123",
+                    provider=TEST_PROVIDER_1,
                 ),
                 id_token=OAuthIDToken(
-                    claims=Mock(), encoded="def123", provider=TEST_PROVIDER_1
+                    claims=Mock(),
+                    encoded="def123",
+                    provider=TEST_PROVIDER_1,
                 ),
                 refresh_token="ghi123",
             )
@@ -863,6 +872,7 @@ class TestAuthApi:
         services_mock.external_oauth.get_callback.assert_called_once_with(
             code="auth_code", nonce="stored_nonce"
         )
+
         cookie_manager_set_auth_cookie.assert_any_call(
             key=MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN, value="abc123"
         )
@@ -909,16 +919,23 @@ class TestAuthApi:
     @patch(
         "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.get_cookie"
     )
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.get_unsafe_cookie"
+    )
     async def test_get_logout_success(
         self,
+        cookie_manager_get_unsafe_cookie: MagicMock,
         cookie_manager_get_cookie: MagicMock,
         cookie_manager_clear_cookie: MagicMock,
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
         services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.django_session = Mock(DjangoSessionService)
+        services_mock.django_session.delete_session.return_value = None
+        cookie_manager_get_unsafe_cookie.return_value = "sessionid123"
         cookie_manager_get_cookie.side_effect = ["abc123", "def123"]
-        cookie_manager_clear_cookie.side_effect = [None, None, None]
+        cookie_manager_clear_cookie.return_value = None
         services_mock.external_oauth.revoke_token = AsyncMock(
             return_value=None
         )
@@ -934,7 +951,87 @@ class TestAuthApi:
         cookie_manager_clear_cookie.assert_any_call(
             key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN
         )
+        cookie_manager_clear_cookie.assert_any_call(key="sessionid")
+        cookie_manager_clear_cookie.assert_any_call(key="csrftoken")
         services_mock.external_oauth.revoke_token.assert_awaited_once_with(
             id_token="abc123", refresh_token="def123"
         )
         assert response.status_code == 204
+
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.set_unsafe_cookie"
+    )
+    @patch("maasapiserver.v3.api.public.handlers.auth.secrets.token_urlsafe")
+    async def test_post_create_session_204(
+        self,
+        token_urlsafe_mock: MagicMock,
+        set_unsafe_cookie_mock: MagicMock,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        test_session = DjangoSession(
+            session_key="sessionid123",
+            expire_date=utcnow() + timedelta(hours=1),
+            session_data="sessiondata",
+        )
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.django_session = Mock(DjangoSessionService)
+        services_mock.django_session.create_session.return_value = test_session
+        token_urlsafe_mock.return_value = "randomcsrftoken"
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/sessions",
+        )
+        assert response.status_code == 204
+
+        set_unsafe_cookie_mock.assert_any_call(
+            "sessionid",
+            "sessionid123",
+            httponly=True,
+            expires=test_session.expire_date,
+        )
+        set_unsafe_cookie_mock.assert_any_call("csrftoken", "randomcsrftoken")
+
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.get_unsafe_cookie"
+    )
+    async def test_post_extend_session_204(
+        self,
+        get_unsafe_cookie_mock: MagicMock,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        get_unsafe_cookie_mock.return_value = "sessionid123"
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.django_session = Mock(DjangoSessionService)
+        services_mock.django_session.extend_session.return_value = None
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/sessions:extend",
+        )
+        assert response.status_code == 204
+        services_mock.django_session.extend_session.assert_awaited_once_with(
+            session_key="sessionid123",
+        )
+
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.get_unsafe_cookie"
+    )
+    async def test_post_extend_session_400(
+        self,
+        get_unsafe_cookie_mock: MagicMock,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.django_session = Mock(DjangoSessionService)
+        get_unsafe_cookie_mock.return_value = None
+        services_mock.django_session.extend_session.return_value = None
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/sessions:extend",
+        )
+        assert response.status_code == 400
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        details = error_response.details
+        assert details is not None
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+        assert details[0].message == "Session cookie is missing."

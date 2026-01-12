@@ -1,6 +1,9 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+
+import secrets
+
 from fastapi import Depends, Header, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -34,6 +37,7 @@ from maasapiserver.v3.auth.cookie_manager import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
     BaseExceptionDetail,
     NotFoundException,
     UnauthorizedException,
@@ -132,7 +136,7 @@ class AuthHandler(Handler):
         email: str,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
-    ):
+    ) -> AuthInfoResponse:
         """Initiate the OAuth flow by generating the authorization URL and setting the necessary security cookies,
         if the user is an OIDC user."""
         is_oidc_user = await services.users.is_oidc_user(email)
@@ -179,7 +183,7 @@ class AuthHandler(Handler):
         state: str,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
-    ) -> Response:
+    ) -> None:
         """Handle the OAuth callback by exchanging the authorization code for tokens."""
         stored_state = cookie_manager.get_cookie(
             key=MAASOAuth2Cookie.AUTH_STATE
@@ -214,7 +218,6 @@ class AuthHandler(Handler):
             value=tokens.refresh_token,
             key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN,
         )
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
         path="/auth/oauth/providers/{provider_id}",
@@ -265,7 +268,7 @@ class AuthHandler(Handler):
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ):
+    ) -> OAuthProvidersListResponse:
         providers = await services.external_oauth.list(
             page=pagination_params.page, size=pagination_params.size
         )
@@ -402,6 +405,63 @@ class AuthHandler(Handler):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
+        path="/auth/sessions",
+        methods=["POST"],
+        tags=TAGS,
+        responses={204: {}},
+        status_code=204,
+    )
+    async def create_session(
+        self,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+        cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
+    ) -> None:
+        assert authenticated_user is not None
+        session = await services.django_session.create_session(
+            user_id=authenticated_user.id
+        )
+        csrf_token = secrets.token_urlsafe(32)
+        cookie_manager.set_unsafe_cookie("csrftoken", csrf_token)
+        cookie_manager.set_unsafe_cookie(
+            "sessionid",
+            session.session_key,
+            httponly=True,
+            expires=session.expire_date,
+        )
+
+    @handler(
+        path="/auth/sessions:extend",
+        methods=["POST"],
+        tags=TAGS,
+        responses={204: {}, 400: {"model": BadGatewayErrorBodyResponse}},
+        status_code=204,
+    )
+    async def extend_session(
+        self,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+        cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
+    ) -> Response:
+        assert authenticated_user is not None
+        session_id = cookie_manager.get_unsafe_cookie(key="sessionid")
+        if not session_id:
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="Session cookie is missing.",
+                    )
+                ]
+            )
+        await services.django_session.extend_session(session_key=session_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
         path="/auth/logout",
         methods=["POST"],
         tags=TAGS,
@@ -414,19 +474,25 @@ class AuthHandler(Handler):
         self,
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ):
-        id_token, refresh_token = (
+    ) -> None:
+        id_token, refresh_token, session_key = (
             cookie_manager.get_cookie(key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN),
             cookie_manager.get_cookie(
                 key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN
             ),
+            cookie_manager.get_unsafe_cookie(key="sessionid"),
         )
         if id_token and refresh_token:
             await services.external_oauth.revoke_token(
                 id_token=id_token, refresh_token=refresh_token
             )
+        if session_key:
+            await services.django_session.delete_session(
+                session_key=session_key
+            )
 
         cookie_manager.clear_cookie(key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN)
         cookie_manager.clear_cookie(key=MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN)
         cookie_manager.clear_cookie(key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN)
-        return Response(status_code=204)
+        cookie_manager.clear_cookie(key="sessionid")
+        cookie_manager.clear_cookie(key="csrftoken")

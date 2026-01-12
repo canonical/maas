@@ -122,6 +122,31 @@ class TestDjangoSessionRepository:
             == "Resource with such identifiers does not exist."
         )
 
+    async def test_update_by_session_key_expired(
+        self,
+        repository: DjangoSessionRepository,
+        builder: DjangoSessionBuilder,
+        fixture: Fixture,
+    ) -> None:
+        expired_session = await create_test_session(
+            fixture,
+            user_id=456,
+            session_id="expiredsessionkey",
+            expire_date=utcnow() - timedelta(seconds=10),
+        )
+
+        with pytest.raises(NotFoundException) as exc_info:
+            await repository.update_by_session_key(
+                expired_session.session_key, builder
+            )
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].type == UNEXISTING_RESOURCE_VIOLATION_TYPE
+        assert (
+            details[0].message
+            == "Resource with such identifiers does not exist."
+        )
+
     async def test_delete_by_session_key(
         self, repository: DjangoSessionRepository, instance: DjangoSession
     ) -> None:

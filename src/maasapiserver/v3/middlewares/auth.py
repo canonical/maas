@@ -523,8 +523,6 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
         # decide wether or not to serve it.
         if access_token:
             user = await self._oidc_authentication(request, access_token)
-        elif sessionid:
-            user = await self._session_authentication(request, sessionid)
         elif auth_header and auth_header.lower().startswith("bearer "):
             user = await self._jwt_authentication(request, auth_header)
         elif (
@@ -534,6 +532,8 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
             )
         ):
             user = await self._macaroon_authentication(request, macaroons)
+        elif sessionid:
+            user = await self._session_authentication(request, sessionid)
         request.state.authenticated_user = user
 
         if user is not None:

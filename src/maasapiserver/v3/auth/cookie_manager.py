@@ -53,6 +53,14 @@ class EncryptedCookieManager:
         encrypted_value = self.encryptor.encrypt(value)
         self.response.set_cookie(key=key, value=encrypted_value, **opts)
 
+    def set_unsafe_cookie(self, key: str, value: str, **opts) -> None:
+        """Sets a cookie without encryption. Use with caution."""
+        self.response.set_cookie(key=key, value=value, **opts)
+
+    def get_unsafe_cookie(self, key: str) -> str | None:
+        """Gets a cookie without decryption. Use with caution."""
+        return self.request.cookies.get(key)
+
     def get_cookie(self, key: str) -> str | None:
         encrypted_value = self.request.cookies.get(key)
         if encrypted_value is None:

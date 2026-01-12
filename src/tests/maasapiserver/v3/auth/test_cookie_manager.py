@@ -102,3 +102,30 @@ class TestCookieManager:
 
         response.delete_cookie.assert_called_once_with(key="some_key")
         assert result is None
+
+    def test_set_unsafe_cookie(self) -> None:
+        request = Mock()
+        response = Mock()
+        encryptor = Mock()
+        manager = EncryptedCookieManager(
+            request, response, encryptor=encryptor, ttl_seconds=1200
+        )
+
+        manager.set_unsafe_cookie(key="key", value="value", path="/")
+
+        response.set_cookie.assert_called_once_with(
+            key="key", value="value", path="/"
+        )
+
+    def test_get_unsafe_cookie(self) -> None:
+        request = Mock()
+        response = Mock()
+        request.cookies.get.return_value = "value"
+        manager = EncryptedCookieManager(
+            request, response, encryptor=Mock(), ttl_seconds=1200
+        )
+
+        result = manager.get_unsafe_cookie(key="key")
+
+        request.cookies.get.assert_called_once_with("key")
+        assert result == "value"

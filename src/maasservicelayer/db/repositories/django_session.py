@@ -1,7 +1,7 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from operator import eq
+from operator import and_, eq, gt
 
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError
@@ -21,6 +21,7 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.django_session import DjangoSession
+from maasservicelayer.utils.date import utcnow
 
 
 class DjangoSessionRepository(Repository):
@@ -64,11 +65,20 @@ class DjangoSessionRepository(Repository):
     async def update_by_session_key(
         self, session_key: str, builder: DjangoSessionBuilder
     ) -> DjangoSession:
+        """
+        Note: expired sessions (expire_date <= now) are intentionally excluded
+        and cannot be updated by this function.
+        """
         resource = self.mapper.build_resource(builder)
         stmt = (
             update(SessionTable)
             .returning(SessionTable)
-            .where(eq(SessionTable.c.session_key, session_key))
+            .where(
+                and_(
+                    eq(SessionTable.c.session_key, session_key),
+                    gt(SessionTable.c.expire_date, utcnow()),
+                )
+            )
             .values(**resource.get_values())
         )
         result = (await self.execute_stmt(stmt)).one_or_none()

@@ -322,9 +322,6 @@ class ServiceCollectionV3:
                 context
             ),
         )
-        services.django_session = DjangoSessionService(
-            repository=DjangoSessionRepository(context), context=context
-        )
         services.service_status = ServiceStatusService(
             context=context,
             service_status_repository=ServiceStatusRepository(context),
@@ -341,6 +338,11 @@ class ServiceCollectionV3:
             database_configurations_service=services.database_configurations,
             secrets_service=services.secrets,
             events_service=services.events,
+        )
+        services.django_session = DjangoSessionService(
+            repository=DjangoSessionRepository(context),
+            context=context,
+            config_service=services.configurations,
         )
         services.temporal = TemporalService(
             context=context,
