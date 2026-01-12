@@ -167,14 +167,8 @@ class AMTPowerDriver(PowerDriver):
             ),
         }
         wsman_opts = (
-            "--port",
-            port,
-            "--hostname",
-            ip_address,
-            "--username",
-            power_user,
-            "--password",
-            power_pass,
+            "--endpoint",
+            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
             "--noverifypeer",
             "--noverifyhost",
             "--input",
@@ -245,14 +239,8 @@ class AMTPowerDriver(PowerDriver):
             "CIM_AssociatedPowerManagementService"
         )
         command_args = (
-            "--port",
-            port,
-            "--hostname",
-            ip_address,
-            "--username",
-            power_user,
-            "--password",
-            power_pass,
+            "--endpoint",
+            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
             "--noverifypeer",
             "--noverifyhost",
         )
@@ -450,14 +438,10 @@ class AMTPowerDriver(PowerDriver):
         # If so, we need wsman, not amttool
         command = self._get_wsman_command(
             "identify",
-            "--port",
-            port,
-            "--hostname",
-            ip_address,
-            "--username",
-            power_user,
-            "--password",
-            power_pass,
+            "--endpoint",
+            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
+            "--noverifypeer",
+            "--noverifyhost",
         )
         result = shell.run_command(*command)
         if not result.stdout:
