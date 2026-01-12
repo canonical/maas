@@ -35,7 +35,7 @@ optional-dependencies.testing = [
   "ipdb>=0.13,<0.14",
   "junitxml>=0.7,<0.8",
   "postgresfixture>=0.5,<0.6",
-  "pyright>=1.1.400",
+  "pyright==1.1.407",           # pin until https://github.com/python/typeshed/pull/15190 is merged and added to pyright.
   "pytest>=7.4,<8",
   "pytest-asyncio>=0.23,<0.24",
   "pytest-cov>=6,<6.1",
