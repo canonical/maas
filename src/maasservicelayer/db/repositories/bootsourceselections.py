@@ -223,10 +223,16 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
         stmt = (
             select(
                 BootSourceSelectionTable.c.id,
-                aggregated_subq.c.last_updated,
-                aggregated_subq.c.last_deployed,
-                aggregated_subq.c.size,
-                aggregated_subq.c.deploy_to_memory,
+                func.coalesce(aggregated_subq.c.last_updated, None).label(
+                    "last_updated"
+                ),
+                func.coalesce(aggregated_subq.c.last_deployed, None).label(
+                    "last_deployed"
+                ),
+                func.coalesce(aggregated_subq.c.size, 0).label("size"),
+                func.coalesce(aggregated_subq.c.deploy_to_memory, False).label(
+                    "deploy_to_memory"
+                ),
                 func.coalesce(node_count_subq.c.node_count, 0).label(
                     "node_count"
                 ),

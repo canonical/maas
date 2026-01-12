@@ -225,7 +225,7 @@ class TestBootSourceSelectionRepository:
         assert selection_2 in selections
 
     async def test_get_selection_statistic_by_id(
-        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+        self, repository: BootSourceSelectionsRepository, fixture: Fixture
     ):
         region_controller = await create_test_region_controller_entry(
             fixture,
@@ -262,14 +262,32 @@ class TestBootSourceSelectionRepository:
         # squashfs is present
         assert stat.deploy_to_memory is True
 
+    async def test_get_selection_statistic_by_id__no_resource_yet(
+        self, fixture: Fixture, repository: BootSourceSelectionsRepository
+    ):
+        selection = await create_test_bootsourceselection_entry(
+            fixture,
+            os="ubuntu",
+            release="noble",
+            arch="amd64",
+            boot_source_id=1,
+        )
+        stat = await repository.get_selection_statistic_by_id(selection.id)
+        assert stat is not None
+        assert stat.last_updated is None
+        assert stat.last_deployed is None
+        assert stat.size == 0
+        assert stat.deploy_to_memory is False
+        assert stat.node_count == 0
+
     async def test_get_selection_statistic_by_id__returns_none(
-        self, repository: BootSourceSelectionStatusRepository
+        self, repository: BootSourceSelectionsRepository
     ):
         stat = await repository.get_selection_statistic_by_id(0)
         assert stat is None
 
     async def test_list_selection_statistics(
-        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+        self, repository: BootSourceSelectionsRepository, fixture: Fixture
     ):
         region_controller = await create_test_region_controller_entry(
             fixture,

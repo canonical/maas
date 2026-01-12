@@ -11,7 +11,7 @@ from maascommon.enums.boot_resources import (
     BootResourceType,
     ImageStatus,
 )
-from maascommon.enums.node import NodeStatus
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maasservicelayer.db.filters import (
     Clause,
     ClauseFactory,
@@ -132,50 +132,59 @@ class BootResourcesRepository(BaseRepository[BootResource]):
         return BootResource
 
     def _custom_image_status_stmt(self) -> Select:
+        node_count_subq = (
+            select(func.count())
+            .select_from(NodeTable)
+            .where(
+                NodeTable.c.node_type.in_(
+                    [
+                        NodeTypeEnum.REGION_CONTROLLER,
+                        NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
+                    ]
+                )
+            )
+            .scalar_subquery()
+        )
+
         sync_percentage_expr = (
             func.sum(BootResourceFileSyncTable.c.size)
-            * 100
+            * 100.0
             / func.sum(BootResourceFileTable.c.size)
-            / (
-                select(func.count())
-                .select_from(NodeTable)
-                .where(NodeTable.c.node_type.in_([3, 4]))
-                .scalar_subquery()
-            )
+            / node_count_subq
         )
 
         stmt = (
             select(
                 BootResourceTable.c.id,
-                sync_percentage_expr.label("sync_percentage"),
+                func.coalesce(sync_percentage_expr, 0).label(
+                    "sync_percentage"
+                ),
                 case(
                     (sync_percentage_expr == 100.0, ImageStatus.READY),
-                    (
-                        sync_percentage_expr == 0,
-                        ImageStatus.WAITING_FOR_DOWNLOAD,
-                    ),
-                    else_=ImageStatus.DOWNLOADING,
+                    (sync_percentage_expr > 0, ImageStatus.DOWNLOADING),
+                    else_=ImageStatus.WAITING_FOR_DOWNLOAD,
                 ).label("status"),
             )
             .select_from(BootResourceTable)
             .join(
                 BootResourceSetTable,
                 BootResourceTable.c.id == BootResourceSetTable.c.resource_id,
+                isouter=True,
             )
             .join(
                 BootResourceFileTable,
                 BootResourceSetTable.c.id
                 == BootResourceFileTable.c.resource_set_id,
+                isouter=True,
             )
             .join(
                 BootResourceFileSyncTable,
                 BootResourceFileTable.c.id
                 == BootResourceFileSyncTable.c.file_id,
+                isouter=True,
             )
             .where(BootResourceTable.c.rtype == BootResourceType.UPLOADED)
-            .group_by(
-                BootResourceTable.c.id,
-            )
+            .group_by(BootResourceTable.c.id)
         )
         return stmt
 

@@ -102,7 +102,7 @@ class ImageStatusListResponse(PaginatedResponse[ImageStatusResponse]):
 class ImageStatisticResponse(BaseModel):
     kind = "ImageStatistic"
     id: int
-    last_updated: datetime
+    last_updated: datetime | None
     last_deployed: datetime | None
     size: str
     node_count: int

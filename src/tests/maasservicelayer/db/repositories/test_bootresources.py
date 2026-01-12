@@ -4,7 +4,11 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maascommon.enums.boot_resources import BootResourceType
+from maascommon.enums.boot_resources import (
+    BootResourceType,
+    ImageStatus,
+    ImageUpdateStatus,
+)
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.context import Context
@@ -181,6 +185,25 @@ class TestBootResourceRepository:
             resource_ready.id
         )
         assert fetched == resource_ready
+
+    async def test_get_custom_image_status_by_id__no_resource_set(
+        self,
+        repository: BootResourcesRepository,
+        fixture: Fixture,
+    ):
+        resource = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.UPLOADED,
+            name="custom/noble",
+            architecture="amd64/generic",
+        )
+        status = await repository.get_custom_image_status_by_id(resource.id)
+
+        assert status is not None
+        assert status.status == ImageStatus.WAITING_FOR_DOWNLOAD
+        assert status.update_status == ImageUpdateStatus.NO_UPDATES_AVAILABLE
+        assert status.sync_percentage == 0
+        assert status.selected is True
 
     async def test_get_custom_image_status_by_id__returns_none(
         self,
