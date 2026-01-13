@@ -661,22 +661,6 @@ $$;
 
 
 --
--- Name: gen_random_prefix(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.gen_random_prefix() RETURNS text
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    result text;
-BEGIN
-    result := md5(random()::text);
-    RETURN result;
-END;
-$$;
-
-
---
 -- Name: interface_pod_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -8326,7 +8310,7 @@ ALTER TABLE ONLY temporal.buffered_events ALTER COLUMN id SET DEFAULT nextval('t
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0014
+0015
 \.
 
 
