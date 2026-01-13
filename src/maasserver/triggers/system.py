@@ -1162,6 +1162,30 @@ DHCP_CONFIG_NTP_SERVERS_DELETE = dedent(
     """
 )
 
+DHCP_CONFIG_RESERVED_IP_INSERT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION sys_dhcp_config_reservedip_insert()
+    RETURNS trigger as $$
+    BEGIN
+      PERFORM sys_dhcp_update_all_vlans();
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+DHCP_CONFIG_RESERVED_IP_DELETE = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION sys_dhcp_config_reservedip_delete()
+    RETURNS trigger as $$
+    BEGIN
+      PERFORM sys_dhcp_update_all_vlans();
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
 
 # Triggered when DNS needs to be published. In essense this means on insert
 # into maasserver_dnspublication.
@@ -2608,6 +2632,16 @@ def register_system_triggers():
     register_procedure(DHCP_CONFIG_NTP_SERVERS_DELETE)
     register_trigger(
         "maasserver_config", "sys_dhcp_config_ntp_servers_delete", "delete"
+    )
+
+    # Reserved IP
+    register_procedure(DHCP_CONFIG_RESERVED_IP_INSERT)
+    register_trigger(
+        "maasserver_reservedip", "sys_dhcp_config_reservedip_insert", "insert"
+    )
+    register_procedure(DHCP_CONFIG_RESERVED_IP_DELETE)
+    register_trigger(
+        "maasserver_reservedip", "sys_dhcp_config_reservedip_delete", "delete"
     )
 
     # DNS

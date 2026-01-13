@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-import asyncio
+# import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Optional
@@ -9,8 +9,6 @@ from typing import Optional
 from sqlalchemy import and_, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import workflow
-from temporalio.common import WorkflowIDConflictPolicy
-from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
@@ -33,6 +31,10 @@ from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
     workflow_run_with_context,
 )
+
+# from temporalio.common import WorkflowIDConflictPolicy
+# from temporalio.exceptions import WorkflowAlreadyStartedError
+
 
 FIND_AGENTS_FOR_UPDATE_TIMEOUT = timedelta(minutes=5)
 APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT = timedelta(minutes=5)
@@ -441,46 +443,49 @@ class ConfigureDHCPWorkflow:
 
     @workflow_run_with_context
     async def run(self, param: ConfigureDHCPParam) -> None:
-        agent_system_ids_for_update = await workflow.execute_activity(
-            FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME,
-            param,
-            start_to_close_timeout=FIND_AGENTS_FOR_UPDATE_TIMEOUT,
-        )
-
-        full_reload = bool(
-            param.system_ids
-            or param.vlan_ids
-            or param.subnet_ids
-            or param.ip_range_ids
-        )  # determine if a config file write is needed
-
-        children = []
-
-        for system_id in agent_system_ids_for_update["agent_system_ids"]:
-            try:
-                cfg_child = await workflow.start_child_workflow(
-                    CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
-                    ConfigureDHCPForAgentParam(
-                        system_id=system_id,
-                        full_reload=full_reload,
-                        static_ip_addr_ids=param.static_ip_addr_ids,
-                        reserved_ip_ids=param.reserved_ip_ids,
-                    ),
-                    id=f"configure-dhcp:{system_id}",
-                )
-            # If there is already something running, we have to fallback and turn the request into a full reload and terminate
-            # the running workflow.
-            # This is because only temporal signals are guaranteed to be processed in sequence as they arrive.
-            except WorkflowAlreadyStartedError:
-                cfg_child = await workflow.start_child_workflow(
-                    CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
-                    ConfigureDHCPForAgentParam(
-                        system_id=system_id,
-                        full_reload=True,
-                    ),
-                    id=f"configure-dhcp:{system_id}",
-                    id_reuse_policy=WorkflowIDConflictPolicy.TERMINATE_EXISTING,
-                )
-            children.append(cfg_child)
-
-        await asyncio.gather(*children)
+        # Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
+        # We turn the DHCP workflow into a no-op in 3.6 as we want to configure dhcp only through RPC.
+        return
+        # agent_system_ids_for_update = await workflow.execute_activity(
+        #     FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME,
+        #     param,
+        #     start_to_close_timeout=FIND_AGENTS_FOR_UPDATE_TIMEOUT,
+        # )
+        #
+        # full_reload = bool(
+        #     param.system_ids
+        #     or param.vlan_ids
+        #     or param.subnet_ids
+        #     or param.ip_range_ids
+        # )  # determine if a config file write is needed
+        #
+        # children = []
+        #
+        # for system_id in agent_system_ids_for_update["agent_system_ids"]:
+        #     try:
+        #         cfg_child = await workflow.start_child_workflow(
+        #             CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
+        #             ConfigureDHCPForAgentParam(
+        #                 system_id=system_id,
+        #                 full_reload=full_reload,
+        #                 static_ip_addr_ids=param.static_ip_addr_ids,
+        #                 reserved_ip_ids=param.reserved_ip_ids,
+        #             ),
+        #             id=f"configure-dhcp:{system_id}",
+        #         )
+        #     # If there is already something running, we have to fallback and turn the request into a full reload and terminate
+        #     # the running workflow.
+        #     # This is because only temporal signals are guaranteed to be processed in sequence as they arrive.
+        #     except WorkflowAlreadyStartedError:
+        #         cfg_child = await workflow.start_child_workflow(
+        #             CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
+        #             ConfigureDHCPForAgentParam(
+        #                 system_id=system_id,
+        #                 full_reload=True,
+        #             ),
+        #             id=f"configure-dhcp:{system_id}",
+        #             id_reuse_policy=WorkflowIDConflictPolicy.TERMINATE_EXISTING,
+        #         )
+        #     children.append(cfg_child)
+        #
+        # await asyncio.gather(*children)

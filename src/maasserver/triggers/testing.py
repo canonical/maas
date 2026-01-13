@@ -10,7 +10,7 @@ from twisted.internet.defer import DeferredQueue, inlineCallbacks, returnValue
 
 from maasserver.enum import INTERFACE_TYPE, NODE_TYPE
 from maasserver.listener import PostgresListenerService
-from maasserver.models import Script, ScriptSet
+from maasserver.models import ReservedIP, Script, ScriptSet
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import BMC, Pod
 from maasserver.models.cacheset import CacheSet
@@ -845,6 +845,17 @@ class TransactionalHelpersMixin:
     def delete_node_device(self, id):
         node_device = NodeDevice.objects.get(id=id)
         node_device.delete()
+
+    @transactional
+    def create_reservedip(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_ReservedIP(**params)
+
+    @transactional
+    def delete_reservedip(self, id):
+        reservedip = ReservedIP.objects.get(id=id)
+        reservedip.delete()
 
 
 class DNSHelpersMixin:

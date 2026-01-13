@@ -75,6 +75,8 @@ class TestTriggers(MAASServerTestCase):
             "subnet_sys_proxy_subnet_insert",
             "subnet_sys_proxy_subnet_update",
             "subnet_sys_proxy_subnet_delete",
+            "reservedip_sys_dhcp_config_reservedip_insert",
+            "reservedip_sys_dhcp_config_reservedip_delete",
             "resourcepool_sys_rbac_rpool_insert",
             "resourcepool_sys_rbac_rpool_update",
             "resourcepool_sys_rbac_rpool_delete",

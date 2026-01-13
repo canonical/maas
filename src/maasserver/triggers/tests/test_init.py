@@ -107,6 +107,8 @@ class TestTriggersUsed(MAASServerTestCase):
         "rbacsync_sys_rbac_sync",
         "regionrackrpcconnection_sys_core_rpc_delete",
         "regionrackrpcconnection_sys_core_rpc_insert",
+        "reservedip_sys_dhcp_config_reservedip_insert",
+        "reservedip_sys_dhcp_config_reservedip_delete",
         "resourcepool_sys_rbac_rpool_delete",
         "resourcepool_sys_rbac_rpool_insert",
         "resourcepool_sys_rbac_rpool_update",

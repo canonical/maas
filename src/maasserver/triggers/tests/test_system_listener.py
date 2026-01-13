@@ -728,6 +728,60 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
         )
 
 
+class TestReservedIPListener(
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
+    """End-to-end test for the ReservedIP triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_when_reservedip_is_created(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
+
+        primary_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.create_reservedip,
+            )
+            yield primary_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_when_reservedip_is_deleted(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        yield deferToDatabase(
+            self.create_vlan, {"dhcp_on": True, "primary_rack": primary_rack}
+        )
+        reservedip = yield deferToDatabase(
+            self.create_reservedip,
+        )
+
+        primary_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
+
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_reservedip, reservedip.id)
+            yield primary_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+
 class TestDHCPVLANListener(
     MAASTransactionServerTestCase, TransactionalHelpersMixin
 ):
