@@ -73,9 +73,13 @@ class ImageStatus(StrEnum):
     READY = "Ready"
     DOWNLOADING = "Downloading"
     WAITING_FOR_DOWNLOAD = "Waiting for download"
+    # Needed by the UI for optimistic updates.
+    OPTIMISTIC = "Optimistic"
 
 
 class ImageUpdateStatus(StrEnum):
     DOWNLOADING = "Downloading"
     UPDATE_AVAILABLE = "Update available"
     NO_UPDATES_AVAILABLE = "No updates available"
+    # Needed by the UI for optimistic updates.
+    OPTIMISTIC = "Optimistic"

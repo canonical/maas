@@ -4,6 +4,7 @@
 from datetime import date
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.bootsourcecache import BootSourceCacheBuilder
 from maasservicelayer.context import Context
@@ -24,9 +25,6 @@ from tests.fixtures.factories.bootsourcecache import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-from tests.maasservicelayer.db.repositories.test_bootsources import (
-    AsyncConnection,
-)
 
 
 class TestBootSourceCacheClauseFactory:
@@ -310,9 +308,22 @@ class TestBootSourceCacheRepository:
             subarch="generic",
             support_eol=date(year=2029, month=5, day=31),
         )
+        # This should not be listed
+        bootloader = await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="pxelinux",
+            release="amd",
+            release_title="pxe",
+            arch="amd64",
+            subarch="generic",
+            bootloader_type="pxe",
+            support_eol=date(year=2029, month=5, day=31),
+        )
 
         all_available_images = await repository.get_all_available_images()
         assert len(all_available_images) == 5
+        assert bootloader not in all_available_images
 
         assert all_available_images == [
             BootSourceAvailableImage(
@@ -460,6 +471,18 @@ class TestBootSourceCacheRepository:
             arch="arm64",
             subarch="generic",
             support_eol=date(year=2025, month=4, day=23),
+        )
+        # This should not be listed
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=1,
+            os="pxelinux",
+            release="amd",
+            release_title="pxe",
+            arch="amd64",
+            subarch="generic",
+            bootloader_type="pxe",
+            support_eol=date(year=2029, month=5, day=31),
         )
 
         pages = 3

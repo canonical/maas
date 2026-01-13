@@ -66,7 +66,7 @@ class TestSourceAvailableImageResponse:
         assert image_response.kind == "SourceAvailableImage"
         assert image_response.os == image.os
         assert image_response.release == image.release
-        assert image_response.release_title == image.release_title
+        assert image_response.title == image.release_title
         assert image_response.architecture == image.architecture
 
 
@@ -89,6 +89,9 @@ class TestBootSourceAvailableImageResponse:
         assert image_response.os == boot_source_available_image.os
         assert image_response.release == boot_source_available_image.release
         assert image_response.architecture == boot_source_available_image.arch
+        assert (
+            image_response.title == boot_source_available_image.release_title
+        )
 
 
 class TestUISourceAvailableImageResponse:
@@ -121,6 +124,9 @@ class TestUISourceAvailableImageResponse:
         assert image_response.os == boot_source_available_image.os
         assert image_response.release == boot_source_available_image.release
         assert image_response.architecture == boot_source_available_image.arch
+        assert (
+            image_response.title == boot_source_available_image.release_title
+        )
 
         assert image_response.source_id == boot_source.id
-        assert image_response.source_name == boot_source.url
+        assert image_response.source_url == boot_source.url

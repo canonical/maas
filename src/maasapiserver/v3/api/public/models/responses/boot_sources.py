@@ -56,11 +56,11 @@ class BaseSourceAvailableImageResponse(BaseModel):
     os: str
     release: str
     architecture: str
+    title: str
 
 
 class SourceAvailableImageResponse(BaseSourceAvailableImageResponse):
     kind = "SourceAvailableImage"
-    release_title: str
 
     @classmethod
     def from_model(
@@ -70,7 +70,7 @@ class SourceAvailableImageResponse(BaseSourceAvailableImageResponse):
         return cls(
             os=source_image.os,
             release=source_image.release,
-            release_title=source_image.release_title,
+            title=source_image.release_title,
             architecture=source_image.architecture,
         )
 
@@ -92,6 +92,7 @@ class BootSourceAvailableImageResponse(BaseSourceAvailableImageResponse):
             os=boot_source_available_image.os,
             release=boot_source_available_image.release,
             architecture=boot_source_available_image.arch,
+            title=boot_source_available_image.release_title,
         )
 
 
@@ -103,8 +104,8 @@ class BootSourceAvailableImageListResponse(
 
 class UISourceAvailableImageResponse(BaseSourceAvailableImageResponse):
     kind = "UISourceAvailableImage"
-    source_id: Optional[int]
-    source_name: Optional[str]
+    source_id: int
+    source_url: str
 
     @classmethod
     def from_model(
@@ -116,8 +117,9 @@ class UISourceAvailableImageResponse(BaseSourceAvailableImageResponse):
             os=boot_source_available_image.os,
             release=boot_source_available_image.release,
             architecture=boot_source_available_image.arch,
+            title=boot_source_available_image.release_title,
             source_id=boot_source.id,
-            source_name=boot_source.url,
+            source_url=boot_source.url,
         )
 
 

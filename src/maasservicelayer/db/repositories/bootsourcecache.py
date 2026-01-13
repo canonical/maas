@@ -102,6 +102,8 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
                 BootSourceCacheTable.c.boot_source_id,
             )
             .select_from(self.get_repository_table())
+            # Exclude bootloaders
+            .where(eq(BootSourceCacheTable.c.bootloader_type, None))
             .group_by(
                 BootSourceCacheTable.c.os,
                 BootSourceCacheTable.c.release,
@@ -133,6 +135,8 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
             )
             .select_from(self.get_repository_table())
             .where(eq(BootSourceCacheTable.c.boot_source_id, boot_source_id))
+            # Exclude bootloaders
+            .where(eq(BootSourceCacheTable.c.bootloader_type, None))
             .group_by(
                 BootSourceCacheTable.c.os,
                 BootSourceCacheTable.c.release,
@@ -153,6 +157,8 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
             )
             .select_from(self.get_repository_table())
             .where(eq(BootSourceCacheTable.c.boot_source_id, boot_source_id))
+            # Exclude bootloaders
+            .where(eq(BootSourceCacheTable.c.bootloader_type, None))
             .group_by(
                 BootSourceCacheTable.c.os,
                 BootSourceCacheTable.c.release,
