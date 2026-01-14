@@ -43,6 +43,7 @@ from maasapiserver.v3.middlewares.context import (
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maascommon.logging.security import (
     ADMIN,
+    AUTHN_AUTH_FAILED,
     AUTHN_AUTH_SUCCESSFUL,
     SECURITY,
     USER,
@@ -1110,12 +1111,15 @@ class TestOIDCAuthenticationProvider:
             value="newaccesstoken", key="maas.oauth2_access_token_cookie"
         )
 
-    async def test_dispatch_with_missing_cookies(self) -> None:
+    async def test_dispatch_with_missing_cookies(
+        self, mocker: MockerFixture
+    ) -> None:
         request = self.mock_request()
         request.state.cookie_manager.get_cookie.side_effect = [
             None,
             None,
         ]
+        mock_logger = mocker.patch("maasapiserver.v3.middlewares.auth.logger")
 
         provider = OIDCAuthenticationProvider()
 
@@ -1127,3 +1131,4 @@ class TestOIDCAuthenticationProvider:
             details[0].message == "Missing id_token or refresh_token cookies."
         )
         assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+        mock_logger.info.assert_called_with(AUTHN_AUTH_FAILED, type=SECURITY)

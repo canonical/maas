@@ -15,6 +15,7 @@ from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
 from pymacaroons import Macaroon
 import pytest
 
+from maascommon.logging.security import AUTHN_LOGIN_SUCCESSFUL, SECURITY
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.external_auth import ExternalAuthType
 from maasservicelayer.auth.external_oauth import (
@@ -1225,8 +1226,10 @@ class TestExternalOAuthService(ServiceCommonTests):
         client2 = await service_instance.get_httpx_client()
         assert client1 is client2
 
+    @patch("maasservicelayer.services.external_auth.logger")
     async def test_get_callback_user_exists(
         self,
+        mock_logger: Mock,
         service_instance: ExternalOAuthService,
         test_instance: OAuthProvider,
     ) -> None:
@@ -1313,9 +1316,17 @@ class TestExternalOAuthService(ServiceCommonTests):
         assert data.id_token.encoded == "id_token_value"
         assert data.access_token.encoded == "access_token_value"  # type: ignore
         assert data.refresh_token == "refresh_token_value"
+        mock_logger.info.assert_called_with(
+            AUTHN_LOGIN_SUCCESSFUL,
+            type=SECURITY,
+            userID="testuser",
+            role="User",
+        )
 
+    @patch("maasservicelayer.services.external_auth.logger")
     async def test_get_callback_newly_created_user(
         self,
+        mock_logger: Mock,
         service_instance: ExternalOAuthService,
         test_instance: OAuthProvider,
     ) -> None:
@@ -1408,6 +1419,12 @@ class TestExternalOAuthService(ServiceCommonTests):
         assert data.id_token.encoded == "id_token_value"
         assert data.access_token.encoded == "access_token_value"  # type: ignore
         assert data.refresh_token == "refresh_token_value"
+        mock_logger.info.assert_called_with(
+            AUTHN_LOGIN_SUCCESSFUL,
+            type=SECURITY,
+            userID="testuser",
+            role="User",
+        )
 
     async def test_revoke_token(
         self,

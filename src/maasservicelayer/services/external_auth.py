@@ -13,7 +13,14 @@ from macaroonbakery.bakery._store import RootKeyStore
 from macaroonbakery.httpbakery.agent import Agent, AuthInfo
 from pymacaroons import Macaroon
 from starlette.datastructures import Headers
+import structlog
 
+from maascommon.logging.security import (
+    ADMIN,
+    AUTHN_LOGIN_SUCCESSFUL,
+    SECURITY,
+    USER,
+)
 from maasserver.macaroons import _get_macaroon_caveats_ops, _IDClient
 from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
@@ -75,6 +82,8 @@ from maasservicelayer.utils.encryptor import Encryptor
 from provisioningserver.security import to_bin, to_hex
 
 MACAROON_LIFESPAN = timedelta(days=1)
+
+logger = structlog.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -522,6 +531,12 @@ class ExternalOAuthService(
                     is_local=False, provider_id=client.provider.id
                 ),
             )
+        logger.info(
+            AUTHN_LOGIN_SUCCESSFUL,
+            type=SECURITY,
+            userID=user.username,
+            role=ADMIN if user.is_superuser else USER,
+        )
 
         return data.tokens
 

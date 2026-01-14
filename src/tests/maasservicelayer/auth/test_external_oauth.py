@@ -10,6 +10,7 @@ from authlib.jose.errors import BadSignatureError
 from httpx import HTTPStatusError, Request, Response
 import pytest
 
+from maascommon.logging.security import AUTHN_LOGIN_UNSUCCESSFUL, SECURITY
 from maasservicelayer.auth.external_oauth import (
     OAuth2Client,
     OAuthCallbackData,
@@ -201,6 +202,21 @@ class TestOauth2Client:
         assert response.tokens.id_token.encoded == "id_token_value"
         assert response.tokens.refresh_token == "refresh_token_value"
         assert response.user_info.sub == "user123"
+
+    @patch("maasservicelayer.auth.external_oauth.logger")
+    async def test_callback_logs_on_failure(self, mock_logger: Mock) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        client._fetch_and_validate_tokens = AsyncMock(
+            side_effect=BadGatewayException(details=[])
+        )
+
+        with pytest.raises(BadGatewayException):
+            await client.callback(code="auth_code_value", nonce="testnonce")
+
+        mock_logger.info.assert_called_with(
+            AUTHN_LOGIN_UNSUCCESSFUL,
+            type=SECURITY,
+        )
 
     async def get_userinfo_has_endpoint(self) -> None:
         client = OAuth2Client(TEST_PROVIDER)

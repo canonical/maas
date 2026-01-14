@@ -9,7 +9,9 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 from authlib.jose import JsonWebKey, JWTClaims, KeySet
 from authlib.jose.errors import BadSignatureError
 from httpx import HTTPStatusError
+import structlog
 
+from maascommon.logging.security import AUTHN_LOGIN_UNSUCCESSFUL, SECURITY
 from maasservicelayer.auth.oidc_jwt import OAuthAccessToken, OAuthIDToken
 from maasservicelayer.exceptions.catalog import (
     BadGatewayException,
@@ -24,6 +26,8 @@ from maasservicelayer.models.external_auth import OAuthProvider
 from maasservicelayer.utils.date import utcnow
 
 JWKS_CACHE_TTL = 3600
+
+logger = structlog.getLogger(__name__)
 
 
 @dataclass
@@ -94,16 +98,25 @@ class OAuth2Client:
         return self.provider.name
 
     async def callback(self, code: str, nonce: str) -> OAuthCallbackData:
-        tokens = await self._fetch_and_validate_tokens(code=code, nonce=nonce)
+        try:
+            tokens = await self._fetch_and_validate_tokens(
+                code=code, nonce=nonce
+            )
 
-        user_info = await self.get_userinfo(
-            access_token=tokens.access_token,
-            id_token_claims=tokens.id_token.claims,
-        )
-        return OAuthCallbackData(
-            tokens=tokens,
-            user_info=user_info,
-        )
+            user_info = await self.get_userinfo(
+                access_token=tokens.access_token,
+                id_token_claims=tokens.id_token.claims,
+            )
+            return OAuthCallbackData(
+                tokens=tokens,
+                user_info=user_info,
+            )
+        except Exception:
+            logger.info(
+                AUTHN_LOGIN_UNSUCCESSFUL,
+                type=SECURITY,
+            )
+            raise
 
     async def get_userinfo(
         self, access_token: OAuthAccessToken | str, id_token_claims: JWTClaims

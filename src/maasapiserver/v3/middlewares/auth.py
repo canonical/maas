@@ -21,6 +21,7 @@ from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.logging.security import (
     ADMIN,
+    AUTHN_AUTH_FAILED,
     AUTHN_AUTH_SUCCESSFUL,
     SECURITY,
     USER,
@@ -370,6 +371,10 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
         )
 
         if not id_token or not refresh_token:
+            logger.info(
+                AUTHN_AUTH_FAILED,
+                type=SECURITY,
+            )
             raise BadRequestException(
                 details=[
                     BaseExceptionDetail(
