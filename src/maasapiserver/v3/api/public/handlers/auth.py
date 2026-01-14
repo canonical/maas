@@ -10,6 +10,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     BadGatewayErrorBodyResponse,
+    BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
     UnauthorizedBodyResponse,
@@ -436,7 +437,7 @@ class AuthHandler(Handler):
         path="/auth/sessions:extend",
         methods=["POST"],
         tags=TAGS,
-        responses={204: {}, 400: {"model": BadGatewayErrorBodyResponse}},
+        responses={204: {}, 400: {"model": BadRequestBodyResponse}},
         status_code=204,
     )
     async def extend_session(
