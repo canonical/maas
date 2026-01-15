@@ -26,6 +26,7 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AuthInfoResponse,
     OAuthProviderResponse,
     OAuthProvidersListResponse,
+    PreLoginInfoResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_permissions,
@@ -57,6 +58,32 @@ class AuthHandler(Handler):
     TAGS = ["Auth"]
 
     TOKEN_TYPE = "bearer"
+
+    @handler(
+        path="/auth/login",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": PreLoginInfoResponse,
+            },
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+    )
+    async def pre_login(
+        self,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+    ) -> PreLoginInfoResponse:
+        is_authenticated = authenticated_user is not None
+        users_exist = await services.users.has_users()
+        return PreLoginInfoResponse(
+            is_authenticated=is_authenticated,
+            no_users=not users_exist,
+        )
 
     @handler(
         path="/auth/login",

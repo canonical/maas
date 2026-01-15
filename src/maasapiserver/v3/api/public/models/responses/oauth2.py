@@ -19,6 +19,14 @@ class AccessTokenResponse(BaseModel):
     access_token: str
 
 
+class PreLoginInfoResponse(BaseModel):
+    """Content for a response returning pre-login information."""
+
+    kind = "PreLoginInfo"
+    is_authenticated: bool
+    no_users: bool
+
+
 class AuthInfoResponse(BaseModel):
     """Content for a response returning authentication flow information."""
 

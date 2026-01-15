@@ -20,6 +20,7 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
     OAuthProviderResponse,
     OAuthProvidersListResponse,
+    PreLoginInfoResponse,
 )
 from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -107,6 +108,20 @@ class TestAuthApi:
     BASE_PATH = f"{V3_API_PREFIX}/auth"
 
     # POST /auth/login
+
+    async def test_get(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.has_users.return_value = False
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/login")
+        assert response.status_code == 200
+        pre_login_info = PreLoginInfoResponse(**response.json())
+        assert pre_login_info.is_authenticated is True
+        assert pre_login_info.no_users is True
+
     async def test_post(
         self,
         services_mock: ServiceCollectionV3,

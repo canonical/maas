@@ -404,5 +404,8 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         user_profile = await self.repository.get_user_profile(username=email)
         return True if (user_profile and user_profile.provider_id) else False
 
+    async def has_users(self) -> bool:
+        return await self.repository.exists(query=QuerySpec())
+
     async def clear_all_sessions(self) -> None:
         await self.repository.clear_all_sessions()
