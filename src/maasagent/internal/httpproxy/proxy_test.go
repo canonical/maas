@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2025 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,6 +17,9 @@ package httpproxy
 
 import (
 	"bytes"
+	"context"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -243,4 +246,263 @@ func TestProxy(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestErrorHandler_RetriesUntilSuccess(t *testing.T) {
+	// failing server
+	failCount := 0
+
+	failSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		failCount++
+
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer failSrv.Close()
+
+	// successful server
+	okSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Upstream", "ok")
+		_, _ = w.Write([]byte("success"))
+	}))
+	defer okSrv.Close()
+
+	failURL, _ := url.Parse(failSrv.URL)
+	okURL, _ := url.Parse(okSrv.URL)
+
+	proxy, err := NewProxy(
+		[]*url.URL{failURL, okURL},
+		WithRewriter(NewRewriter(nil)),
+	)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
+
+	rr := httptest.NewRecorder()
+
+	handler := proxy.errorHandler()
+	handler(rr, req, errors.New("dial error"))
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "success", rr.Body.String())
+
+	// failing server is not retried
+	assert.Equal(t, 0, failCount)
+
+	// both URLs remain reliable
+	assert.Equal(t, 2, len(proxy.urlTracker.reliable))
+}
+
+func TestErrorHandler_RetriesUntilSuccessMovesToUnreliable(t *testing.T) {
+	// failing server
+	failCount := 0
+
+	failSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		failCount++
+
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer failSrv.Close()
+
+	// successful server
+	okSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Upstream", "ok")
+		_, _ = w.Write([]byte("success"))
+	}))
+	defer okSrv.Close()
+
+	failURL, _ := url.Parse(failSrv.URL)
+	okURL, _ := url.Parse(okSrv.URL)
+
+	proxy, err := NewProxy(
+		[]*url.URL{failURL, okURL},
+		WithRewriter(NewRewriter(nil)),
+	)
+	assert.NoError(t, err)
+
+	// simulate that failURL already failed enough times to be marked unreliable at the next failure
+	for i := 0; i < maxConsecutiveFailures-1; i++ {
+		proxy.urlTracker.RecordFailure(failURL)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
+
+	rr := httptest.NewRecorder()
+
+	handler := proxy.errorHandler()
+	handler(rr, req, errors.New("dial error"))
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "success", rr.Body.String())
+
+	assert.Equal(t, 1, len(proxy.urlTracker.reliable))
+	assert.Equal(t, 1, len(proxy.urlTracker.unreliable))
+}
+
+func TestErrorHandler_SingleTargetFailsReturns503(t *testing.T) {
+	failSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "fail", http.StatusInternalServerError)
+	}))
+	defer failSrv.Close()
+
+	failURL, _ := url.Parse(failSrv.URL)
+
+	proxy, err := NewProxy(
+		[]*url.URL{failURL},
+		WithRewriter(NewRewriter(nil)),
+	)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
+
+	rr := httptest.NewRecorder()
+
+	handler := proxy.errorHandler()
+	handler(rr, req, errors.New("network error"))
+
+	assert.Equal(t, http.StatusServiceUnavailable, rr.Code)
+}
+
+func TestErrorHandler_AllTargetsTried_ReturnsLastStatusCode(t *testing.T) {
+	callCounts := map[string]int{}
+
+	firstFailSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "fail", http.StatusInternalServerError)
+	}))
+	defer firstFailSrv.Close()
+
+	firstFailURL, _ := url.Parse(firstFailSrv.URL)
+
+	// Keep all the other servers in another structure so that we can check that the retry logic actually called all of them.
+	failServers := []*httptest.Server{}
+	failURLs := []*url.URL{}
+
+	for i := 0; i < 3; i++ {
+		var srv *httptest.Server
+
+		srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			callCounts[srv.URL]++
+
+			http.Error(w, "fail", http.StatusInternalServerError)
+		}))
+
+		defer srv.Close()
+
+		failServers = append(failServers, srv)
+
+		u, err := url.Parse(srv.URL)
+		assert.NoError(t, err)
+
+		failURLs = append(failURLs, u)
+	}
+
+	proxy, err := NewProxy(failURLs, WithRewriter(NewRewriter(nil)))
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, firstFailURL))
+
+	rr := httptest.NewRecorder()
+	handler := proxy.errorHandler()
+	handler(rr, req, errors.New("network error"))
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+
+	// Assert each server called exactly once
+	for _, srv := range failServers {
+		count := callCounts[srv.URL]
+		assert.Equal(t, 1, count, "server %s should be called exactly once", srv.URL)
+	}
+}
+
+func TestErrorHandler_Non2xxResponseIsRetried(t *testing.T) {
+	badSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer badSrv.Close()
+
+	okSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "ok")
+	}))
+	defer okSrv.Close()
+
+	badURL, _ := url.Parse(badSrv.URL)
+	okURL, _ := url.Parse(okSrv.URL)
+
+	proxy, err := NewProxy(
+		[]*url.URL{badURL, okURL},
+		WithRewriter(NewRewriter(nil)),
+	)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/test", nil)
+	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, badURL))
+
+	rr := httptest.NewRecorder()
+
+	handler := proxy.errorHandler()
+	handler(rr, req, errors.New("upstream failure"))
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "ok", rr.Body.String())
+}
+
+func TestErrorHandler_RecordsFailureOnRetryError(t *testing.T) {
+	failSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "fail", http.StatusInternalServerError)
+	}))
+	defer failSrv.Close()
+
+	failURL, _ := url.Parse(failSrv.URL)
+
+	proxy, err := NewProxy(
+		[]*url.URL{failURL},
+		WithRewriter(NewRewriter(nil)),
+	)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
+
+	rr := httptest.NewRecorder()
+
+	handler := proxy.errorHandler()
+	handler(rr, req, errors.New("retry error"))
+
+	// Only guaranteed behavior
+	assert.Equal(t, http.StatusServiceUnavailable, rr.Code)
+}
+
+func TestErrorHandler_404IsNotRetried(t *testing.T) {
+	firstFailSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "fail", http.StatusInternalServerError)
+	}))
+	defer firstFailSrv.Close()
+
+	firstFailURL, _ := url.Parse(firstFailSrv.URL)
+
+	failSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "fail", http.StatusNotFound)
+	}))
+	defer failSrv.Close()
+
+	failURL, _ := url.Parse(failSrv.URL)
+
+	proxy, err := NewProxy(
+		[]*url.URL{failURL},
+		WithRewriter(NewRewriter(nil)),
+	)
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, firstFailURL))
+
+	rr := httptest.NewRecorder()
+
+	handler := proxy.errorHandler()
+	handler(rr, req, errors.New("retry error"))
+
+	assert.Equal(t, http.StatusNotFound, rr.Code)
 }
