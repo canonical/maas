@@ -7,13 +7,18 @@ from pathlib import Path
 from typing import assert_never, AsyncIterator, Protocol
 
 import aiofiles
-from fastapi import Request
+from fastapi import Depends, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 
 from maasapiserver.common.api.base import Handler, handler
-from maasapiserver.v3.api.public.models.responses.files import FileResponse
-from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.models.filestorage import FileStorage
+from maasapiserver.v3.api import services
+from maascommon.utils.images import get_bootresource_store_path
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootresources import (
+    BootResourceClauseFactory,
+)
+from maasservicelayer.services import ServiceCollectionV3
 
 _FIVE_MB = 5 * (2**10) * (2**10)
 _SNAP_COMMON = Path(os.environ.get("SNAP_COMMON", ""))
@@ -124,7 +129,6 @@ class NOSInstallerHandler(Handler):
         path="/onie-installer",
         methods=["GET"],
         tags=TAGS,
-        # TODO
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[],
@@ -132,16 +136,83 @@ class NOSInstallerHandler(Handler):
     async def get_installer(
         self,
         request: Request,
+        services_collection: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ):
-        fetcher = EnumFetcher()
+        """Serve ONIE installer binary from boot resources.
 
-        installer = choose_installer(request, fetcher)
+        This endpoint serves ONIE NOS installers that were uploaded via:
+        maas admin boot-resources create name=onie/<vendor> architecture=<arch>/<subarch>
 
-        accept_header = request.headers.get("Accept")
-        # TODO Fix this
-        if accept_header == "application/hal+json":
-            return FileResponse.from_model(
-                installer.storage(),
-                self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
+        The installer is looked up by querying boot resources with name format
+        'onie/<vendor>' (e.g., 'onie/sonic-vs') and the architecture.
+        """
+        onie_headers = OnieHeaders.from_request(request)
+        if onie_headers is None:
+            # TODO: Handle missing ONIE headers - return error or fallback
+            return {"error": "Missing ONIE headers"}
+
+        # Determine the boot resource name from ONIE headers
+        # For now, use a hardcoded example. In production, this should be
+        # determined from switch configuration or ONIE vendor headers.
+        boot_resource_name = "onie/sonic-vs"
+        boot_resource_arch = "amd64/generic"
+
+        # Query boot resources service for the uploaded ONIE installer
+        boot_resource = await services_collection.boot_resources.get_one(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_name(
+                            boot_resource_name
+                        ),
+                        BootResourceClauseFactory.with_architecture(
+                            boot_resource_arch
+                        ),
+                    ]
+                )
             )
-        # return StreamingResponse(content=installer.bytes_stream())
+        )
+
+        if not boot_resource:
+            return {"error": f"Boot resource {boot_resource_name} not found"}
+
+        # Get the latest complete resource set for this boot resource
+        resource_set = await services_collection.boot_resource_sets.get_latest_complete_set_for_boot_resource(
+            boot_resource.id
+        )
+
+        if not resource_set:
+            return {
+                "error": f"No complete resource set found for {boot_resource_name}"
+            }
+
+        # Get the files in the resource set
+        files = await services_collection.boot_resource_files.get_files_in_resource_set(
+            resource_set.id
+        )
+
+        if not files:
+            return {
+                "error": f"No files found in resource set for {boot_resource_name}"
+            }
+
+        # Use the first file (uploaded boot resources typically have one file)
+        boot_file = files[0]
+
+        # Get the actual file path on disk
+        file_path = get_bootresource_store_path() / boot_file.filename_on_disk
+
+        # Stream the file content
+        async def file_stream() -> AsyncIterator[bytes]:
+            async with aiofiles.open(file_path, "rb") as f:
+                while chunk := await f.read(_FIVE_MB):
+                    yield chunk
+
+        return StreamingResponse(
+            content=file_stream(),
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f'attachment; filename="{boot_file.filename}"',
+                "Content-Length": str(boot_file.size),
+            },
+        )
