@@ -17,28 +17,28 @@ class SwitchResponse(HalResponse[BaseHal]):
 
     kind = "Switch"
     id: int
-    name: str
-    mac_address: str
-    ip_address: Optional[str]
+    hostname: Optional[str]
+    vendor: Optional[str]
     model: Optional[str]
-    manufacturer: Optional[str]
-    description: str
-    vlan_id: Optional[int]
-    subnet_id: Optional[int]
+    platform: Optional[str]
+    arch: Optional[str]
+    serial_number: Optional[str]
+    state: str
+    target_image_id: Optional[int]
 
     @classmethod
     def from_model(cls, switch: Switch, self_base_hyperlink: str) -> Self:
         """Convert a Switch model to a response object."""
         return cls(
             id=switch.id,
-            name=switch.name,
-            mac_address=switch.mac_address,
-            ip_address=str(switch.ip_address) if switch.ip_address else None,
+            hostname=switch.hostname,
+            vendor=switch.vendor,
             model=switch.model,
-            manufacturer=switch.manufacturer,
-            description=switch.description,
-            vlan_id=switch.vlan_id,
-            subnet_id=switch.subnet_id,
+            platform=switch.platform,
+            arch=switch.arch,
+            serial_number=switch.serial_number,
+            state=switch.state,
+            target_image_id=switch.target_image_id,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{switch.id}"

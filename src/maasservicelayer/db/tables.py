@@ -2224,31 +2224,58 @@ SwitchTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(255), nullable=False),
-    Column("mac_address", Text, nullable=False),
-    Column("ip_address", INET, nullable=True),
+    Column("hostname", String(255), nullable=True),
+    Column("vendor", String(255), nullable=True),
     Column("model", String(255), nullable=True),
-    Column("manufacturer", String(255), nullable=True),
-    Column("description", Text, nullable=False),
+    Column("platform", String(255), nullable=True),
+    Column("arch", String(255), nullable=True),
+    Column("serial_number", String(255), nullable=True),
+    Column("state", String(50), nullable=False),
     Column(
-        "vlan_id",
+        "target_image_id",
         BigInteger,
         ForeignKey(
-            "maasserver_vlan.id", deferrable=True, initially="DEFERRED"
+            "maasserver_bootresource.id",
+            deferrable=True,
+            initially="DEFERRED",
         ),
         nullable=True,
     ),
+    Index("maasserver_switch_target_image_id_idx", "target_image_id"),
+)
+
+SwitchInterfaceTable = Table(
+    "maasserver_switchinterface",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(255), nullable=False),
+    Column("mac_address", Text, nullable=False),
     Column(
-        "subnet_id",
+        "switch_id",
         BigInteger,
         ForeignKey(
-            "maasserver_subnet.id", deferrable=True, initially="DEFERRED"
+            "maasserver_switch.id",
+            deferrable=True,
+            initially="DEFERRED",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    ),
+    Column(
+        "ip_address_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_staticipaddress.id",
+            deferrable=True,
+            initially="DEFERRED",
         ),
         nullable=True,
     ),
     UniqueConstraint("mac_address"),
-    Index("maasserver_switch_vlan_id_idx", "vlan_id"),
-    Index("maasserver_switch_subnet_id_idx", "subnet_id"),
+    Index("maasserver_switchinterface_switch_id_idx", "switch_id"),
+    Index("maasserver_switchinterface_ip_address_id_idx", "ip_address_id"),
 )
 
 SubnetTable = Table(

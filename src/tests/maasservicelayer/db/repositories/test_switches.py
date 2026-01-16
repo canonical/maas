@@ -12,9 +12,7 @@ from maasservicelayer.db.repositories.switches import (
     SwitchesRepository,
 )
 from maasservicelayer.models.switches import Switch
-from tests.fixtures.factories.subnet import create_test_subnet_entry
-from tests.fixtures.factories.switches import create_test_switch
-from tests.fixtures.factories.vlan import create_test_vlan_entry
+from tests.fixtures.factories.switches import create_test_switch, create_test_switch_interface
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
@@ -44,48 +42,48 @@ class TestSwitchClauseFactory:
             == "maasserver_switch.id IN (1, 2, 3)"
         )
 
-    def test_with_name(self) -> None:
-        clause = SwitchClauseFactory.with_name("test-switch")
+    def test_with_hostname(self) -> None:
+        clause = SwitchClauseFactory.with_hostname("test-switch")
         assert (
             str(
                 clause.condition.compile(
                     compile_kwargs={"literal_binds": True}
                 )
             )
-            == "maasserver_switch.name = 'test-switch'"
+            == "maasserver_switch.hostname = 'test-switch'"
         )
 
-    def test_with_mac_address(self) -> None:
-        clause = SwitchClauseFactory.with_mac_address("00:11:22:33:44:55")
+    def test_with_vendor(self) -> None:
+        clause = SwitchClauseFactory.with_vendor("Cisco")
         assert (
             str(
                 clause.condition.compile(
                     compile_kwargs={"literal_binds": True}
                 )
             )
-            == "maasserver_switch.mac_address = '00:11:22:33:44:55'"
+            == "maasserver_switch.vendor = 'Cisco'"
         )
 
-    def test_with_vlan_id(self) -> None:
-        clause = SwitchClauseFactory.with_vlan_id(5)
+    def test_with_state(self) -> None:
+        clause = SwitchClauseFactory.with_state("ready")
         assert (
             str(
                 clause.condition.compile(
                     compile_kwargs={"literal_binds": True}
                 )
             )
-            == "maasserver_switch.vlan_id = 5"
+            == "maasserver_switch.state = 'ready'"
         )
 
-    def test_with_subnet_id(self) -> None:
-        clause = SwitchClauseFactory.with_subnet_id(10)
+    def test_with_serial_number(self) -> None:
+        clause = SwitchClauseFactory.with_serial_number("SN123456")
         assert (
             str(
                 clause.condition.compile(
                     compile_kwargs={"literal_binds": True}
                 )
             )
-            == "maasserver_switch.subnet_id = 10"
+            == "maasserver_switch.serial_number = 'SN123456'"
         )
 
 
@@ -105,8 +103,9 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         created_switches = [
             await create_test_switch(
                 fixture,
-                name=f"switch-{i}",
-                mac_address=f"00:11:22:33:44:{i:02x}",
+                hostname=f"switch-{i}",
+                serial_number=f"SN{i:04d}",
+                state="registered",
             )
             for i in range(num_objects)
         ]
@@ -116,9 +115,9 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
     async def created_instance(self, fixture: Fixture) -> Switch:
         return await create_test_switch(
             fixture,
-            name="test-switch",
-            mac_address="aa:bb:cc:dd:ee:ff",
-            description="Test switch instance",
+            hostname="test-switch",
+            vendor="Cisco",
+            state="registered",
         )
 
     @pytest.fixture
@@ -128,9 +127,10 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
     @pytest.fixture
     async def instance_builder(self) -> SwitchBuilder:
         return SwitchBuilder(
-            name="new-switch",
-            mac_address="11:22:33:44:55:66",
-            description="A new switch",
+            hostname="new-switch",
+            vendor="Juniper",
+            state="registered",
+            serial_number="TEST-SN-123456",
         )
 
     async def test_create(
@@ -141,141 +141,88 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         """Test creating a switch."""
         resource = await repository_instance.create(instance_builder)
         assert resource.id > 0
-        assert resource.name == "new-switch"
-        assert resource.mac_address == "11:22:33:44:55:66"
-        assert resource.description == "A new switch"
+        assert resource.hostname == "new-switch"
+        assert resource.vendor == "Juniper"
+        assert resource.state == "registered"
 
-    async def test_list_with_query_by_name(
+    async def test_list_with_query_by_hostname(
         self, repository_instance: SwitchesRepository, fixture: Fixture
     ) -> None:
-        """Test listing switches filtered by name."""
+        """Test listing switches filtered by hostname."""
         await create_test_switch(
-            fixture, name="switch-alpha", mac_address="aa:aa:aa:aa:aa:01"
+            fixture, hostname="switch-alpha", state="registered"
         )
         await create_test_switch(
-            fixture, name="switch-beta", mac_address="bb:bb:bb:bb:bb:02"
+            fixture, hostname="switch-beta", state="registered"
         )
         await create_test_switch(
-            fixture, name="switch-gamma", mac_address="cc:cc:cc:cc:cc:03"
+            fixture, hostname="switch-gamma", state="registered"
         )
 
         retrieved_switches = await repository_instance.list(
             page=1,
             size=20,
             query=QuerySpec(
-                where=SwitchClauseFactory.with_name("switch-beta")
+                where=SwitchClauseFactory.with_hostname("switch-beta")
             ),
         )
         assert len(retrieved_switches.items) == 1
         assert retrieved_switches.total == 1
-        assert retrieved_switches.items[0].name == "switch-beta"
+        assert retrieved_switches.items[0].hostname == "switch-beta"
 
-    async def test_list_with_query_by_mac_address(
+    async def test_list_with_query_by_vendor(
         self, repository_instance: SwitchesRepository, fixture: Fixture
     ) -> None:
-        """Test listing switches filtered by MAC address."""
+        """Test listing switches filtered by vendor."""
         await create_test_switch(
-            fixture, name="switch-1", mac_address="aa:aa:aa:aa:aa:aa"
+            fixture, hostname="switch-1", vendor="Cisco", state="registered"
         )
         target_switch = await create_test_switch(
-            fixture, name="switch-2", mac_address="bb:bb:bb:bb:bb:bb"
+            fixture, hostname="switch-2", vendor="Juniper", state="registered"
         )
         await create_test_switch(
-            fixture, name="switch-3", mac_address="cc:cc:cc:cc:cc:cc"
+            fixture, hostname="switch-3", vendor="Cisco", state="registered"
         )
 
         retrieved_switches = await repository_instance.list(
             page=1,
             size=20,
-            query=QuerySpec(
-                where=SwitchClauseFactory.with_mac_address("bb:bb:bb:bb:bb:bb")
-            ),
+            query=QuerySpec(where=SwitchClauseFactory.with_vendor("Juniper")),
         )
         assert len(retrieved_switches.items) == 1
         assert retrieved_switches.total == 1
-        assert (
-            retrieved_switches.items[0].mac_address
-            == target_switch.mac_address
-        )
+        assert retrieved_switches.items[0].vendor == target_switch.vendor
         assert retrieved_switches.items[0].id == target_switch.id
 
-    async def test_list_with_query_by_vlan(
+    async def test_list_with_query_by_state(
         self, repository_instance: SwitchesRepository, fixture: Fixture
     ) -> None:
-        """Test listing switches filtered by VLAN."""
-        vlan1 = await create_test_vlan_entry(fixture)
-        vlan2 = await create_test_vlan_entry(fixture)
-
+        """Test listing switches filtered by state."""
         await create_test_switch(
             fixture,
-            name="switch-1",
-            mac_address="aa:aa:aa:aa:aa:01",
-            vlan_id=vlan1["id"],
+            hostname="switch-1",
+            state="registered",
         )
         await create_test_switch(
             fixture,
-            name="switch-2",
-            mac_address="aa:aa:aa:aa:aa:02",
-            vlan_id=vlan1["id"],
+            hostname="switch-2",
+            state="ready",
         )
-        await create_test_switch(
+        target_switch = await create_test_switch(
             fixture,
-            name="switch-3",
-            mac_address="aa:aa:aa:aa:aa:03",
-            vlan_id=vlan2["id"],
+            hostname="switch-3",
+            state="broken",
         )
 
         retrieved_switches = await repository_instance.list(
             page=1,
             size=20,
-            query=QuerySpec(
-                where=SwitchClauseFactory.with_vlan_id(vlan1["id"])
-            ),
+            query=QuerySpec(where=SwitchClauseFactory.with_state("broken")),
         )
-        assert len(retrieved_switches.items) == 2
-        assert retrieved_switches.total == 2
-        assert all(
-            sw.vlan_id == vlan1["id"] for sw in retrieved_switches.items
-        )
-
-    async def test_list_with_query_by_subnet(
-        self, repository_instance: SwitchesRepository, fixture: Fixture
-    ) -> None:
-        """Test listing switches filtered by subnet."""
-        subnet1 = await create_test_subnet_entry(fixture)
-        subnet2 = await create_test_subnet_entry(fixture)
-
-        await create_test_switch(
-            fixture,
-            name="switch-1",
-            mac_address="bb:bb:bb:bb:bb:01",
-            subnet_id=subnet1["id"],
-        )
-        await create_test_switch(
-            fixture,
-            name="switch-2",
-            mac_address="bb:bb:bb:bb:bb:02",
-            subnet_id=subnet2["id"],
-        )
-        await create_test_switch(
-            fixture,
-            name="switch-3",
-            mac_address="bb:bb:bb:bb:bb:03",
-            subnet_id=subnet1["id"],
-        )
-
-        retrieved_switches = await repository_instance.list(
-            page=1,
-            size=20,
-            query=QuerySpec(
-                where=SwitchClauseFactory.with_subnet_id(subnet1["id"])
-            ),
-        )
-        assert len(retrieved_switches.items) == 2
-        assert retrieved_switches.total == 2
-        assert all(
-            sw.subnet_id == subnet1["id"] for sw in retrieved_switches.items
-        )
+        assert len(retrieved_switches.items) == 1
+        assert retrieved_switches.total == 1
+        assert retrieved_switches.items[0].state == "broken"
+        assert retrieved_switches.items[0].id == target_switch.id
 
     async def test_update_switch(
         self,
@@ -284,17 +231,15 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
     ) -> None:
         """Test updating a switch."""
         builder = SwitchBuilder(
-            name="updated-switch",
-            description="Updated description",
+            hostname="updated-switch",
+            state="ready",
         )
         updated = await repository_instance.update_by_id(
             created_instance.id, builder
         )
         assert updated.id == created_instance.id
-        assert updated.name == "updated-switch"
-        assert updated.description == "Updated description"
-        # MAC address should remain unchanged
-        assert updated.mac_address == created_instance.mac_address
+        assert updated.hostname == "updated-switch"
+        assert updated.state == "ready"
 
     async def test_delete_switch(
         self,
@@ -307,3 +252,78 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         # Verify it's deleted
         result = await repository_instance.get_by_id(created_instance.id)
         assert result is None
+
+    async def test_create_duplicated(
+        self,
+        db_connection: AsyncConnection,
+        fixture: Fixture,
+    ) -> None:
+        """Test that creating switches with duplicate MAC addresses in interfaces fails."""
+        from maasservicelayer.db.repositories.switches import SwitchInterfacesRepository
+        from maasservicelayer.builders.switches import SwitchInterfaceBuilder
+        from maasservicelayer.exceptions.catalog import AlreadyExistsException
+        from maasservicelayer.context import Context
+        
+        # Create first switch with an interface
+        switch1 = await create_test_switch(
+            fixture, hostname="switch-1", state="registered"
+        )
+        await create_test_switch_interface(
+            fixture, switch_id=switch1.id, mac_address="00:11:22:33:44:55"
+        )
+
+        # Create second switch
+        switch2 = await create_test_switch(
+            fixture, hostname="switch-2", state="registered"
+        )
+
+        # Try to create interface with duplicate MAC address through repository - should fail
+        interface_repo = SwitchInterfacesRepository(Context(connection=db_connection))
+        builder = SwitchInterfaceBuilder(
+            name="mgmt",
+            mac_address="00:11:22:33:44:55",
+            switch_id=switch2.id
+        )
+        with pytest.raises(AlreadyExistsException):
+            await interface_repo.create(builder)
+
+    async def test_create_many_duplicated(
+        self,
+        db_connection: AsyncConnection,
+        fixture: Fixture,
+    ) -> None:
+        """Test that creating multiple switches with duplicate MAC addresses in interfaces fails."""
+        from maasservicelayer.db.repositories.switches import SwitchInterfacesRepository
+        from maasservicelayer.builders.switches import SwitchInterfaceBuilder
+        from maasservicelayer.exceptions.catalog import AlreadyExistsException
+        from maasservicelayer.context import Context
+        
+        # Create first switch with an interface
+        switch1 = await create_test_switch(
+            fixture, hostname="switch-1", state="registered"
+        )
+        await create_test_switch_interface(
+            fixture, switch_id=switch1.id, mac_address="00:11:22:33:44:55"
+        )
+
+        # Create second switch
+        switch2 = await create_test_switch(
+            fixture, hostname="switch-2", state="registered"
+        )
+        
+        # Try to create multiple interfaces with duplicate MAC address - should fail
+        interface_repo = SwitchInterfacesRepository(Context(connection=db_connection))
+        
+        with pytest.raises(AlreadyExistsException):
+            await interface_repo.create_many([
+                SwitchInterfaceBuilder(
+                    name="eth0",
+                    mac_address="aa:bb:cc:dd:ee:ff",
+                    switch_id=switch1.id,
+                ),
+                SwitchInterfaceBuilder(
+                    name="eth0",
+                    mac_address="aa:bb:cc:dd:ee:ff",  # Duplicate MAC
+                    switch_id=switch2.id,
+                ),
+            ])

@@ -8,8 +8,8 @@ from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
-from maasservicelayer.db.tables import SwitchTable
-from maasservicelayer.models.switches import Switch
+from maasservicelayer.db.tables import SwitchTable, SwitchInterfaceTable
+from maasservicelayer.models.switches import Switch, SwitchInterface
 
 
 class SwitchClauseFactory(ClauseFactory):
@@ -24,20 +24,38 @@ class SwitchClauseFactory(ClauseFactory):
         return Clause(condition=SwitchTable.c.id.in_(ids))
 
     @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=eq(SwitchTable.c.name, name))
+    def with_hostname(cls, hostname: str) -> Clause:
+        return Clause(condition=eq(SwitchTable.c.hostname, hostname))
+
+    @classmethod
+    def with_vendor(cls, vendor: str) -> Clause:
+        return Clause(condition=eq(SwitchTable.c.vendor, vendor))
+
+    @classmethod
+    def with_state(cls, state: str) -> Clause:
+        return Clause(condition=eq(SwitchTable.c.state, state))
+
+    @classmethod
+    def with_serial_number(cls, serial_number: str) -> Clause:
+        return Clause(condition=eq(SwitchTable.c.serial_number, serial_number))
+
+
+class SwitchInterfaceClauseFactory(ClauseFactory):
+    """Factory for creating query clauses for SwitchInterface queries."""
+
+    @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(SwitchInterfaceTable.c.id, id))
+
+    @classmethod
+    def with_switch_id(cls, switch_id: int) -> Clause:
+        return Clause(condition=eq(SwitchInterfaceTable.c.switch_id, switch_id))
 
     @classmethod
     def with_mac_address(cls, mac_address: str) -> Clause:
-        return Clause(condition=eq(SwitchTable.c.mac_address, mac_address))
-
-    @classmethod
-    def with_vlan_id(cls, vlan_id: int) -> Clause:
-        return Clause(condition=eq(SwitchTable.c.vlan_id, vlan_id))
-
-    @classmethod
-    def with_subnet_id(cls, subnet_id: int) -> Clause:
-        return Clause(condition=eq(SwitchTable.c.subnet_id, subnet_id))
+        return Clause(
+            condition=eq(SwitchInterfaceTable.c.mac_address, mac_address)
+        )
 
 
 class SwitchesRepository(BaseRepository[Switch]):
@@ -48,3 +66,13 @@ class SwitchesRepository(BaseRepository[Switch]):
 
     def get_model_factory(self) -> Type[Switch]:
         return Switch
+
+
+class SwitchInterfacesRepository(BaseRepository[SwitchInterface]):
+    """Repository for managing SwitchInterface entities in the database."""
+
+    def get_repository_table(self) -> Table:
+        return SwitchInterfaceTable
+
+    def get_model_factory(self) -> Type[SwitchInterface]:
+        return SwitchInterface

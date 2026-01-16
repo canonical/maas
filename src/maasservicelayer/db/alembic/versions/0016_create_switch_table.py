@@ -1,0 +1,130 @@
+# Copyright 2025 Canonical Ltd. This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""create_switch_table
+
+Revision ID: 0012
+Revises: 0011
+Create Date: 2025-11-28 12:00:00.000000+00:00
+
+"""
+
+from typing import Sequence
+
+from alembic import op
+import sqlalchemy as sa
+
+# revision identifiers, used by Alembic.
+revision: str = "0016"
+down_revision: str | None = "0015"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
+
+
+def upgrade() -> None:
+    """Create the maasserver_switch and maasserver_switchinterface tables."""
+    # Create Switch table
+    op.create_table(
+        "maasserver_switch",
+        sa.Column(
+            "id", sa.BigInteger(), sa.Identity(always=False), nullable=False
+        ),
+        sa.Column("created", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("hostname", sa.String(length=255), nullable=True),
+        sa.Column("vendor", sa.String(length=255), nullable=True),
+        sa.Column("model", sa.String(length=255), nullable=True),
+        sa.Column("platform", sa.String(length=255), nullable=True),
+        sa.Column("arch", sa.String(length=255), nullable=True),
+        sa.Column("serial_number", sa.String(length=255), nullable=True),
+        sa.Column("state", sa.String(length=50), nullable=False),
+        sa.Column(
+            "target_image_id",
+            sa.BigInteger(),
+            sa.ForeignKey(
+                "maasserver_bootresource.id",
+                deferrable=True,
+                initially="DEFERRED",
+            ),
+            nullable=True,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+
+    # Create index for Switch table
+    op.create_index(
+        "maasserver_switch_target_image_id_idx",
+        "maasserver_switch",
+        ["target_image_id"],
+        unique=False,
+    )
+
+    # Create SwitchInterface table
+    op.create_table(
+        "maasserver_switchinterface",
+        sa.Column(
+            "id", sa.BigInteger(), sa.Identity(always=False), nullable=False
+        ),
+        sa.Column("created", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("mac_address", sa.Text(), nullable=False),
+        sa.Column(
+            "switch_id",
+            sa.BigInteger(),
+            sa.ForeignKey(
+                "maasserver_switch.id",
+                deferrable=True,
+                initially="DEFERRED",
+                ondelete="CASCADE",
+            ),
+            nullable=False,
+        ),
+        sa.Column(
+            "ip_address_id",
+            sa.BigInteger(),
+            sa.ForeignKey(
+                "maasserver_staticipaddress.id",
+                deferrable=True,
+                initially="DEFERRED",
+            ),
+            nullable=True,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("mac_address"),
+    )
+
+    # Create indexes for SwitchInterface table
+    op.create_index(
+        "maasserver_switchinterface_switch_id_idx",
+        "maasserver_switchinterface",
+        ["switch_id"],
+        unique=False,
+    )
+    op.create_index(
+        "maasserver_switchinterface_ip_address_id_idx",
+        "maasserver_switchinterface",
+        ["ip_address_id"],
+        unique=False,
+    )
+
+
+def downgrade() -> None:
+    """Drop the maasserver_switchinterface and maasserver_switch tables."""
+    # Drop SwitchInterface table first (due to foreign key)
+    op.drop_index(
+        "maasserver_switchinterface_ip_address_id_idx",
+        table_name="maasserver_switchinterface",
+    )
+    op.drop_index(
+        "maasserver_switchinterface_switch_id_idx",
+        table_name="maasserver_switchinterface",
+    )
+    op.drop_table("maasserver_switchinterface")
+
+    # Drop Switch table
+    op.drop_index(
+        "maasserver_switch_target_image_id_idx",
+        table_name="maasserver_switch",
+    )
+    op.drop_table("maasserver_switch")

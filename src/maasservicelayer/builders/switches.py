@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Union
 
 from pydantic import Field
-from pydantic.networks import IPvAnyAddress
 
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
 
@@ -18,16 +17,29 @@ class SwitchBuilder(ResourceBuilder):
     """
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    ip_address: Union[str, IPvAnyAddress, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    mac_address: Union[str, Unset] = Field(default=UNSET, required=False)
-    manufacturer: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    model: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    subnet_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    vlan_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
+    hostname: Union[str, None, Unset] = Field(default=UNSET, required=False)
+    vendor: Union[str, None, Unset] = Field(default=UNSET, required=False)
+    model: Union[str, None, Unset] = Field(default=UNSET, required=False)
+    platform: Union[str, None, Unset] = Field(default=UNSET, required=False)
+    arch: Union[str, None, Unset] = Field(default=UNSET, required=False)
+    serial_number: Union[str, None, Unset] = Field(
+        default=UNSET, required=False
+    )
+    state: Union[str, Unset] = Field(default=UNSET, required=False)
+    target_image_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
+
+
+class SwitchInterfaceBuilder(ResourceBuilder):
+    """Builder for SwitchInterface model."""
+
+    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    name: Union[str, Unset] = Field(default=UNSET, required=False)
+    mac_address: Union[str, Unset] = Field(default=UNSET, required=False)
+    switch_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    ip_address_id: Union[int, None, Unset] = Field(
+        default=UNSET, required=False
+    )
