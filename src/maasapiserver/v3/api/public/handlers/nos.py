@@ -4,29 +4,16 @@
 from enum import Enum
 import os
 from pathlib import Path
-from typing import (
-    AsyncGenerator,
-    AsyncIterator,
-    assert_never,
-    Protocol,
-)
+from typing import assert_never, AsyncIterator, Protocol
 
 import aiofiles
-from fastapi import Depends, Request
-from fastapi.responses import StreamingResponse
+from fastapi import Request
 from pydantic import BaseModel, Field, ValidationError
 
 from maasapiserver.common.api.base import Handler, handler
-from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.responses.files import (
-    FileResponse as HalFileResponse,
-)
-from maasapiserver.v3.auth.base import check_permissions
+from maasapiserver.v3.api.public.models.responses.files import FileResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
-from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.models.filestorage import FileStorage
-from maasservicelayer.services import ServiceCollectionV3
 
 _FIVE_MB = 5 * (2**10) * (2**10)
 _SNAP_COMMON = Path(os.environ.get("SNAP_COMMON", ""))
@@ -140,18 +127,7 @@ class NOSInstallerHandler(Handler):
         # TODO
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            # Depends(
-            # check_permissions(
-            # required_roles={UserRole.USER},
-            # rbac_permissions={
-            # RbacPermission.VIEW,
-            # RbacPermission.VIEW_ALL,
-            # RbacPermission.ADMIN_MACHINES,
-            # },
-            # )
-            # )
-        ],
+        dependencies=[],
     )
     async def get_installer(
         self,
@@ -161,10 +137,11 @@ class NOSInstallerHandler(Handler):
 
         installer = choose_installer(request, fetcher)
 
-        # accept_header = request.headers.get("Accept")
-        # if accept_header == "application/hal+json":
-        # return HalFileResponse.from_model(
-        # installer.storage(),
-        # self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
-        # )
-        return StreamingResponse(content=installer.bytes_stream())
+        accept_header = request.headers.get("Accept")
+        # TODO Fix this
+        if accept_header == "application/hal+json":
+            return FileResponse.from_model(
+                installer.storage(),
+                self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
+            )
+        # return StreamingResponse(content=installer.bytes_stream())
