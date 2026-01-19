@@ -16,10 +16,10 @@
 package httpproxy
 
 import (
+	"context"
 	"errors"
 	"io"
 	"io/fs"
-	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -30,12 +30,21 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type contextKey string
+
+const (
+	targetURLKey contextKey = "targetURL"
+)
+
 // Proxy is a caching reverse HTTP proxy that sends request to a target.
 type Proxy struct {
-	revproxy *httputil.ReverseProxy
-	rewriter *Rewriter
-	cacher   *Cacher
-	targets  []*url.URL
+	revproxy   *httputil.ReverseProxy
+	rewriter   *Rewriter
+	cacher     *Cacher
+	urlTracker *URLTracker
+	// Client for making requests in error handler retries
+	httpClient *http.Client
+	targets    []*url.URL
 }
 
 // NewProxy returns a new caching reverse HTTP proxy, that caches all
@@ -47,7 +56,17 @@ func NewProxy(targets []*url.URL, options ...ProxyOption) (*Proxy, error) {
 	// Initialize using single target, but then pick a random one in Rewrite.
 	revproxy := httputil.NewSingleHostReverseProxy(targets[0])
 
-	p := Proxy{revproxy: revproxy, targets: targets}
+	tracker, err := NewURLTracker(targets)
+	if err != nil {
+		return nil, err
+	}
+
+	p := Proxy{
+		revproxy:   revproxy,
+		targets:    targets,
+		urlTracker: tracker,
+		httpClient: &http.Client{},
+	}
 
 	for _, opt := range options {
 		opt(&p)
@@ -67,6 +86,7 @@ func WithRewriter(r *Rewriter) ProxyOption {
 		p.revproxy.Director = nil
 		p.revproxy.Rewrite = p.rewriteRequest()
 		p.revproxy.ModifyResponse = p.modifyResponse()
+		p.revproxy.ErrorHandler = p.errorHandler()
 	}
 }
 
@@ -148,9 +168,17 @@ func (p *Proxy) getFromCache(w http.ResponseWriter, r *http.Request) bool {
 
 // modifyResponse is a function called by the underlying revproxy before response
 // is returned to the client. It is using io.Pipe and io.TeeReader to cache
-// response while it is being read by the client.
+// response while it is being read by the client. It also records successful
+// requests for URL reliability tracking.
 func (p *Proxy) modifyResponse() func(*http.Response) error {
 	return func(resp *http.Response) error {
+		// Record success for the target URL if we got a 2xx status code
+		if target, ok := resp.Request.Context().Value(targetURLKey).(*url.URL); ok {
+			if isSuccess(resp.StatusCode) {
+				p.urlTracker.RecordSuccess(target)
+			}
+		}
+
 		if p.cacher == nil {
 			return nil
 		}
@@ -200,12 +228,16 @@ func (p *Proxy) modifyResponse() func(*http.Response) error {
 
 // rewriteRequest is a modified version of stdlib implementation taken from
 // https://go.dev/src/net/http/httputil/reverseproxy.go
-// The main difference here is that we pick a random target URL where
-// we want to dispatch our request and apply certain rewrite rules.
+// The main difference here is that we pick a target URL using the URL tracker
+// which considers reliability, and we store the target in the request context
+// for tracking purposes.
 func (p *Proxy) rewriteRequest() func(pr *httputil.ProxyRequest) {
 	return func(pr *httputil.ProxyRequest) {
-		//nolint:gosec // usage of math/rand is ok here
-		target := p.targets[rand.Intn(len(p.targets))]
+		target := p.urlTracker.SelectURL(nil)
+
+		// Store the selected target in the request context for tracking
+		ctx := context.WithValue(pr.Out.Context(), targetURLKey, target)
+		*pr.Out = *pr.Out.WithContext(ctx)
 
 		targetQuery := target.RawQuery
 		pr.Out.URL.Scheme = target.Scheme
@@ -262,6 +294,117 @@ func joinURLPath(a, b *url.URL) (path, rawpath string) {
 	return a.Path + b.Path, apath + bpath
 }
 
+// errorHandler handles errors from the reverse proxy and keeps retrying until all available URLs have been tried.
+func (p *Proxy) errorHandler() func(http.ResponseWriter, *http.Request, error) {
+	writeResponse := func(w http.ResponseWriter, resp *http.Response) {
+		// Copy headers
+		for key, values := range resp.Header {
+			for _, value := range values {
+				w.Header().Add(key, value)
+			}
+		}
+
+		w.WriteHeader(resp.StatusCode)
+
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			log.Warn().Err(err).Msg("Error copying response body")
+		}
+
+		if err := resp.Body.Close(); err != nil {
+			log.Warn().Err(err).Msg("Error closing response body")
+		}
+	}
+
+	return func(w http.ResponseWriter, r *http.Request, err error) {
+		// Get the target that failed from context
+		failedTarget, ok := r.Context().Value(targetURLKey).(*url.URL)
+		if ok && failedTarget != nil {
+			p.urlTracker.RecordFailure(failedTarget)
+			log.Warn().
+				Err(err).
+				Str("target", failedTarget.String()).
+				Str("path", r.URL.Path).
+				Msg("Request to target failed")
+		}
+
+		// Keep track of tried URLs
+		triedURLs := make([]string, 0)
+		if ok && failedTarget != nil {
+			triedURLs = append(triedURLs, failedTarget.String())
+		}
+
+		// Last status code to return if all retries fail. This might not be very accurate as there might be network errors.
+		lastStatusCode := http.StatusServiceUnavailable
+
+		for {
+			// Select a new target URL that hasn't been tried yet
+			newTarget := p.urlTracker.SelectURL(triedURLs)
+			if newTarget == nil {
+				log.Warn().Msg("No more target URLs available for retry. Failing request.")
+
+				http.Error(w, http.StatusText(http.StatusServiceUnavailable), lastStatusCode)
+
+				return
+			}
+
+			// Mark as tried
+			triedURLs = append(triedURLs, newTarget.String())
+
+			// Create a new request with the alternative target.
+			proxyReq := r.Clone(r.Context())
+			proxyReq.URL.Scheme = newTarget.Scheme
+			proxyReq.URL.Host = newTarget.Host
+
+			proxyReq.RequestURI = ""
+
+			// Store the new target in context
+			ctx := context.WithValue(proxyReq.Context(), targetURLKey, newTarget)
+			proxyReq = proxyReq.WithContext(ctx)
+
+			log.Info().
+				Str("target", newTarget.String()).
+				Str("path", r.URL.Path).
+				Msg("Retrying request with alternative target")
+
+			resp, retryErr := p.httpClient.Do(proxyReq)
+			if retryErr == nil {
+				// Check if response is successful (2xx status code)
+				if isSuccess(resp.StatusCode) {
+					p.urlTracker.RecordSuccess(newTarget)
+					log.Info().
+						Str("target", newTarget.String()).
+						Str("path", r.URL.Path).
+						Int("status", resp.StatusCode).
+						Msg("Request succeeded with alternative target")
+
+					writeResponse(w, resp)
+
+					return
+				} else if resp.StatusCode == http.StatusNotFound {
+					log.Debug().
+						Str("target", newTarget.String()).
+						Str("path", r.URL.Path).
+						Int("status", resp.StatusCode).
+						Msg("Received 404 from target, not retrying")
+
+					writeResponse(w, resp)
+
+					return
+				}
+
+				lastStatusCode = resp.StatusCode
+			}
+			// Network error and non-2xx status codes are treated as failures. Will try with another target in the next iteration.
+			p.urlTracker.RecordFailure(newTarget)
+			log.Warn().
+				Err(retryErr).
+				Str("target", newTarget.String()).
+				Str("path", r.URL.Path).
+				Msg("Retry with alternative target failed")
+		}
+	}
+}
+
 type closer struct {
 	reader io.Reader
 	closer io.Closer
@@ -273,4 +416,9 @@ func (c *closer) Read(data []byte) (int, error) {
 
 func (c *closer) Close() error {
 	return c.closer.Close()
+}
+
+// isSuccess checks if the HTTP status code represents a successful response (2xx)
+func isSuccess(code int) bool {
+	return code >= 200 && code < 300
 }
