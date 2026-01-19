@@ -23,6 +23,8 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
+    INVALID_TOKEN_VIOLATION_TYPE,
+    MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
 from maasservicelayer.models.external_auth import (
@@ -127,41 +129,113 @@ class TestOauth2Client:
             nonce="testnonce",
         )
 
-    @patch("maasservicelayer.auth.oidc_jwt.OAuthAccessToken.from_token")
-    async def test_validate_access_token_jwt(
-        self, mock_from_token: MagicMock
-    ) -> None:
+    async def test_validate_access_token_userinfo_success(self) -> None:
+        TEST_PROVIDER.metadata.userinfo_endpoint = (
+            "https://issuer.com/userinfo"
+        )
         client = OAuth2Client(TEST_PROVIDER)
-        client._get_provider_jwks = AsyncMock(return_value="fake_jwks")
+        client._request = AsyncMock(return_value={"active": True})
 
-        mock_token_instance = Mock()
+        await client.validate_access_token("abc123")
 
-        mock_from_token.return_value = (
-            mock_token_instance  # async will await this
+        client._request.assert_awaited_once_with(
+            url=TEST_PROVIDER.metadata.userinfo_endpoint,
+            access_token="abc123",
         )
 
-        await client.validate_access_token("abc.def.ghi")
+    async def test_validate_access_token_userinfo_failure(self) -> None:
+        TEST_PROVIDER.metadata.userinfo_endpoint = (
+            "https://issuer.com/userinfo"
+        )
+        client = OAuth2Client(TEST_PROVIDER)
+        client._request = AsyncMock(
+            side_effect=HTTPStatusError(
+                "Error validating access token",
+                request=Request("GET", url="https://issuer.com/userinfo"),
+                response=Response(status_code=401),
+            )
+        )
+
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await client.validate_access_token("abc123")
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+        assert (
+            details[0].message
+            == "Failed to validate access token with OIDC server."
+        )
+
+    @patch("maasservicelayer.auth.external_oauth.OAuthAccessToken.from_token")
+    async def test_validate_access_token_fallback_to_jwt(
+        self, mock_from_token: MagicMock
+    ) -> None:
+        TEST_PROVIDER.metadata.userinfo_endpoint = None
+        client = OAuth2Client(TEST_PROVIDER)
+        client._get_provider_jwks = AsyncMock(return_value="fake_jwks")
+        mock_from_token.return_value = OAuthAccessToken(
+            claims=Mock(),
+            encoded="ey201jwt.token.value",
+            provider=TEST_PROVIDER,
+        )
+
+        await client.validate_access_token("ey201jwt.token.value")
 
         mock_from_token.assert_called_once_with(
             provider=TEST_PROVIDER,
-            encoded="abc.def.ghi",
-            jwks="fake_jwks",
+            encoded="ey201jwt.token.value",
+            jwks=client._get_provider_jwks.return_value,
         )
 
-    async def test_validate_access_token_fallback_to_introspection(
+    async def test_validate_access_token_fallback_to_introspection_success(
         self,
     ) -> None:
+        TEST_PROVIDER.metadata.userinfo_endpoint = None
         TEST_PROVIDER.metadata.introspection_endpoint = (
             "https://issuer.com/introspect"
         )
         client = OAuth2Client(TEST_PROVIDER)
         client._introspect_token = AsyncMock(return_value={"active": True})
 
-        await client.validate_access_token("some_opaque_token")
+        await client.validate_access_token("abc123")
 
         client._introspect_token.assert_awaited_once_with(
             url=TEST_PROVIDER.metadata.introspection_endpoint,
-            access_token="some_opaque_token",
+            access_token="abc123",
+        )
+
+    async def test_validate_access_token_fallback_to_introspection_failure(
+        self,
+    ) -> None:
+        TEST_PROVIDER.metadata.userinfo_endpoint = None
+        TEST_PROVIDER.metadata.introspection_endpoint = (
+            "https://issuer.com/introspect"
+        )
+        client = OAuth2Client(TEST_PROVIDER)
+        client._introspect_token = AsyncMock(return_value={"active": False})
+
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await client.validate_access_token("abc123")
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+        assert details[0].message == "Access token is not active."
+
+    async def test_validate_access_token_unverifiable(
+        self,
+    ) -> None:
+        TEST_PROVIDER.metadata.userinfo_endpoint = None
+        TEST_PROVIDER.metadata.introspection_endpoint = None
+        client = OAuth2Client(TEST_PROVIDER)
+
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await client.validate_access_token("non-jwt-token")
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].type == MISSING_PROVIDER_CONFIG_VIOLATION_TYPE
+        assert (
+            details[0].message
+            == "Cannot validate access token: no userinfo or introspection endpoint available, and token is not a JWT."
         )
 
     async def test_callback(self) -> None:
@@ -495,7 +569,12 @@ class TestOauth2Client:
             content='{"key": "value"}',
             request=Request("POST", url="https://issuer.com/some_endpoint"),
         )
-        req_data = {"token": "abc123", "token_type_hint": "refresh_token"}
+        req_data = {
+            "token": "abc123",
+            "token_type_hint": "refresh_token",
+            "client_id": TEST_PROVIDER.client_id,
+            "client_secret": TEST_PROVIDER.client_secret,
+        }
         client.client.post = AsyncMock(return_value=test_response)
 
         await client._revoke_token(
@@ -511,7 +590,7 @@ class TestOauth2Client:
         test_response = Response(
             status_code=500,
             content="Internal Server Error",
-            request=Request("GET", url="https://issuer.com/some_endpoint"),
+            request=Request("POST", url="https://issuer.com/some_endpoint"),
         )
         client.client.post = AsyncMock(return_value=test_response)
 

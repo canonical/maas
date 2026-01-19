@@ -20,6 +20,7 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.exceptions.constants import (
     INVALID_TOKEN_VIOLATION_TYPE,
+    MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
 from maasservicelayer.models.external_auth import OAuthProvider
@@ -163,18 +164,35 @@ class OAuth2Client:
         self, access_token: str
     ) -> OAuthAccessToken | str:
         """
-        Validates an access token. If it's a JWT, verify locally. If opaque, use the introspection endpoint.
+        Validates the access token by making a request to the userinfo endpoint.
+        Falls back to local validation, or introspection if userinfo is not available.
         """
+        if self.provider.metadata.userinfo_endpoint:
+            try:
+                await self._request(
+                    url=self.provider.metadata.userinfo_endpoint,
+                    access_token=access_token.encoded
+                    if isinstance(access_token, OAuthAccessToken)
+                    else access_token,
+                )
+                return access_token
+            except HTTPStatusError as e:
+                raise UnauthorizedException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=INVALID_TOKEN_VIOLATION_TYPE,
+                            message="Failed to validate access token with OIDC server.",
+                        )
+                    ]
+                ) from e
         is_jwt = access_token.count(".") == 2
         if is_jwt:
-            token = OAuthAccessToken.from_token(
+            return OAuthAccessToken.from_token(
                 provider=self.provider,
                 encoded=access_token,
                 jwks=await self._get_provider_jwks(),
             )
-            return token
 
-        # Fallback: opaque token introspection
         if self.provider.metadata.introspection_endpoint:
             introspection = await self._introspect_token(
                 url=self.provider.metadata.introspection_endpoint,
@@ -193,8 +211,8 @@ class OAuth2Client:
         raise UnauthorizedException(
             details=[
                 BaseExceptionDetail(
-                    type=INVALID_TOKEN_VIOLATION_TYPE,
-                    message="Token is opaque and no introspection endpoint is configured.",
+                    type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                    message="Cannot validate access token: no userinfo or introspection endpoint available, and token is not a JWT.",
                 )
             ]
         )
@@ -359,6 +377,11 @@ class OAuth2Client:
         return response.json()
 
     async def _revoke_token(self, url: str, token: str) -> None:
-        data = {"token": token, "token_type_hint": "refresh_token"}
+        data = {
+            "token": token,
+            "token_type_hint": "refresh_token",
+            "client_id": self.provider.client_id,
+            "client_secret": self.provider.client_secret,
+        }
         response = await self.client.post(url=url, data=data)
         response.raise_for_status()

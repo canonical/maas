@@ -80,18 +80,24 @@ class TestRevokedTokensService(ServiceCommonTests):
         "maasservicelayer.services.base.BaseService.create",
         new_callable=AsyncMock,
     )
+    @patch("maasservicelayer.services.tokens.utcnow")
     async def test_create_revoked_token(
         self,
+        mock_utcnow: MagicMock,
         mock_base_create: AsyncMock,
         mock_sha256: MagicMock,
         service_instance: OIDCRevokedTokenService,
     ) -> None:
+        mock_utcnow.return_value = utcnow()
         mock_hash = Mock()
         mock_hash.hexdigest.return_value = "abc123"
         mock_sha256.return_value = mock_hash
         mock_base_create.return_value = TEST_REVOKED_TOKEN
         builder = OIDCRevokedTokenBuilder(
-            provider_id=1, user_email="test@example.com", token_hash="abc123"
+            provider_id=1,
+            user_email="test@example.com",
+            token_hash="abc123",
+            revoked_at=mock_utcnow.return_value,
         )
 
         created = await service_instance.create_revoked_token(

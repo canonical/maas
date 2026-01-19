@@ -67,10 +67,8 @@ class BaseOAuthToken:
 
     def validate(self, **kwargs) -> None:
         """Base validation of the token claims."""
-        if (
-            self._REQUIRED_FIELDS - set(self.claims)
-            or (self.issuer != self.provider.issuer_url)
-            or (self.provider.client_id not in self.audience)
+        if self._REQUIRED_FIELDS - set(self.claims) or (
+            self.issuer != self.provider.issuer_url
         ):
             raise JWTValidationException()
 
@@ -95,5 +93,6 @@ class OAuthIDToken(BaseOAuthToken):
             alg != self.TOKEN_ALGORITHM
             or (azp is not None and azp != self.provider.client_id)
             or (self.claims.get("nonce") != nonce)
+            or (self.provider.client_id not in self.audience)
         ):
             raise JWTValidationException()

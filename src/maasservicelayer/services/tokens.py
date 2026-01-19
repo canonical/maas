@@ -14,6 +14,7 @@ from maasservicelayer.db.repositories.tokens import (
 )
 from maasservicelayer.models.tokens import OIDCRevokedToken, Token
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.utils.date import utcnow
 
 
 class TokensService(BaseService[Token, TokensRepository, TokenBuilder]):
@@ -47,6 +48,9 @@ class OIDCRevokedTokenService(
     ):
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         builder = OIDCRevokedTokenBuilder(
-            provider_id=provider_id, user_email=email, token_hash=token_hash
+            provider_id=provider_id,
+            user_email=email,
+            token_hash=token_hash,
+            revoked_at=utcnow(),
         )
         return await super().create(builder)

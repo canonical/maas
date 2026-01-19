@@ -47,7 +47,7 @@ class TestBaseOAuthToken:
         self,
         mock_validate: MagicMock,
         mock_decode: MagicMock,
-    ):
+    ) -> None:
         mock_decode.return_value = {
             "aud": "abc123",
             "iss": "https://issuer.com",
@@ -95,7 +95,9 @@ class TestBaseOAuthToken:
         assert token.provider == TEST_PROVIDER
 
     @patch("maasservicelayer.auth.oidc_jwt.jwt.decode")
-    async def test_from_token_decode_error(self, mock_decode: MagicMock):
+    async def test_from_token_decode_error(
+        self, mock_decode: MagicMock
+    ) -> None:
         mock_decode.side_effect = DecodeError(
             "Failed to decode token: missing required claims."
         )
@@ -108,7 +110,7 @@ class TestBaseOAuthToken:
             )
 
     @patch("maasservicelayer.auth.oidc_jwt.JWTClaims.validate")
-    async def test_validate_success(self, mock_validate: MagicMock):
+    async def test_validate_success(self, mock_validate: MagicMock) -> None:
         mock_claims = JWTClaims(
             header={},
             payload={
@@ -130,7 +132,7 @@ class TestBaseOAuthToken:
         mock_validate.assert_called_once()
 
     @patch("maasservicelayer.auth.oidc_jwt.JWTClaims.validate")
-    async def test_validate_failure(self, mock_validate: MagicMock):
+    async def test_validate_failure(self, mock_validate: MagicMock) -> None:
         mock_validate.side_effect = InvalidClaimError("Invalid claim")
         mock_claims = JWTClaims(
             header={},
@@ -154,7 +156,9 @@ class TestBaseOAuthToken:
 
 class TestOAuthIDToken:
     @patch("maasservicelayer.auth.oidc_jwt.BaseOAuthToken.validate")
-    async def test_validate_success(self, mock_validate_super: MagicMock):
+    async def test_validate_success(
+        self, mock_validate_super: MagicMock
+    ) -> None:
         mock_claims = JWTClaims(
             header={"alg": "RS256"},
             payload={
@@ -177,7 +181,7 @@ class TestOAuthIDToken:
     @patch("maasservicelayer.auth.oidc_jwt.BaseOAuthToken.validate")
     async def test_validate_invalid_claim(
         self, mock_validate_super: MagicMock
-    ):
+    ) -> None:
         mock_claims = JWTClaims(
             header={},
             payload={
@@ -185,6 +189,29 @@ class TestOAuthIDToken:
                 "iss": "https://issuer.com",
                 "sub": "user1",
                 "nonce": "wrong_nonce",
+            },
+        )
+        mock_validate_super.return_value = None
+        token = OAuthIDToken(
+            claims=mock_claims,
+            encoded="fake_token",
+            provider=TEST_PROVIDER,
+        )
+
+        with pytest.raises(JWTValidationException):
+            token.validate(nonce="test_nonce")
+
+    @patch("maasservicelayer.auth.oidc_jwt.BaseOAuthToken.validate")
+    async def test_validate_invalid_aud(
+        self, mock_validate_super: MagicMock
+    ) -> None:
+        mock_claims = JWTClaims(
+            header={},
+            payload={
+                "aud": "wrong_aud",
+                "iss": "https://issuer.com",
+                "sub": "user1",
+                "nonce": "test_nonce",
             },
         )
         mock_validate_super.return_value = None
