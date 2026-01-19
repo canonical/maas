@@ -1525,7 +1525,7 @@ class TestBridgeInterfaceForm(MAASServerTestCase):
         self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertEqual({"parents", "mac_address"}, form.errors.keys())
         self.assertIn(
-            "A bridge interface must have exactly one parent.",
+            "A bridge interface must have at least one parent.",
             form.errors["parents"][0],
         )
 
@@ -1776,6 +1776,26 @@ class TestBridgeInterfaceForm(MAASServerTestCase):
             interface.params,
         )
 
+    def test_creates_bridge_interface_multiple_parents(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface_name = factory.make_name()
+        form = BridgeInterfaceForm(
+            node=node,
+            data={"name": interface_name, "parents": [parent1.id, parent2.id]},
+        )
+        self.assertTrue(form.is_valid(), dict(form.errors))
+
+        with post_commit_hooks:
+            interface = form.save()
+        self.assertEqual(interface.name, interface_name)
+        self.assertEqual(interface.type, INTERFACE_TYPE.BRIDGE)
+        self.assertEqual(
+            interface.mac_address, parent1.mac_address
+        )  # mac from the first parent
+        self.assertCountEqual([parent1, parent2], interface.parents.all())
+
 
 class TestAcquiredBridgeInterfaceForm(MAASServerTestCase):
     def test_creates_acquired_bridge_interface(self):
@@ -1824,7 +1844,7 @@ class TestAcquiredBridgeInterfaceForm(MAASServerTestCase):
         self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertEqual({"parents", "mac_address"}, form.errors.keys())
         self.assertIn(
-            "A bridge interface must have exactly one parent.",
+            "A bridge interface must have at least one parent.",
             form.errors["parents"][0],
         )
 

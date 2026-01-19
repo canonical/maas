@@ -468,7 +468,7 @@ class ChildInterfaceForm(InterfaceForm):
             and self.cleaned_data["mac_address"] == self.instance.mac_address
         )
         if self.instance.id is None and "mac_address" not in self.data:
-            # New bond without mac_address set, set it to the first
+            # New bond or bridge without mac_address set, set it to the first
             # parent mac_address.
             self.cleaned_data["mac_address"] = str(parents[0].mac_address)
         elif (
@@ -650,26 +650,28 @@ class BridgeInterfaceForm(ChildInterfaceForm):
         parents = self.get_clean_parents()
         if parents is None:
             return
-        if len(parents) != 1:
+        if len(parents) < 1:
             raise ValidationError(
-                "A bridge interface must have exactly one parent."
+                "A bridge interface must have at least one parent."
             )
-        if parents[0].type == INTERFACE_TYPE.BRIDGE:
-            raise ValidationError(
-                "A bridge interface can't have another bridge interface as "
-                "parent."
+        for parent in parents:
+            if parent.type == INTERFACE_TYPE.BRIDGE:
+                raise ValidationError(
+                    "A bridge interface can't have another bridge interface as "
+                    "parent."
+                )
+            instance_id = None if self.instance is None else self.instance.id
+            bond_or_bridge = {INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE}
+            parent_has_bad_children = any(
+                rel.child.type in bond_or_bridge
+                and rel.child.id != instance_id
+                for rel in parent.children_relationships.all()
             )
-        instance_id = None if self.instance is None else self.instance.id
-        bond_or_bridge = {INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE}
-        parent_has_bad_children = any(
-            rel.child.type in bond_or_bridge and rel.child.id != instance_id
-            for rel in parents[0].children_relationships.all()
-        )
-        if parent_has_bad_children:
-            raise ValidationError(
-                "A bridge interface can't have a parent that is already "
-                "in a bond or a bridge."
-            )
+            if parent_has_bad_children:
+                raise ValidationError(
+                    "A bridge interface can't have a parent that is already "
+                    "in a bond or a bridge."
+                )
         return parents
 
     def get_delinquent_children(self, parents):

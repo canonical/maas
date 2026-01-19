@@ -413,8 +413,11 @@ class InterfacesHandler(OperationsHandler):
         @param (string) "vlan" [required=false] VLAN the interface is connected
         to.
 
-        @param (int) "parent" [required=false] Parent interface id for this
+        @param (int) "parent" [required=false] Deprecated, use parents instead. Parent interface id for this
         bridge interface.
+
+        @param (int) "parents" [required=false] Parent interface ids that make
+        this bridge.
 
         @param (string) "bridge_type" [required=false] The type of bridge
         to create. Possible values are: ``standard``, ``ovs``.
@@ -450,6 +453,10 @@ class InterfacesHandler(OperationsHandler):
         # Cast parent to parents to make it easier on the user and to make it
         # work with the form.
         request.data = request.data.copy()
+        if "parent" in request.data and "parents" in request.data:
+            raise MAASAPIValidationError(
+                "Cannot specify both parent and parents fields."
+            )
         if "parent" in request.data:
             request.data["parents"] = request.data["parent"]
         if machine.status == NODE_STATUS.ALLOCATED:

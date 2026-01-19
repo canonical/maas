@@ -682,7 +682,9 @@ class TestInterfacesAPI(APITestCase.ForUser):
         self.assertEqual(
             {
                 "name": ["This field is required."],
-                "parent": ["A bridge interface must have exactly one parent."],
+                "parent": [
+                    "A bridge interface must have at least one parent."
+                ],
                 "mac_address": ["This field cannot be blank."],
             },
             json_load_bytes(response.content),
@@ -754,6 +756,75 @@ class TestInterfacesAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content
         )
+
+    def test_create_bridge_not_allowed_with_both_parent_and_parents_parameter(
+        self,
+    ):
+        self.become_admin()
+        name = factory.make_name("br")
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
+        untagged_vlan = factory.make_VLAN()
+        parent_iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node
+        )
+        uri = get_interfaces_uri(node)
+        response = self.client.post(
+            uri,
+            {
+                "op": "create_bridge",
+                "name": name,
+                "vlan": untagged_vlan.id,
+                "parent": parent_iface.id,
+                "parents": [parent_iface.id],
+            },
+        )
+
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+        self.assertIn(
+            b"Cannot specify both parent and parents fields.",
+            response.content,
+        )
+
+    def test_create_bridge_with_multiple_parents(self):
+        self.become_admin()
+        name = factory.make_name("br")
+        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
+        untagged_vlan = factory.make_VLAN()
+        parent_iface1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node
+        )
+        parent_iface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node
+        )
+        uri = get_interfaces_uri(node)
+        response = self.client.post(
+            uri,
+            {
+                "op": "create_bridge",
+                "name": name,
+                "vlan": untagged_vlan.id,
+                "parents": [parent_iface1.id, parent_iface2.id],
+            },
+        )
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        interface_dict = response.json()
+        self.assertEqual(interface_dict.get("name"), name)
+        self.assertEqual(
+            interface_dict.get("mac_address"), parent_iface1.mac_address
+        )
+        self.assertEqual(
+            interface_dict.get("vlan", {}).get("id"), untagged_vlan.id
+        )
+        self.assertEqual(
+            interface_dict.get("parents"),
+            [parent_iface1.name, parent_iface2.name],
+        )
+        self.assertEqual(interface_dict.get("type"), "bridge")
 
 
 class TestInterfacesAPIForControllers(APITestCase.ForUser):
