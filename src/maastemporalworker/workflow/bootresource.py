@@ -16,6 +16,7 @@ from temporalio.exceptions import (
     ApplicationError,
     CancelledError,
     ChildWorkflowError,
+    is_cancelled_exception,
     WorkflowAlreadyStartedError,
 )
 from temporalio.workflow import (
@@ -853,31 +854,44 @@ class MasterImageSyncWorkflow:
 
     @workflow_run_with_context
     async def run(self) -> None:
-        try:
-            selection_ids: list[int] = await workflow.execute_activity(
-                GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME,
-                start_to_close_timeout=timedelta(seconds=60),
+        selection_ids: list[int] = await workflow.execute_activity(
+            GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME,
+            start_to_close_timeout=timedelta(seconds=60),
+        )
+
+        # Start a `SyncSelectionWorkflow` for each selection
+        sync_jobs = [
+            self._download_resources_for_selection(
+                SyncSelectionParam(selection_id=selection_id)
             )
+            for selection_id in selection_ids
+        ]
 
-            # Start a `SyncSelectionWorkflow` for each selection
-            sync_jobs = [
-                self._download_resources_for_selection(
-                    SyncSelectionParam(selection_id=selection_id)
-                )
-                for selection_id in selection_ids
-            ]
+        errors = []
 
-            await asyncio.gather(*sync_jobs)
-            # Sync the local boot resources. This covers the edge case when a
-            # region is added after images have been synchronized.
-            await workflow.execute_child_workflow(
-                SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
-                task_queue=REGION_TASK_QUEUE,
-            )
+        # `workflow.as_completed` is the deterministic way of doing `asyncio.as_completed`
+        for wf_execution in workflow.as_completed(sync_jobs):
+            try:
+                await wf_execution
+            except (
+                ActivityError,
+                ChildWorkflowError,
+                WorkflowFailureError,
+            ) as ex:
+                # filter out all the cancelled exceptions since they come from the user and are expected
+                if not is_cancelled_exception(ex):
+                    errors.append(get_error_message_from_temporal_exc(ex))
 
-        except (ActivityError, ChildWorkflowError, WorkflowFailureError) as ex:
-            # catch any error from activities/child workflows and report that to the user
-            message = get_error_message_from_temporal_exc(ex)
+        # Sync the local boot resources. This covers the edge case when a
+        # region is added after images have been synchronized.
+        await workflow.execute_child_workflow(
+            SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        # Report back to the user the errors encountered
+        if errors:
+            message = "\n".join(errors)
             await workflow.execute_activity(
                 REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
                 arg=message,

@@ -13,7 +13,11 @@ from aiofiles.threadpool.binary import AsyncBufferedIOBase
 import httpx
 import pytest
 from temporalio import activity
-from temporalio.client import Client, WorkflowFailureError
+from temporalio.client import (
+    Client,
+    WorkflowExecutionStatus,
+    WorkflowFailureError,
+)
 from temporalio.exceptions import ApplicationError, CancelledError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
@@ -123,6 +127,8 @@ from maastemporalworker.workflow.bootresource import (
 )
 from tests.fixtures import AsyncContextManagerMock, AsyncIteratorMock
 from tests.maastemporalworker.workflow import (
+    cancel_workflow_immediately,
+    get_workflow_status,
     TemporalCalls,
     WorkerTestInterceptor,
 )
@@ -1781,6 +1787,57 @@ class TestMasterImageSyncWorkflow:
         temporal_calls.assert_activity_called_once(
             REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
         )
+
+    # FIXME: Update this when https://github.com/temporalio/sdk-python/issues/1280 will be fixed
+    @pytest.mark.skip(reason="Flaky due to temporal bug")
+    @pytest.mark.asyncio
+    async def test_doesnt_create_notification_on_cancelled_error(
+        self,
+        client: Client,
+        single_region_workers,
+        temporal_calls: TemporalCalls,
+    ):
+        master_handle = await client.start_workflow(
+            MasterImageSyncWorkflow.run,
+            id="test-wf-cancelation",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        # the selection ids returned by mock_activities are the ones with id 1 and 2
+        h1 = client.get_workflow_handle("sync-selection:1")
+
+        await asyncio.wait_for(cancel_workflow_immediately(h1), timeout=5)
+
+        await master_handle.result()
+
+        temporal_calls.assert_activity_not_called(
+            REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
+        )
+
+    # FIXME: Update this when https://github.com/temporalio/sdk-python/issues/1280 will be fixed
+    @pytest.mark.skip(reason="Flaky due to temporal bug")
+    @pytest.mark.asyncio
+    async def test_cancelling_a_wf_doesnt_cancel_others(
+        self,
+        client: Client,
+        single_region_workers,
+    ):
+        master_handle = await client.start_workflow(
+            MasterImageSyncWorkflow.run,
+            id="test-wf-cancelation",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        # the selection ids returned by mock_activities are the ones with id 1 and 2
+        h1 = client.get_workflow_handle("sync-selection:1")
+        h2 = client.get_workflow_handle("sync-selection:2")
+
+        await asyncio.wait_for(cancel_workflow_immediately(h1), timeout=5)
+
+        await master_handle.result()
+
+        h2_status = await get_workflow_status(h2)
+        assert h2_status == WorkflowExecutionStatus.COMPLETED
 
     @pytest.mark.asyncio
     async def test_already_started_workflow_handling(

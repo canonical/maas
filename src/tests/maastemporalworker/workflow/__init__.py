@@ -30,9 +30,12 @@ See `TemporalCalls` for the full list of assertions.
 """
 
 from dataclasses import asdict
+from datetime import timedelta
 from typing import Generic, Optional, Type, TypeVar
 
 import pytest
+from temporalio.client import WorkflowExecutionStatus
+from temporalio.service import RPCError
 from temporalio.worker import (
     Interceptor,
     StartActivityInput,
@@ -301,3 +304,44 @@ def worker_test_interceptor(
     temporal_calls: TemporalCalls,
 ) -> WorkerTestInterceptor:
     return WorkerTestInterceptor(temporal_calls)
+
+
+async def cancel_workflow_immediately(handle):
+    """Calls `await handle.cancel()` until it succeeds.
+
+    Use this with `asyncio.wait_for(cancel_workflow_immediately(h), timeout=X)`
+    to specify a timeout and avoid to potentially run it forever.
+
+    The function will then assert that the status of the workflow is canceled.
+    """
+
+    while (
+        status := await get_workflow_status(handle)
+    ) != WorkflowExecutionStatus.RUNNING:
+        continue
+
+    while True:
+        try:
+            await handle.cancel(rpc_timeout=timedelta(seconds=3))
+            break
+        except RPCError:
+            continue
+
+    # Iterate until the workflow is not running anymore: the cancellation is not
+    # an immediate action and might take a bit of time.
+    while (
+        status := await get_workflow_status(handle)
+    ) == WorkflowExecutionStatus.RUNNING:
+        continue
+
+    assert status == WorkflowExecutionStatus.CANCELED, (
+        f"Workflow not in Canceled status. Status: {status}"
+    )
+
+
+async def get_workflow_status(handle) -> WorkflowExecutionStatus:
+    while True:
+        try:
+            return (await handle.describe()).status
+        except RPCError:
+            continue
