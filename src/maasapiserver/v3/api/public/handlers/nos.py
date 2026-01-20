@@ -17,6 +17,7 @@ from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.v3.api import services
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.utils.images import get_bootresource_store_path
+from maasserver.config import RegionConfiguration
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -247,8 +248,11 @@ class NOSInstallerHandler(Handler):
         #     pass
 
         # Generate the tether script
-        # Construct the API URL from the request
-        api_url = f"{request.url.scheme}://{request.url.netloc}"
+        # Get the configured MAAS URL from the region configuration
+        with RegionConfiguration.open() as config:
+            # Remove the /MAAS suffix if present, as we want just the base URL
+            logger.info(config.maas_url)
+            api_url = str(config.maas_url).removesuffix("/MAAS").removesuffix("/")
         logger.info(f"API URL for tether script: {api_url}")
         script = generate_tether_script(
             api_url=api_url,
