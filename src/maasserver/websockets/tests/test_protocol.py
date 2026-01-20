@@ -743,7 +743,6 @@ ALL_NOTIFIERS = {
 }
 
 ALL_HANDLERS = {
-    "bootresource",
     "config",
     "controller",
     "device",

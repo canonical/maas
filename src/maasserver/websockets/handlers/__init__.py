@@ -6,7 +6,6 @@
 # Note: please keep this array in a consistent order with the imports below,
 # so that it's easy to sanity-check.
 __all__ = [
-    "BootResourceHandler",
     "ConfigHandler",
     "ControllerHandler",
     "DHCPSnippetHandler",
@@ -36,7 +35,6 @@ __all__ = [
     "VMClusterHandler",
 ]
 
-from maasserver.websockets.handlers.bootresource import BootResourceHandler
 from maasserver.websockets.handlers.config import ConfigHandler
 from maasserver.websockets.handlers.controller import ControllerHandler
 from maasserver.websockets.handlers.device import DeviceHandler
