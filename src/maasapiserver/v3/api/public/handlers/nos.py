@@ -10,23 +10,19 @@ import aiofiles
 from fastapi import Depends, Request
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
+import structlog
+import tempita
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.v3.api import services
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.utils.images import get_bootresource_store_path
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-)
-from maasservicelayer.exceptions.catalog import (
-    BadRequestException,
-    NotFoundException,
-)
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
 _FIVE_MB = 5 * (2**10) * (2**10)
 _SNAP_COMMON = Path(os.environ.get("SNAP_COMMON", ""))
+logger = structlog.getLogger()
 
 
 class OnieHeaders(BaseModel):
@@ -69,10 +65,42 @@ class InstallerRequest(BaseModel):
     )
 
 
+def _find_nos_script(filename: str) -> Path:
+    """Find a NOS script file in the builtin_scripts directory.
+
+    Uses the metadataserver module location to find scripts, which works
+    in both development and snap environments.
+
+    Args:
+        filename: Name of the script file to find
+
+    Returns:
+        Path to the script file
+
+    Raises:
+        FileNotFoundError: If the script file cannot be found
+    """
+    # Import metadataserver to find its installation location
+    import metadataserver
+
+    metadataserver_path = Path(metadataserver.__file__).parent
+    script_path = (
+        metadataserver_path / "builtin_scripts" / "nos_scripts" / filename
+    )
+
+    if script_path.exists():
+        return script_path
+
+    raise FileNotFoundError(f"NOS script not found: {filename}")
+
+
 def generate_tether_script(
     api_url: str, mac_address: str = "", poll_interval: int = 60
 ) -> str:
-    """Generate the tether script dynamically.
+    """Generate the tether script from template.
+
+    Loads the ONIE tether script template from the builtin_scripts directory
+    and substitutes the provided parameters.
 
     Args:
         api_url: Base API URL for the MAAS server
@@ -82,93 +110,16 @@ def generate_tether_script(
     Returns:
         The tether script as a string
     """
-    script = f'''#!/bin/sh
-# MAAS ONIE Tether Script
-# This script runs on the switch during ONIE installation
-# It polls MAAS for an assigned NOS installer and installs it when available
-
-API_URL="10.10.0.25:5240"
-MAC_ADDRESS="{mac_address}"
-POLL_INTERVAL={poll_interval}
-INSTALLER_PATH="/tmp/nos-installer.bin"
-LOG_FILE="/tmp/maas-onie-install.log"
-
-log() {{
-    echo "$(date): $1" | tee -a $LOG_FILE
-}}
-
-log "MAAS ONIE Tether Script started"
-log "MAC Address: $MAC_ADDRESS"
-log "API URL: $API_URL"
-log "NOS installer path: $API_URL{V3_API_PREFIX}/nos-installer?mac=$MAC_ADDRESS"
-
-# Main installation loop
-while true; do
-    log "Checking for assigned NOS installer..."
-    
-    # Clean up any previous download
-    rm -f $INSTALLER_PATH
-    
-    # Request installer from MAAS (BusyBox wget compatible)
-    # Pass MAC address as query parameter since BusyBox wget doesn't support POST data
-    wget -q -O $INSTALLER_PATH "$API_URL{V3_API_PREFIX}/nos-installer?mac=$MAC_ADDRESS" 2>&1 | tee -a $LOG_FILE
-    WGET_EXIT=$?
-    
-    log "wget exit code: $WGET_EXIT"
-    
-    # Check if file was downloaded and has content
-    if [ -f "$INSTALLER_PATH" ] && [ -s "$INSTALLER_PATH" ]; then
-        log "NOS installer downloaded successfully"
-        log "Installer size: $(wc -c < $INSTALLER_PATH) bytes"
-        
-        # Check if it's an actual binary or an error message
-        # Error messages are typically plain text and small
-        FILE_SIZE=$(wc -c < $INSTALLER_PATH)
-        if [ "$FILE_SIZE" -lt 1000 ]; then
-            log "Downloaded file is too small to be a valid installer"
-            log "Content: $(cat $INSTALLER_PATH)"
-            log "No installer assigned yet, will retry in $POLL_INTERVAL seconds..."
-        else
-            log "Installing NOS..."
-            
-            # Make installer executable
-            chmod +x $INSTALLER_PATH
-            
-            # Execute the installer and capture output
-            if $INSTALLER_PATH 2>&1 | tee -a $LOG_FILE; then
-                log "NOS installation completed successfully"
-                
-                # Notify MAAS of successful installation
-                log "Notifying MAAS of successful installation (attempting POST)..."
-                if wget --post-data="{{\\"mac_address\\":\\"$MAC_ADDRESS\\"}}" --header="Content-Type: application/json" -q -O - "$API_URL{V3_API_PREFIX}/nos-installer" 2>&1 | tee -a $LOG_FILE; then
-                    log "Successfully notified MAAS via POST"
-                else
-                    log "POST request failed, falling back to GET..."
-                    wget -q -O - "$API_URL{V3_API_PREFIX}/nos-installer/complete?mac=$MAC_ADDRESS" 2>&1 | tee -a $LOG_FILE
-                fi
-                
-                log "Installation complete. Rebooting switch..."
-                sleep 60
-                reboot
-                exit 0
-            else
-                log "ERROR: NOS installation failed"
-                exit 1
-            fi
-        fi
-    else
-        log "No installer available or file is empty"
-        log "Will retry in $POLL_INTERVAL seconds..."
-    fi
-    
-    # Clean up
-    rm -f $INSTALLER_PATH
-    
-    # Wait before next poll
-    sleep $POLL_INTERVAL
-done
-'''
-    return script
+    script_path = _find_nos_script("onie_tether.sh")
+    template = tempita.Template.from_filename(  # type: ignore[call-arg]
+        str(script_path), encoding="utf-8"
+    )
+    return template.substitute(
+        api_url=api_url,
+        mac_address=mac_address,
+        poll_interval=poll_interval,
+        v3_api_prefix=V3_API_PREFIX,
+    )
 
 
 class Installer(Protocol):
@@ -298,9 +249,12 @@ class NOSInstallerHandler(Handler):
         # Generate the tether script
         # Construct the API URL from the request
         api_url = f"{request.url.scheme}://{request.url.netloc}"
+        logger.info(f"API URL for tether script: {api_url}")
         script = generate_tether_script(
             api_url=api_url,
-            mac_address=onie_headers.eth_address if onie_headers else "no ethernet address found",
+            mac_address=onie_headers.eth_address
+            if onie_headers
+            else "no ethernet address found",
             poll_interval=60,
         )
 
