@@ -193,12 +193,3 @@ class SwitchUpdateRequest(BaseModel):
         return SwitchBuilder(
             target_image_id=target_image_id,
         )
-
-
-class SwitchOperationRequest(BaseModel):
-    """Request model for switch operations."""
-
-    op: str = Field(description="Operation to perform (e.g., 'mark_fixed')")
-    comment: Optional[str] = Field(
-        default=None, description="Optional comment for the event log"
-    )
