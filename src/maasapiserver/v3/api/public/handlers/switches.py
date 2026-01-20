@@ -68,9 +68,10 @@ class SwitchesHandler(Handler):
         )
         return SwitchesListResponse(
             items=[
-                SwitchResponse.from_model(
+                await SwitchResponse.from_model(
                     switch=switch,
                     self_base_hyperlink=f"{V3_API_PREFIX}/switches",
+                    services=services,
                 )
                 for switch in switches.items
             ],
@@ -115,9 +116,10 @@ class SwitchesHandler(Handler):
                     )
                 ]
             )
-        return SwitchResponse.from_model(
+        return await SwitchResponse.from_model(
             switch=switch,
             self_base_hyperlink=f"{V3_API_PREFIX}/switches",
+            services=services,
         )
 
     @handler(
@@ -169,7 +171,7 @@ class SwitchesHandler(Handler):
 
         # Create the switch in 'registered' state
         switch = await services.switches.create(
-            switch_request.to_switch_builder(state="registered")
+            await switch_request.to_switch_builder(services, state="registered")
         )
 
         # Create the management interface
@@ -182,9 +184,10 @@ class SwitchesHandler(Handler):
         await services.switchinterfaces.create(interface_builder)
 
         response.headers["Location"] = f"{V3_API_PREFIX}/switches/{switch.id}"
-        return SwitchResponse.from_model(
+        return await SwitchResponse.from_model(
             switch=switch,
             self_base_hyperlink=f"{V3_API_PREFIX}/switches",
+            services=services,
         )
 
     @handler(
@@ -242,12 +245,13 @@ class SwitchesHandler(Handler):
         # TODO: If ip_address is provided, create/update StaticIPAddress entry
 
         switch = await services.switches.update_by_id(
-            switch_id, switch_request.to_switch_builder()
+            switch_id, await switch_request.to_switch_builder(services)
         )
 
-        return SwitchResponse.from_model(
+        return await SwitchResponse.from_model(
             switch=switch,
             self_base_hyperlink=f"{V3_API_PREFIX}/switches",
+            services=services,
         )
 
     @handler(
@@ -304,9 +308,10 @@ class SwitchesHandler(Handler):
                 switch_id, SwitchBuilder(state="ready")
             )
             # TODO: Log event with optional comment
-            return SwitchResponse.from_model(
+            return await SwitchResponse.from_model(
                 switch=updated_switch,
                 self_base_hyperlink=f"{V3_API_PREFIX}/switches",
+                services=services,
             )
         else:
             raise BadRequestException(

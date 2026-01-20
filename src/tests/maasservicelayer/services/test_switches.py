@@ -6,7 +6,10 @@ from unittest.mock import Mock
 import pytest
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.switches import SwitchesRepository
+from maasservicelayer.db.repositories.switches import (
+    SwitchesRepository,
+    SwitchInterfacesRepository,
+)
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.switches import Switch
 from maasservicelayer.services import SwitchesService
@@ -38,6 +41,7 @@ class TestCommonSwitchesService(ServiceCommonTests):
         return SwitchesService(
             context=Context(),
             switches_repository=Mock(SwitchesRepository),
+            switchinterfaces_repository=Mock(SwitchInterfacesRepository),
         )
 
     @pytest.fixture
@@ -52,8 +56,10 @@ class TestSwitchesService:
     async def test_service_initialization(self) -> None:
         """Test that the service can be initialized properly."""
         switches_repository = Mock(SwitchesRepository)
+        switchinterfaces_repository = Mock(SwitchInterfacesRepository)
         service = SwitchesService(
             context=Context(),
             switches_repository=switches_repository,
+            switchinterfaces_repository=switchinterfaces_repository,
         )
         assert service.repository == switches_repository

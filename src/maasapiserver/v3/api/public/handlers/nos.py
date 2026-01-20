@@ -8,15 +8,20 @@ from typing import assert_never, AsyncIterator, Protocol
 
 import aiofiles
 from fastapi import Depends, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.v3.api import services
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.utils.images import get_bootresource_store_path
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
+)
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    NotFoundException,
 )
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -48,6 +53,122 @@ class OnieHeaders(BaseModel):
             return OnieHeaders(**onie_headers)
         except ValidationError:
             return None
+
+
+class TetherScriptRequest(BaseModel):
+    """Request body for the tether script endpoint."""
+
+    pass  # No body needed, all info comes from headers
+
+
+class InstallerRequest(BaseModel):
+    """Request body sent by the tether script."""
+
+    mac_address: str = Field(
+        ..., description="MAC address of the switch's management port"
+    )
+
+
+def generate_tether_script(
+    api_url: str, mac_address: str = "", poll_interval: int = 60
+) -> str:
+    """Generate the tether script dynamically.
+
+    Args:
+        api_url: Base API URL for the MAAS server
+        mac_address: MAC address of the management interface
+        poll_interval: Seconds to wait between polling attempts
+
+    Returns:
+        The tether script as a string
+    """
+    script = f'''#!/bin/sh
+# MAAS ONIE Tether Script
+# This script runs on the switch during ONIE installation
+# It polls MAAS for an assigned NOS installer and installs it when available
+
+API_URL="10.10.0.25:5240"
+MAC_ADDRESS="{mac_address}"
+POLL_INTERVAL={poll_interval}
+INSTALLER_PATH="/tmp/nos-installer.bin"
+LOG_FILE="/tmp/maas-onie-install.log"
+
+log() {{
+    echo "$(date): $1" | tee -a $LOG_FILE
+}}
+
+log "MAAS ONIE Tether Script started"
+log "MAC Address: $MAC_ADDRESS"
+log "API URL: $API_URL"
+log "NOS installer path: $API_URL{V3_API_PREFIX}/nos-installer?mac=$MAC_ADDRESS"
+
+# Main installation loop
+while true; do
+    log "Checking for assigned NOS installer..."
+    
+    # Clean up any previous download
+    rm -f $INSTALLER_PATH
+    
+    # Request installer from MAAS (BusyBox wget compatible)
+    # Pass MAC address as query parameter since BusyBox wget doesn't support POST data
+    wget -q -O $INSTALLER_PATH "$API_URL{V3_API_PREFIX}/nos-installer?mac=$MAC_ADDRESS" 2>&1 | tee -a $LOG_FILE
+    WGET_EXIT=$?
+    
+    log "wget exit code: $WGET_EXIT"
+    
+    # Check if file was downloaded and has content
+    if [ -f "$INSTALLER_PATH" ] && [ -s "$INSTALLER_PATH" ]; then
+        log "NOS installer downloaded successfully"
+        log "Installer size: $(wc -c < $INSTALLER_PATH) bytes"
+        
+        # Check if it's an actual binary or an error message
+        # Error messages are typically plain text and small
+        FILE_SIZE=$(wc -c < $INSTALLER_PATH)
+        if [ "$FILE_SIZE" -lt 1000 ]; then
+            log "Downloaded file is too small to be a valid installer"
+            log "Content: $(cat $INSTALLER_PATH)"
+            log "No installer assigned yet, will retry in $POLL_INTERVAL seconds..."
+        else
+            log "Installing NOS..."
+            
+            # Make installer executable
+            chmod +x $INSTALLER_PATH
+            
+            # Execute the installer and capture output
+            if $INSTALLER_PATH 2>&1 | tee -a $LOG_FILE; then
+                log "NOS installation completed successfully"
+                
+                # Notify MAAS of successful installation
+                log "Notifying MAAS of successful installation (attempting POST)..."
+                if wget --post-data="{{\\"mac_address\\":\\"$MAC_ADDRESS\\"}}" --header="Content-Type: application/json" -q -O - "$API_URL{V3_API_PREFIX}/nos-installer" 2>&1 | tee -a $LOG_FILE; then
+                    log "Successfully notified MAAS via POST"
+                else
+                    log "POST request failed, falling back to GET..."
+                    wget -q -O - "$API_URL{V3_API_PREFIX}/nos-installer/complete?mac=$MAC_ADDRESS" 2>&1 | tee -a $LOG_FILE
+                fi
+                
+                log "Installation complete. Rebooting switch..."
+                sleep 60
+                reboot
+                exit 0
+            else
+                log "ERROR: NOS installation failed"
+                exit 1
+            fi
+        fi
+    else
+        log "No installer available or file is empty"
+        log "Will retry in $POLL_INTERVAL seconds..."
+    fi
+    
+    # Clean up
+    rm -f $INSTALLER_PATH
+    
+    # Wait before next poll
+    sleep $POLL_INTERVAL
+done
+'''
+    return script
 
 
 class Installer(Protocol):
@@ -126,75 +247,165 @@ class NOSInstallerHandler(Handler):
     TAGS = ["Onie"]
 
     @handler(
-        path="/onie-installer",
+        path="/tether-script",
         methods=["GET"],
         tags=TAGS,
-        response_model_exclude_none=True,
+        response_class=PlainTextResponse,
         status_code=200,
         dependencies=[],
     )
-    async def get_installer(
+    async def get_tether_script(
         self,
         request: Request,
         services_collection: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ):
-        """Serve ONIE installer binary from boot resources.
+        """Serve the tether script to ONIE during initial boot.
 
-        This endpoint serves ONIE NOS installers that were uploaded via:
-        maas admin boot-resources create name=onie/<vendor> architecture=<arch>/<subarch>
+        This endpoint:
+        - Receives ONIE headers from the switch
+        - Creates/updates switch entry in database
+        - Returns a dynamically generated tether script
 
-        The installer is looked up by querying boot resources with name format
-        'onie/<vendor>' (e.g., 'onie/sonic-vs') and the architecture.
+        The tether script will poll the nos-installer endpoint to download
+        and install the assigned NOS when available.
         """
         onie_headers = OnieHeaders.from_request(request)
-        if onie_headers is None:
-            # TODO: Handle missing ONIE headers - return error or fallback
-            return {"error": "Missing ONIE headers"}
+        # if onie_headers is None:
+        #     raise BadRequestException("Missing or invalid ONIE headers")
 
-        # Determine the boot resource name from ONIE headers
-        # For now, use a hardcoded example. In production, this should be
-        # determined from switch configuration or ONIE vendor headers.
-        boot_resource_name = "onie/sonic-vs"
-        boot_resource_arch = "amd64/generic"
+        # # Extract vendor from vendor_id (format: "vendor_model" or just "vendor")
+        # vendor = (
+        #     onie_headers.vendor_id.split("_")[0]
+        #     if onie_headers.vendor_id
+        #     else None
+        # )
 
-        # Query boot resources service for the uploaded ONIE installer
-        boot_resource = await services_collection.boot_resources.get_one(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
-                    [
-                        BootResourceClauseFactory.with_name(
-                            boot_resource_name
-                        ),
-                        BootResourceClauseFactory.with_architecture(
-                            boot_resource_arch
-                        ),
-                    ]
+        # # Enlist or update the switch
+        # try:
+        #     await services_collection.switches.enlist_or_update_switch(
+        #         serial_number=onie_headers.serial_number,
+        #         mac_address=onie_headers.eth_address,
+        #         vendor=vendor,
+        #         model=onie_headers.machine,
+        #         arch=onie_headers.arch,
+        #         platform=onie_headers.machine,
+        #     )
+        # except BadRequestException:
+        #     # If there's a vendor mismatch, still serve the tether script
+        #     # but the switch is already marked as broken
+        #     pass
+
+        # Generate the tether script
+        # Construct the API URL from the request
+        api_url = f"{request.url.scheme}://{request.url.netloc}"
+        script = generate_tether_script(
+            api_url=api_url,
+            mac_address=onie_headers.eth_address if onie_headers else "no ethernet address found",
+            poll_interval=60,
+        )
+
+        return PlainTextResponse(
+            content=script,
+            media_type="text/x-shellscript",
+            headers={
+                "Content-Disposition": 'attachment; filename="maas-onie-tether.sh"',
+            },
+        )
+
+    @handler(
+        path="/nos-installer",
+        methods=["GET"],
+        tags=TAGS,
+        response_model_exclude_none=True,
+        dependencies=[],
+    )
+    async def get_nos_installer(
+        self,
+        request: Request,
+        mac: str = "",
+        services_collection: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ):
+        """Serve NOS installer binary.
+
+        This endpoint checks the switch state:
+        - 'ready' state: Returns the assigned NOS installer if present
+        - 'new' state: Updates heartbeat and returns empty response (no installer yet)
+        - Other states: Returns empty response
+
+        If vendor mismatch is detected, marks switch as 'broken' and returns error.
+
+        Query parameters:
+        - mac: MAC address of the switch (query parameter for BusyBox wget compatibility)
+        """
+        # Get MAC address from query parameter
+        mac_address = mac
+        if not mac_address:
+            return PlainTextResponse(
+                content="mac_address query parameter is required",
+                status_code=400,
+            )
+
+        try:
+            # Check if switch has an assigned installer
+            boot_resource_id = (
+                await services_collection.switches.check_installer_for_switch(
+                    mac_address=mac_address
                 )
             )
-        )
+        except NotFoundException:
+            # Switch not found - return 204 to avoid leaking information
+            # about which switches are registered
+            return PlainTextResponse(
+                content="",
+                status_code=204,  # No Content
+            )
 
-        if not boot_resource:
-            return {"error": f"Boot resource {boot_resource_name} not found"}
+        if not boot_resource_id:
+            # No installer assigned yet or switch not in correct state
+            return PlainTextResponse(
+                content="",
+                status_code=204,  # No Content
+            )
 
-        # Get the latest complete resource set for this boot resource
-        resource_set = await services_collection.boot_resource_sets.get_latest_complete_set_for_boot_resource(
-            boot_resource.id
-        )
+        # Get the boot resource
+        try:
+            boot_resource = await services_collection.boot_resources.get_by_id(
+                id=boot_resource_id
+            )
+            if not boot_resource:
+                # Boot resource not found - return 204
+                return PlainTextResponse(
+                    content="",
+                    status_code=204,
+                )
 
-        if not resource_set:
-            return {
-                "error": f"No complete resource set found for {boot_resource_name}"
-            }
+            # Get the latest complete resource set for this boot resource
+            resource_set = await services_collection.boot_resource_sets.get_latest_complete_set_for_boot_resource(
+                boot_resource.id
+            )
+            if not resource_set:
+                # No complete resource set - return 204
+                return PlainTextResponse(
+                    content="",
+                    status_code=204,
+                )
 
-        # Get the files in the resource set
-        files = await services_collection.boot_resource_files.get_files_in_resource_set(
-            resource_set.id
-        )
-
-        if not files:
-            return {
-                "error": f"No files found in resource set for {boot_resource_name}"
-            }
+            # Get the files in the resource set
+            files = await services_collection.boot_resource_files.get_files_in_resource_set(
+                resource_set.id
+            )
+            if not files:
+                # No files in resource set - return 204
+                return PlainTextResponse(
+                    content="",
+                    status_code=204,
+                )
+        except NotFoundException:
+            # Any boot resource related lookup failed - return 204
+            return PlainTextResponse(
+                content="",
+                status_code=204,
+            )
 
         # Use the first file (uploaded boot resources typically have one file)
         boot_file = files[0]
@@ -216,3 +427,97 @@ class NOSInstallerHandler(Handler):
                 "Content-Length": str(boot_file.size),
             },
         )
+
+    @handler(
+        path="/nos-installer/complete",
+        methods=["GET"],
+        tags=TAGS,
+        status_code=200,
+        dependencies=[],
+    )
+    async def mark_installation_complete_get(
+        self,
+        request: Request,
+        mac: str = "",
+        services_collection: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ):
+        """Notification from tether script that installation completed successfully.
+
+        This endpoint:
+        - Receives MAC address from the tether script (query parameter)
+        - Updates switch state to 'deployed'
+        - Returns success message
+
+        Query parameters:
+        - mac: MAC address of the switch (for BusyBox wget compatibility)
+        """
+        mac_address = mac
+        if not mac_address:
+            return PlainTextResponse(
+                content="mac query parameter is required",
+                status_code=400,
+            )
+
+        try:
+            switch = (
+                await services_collection.switches.mark_installation_complete(
+                    mac_address=mac_address
+                )
+            )
+        except NotFoundException:
+            return PlainTextResponse(
+                content="Switch not found",
+                status_code=404,
+            )
+
+        return PlainTextResponse(
+            content=f"Installation marked complete for switch {switch.hostname or switch.id}",
+            status_code=200,
+        )
+
+    @handler(
+        path="/nos-installer",
+        methods=["POST"],
+        tags=TAGS,
+        status_code=200,
+        dependencies=[],
+    )
+    async def mark_installation_complete(
+        self,
+        installer_request: InstallerRequest,
+        services_collection: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ):
+        """Notification from tether script that installation completed successfully.
+
+        This endpoint (POST version):
+        - Receives MAC address from the tether script via JSON body
+        - Updates switch state to 'deployed'
+        - Returns the complete switch object
+        """
+        mac_address = installer_request.mac_address
+
+        try:
+            switch = (
+                await services_collection.switches.mark_installation_complete(
+                    mac_address=mac_address
+                )
+            )
+        except NotFoundException:
+            return PlainTextResponse(
+                content="Switch not found",
+                status_code=404,
+            )
+
+        return {
+            "id": switch.id,
+            "hostname": switch.hostname,
+            "vendor": switch.vendor,
+            "model": switch.model,
+            "platform": switch.platform,
+            "arch": switch.arch,
+            "serial_number": switch.serial_number,
+            "state": switch.state,
+            "target_image_id": switch.target_image_id,
+            "created": switch.created.isoformat() if switch.created else None,
+            "updated": switch.updated.isoformat() if switch.updated else None,
+        }

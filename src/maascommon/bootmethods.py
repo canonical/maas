@@ -130,7 +130,7 @@ class ONIEBootMetadata(BootMethodMetadata):
 
     @property
     def bootloader_path(self) -> str:
-        return "MAAS/a/v3/onie-installer"
+        return "MAAS/a/v3/tether-script"
 
     @property
     def arch_octet(self) -> None:

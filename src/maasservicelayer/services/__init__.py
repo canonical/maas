@@ -641,6 +641,7 @@ class ServiceCollectionV3:
         services.switches = SwitchesService(
             context=context,
             switches_repository=SwitchesRepository(context),
+            switchinterfaces_repository=SwitchInterfacesRepository(context),
         )
         services.switchinterfaces = SwitchInterfacesService(
             context=context,
