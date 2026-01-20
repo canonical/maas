@@ -120,8 +120,6 @@ def upgrade() -> None:
         "user_sshkey_unlink_notify",
         "user_sslkey_link_notify",
         "user_sslkey_unlink_notify",
-        "user_token_link_notify",
-        "user_token_unlink_notify",
         "user_update_notify",
         "zone_create_notify",
         "zone_delete_notify",
