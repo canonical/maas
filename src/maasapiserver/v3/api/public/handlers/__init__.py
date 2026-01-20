@@ -24,11 +24,9 @@ from maasapiserver.v3.api.public.handlers.files import FilesHandler
 from maasapiserver.v3.api.public.handlers.interfaces import InterfacesHandler
 from maasapiserver.v3.api.public.handlers.ipranges import IPRangesHandler
 from maasapiserver.v3.api.public.handlers.machines import MachinesHandler
+from maasapiserver.v3.api.public.handlers.nos import NOSInstallerHandler
 from maasapiserver.v3.api.public.handlers.notifications import (
     NotificationsHandler,
-)
-from maasapiserver.v3.api.public.handlers.nos import (
-    NOSInstallerHandler,
 )
 from maasapiserver.v3.api.public.handlers.package_repositories import (
     PackageRepositoriesHandler,

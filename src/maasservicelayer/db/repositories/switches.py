@@ -8,7 +8,7 @@ from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
-from maasservicelayer.db.tables import SwitchTable, SwitchInterfaceTable
+from maasservicelayer.db.tables import SwitchInterfaceTable, SwitchTable
 from maasservicelayer.models.switches import Switch, SwitchInterface
 
 
@@ -23,22 +23,6 @@ class SwitchClauseFactory(ClauseFactory):
     def with_ids(cls, ids: list[int]) -> Clause:
         return Clause(condition=SwitchTable.c.id.in_(ids))
 
-    @classmethod
-    def with_hostname(cls, hostname: str) -> Clause:
-        return Clause(condition=eq(SwitchTable.c.hostname, hostname))
-
-    @classmethod
-    def with_vendor(cls, vendor: str) -> Clause:
-        return Clause(condition=eq(SwitchTable.c.vendor, vendor))
-
-    @classmethod
-    def with_state(cls, state: str) -> Clause:
-        return Clause(condition=eq(SwitchTable.c.state, state))
-
-    @classmethod
-    def with_serial_number(cls, serial_number: str) -> Clause:
-        return Clause(condition=eq(SwitchTable.c.serial_number, serial_number))
-
 
 class SwitchInterfaceClauseFactory(ClauseFactory):
     """Factory for creating query clauses for SwitchInterface queries."""
@@ -49,7 +33,9 @@ class SwitchInterfaceClauseFactory(ClauseFactory):
 
     @classmethod
     def with_switch_id(cls, switch_id: int) -> Clause:
-        return Clause(condition=eq(SwitchInterfaceTable.c.switch_id, switch_id))
+        return Clause(
+            condition=eq(SwitchInterfaceTable.c.switch_id, switch_id)
+        )
 
     @classmethod
     def with_mac_address(cls, mac_address: str) -> Clause:

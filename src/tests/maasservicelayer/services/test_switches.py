@@ -19,13 +19,6 @@ from tests.maasservicelayer.services.base import ServiceCommonTests
 
 TEST_SWITCH = Switch(
     id=1,
-    hostname="test-switch",
-    vendor="Cisco",
-    model="Catalyst 2960",
-    platform="x86_64",
-    arch="amd64",
-    serial_number="TEST123456",
-    state="registered",
     target_image_id=None,
     created=utcnow(),
     updated=utcnow(),

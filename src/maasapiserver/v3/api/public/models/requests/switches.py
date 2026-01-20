@@ -3,7 +3,7 @@
 
 from typing import Optional
 
-from pydantic import Field, IPvAnyAddress, validator
+from pydantic import Field, validator
 
 from maasapiserver.v3.api.public.models.requests.base import BaseModel
 from maasservicelayer.builders.switches import (
@@ -22,19 +22,12 @@ class SwitchRequest(BaseModel):
     """Request model for creating a switch."""
 
     mac_address: str
-    hostname: Optional[str] = Field(
-        default=None, description="User-defined hostname for DNS resolution."
-    )
     image: Optional[str] = Field(
         default=None,
         description="Boot resource name for the NOS to install on the switch. "
         "Supports full format (e.g., 'onie/mellanox-3.8.0') or short format "
         "for ONIE images (e.g., 'mellanox-3.8.0').",
         alias="target_image",
-    )
-    ip_address: Optional[IPvAnyAddress] = Field(
-        default=None,
-        description="Static IP address to assign to the switch.",
     )
 
     async def resolve_image_id(
@@ -74,7 +67,7 @@ class SwitchRequest(BaseModel):
                     where=BootResourceClauseFactory.with_name(prefixed_name)
                 )
             )
-            
+
             # Validate that it's actually an ONIE image
             if boot_resource and not boot_resource.name.startswith("onie/"):
                 raise ValidationException.build_for_field(
@@ -95,18 +88,15 @@ class SwitchRequest(BaseModel):
         return boot_resource.id
 
     async def to_switch_builder(
-        self, services: ServiceCollectionV3, state: str = "registered"
+        self, services: ServiceCollectionV3
     ) -> SwitchBuilder:
         target_image_id = await self.resolve_image_id(services)
         return SwitchBuilder(
-            hostname=self.hostname,
-            state=state,
             target_image_id=target_image_id,
         )
 
     def to_interface_builder(self, switch_id: int) -> SwitchInterfaceBuilder:
         return SwitchInterfaceBuilder(
-            name="mgmt",  # Default management interface name
             mac_address=self.mac_address,
             switch_id=switch_id,
         )
@@ -124,28 +114,19 @@ class SwitchRequest(BaseModel):
         try:
             int(cleaned, 16)
         except ValueError as e:
-            raise ValueError(
-                "MAC address must contain only hex digits"
-            ) from e
+            raise ValueError("MAC address must contain only hex digits") from e
         return v
 
 
 class SwitchUpdateRequest(BaseModel):
     """Request model for updating a switch."""
 
-    hostname: Optional[str] = Field(
-        default=None, description="User-defined hostname for DNS resolution."
-    )
     image: Optional[str] = Field(
         default=None,
         description="Boot resource name for the NOS to install on the switch. "
         "Supports full format (e.g., 'onie/mellanox-3.8.0') or short format "
         "for ONIE images (e.g., 'mellanox-3.8.0').",
         alias="target_image",
-    )
-    ip_address: Optional[IPvAnyAddress] = Field(
-        default=None,
-        description="Static IP address to assign to the switch.",
     )
 
     async def resolve_image_id(
@@ -185,7 +166,7 @@ class SwitchUpdateRequest(BaseModel):
                     where=BootResourceClauseFactory.with_name(prefixed_name)
                 )
             )
-            
+
             # Validate that it's actually an ONIE image
             if boot_resource and not boot_resource.name.startswith("onie/"):
                 raise ValidationException.build_for_field(
@@ -210,7 +191,6 @@ class SwitchUpdateRequest(BaseModel):
     ) -> SwitchBuilder:
         target_image_id = await self.resolve_image_id(services)
         return SwitchBuilder(
-            hostname=self.hostname,
             target_image_id=target_image_id,
         )
 

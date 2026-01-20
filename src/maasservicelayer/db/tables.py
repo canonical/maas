@@ -2224,13 +2224,6 @@ SwitchTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("hostname", String(255), nullable=True),
-    Column("vendor", String(255), nullable=True),
-    Column("model", String(255), nullable=True),
-    Column("platform", String(255), nullable=True),
-    Column("arch", String(255), nullable=True),
-    Column("serial_number", String(255), nullable=True),
-    Column("state", String(50), nullable=False),
     Column(
         "target_image_id",
         BigInteger,
@@ -2250,7 +2243,6 @@ SwitchInterfaceTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(255), nullable=False),
     Column("mac_address", Text, nullable=False),
     Column(
         "switch_id",
@@ -2263,19 +2255,8 @@ SwitchInterfaceTable = Table(
         ),
         nullable=False,
     ),
-    Column(
-        "ip_address_id",
-        BigInteger,
-        ForeignKey(
-            "maasserver_staticipaddress.id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=True,
-    ),
     UniqueConstraint("mac_address"),
     Index("maasserver_switchinterface_switch_id_idx", "switch_id"),
-    Index("maasserver_switchinterface_ip_address_id_idx", "ip_address_id"),
 )
 
 SubnetTable = Table(

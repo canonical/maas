@@ -18,13 +18,6 @@ class SwitchResponse(HalResponse[BaseHal]):
 
     kind = "Switch"
     id: int
-    hostname: Optional[str]
-    vendor: Optional[str]
-    model: Optional[str]
-    platform: Optional[str]
-    arch: Optional[str]
-    serial_number: Optional[str]
-    state: str
     target_image_id: Optional[int]
     target_image: Optional[str]
 
@@ -55,13 +48,6 @@ class SwitchResponse(HalResponse[BaseHal]):
 
         return cls(
             id=switch.id,
-            hostname=switch.hostname,
-            vendor=switch.vendor,
-            model=switch.model,
-            platform=switch.platform,
-            arch=switch.arch,
-            serial_number=switch.serial_number,
-            state=switch.state,
             target_image_id=switch.target_image_id,
             target_image=target_image_name,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]

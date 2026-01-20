@@ -13,17 +13,9 @@ from maasservicelayer.models.base import (
 class Switch(MaasTimestampedBaseModel):
     """Model representing a network switch.
 
-    A switch is a network device discovered via ONIE DHCP that can be
-    monitored and managed by MAAS.
+    A switch is a network device that can be monitored and managed by MAAS.
     """
 
-    hostname: Optional[str]
-    vendor: Optional[str]
-    model: Optional[str]
-    platform: Optional[str]
-    arch: Optional[str]
-    serial_number: Optional[str]
-    state: str  # e.g., 'new', 'registered', 'ready', 'deploying', 'deployed', 'broken'
     target_image_id: Optional[int]
 
 
@@ -34,7 +26,5 @@ class SwitchInterface(MaasTimestampedBaseModel):
     Each switch has one or more interfaces with network connectivity information.
     """
 
-    name: str
     mac_address: str
     switch_id: int
-    ip_address_id: Optional[int]

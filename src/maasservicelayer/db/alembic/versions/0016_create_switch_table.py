@@ -31,13 +31,6 @@ def upgrade() -> None:
         ),
         sa.Column("created", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("hostname", sa.String(length=255), nullable=True),
-        sa.Column("vendor", sa.String(length=255), nullable=True),
-        sa.Column("model", sa.String(length=255), nullable=True),
-        sa.Column("platform", sa.String(length=255), nullable=True),
-        sa.Column("arch", sa.String(length=255), nullable=True),
-        sa.Column("serial_number", sa.String(length=255), nullable=True),
-        sa.Column("state", sa.String(length=50), nullable=False),
         sa.Column(
             "target_image_id",
             sa.BigInteger(),
@@ -67,7 +60,6 @@ def upgrade() -> None:
         ),
         sa.Column("created", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("mac_address", sa.Text(), nullable=False),
         sa.Column(
             "switch_id",
@@ -80,16 +72,6 @@ def upgrade() -> None:
             ),
             nullable=False,
         ),
-        sa.Column(
-            "ip_address_id",
-            sa.BigInteger(),
-            sa.ForeignKey(
-                "maasserver_staticipaddress.id",
-                deferrable=True,
-                initially="DEFERRED",
-            ),
-            nullable=True,
-        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("mac_address"),
     )
@@ -101,21 +83,11 @@ def upgrade() -> None:
         ["switch_id"],
         unique=False,
     )
-    op.create_index(
-        "maasserver_switchinterface_ip_address_id_idx",
-        "maasserver_switchinterface",
-        ["ip_address_id"],
-        unique=False,
-    )
 
 
 def downgrade() -> None:
     """Drop the maasserver_switchinterface and maasserver_switch tables."""
     # Drop SwitchInterface table first (due to foreign key)
-    op.drop_index(
-        "maasserver_switchinterface_ip_address_id_idx",
-        table_name="maasserver_switchinterface",
-    )
     op.drop_index(
         "maasserver_switchinterface_switch_id_idx",
         table_name="maasserver_switchinterface",

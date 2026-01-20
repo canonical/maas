@@ -15,13 +15,6 @@ async def create_test_switch_entry(
     switch = {
         "created": created_at,
         "updated": updated_at,
-        "hostname": "test-switch",
-        "vendor": "Cisco",
-        "model": "Catalyst 2960",
-        "platform": "x86_64",
-        "arch": "amd64",
-        "serial_number": "TEST123456",
-        "state": "registered",
         "target_image_id": None,
     }
     switch.update(extra_details)
@@ -48,9 +41,7 @@ async def create_test_switch_interface_entry(
     interface = {
         "created": created_at,
         "updated": updated_at,
-        "name": "mgmt",
         "mac_address": "00:11:22:33:44:55",
-        "ip_address_id": None,
     }
     interface.update(extra_details)
 

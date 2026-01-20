@@ -15,7 +15,10 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.switches import Switch, SwitchInterface
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.switches import SwitchesService, SwitchInterfacesService
+from maasservicelayer.services.switches import (
+    SwitchesService,
+    SwitchInterfacesService,
+)
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -83,20 +86,24 @@ class TestSwitchesApi(ApiCommonTests):
         """Override base test to add necessary mocks for our endpoints."""
         # Mock services needed by POST endpoint
         services_mock.switchinterfaces = Mock(SwitchInterfacesService)
-        services_mock.switchinterfaces.list.return_value = ListResult[SwitchInterface](
-            items=[], total=0
-        )
+        services_mock.switchinterfaces.list.return_value = ListResult[
+            SwitchInterface
+        ](items=[], total=0)
         services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_by_id.return_value = None
 
         for endpoint in admin_endpoints:
             response = await mocked_api_client.request(
-                endpoint.method, endpoint.path, json={"mac_address": "00:11:22:33:44:55"}
+                endpoint.method,
+                endpoint.path,
+                json={"mac_address": "00:11:22:33:44:55"},
             )
             assert response.status_code == 401
 
             response = await mocked_api_client_user.request(
-                endpoint.method, endpoint.path, json={"mac_address": "00:11:22:33:44:55"}
+                endpoint.method,
+                endpoint.path,
+                json={"mac_address": "00:11:22:33:44:55"},
             )
             assert response.status_code == 403
 
@@ -178,9 +185,9 @@ class TestSwitchesApi(ApiCommonTests):
         """Test creating a new switch."""
         services_mock.switches = Mock(SwitchesService)
         services_mock.switchinterfaces = Mock(SwitchInterfacesService)
-        services_mock.switchinterfaces.list.return_value = ListResult[SwitchInterface](
-            items=[], total=0
-        )
+        services_mock.switchinterfaces.list.return_value = ListResult[
+            SwitchInterface
+        ](items=[], total=0)
         services_mock.switches.create.return_value = TEST_SWITCH
 
         new_switch_data = {
@@ -206,16 +213,21 @@ class TestSwitchesApi(ApiCommonTests):
         """Test creating a switch with duplicate MAC address fails."""
         services_mock.switches = Mock(SwitchesService)
         services_mock.switchinterfaces = Mock(SwitchInterfacesService)
-        services_mock.switchinterfaces.list.return_value = ListResult[SwitchInterface](
-            items=[SwitchInterface(
-                id=1,
-                created=datetime.now(timezone.utc),
-                updated=datetime.now(timezone.utc),
-                name="eth0",
-                mac_address="00:11:22:33:44:55",
-                switch_id=1,
-                ip_address_id=None,
-            )], total=1
+        services_mock.switchinterfaces.list.return_value = ListResult[
+            SwitchInterface
+        ](
+            items=[
+                SwitchInterface(
+                    id=1,
+                    created=datetime.now(timezone.utc),
+                    updated=datetime.now(timezone.utc),
+                    name="eth0",
+                    mac_address="00:11:22:33:44:55",
+                    switch_id=1,
+                    ip_address_id=None,
+                )
+            ],
+            total=1,
         )
 
         new_switch_data = {
