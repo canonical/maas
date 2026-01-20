@@ -37,4 +37,16 @@ class BootResource(MaasTimestampedBaseModel):
     selection_id: int | None = None
 
     def split_arch(self) -> tuple[str, str]:
-        return tuple(self.architecture.split("/", 1))  # pyright: ignore[reportReturnType]
+        arch, subarch = self.architecture.split("/", 1)
+        return arch, subarch
+
+    def split_name(self) -> tuple[str, str]:
+        if "/" in self.name:
+            osystem, release = self.name.split("/", 1)
+        else:
+            osystem = "custom"
+            release = self.name
+        return osystem, release
+
+    def get_title(self) -> str | None:
+        return self.extra.get("title")

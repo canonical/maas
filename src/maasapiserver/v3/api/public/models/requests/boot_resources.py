@@ -65,9 +65,6 @@ class BootResourceCreateRequest(BaseModel):
     sha256: Annotated[
         str, Header(description="The `sha256` hash of the resource.")
     ]
-    size: Annotated[
-        int, Header(description="The size of the resource in bytes.")
-    ]
     architecture: Annotated[
         str, Header(description="Architecture the boot resource supports.")
     ]
@@ -82,7 +79,7 @@ class BootResourceCreateRequest(BaseModel):
     base_image: Annotated[
         str | None,
         Header(
-            description="The Base OS image a custom image is built on top of. Only required for custom image."
+            description="The Base OS image a custom image is built on top of. Only required for images of type 'custom'."
         ),
     ]
 
@@ -117,10 +114,10 @@ class BootResourceCreateRequest(BaseModel):
         )
 
         if "/" in name:
-            osystem, release = name.split("/")
-            if osystem == "custom":
-                name = release
-            elif osystem not in supported_osystems:
+            # Don't strip `custom/` from the boot resource name. This was done
+            # in the past to deal with boot resource that were `GENERATED`.
+            osystem, _ = name.split("/")
+            if osystem not in supported_osystems:
                 raise ValidationException.build_for_field(
                     field="name",
                     message=f"Unsupported operating system {osystem}, supported operating systems: {supported_osystems}",
@@ -224,8 +221,7 @@ class BootResourceCreateRequest(BaseModel):
                         "commissioning_distro_series",
                     }
                 )
-                vals = configs.values()
-                return "/".join([val for val in vals])
+                return f"{configs['commissioning_osystem']}/{configs['commissioning_distro_series']}"
             else:
                 raise ValidationException.build_for_field(  # noqa: B904
                     field="base_image",

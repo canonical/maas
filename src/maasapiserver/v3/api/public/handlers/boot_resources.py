@@ -77,7 +77,6 @@ from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.image_local_files import (
     AsyncLocalBootResourceFile,
     LocalStoreAllocationFail,
-    LocalStoreFileSizeMismatch,
     LocalStoreInvalidHash,
 )
 from provisioningserver.utils.env import MAAS_ID
@@ -154,6 +153,10 @@ class CustomImagesHandler(Handler):
     ) -> ImageResponse:
         now = utcnow()
 
+        # The body is the file, so we can gather the file size from the Content-Length header.
+        # We don't need it as a parameter since the file is already validated through the SHA
+        file_size = int(request.headers["content-length"])
+
         boot_resource = await services.boot_resources.create(
             await create_request.to_builder(services=services)
         )
@@ -182,7 +185,7 @@ class CustomImagesHandler(Handler):
         lfile = AsyncLocalBootResourceFile(
             sha256=create_request.sha256,
             filename_on_disk=filename_on_disk,
-            total_size=create_request.size,
+            total_size=file_size,
         )
 
         try:
@@ -200,15 +203,6 @@ class CustomImagesHandler(Handler):
 
         except LocalStoreAllocationFail as e:
             raise InsufficientStorageException() from e
-        except LocalStoreFileSizeMismatch as e:
-            raise BadRequestException(
-                details=[
-                    BaseExceptionDetail(
-                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                        message=f"Provided size does not match the received one. Make sure the file uploaded has a size equal to {create_request.size} bytes.)",
-                    )
-                ]
-            ) from e
         except LocalStoreInvalidHash as e:
             raise BadRequestException(
                 details=[
@@ -231,7 +225,7 @@ class CustomImagesHandler(Handler):
             filename_on_disk=filename_on_disk,
             filetype=resource_filetype,
             sha256=create_request.sha256,
-            size=create_request.size,
+            size=file_size,
             largefile_id=None,
             resource_set_id=resource_set.id,
             created=now,
@@ -262,7 +256,7 @@ class CustomImagesHandler(Handler):
                 created=now,
                 updated=now,
                 file_id=resource_file.id,
-                size=create_request.size,
+                size=file_size,
                 region_id=region_info.id,
             ),
         )

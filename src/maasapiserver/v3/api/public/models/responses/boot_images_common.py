@@ -15,7 +15,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
 )
 from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
 from maascommon.utils.converters import human_readable_bytes
-from maascommon.utils.images import format_ubuntu_distro_series
+from maascommon.utils.images import format_image_title
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
@@ -41,7 +41,7 @@ class ImageResponse(HalResponse[BaseHal]):
             id=selection.id,
             os=selection.os,
             release=selection.release,
-            title=format_ubuntu_distro_series(selection.release),
+            title=format_image_title(selection.os, selection.release),
             architecture=selection.arch,
             boot_source_id=selection.boot_source_id,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
@@ -56,12 +56,14 @@ class ImageResponse(HalResponse[BaseHal]):
         cls, boot_resource: BootResource, self_base_hyperlink: str
     ):
         arch, _ = boot_resource.split_arch()
-        osystem, release = boot_resource.name.split("/")
+        osystem, release = boot_resource.split_name()
         return cls(
             id=boot_resource.id,
             os=osystem,
             release=release,
-            title=format_ubuntu_distro_series(release),
+            title=format_image_title(
+                osystem, release, boot_resource.get_title()
+            ),
             architecture=arch,
             boot_source_id=None,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]

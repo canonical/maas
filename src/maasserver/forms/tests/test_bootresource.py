@@ -49,14 +49,14 @@ class TestBootResourceForm(MAASServerTestCase):
         return random.choice(list(filetypes.items()))
 
     def test_creates_boot_resource(self):
-        name = factory.make_name("name")
+        name = "custom/" + factory.make_name("name")
         title = factory.make_name("title")
         architecture = make_usable_architecture(self)
         subarch = architecture.split("/")[1]
         upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
         data = {
-            "name": "custom/" + name,
+            "name": name,
             "title": title,
             "architecture": architecture,
             "filetype": upload_type,

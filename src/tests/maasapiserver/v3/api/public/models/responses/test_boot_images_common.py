@@ -50,7 +50,7 @@ class TestImageResponse:
     def test_from_model__boot_resource(self) -> None:
         boot_resource = BootResource(
             id=1,
-            name="custom-ubuntu/noble",
+            name="custom/release",
             architecture="amd64/generic",
             rtype=BootResourceType.UPLOADED,
             extra={},
@@ -62,9 +62,9 @@ class TestImageResponse:
             self_base_hyperlink=f"{V3_API_PREFIX}/boot_resources",
         )
         assert response.id == boot_resource.id
-        assert response.os == "custom-ubuntu"
-        assert response.release == "noble"
-        assert response.title == "24.04 LTS"
+        assert response.os == "custom"
+        assert response.release == "release"
+        assert response.title == "Custom Release"
         assert response.architecture == "amd64"
         assert response.boot_source_id is None
         assert (

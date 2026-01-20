@@ -31,3 +31,13 @@ def format_ubuntu_distro_series(series):
     if row is None:
         return series
     return row["version"]
+
+
+def format_image_title(osystem: str, release: str, title: str | None = None):
+    if title:
+        return title
+
+    if osystem == "ubuntu":
+        return format_ubuntu_distro_series(release)
+
+    return f"{osystem.capitalize()} {release.capitalize()}"

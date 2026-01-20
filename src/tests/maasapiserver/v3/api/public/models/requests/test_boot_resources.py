@@ -85,7 +85,7 @@ class TestBootResourceCreateRequest:
 
         validated_name = await request._validate_name(name, services_mock)
 
-        assert validated_name == "my_custom_image"
+        assert validated_name == "custom/my_custom_image"
 
     async def test_validate_name_supported(self) -> None:
         services_mock = Mock(ServiceCollectionV3)

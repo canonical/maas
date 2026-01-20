@@ -2625,19 +2625,14 @@ class BootResourceForm(MAASModelForm):
     def clean_name(self):
         """Clean the name field.
 
-        The 'custom/' is reserved for custom uploaded images and should not
-        be present in the name field when uploaded. This allows users to
-        provide 'custom/' where it will be removed and the image will be marked
-        uploaded. Without this the image would be uploaded as Generated for
-        a custom OS which is an invalid boot resource.
+        Don't strip `custom/` from the boot resource name. This was done
+        previously to deal with boot resource that were `GENERATED`.
         """
         supported_osystems = self._get_supported_osystems()
         name = self.cleaned_data["name"]
         if "/" in name:
-            osystem, release = name.split("/")
-            if osystem == "custom":
-                name = release
-            elif osystem not in supported_osystems:
+            osystem, _ = name.split("/")
+            if osystem not in supported_osystems:
                 raise ValidationError(
                     "Unsupport operating system %s, supported operating "
                     "systems: %s" % (osystem, supported_osystems)

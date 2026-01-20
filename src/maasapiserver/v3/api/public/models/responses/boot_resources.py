@@ -23,7 +23,7 @@ class BootResourceResponse(HalResponse[BaseHal]):
     def from_model(
         cls, boot_resource: BootResource, self_base_hyperlink: str
     ) -> Self:
-        os, release = boot_resource.name.split("/", maxsplit=1)
+        os, release = boot_resource.split_name()
         arch, subarch = boot_resource.split_arch()
         return cls(
             id=boot_resource.id,
@@ -54,7 +54,7 @@ class BootloaderResponse(HalResponse[BaseHal]):
     def from_model(
         cls, boot_resource: BootResource, self_base_hyperlink: str
     ) -> Self:
-        name = boot_resource.name.split("/")[0]
+        name, _ = boot_resource.split_name()
         arch, _ = boot_resource.split_arch()
         return cls(
             id=boot_resource.id,

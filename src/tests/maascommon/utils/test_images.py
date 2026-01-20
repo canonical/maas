@@ -4,6 +4,7 @@
 import pytest
 
 from maascommon.utils.images import (
+    format_image_title,
     format_ubuntu_distro_series,
     get_distro_series_info_row,
 )
@@ -33,4 +34,21 @@ def test_get_distro_series_info_row_non_existent(series: str) -> None:
 )
 def test_format_ubuntu_distro_series(series: str, expected: str) -> None:
     res = format_ubuntu_distro_series(series)
+    assert res == expected
+
+
+@pytest.mark.parametrize(
+    "osystem,release,title,expected",
+    [
+        ("ubuntu", "plucky", None, "25.04"),
+        ("ubuntu", "noble", None, "24.04 LTS"),
+        ("foo", "bar", "My custom title", "My custom title"),
+        ("foo", "bar", None, "Foo Bar"),
+        ("windows", "2016", None, "Windows 2016"),
+    ],
+)
+def test_format_image_title(
+    osystem: str, release: str, title: str | None, expected: str
+) -> None:
+    res = format_image_title(osystem, release, title)
     assert res == expected

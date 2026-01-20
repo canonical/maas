@@ -67,7 +67,6 @@ from maasservicelayer.services.bootresourcesets import BootResourceSetsService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
-from maasservicelayer.utils.image_local_files import LocalStoreFileSizeMismatch
 from maastesting.factory import factory
 from tests.fixtures import AsyncContextManagerMock
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -253,7 +252,6 @@ class TestCustomImagesApi(ApiCommonTests):
         headers = {
             "name": "my-image",
             "sha256": sha256_str,
-            "size": str(file_size),
             "architecture": "amd64/generic",
             "Content-Type": "application/octet-stream",
         }
@@ -341,7 +339,6 @@ class TestCustomImagesApi(ApiCommonTests):
         headers = {
             "name": "my-image",
             "sha256": factory.make_hex_string(size=16),
-            "size": str(file_size),
             "architecture": "amd64/generic",
             "Content-Type": "application/octet-stream",
         }
@@ -363,70 +360,6 @@ class TestCustomImagesApi(ApiCommonTests):
             error_response.details[0].type == INVALID_ARGUMENT_VIOLATION_TYPE  # pyright: ignore[reportOptionalSubscript]
         )
         assert "SHA256" in error_response.details[0].message  # pyright: ignore[reportOptionalSubscript]
-
-    @patch(
-        "maasservicelayer.utils.image_local_files.AsyncLocalBootResourceFile"
-    )
-    @patch(
-        "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
-    )
-    async def test_upload_custom_image_400_size_does_not_match(
-        self,
-        request_to_builder_mock: MagicMock,
-        async_local_file_mock: MagicMock,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
-    ) -> None:
-        file_name = "test.bin"
-        file_size = 1024
-        file_data = self.create_dummy_binary_upload_file(
-            name=file_name, size_in_bytes=file_size
-        )
-
-        request_to_builder_mock.return_value = None
-
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.create.return_value = TEST_BOOT_RESOURCE_1
-        services_mock.boot_resources.get_next_version_name.return_value = (
-            TEST_BOOT_RESOURCE_SET.version
-        )
-
-        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
-        services_mock.boot_resource_sets.create.return_value = (
-            TEST_BOOT_RESOURCE_SET
-        )
-
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
-        services_mock.boot_resource_files.calculate_filename_on_disk.return_value = file_name
-
-        async_local_file_mock.store.side_effect = LocalStoreFileSizeMismatch()
-
-        headers = {
-            "name": "my-image",
-            "sha256": factory.make_hex_string(size=16),
-            "size": str(123456),
-            "architecture": "amd64/generic",
-            "Content-Type": "application/octet-stream",
-        }
-
-        raw_data = file_data.read()
-        response = await mocked_api_client_admin.post(
-            url=f"{self.BASE_PATH}",
-            headers=headers,
-            content=raw_data,
-        )
-
-        assert response.status_code == 400
-
-        error_response = ErrorBodyResponse(**response.json())
-
-        assert error_response.code == 400
-        assert error_response.kind == "Error"
-        assert (
-            error_response.details[0].type == INVALID_ARGUMENT_VIOLATION_TYPE  # pyright: ignore[reportOptionalSubscript]
-        )
-
-        assert "size" in error_response.details[0].message
 
     @patch("maasservicelayer.utils.image_local_files.aiofiles.os.statvfs")
     @patch(
@@ -460,10 +393,11 @@ class TestCustomImagesApi(ApiCommonTests):
         statvfs_result.f_frsize = 4096
         statvfs_mock.return_value = statvfs_result
 
+        content = b"a" * 100
+
         headers = {
             "name": "my-image",
-            "sha256": factory.make_hex_string(size=16),
-            "size": str(12345),
+            "sha256": str(hashlib.sha256(content).hexdigest()),
             "architecture": "amd64/generic",
             "Content-Type": "application/octet-stream",
         }
@@ -471,7 +405,7 @@ class TestCustomImagesApi(ApiCommonTests):
         response = await mocked_api_client_admin.post(
             url=f"{self.BASE_PATH}",
             headers=headers,
-            content=bytes(),
+            content=content,
         )
 
         assert response.status_code == 507
