@@ -50,20 +50,6 @@ class OnieHeaders(BaseModel):
             return None
 
 
-class TetherScriptRequest(BaseModel):
-    """Request body for the tether script endpoint."""
-
-    pass  # No body needed, all info comes from headers
-
-
-class InstallerRequest(BaseModel):
-    """Request body sent by the tether script."""
-
-    mac_address: str = Field(
-        ..., description="MAC address of the switch's management port"
-    )
-
-
 def _find_nos_script(filename: str) -> Path:
     """Find a NOS script file in the builtin_scripts directory.
 
@@ -155,11 +141,9 @@ class NOSInstallerHandler(Handler):
         # Get the configured MAAS URL from the region configuration
         with RegionConfiguration.open() as config:
             # Remove the /MAAS suffix if present, as we want just the base URL
-            logger.info(config.maas_url)
             api_url = (
                 str(config.maas_url).removesuffix("/MAAS").removesuffix("/")
             )
-        logger.info(f"API URL for tether script: {api_url}")
         script = generate_tether_script(
             api_url=api_url,
             mac_address=onie_headers.eth_address
