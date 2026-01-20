@@ -1716,6 +1716,7 @@ class TestGetConfig(MAASServerTestCase):
             base_image="ubuntu/%s" % base_image_series,
         )
         node = self.make_node(
+            arch_name=custom_image.architecture.split("/")[0],
             status=NODE_STATUS.DEPLOYING,
             osystem="custom",
             distro_series=image_name,
@@ -2277,6 +2278,37 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         self.assertEqual(configs["commissioning_osystem"], osystem)
         self.assertEqual(configs["commissioning_distro_series"], series)
         self.assertEqual(subarch, config_arch)
+
+    def test_get_boot_config_for_machine_multiple_custom_image_with_same_name(
+        self,
+    ):
+        subarch = "ga-22.04"
+        factory.make_usable_boot_resource(
+            name="ubuntu/jammy", architecture=f"amd64/{subarch}"
+        )
+        boot_resource = factory.make_usable_boot_resource(
+            architecture="amd64/generic", base_image="ubuntu/jammy", name="foo"
+        )
+        factory.make_usable_boot_resource(
+            architecture="arm64/generic", base_image="ubuntu/jammy", name="foo"
+        )
+        machine = factory.make_Machine(
+            architecture="amd64/generic",
+            status=NODE_STATUS.DEPLOYING,
+            osystem="custom",
+            distro_series=boot_resource.name,
+        )
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
+
+        osystem, series, config_arch, final_osystem, final_series = (
+            get_boot_config_for_machine(machine, configs, "xinstall")
+        )
+
+        self.assertEqual("ubuntu", osystem)
+        self.assertEqual("jammy", series)
+        self.assertEqual(subarch, config_arch)
+        self.assertEqual("custom", final_osystem)
+        self.assertEqual("foo", final_series)
 
     def test_get_boot_config_for_machine_ignores_machine_hwe_kernel_for_xinstall(
         self,

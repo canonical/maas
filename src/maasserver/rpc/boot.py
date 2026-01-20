@@ -307,7 +307,18 @@ def get_boot_config_for_machine(
             if final_osystem == "custom":
                 # Note: `series` actually contains a name of the
                 # custom image in this context.
-                install_image = BootResource.objects.get(name=final_series)
+                arch, _ = machine.split_arch()
+                if arch != "":
+                    # LP: #2138312: use the machine architecture to distinguish
+                    # between custom images of the same name
+                    install_image = BootResource.objects.get(
+                        name=final_series, architecture__startswith=f"{arch}/"
+                    )
+                else:
+                    install_image = BootResource.objects.get(
+                        name=final_series,
+                    )
+
                 boot_osystem, boot_series = install_image.split_base_image()
                 # LP:2013529, machine HWE kernel might not exist for
                 # given base image
