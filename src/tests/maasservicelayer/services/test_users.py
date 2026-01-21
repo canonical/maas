@@ -704,9 +704,6 @@ class TestUsersService:
     async def test_has_users(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        users_repository.exists.return_value = True
+        await users_service.has_users()
 
-        has_users = await users_service.has_users()
-
-        users_repository.exists.assert_called_once_with(query=QuerySpec())
-        assert has_users
+        users_repository.has_users.assert_awaited_once()

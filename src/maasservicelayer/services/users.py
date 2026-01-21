@@ -405,7 +405,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         return True if (user_profile and user_profile.provider_id) else False
 
     async def has_users(self) -> bool:
-        return await self.repository.exists(query=QuerySpec())
+        return await self.repository.has_users()
 
     async def clear_all_sessions(self) -> None:
         await self.repository.clear_all_sessions()

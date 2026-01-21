@@ -320,3 +320,17 @@ class TestUsersRepository:
 
         assert count_provider1 == 2
         assert count_provider2 == 1
+
+    async def test_has_users(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        await create_test_user(fixture, username="MAAS")
+        users_repository = UsersRepository(Context(connection=db_connection))
+
+        has_users = await users_repository.has_users()
+        assert has_users is False
+
+        await create_test_user(fixture, username="regular_user")
+
+        has_users = await users_repository.has_users()
+        assert has_users is True

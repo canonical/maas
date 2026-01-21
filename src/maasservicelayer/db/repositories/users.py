@@ -313,3 +313,12 @@ class UsersRepository(BaseRepository[User]):
         if not result:
             return None
         return UserWithSummary(**result._asdict())
+
+    async def has_users(self) -> bool:
+        stmt = (
+            select(1)
+            .where(not_(UserTable.c.username.in_(SYSTEM_USERS)))
+            .limit(1)
+        )
+        result = (await self.execute_stmt(stmt)).one_or_none()
+        return result is not None
