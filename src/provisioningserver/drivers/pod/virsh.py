@@ -252,6 +252,7 @@ REQUIRED_PACKAGES = [
 
 
 SUPPORTED_STORAGE_TYPES = ("dir", "logical", "zfs")
+STORAGE_TYPE_TO_SOURCETYPE = {"dir": "file", "logical": "file", "zfs": "block"}
 
 
 class VirshVMState:
@@ -913,7 +914,7 @@ class VirshSSH(pexpect.spawn):
             ]
             + extra_args,
         )
-        return usable_pool, volume
+        return usable_pool, volume, usable_pool_type
 
     def delete_local_volume(self, pool, volume):
         """Delete a local volume from `pool` with `volume`."""
@@ -923,7 +924,7 @@ class VirshSSH(pexpect.spawn):
         """Return the path to the file from `pool` and `volume`."""
         return self.run(["vol-path", volume, "--pool", pool])
 
-    def attach_local_volume(self, domain, pool, volume, device):
+    def attach_local_volume(self, domain, pool, volume, device, storage_type):
         """Attach `volume` in `pool` to `domain` as `device`."""
         vol_path = self.get_volume_path(pool, volume)
         serial = os.path.basename(vol_path)
@@ -936,7 +937,8 @@ class VirshSSH(pexpect.spawn):
                 "--targetbus",
                 "virtio",
                 "--sourcetype",
-                "file",
+                # LP: #2135830
+                STORAGE_TYPE_TO_SOURCETYPE[storage_type],
                 "--config",
                 "--serial",
                 serial,
@@ -1204,10 +1206,10 @@ class VirshSSH(pexpect.spawn):
                 raise error
 
         # Attach the created disks in order.
-        for idx, (pool, volume) in enumerate(created_disks):
+        for idx, (pool, volume, storage_type) in enumerate(created_disks):
             block_name = self.get_block_name_from_idx(idx)
             self.attach_local_volume(
-                request.hostname, pool, volume, block_name
+                request.hostname, pool, volume, block_name, storage_type
             )
 
         # Check machine for any startup errors.
