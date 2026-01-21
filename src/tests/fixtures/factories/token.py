@@ -1,9 +1,14 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import timedelta
 from typing import Any
 
-from maasservicelayer.models.tokens import OIDCRevokedToken, Token
+from maasservicelayer.models.tokens import (
+    OIDCRevokedToken,
+    RefreshToken,
+    Token,
+)
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -25,6 +30,26 @@ async def create_test_user_token(
 
     [created_token] = await fixture.create("piston3_token", [token])
     return Token(**created_token)
+
+
+async def create_test_refresh_token(
+    fixture: Fixture,
+    **extra_details: Any,
+) -> RefreshToken:
+    now = utcnow()
+    refresh_token = {
+        "expires_at": now + timedelta(days=1),
+        "token": "refresh_token_abc123",
+        "user_id": 1,
+        "created": now,
+        "updated": now,
+    }
+
+    refresh_token.update(extra_details)
+    [created_refresh_token] = await fixture.create(
+        "maasserver_refreshtoken", [refresh_token]
+    )
+    return RefreshToken(**created_refresh_token)
 
 
 async def create_test_revoked_token(

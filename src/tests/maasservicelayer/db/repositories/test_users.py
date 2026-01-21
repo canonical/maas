@@ -19,6 +19,7 @@ from tests.fixtures.factories.node import (
     create_test_machine_entry,
     create_test_rack_and_region_controller_entry,
 )
+from tests.fixtures.factories.token import create_test_refresh_token
 from tests.fixtures.factories.user import (
     create_test_session,
     create_test_user,
@@ -71,6 +72,41 @@ class TestUsersRepository:
         assert (
             await users_repository.find_by_sessionid("test_session")
         ) is None
+
+    async def test_find_by_refresh_token(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        await create_test_refresh_token(
+            fixture=fixture,
+            user_id=user.id,
+            token="test_refresh_token",
+            expires_at=utcnow() + datetime.timedelta(hours=1),
+        )
+
+        users_repository = UsersRepository(Context(connection=db_connection))
+
+        fetched_user = await users_repository.find_by_refresh_token(
+            "test_refresh_token"
+        )
+        assert user == fetched_user
+
+    async def test_find_by_refresh_token_expired(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        await create_test_refresh_token(
+            fixture=fixture,
+            user_id=user.id,
+            token="test_refresh_token",
+            expires_at=utcnow() - datetime.timedelta(hours=1),
+        )
+
+        users_repository = UsersRepository(Context(connection=db_connection))
+        fetched_user = await users_repository.find_by_refresh_token(
+            "test_refresh_token"
+        )
+        assert (fetched_user) is None
 
     async def test_clear_all_sessions(
         self, db_connection: AsyncConnection, fixture: Fixture

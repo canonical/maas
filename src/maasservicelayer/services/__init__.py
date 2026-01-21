@@ -104,6 +104,7 @@ from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.db.repositories.tags import TagsRepository
 from maasservicelayer.db.repositories.tokens import (
     OIDCRevokedTokenRepository,
+    RefreshTokenRepository,
     TokensRepository,
 )
 from maasservicelayer.db.repositories.ui_subnets import UISubnetsRepository
@@ -198,6 +199,7 @@ from maasservicelayer.services.tags import TagsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.services.tokens import (
     OIDCRevokedTokenService,
+    RefreshTokenService,
     TokensService,
 )
 from maasservicelayer.services.ui_subnets import UISubnetsService
@@ -282,6 +284,7 @@ class ServiceCollectionV3:
     package_repositories: PackageRepositoriesService
     racks: RacksService
     rdns: RDNSService
+    refresh_tokens: RefreshTokenService
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
     scriptresults: ScriptResultsService
@@ -511,6 +514,11 @@ class ServiceCollectionV3:
         )
         services.tokens = TokensService(
             context=context, repository=TokensRepository(context)
+        )
+        services.refresh_tokens = RefreshTokenService(
+            context=context,
+            repository=RefreshTokenRepository(context),
+            config_service=services.configurations,
         )
         services.oidc_revoked_tokens = OIDCRevokedTokenService(
             context=context, repository=OIDCRevokedTokenRepository(context)

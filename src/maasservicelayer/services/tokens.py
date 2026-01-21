@@ -1,19 +1,28 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import timedelta
 import hashlib
 
 from maasservicelayer.builders.tokens import (
     OIDCRevokedTokenBuilder,
+    RefreshTokenBuilder,
     TokenBuilder,
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.tokens import (
     OIDCRevokedTokenRepository,
+    RefreshTokenRepository,
     TokensRepository,
 )
-from maasservicelayer.models.tokens import OIDCRevokedToken, Token
+from maasservicelayer.models.configurations import RefreshTokenDurationConfig
+from maasservicelayer.models.tokens import (
+    OIDCRevokedToken,
+    RefreshToken,
+    Token,
+)
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.utils.date import utcnow
 
 
@@ -31,6 +40,33 @@ class TokensService(BaseService[Token, TokensRepository, TokenBuilder]):
 
     async def get_user_apikeys(self, username: str) -> list[str]:
         return await self.repository.get_user_apikeys(username)
+
+
+class RefreshTokenService(
+    BaseService[RefreshToken, RefreshTokenRepository, RefreshTokenBuilder]
+):
+    def __init__(
+        self,
+        context: Context,
+        repository: RefreshTokenRepository,
+        config_service: ConfigurationsService,
+    ):
+        self.config_service = config_service
+        super().__init__(context, repository)
+
+    async def create_refresh_token(
+        self, token: str, user_id: int
+    ) -> RefreshToken:
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        expires_at = utcnow() + timedelta(
+            seconds=await self.config_service.get(
+                RefreshTokenDurationConfig.name
+            )
+        )
+        builder = RefreshTokenBuilder(
+            user_id=user_id, token=token_hash, expires_at=expires_at
+        )
+        return await super().create(builder)
 
 
 class OIDCRevokedTokenService(

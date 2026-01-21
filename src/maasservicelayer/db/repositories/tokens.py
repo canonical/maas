@@ -12,10 +12,15 @@ from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     ConsumerTable,
     OIDCRevokedTokenTable,
+    RefreshTokenTable,
     TokenTable,
     UserTable,
 )
-from maasservicelayer.models.tokens import OIDCRevokedToken, Token
+from maasservicelayer.models.tokens import (
+    OIDCRevokedToken,
+    RefreshToken,
+    Token,
+)
 
 
 class TokenClauseFactory(ClauseFactory):
@@ -77,6 +82,14 @@ class TokensRepository(BaseRepository[Token]):
 
         result = (await self.execute_stmt(stmt)).all()
         return [str(row[0]) for row in result]
+
+
+class RefreshTokenRepository(BaseRepository[RefreshToken]):
+    def get_repository_table(self) -> Table:
+        return RefreshTokenTable
+
+    def get_model_factory(self) -> type[RefreshToken]:
+        return RefreshToken
 
 
 class OIDCRevokedTokenRepository(BaseRepository[OIDCRevokedToken]):

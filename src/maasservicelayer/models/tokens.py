@@ -4,7 +4,11 @@
 from datetime import datetime
 from typing import Optional
 
-from maasservicelayer.models.base import generate_builder, MaasBaseModel
+from maasservicelayer.models.base import (
+    generate_builder,
+    MaasBaseModel,
+    MaasTimestampedBaseModel,
+)
 
 
 @generate_builder()
@@ -19,6 +23,13 @@ class Token(MaasBaseModel):
     callback_confirmed: bool
     consumer_id: int
     user_id: Optional[int]
+
+
+@generate_builder()
+class RefreshToken(MaasTimestampedBaseModel):
+    token: str
+    expires_at: datetime
+    user_id: int
 
 
 @generate_builder()

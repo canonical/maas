@@ -1791,6 +1791,23 @@ RDNSTable = Table(
     Index("maasserver_rdns_observer_id_85a64c6b", "observer_id"),
 )
 
+RefreshTokenTable = Table(
+    "maasserver_refreshtoken",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("token", String(64), nullable=False, unique=True),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        nullable=False,
+    ),
+    Index("maasserver_refreshtoken_user_id_5f4d1d1a", "user_id"),
+)
+
 RegionControllerProcessTable = Table(
     "maasserver_regioncontrollerprocess",
     METADATA,

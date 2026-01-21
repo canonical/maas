@@ -239,6 +239,17 @@ class TestUsersService:
         await users_service.get_by_session_id(sessionid="sessionid")
         users_repository.find_by_sessionid.assert_called_once_with("sessionid")
 
+    async def test_get_by_refresh_token(
+        self, users_service: UsersService, users_repository: Mock, mocker
+    ) -> None:
+        mocker.patch.object(
+            users_module, "hashlib"
+        ).sha256.return_value.hexdigest.return_value = "mock_sha256_hash"
+        await users_service.get_by_refresh_token(token="refresh_token")
+        users_repository.find_by_refresh_token.assert_called_once_with(
+            "mock_sha256_hash"
+        )
+
     async def test_get_user_profile(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:

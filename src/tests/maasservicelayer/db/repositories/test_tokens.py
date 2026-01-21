@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import timedelta
 from typing import Sequence
 
 import pytest
@@ -9,6 +10,7 @@ from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.builders.tokens import (
     OIDCRevokedTokenBuilder,
+    RefreshTokenBuilder,
     TokenBuilder,
 )
 from maasservicelayer.context import Context
@@ -19,13 +21,19 @@ from maasservicelayer.db.repositories.base import (
 )
 from maasservicelayer.db.repositories.tokens import (
     OIDCRevokedTokenRepository,
+    RefreshTokenRepository,
     TokenClauseFactory,
     TokensRepository,
 )
-from maasservicelayer.models.tokens import OIDCRevokedToken, Token
+from maasservicelayer.models.tokens import (
+    OIDCRevokedToken,
+    RefreshToken,
+    Token,
+)
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.consumer import create_test_user_consumer
 from tests.fixtures.factories.token import (
+    create_test_refresh_token,
     create_test_revoked_token,
     create_test_user_token,
 )
@@ -185,6 +193,45 @@ class TestConsumersRepository(RepositoryCommonTests[Token]):
         tokens_repository = TokensRepository(Context(connection=db_connection))
         apikeys = await tokens_repository.get_user_apikeys(user.username)
         assert apikeys[0] == apikey
+
+
+@pytest.mark.usefixtures("ensuremaasdb")
+@pytest.mark.asyncio
+class TestRefreshTokenRepository(RepositoryCommonTests[RefreshToken]):
+    @pytest.fixture
+    async def _setup_test_list(
+        self, fixture: Fixture, num_objects: int
+    ) -> list[RefreshToken]:
+        return [
+            await create_test_refresh_token(
+                fixture=fixture, user_id=i, token=f"refresh_token_{i}"
+            )
+            for i in range(num_objects)
+        ]
+
+    @pytest.fixture
+    async def repository_instance(
+        self, db_connection: AsyncConnection
+    ) -> RefreshTokenRepository:
+        return RefreshTokenRepository(Context(connection=db_connection))
+
+    @pytest.fixture
+    async def instance_builder(
+        self, fixture: Fixture, *args, **kwargs
+    ) -> RefreshTokenBuilder:
+        return RefreshTokenBuilder(
+            token="refresh_token_123",
+            expires_at=utcnow() + timedelta(days=1),
+            user_id=2,
+        )
+
+    @pytest.fixture
+    async def instance_builder_model(self) -> type[RefreshTokenBuilder]:
+        return RefreshTokenBuilder
+
+    @pytest.fixture
+    async def created_instance(self, fixture: Fixture) -> RefreshToken:
+        return await create_test_refresh_token(fixture)
 
 
 @pytest.mark.usefixtures("ensuremaasdb")

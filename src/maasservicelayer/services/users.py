@@ -1,6 +1,7 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import hashlib
 from time import time
 from typing import List
 
@@ -151,6 +152,10 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
 
     async def get_by_session_id(self, sessionid: str) -> User | None:
         return await self.repository.find_by_sessionid(sessionid)
+
+    async def get_by_refresh_token(self, token: str) -> User | None:
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        return await self.repository.find_by_refresh_token(token_hash)
 
     async def get_user_profile(self, username: str) -> UserProfile | None:
         return await self.repository.get_user_profile(username)

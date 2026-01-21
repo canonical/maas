@@ -976,6 +976,19 @@ class SessionLengthConfig(Config[Optional[int]]):
     )
 
 
+class RefreshTokenDurationConfig(Config[Optional[int]]):
+    name: ClassVar[str] = "refresh_token_duration"
+    hook_required: ClassVar[bool] = True
+    default: ClassVar[Optional[int]] = 2592000  # 30 days
+    description: ClassVar[str] = "Refresh token duration (seconds)"
+    help_text: ClassVar[Optional[str]] = (
+        "Configure duration of refresh token (seconds). Minimum 10 minutes, maximum 60 days (5184000s)."
+    )
+    value: Optional[int] = Field(
+        default=default, description=description, ge=600, le=5184000
+    )
+
+
 class AutoVlanCreationConfig(Config[Optional[bool]]):
     name: ClassVar[str] = "auto_vlan_creation"
     default: ClassVar[Optional[bool]] = True

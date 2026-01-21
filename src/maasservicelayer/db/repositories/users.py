@@ -27,6 +27,7 @@ from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     NodeTable,
+    RefreshTokenTable,
     SessionTable,
     SshKeyTable,
     UserProfileTable,
@@ -121,6 +122,23 @@ class UsersRepository(BaseRepository[User]):
             select("*")
             .select_from(UserTable)
             .filter(eq(UserTable.c.id, user_id))
+        )
+        row = (await self.execute_stmt(stmt)).one_or_none()
+        if not row:
+            return None
+        return User(**row._asdict())
+
+    async def find_by_refresh_token(self, token_hash: str) -> User | None:
+        stmt = (
+            select(UserTable)
+            .select_from(RefreshTokenTable)
+            .join(UserTable, RefreshTokenTable.c.user_id == UserTable.c.id)
+            .where(
+                and_(
+                    eq(RefreshTokenTable.c.token, token_hash),
+                    gt(RefreshTokenTable.c.expires_at, utcnow()),
+                )
+            )
         )
         row = (await self.execute_stmt(stmt)).one_or_none()
         if not row:
