@@ -4,6 +4,7 @@
 from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import Mock
 
+from netaddr.core import AddrFormatError
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.client import Client
@@ -152,18 +153,60 @@ class TestConfigureAgentActivity:
         )
         services_mock.staticipaddress.get_for_nodes.assert_called_once_with(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.or_clauses(
+                where=StaticIPAddressClauseFactory.and_clauses(
                     [
-                        StaticIPAddressClauseFactory.with_node_type(
-                            NodeTypeEnum.REGION_CONTROLLER
+                        StaticIPAddressClauseFactory.or_clauses(
+                            [
+                                StaticIPAddressClauseFactory.with_node_type(
+                                    NodeTypeEnum.REGION_CONTROLLER
+                                ),
+                                StaticIPAddressClauseFactory.with_node_type(
+                                    NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                                ),
+                            ]
                         ),
-                        StaticIPAddressClauseFactory.with_node_type(
-                            NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                        StaticIPAddressClauseFactory.not_clause(
+                            StaticIPAddressClauseFactory.with_ip(None)
                         ),
                     ]
                 )
             )
         )
+
+    async def test_get_region_controller_endpoints_with_blank(
+        self, services_mock: ServiceCollectionV3, monkeypatch
+    ):
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.staticipaddress = Mock(StaticIPAddressService)
+        services_mock.staticipaddress.get_for_nodes.return_value = [
+            StaticIPAddress(
+                id=0,
+                ip=None,
+                alloc_type=IpAddressType.STICKY,
+                lease_time=0,
+                temp_expires_on=None,
+                subnet_id=0,
+            ),
+        ]
+
+        services_mock.produce.return_value = services_mock
+        monkeypatch.setattr(
+            activity_module, "ServiceCollectionV3", services_mock
+        )
+
+        services_cache = CacheForServices()
+        configure_activities = ConfigureAgentActivity(
+            Mock(Database),
+            services_cache,
+            connection=Mock(AsyncConnection),
+            temporal_client=Mock(Client),
+        )
+
+        with pytest.raises(
+            AddrFormatError,
+            match=r"failed to detect a valid IP address from 'None'",
+        ):
+            await configure_activities.get_region_controller_endpoints()
 
     async def test_get_resolver_config_rack_and_region(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database

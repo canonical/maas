@@ -118,13 +118,20 @@ class ConfigureAgentActivity(ActivityBase):
         async with self.start_transaction() as services:
             result = await services.staticipaddress.get_for_nodes(
                 query=QuerySpec(
-                    where=StaticIPAddressClauseFactory.or_clauses(
+                    where=StaticIPAddressClauseFactory.and_clauses(
                         [
-                            StaticIPAddressClauseFactory.with_node_type(
-                                NodeTypeEnum.REGION_CONTROLLER
+                            StaticIPAddressClauseFactory.or_clauses(
+                                [
+                                    StaticIPAddressClauseFactory.with_node_type(
+                                        NodeTypeEnum.REGION_CONTROLLER
+                                    ),
+                                    StaticIPAddressClauseFactory.with_node_type(
+                                        NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                                    ),
+                                ]
                             ),
-                            StaticIPAddressClauseFactory.with_node_type(
-                                NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                            StaticIPAddressClauseFactory.not_clause(
+                                StaticIPAddressClauseFactory.with_ip(None)
                             ),
                         ]
                     )
