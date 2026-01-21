@@ -350,7 +350,9 @@ def initialize_image_storage(region: RegionController):
     # TODO: Modify this when we have a better way to handle custom bootloaders
     # don't delete custom dir, contains custom bootloaders
     existing_files = {
-        file for file in target_dir.iterdir() if not file.name == "custom"
+        file
+        for file in target_dir.iterdir()
+        if file.name not in ("custom", "lost+found")
     }
 
     for file in existing_files - expected_files:
