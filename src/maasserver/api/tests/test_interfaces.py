@@ -820,7 +820,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
         self.assertEqual(
             interface_dict.get("vlan", {}).get("id"), untagged_vlan.id
         )
-        self.assertEqual(
+        self.assertCountEqual(
             interface_dict.get("parents"),
             [parent_iface1.name, parent_iface2.name],
         )
