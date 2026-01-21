@@ -4,7 +4,8 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import Depends, Header, Request, Response
+from fastapi import Depends, Header, Query, Request, Response
+from pydantic import conlist
 from starlette import status
 import structlog
 
@@ -100,6 +101,7 @@ class CustomImagesHandler(Handler):
             "upload_custom_image",
             "list_custom_images",
             "get_custom_image_by_id",
+            "bulk_delete_custom_images",
             "delete_custom_image_by_id",
         ]
 
@@ -409,6 +411,42 @@ class CustomImagesHandler(Handler):
                 )
             ),
             etag_if_match=etag_if_match,
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/custom_images",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            404: {"model": NotFoundBodyResponse},
+            412: {"model": PreconditionFailedBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def bulk_delete_custom_images(
+        self,
+        ids: conlist(int, min_items=1, unique_items=True) = Query(  # pyright: ignore[reportInvalidTypeForm] # noqa: B008
+            description="ids of custom images to delete", alias="id"
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        await services.boot_resources.delete_many(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_ids(ids),
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.UPLOADED
+                        ),
+                    ]
+                )
+            ),
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 

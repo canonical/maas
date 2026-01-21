@@ -162,6 +162,7 @@ class TestCustomImagesApi(ApiCommonTests):
     def admin_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="POST", path=self.BASE_PATH),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}?id=1"),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
         ]
 
@@ -631,6 +632,31 @@ class TestCustomImagesApi(ApiCommonTests):
                 )
             ),
             etag_if_match=wrong_etag,
+        )
+
+    async def test_bulk_delete_custom_images(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.delete_many.return_value = None
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}?id=1&id=2"
+        )
+        assert response.status_code == 204
+        services_mock.boot_resources.delete_many.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_ids([1, 2]),
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.UPLOADED
+                        ),
+                    ]
+                )
+            )
         )
 
 
