@@ -264,6 +264,8 @@ class TestInitialiseImageStorage:
     ):
         custom_dir = image_store_dir / "custom"
         custom_dir.mkdir(parents=True)
+        lost_found_dir = image_store_dir / "lost+found"
+        lost_found_dir.mkdir(parents=True)
         extra_file = image_store_dir / "abcde"
         extra_file.write_text("some content")
         extra_dir = image_store_dir / "somedir"
@@ -279,6 +281,7 @@ class TestInitialiseImageStorage:
         assert not extra_dir.exists()
         assert not extra_symlink.exists()
         assert custom_dir.exists()
+        assert lost_found_dir.exists()
 
     def test_remove_extra_symlink(
         self, controller, image_store_dir: Path, tmp_path
