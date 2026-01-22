@@ -445,9 +445,10 @@ class BootResourceHandler(Handler):
                 return False
         return True
 
-    def get_can_deploy_to_memory(self, resources: list[BootResource]) -> bool:
+    def get_can_deploy_to_memory(
+        self, resources: list[BootResource], osystems
+    ) -> bool:
         """Return whether the resource group can be deployed to memory"""
-        osystems = list_all_usable_osystems()
         for resource in resources:
             if "/" in resource.name:
                 osystem_name, distro_series_name = resource.name.split("/", 1)
@@ -532,7 +533,7 @@ class BootResourceHandler(Handler):
         else:
             return resource.name
 
-    def resource_group_to_resource(self, group):
+    def resource_group_to_resource(self, group, osystems):
         """Convert the list of resources into one resource to be used in
         the UI."""
         # Calculate all of the values using all of the resources for
@@ -545,7 +546,7 @@ class BootResourceHandler(Handler):
         )
         complete = self.are_all_resources_complete(group)
         progress = self.get_progress_for_resources(group)
-        can_deploy_to_memory = self.get_can_deploy_to_memory(group)
+        can_deploy_to_memory = self.get_can_deploy_to_memory(group, osystems)
 
         # Set the computed attributes on the first resource as that will
         # be the only one returned to the UI.
@@ -583,8 +584,10 @@ class BootResourceHandler(Handler):
             arch = resource.split_arch()[0]
             key = f"{resource.name}/{arch}"
             resource_group[key].append(resource)
+        # Call list_all_usable_osystems() once and reuse for all groups
+        osystems = list_all_usable_osystems()
         return [
-            self.resource_group_to_resource(group)
+            self.resource_group_to_resource(group, osystems)
             for _, group in resource_group.items()
         ]
 
