@@ -6206,6 +6206,29 @@ class TestNode(MAASServerTestCase):
             task_queue="region",
         )
 
+    def test_save_calls_configure_dhcp_workflow_if_hostname_changes_when_ip_has_no_subnet(
+        self,
+    ):
+        mock_start_workflow = self.patch(node_module, "start_workflow")
+        node = factory.make_Node_with_Interface_on_Subnet(ifname="eth0")
+        iface = node.current_config.interface_set.get(name="eth0")
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip="",
+            subnet=None,
+            interface=iface,
+        )
+        node.hostname = factory.make_name()
+
+        with post_commit_hooks:
+            node.save()
+
+        mock_start_workflow.assert_called_once()
+        _, kwargs = mock_start_workflow.call_args
+        self.assertEqual(CONFIGURE_DHCP_WORKFLOW_NAME, kwargs["workflow_name"])
+        self.assertEqual("region", kwargs["task_queue"])
+        self.assertEqual([iface.vlan.id], kwargs["param"].vlan_ids)
+
 
 class TestNodePowerParameters(MAASServerTestCase):
     def setUp(self):

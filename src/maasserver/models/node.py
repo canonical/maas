@@ -2179,6 +2179,7 @@ class Node(CleanSave, TimestampedModel):
                             ip.subnet.vlan.id
                             for iface in self.current_config.interface_set.all()
                             for ip in iface.ip_addresses.all()
+                            if ip.subnet is not None
                         }
                     ),
                 ),
