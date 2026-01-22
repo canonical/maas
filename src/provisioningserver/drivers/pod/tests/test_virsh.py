@@ -1570,7 +1570,7 @@ class TestVirshSSH(MAASTestCase):
         )
         self.patch(conn, "list_pools").return_value = tagged_pools
         disk = RequestedMachineBlockDevice(size=4096, tags=tagged_pools)
-        used_pool, _ = conn._create_local_volume(disk)
+        used_pool, _, _ = conn._create_local_volume(disk)
         self.assertEqual(tagged_pools[1], used_pool)
 
     def test_create_local_volume_makes_call_returns_pool_and_volume_dir(self):
@@ -1583,7 +1583,7 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=random.randint(1000, 2000), tags=[]
         )
-        used_pool, volume_name = conn._create_local_volume(disk)
+        used_pool, volume_name, storage_type = conn._create_local_volume(disk)
         conn.run.assert_called_once_with(
             [
                 "vol-create-as",
@@ -1598,6 +1598,7 @@ class TestVirshSSH(MAASTestCase):
         )
         self.assertEqual(pool, used_pool)
         self.assertIsNotNone(volume_name)
+        self.assertEqual(storage_type, "dir")
 
     def test_create_local_volume_makes_call_returns_pool_and_volume_lvm(self):
         conn = self.configure_virshssh("")
@@ -1609,7 +1610,7 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=random.randint(1000, 2000), tags=[]
         )
-        used_pool, volume_name = conn._create_local_volume(disk)
+        used_pool, volume_name, storage_type = conn._create_local_volume(disk)
         conn.run.assert_called_once_with(
             [
                 "vol-create-as",
@@ -1620,6 +1621,7 @@ class TestVirshSSH(MAASTestCase):
         )
         self.assertEqual(pool, used_pool)
         self.assertIsNotNone(volume_name)
+        self.assertEqual(storage_type, "logical")
 
     def test_create_local_volume_makes_call_returns_pool_and_volume_zfs(self):
         conn = self.configure_virshssh("")
@@ -1631,7 +1633,7 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=random.randint(1000, 2000), tags=[]
         )
-        used_pool, volume_name = conn._create_local_volume(disk)
+        used_pool, volume_name, storage_type = conn._create_local_volume(disk)
         size = int(floor(disk.size / 2**20)) * 2**20
         conn.run.assert_called_once_with(
             [
@@ -1645,6 +1647,7 @@ class TestVirshSSH(MAASTestCase):
         )
         self.assertEqual(pool, used_pool)
         self.assertIsNotNone(volume_name)
+        self.assertEqual(storage_type, "zfs")
 
     def test_delete_local_volume(self):
         conn = self.configure_virshssh("")
@@ -1676,7 +1679,7 @@ class TestVirshSSH(MAASTestCase):
         self.patch(
             virsh.VirshSSH, "get_volume_path"
         ).return_value = volume_path
-        conn.attach_local_volume(domain, pool, volume_name, device_name)
+        conn.attach_local_volume(domain, pool, volume_name, device_name, "dir")
         conn.run.assert_called_once_with(
             [
                 "attach-disk",
@@ -1687,6 +1690,34 @@ class TestVirshSSH(MAASTestCase):
                 "virtio",
                 "--sourcetype",
                 "file",
+                "--config",
+                "--serial",
+                serial,
+            ]
+        )
+
+    def test_attach_local_volume_zfs(self):
+        conn = self.configure_virshssh("")
+        domain = factory.make_name("domain")
+        pool = factory.make_name("pool")
+        volume_name = factory.make_name("volume")
+        volume_path = factory.make_name("/some/path/to_vol_serial")
+        serial = os.path.basename(volume_path)
+        device_name = factory.make_name("device")
+        self.patch(
+            virsh.VirshSSH, "get_volume_path"
+        ).return_value = volume_path
+        conn.attach_local_volume(domain, pool, volume_name, device_name, "zfs")
+        conn.run.assert_called_once_with(
+            [
+                "attach-disk",
+                domain,
+                volume_path,
+                device_name,
+                "--targetbus",
+                "virtio",
+                "--sourcetype",
+                "block",
                 "--config",
                 "--serial",
                 serial,
@@ -2093,7 +2124,11 @@ class TestVirshSSH(MAASTestCase):
         request = make_requested_machine()
         request.block_devices = request.block_devices[:1]
         request.interfaces = request.interfaces[:1]
-        disk_info = (factory.make_name("pool"), factory.make_name("vol"))
+        disk_info = (
+            factory.make_name("pool"),
+            factory.make_name("vol"),
+            "dir",
+        )
         domain_params = {
             "type": "kvm",
             "emulator": "/usr/bin/qemu-system-x86_64",
@@ -2140,7 +2175,7 @@ class TestVirshSSH(MAASTestCase):
         )
         conn.run.assert_called_once_with(["define", ANY])
         mock_attach_disk.assert_called_once_with(
-            ANY, disk_info[0], disk_info[1], "vda"
+            ANY, disk_info[0], disk_info[1], "vda", disk_info[2]
         )
         mock_attach_nic.assesrt_called_once_with(request, ANY, ANY)
         mock_check_machine_can_startup.assert_called_once_with(
@@ -2157,7 +2192,11 @@ class TestVirshSSH(MAASTestCase):
         request.architecture = "arm64/generic"
         request.block_devices = request.block_devices[:1]
         request.interfaces = request.interfaces[:1]
-        disk_info = (factory.make_name("pool"), factory.make_name("vol"))
+        disk_info = (
+            factory.make_name("pool"),
+            factory.make_name("vol"),
+            "dir",
+        )
         domain_params = {
             "type": "kvm",
             "emulator": "/usr/bin/qemu-system-x86_64",
@@ -2204,7 +2243,7 @@ class TestVirshSSH(MAASTestCase):
         )
         conn.run.assert_called_once_with(["define", ANY])
         mock_attach_disk.assert_called_once_with(
-            ANY, disk_info[0], disk_info[1], "vda"
+            ANY, disk_info[0], disk_info[1], "vda", disk_info[2]
         )
         mock_attach_nic.assert_called_once_with(request, ANY, ANY)
         mock_check_machine_can_startup.assert_called_once_with(
@@ -2221,7 +2260,11 @@ class TestVirshSSH(MAASTestCase):
         request.architecture = "ppc64el/generic"
         request.block_devices = request.block_devices[:1]
         request.interfaces = request.interfaces[:1]
-        disk_info = (factory.make_name("pool"), factory.make_name("vol"))
+        disk_info = (
+            factory.make_name("pool"),
+            factory.make_name("vol"),
+            "dir",
+        )
         domain_params = {
             "type": "kvm",
             "emulator": "/usr/bin/qemu-system-x86_64",
@@ -2268,7 +2311,7 @@ class TestVirshSSH(MAASTestCase):
         )
         conn.run.assert_called_once_with(["define", ANY])
         mock_attach_disk.assert_called_once_with(
-            ANY, disk_info[0], disk_info[1], "vda"
+            ANY, disk_info[0], disk_info[1], "vda", disk_info[2]
         )
         mock_attach_nic.assert_called_once_with(request, ANY, ANY)
         mock_check_machine_can_startup.assert_called_once_with(
@@ -2285,7 +2328,11 @@ class TestVirshSSH(MAASTestCase):
         request.architecture = "s390x/generic"
         request.block_devices = request.block_devices[:1]
         request.interfaces = request.interfaces[:1]
-        disk_info = (factory.make_name("pool"), factory.make_name("vol"))
+        disk_info = (
+            factory.make_name("pool"),
+            factory.make_name("vol"),
+            "dir",
+        )
         domain_params = {
             "type": "kvm",
             "emulator": "/usr/bin/qemu-system-x86_64",
@@ -2332,7 +2379,7 @@ class TestVirshSSH(MAASTestCase):
         )
         conn.run.assert_called_once_with(["define", ANY])
         mock_attach_disk.assert_called_once_with(
-            ANY, disk_info[0], disk_info[1], "vda"
+            ANY, disk_info[0], disk_info[1], "vda", disk_info[2]
         )
         mock_attach_nic.assert_called_once_with(request, ANY, ANY)
         mock_check_machine_can_startup.assert_called_once_with(
