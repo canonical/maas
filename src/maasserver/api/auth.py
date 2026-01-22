@@ -125,7 +125,7 @@ class RequestValidityReport:
             params = self.problematic_auth_params
 
         return sum(
-            1 for issue in params.values() if issue == ParamIssue.MISSING
+            issue == ParamIssue.MISSING for issue in params.values()
         ) < len(_NECESSARY_OAUTH_PARAMS)
 
     def generate_error_message(self) -> str:

@@ -105,7 +105,7 @@ class BootResourceSetsService(
             if len(files_in_resource_set) == 0:
                 continue
 
-            files_size = sum([f.size for f in files_in_resource_set])
+            files_size = sum(f.size for f in files_in_resource_set)
             sync_size = await self.boot_resource_file_sync_service.get_current_sync_size_for_files(
                 set([f.id for f in files_in_resource_set])
             )
@@ -166,7 +166,7 @@ class BootResourceSetsService(
             await self.boot_resource_file_sync_service.get_regions_count()
         )
 
-        total_file_size = sum([f.size for f in files])
+        total_file_size = sum(f.size for f in files)
 
         sync_size = await self.boot_resource_file_sync_service.get_current_sync_size_for_files(
             {f.id for f in files}

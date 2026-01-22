@@ -160,7 +160,7 @@ class QueryCounter(PerfTracer):
 
         self._count = len(connection.queries)
         self._time = float(
-            sum((float(entry["time"]) for entry in connection.queries))
+            sum(float(entry["time"]) for entry in connection.queries)
         )
         self._count += self._sqlalchemy_counter.count
         self._time += self._sqlalchemy_counter.time

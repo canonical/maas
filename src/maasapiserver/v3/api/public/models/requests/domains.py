@@ -79,10 +79,7 @@ class DNSResourceRecordSetRequest(BaseModel):
             "txt_records",
         ]
         fields_set_count = sum(
-            [
-                1 if values.get(field, None) is not None else 0
-                for field in record_fields
-            ]
+            values.get(field, None) is not None for field in record_fields
         )
         if fields_set_count != 1:
             raise ValueError("Only one resource record type must be set.")

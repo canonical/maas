@@ -74,7 +74,7 @@ async def test_perf_list_machines_APIv3_endpoint_all(
             responses[page] = response
     assert "next" not in responses[-1].json().keys()
     assert all([r.status_code == 200 for r in responses])
-    assert sum([len(r.json()["items"]) for r in responses]) == machine_count
+    assert sum(len(r.json()["items"]) for r in responses) == machine_count
 
 
 async def test_perf_list_machines_APIv3_endpoint_all_local_filtering(
@@ -111,8 +111,8 @@ async def test_perf_list_machines_APIv3_endpoint_all_local_filtering(
             filtered_responses[page] = filtered_response
     assert "next" not in responses[-1].json().keys()
     assert all([r.status_code == 200 for r in responses])
-    assert sum([len(r.json()["items"]) for r in responses]) == machine_count
-    assert sum([len(r) for r in filtered_responses]) == machine_count // 10
+    assert sum(len(r.json()["items"]) for r in responses) == machine_count
+    assert sum(len(r) for r in filtered_responses) == machine_count // 10
 
 
 async def test_perf_list_machines_APIv3_endpoint_all_pci_devices(
@@ -159,5 +159,5 @@ async def test_perf_list_machines_APIv3_endpoint_all_pci_devices(
 
     assert "next" not in responses[-1].json().keys()
     assert all([r.status_code == 200 for r in responses])
-    assert sum([len(r.json()["items"]) for r in responses]) == machine_count
-    assert sum([len(r) for r in filtered_devices]) == machine_count
+    assert sum(len(r.json()["items"]) for r in responses) == machine_count
+    assert sum(len(r) for r in filtered_devices) == machine_count

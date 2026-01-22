@@ -278,7 +278,7 @@ class DjangoDatabasesManager(TestResourceManager):
             "WHERE pid != pg_backend_pid() AND datname = %s",
             [dbname],
         )
-        count = sum((1 if success else 0) for [success] in cursor.fetchall())
+        count = sum(success for [success] in cursor.fetchall())
         debug(
             "Killed {count} other backends in {dbname}",
             count=count,
