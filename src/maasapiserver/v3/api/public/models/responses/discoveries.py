@@ -12,6 +12,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
+from maascommon.utils.network import get_mac_organization
 from maasservicelayer.models.discoveries import Discovery
 from maasservicelayer.models.fields import IPv4v6Network, MacAddress
 
@@ -23,6 +24,7 @@ class DiscoveryResponse(HalResponse[BaseHal]):
     neighbour_id: int | None
     ip: IPvAnyAddress | None
     mac_address: MacAddress | None
+    mac_organization: str | None
     vid: int | None
     first_seen: datetime | None
     last_seen: datetime | None
@@ -50,6 +52,7 @@ class DiscoveryResponse(HalResponse[BaseHal]):
             neighbour_id=discovery.neighbour_id,
             ip=discovery.ip,
             mac_address=discovery.mac_address,
+            mac_organization=get_mac_organization(discovery.mac_address),
             vid=discovery.vid,
             first_seen=discovery.first_seen,
             last_seen=discovery.last_seen,
