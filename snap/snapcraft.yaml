@@ -67,6 +67,8 @@ apps:
 
   power:
     command: bin/maas-power
+    environment:
+      MAAS_PATH: $SNAP
     plugs:
       - network
 
