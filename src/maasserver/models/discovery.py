@@ -17,10 +17,10 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 
+from maascommon.utils.network import get_mac_organization
 from maasserver.fields import CIDRField, DomainNameField, MAC_VALIDATOR
 from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.network import get_mac_organization
 
 maaslog = get_maas_logger("discovery")
 

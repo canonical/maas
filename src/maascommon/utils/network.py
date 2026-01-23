@@ -5,7 +5,8 @@ from ipaddress import IPv4Address, IPv6Address
 import re
 from typing import Iterable, List, Optional
 
-from netaddr import IPAddress, IPNetwork, IPRange, IPSet
+from netaddr import EUI, IPAddress, IPNetwork, IPRange, IPSet
+from netaddr.core import NotRegisteredError
 
 from maascommon.enums.ipranges import IPRangePurpose
 
@@ -27,6 +28,39 @@ def coerce_to_valid_hostname(
     if hostname == "" or len(hostname) > 64:
         return None
     return hostname
+
+
+def get_eui_organization(eui):
+    """Returns the registered organization for the specified EUI, if it can be
+    determined. Otherwise, returns None.
+
+    :param eui:A `netaddr.EUI` object.
+    """
+    try:
+        registration = eui.oui.registration()
+        # Note that `registration` is not a dictionary, so we can't use .get().
+        return registration["org"]
+    except UnicodeError:
+        # See bug #1628761. Due to corrupt data in the OUI database, and/or
+        # the fact that netaddr assumes all the data is ASCII, sometimes
+        # netaddr will raise an exception during this process.
+        return None
+    except IndexError:
+        # See bug #1748031; this is another way netaddr can fail.
+        return None
+    except NotRegisteredError:
+        # This could happen for locally-administered MACs.
+        return None
+
+
+def get_mac_organization(mac):
+    """Returns the registered organization for the specified EUI, if it can be
+    determined. Otherwise, returns None.
+
+    :param mac:String representing a MAC address.
+    :raises:netaddr.core.AddrFormatError if `mac` is invalid.
+    """
+    return get_eui_organization(EUI(mac))
 
 
 class IPRANGE_PURPOSE:

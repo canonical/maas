@@ -29,6 +29,8 @@ from twisted.names.error import (
 )
 
 from maascommon.utils.network import (
+    get_eui_organization,
+    get_mac_organization,
     inet_ntop,
     IPRangeStatistics,
     MAASIPRange,
@@ -60,11 +62,9 @@ from provisioningserver.utils.network import (
     get_all_interface_subnets,
     get_all_interfaces_definition,
     get_default_monitored_interfaces,
-    get_eui_organization,
     get_ifname_for_label,
     get_ifname_ifdata_for_destination,
     get_interface_children,
-    get_mac_organization,
     get_source_address,
     has_ipv4_address,
     hex_str_to_bytes,
