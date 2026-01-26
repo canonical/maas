@@ -17,7 +17,11 @@ from starlette.types import ASGIApp
 import structlog
 
 from maasapiserver.common.utils.http import extract_absolute_uri
-from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
+from maasapiserver.v3.auth.cookie_manager import (
+    EncryptedCookieManager,
+    MAASLocalCookie,
+    MAASOAuth2Cookie,
+)
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.logging.security import (
     ADMIN,
@@ -117,25 +121,78 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
     async def authenticate(
         self, request: Request, token: str
     ) -> AuthenticatedUser:
+        refresh_token = request.state.cookie_manager.get_unsafe_cookie(
+            MAASLocalCookie.REFRESH_TOKEN
+        )
         try:
             jwt_token = (
                 await request.state.services.auth.decode_and_verify_token(
                     token
                 )
             )
+            return AuthenticatedUser(
+                id=jwt_token.user_id,
+                username=jwt_token.subject,
+                roles=set(jwt_token.roles),
+            )
         except InvalidToken:
-            raise UnauthorizedException(  # noqa: B904
+            # Use refresh token to get a new JWT if the JWT is expired.
+            if not refresh_token:
+                raise UnauthorizedException(  # noqa: B904
+                    details=[
+                        BaseExceptionDetail(
+                            type=INVALID_TOKEN_VIOLATION_TYPE,
+                            message="The token is not valid, and no refresh token is present.",
+                        )
+                    ]
+                )
+            user = await self._get_user_if_valid_token(
+                request, refresh_token.strip()
+            )
+            new_token = await self._get_new_jwt(request, user)
+            request.state.cookie_manager.set_unsafe_cookie(
+                key=MAASLocalCookie.JWT_TOKEN,
+                value=new_token.encoded,
+            )
+
+            return AuthenticatedUser(
+                id=user.id,
+                username=user.username,
+                roles=(
+                    {UserRole.ADMIN, UserRole.USER}
+                    if user.is_superuser
+                    else {UserRole.USER}
+                ),
+            )
+
+    async def _get_user_if_valid_token(
+        self, request: Request, refresh_token: str
+    ) -> User:
+        user = await request.state.services.users.get_by_refresh_token(
+            refresh_token
+        )
+        if not user:
+            raise UnauthorizedException(
                 details=[
                     BaseExceptionDetail(
                         type=INVALID_TOKEN_VIOLATION_TYPE,
-                        message="The token is not valid.",
+                        message="Failed to refresh JWT token - the refresh token is invalid.",
                     )
                 ]
             )
-        return AuthenticatedUser(
-            id=jwt_token.user_id,
-            username=jwt_token.subject,
-            roles=jwt_token.roles,
+        return user
+
+    async def _get_new_jwt(self, request: Request, user: User) -> JWT:
+        return await request.state.services.auth.access_token(
+            AuthenticatedUser(
+                id=user.id,
+                username=user.username,
+                roles=(
+                    {UserRole.ADMIN, UserRole.USER}
+                    if user.is_superuser
+                    else {UserRole.USER}
+                ),
+            )
         )
 
     @classmethod
@@ -514,9 +571,13 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
         if not request.url.path.startswith(V3_API_PREFIX):
             return await call_next(request)
 
+        encryptor = await request.state.services.external_oauth.get_encryptor()
+        cookie_manager = EncryptedCookieManager(request, encryptor)
+        request.state.cookie_manager = cookie_manager
+
         auth_header = request.headers.get("Authorization", None)
         sessionid = request.cookies.get("sessionid", None)
-        access_token = request.state.cookie_manager.get_cookie(
+        access_token = cookie_manager.get_cookie(
             MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN
         )
 
@@ -549,7 +610,11 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
                 role=ADMIN if user.is_admin() else USER,
             )
 
-        return await call_next(request)
+        response = await call_next(request)
+
+        # Bind the response to the cookie manager to set any pending cookies.
+        request.state.cookie_manager.bind_response(response)
+        return response
 
     async def _session_authentication(
         self, request: Request, sessionid: str

@@ -11,12 +11,13 @@ from maasservicelayer.models.external_auth import (
 )
 
 
-class AccessTokenResponse(BaseModel):
-    """Content for a response returning a JWT."""
+class TokenResponse(BaseModel):
+    """Content for a response returning a JWT and a refresh token."""
 
-    kind = "AccessToken"
+    kind = "Tokens"
     token_type: str
     access_token: str
+    refresh_token: str | None = None
 
 
 class PreLoginInfoResponse(BaseModel):

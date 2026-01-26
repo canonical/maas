@@ -22,11 +22,11 @@ from maasapiserver.v3.api.public.models.requests.external_auth import (
 )
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
-    AccessTokenResponse,
     AuthInfoResponse,
     OAuthProviderResponse,
     OAuthProvidersListResponse,
     PreLoginInfoResponse,
+    TokenResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_permissions,
@@ -91,7 +91,7 @@ class AuthHandler(Handler):
         tags=TAGS,
         responses={
             200: {
-                "model": AccessTokenResponse,
+                "model": TokenResponse,
             },
             401: {"model": UnauthorizedBodyResponse},
         },
@@ -103,7 +103,7 @@ class AuthHandler(Handler):
         request: Request,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         form_data: OAuth2PasswordRequestForm = Depends(),  # noqa: B008
-    ) -> AccessTokenResponse:
+    ) -> TokenResponse:
         if (
             external_auth_info
             := await request.state.services.external_auth.get_external_auth()
@@ -113,11 +113,13 @@ class AuthHandler(Handler):
                 extract_absolute_uri(request),
                 request.headers,
             )
-        token = await services.auth.login(
+        tokens = await services.auth.login(
             form_data.username, form_data.password
         )
-        return AccessTokenResponse(
-            token_type=self.TOKEN_TYPE, access_token=token.encoded
+        return TokenResponse(
+            token_type=self.TOKEN_TYPE,
+            access_token=tokens.access_token.encoded,
+            refresh_token=tokens.refresh_token,
         )
 
     @handler(
@@ -126,7 +128,7 @@ class AuthHandler(Handler):
         tags=TAGS,
         responses={
             200: {
-                "model": AccessTokenResponse,
+                "model": TokenResponse,
             },
             401: {"model": UnauthorizedBodyResponse},
         },
@@ -142,10 +144,10 @@ class AuthHandler(Handler):
             get_authenticated_user
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> AccessTokenResponse:
+    ) -> TokenResponse:
         assert authenticated_user is not None
         token = await services.auth.access_token(authenticated_user)
-        return AccessTokenResponse(
+        return TokenResponse(
             token_type=self.TOKEN_TYPE, access_token=token.encoded
         )
 

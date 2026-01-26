@@ -1,7 +1,9 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from dataclasses import dataclass
 import os
+from secrets import token_hex
 
 import structlog
 
@@ -25,9 +27,16 @@ from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.secrets import V3JWTKeySecret
 from maasservicelayer.services.base import Service
 from maasservicelayer.services.secrets import SecretNotFound, SecretsService
+from maasservicelayer.services.tokens import RefreshTokenService
 from maasservicelayer.services.users import UsersService
 
 logger = structlog.getLogger(__name__)
+
+
+@dataclass
+class AuthTokens:
+    access_token: JWT
+    refresh_token: str
 
 
 class AuthService(Service):
@@ -42,12 +51,14 @@ class AuthService(Service):
         context: Context,
         secrets_service: SecretsService,
         users_service: UsersService,
+        refresh_tokens_service: RefreshTokenService,
     ):
         super().__init__(context)
         self.secrets_service = secrets_service
         self.users_service = users_service
+        self.refresh_tokens_service = refresh_tokens_service
 
-    async def login(self, username: str, password: str) -> JWT:
+    async def login(self, username: str, password: str) -> AuthTokens:
         user = await self.users_service.get_one(
             QuerySpec(UserClauseFactory.with_username(username))
         )
@@ -75,7 +86,12 @@ class AuthService(Service):
             else [UserRole.USER]
         )
         jwt_key = await self._get_or_create_cached_jwt_key()
-        return JWT.create(jwt_key, user.username, user.id, roles)
+        access_token = JWT.create(jwt_key, user.username, user.id, roles)
+        refresh_token = token_hex(32)
+        await self.refresh_tokens_service.create_refresh_token(
+            token=refresh_token, user_id=user.id
+        )
+        return AuthTokens(access_token, refresh_token)
 
     async def access_token(self, authenticated_user: AuthenticatedUser) -> JWT:
         jwt_key = await self._get_or_create_cached_jwt_key()

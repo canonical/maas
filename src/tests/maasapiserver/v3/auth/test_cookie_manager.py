@@ -17,7 +17,7 @@ class TestCookieManager:
         encryptor = Mock()
         set_cookie = Mock()
         manager = EncryptedCookieManager(
-            request, response, encryptor=encryptor, ttl_seconds=1200
+            request, encryptor=encryptor, response=response, ttl_seconds=1200
         )
         manager.set_cookie = set_cookie
 
@@ -41,7 +41,7 @@ class TestCookieManager:
         encryptor = Mock()
         set_cookie = Mock()
         manager = EncryptedCookieManager(
-            request, response, encryptor=encryptor, ttl_seconds=1200
+            request, encryptor=encryptor, response=response, ttl_seconds=1200
         )
         manager.set_cookie = set_cookie
 
@@ -66,7 +66,7 @@ class TestCookieManager:
         request.cookies.get.return_value = "encrypted_cookie_value"
         encryptor.decrypt.return_value = "cookie_value"
         manager = EncryptedCookieManager(
-            request, response, encryptor=encryptor, ttl_seconds=1200
+            request, encryptor=encryptor, response=response, ttl_seconds=1200
         )
 
         result = manager.get_cookie("some_key")
@@ -82,7 +82,7 @@ class TestCookieManager:
         response = Mock()
 
         manager = EncryptedCookieManager(
-            request, response, encryptor=Mock(), ttl_seconds=1200
+            request, encryptor=Mock(), response=response, ttl_seconds=1200
         )
 
         result = manager.get_cookie("missing_key")
@@ -95,12 +95,14 @@ class TestCookieManager:
         response = Mock()
 
         manager = EncryptedCookieManager(
-            request, response, encryptor=Mock(), ttl_seconds=1200
+            request, encryptor=Mock(), response=response, ttl_seconds=1200
         )
 
         result = manager.clear_cookie("some_key")
 
-        response.delete_cookie.assert_called_once_with(key="some_key")
+        response.set_cookie.assert_called_once_with(
+            key="some_key", value="", max_age=0, expires=0
+        )
         assert result is None
 
     def test_set_unsafe_cookie(self) -> None:
@@ -108,7 +110,7 @@ class TestCookieManager:
         response = Mock()
         encryptor = Mock()
         manager = EncryptedCookieManager(
-            request, response, encryptor=encryptor, ttl_seconds=1200
+            request, encryptor=encryptor, response=response, ttl_seconds=1200
         )
 
         manager.set_unsafe_cookie(key="key", value="value", path="/")
@@ -122,10 +124,45 @@ class TestCookieManager:
         response = Mock()
         request.cookies.get.return_value = "value"
         manager = EncryptedCookieManager(
-            request, response, encryptor=Mock(), ttl_seconds=1200
+            request, encryptor=Mock(), response=response, ttl_seconds=1200
         )
 
         result = manager.get_unsafe_cookie(key="key")
 
         request.cookies.get.assert_called_once_with("key")
         assert result == "value"
+
+    def test_set_cookie_queues_when_no_response(self) -> None:
+        request = Mock()
+        encryptor = Mock()
+        encryptor.encrypt.return_value = "encrypted_value"
+        manager = EncryptedCookieManager(
+            request, encryptor=encryptor, response=None, ttl_seconds=1200
+        )
+
+        manager.set_cookie(key="key", value="value", path="/")
+
+        assert manager._pending == [("key", "encrypted_value", {"path": "/"})]
+
+    def test_bind_response_sets_pending_cookies(self) -> None:
+        request = Mock()
+        response = Mock()
+        encryptor = Mock()
+        manager = EncryptedCookieManager(
+            request, encryptor=encryptor, response=None, ttl_seconds=1200
+        )
+        manager._pending = [
+            ("key1", "value1", {"path": "/"}),
+            ("key2", "value2", {"httponly": True}),
+        ]
+
+        manager.bind_response(response=response)
+
+        response.set_cookie.assert_any_call(
+            key="key1", value="value1", path="/"
+        )
+        response.set_cookie.assert_any_call(
+            key="key2", value="value2", httponly=True
+        )
+        assert manager._pending == []
+        assert response.set_cookie.call_count == 2

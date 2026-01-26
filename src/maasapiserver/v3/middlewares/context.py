@@ -50,6 +50,7 @@ class ContextMiddleware(BaseHTTPMiddleware):
             useragent=request.headers.get("user-agent"),
         )
         response = await call_next(request)
+
         logger.info(
             "End processing request",
             status_code=response.status_code,

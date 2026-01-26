@@ -22,10 +22,11 @@ from starlette.responses import Response
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
-from maasapiserver.v3.api.public.models.responses.oauth2 import (
-    AccessTokenResponse,
+from maasapiserver.v3.api.public.models.responses.oauth2 import TokenResponse
+from maasapiserver.v3.auth.cookie_manager import (
+    EncryptedCookieManager,
+    MAASLocalCookie,
 )
-from maasapiserver.v3.auth.cookie_manager import EncryptedCookieManager
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
@@ -150,13 +151,11 @@ def auth_app(
     app.add_event_handler("shutdown", services_cache.close)
 
     @app.get("/MAAS/a/v3/users/{username}/token")
-    async def get_token(
-        request: Request, username: str
-    ) -> AccessTokenResponse:
+    async def get_token(request: Request, username: str) -> TokenResponse:
         jwt_key = (
             await request.state.services.auth._get_or_create_cached_jwt_key()
         )
-        return AccessTokenResponse(
+        return TokenResponse(
             token_type="bearer",
             access_token=JWT.create(
                 jwt_key, username, 0, [UserRole.USER]
@@ -166,8 +165,8 @@ def auth_app(
     @app.get("/MAAS/a/v3/users/{username}/invalid_token")
     async def get_invalid_token(
         request: Request, username: str
-    ) -> AccessTokenResponse:
-        return AccessTokenResponse(
+    ) -> TokenResponse:
+        return TokenResponse(
             token_type="bearer",
             access_token=JWT.create(
                 "definitely_not_the_key", username, 0, [UserRole.USER]
@@ -214,7 +213,7 @@ class TestV3AuthenticationMiddleware:
         invalid_token_response = await auth_client.get(
             f"{V3_API_PREFIX}/users/test/invalid_token"
         )
-        invalid_token = AccessTokenResponse(**invalid_token_response.json())
+        invalid_token = TokenResponse(**invalid_token_response.json())
         invalid_token_v3_response = await auth_client.get(
             f"{V3_API_PREFIX}/users/me",
             headers={"Authorization": "bearer " + invalid_token.access_token},
@@ -227,7 +226,7 @@ class TestV3AuthenticationMiddleware:
         token_response = await auth_client.get(
             f"{V3_API_PREFIX}/users/test/token"
         )
-        token_response = AccessTokenResponse(**token_response.json())
+        token_response = TokenResponse(**token_response.json())
         authenticated_v3_response = await auth_client.get(
             f"{V3_API_PREFIX}/users/me",
             headers={"Authorization": "bearer " + token_response.access_token},
@@ -363,6 +362,9 @@ class TestV3AuthenticationMiddleware:
         request_mock = Mock(Request)
         request_mock.headers = {}
         request_mock.cookies = {}
+        request_mock.state.services.external_oauth.get_encryptor = AsyncMock(
+            return_value=None
+        )
         request_mock.state.cookie_manager.get_cookie.return_value = None
         call_next_mock = AsyncMock(Callable)
 
@@ -372,7 +374,7 @@ class TestV3AuthenticationMiddleware:
         macaroon_auth_provider_mock.authenticate.assert_called_once()
 
     async def test_authentication_with_oidc(
-        self, fixture: Fixture, auth_client: AsyncClient
+        self, fixture: Fixture, mocker
     ) -> None:
         oidc_user = await create_test_user(
             fixture,
@@ -401,14 +403,22 @@ class TestV3AuthenticationMiddleware:
         request_mock = Mock(Request)
         request_mock.headers = {}
         request_mock.cookies = {}
-        request_mock.state.cookie_manager.get_cookie.return_value = (
-            "valid_oidc_token"
+        cookie_manager = Mock(EncryptedCookieManager)
+        request_mock.state.services.external_oauth.get_encryptor = AsyncMock(
+            return_value=Mock()
         )
+        mocker.patch(
+            "maasapiserver.v3.middlewares.auth.EncryptedCookieManager",
+            return_value=cookie_manager,
+        )
+        cookie_manager.get_cookie.return_value = "oidc_access_token_value"
         call_next_mock = AsyncMock(Callable)
         await auth_middleware.dispatch(request_mock, call_next_mock)
         assert request_mock.state.authenticated_user == authenticated_user
         call_next_mock.assert_called_once_with(request_mock)
-        oidc_auth_provider_mock.authenticate.assert_called_once()
+        oidc_auth_provider_mock.authenticate.assert_called_once_with(
+            request_mock, "oidc_access_token_value"
+        )
 
 
 class TestAuthenticationProvidersCache:
@@ -510,16 +520,83 @@ class TestLocalAuthenticationProvider:
         assert user.roles == {UserRole.USER}
         assert user.id == 0
 
-    async def test_dispatch_unauthenticated(self) -> None:
+    async def test_dispatch_unauthenticated_with_no_refresh_token(
+        self,
+    ) -> None:
         request = Mock(Request)
+        request.state.cookie_manager = Mock(EncryptedCookieManager)
+        request.state.cookie_manager.get_unsafe_cookie.return_value = None
         request.state.services.auth = Mock(AuthService)
         request.state.services.auth.decode_and_verify_token.side_effect = (
             InvalidToken()
         )
 
         provider = LocalAuthenticationProvider()
-        with pytest.raises(UnauthorizedException):
+        with pytest.raises(UnauthorizedException) as exc_info:
             await provider.authenticate(request, "")
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+        assert (
+            details[0].message
+            == "The token is not valid, and no refresh token is present."
+        )
+
+    async def test_dispatch_refreshes_token(self) -> None:
+        request = Mock(Request)
+        user = _make_user()
+        token = JWT.create("123", user.username, user.id, [UserRole.USER])
+        request.state.services.auth = Mock(AuthService)
+        request.state.services.Users = Mock(UsersService)
+        request.state.cookie_manager = Mock(EncryptedCookieManager)
+        request.state.cookie_manager.get_unsafe_cookie.return_value = (
+            "refresh_token_value"
+        )
+        request.state.services.auth.decode_and_verify_token.side_effect = (
+            InvalidToken()
+        )
+        request.state.services.users.get_by_refresh_token = AsyncMock(
+            return_value=user
+        )
+        request.state.services.auth.access_token.return_value = token
+
+        provider = LocalAuthenticationProvider()
+        authenticated_user = await provider.authenticate(
+            request, "invalid_token"
+        )
+
+        assert authenticated_user.username == user.username
+        assert authenticated_user.id == user.id
+        request.state.cookie_manager.set_unsafe_cookie.assert_called_once_with(
+            key=MAASLocalCookie.JWT_TOKEN,
+            value=token.encoded,
+        )
+
+    async def test_dispatch_fails_to_refresh_token(self) -> None:
+        request = Mock(Request)
+        request.state.services.auth = Mock(AuthService)
+        request.state.services.Users = Mock(UsersService)
+        request.state.cookie_manager = Mock(EncryptedCookieManager)
+        request.state.cookie_manager.get_unsafe_cookie.return_value = (
+            "refresh_token_value"
+        )
+        request.state.services.auth.decode_and_verify_token.side_effect = (
+            InvalidToken()
+        )
+        request.state.services.users.get_by_refresh_token = AsyncMock(
+            return_value=None
+        )
+
+        provider = LocalAuthenticationProvider()
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await provider.authenticate(request, "invalid_token")
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+        assert (
+            details[0].message
+            == "Failed to refresh JWT token - the refresh token is invalid."
+        )
 
 
 class TestMacaroonAuthenticationProvider:

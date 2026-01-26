@@ -1188,6 +1188,7 @@ class ConfigFactory:
         HardwareSyncIntervalConfig.name: HardwareSyncIntervalConfig,
         # TODO: drop this when websocket will be removed (MAAS 4.0, hopefully).
         SessionLengthConfig.name: SessionLengthConfig,
+        RefreshTokenDurationConfig.name: RefreshTokenDurationConfig,
         TlsCertExpirationNotificationEnabledConfig.name: TlsCertExpirationNotificationEnabledConfig,
         TLSCertExpirationNotificationIntervalConfig.name: TLSCertExpirationNotificationIntervalConfig,
         AutoVlanCreationConfig.name: AutoVlanCreationConfig,

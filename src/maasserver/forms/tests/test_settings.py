@@ -136,6 +136,17 @@ class TestMAASSessionTimeoutSettings(MAASServerTestCase):
         self.assertEqual(value, field.clean(value))
 
 
+class TestRefreshTokenDurationConfigSettings(MAASServerTestCase):
+    def test_default_value(self):
+        form = get_config_form("refresh_token_duration")
+        self.assertEqual({"refresh_token_duration": 2592000}, form.initial)
+
+    def test_refresh_token_duration_config(self):
+        value = 600
+        field = get_config_field("refresh_token_duration")
+        self.assertEqual(value, field.clean(value))
+
+
 class TestIPMIKGConfigSettings(MAASServerTestCase):
     def test_default_value(self):
         form = get_config_form("maas_auto_ipmi_k_g_bmc_key")

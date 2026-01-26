@@ -68,6 +68,11 @@ class RefreshTokenService(
         )
         return await super().create(builder)
 
+    async def create(self, builder):
+        raise NotImplementedError(
+            "Create is not supported for refresh tokens. Use create_refresh_token instead."
+        )
+
 
 class OIDCRevokedTokenService(
     BaseService[
@@ -90,3 +95,8 @@ class OIDCRevokedTokenService(
             revoked_at=utcnow(),
         )
         return await super().create(builder)
+
+    async def create(self, builder):
+        raise NotImplementedError(
+            "Create is not supported for OIDC revoked tokens. Use create_revoked_token instead."
+        )

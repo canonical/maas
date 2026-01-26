@@ -17,10 +17,10 @@ from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
 )
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
-    AccessTokenResponse,
     OAuthProviderResponse,
     OAuthProvidersListResponse,
     PreLoginInfoResponse,
+    TokenResponse,
 )
 from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -57,7 +57,7 @@ from maasservicelayer.models.external_auth import (
     ProviderMetadata,
 )
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.auth import AuthService
+from maasservicelayer.services.auth import AuthService, AuthTokens
 from maasservicelayer.services.django_session import DjangoSessionService
 from maasservicelayer.services.external_auth import (
     ExternalAuthService,
@@ -128,8 +128,9 @@ class TestAuthApi:
         mocked_api_client: AsyncClient,
     ) -> None:
         services_mock.auth = Mock(AuthService)
-        services_mock.auth.login.return_value = JWT.create(
-            "key", "username", 0, [UserRole.USER]
+        services_mock.auth.login.return_value = AuthTokens(
+            access_token=JWT.create("key", "username", 0, [UserRole.USER]),
+            refresh_token="abc123",
         )
         response = await mocked_api_client.post(
             f"{self.BASE_PATH}/login",
@@ -137,12 +138,13 @@ class TestAuthApi:
         )
         assert response.status_code == 200
 
-        token_response = AccessTokenResponse(**response.json())
+        token_response = TokenResponse(**response.json())
         assert token_response.token_type == "bearer"
         assert (
             jwt.get_unverified_claims(token_response.access_token)["sub"]
             == "username"
         )
+        assert token_response.refresh_token == "abc123"
 
     async def test_post_validation_failed(
         self,
@@ -223,12 +225,13 @@ class TestAuthApi:
         )
         assert response.status_code == 200
 
-        token_response = AccessTokenResponse(**response.json())
-        assert token_response.kind == "AccessToken"
+        token_response = TokenResponse(**response.json())
+        assert token_response.kind == "Tokens"
         assert token_response.token_type == "bearer"
         decoded_token = jwt.get_unverified_claims(token_response.access_token)
         assert decoded_token["sub"] == "username"
         assert decoded_token["user_id"] == 0
+        assert token_response.refresh_token is None
 
     async def test_get_access_token_with_session_id(
         self,
@@ -244,12 +247,13 @@ class TestAuthApi:
         )
         assert response.status_code == 200
 
-        token_response = AccessTokenResponse(**response.json())
-        assert token_response.kind == "AccessToken"
+        token_response = TokenResponse(**response.json())
+        assert token_response.kind == "Tokens"
         assert token_response.token_type == "bearer"
         decoded_token = jwt.get_unverified_claims(token_response.access_token)
         assert decoded_token["sub"] == "username"
         assert decoded_token["user_id"] == 0
+        assert token_response.refresh_token is None
 
     @pytest.mark.skip
     async def test_get_access_token_with_macaroon(self):

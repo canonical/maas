@@ -628,6 +628,7 @@ class ServiceCollectionV3:
             context=context,
             secrets_service=services.secrets,
             users_service=services.users,
+            refresh_tokens_service=services.refresh_tokens,
         )
         services.external_auth = ExternalAuthService(
             context=context,

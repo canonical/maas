@@ -22,9 +22,7 @@ from maasapiserver.common.middlewares.exceptions import (
 from maasapiserver.main import craft_public_app
 from maasapiserver.v3.api.internal.handlers import APIv3Internal
 from maasapiserver.v3.api.public.handlers import APIv3, APIv3UI
-from maasapiserver.v3.api.public.models.responses.oauth2 import (
-    AccessTokenResponse,
-)
+from maasapiserver.v3.api.public.models.responses.oauth2 import TokenResponse
 from maasapiserver.v3.auth.base import AuthenticatedUser
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.client_certificate import (
@@ -335,7 +333,7 @@ async def authenticated_admin_api_client_v3(
             f"{V3_API_PREFIX}/auth/login",
             data={"username": created_user.username, "password": "test"},
         )
-        token_response = AccessTokenResponse(**response.json())
+        token_response = TokenResponse(**response.json())
         client.headers = Headers(
             {"Authorization": "bearer " + token_response.access_token}
         )
@@ -354,7 +352,7 @@ async def authenticated_user_api_client_v3(
             f"{V3_API_PREFIX}/auth/login",
             data={"username": created_user.username, "password": "test"},
         )
-        token_response = AccessTokenResponse(**response.json())
+        token_response = TokenResponse(**response.json())
         client.headers = Headers(
             {"Authorization": "bearer " + token_response.access_token}
         )

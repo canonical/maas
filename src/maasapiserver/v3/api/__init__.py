@@ -20,4 +20,4 @@ async def cookie_manager(
 ) -> EncryptedCookieManager:
     """Dependency to return the cookie manager."""
     encryptor = await request.state.services.external_oauth.get_encryptor()
-    return EncryptedCookieManager(request, response, encryptor)
+    return EncryptedCookieManager(request, encryptor, response)

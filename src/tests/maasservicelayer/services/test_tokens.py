@@ -94,6 +94,14 @@ class TestRefreshTokenService(ServiceCommonTests):
     def test_instance(self) -> RefreshToken:
         return TEST_REFRESH_TOKEN
 
+    async def test_create(
+        self, service_instance, test_instance, builder_model
+    ) -> None:
+        with pytest.raises(NotImplementedError):
+            await super().test_create(
+                service_instance, test_instance, builder_model
+            )
+
     @patch("maasservicelayer.services.tokens.hashlib.sha256")
     @patch(
         "maasservicelayer.services.base.BaseService.create",
@@ -137,6 +145,14 @@ class TestRevokedTokensService(ServiceCommonTests):
     @pytest.fixture
     def test_instance(self) -> OIDCRevokedToken:
         return TEST_REVOKED_TOKEN
+
+    async def test_create(
+        self, service_instance, test_instance, builder_model
+    ) -> None:
+        with pytest.raises(NotImplementedError):
+            await super().test_create(
+                service_instance, test_instance, builder_model
+            )
 
     @patch("maasservicelayer.services.tokens.hashlib.sha256")
     @patch(

@@ -93,6 +93,7 @@ from maasservicelayer.models.configurations import (
     PrometheusPushIntervalConfig,
     PromtailEnabledConfig,
     PromtailPortConfig,
+    RefreshTokenDurationConfig,
     ReleaseNotificationsConfig,
     RemoteSyslogConfig,
     SessionLengthConfig,
@@ -720,6 +721,17 @@ CONFIG_ITEMS = {
             "required": False,
             "label": SubnetIPExhaustionThresholdCountConfig.description,
             "min_value": 1,
+        },
+    },
+    RefreshTokenDurationConfig.name: {
+        "default": RefreshTokenDurationConfig.default,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "label": RefreshTokenDurationConfig.description,
+            "required": False,
+            "help_text": RefreshTokenDurationConfig.help_text,
+            "min_value": 600,
+            "max_value": 5184000,
         },
     },
     ReleaseNotificationsConfig.name: {

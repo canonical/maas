@@ -21,6 +21,7 @@ from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
 from maasservicelayer.services import AuthService, SecretsService, UsersService
 from maasservicelayer.services.secrets import SecretNotFound
+from maasservicelayer.services.tokens import RefreshTokenService
 
 
 @pytest.fixture(autouse=True)
@@ -48,29 +49,40 @@ class TestAuthService:
         data.update(extra_details)
         return User(**data)
 
-    async def test_login(self) -> None:
+    async def test_login(self, mocker) -> None:
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
         secrets_service_mock.get_simple_secret.return_value = "123"
-
+        refresh_tokens_service_mock.create_refresh_token.return_value = Mock()
+        mocker.patch(
+            "maasservicelayer.services.auth.token_hex",
+            return_value="refresh_token_hash_abc123",
+        )
         users_service_mock = Mock(UsersService)
         users_service_mock.get_one.return_value = user
         auth_service = AuthService(
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
-        token = await auth_service.login(user.username, "test")
-        assert len(token.encoded) > 0
-        assert token.subject == user.username
-        assert token.roles == [UserRole.USER]
+        tokens = await auth_service.login(user.username, "test")
+        assert len(tokens.access_token.encoded) > 0
+        assert tokens.access_token.subject == user.username
+        assert tokens.access_token.roles == [UserRole.USER]
+        assert tokens.refresh_token == "refresh_token_hash_abc123"
         users_service_mock.get_one.assert_awaited_once_with(
             QuerySpec(UserClauseFactory.with_username(user.username))
+        )
+        refresh_tokens_service_mock.create_refresh_token.assert_awaited_once_with(
+            token="refresh_token_hash_abc123", user_id=user.id
         )
 
     async def test_login_logging(self) -> None:
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
         secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
@@ -79,6 +91,7 @@ class TestAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
         with patch("maasservicelayer.services.auth.logger") as mock_logger:
             await auth_service.login(user.username, "test")
@@ -87,10 +100,16 @@ class TestAuthService:
             type=SECURITY,
         )
 
-    async def test_login_admin(self) -> None:
+    async def test_login_admin(self, mocker) -> None:
         admin = self._build_test_user(is_superuser=True)
         secrets_service_mock = Mock(SecretsService)
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
+        mocker.patch(
+            "maasservicelayer.services.auth.token_hex",
+            return_value="refresh_token_hash_abc123",
+        )
         secrets_service_mock.get_simple_secret.return_value = "123"
+        refresh_tokens_service_mock.create_refresh_token.return_value = Mock()
 
         users_service_mock = Mock(UsersService)
         users_service_mock.get_one.return_value = admin
@@ -98,23 +117,33 @@ class TestAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
-        token = await auth_service.login(admin.username, "test")
-        assert len(token.encoded) > 0
-        assert token.subject == admin.username
-        assert set(token.roles) == {UserRole.USER, UserRole.ADMIN}
+        tokens = await auth_service.login(admin.username, "test")
+        assert len(tokens.access_token.encoded) > 0
+        assert tokens.access_token.subject == admin.username
+        assert tokens.refresh_token == "refresh_token_hash_abc123"
+        assert set(tokens.access_token.roles) == {
+            UserRole.USER,
+            UserRole.ADMIN,
+        }
         users_service_mock.get_one.assert_awaited_once_with(
             QuerySpec(UserClauseFactory.with_username(admin.username))
+        )
+        refresh_tokens_service_mock.create_refresh_token.assert_awaited_once_with(
+            token="refresh_token_hash_abc123", user_id=admin.id
         )
 
     async def test_login_unauthorized(self) -> None:
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
         users_service_mock = Mock(UsersService)
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
         auth_service = AuthService(
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
 
         # Username exists but the password is wrong
@@ -136,6 +165,7 @@ class TestAuthService:
     async def test_login_unauthorized_logging(self) -> None:
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
         secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
@@ -144,6 +174,7 @@ class TestAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
         with patch("maasservicelayer.services.auth.logger") as mock_logger:
             users_service_mock.get_one.return_value = user
@@ -157,7 +188,9 @@ class TestAuthService:
     async def test_jwt_key_is_cached(self) -> None:
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
         secrets_service_mock.get_simple_secret.return_value = "123"
+        refresh_tokens_service_mock.create_refresh_token.return_value = Mock()
 
         users_service_mock = Mock(UsersService)
         users_service_mock.get_one.return_value = user
@@ -166,16 +199,17 @@ class TestAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
-        token = await auth_service.login(user.username, "test")
-        assert token.subject == user.username
+        tokens = await auth_service.login(user.username, "test")
+        assert tokens.access_token.subject == user.username
         assert AuthService.JWT_TOKEN_KEY == "123"
         secrets_service_mock.get_simple_secret.assert_called_once_with(
             AuthService.MAAS_V3_JWT_KEY_SECRET
         )
 
-        token = await auth_service.login(user.username, "test")
-        assert token.subject == user.username
+        tokens = await auth_service.login(user.username, "test")
+        assert tokens.access_token.subject == user.username
         # The service is not loading anymore the key because it was cached
         secrets_service_mock.get_simple_secret.assert_called_once_with(
             AuthService.MAAS_V3_JWT_KEY_SECRET
@@ -189,28 +223,34 @@ class TestAuthService:
         )
         users_service_mock = Mock(UsersService)
         users_service_mock.get_one.return_value = user
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
+        refresh_tokens_service_mock.create_refresh_token.return_value = Mock()
 
         auth_service = AuthService(
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
-        token = await auth_service.login(user.username, "test")
-        assert token.subject == user.username
+        tokens = await auth_service.login(user.username, "test")
+        assert tokens.access_token.subject == user.username
         assert AuthService.JWT_TOKEN_KEY is not None
         secrets_service_mock.get_simple_secret.assert_called_once_with(
             AuthService.MAAS_V3_JWT_KEY_SECRET
         )
         secrets_service_mock.set_simple_secret.assert_called_once()
+        refresh_tokens_service_mock.create_refresh_token.assert_awaited_once()
 
     async def test_decode_and_verify_token(self) -> None:
         secrets_service_mock = Mock(SecretsService)
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
         secrets_service_mock.get_simple_secret.return_value = "123"
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
         jwt = JWT.create("123", "sub", 0, [UserRole.ADMIN])
         decoded_jwt = await auth_service.decode_and_verify_token(jwt.encoded)
@@ -238,12 +278,14 @@ class TestAuthService:
         invalid_token: str,
     ) -> None:
         secrets_service_mock = Mock(SecretsService)
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
         secrets_service_mock.get_simple_secret.return_value = key
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
         with pytest.raises(InvalidToken):
             await auth_service.decode_and_verify_token(invalid_token)
@@ -255,10 +297,12 @@ class TestAuthService:
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = "123"
         users_service_mock = Mock(UsersService)
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
         auth_service = AuthService(
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
         token = JWT.create("not_the_same_key", "test", 0, []).encoded
         with pytest.raises(InvalidToken):
@@ -267,6 +311,7 @@ class TestAuthService:
     async def test_access_token(self) -> None:
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
         secrets_service_mock.get_simple_secret.return_value = "123"
 
         users_service_mock = Mock(UsersService)
@@ -274,6 +319,7 @@ class TestAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
         authenticated_user = AuthenticatedUser(
             id=user.id, username=user.username, roles={UserRole.USER}
@@ -287,12 +333,14 @@ class TestAuthService:
         admin = self._build_test_user(is_superuser=True)
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_simple_secret.return_value = "123"
+        refresh_tokens_service_mock = Mock(RefreshTokenService)
 
         users_service_mock = Mock(UsersService)
         auth_service = AuthService(
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=users_service_mock,
+            refresh_tokens_service=refresh_tokens_service_mock,
         )
         authenticated_user = AuthenticatedUser(
             id=admin.id,
