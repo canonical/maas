@@ -35,6 +35,12 @@ class TestBootSourcesClauseFactory:
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_bootsource.id IN (1, 2)")
 
+    def test_with_priority(self) -> None:
+        clause = BootSourcesClauseFactory.with_priority(1)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsource.priority = 1")
+
 
 class TestBootSourcesRepository(RepositoryCommonTests[BootSource]):
     @pytest.fixture

@@ -2,20 +2,47 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64decode
-from typing import Any
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from maasservicelayer.builders.bootsources import BootSourceBuilder
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.services import ServiceCollectionV3
+
+
+def validate_url_format(value: str) -> str:
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValidationException.build_for_field(
+            field="url",
+            message="URL must be a valid HTTP or HTTPS address.",
+        )
+    return value
+
+
+async def validate_priority(value: int, services: ServiceCollectionV3) -> int:
+    if value < 0:
+        raise ValidationException.build_for_field(
+            field="priority",
+            message="Priority must be a non-negative integer.",
+        )
+
+    if await services.boot_sources.exists(
+        query=QuerySpec(where=BootSourcesClauseFactory.with_priority(value))
+    ):
+        raise ValidationException.build_for_field(
+            field="priority",
+            message="A boot source with the same priority already exists.",
+        )
+    return value
 
 
 class BootSourceRequest(BaseModel):
-    url: str = Field(
-        description="URL of SimpleStreams server providing boot source "
-        "information."
-    )
     keyring_filename: str | None = Field(
         description="File path to keyring to use for verifying signatures of "
         "the boot sources.",
@@ -26,10 +53,6 @@ class BootSourceRequest(BaseModel):
         "verification. Optional alternative to providing a keyring "
         "file path.",
         default="",
-    )
-    priority: int = Field(
-        description="Priority value. Higher values mean higher priority. Must "
-        "be non-negative.",
     )
     skip_keyring_verification: bool = Field(
         description="If true, keyring signature verification will be skipped.",
@@ -75,26 +98,47 @@ class BootSourceRequest(BaseModel):
             ) from e
         return value
 
-    @validator("url")
-    def validate_url_format(cls, value: str):
-        parsed = urlparse(value)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise ValidationException.build_for_field(
-                field="url",
-                message="URL must be a valid HTTP or HTTPS address.",
-            )
-        return value
 
-    @validator("priority")
-    def validate_priority(cls, value: int) -> int:
-        if value < 0:
-            raise ValidationException.build_for_field(
-                field="priority",
-                message="Priority must be a non-negative integer.",
-            )
-        return value
+# Extra.forbid will raise a validation error if the user passes fields not defined.
+# Used mainly because of the 'url' being immutable.
+class BootSourceUpdateRequest(BootSourceRequest, extra=Extra.forbid):
+    priority: int = Field(
+        description="Priority value. Higher values mean higher priority. Must "
+        "be non-negative.",
+    )
 
-    def to_builder(self) -> BootSourceBuilder:
+    async def to_builder(
+        self, services: ServiceCollectionV3
+    ) -> BootSourceBuilder:
+        priority = await validate_priority(self.priority, services)
+        self.keyring_filename = self.keyring_filename or ""
+        self.keyring_data = self.keyring_data or ""
+        keyring_data = self.keyring_data.encode("utf-8")
+        return BootSourceBuilder(
+            keyring_filename=self.keyring_filename,
+            keyring_data=keyring_data,
+            priority=priority,
+            skip_keyring_verification=self.skip_keyring_verification,
+        )
+
+
+class BootSourceCreateRequest(BootSourceRequest):
+    priority: int = Field(
+        description="Priority value. Higher values mean higher priority. Must "
+        "be non-negative.",
+    )
+    url: str = Field(
+        description="URL of SimpleStreams server providing boot source information."
+    )
+    # TODO: switch to field_validator when we migrate to pydantic 2.x
+    _validate_url = validator("url", pre=True, allow_reuse=True)(
+        validate_url_format
+    )
+
+    async def to_builder(
+        self, services: ServiceCollectionV3
+    ) -> BootSourceBuilder:
+        priority = await validate_priority(self.priority, services)
         self.keyring_filename = self.keyring_filename or ""
         self.keyring_data = self.keyring_data or ""
         keyring_data = self.keyring_data.encode("utf-8")
@@ -102,59 +146,16 @@ class BootSourceRequest(BaseModel):
             url=self.url,
             keyring_filename=self.keyring_filename,
             keyring_data=keyring_data,
-            priority=self.priority,
+            priority=priority,
             skip_keyring_verification=self.skip_keyring_verification,
         )
 
 
-class BootSourceFetchRequest(BaseModel):
+class BootSourceFetchRequest(BootSourceRequest):
     url: str = Field(
-        description="URL of SimpleStreams server providing boot source "
-        "information."
+        description="URL of SimpleStreams server providing boot source information."
     )
-
-    keyring_path: str | None = Field(
-        default=None,
-        description="File path to keyring to use for verifying signatures of "
-        "the boot sources.",
+    # TODO: switch to field_validator when we migrate to pydantic 2.x
+    _validate_url = validator("url", pre=True, allow_reuse=True)(
+        validate_url_format
     )
-    keyring_data: str | None = Field(
-        default=None,
-        description="Base64-encoded keyring data to use for verifying "
-        "signatures of the boot sources.",
-    )
-    validate_products: bool = Field(
-        default=True,
-        description="Whether to validate products in the boot sources.",
-    )
-
-    # TODO: Switch to model_validator when we migrate to pydantic 2.x
-    @root_validator
-    def ensure_either_keyring_path_or_data_not_both(
-        cls, values: dict[str, Any]
-    ) -> dict[str, Any]:
-        if (
-            values.get("keyring_path", None) is not None
-            and values.get("keyring_data", None) is not None
-        ):
-            raise ValueError(
-                "At most one of 'keyring_path' and 'keyring_data' may be specified"
-            )
-        return values
-
-    # TODO: Switch to model_validator when we migrate to pydantic 2.x
-    @root_validator
-    def ensure_valid_base64_keyring_data_provided(
-        cls, values: dict[str, Any]
-    ) -> dict[str, Any]:
-        keyring_data: str | None = values.get("keyring_data", None)
-        if keyring_data is None:
-            return values
-
-        try:
-            b64decode(keyring_data)
-            return values
-        except Exception as err:
-            raise ValueError(
-                "Invalid base64 encoding of `keyring-data` provided"
-            ) from err

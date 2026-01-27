@@ -69,7 +69,7 @@ class ImageManifestsService(Service):
     @asynccontextmanager
     async def _get_keyring_file(
         self, keyring_path: str | None, keyring_data: bytes | None
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[str | None]:
         """Context manager to handle a keyring file.
 
         Creates a temporary file with the content in keyring_data and deletes
@@ -91,7 +91,6 @@ class ImageManifestsService(Service):
                 await tmp_keyring_file.flush()
                 yield str(tmp_keyring_file.name)
         else:
-            assert keyring_path is not None
             yield keyring_path
 
     async def fetch_image_metadata(
@@ -99,6 +98,7 @@ class ImageManifestsService(Service):
         source_url: str,
         keyring_path: str | None = None,
         keyring_data: bytes | None = None,
+        skip_pgp_verification: bool = False,
     ) -> list[SourceAvailableImage]:
         http_proxy = await self._get_http_proxy()
         token = await self._get_bearer_token(source_url)
@@ -111,6 +111,7 @@ class ImageManifestsService(Service):
                 http_proxy=http_proxy,
                 keyring_file=keyring_file,
                 bearer_auth=token,
+                skip_pgp_verification=skip_pgp_verification,
             ) as client:
                 products_list = await client.get_all_products()
 

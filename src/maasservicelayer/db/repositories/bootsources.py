@@ -24,6 +24,10 @@ class BootSourcesClauseFactory(ClauseFactory):
     def with_ids(cls, ids: set[int]) -> Clause:
         return Clause(condition=BootSourceTable.c.id.in_(ids))
 
+    @classmethod
+    def with_priority(cls, priority: int) -> Clause:
+        return Clause(condition=eq(BootSourceTable.c.priority, priority))
+
 
 class BootSourcesRepository(BaseRepository[BootSource]):
     def get_repository_table(self) -> Table:

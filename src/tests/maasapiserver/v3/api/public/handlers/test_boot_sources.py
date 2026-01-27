@@ -223,6 +223,7 @@ class TestBootSourcesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.exists.return_value = False
         services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
         updated = TEST_BOOTSOURCE_1.copy()
         updated.url = "http://example.com/v2/"
@@ -230,7 +231,6 @@ class TestBootSourcesApi(ApiCommonTests):
         services_mock.boot_sources.update_by_id.return_value = updated
 
         update_request = {
-            "url": "http://example.com/v2/",
             "keyring_filename": "/path/to/keyring.gpg",
             "keyring_data": "",
             "priority": 15,
@@ -255,6 +255,7 @@ class TestBootSourcesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.exists.return_value = False
         services_mock.boot_sources.update_by_id.side_effect = NotFoundException(
             details=[
                 BaseExceptionDetail(
@@ -265,7 +266,6 @@ class TestBootSourcesApi(ApiCommonTests):
         )
 
         update_request = {
-            "url": "http://example.com/v2/",
             "keyring_filename": "/path/to/keyring.gpg",
             "keyring_data": "",
             "priority": 15,
@@ -288,6 +288,7 @@ class TestBootSourcesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.exists.return_value = False
         services_mock.boot_sources.create.return_value = TEST_BOOTSOURCE_1
 
         create_request = {
@@ -321,6 +322,7 @@ class TestBootSourcesApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.exists.return_value = False
         services_mock.boot_sources.create.side_effect = AlreadyExistsException(
             details=[
                 BaseExceptionDetail(
@@ -366,7 +368,7 @@ class TestBootSourcesApi(ApiCommonTests):
 
         request = BootSourceFetchRequest(
             url="https://path/to/images/server",
-            keyring_path="/path/to/keyring",
+            keyring_filename="/path/to/keyring",
         )
 
         response = await mocked_api_client_user.post(
@@ -377,8 +379,9 @@ class TestBootSourcesApi(ApiCommonTests):
 
         services_mock.image_manifests.fetch_image_metadata.assert_called_once_with(
             source_url=request.url,
-            keyring_path=request.keyring_path,
+            keyring_path=request.keyring_filename,
             keyring_data=None,
+            skip_pgp_verification=False,
         )
 
     async def test_fetch_encodes_keyring_data(
@@ -410,6 +413,7 @@ class TestBootSourcesApi(ApiCommonTests):
             source_url=images_server_url,
             keyring_path=None,
             keyring_data=expected_bytes,
+            skip_pgp_verification=False,
         )
 
     async def test_get_all_available_images_200(

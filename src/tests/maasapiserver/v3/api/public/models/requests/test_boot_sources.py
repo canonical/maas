@@ -2,44 +2,58 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64encode
+from unittest.mock import Mock
 
 from pydantic import ValidationError
 import pytest
 
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
-    BootSourceFetchRequest,
+    BootSourceCreateRequest,
     BootSourceRequest,
+    BootSourceUpdateRequest,
+    validate_priority,
+    validate_url_format,
 )
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.services.boot_sources import BootSourcesService
+
+
+class TestValidators:
+    def test_invalid_url_raises(self):
+        with pytest.raises(ValidationException) as e:
+            validate_url_format("not-a-valid-url")
+        assert (
+            "URL must be a valid HTTP or HTTPS address."
+            == e.value.details[0].message
+        )
+
+    @pytest.mark.asyncio
+    async def test_negative_priority_raises(self, services_mock):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.exists.return_value = False
+        with pytest.raises(ValidationException) as e:
+            await validate_priority(-1, services_mock)
+        assert (
+            "Priority must be a non-negative integer."
+            == e.value.details[0].message
+        )
+
+    @pytest.mark.asyncio
+    async def test_priority_already_exists_raises(self, services_mock):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.exists.return_value = True
+        with pytest.raises(ValidationException) as e:
+            await validate_priority(2, services_mock)
+        assert (
+            "A boot source with the same priority already exists."
+            == e.value.details[0].message
+        )
 
 
 class TestBootSourceRequest:
-    def test_to_builder(self) -> None:
-        bootsource_request = BootSourceRequest(
-            url="http://example.com",
-            keyring_filename="/path/to/file.gpg",
-            priority=102,
-            skip_keyring_verification=False,
-        )
-        builder = bootsource_request.to_builder()
-
-        assert builder.url == "http://example.com"
-        assert builder.priority == 102
-        assert not builder.skip_keyring_verification
-
-    def test_mandatory_params(self):
-        with pytest.raises(ValidationError) as e:
-            BootSourceRequest(keyring_filename="/path/to/file.gpg")
-        assert len(e.value.errors()) == 2
-        assert {"url", "priority"} == set(
-            [f["loc"][0] for f in e.value.errors()]
-        )
-
     def test_keyring_validation_missing_both_when_verification_required(self):
         with pytest.raises(ValidationException) as e:
             BootSourceRequest(
-                url="http://example.com",
-                priority=1,
                 skip_keyring_verification=False,
             )
         assert (
@@ -51,10 +65,8 @@ class TestBootSourceRequest:
         with pytest.raises(ValidationException) as e:
             data = b64encode("data".encode("utf-8")).decode("utf-8")
             BootSourceRequest(
-                url="http://example.com",
                 keyring_filename="/file/to/file.gpg",
                 keyring_data=data,
-                priority=1,
                 skip_keyring_verification=False,
             )
         assert (
@@ -66,10 +78,8 @@ class TestBootSourceRequest:
         with pytest.raises(ValidationException) as e:
             data = b64encode("data".encode("utf-8")).decode("utf-8")
             BootSourceRequest(
-                url="http://example.com",
                 keyring_filename="file.gpg",
                 keyring_data=data,
-                priority=1,
                 skip_keyring_verification=True,
             )
         assert (
@@ -80,9 +90,7 @@ class TestBootSourceRequest:
     def test_keyring_data_valid_base64(self):
         data = b64encode("data".encode("utf-8")).decode("utf-8")
         request = BootSourceRequest(
-            url="http://example.com",
             keyring_data=data,
-            priority=1,
             skip_keyring_verification=False,
         )
         assert request.keyring_data == data
@@ -90,9 +98,7 @@ class TestBootSourceRequest:
     def test_keyring_data_invalid_base64(self):
         with pytest.raises(ValidationException) as e:
             BootSourceRequest(
-                url="http://example.com",
                 keyring_data="not-base64",
-                priority=1,
                 skip_keyring_verification=True,
             )
         assert (
@@ -100,47 +106,17 @@ class TestBootSourceRequest:
             == e.value.details[0].message
         )
 
-    def test_invalid_url_raises(self):
-        with pytest.raises(ValidationException) as e:
-            BootSourceRequest(
-                url="not-a-valid-url",
-                priority=1,
-                skip_keyring_verification=True,
-            )
-        assert (
-            "URL must be a valid HTTP or HTTPS address."
-            == e.value.details[0].message
-        )
-
-    def test_negative_priority_raises(self):
-        with pytest.raises(ValidationException) as e:
-            BootSourceRequest(
-                url="http://example.com",
-                keyring_filename="keyring.gpg",
-                priority=-1,
-                skip_keyring_verification=False,
-            )
-        assert (
-            "Priority must be a non-negative integer."
-            == e.value.details[0].message
-        )
-
     def test_verification_skipped_and_no_keyring_fields(self):
         request = BootSourceRequest(
-            url="http://example.com",
-            priority=1,
             skip_keyring_verification=True,
         )
-        assert request.url == "http://example.com"
         assert request.keyring_filename == ""
         assert request.keyring_data == ""
         assert request.skip_keyring_verification is True
 
     def test_verification_skipped_with_only_filename(self):
         request = BootSourceRequest(
-            url="http://example.com",
             keyring_filename="mykeyring.gpg",
-            priority=1,
             skip_keyring_verification=True,
         )
         assert request.keyring_filename == "mykeyring.gpg"
@@ -149,72 +125,58 @@ class TestBootSourceRequest:
     def test_verification_skipped_with_only_data(self):
         data = b64encode("data".encode("utf-8")).decode("utf-8")
         request = BootSourceRequest(
-            url="http://example.com",
             keyring_data=data,
-            priority=1,
             skip_keyring_verification=True,
         )
         assert request.keyring_filename == ""
         assert request.keyring_data == data
 
 
-class TestBootSourceFetchRequest:
-    @pytest.mark.parametrize(
-        "keyring_path, keyring_data, should_raise",
-        [
-            (None, "a2V5cmluZ19kYXRh", False),
-            ("/tmp/keyrings/a", None, False),
-            ("/tmp/keyrings/a", "a2V5cmluZ19kYXRh", True),
-        ],
-    )
-    def test_validate_keyring_fields(
-        self,
-        keyring_path: str | None,
-        keyring_data: str | None,
-        should_raise: bool,
-    ) -> None:
-        """
-        Ensure that either `keyring_path` or `keyring_data` is specified,
-        never both at the same time.
-        """
-        if should_raise:
-            with pytest.raises(ValidationError):
-                BootSourceFetchRequest(
-                    url="http://abc.example.com",
-                    keyring_path=keyring_path,
-                    keyring_data=keyring_data,
-                )
-        else:
-            BootSourceFetchRequest(
-                url="http://abc.example.com",
-                keyring_path=keyring_path,
-                keyring_data=keyring_data,
+class TestBootSourceCreateRequest:
+    @pytest.mark.asyncio
+    async def test_to_builder(self, services_mock) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.exists.return_value = False
+        bootsource_request = BootSourceCreateRequest(
+            url="http://example.com",
+            keyring_filename="/path/to/file.gpg",
+            priority=102,
+            skip_keyring_verification=False,
+        )
+        builder = await bootsource_request.to_builder(services_mock)
+
+        assert builder.url == "http://example.com"
+        assert builder.priority == 102
+        assert not builder.skip_keyring_verification
+
+    def test_mandatory_params(self):
+        with pytest.raises(ValidationError) as e:
+            BootSourceCreateRequest(keyring_filename="/path/to/file.gpg")
+        assert len(e.value.errors()) == 2
+        assert {"url", "priority"} == set(
+            [f["loc"][0] for f in e.value.errors()]
+        )
+
+
+class TestBootSourceUpdateRequest:
+    def test_doesnt_accept_url(self):
+        with pytest.raises(ValidationError):
+            BootSourceUpdateRequest(
+                priority=100,
+                skip_keyring_verification=True,
+                url="http://foo.bar",  # pyright: ignore[reportCallIssue]
             )
 
-    @pytest.mark.parametrize(
-        "keyring_data, should_raise",
-        [
-            ("a2V5cmluZ19kYXRh", False),
-            ("a2V5-_luZ19kYXRh", True),
-        ],
-    )
-    def test_validate_keyring_data(
-        self,
-        keyring_data: str | None,
-        should_raise: bool,
-    ) -> None:
-        """Ensure base64-encoding for `keyring_data` is valid."""
-        if should_raise:
-            with pytest.raises(ValidationError):
-                BootSourceFetchRequest(
-                    url="http://abc.example.com",
-                    keyring_path=None,
-                    keyring_data=keyring_data,
-                )
-        else:
-            BootSourceFetchRequest(
-                url="http://abc.example.com",
-                keyring_path=None,
-                keyring_data=keyring_data,
-            )
-        assert "keyring_data must be valid Base64 encoded binary data"
+    @pytest.mark.asyncio
+    async def test_to_builder(self, services_mock) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.exists.return_value = False
+        bootsource_request = BootSourceUpdateRequest(
+            keyring_filename="/path/to/file.gpg",
+            priority=102,
+            skip_keyring_verification=False,
+        )
+        builder = await bootsource_request.to_builder(services_mock)
+
+        assert builder.priority == 102
+        assert not builder.skip_keyring_verification

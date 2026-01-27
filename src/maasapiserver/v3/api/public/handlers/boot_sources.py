@@ -19,8 +19,9 @@ from maasapiserver.v3.api.public.models.requests.boot_source_selections import (
     BootSourceSelectionRequest,
 )
 from maasapiserver.v3.api.public.models.requests.boot_sources import (
+    BootSourceCreateRequest,
     BootSourceFetchRequest,
-    BootSourceRequest,
+    BootSourceUpdateRequest,
 )
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.base import (
@@ -69,12 +70,17 @@ from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
     BaseExceptionDetail,
     ConflictException,
     NotFoundException,
 )
-from maasservicelayer.exceptions.constants import CONFLICT_VIOLATION_TYPE
+from maasservicelayer.exceptions.constants import (
+    CONFLICT_VIOLATION_TYPE,
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.simplestreams.client import SimpleStreamsClientException
 
 
 class BootSourcesHandler(Handler):
@@ -174,11 +180,11 @@ class BootSourcesHandler(Handler):
     )
     async def create_bootsource(
         self,
-        boot_source_request: BootSourceRequest,
+        boot_source_request: BootSourceCreateRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> BootSourceResponse:
-        builder = boot_source_request.to_builder()
+        builder = await boot_source_request.to_builder(services)
         boot_source = await services.boot_sources.create(builder)
         response.headers["ETag"] = boot_source.etag()
         return BootSourceResponse.from_model(
@@ -206,11 +212,11 @@ class BootSourcesHandler(Handler):
     async def update_bootsource(
         self,
         boot_source_id: int,
-        boot_source_request: BootSourceRequest,
+        boot_source_request: BootSourceUpdateRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> BootSourceResponse:
-        builder = boot_source_request.to_builder()
+        builder = await boot_source_request.to_builder(services)
         boot_source = await services.boot_sources.update_by_id(
             boot_source_id, builder
         )
@@ -268,11 +274,25 @@ class BootSourcesHandler(Handler):
         if request.keyring_data:
             keyring_data_bytes = b64decode(request.keyring_data)
 
-        images = await services.image_manifests.fetch_image_metadata(
-            source_url=request.url,
-            keyring_path=request.keyring_path,
-            keyring_data=keyring_data_bytes,
-        )
+        try:
+            images = await services.image_manifests.fetch_image_metadata(
+                source_url=request.url,
+                keyring_path=request.keyring_filename
+                if request.keyring_filename
+                else None,
+                keyring_data=keyring_data_bytes,
+                skip_pgp_verification=request.skip_keyring_verification,
+            )
+
+        except SimpleStreamsClientException as e:
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message=f"An error occured while fetching images data.\nError: {e}",
+                    )
+                ]
+            ) from e
         # The fetch method isn't paginated, so we return all items
         # in a single response.
         return SourceAvailableImageListResponse(

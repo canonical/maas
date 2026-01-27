@@ -11,6 +11,7 @@ from typing import Self
 
 from aiohttp import ClientResponseError, ClientSession
 from aiohttp.client import TCPConnector
+from pydantic import ValidationError
 
 from maascommon.constants import SYSTEM_CA_FILE
 from maasservicelayer.simplestreams.models import (
@@ -147,19 +148,34 @@ class SimpleStreamsClient:
                 f"Request to '{url}' failed: {e.status} {e.message}"
             ) from e
         raw_response = await response.text()
-        return await self._parse_response(raw_response)
+        try:
+            return await self._parse_response(raw_response)
+        except json.JSONDecodeError as e:
+            raise SimpleStreamsClientException(
+                f"Request to '{url}' failed: not a valid JSON file."
+            ) from e
 
     async def get_index(self) -> SimpleStreamsIndexList:
         index_url = f"{self.url}/{self._index_path}"
         response = await self.http_get(index_url)
-        return SimpleStreamsIndexList(**response)
+        try:
+            return SimpleStreamsIndexList(**response)
+        except ValidationError as e:
+            raise SimpleStreamsClientException(
+                "Got invalid data for the index file"
+            ) from e
 
     async def get_product(
         self, product_path: str
     ) -> SimpleStreamsProductListType:
         url = f"{self.url}/{product_path}"
         response = await self.http_get(url)
-        return SimpleStreamsProductListFactory.produce(response)
+        try:
+            return SimpleStreamsProductListFactory.produce(response)
+        except ValueError as e:
+            raise SimpleStreamsClientException(
+                "Got invalid data for the products file"
+            ) from e
 
     async def get_all_products(self) -> SimpleStreamsManifest:
         index_list = await self.get_index()

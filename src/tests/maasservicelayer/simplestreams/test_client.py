@@ -394,3 +394,44 @@ class TestSimpleStreamsClient:
                 proxy=None,
                 method="GET",
             )
+
+    async def test_raises_not_valid_json(self, mock_aioresponse) -> None:
+        url = "http://foo.com"
+        mock_aioresponse.get(f"{url}/{SIGNED_INDEX_PATH}", payload=None)
+        async with SimpleStreamsClient(
+            url=url, skip_pgp_verification=True
+        ) as client:
+            with pytest.raises(
+                SimpleStreamsClientException,
+                match=r".* not a valid JSON file.",
+            ):
+                await client.get_index()
+
+    async def test_raises_not_valid_data_for_index(
+        self, mock_aioresponse
+    ) -> None:
+        url = "http://foo.com"
+        mock_aioresponse.get(f"{url}/{SIGNED_INDEX_PATH}", payload={})
+        async with SimpleStreamsClient(
+            url=url, skip_pgp_verification=True
+        ) as client:
+            with pytest.raises(
+                SimpleStreamsClientException,
+                match="Got invalid data for the index file",
+            ):
+                await client.get_index()
+
+    async def test_raises_not_valid_data_for_product(
+        self, mock_aioresponse
+    ) -> None:
+        url = "http://foo.com"
+        product = "product"
+        mock_aioresponse.get(f"{url}/{product}", payload={})
+        async with SimpleStreamsClient(
+            url=url, skip_pgp_verification=True
+        ) as client:
+            with pytest.raises(
+                SimpleStreamsClientException,
+                match="Got invalid data for the products file",
+            ):
+                await client.get_product(product)
