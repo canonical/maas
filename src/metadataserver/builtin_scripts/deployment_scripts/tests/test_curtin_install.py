@@ -121,11 +121,17 @@ class TestCurtinInstall(MAASTestCase):
         subprocess_run_mock = self.patch(ci, "subprocess")
         subprocess_run_mock.run.return_value = None
 
+        installer_path = "./curtin-installer"
+        self.addCleanup(
+            lambda: os.path.exists(installer_path)
+            and os.remove(installer_path)
+        )
+
         ci.main()
 
         urlopen_mock.assert_called_once()
 
         subprocess_run_mock.run.assert_called_once_with(
-            ["./curtin-installer"],
+            [installer_path],
             check=True,
         )
