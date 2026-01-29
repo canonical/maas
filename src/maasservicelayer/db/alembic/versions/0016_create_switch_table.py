@@ -3,7 +3,7 @@
 
 """create_switch_table
 
-Revision ID: 0016
+Revision ID: 0017
 Revises: 0015
 Create Date: 2025-11-28 12:00:00.000000+00:00
 
@@ -15,8 +15,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision: str = "0016"
-down_revision: str | None = "0015"
+revision: str = "0017"
+down_revision: str | None = "0016"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
