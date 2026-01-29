@@ -346,8 +346,13 @@ class BootResourcesActivity(ActivityBase):
                     logger.error(
                         f"Could not fetch manifest for boot source with url {boot_source.url}: {ex}"
                     )
-                    await services.notifications.create(
-                        NotificationBuilder(
+                    await services.notifications.create_or_update(
+                        query=QuerySpec(
+                            where=NotificationsClauseFactory.with_ident(
+                                NotificationComponent.FETCH_IMAGE_MANIFEST
+                            )
+                        ),
+                        builder=NotificationBuilder(
                             ident=NotificationComponent.FETCH_IMAGE_MANIFEST,
                             users=True,
                             admins=True,
@@ -356,8 +361,19 @@ class BootResourcesActivity(ActivityBase):
                             user_id=None,
                             category=NotificationCategoryEnum.ERROR,
                             dismissable=True,
-                        )
+                        ),
                     )
+                else:
+                    try:
+                        await services.notifications.delete_one(
+                            query=QuerySpec(
+                                where=NotificationsClauseFactory.with_ident(
+                                    NotificationComponent.FETCH_IMAGE_MANIFEST
+                                )
+                            ),
+                        )
+                    except NotFoundException:
+                        pass
             await services.image_sync.sync_boot_source_selections_from_msm(
                 boot_sources
             )
@@ -754,6 +770,7 @@ class FetchManifestWorkflow:
             FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,
             start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
             heartbeat_timeout=timedelta(seconds=30),
+            retry_policy=RetryPolicy(maximum_attempts=3),
         )
 
 

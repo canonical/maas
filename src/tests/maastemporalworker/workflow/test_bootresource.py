@@ -689,6 +689,8 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
+        services_mock.notifications = Mock(NotificationsService)
+        services_mock.notifications.delete_one.return_value = None
 
         heartbeats = []
         activity_env.on_heartbeat = lambda *args: heartbeats.append(args[0])
@@ -702,6 +704,13 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.image_sync.sync_boot_source_selections_from_msm.assert_awaited_once()
         services_mock.image_sync.check_commissioning_series_selected.assert_awaited_once()
         services_mock.boot_source_selections.ensure_selections_from_legacy.assert_awaited_once()
+        services_mock.notifications.delete_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=NotificationsClauseFactory.with_ident(
+                    NotificationComponent.FETCH_IMAGE_MANIFEST
+                )
+            ),
+        )
 
     async def test_creates_notification_if_exception_is_raised(
         self,
@@ -733,8 +742,13 @@ class TestFetchManifestAndUpdateCacheActivity:
 
         await activity_env.run(boot_activities.fetch_manifest_and_update_cache)
 
-        services_mock.notifications.create.assert_awaited_once_with(
-            NotificationBuilder(
+        services_mock.notifications.create_or_update.assert_awaited_once_with(
+            query=QuerySpec(
+                where=NotificationsClauseFactory.with_ident(
+                    NotificationComponent.FETCH_IMAGE_MANIFEST
+                )
+            ),
+            builder=NotificationBuilder(
                 ident=NotificationComponent.FETCH_IMAGE_MANIFEST,
                 users=True,
                 admins=True,
@@ -743,7 +757,7 @@ class TestFetchManifestAndUpdateCacheActivity:
                 user_id=None,
                 category=NotificationCategoryEnum.ERROR,
                 dismissable=True,
-            )
+            ),
         )
 
 
@@ -1371,6 +1385,53 @@ async def three_regions_workers(
         ),
     ):
         yield
+
+
+class TestFetchManifestWorkflow:
+    @pytest.mark.asyncio
+    async def test_retry_activity_if_it_fails(
+        self,
+        client: Client,
+        single_region_workers,
+        mock_activities: MockActivities,
+    ):
+        mock_activities.results[
+            FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME
+        ] = ActivityResult(
+            side_effect=[
+                Exception(),
+                Exception(),
+                None,
+            ]
+        )
+        await client.execute_workflow(
+            FetchManifestWorkflow.run,
+            id="test-fail-maximum-attempts",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+    @pytest.mark.asyncio
+    async def test_workflow_fails_after_three_activity_retries(
+        self,
+        client: Client,
+        single_region_workers,
+        mock_activities: MockActivities,
+    ):
+        mock_activities.results[
+            FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME
+        ] = ActivityResult(
+            side_effect=[
+                Exception(),
+                Exception(),
+                Exception(),
+            ]
+        )
+        with pytest.raises(WorkflowFailureError):
+            await client.execute_workflow(
+                FetchManifestWorkflow.run,
+                id="test-fail-maximum-attempts",
+                task_queue=REGION_TASK_QUEUE,
+            )
 
 
 class TestSyncBootResourcesWorkflow:
