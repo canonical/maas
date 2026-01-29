@@ -45,7 +45,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name="test-name",
             sha256="test-sha256",
-            size=123456,
             architecture="amd64/generic",
             file_type=BootResourceFileTypeChoice.TGZ,
             base_image="custom/base",
@@ -76,7 +75,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture="amd64/generic",
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -87,18 +85,30 @@ class TestBootResourceCreateRequest:
 
         assert validated_name == "custom/my_custom_image"
 
-    async def test_validate_name_supported(self) -> None:
+    @pytest.mark.parametrize(
+        "os",
+        [
+            "ubuntu-core",
+            "centos",
+            "rhel",
+            "ol",
+            "custom",
+            "windows",
+            "suse",
+            "esxi",
+        ],
+    )
+    async def test_validate_name_supported(self, os: str) -> None:
         services_mock = Mock(ServiceCollectionV3)
 
         services_mock.boot_source_cache = Mock(BootSourceCacheService)
         services_mock.boot_source_cache.get_unique_os_releases.return_value = []
 
-        name = "ubuntu/noble"
+        name = f"{os}/my-release"
 
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture="amd64/generic",
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -106,7 +116,7 @@ class TestBootResourceCreateRequest:
         )
         validated_name = await request._validate_name(name, services_mock)
 
-        assert validated_name == "ubuntu/noble"
+        assert validated_name == name
 
     async def test_validate_name_fails_when_not_supported(self) -> None:
         services_mock = Mock(ServiceCollectionV3)
@@ -119,7 +129,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture="amd64/generic",
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -141,7 +150,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture="amd64/generic",
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -157,18 +165,14 @@ class TestBootResourceCreateRequest:
 
         services_mock.boot_source_cache = Mock(BootSourceCacheService)
         services_mock.boot_source_cache.get_unique_os_releases.return_value = [
-            BootSourceCacheOSRelease(os="ubuntu", release="noble"),
-            BootSourceCacheOSRelease(os="ubuntu", release="focal"),
-            BootSourceCacheOSRelease(os="ubuntu", release="jammy"),
             BootSourceCacheOSRelease(os="centos", release="8"),
         ]
 
-        name = "ubuntu/noble"
+        name = "centos/8"
 
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture="amd64/generic",
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -195,7 +199,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture="amd64/generic",
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -205,6 +208,34 @@ class TestBootResourceCreateRequest:
             await request._validate_name(name, services_mock)
 
         assert validation_exception.value.details[0].field == "name"
+
+    async def test_validate_name_fails_if_os_is_ubuntu(self) -> None:
+        services_mock = Mock(ServiceCollectionV3)
+        services_mock.boot_source_cache = Mock(BootSourceCacheService)
+        services_mock.boot_source_cache.get_unique_os_releases.return_value = [
+            BootSourceCacheOSRelease(os="ubuntu", release="noble"),
+            BootSourceCacheOSRelease(os="ubuntu", release="focal"),
+            BootSourceCacheOSRelease(os="ubuntu", release="jammy"),
+            BootSourceCacheOSRelease(os="centos", release="8"),
+        ]
+
+        name = "ubuntu/my-ubuntu-release"
+        request = BootResourceCreateRequest(
+            name=name,
+            sha256="test-sha256",
+            architecture="amd64/generic",
+            file_type=BootResourceFileTypeChoice.TGZ,
+            title=None,
+            base_image=None,
+        )
+        with pytest.raises(ValidationException) as validation_exception:
+            await request._validate_name(name, services_mock)
+
+        assert validation_exception.value.details[0].field == "name"
+        assert (
+            validation_exception.value.details[0].message
+            == "To upload an Ubuntu custom image you have to specify 'custom' as the OS"
+        )
 
     async def test_validate_name_fails_when_reserved_release(self) -> None:
         services_mock = Mock(ServiceCollectionV3)
@@ -222,7 +253,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture="amd64/generic",
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -255,7 +285,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -287,7 +316,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -319,7 +347,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -351,7 +378,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -394,7 +420,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -426,7 +451,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -458,7 +482,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -493,7 +516,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=test_architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -521,7 +543,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=test_architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -545,7 +566,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=test_architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -574,7 +594,6 @@ class TestBootResourceCreateRequest:
         request = BootResourceCreateRequest(
             name=name,
             sha256="test-sha256",
-            size=123456,
             architecture=test_architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
