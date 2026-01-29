@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from contextlib import suppress
+
 from fastapi import Depends, Query, Response
 from fastapi.exceptions import RequestValidationError
 from pydantic import conlist, ValidationError
@@ -42,6 +44,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.configurations import BootImagesAutoImportConfig
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.temporal import TemporalServiceException
 
 
 class BootSourceSelectionsHandler(Handler):
@@ -204,11 +207,16 @@ class BootSourceSelectionsHandler(Handler):
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
-        await services.boot_source_selections.delete_many(
+        deleted = await services.boot_source_selections.delete_many(
             query=QuerySpec(
                 where=BootSourceSelectionClauseFactory.with_ids(ids)
             )
         )
+        with suppress(TemporalServiceException):
+            for selection in deleted:
+                await services.temporal.terminate_workflow(
+                    f"sync-selection:{selection.id}"
+                )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(

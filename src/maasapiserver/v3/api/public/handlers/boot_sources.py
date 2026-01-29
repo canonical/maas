@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64decode
+from contextlib import suppress
 
 from fastapi import Depends, Header, Response, status
 from fastapi.openapi.models import Header as OpenApiHeader
@@ -81,6 +82,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.configurations import BootImagesAutoImportConfig
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.temporal import TemporalServiceException
 from maasservicelayer.simplestreams.client import SimpleStreamsClientException
 
 
@@ -515,10 +517,17 @@ class BootSourcesHandler(Handler):
                 ]
             )
         )
-        await services.boot_source_selections.delete_one(
+        deleted = await services.boot_source_selections.delete_one(
             query=query,
             etag_if_match=etag_if_match,
         )
+
+        if deleted:
+            with suppress(TemporalServiceException):
+                await services.temporal.terminate_workflow(
+                    f"sync-selection:{id}"
+                )
+
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(

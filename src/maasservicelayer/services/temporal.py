@@ -69,11 +69,21 @@ class TemporalService(Service):
                 f"Failed to cancel workflow {workflow_id}"
             ) from None
 
+    async def terminate_workflow(self, workflow_id: str) -> None:
+        client = await self.get_temporal_client()
+        handle = client.get_workflow_handle(workflow_id)
+        try:
+            return await handle.terminate()
+        except RPCError:
+            raise TemporalServiceException(
+                f"Failed to terminate workflow {workflow_id}"
+            ) from None
+
     async def workflow_status(
         self, workflow_id: str
     ) -> WorkflowExecutionStatus | None:
         client = await self.get_temporal_client()
-        hdl = client.get_workflow_handle(workflow_id=workflow_id)
+        hdl = client.get_workflow_handle(workflow_id)
         try:
             return (await hdl.describe()).status
         except RPCError:

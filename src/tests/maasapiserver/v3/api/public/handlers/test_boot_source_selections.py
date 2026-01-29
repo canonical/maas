@@ -312,11 +312,19 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
+        s1 = TEST_BOOTSOURCESELECTION.copy()
+        s2 = TEST_BOOTSOURCESELECTION.copy()
+        s2.id = 2
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
-        services_mock.boot_source_selections.delete_many.return_value = None
-        # httpx.delete doesn't support json
+        services_mock.boot_source_selections.delete_many.return_value = [
+            s1,
+            s2,
+        ]
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.terminate_workflow.return_value = None
+
         response = await mocked_api_client_admin.delete(
             f"{self.BASE_PATH}?id=1&id=2"
         )
@@ -325,6 +333,9 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             query=QuerySpec(
                 where=BootSourceSelectionClauseFactory.with_ids([1, 2])
             )
+        )
+        services_mock.temporal.terminate_workflow.assert_has_calls(
+            [call("sync-selection:1"), call("sync-selection:2")]
         )
 
 

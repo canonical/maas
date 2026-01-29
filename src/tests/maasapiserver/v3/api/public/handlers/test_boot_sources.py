@@ -1006,10 +1006,16 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.delete_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.terminate_workflow.return_value = None
+
         response = await mocked_api_client_admin.delete(
             f"{self.BASE_PATH}/{TEST_BOOTSOURCESELECTION.id}",
         )
         assert response.status_code == 204
+        services_mock.temporal.terminate_workflow.assert_awaited_once_with(
+            f"sync-selection:{TEST_BOOTSOURCESELECTION.id}"
+        )
 
     async def test_delete_404(
         self,
@@ -1025,6 +1031,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.delete_one.side_effect = (
             NotFoundException()
         )
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.terminate_workflow.return_value = None
 
         response = await mocked_api_client_admin.delete(
             f"{V3_API_PREFIX}/boot_sources/{boot_source_id}/selections/{boot_source_selection_id}",
@@ -1052,6 +1060,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             ),
             etag_if_match=None,
         )
+        services_mock.temporal.terminate_workflow.assert_not_called()
 
     async def test_sync_selection_starts_workflow(
         self,
