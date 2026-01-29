@@ -358,3 +358,22 @@ class TestNotificationsRepository:
         assert dismissed is not None
         assert dismissed.notification_id == active_notification_for_user.id
         assert dismissed.user_id == test_user.id
+
+    async def test_delete_all_dismissal_for_notification(
+        self,
+        fixture: Fixture,
+        repository: NotificationsRepository,
+        dismissed_notification_for_user: Notification,
+    ) -> None:
+        await repository.delete_all_dismissal_for_notification(
+            dismissed_notification_for_user.id
+        )
+
+        dismissed = await fixture.get(
+            NotificationDismissalTable.name,
+            eq(
+                NotificationDismissalTable.c.notification_id,
+                dismissed_notification_for_user.id,
+            ),
+        )
+        assert dismissed == []

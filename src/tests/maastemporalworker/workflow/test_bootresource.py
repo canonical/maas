@@ -3,10 +3,12 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass, field
 import hashlib
 import os
 from pathlib import Path
 import shutil
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 from aiofiles.threadpool.binary import AsyncBufferedIOBase
@@ -33,11 +35,13 @@ from maascommon.enums.notifications import (
 )
 from maascommon.workflows.bootresource import (
     CleanupBootResourceSetsParam,
+    DeleteNotificationParam,
     DeletePendingFilesParam,
     DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
     GetFilesToDownloadForSelectionParam,
     GetFilesToDownloadReturnValue,
     GetLocalBootResourcesParamReturnValue,
+    RegisterNotificationParam,
     ResourceDeleteParam,
     ResourceDownloadParam,
     ResourceIdentifier,
@@ -105,9 +109,9 @@ from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
     CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME,
     DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME,
+    DELETE_NOTIFICATION_ACTIVITY_NAME,
     DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME,
     DeleteBootResourceWorkflow,
-    DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME,
     DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,
     DownloadBootResourceWorkflow,
     FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,
@@ -119,7 +123,7 @@ from maastemporalworker.workflow.bootresource import (
     GET_SYNCED_REGIONS_ACTIVITY_NAME,
     MasterImageSyncWorkflow,
     REGION_TASK_QUEUE,
-    REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
+    REGISTER_NOTIFICATION_ACTIVITY_NAME,
     SyncAllLocalBootResourcesWorkflow,
     SyncBootResourcesWorkflow,
     SyncRemoteBootResourcesWorkflow,
@@ -1002,7 +1006,13 @@ class TestRegisterNotificationErrorActivity:
         services_mock.notifications = Mock(NotificationsService)
 
         await activity_env.run(
-            boot_activities.register_error_notification, "error message"
+            boot_activities.register_notification,
+            RegisterNotificationParam(
+                ident=NotificationComponent.REGION_IMAGE_SYNC,
+                err_msg="Error",
+                category=NotificationCategoryEnum.ERROR,
+                dismissable=False,
+            ),
         )
 
         services_mock.notifications.create_or_update.assert_awaited_once_with(
@@ -1015,7 +1025,7 @@ class TestRegisterNotificationErrorActivity:
                 ident=NotificationComponent.REGION_IMAGE_SYNC,
                 users=True,
                 admins=True,
-                message="Failed to synchronize boot resources: error message",
+                message="Error",
                 context={},
                 user_id=None,
                 category=NotificationCategoryEnum.ERROR,
@@ -1024,7 +1034,7 @@ class TestRegisterNotificationErrorActivity:
         )
 
 
-class TestDiscardNotificationErrorActivity:
+class TestDeleteNotificationErrorActivity:
     async def test_calls_service(
         self,
         boot_activities: BootResourcesActivity,
@@ -1033,7 +1043,12 @@ class TestDiscardNotificationErrorActivity:
     ) -> None:
         services_mock.notifications = Mock(NotificationsService)
 
-        await activity_env.run(boot_activities.discard_error_notification)
+        await activity_env.run(
+            boot_activities.delete_notification,
+            DeleteNotificationParam(
+                ident=NotificationComponent.REGION_IMAGE_SYNC
+            ),
+        )
 
         services_mock.notifications.delete_one.assert_awaited_once_with(
             query=QuerySpec(
@@ -1059,111 +1074,142 @@ async def client(env: WorkflowEnvironment) -> Client:
     return client
 
 
+@dataclass
+class ActivityResult:
+    result: Any = None
+    side_effect: list = field(default_factory=list)
+    sleep: int = 0
+
+    async def get_result(self) -> Any:
+        if self.sleep > 0:
+            for _ in range(self.sleep):
+                await asyncio.sleep(1)
+                # In order for an activity to be cancelled, it must heartbeat (https://docs.temporal.io/activity-execution#cancellation)
+                activity.heartbeat()
+        if self.side_effect:
+            value = self.side_effect.pop(0)
+            if isinstance(value, BaseException):
+                raise value
+            else:
+                return value
+        return self.result
+
+
 class MockActivities:
+    """Class that mocks the activities and allows changing their return value.
+
+    Use the `results` field to change the outcome of a specific activity.
+    `results` is a dict with the key being the activity name and the value being an `ActivityResult`.
+
+    """
+
+    results: dict[str, ActivityResult]
+
     def __init__(self):
-        # Return values for activities. You can override them in the single test.
-        # The naming convention is <activity_name>_result
-        self.get_bootresourcefile_endpoints_result = {}
-        self.download_bootresourcefile_result = True
-        self.get_synced_regions_for_file_result = []
-        self.get_all_highest_priority_selections_result = [1, 2]
-        self.get_manually_uploaded_resources_result = (
-            GetLocalBootResourcesParamReturnValue(resources=[])
-        )
-        self.get_files_to_download_for_selection_result = {
-            1: (
-                GetFilesToDownloadReturnValue(
-                    resources=[
-                        ResourceDownloadParam(
-                            rfile_ids=[1],
-                            source_list=["http://maas-image-stream.io"],
-                            sha256="1" * 64,
-                            filename_on_disk="1" * 7,
-                            total_size=100,
-                        )
-                    ]
-                )
+        self.results = {
+            GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME: ActivityResult(
+                result={}
             ),
-            2: (
-                GetFilesToDownloadReturnValue(
-                    resources=[
-                        ResourceDownloadParam(
-                            rfile_ids=[2],
-                            source_list=["http://maas-image-stream.io"],
-                            sha256="2" * 64,
-                            filename_on_disk="2" * 7,
-                            total_size=100,
-                        )
-                    ]
-                )
+            DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME: ActivityResult(
+                result=True
             ),
+            GET_SYNCED_REGIONS_ACTIVITY_NAME: ActivityResult(result=[]),
+            FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME: ActivityResult(
+                result=None
+            ),
+            GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME: ActivityResult(
+                result=[1, 2]
+            ),
+            GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME: ActivityResult(
+                side_effect=[
+                    GetFilesToDownloadReturnValue(
+                        resources=[
+                            ResourceDownloadParam(
+                                rfile_ids=[1],
+                                source_list=["http://maas-image-stream.io"],
+                                sha256="1" * 64,
+                                filename_on_disk="1" * 7,
+                                total_size=100,
+                            )
+                        ]
+                    ),
+                    GetFilesToDownloadReturnValue(
+                        resources=[
+                            ResourceDownloadParam(
+                                rfile_ids=[2],
+                                source_list=["http://maas-image-stream.io"],
+                                sha256="2" * 64,
+                                filename_on_disk="2" * 7,
+                                total_size=100,
+                            )
+                        ]
+                    ),
+                ]
+            ),
+            GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME: ActivityResult(
+                result=GetLocalBootResourcesParamReturnValue(resources=[])
+            ),
+            DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME: ActivityResult(
+                result=None
+            ),
+            CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME: ActivityResult(
+                result=None
+            ),
+            REGISTER_NOTIFICATION_ACTIVITY_NAME: ActivityResult(result=None),
+            DELETE_NOTIFICATION_ACTIVITY_NAME: ActivityResult(result=None),
+            DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME: ActivityResult(result=True),
         }
-        self.delete_bootresourcefile_result = True
 
-    @activity.defn(name=GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME)
-    async def get_bootresourcefile_endpoints(self) -> dict[str, list]:
-        return self.get_bootresourcefile_endpoints_result
+    async def _execute_activity(
+        self, activity_name: str, *args, **kwargs
+    ) -> Any:
+        return await self.results[activity_name].get_result()
 
-    @activity.defn(name=DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME)
-    async def download_bootresourcefile(
-        self, param: ResourceDownloadParam
-    ) -> bool:
-        return self.download_bootresourcefile_result
+    @staticmethod
+    def _mock_activity_method(activity_name: str):
+        """Utility to dynamically define activities and pick results from `MockActivities.results`"""
 
-    @activity.defn(name=GET_SYNCED_REGIONS_ACTIVITY_NAME)
-    async def get_synced_regions_for_file(self, file_id: int) -> list[str]:
-        return self.get_synced_regions_for_file_result
+        async def method(self, *args, **kwargs):
+            return await self._execute_activity(activity_name)
 
-    @activity.defn(name=FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME)
-    async def fetch_manifest_and_update_cache(
-        self,
-    ) -> None:
-        return None
+        return activity.defn(name=activity_name)(method)
 
-    @activity.defn(name=GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME)
-    async def get_all_highest_priority_selections(self) -> list[int]:
-        return self.get_all_highest_priority_selections_result
-
-    @activity.defn(name=GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME)
-    async def get_files_to_download_for_selection(
-        self, param: GetFilesToDownloadForSelectionParam
-    ) -> GetFilesToDownloadReturnValue:
-        return self.get_files_to_download_for_selection_result[
-            param.selection_id
-        ]
-
-    @activity.defn(name=GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME)
-    async def get_manually_uploaded_resources(
-        self,
-    ) -> GetLocalBootResourcesParamReturnValue:
-        return self.get_manually_uploaded_resources_result
-
-    @activity.defn(name=DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME)
-    async def delete_pending_files(
-        self, param: DeletePendingFilesParam
-    ) -> None:
-        pass
-
-    @activity.defn(name=CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME)
-    async def cleanup_boot_resource_sets_for_selection(
-        self,
-        param: CleanupBootResourceSetsParam,
-    ) -> None:
-        pass
-
-    @activity.defn(name=REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME)
-    async def register_error_notification(self, err_msg: str) -> None:
-        pass
-
-    @activity.defn(name=DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME)
-    async def discard_error_notification(self) -> None:
-        pass
-
-    @activity.defn(name=DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME)
-    async def delete_bootresourcefile(
-        self, param: ResourceDeleteParam
-    ) -> bool:
-        return self.delete_bootresourcefile_result
+    get_bootresourcefile_endpoints = _mock_activity_method(
+        GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME
+    )
+    download_bootresourcefile = _mock_activity_method(
+        DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME
+    )
+    get_synced_regions_for_file = _mock_activity_method(
+        GET_SYNCED_REGIONS_ACTIVITY_NAME
+    )
+    fetch_manifest_and_update_cache = _mock_activity_method(
+        FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME
+    )
+    get_all_highest_priority_selections = _mock_activity_method(
+        GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME
+    )
+    get_files_to_download_for_selection = _mock_activity_method(
+        GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME
+    )
+    get_manually_uploaded_resources = _mock_activity_method(
+        GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME
+    )
+    delete_pending_files = _mock_activity_method(
+        DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME
+    )
+    cleanup_boot_resource_sets_for_selection = _mock_activity_method(
+        CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME
+    )
+    register_notification = _mock_activity_method(
+        REGISTER_NOTIFICATION_ACTIVITY_NAME
+    )
+    delete_notification = _mock_activity_method(
+        DELETE_NOTIFICATION_ACTIVITY_NAME
+    )
+    delete_bootresourcefile = _mock_activity_method(
+        DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME
+    )
 
 
 @pytest.fixture
@@ -1249,8 +1295,8 @@ async def _shared_queue_worker(
             mock_activities.get_manually_uploaded_resources,
             mock_activities.delete_pending_files,
             mock_activities.cleanup_boot_resource_sets_for_selection,
-            mock_activities.register_error_notification,
-            mock_activities.discard_error_notification,
+            mock_activities.register_notification,
+            mock_activities.delete_notification,
         ],
         workflow_runner=custom_sandbox_runner(),
         interceptors=[worker_test_interceptor],
@@ -1289,8 +1335,8 @@ async def single_region_workers(
     _shared_queue_worker,
 ):
     """Setup the temporal workers for a single region scenario."""
-    mock_activities.get_bootresourcefile_endpoints_result = (
-        endpoints_single_region
+    mock_activities.results[GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME] = (
+        ActivityResult(result=endpoints_single_region)
     )
     async with _make_region_worker(
         client, region1_system_id, mock_activities, worker_test_interceptor
@@ -1310,8 +1356,8 @@ async def three_regions_workers(
     _shared_queue_worker,
 ):
     """Setup the temporal workers for an HA scenario."""
-    mock_activities.get_bootresourcefile_endpoints_result = (
-        endpoints_three_regions
+    mock_activities.results[GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME] = (
+        ActivityResult(result=endpoints_three_regions)
     )
     async with (
         _make_region_worker(
@@ -1360,9 +1406,9 @@ class TestSyncBootResourcesWorkflow:
         mock_activities: MockActivities,
     ):
         # Only one synced region
-        mock_activities.get_synced_regions_for_file_result = [
-            region1_system_id
-        ]
+        mock_activities.results[GET_SYNCED_REGIONS_ACTIVITY_NAME] = (
+            ActivityResult(result=[region1_system_id])
+        )
         await client.execute_workflow(
             SyncBootResourcesWorkflow.run,
             sync_request,
@@ -1392,11 +1438,13 @@ class TestSyncBootResourcesWorkflow:
         mock_activities: MockActivities,
     ):
         """Test workflow fails when sync to other regions fails"""
-        mock_activities.get_synced_regions_for_file_result = [
-            region1_system_id
-        ]
+        mock_activities.results[GET_SYNCED_REGIONS_ACTIVITY_NAME] = (
+            ActivityResult(result=[region1_system_id])
+        )
         # Make the download wf fail
-        mock_activities.download_bootresourcefile_result = False
+        mock_activities.results[DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME] = (
+            ActivityResult(result=False)
+        )
 
         with (
             pytest.raises(WorkflowFailureError) as exc_info,
@@ -1422,7 +1470,10 @@ class TestSyncBootResourcesWorkflow:
         mock_activities: MockActivities,
     ):
         """Test workflow fails when no regions have the complete file"""
-        mock_activities.get_synced_regions_for_file_result = []  # No region have the file
+        # No region have the file
+        mock_activities.results[GET_SYNCED_REGIONS_ACTIVITY_NAME] = (
+            ActivityResult(result=[])
+        )
 
         with (
             pytest.raises(WorkflowFailureError) as exc_info,
@@ -1474,7 +1525,9 @@ class TestSyncRemoteBootResourcesWorkflow:
         mock_activities: MockActivities,
     ):
         """Test workflow fails when upstream download fails"""
-        mock_activities.download_bootresourcefile_result = False
+        mock_activities.results[DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME] = (
+            ActivityResult(result=False)
+        )
         with (
             pytest.raises(WorkflowFailureError) as exc_info,
         ):
@@ -1501,10 +1554,13 @@ class TestSyncSelectionWorkflow:
         temporal_calls: TemporalCalls,
         mock_activities: MockActivities,
     ):
-        mock_activities.get_all_highest_priority_selections_result = [1]
-        mock_activities.get_files_to_download_for_selection_result = {
-            1: GetFilesToDownloadReturnValue(resources=[])
-        }
+        mock_activities.results[
+            GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME
+        ] = ActivityResult(result=[1])
+        mock_activities.results[
+            GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME
+        ] = ActivityResult(result=GetFilesToDownloadReturnValue(resources=[]))
+
         await client.execute_workflow(
             SyncSelectionWorkflow.run,
             SyncSelectionParam(selection_id=1),
@@ -1534,6 +1590,7 @@ class TestSyncSelectionWorkflow:
                 GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME,
                 DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,  # SyncBootResources wf
                 GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME,  # SyncBootResources wf
+                DELETE_NOTIFICATION_ACTIVITY_NAME,
                 CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME,
             ]
         )
@@ -1555,9 +1612,9 @@ class TestSyncSelectionWorkflow:
         mock_activities: MockActivities,
     ):
         # One synced region after the download
-        mock_activities.get_synced_regions_for_file_result = [
-            region1_system_id
-        ]
+        mock_activities.results[GET_SYNCED_REGIONS_ACTIVITY_NAME] = (
+            ActivityResult(result=[region1_system_id])
+        )
         await client.execute_workflow(
             SyncSelectionWorkflow.run,
             SyncSelectionParam(selection_id=1),
@@ -1573,6 +1630,7 @@ class TestSyncSelectionWorkflow:
                 GET_SYNCED_REGIONS_ACTIVITY_NAME,  # SyncBootResources wf
                 DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,  # SyncBootResources wf
                 DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,  # SyncBootResources wf
+                DELETE_NOTIFICATION_ACTIVITY_NAME,
                 CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME,
             ]
         )
@@ -1591,32 +1649,97 @@ class TestSyncSelectionWorkflow:
         self,
         client: Client,
         single_region_workers,
-        mock_activities: MockActivities,
         temporal_calls: TemporalCalls,
+        mock_activities: MockActivities,
     ) -> None:
-        async def mocked_download(param: ResourceDownloadParam):
-            await asyncio.sleep(5)
-            return True
-
-        mock_activities.download_bootresourcefile_result = mocked_download
+        mock_activities.results[DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME] = (
+            ActivityResult(result=True, sleep=5)
+        )
         workflow_handle = await client.start_workflow(
             SyncSelectionWorkflow.run,
             SyncSelectionParam(selection_id=1),
             id="test-cancelled-cleanup",
             task_queue=REGION_TASK_QUEUE,
         )
+        await asyncio.sleep(1)
+        # We expect the workflow to be in a completed status, as we handle the exceptions
+        await asyncio.wait_for(
+            cancel_workflow_immediately(
+                workflow_handle,
+                expected_status=WorkflowExecutionStatus.COMPLETED,
+            ),
+            timeout=5,
+        )
 
-        await asyncio.sleep(2)
-        await workflow_handle.cancel()
-
-        with pytest.raises(WorkflowFailureError):
-            await workflow_handle.result()
+        await workflow_handle.result()
 
         temporal_calls.assert_activity_called_once(
             DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME
         )
         temporal_calls.assert_activity_called_once(
             CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME
+        )
+        # No notification for cancellation
+        temporal_calls.assert_activity_not_called(
+            REGISTER_NOTIFICATION_ACTIVITY_NAME
+        )
+
+    @pytest.mark.asyncio
+    async def test_creates_notification_on_error(
+        self,
+        client: Client,
+        single_region_workers,
+        temporal_calls: TemporalCalls,
+        mock_activities: MockActivities,
+    ):
+        mock_activities.results[DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME] = (
+            ActivityResult(result=False)
+        )
+        await client.execute_workflow(
+            SyncSelectionWorkflow.run,
+            SyncSelectionParam(selection_id=1),
+            id="test-error-notification",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        temporal_calls.assert_activity_called_once(
+            REGISTER_NOTIFICATION_ACTIVITY_NAME,
+        )
+
+    @pytest.mark.asyncio
+    async def test_doesnt_create_notification_on_cancellation(
+        self,
+        client: Client,
+        single_region_workers,
+        temporal_calls: TemporalCalls,
+        mock_activities: MockActivities,
+    ):
+        mock_activities.results[DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME] = (
+            ActivityResult(result=True, sleep=5)
+        )
+        sync_selection_handle = await client.start_workflow(
+            SyncSelectionWorkflow.run,
+            SyncSelectionParam(selection_id=1),
+            id="test-error-notification",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        await asyncio.sleep(1)
+        await asyncio.wait_for(
+            cancel_workflow_immediately(
+                sync_selection_handle,
+                expected_status=WorkflowExecutionStatus.COMPLETED,
+            ),
+            timeout=5,
+        )
+
+        await sync_selection_handle.result()
+
+        temporal_calls.assert_activity_called_once(
+            DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME
+        )
+        temporal_calls.assert_activity_not_called(
+            REGISTER_NOTIFICATION_ACTIVITY_NAME,
         )
 
 
@@ -1648,8 +1771,10 @@ class TestSyncAllBootResourcesWorkflow:
         mock_activities: MockActivities,
         resource_download_param: ResourceDownloadParam,
     ) -> None:
-        mock_activities.get_manually_uploaded_resources_result = (
-            GetLocalBootResourcesParamReturnValue(
+        mock_activities.results[
+            GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME
+        ] = ActivityResult(
+            result=GetLocalBootResourcesParamReturnValue(
                 resources=[resource_download_param]
             )
         )
@@ -1679,14 +1804,16 @@ class TestSyncAllBootResourcesWorkflow:
         mock_activities: MockActivities,
         resource_download_param: ResourceDownloadParam,
     ) -> None:
-        mock_activities.get_manually_uploaded_resources_result = (
-            GetLocalBootResourcesParamReturnValue(
+        mock_activities.results[
+            GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME
+        ] = ActivityResult(
+            result=GetLocalBootResourcesParamReturnValue(
                 resources=[resource_download_param]
             )
         )
-        mock_activities.get_synced_regions_for_file_result = [
-            region1_system_id
-        ]
+        mock_activities.results[GET_SYNCED_REGIONS_ACTIVITY_NAME] = (
+            ActivityResult(result=[region1_system_id])
+        )
         await client.execute_workflow(
             SyncAllLocalBootResourcesWorkflow.run,
             id="test-sync-all-local",
@@ -1729,8 +1856,8 @@ class TestMasterImageSyncWorkflow:
         temporal_calls.assert_child_workflow_called_times(
             DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME, times=2
         )
-        temporal_calls.assert_activity_called_once(
-            DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME
+        temporal_calls.assert_activity_called_times(
+            DELETE_NOTIFICATION_ACTIVITY_NAME, times=2
         )
         temporal_calls.assert_child_workflow_called_once(
             SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME
@@ -1746,9 +1873,9 @@ class TestMasterImageSyncWorkflow:
         mock_activities: MockActivities,
     ):
         """Test master workflow schedules sync for all regions"""
-        mock_activities.get_synced_regions_for_file_result = [
-            region1_system_id
-        ]
+        mock_activities.results[GET_SYNCED_REGIONS_ACTIVITY_NAME] = (
+            ActivityResult(result=[region1_system_id])
+        )
         await client.execute_workflow(
             MasterImageSyncWorkflow.run,
             id="test-master-three",
@@ -1762,66 +1889,24 @@ class TestMasterImageSyncWorkflow:
         temporal_calls.assert_child_workflow_called_times(
             DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME, times=6
         )
-        temporal_calls.assert_activity_called_once(
-            DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME
+        temporal_calls.assert_activity_called_times(
+            DELETE_NOTIFICATION_ACTIVITY_NAME, times=2
         )
         temporal_calls.assert_child_workflow_called_once(
             SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME
         )
 
     @pytest.mark.asyncio
-    async def test_creates_notification_on_error(
+    async def test_cancelling_a_wf_doesnt_cancel_others(
         self,
         client: Client,
         single_region_workers,
         temporal_calls: TemporalCalls,
         mock_activities: MockActivities,
     ):
-        mock_activities.download_bootresourcefile_result = False
-        await client.execute_workflow(
-            MasterImageSyncWorkflow.run,
-            id="test-error-notification",
-            task_queue=REGION_TASK_QUEUE,
+        mock_activities.results[DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME] = (
+            ActivityResult(result=True, sleep=3)
         )
-
-        temporal_calls.assert_activity_called_once(
-            REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
-        )
-
-    # FIXME: Update this when https://github.com/temporalio/sdk-python/issues/1280 will be fixed
-    @pytest.mark.skip(reason="Flaky due to temporal bug")
-    @pytest.mark.asyncio
-    async def test_doesnt_create_notification_on_cancelled_error(
-        self,
-        client: Client,
-        single_region_workers,
-        temporal_calls: TemporalCalls,
-    ):
-        master_handle = await client.start_workflow(
-            MasterImageSyncWorkflow.run,
-            id="test-wf-cancelation",
-            task_queue=REGION_TASK_QUEUE,
-        )
-
-        # the selection ids returned by mock_activities are the ones with id 1 and 2
-        h1 = client.get_workflow_handle("sync-selection:1")
-
-        await asyncio.wait_for(cancel_workflow_immediately(h1), timeout=5)
-
-        await master_handle.result()
-
-        temporal_calls.assert_activity_not_called(
-            REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
-        )
-
-    # FIXME: Update this when https://github.com/temporalio/sdk-python/issues/1280 will be fixed
-    @pytest.mark.skip(reason="Flaky due to temporal bug")
-    @pytest.mark.asyncio
-    async def test_cancelling_a_wf_doesnt_cancel_others(
-        self,
-        client: Client,
-        single_region_workers,
-    ):
         master_handle = await client.start_workflow(
             MasterImageSyncWorkflow.run,
             id="test-wf-cancelation",
@@ -1832,12 +1917,29 @@ class TestMasterImageSyncWorkflow:
         h1 = client.get_workflow_handle("sync-selection:1")
         h2 = client.get_workflow_handle("sync-selection:2")
 
-        await asyncio.wait_for(cancel_workflow_immediately(h1), timeout=5)
+        await asyncio.sleep(1)
+        # We expect the workflow to be in a completed state because exceptions
+        # are handled and not re-raised
+        await asyncio.wait_for(
+            cancel_workflow_immediately(
+                h1, expected_status=WorkflowExecutionStatus.COMPLETED
+            ),
+            timeout=5,
+        )
 
         await master_handle.result()
 
         h2_status = await get_workflow_status(h2)
         assert h2_status == WorkflowExecutionStatus.COMPLETED
+
+        # The succesful sync selection wf calls this
+        temporal_calls.assert_activity_called_once(
+            DELETE_NOTIFICATION_ACTIVITY_NAME
+        )
+        # The cancelled sync selection wf calls this
+        temporal_calls.assert_activity_called_once(
+            DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME
+        )
 
     @pytest.mark.asyncio
     async def test_already_started_workflow_handling(
@@ -1848,8 +1950,6 @@ class TestMasterImageSyncWorkflow:
         mock_activities: MockActivities,
     ):
         """Test workflow handles already started child workflows gracefully"""
-        # Two selections to sync
-        mock_activities.get_all_highest_priority_selections_result = [1, 2]
 
         # SyncSelectionWorflow for selection with id 1 already running
         await client.start_workflow(

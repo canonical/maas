@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import Mock
+from unittest.mock import call, Mock
 
 from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
@@ -16,6 +16,10 @@ from maasapiserver.v3.api.public.models.responses.boot_images_common import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
+from maascommon.workflows.bootresource import (
+    SYNC_SELECTION_WORKFLOW_NAME,
+    SyncSelectionParam,
+)
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
@@ -36,6 +40,8 @@ from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
     BootSourceSelectionStatusService,
 )
+from maasservicelayer.services.configurations import ConfigurationsService
+from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -156,6 +162,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.create_many.return_value = [
             TEST_BOOTSOURCESELECTION
         ]
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get.return_value = False
 
         bulk_create_request = [
             {
@@ -244,6 +252,60 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         )
         assert response.status_code == 422
         services_mock.boot_source_selections.create_many.assert_not_awaited()
+
+    @pytest.mark.parametrize("auto_sync_enabled", [True, False])
+    async def test_bulk_create_starts_image_sync_if_auto_sync_enabled(
+        self,
+        auto_sync_enabled: bool,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        s1 = TEST_BOOTSOURCESELECTION.copy()
+        s2 = TEST_BOOTSOURCESELECTION.copy()
+        s2.id = 2
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.create_many.return_value = [
+            s1,
+            s2,
+        ]
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get.return_value = auto_sync_enabled
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.register_workflow_call.return_value = None
+
+        bulk_create_request = [
+            {
+                "os": TEST_BOOTSOURCESELECTION.os,
+                "release": TEST_BOOTSOURCESELECTION.release,
+                "arch": TEST_BOOTSOURCESELECTION.arch,
+                "boot_source_id": TEST_BOOTSOURCESELECTION.boot_source_id,
+            }
+        ]
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(bulk_create_request)
+        )
+        assert response.status_code == 200
+        if auto_sync_enabled:
+            services_mock.temporal.register_workflow_call.assert_has_calls(
+                [
+                    call(
+                        workflow_name=SYNC_SELECTION_WORKFLOW_NAME,
+                        workflow_id=f"sync-selection:{s1.id}",
+                        parameter=SyncSelectionParam(selection_id=s1.id),
+                        wait=False,
+                    ),
+                    call(
+                        workflow_name=SYNC_SELECTION_WORKFLOW_NAME,
+                        workflow_id=f"sync-selection:{s2.id}",
+                        parameter=SyncSelectionParam(selection_id=s2.id),
+                        wait=False,
+                    ),
+                ]
+            )
+        else:
+            services_mock.temporal.register_workflow_call.assert_not_called()
 
     async def test_bulk_delete(
         self,

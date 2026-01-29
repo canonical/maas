@@ -155,6 +155,15 @@ class NotificationsRepository(BaseRepository[Notification]):
             # Do nothing if the notification has been already dismissed
             pass
 
+    async def delete_all_dismissal_for_notification(
+        self,
+        notification_id: int,
+    ) -> None:
+        stmt = delete(NotificationDismissalTable).where(
+            eq(NotificationDismissalTable.c.notification_id, notification_id)
+        )
+        await self.execute_stmt(stmt)
+
     @override
     async def _delete(self, query: QuerySpec) -> List[Notification]:
         stmt = delete(NotificationTable).returning(self.get_repository_table())

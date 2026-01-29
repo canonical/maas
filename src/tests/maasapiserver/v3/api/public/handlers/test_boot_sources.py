@@ -72,6 +72,7 @@ from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionsService,
     BootSourceSelectionStatusService,
 )
+from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.image_manifests import ImageManifestsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
@@ -864,6 +865,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     ) -> None:
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_one.return_value = TEST_BOOTSOURCE_1
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get.return_value = False
 
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
@@ -881,6 +884,41 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         assert response.os == "ubuntu"
         assert response.release == "noble"
         assert response.architecture == "amd64"
+
+    @pytest.mark.parametrize("auto_sync_enabled", [True, False])
+    async def test_post_starts_sync_workflow_if_auto_sync_enabled(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+        auto_sync_enabled: bool,
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_one.return_value = TEST_BOOTSOURCE_1
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.create.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get.return_value = auto_sync_enabled
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.register_workflow_call.return_value = None
+
+        create_request = {"os": "ubuntu", "release": "noble", "arch": "amd64"}
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(create_request)
+        )
+        assert response.status_code == 201
+        if auto_sync_enabled:
+            services_mock.temporal.register_workflow_call.assert_called_once_with(
+                workflow_name=SYNC_SELECTION_WORKFLOW_NAME,
+                workflow_id=f"sync-selection:{TEST_BOOTSOURCESELECTION.id}",
+                parameter=SyncSelectionParam(TEST_BOOTSOURCESELECTION.id),
+                wait=False,
+            )
+        else:
+            services_mock.temporal.register_workflow_call.assert_not_called()
 
     async def test_put_200(
         self,

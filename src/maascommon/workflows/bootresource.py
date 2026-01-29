@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Sequence
 
+from maascommon.enums.notifications import NotificationCategoryEnum
+
 REPORT_INTERVAL = timedelta(seconds=10)
 HEARTBEAT_TIMEOUT = timedelta(seconds=10)
 DISK_TIMEOUT = timedelta(minutes=15)
@@ -80,6 +82,19 @@ class DeletePendingFilesParam:
 @dataclass
 class CleanupBootResourceSetsParam:
     selection_id: int
+
+
+@dataclass
+class RegisterNotificationParam:
+    ident: str
+    category: NotificationCategoryEnum
+    err_msg: str
+    dismissable: bool
+
+
+@dataclass
+class DeleteNotificationParam:
+    ident: str
 
 
 def merge_resource_delete_param(

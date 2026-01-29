@@ -88,7 +88,17 @@ class NotificationsService(
     async def create_or_update(
         self, query: QuerySpec, builder: NotificationBuilder
     ) -> Notification:
+        """Create a new notification or update an existing one.
+
+        If the notification already exists, all the dismissal created for it will
+        be deleted in order to notify the users again.
+        """
         notification = await self.get_one(query)
-        if notification:
-            return await self._update_resource(notification, builder)
-        return await self.create(builder)
+        if not notification:
+            return await self.create(builder)
+
+        if notification.dismissable:
+            await self.repository.delete_all_dismissal_for_notification(
+                notification.id
+            )
+        return await self._update_resource(notification, builder)

@@ -306,25 +306,26 @@ def worker_test_interceptor(
     return WorkerTestInterceptor(temporal_calls)
 
 
-async def cancel_workflow_immediately(handle):
+async def cancel_workflow_immediately(
+    handle,
+    expected_status: WorkflowExecutionStatus = WorkflowExecutionStatus.CANCELED,
+):
     """Calls `await handle.cancel()` until it succeeds.
 
     Use this with `asyncio.wait_for(cancel_workflow_immediately(h), timeout=X)`
     to specify a timeout and avoid to potentially run it forever.
 
-    The function will then assert that the status of the workflow is canceled.
+    The function will then assert that the status of the workflow is the one expected.
     """
-
-    while (
-        status := await get_workflow_status(handle)
-    ) != WorkflowExecutionStatus.RUNNING:
-        continue
 
     while True:
         try:
+            assert (
+                await handle.describe()
+            ).status == WorkflowExecutionStatus.RUNNING
             await handle.cancel(rpc_timeout=timedelta(seconds=3))
             break
-        except RPCError:
+        except (AssertionError, RPCError):
             continue
 
     # Iterate until the workflow is not running anymore: the cancellation is not
@@ -334,8 +335,8 @@ async def cancel_workflow_immediately(handle):
     ) == WorkflowExecutionStatus.RUNNING:
         continue
 
-    assert status == WorkflowExecutionStatus.CANCELED, (
-        f"Workflow not in Canceled status. Status: {status}"
+    assert status == expected_status, (
+        f"Workflow not in expected status. Expected: {expected_status}, Got: {status}"
     )
 
 

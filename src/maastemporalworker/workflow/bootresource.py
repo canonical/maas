@@ -35,6 +35,7 @@ from maascommon.workflows.bootresource import (
     CLEANUP_TIMEOUT,
     CleanupBootResourceSetsParam,
     DELETE_BOOTRESOURCE_WORKFLOW_NAME,
+    DeleteNotificationParam,
     DeletePendingFilesParam,
     DISK_TIMEOUT,
     DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME,
@@ -47,6 +48,7 @@ from maascommon.workflows.bootresource import (
     HEARTBEAT_TIMEOUT,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
     MAX_SOURCES,
+    RegisterNotificationParam,
     REPORT_INTERVAL,
     ResourceDeleteParam,
     ResourceDownloadParam,
@@ -111,8 +113,8 @@ CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME = (
     "cleanup-boot-resource-sets-for-selection"
 )
 GET_SYNCED_REGIONS_ACTIVITY_NAME = "get-synced-regions"
-REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME = "register-error-notification"
-DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME = "discard-error-notification"
+REGISTER_NOTIFICATION_ACTIVITY_NAME = "register-notification"
+DELETE_NOTIFICATION_ACTIVITY_NAME = "delete-notification"
 
 
 logger = structlog.get_logger()
@@ -524,35 +526,38 @@ class BootResourcesActivity(ActivityBase):
                 param.selection_id
             )
 
-    @activity_defn_with_context(name=REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME)
-    async def register_error_notification(self, err_msg: str) -> None:
+    @activity_defn_with_context(name=REGISTER_NOTIFICATION_ACTIVITY_NAME)
+    async def register_notification(
+        self,
+        param: RegisterNotificationParam,
+    ) -> None:
         async with self.start_transaction() as services:
             await services.notifications.create_or_update(
                 query=QuerySpec(
-                    where=NotificationsClauseFactory.with_ident(
-                        NotificationComponent.REGION_IMAGE_SYNC
-                    )
+                    where=NotificationsClauseFactory.with_ident(param.ident)
                 ),
                 builder=NotificationBuilder(
-                    ident=NotificationComponent.REGION_IMAGE_SYNC,
+                    ident=param.ident,
                     users=True,
                     admins=True,
-                    message=f"Failed to synchronize boot resources: {err_msg}",
+                    message=param.err_msg,
                     context={},
                     user_id=None,
-                    category=NotificationCategoryEnum.ERROR,
-                    dismissable=False,
+                    category=param.category,
+                    dismissable=param.dismissable,
                 ),
             )
 
-    @activity_defn_with_context(name=DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME)
-    async def discard_error_notification(self) -> None:
+    @activity_defn_with_context(name=DELETE_NOTIFICATION_ACTIVITY_NAME)
+    async def delete_notification(
+        self, param: DeleteNotificationParam
+    ) -> None:
         async with self.start_transaction() as services:
             try:
                 await services.notifications.delete_one(
                     query=QuerySpec(
                         where=NotificationsClauseFactory.with_ident(
-                            NotificationComponent.REGION_IMAGE_SYNC
+                            param.ident
                         )
                     ),
                 )
@@ -606,7 +611,6 @@ class SyncRemoteBootResourcesWorkflow:
             arg=input,
             id=f"sync-bootresources:{short_sha(input.resource.sha256)}",
         )
-
         logger.info(f"Sync complete for file {input.resource.sha256}")
 
 
@@ -774,32 +778,47 @@ class SyncSelectionWorkflow:
 
     @workflow_run_with_context
     async def run(self, param: SyncSelectionParam) -> None:
-        result: GetFilesToDownloadReturnValue = (
-            await workflow.execute_activity(
-                GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME,
-                arg=GetFilesToDownloadForSelectionParam(
-                    selection_id=param.selection_id,
-                ),
-                start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
-                heartbeat_timeout=timedelta(seconds=30),
-                result_type=GetFilesToDownloadReturnValue,
-            )
-        )
-        resources_to_download = result.resources
-
-        # _download_and_sync_resource is a coroutine that will handle the `WorfklowAlreadyStartedError`
-        download_and_sync_jobs = [
-            self._download_and_sync_resource(SyncRequestParam(resource=res))
-            for res in resources_to_download
-        ]
-
+        resources_to_download = []
         try:
-            if download_and_sync_jobs:
-                logger.info(
-                    f"Syncing {len(download_and_sync_jobs)} resources from upstream"
+            result: GetFilesToDownloadReturnValue = (
+                await workflow.execute_activity(
+                    GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME,
+                    arg=GetFilesToDownloadForSelectionParam(
+                        selection_id=param.selection_id,
+                    ),
+                    start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
+                    heartbeat_timeout=timedelta(seconds=30),
+                    result_type=GetFilesToDownloadReturnValue,
                 )
-                await asyncio.gather(*download_and_sync_jobs)
-        except (ActivityError, ChildWorkflowError, WorkflowFailureError) as ex:
+            )
+            resources_to_download = result.resources
+
+            # _download_and_sync_resource is a coroutine that will handle the `WorfklowAlreadyStartedError`
+            download_and_sync_jobs = [
+                self._download_and_sync_resource(
+                    SyncRequestParam(resource=res)
+                )
+                for res in resources_to_download
+            ]
+
+            if not download_and_sync_jobs:
+                logger.warning(
+                    f"No resources to download for selection with id {param.selection_id}"
+                )
+                return
+
+            logger.info(
+                f"Syncing {len(download_and_sync_jobs)} resources from upstream"
+            )
+            await asyncio.gather(*download_and_sync_jobs)
+
+        except (
+            ActivityError,
+            ChildWorkflowError,
+            WorkflowFailureError,
+            asyncio.CancelledError,
+            CancelledError,
+        ) as ex:
             # In case of a failure we delete all the files that were downloading
             await workflow.execute_activity(
                 DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME,
@@ -807,7 +826,42 @@ class SyncSelectionWorkflow:
                 start_to_close_timeout=CLEANUP_TIMEOUT,
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
-            raise ex
+            # Cancelled exceptions are coming from the user, no need to notify them
+            if is_cancelled_exception(ex):
+                logger.info(
+                    f"Workflow 'sync-selection:{param.selection_id}' cancelled."
+                )
+                return
+            else:
+                await workflow.execute_activity(
+                    REGISTER_NOTIFICATION_ACTIVITY_NAME,
+                    arg=RegisterNotificationParam(
+                        ident=NotificationComponent.SELECTION_SYNC.format(
+                            id=param.selection_id
+                        ),
+                        category=NotificationCategoryEnum.ERROR,
+                        err_msg=f"Failed to synchronize selection {param.selection_id}: {get_error_message_from_temporal_exc(ex)}",  # pyright: ignore[reportArgumentType]
+                        dismissable=True,
+                    ),
+                    start_to_close_timeout=timedelta(seconds=10),
+                )
+                logger.info(
+                    f"Workflow 'sync-selection:{param.selection_id}' failed."
+                )
+
+        else:
+            await workflow.execute_activity(
+                DELETE_NOTIFICATION_ACTIVITY_NAME,
+                arg=DeleteNotificationParam(
+                    ident=NotificationComponent.SELECTION_SYNC.format(
+                        id=param.selection_id
+                    )
+                ),
+                start_to_close_timeout=timedelta(seconds=10),
+            )
+            logger.info(
+                f"Downloaded and synchronized all images for selection with id {param.selection_id}"
+            )
         finally:
             # we do the cleanup even if some downloads failed. This will delete
             # the boot resource sets that aren't complete ensuring the db
@@ -819,10 +873,6 @@ class SyncSelectionWorkflow:
                 ),
                 start_to_close_timeout=CLEANUP_TIMEOUT,
             )
-
-        logger.info(
-            f"Downloaded and synchronized all images for selection with id {param.selection_id}"
-        )
 
 
 @workflow.defn(name=MASTER_IMAGE_SYNC_WORKFLOW_NAME, sandboxed=False)
@@ -867,20 +917,8 @@ class MasterImageSyncWorkflow:
             for selection_id in selection_ids
         ]
 
-        errors = []
-
-        # `workflow.as_completed` is the deterministic way of doing `asyncio.as_completed`
-        for wf_execution in workflow.as_completed(sync_jobs):
-            try:
-                await wf_execution
-            except (
-                ActivityError,
-                ChildWorkflowError,
-                WorkflowFailureError,
-            ) as ex:
-                # filter out all the cancelled exceptions since they come from the user and are expected
-                if not is_cancelled_exception(ex):
-                    errors.append(get_error_message_from_temporal_exc(ex))
+        # Exceptions are handled in the sync-selection workflows
+        await asyncio.gather(*sync_jobs)
 
         # Sync the local boot resources. This covers the edge case when a
         # region is added after images have been synchronized.
@@ -888,17 +926,3 @@ class MasterImageSyncWorkflow:
             SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME,
             task_queue=REGION_TASK_QUEUE,
         )
-
-        # Report back to the user the errors encountered
-        if errors:
-            message = "\n".join(errors)
-            await workflow.execute_activity(
-                REGISTER_ERROR_NOTIFICATION_ACTIVITY_NAME,
-                arg=message,
-                start_to_close_timeout=timedelta(seconds=10),
-            )
-        else:
-            await workflow.execute_activity(
-                DISCARD_ERROR_NOTIFICATION_ACTIVITY_NAME,
-                start_to_close_timeout=timedelta(seconds=10),
-            )

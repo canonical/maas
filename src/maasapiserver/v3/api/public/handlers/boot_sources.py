@@ -79,6 +79,7 @@ from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.models.configurations import BootImagesAutoImportConfig
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.simplestreams.client import SimpleStreamsClientException
 
@@ -429,6 +430,14 @@ class BootSourcesHandler(Handler):
         boot_source_selection = await services.boot_source_selections.create(
             builder
         )
+
+        if await services.configurations.get(BootImagesAutoImportConfig.name):
+            services.temporal.register_workflow_call(
+                workflow_name=SYNC_SELECTION_WORKFLOW_NAME,
+                workflow_id=f"sync-selection:{boot_source_selection.id}",
+                parameter=SyncSelectionParam(boot_source_selection.id),
+                wait=False,
+            )
 
         return ImageResponse.from_selection(
             selection=boot_source_selection,

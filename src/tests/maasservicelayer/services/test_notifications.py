@@ -143,7 +143,7 @@ class TestNotificationsService:
         notifications_service: NotificationsService,
         auth_user: AuthenticatedUser,
     ) -> None:
-        non_dismissable_notification = TEST_NOTIFICATION
+        non_dismissable_notification = TEST_NOTIFICATION.copy()
         non_dismissable_notification.dismissable = False
         notifications_repo_mock.get_by_id_for_user.return_value = (
             non_dismissable_notification
@@ -187,7 +187,7 @@ class TestNotificationsService:
         notifications_repo_mock.create.assert_called_once()
         notifications_repo_mock.update_by_id.assert_not_called()
 
-    async def test_create_or_update__update(
+    async def test_create_or_update__update_dismissable(
         self,
         notifications_repo_mock: Mock,
         notifications_service: NotificationsService,
@@ -202,4 +202,25 @@ class TestNotificationsService:
 
         notifications_repo_mock.get_one.assert_called_once()
         notifications_repo_mock.create.assert_not_called()
+        notifications_repo_mock.delete_all_dismissal_for_notification.assert_called_once()
+        notifications_repo_mock.update_by_id.assert_called_once()
+
+    async def test_create_or_update__update_non_dismissable(
+        self,
+        notifications_repo_mock: Mock,
+        notifications_service: NotificationsService,
+    ) -> None:
+        notification = TEST_NOTIFICATION.copy()
+        notification.dismissable = False
+        notifications_repo_mock.get_one.return_value = notification
+
+        notifications_repo_mock.update_by_id.return_value = notification
+
+        await notifications_service.create_or_update(
+            query=QuerySpec(), builder=Mock()
+        )
+
+        notifications_repo_mock.get_one.assert_called_once()
+        notifications_repo_mock.create.assert_not_called()
+        notifications_repo_mock.delete_all_dismissal_for_notification.assert_not_called()
         notifications_repo_mock.update_by_id.assert_called_once()

@@ -209,8 +209,8 @@ async def main() -> None:
                 boot_res_activity.get_manually_uploaded_resources,
                 boot_res_activity.delete_pending_files,
                 boot_res_activity.cleanup_boot_resource_sets_for_selection,
-                boot_res_activity.register_error_notification,
-                boot_res_activity.discard_error_notification,
+                boot_res_activity.register_notification,
+                boot_res_activity.delete_notification,
                 # Configuration activities
                 configure_activity.get_rack_controller_vlans,
                 configure_activity.get_region_controller_endpoints,

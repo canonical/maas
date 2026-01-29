@@ -30,12 +30,17 @@ from maasapiserver.v3.api.public.models.responses.boot_images_common import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.workflows.bootresource import (
+    SYNC_SELECTION_WORKFLOW_NAME,
+    SyncSelectionParam,
+)
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.models.configurations import BootImagesAutoImportConfig
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -157,6 +162,16 @@ class BootSourceSelectionsHandler(Handler):
         boot_source_selections = (
             await services.boot_source_selections.create_many(builders)
         )
+
+        if await services.configurations.get(BootImagesAutoImportConfig.name):
+            for selection in boot_source_selections:
+                services.temporal.register_workflow_call(
+                    workflow_name=SYNC_SELECTION_WORKFLOW_NAME,
+                    workflow_id=f"sync-selection:{selection.id}",
+                    parameter=SyncSelectionParam(selection_id=selection.id),
+                    wait=False,
+                )
+
         return ImageListResponse(
             items=[
                 ImageResponse.from_selection(

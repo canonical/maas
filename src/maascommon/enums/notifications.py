@@ -24,3 +24,4 @@ class NotificationComponent(StrEnum):
 
     # v3 only
     FETCH_IMAGE_MANIFEST = "Image manifest fetcher"
+    SELECTION_SYNC = "Sync selection {id}"
