@@ -35,7 +35,6 @@ from maascommon.enums.boot_resources import (
 )
 from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
-    MASTER_IMAGE_SYNC_WORKFLOW_NAME,
     SYNC_SELECTION_WORKFLOW_NAME,
     SyncSelectionParam,
 )
@@ -152,8 +151,6 @@ class TestBootSourcesApi(ApiCommonTests):
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="POST", path=f"{self.BASE_PATH}:import"),
-            Endpoint(method="POST", path=f"{self.BASE_PATH}:stop_import"),
         ]
 
     async def test_list_no_other_page(
@@ -604,104 +601,6 @@ class TestBootSourcesApi(ApiCommonTests):
         )
 
         assert response.status_code == 404
-
-    async def test_import_all_images(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
-    ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.temporal.workflow_status.return_value = (
-            WorkflowExecutionStatus.COMPLETED
-        )
-        services_mock.temporal.register_workflow_call.return_value = None
-
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}:import",
-        )
-
-        assert response.status_code == 202
-
-        services_mock.temporal.workflow_status.assert_called_once_with(
-            "master-image-sync"
-        )
-        services_mock.temporal.register_workflow_call.assert_called_once_with(
-            workflow_name=MASTER_IMAGE_SYNC_WORKFLOW_NAME,
-            workflow_id="master-image-sync",
-            wait=False,
-        )
-
-    async def test_import_all_images__wf_already_running(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
-    ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.temporal.workflow_status.return_value = (
-            WorkflowExecutionStatus.RUNNING
-        )
-        services_mock.temporal.register_workflow_call.return_value = None
-
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}:import",
-        )
-
-        assert response.status_code == 303
-
-        assert response.headers["Location"] == (
-            f"{V3_API_PREFIX}/selection_statuses?selected=true"
-        )
-
-        services_mock.temporal.workflow_status.assert_called_once_with(
-            "master-image-sync"
-        )
-        services_mock.temporal.register_workflow_call.assert_not_called()
-
-    async def test_stop_import_all_images(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
-    ) -> None:
-        temporal_client = Mock(Client)
-        mock_handle = Mock(WorkflowHandle)
-        temporal_client.get_workflow_handle.return_value = mock_handle
-
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.temporal.get_temporal_client.return_value = (
-            temporal_client
-        )
-        services_mock.temporal.workflow_status.return_value = (
-            WorkflowExecutionStatus.RUNNING
-        )
-
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}:stop_import",
-        )
-
-        assert response.status_code == 202
-
-        mock_handle.cancel.assert_awaited_once()
-
-    async def test_stop_import_all_images_wf_not_running(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
-    ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.temporal.workflow_status.return_value = (
-            WorkflowExecutionStatus.COMPLETED
-        )
-
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}:stop_import",
-        )
-
-        assert response.status_code == 409
-
-        error_response = ErrorBodyResponse(**response.json())
-        assert error_response.details[0].message == (
-            "Image import process is not running."
-        )
 
     async def test_update_manifest(
         self,
