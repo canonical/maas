@@ -1,6 +1,5 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
 
 from collections import OrderedDict
 import random
@@ -1590,6 +1589,66 @@ class TestNetplan(MAASServerTestCase):
             }
         }
         self.assertEqual(v1, expected_v1)
+
+    def test_multiple_ethernet_interfaces_with_ipv4_and_ipv6_default_gateways(
+        self,
+    ):
+        node = factory.make_Node()
+        fabric1 = factory.make_Fabric()
+        fabric2 = factory.make_Fabric()
+        vlan1 = factory.make_VLAN(fabric=fabric1)
+        vlan2 = factory.make_VLAN(fabric=fabric2)
+
+        subnet = factory.make_Subnet(
+            cidr="192.168.100.0/24", gateway_ip="192.168.100.1", vlan=vlan1
+        )
+        subnet2ipv4 = factory.make_Subnet(
+            cidr="10.200.0.0/24", gateway_ip="10.200.0.1", vlan=vlan2
+        )
+        subnet2ipv6 = factory.make_Subnet(
+            cidr="fd05:976a:d6b7:2201:0:1::/64",
+            gateway_ip="fd05:976a:d6b7:2201::1",
+            vlan=vlan2,
+        )
+
+        tst0 = factory.make_Interface(
+            node=node, name="tst0", mac_address="11:22:33:44:55:66", vlan=vlan1
+        )
+        tst1 = factory.make_Interface(
+            node=node, name="tst1", mac_address="11:22:33:44:55:77", vlan=vlan2
+        )
+
+        ip = factory.make_StaticIPAddress(
+            interface=tst0,
+            subnet=subnet,
+            ip="192.168.100.2",
+            alloc_type=IPADDRESS_TYPE.AUTO,
+        )
+        factory.make_StaticIPAddress(
+            interface=tst1,
+            subnet=subnet2ipv4,
+            ip="10.200.0.2",
+            alloc_type=IPADDRESS_TYPE.AUTO,
+        )
+        factory.make_StaticIPAddress(
+            interface=tst1,
+            subnet=subnet2ipv6,
+            ip="fd05:976a:d6b7:2201:0:1::",
+            alloc_type=IPADDRESS_TYPE.AUTO,
+        )
+
+        node.gateway_link_ipv4 = ip
+        node.save()
+
+        v2 = self._render_netplan_dict(node, source_routing=True)
+        self.assertEqual(
+            "192.168.100.1", v2["network"]["ethernets"]["tst0"]["gateway4"]
+        )
+        self.assertNotIn("gateway4", v2["network"]["ethernets"]["tst1"])
+        self.assertEqual(
+            "fd05:976a:d6b7:2201::1",
+            v2["network"]["ethernets"]["tst1"]["gateway6"],
+        )
 
     def test_multiple_ethernet_with_default_gateway_with_dns(self):
         node = factory.make_Node()
