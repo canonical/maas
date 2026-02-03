@@ -78,8 +78,8 @@ class PackageRepoUrl(str):
     """
 
     PPA_RE = r"^ppa:[a-z0-9\-]{3,32}/[a-z0-9]{1}[a-z0-9\.\-\+]+$"
-    URL_RE = r"^https?:\/\/\w[\w\-]+(\.[\w\-]+)+(\/([\w\-_%.#?=&+])+)*\/?$"
-    COMBINED_RE = re.compile(rf"{PPA_RE}|{URL_RE}")
+    URL_RE = r"^https?:\/\/(?:(?:\w[\w\-]*\.)+[\w\-]+|\d{1,3}(?:\.\d{1,3}){3})(?:\:\d{1,5})?(\/([\w\-_%.#?=&+])+)*\/?$"
+    COMBINED_RE = re.compile(rf"^(?:{PPA_RE}|{URL_RE})$")
 
     def __new__(cls, content):
         content = cls.validate(content)
@@ -91,7 +91,7 @@ class PackageRepoUrl(str):
 
     @classmethod
     def validate(cls, value: str) -> str:
-        match = re.fullmatch(cls.COMBINED_RE, value)
+        match = re.match(cls.COMBINED_RE, value)
         if match is None:
             raise ValueError("Value is not a valid PPA URL.")
         return value
