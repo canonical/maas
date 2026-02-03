@@ -23,6 +23,7 @@ from maasapiserver.v3.api.public.models.requests.external_auth import (
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AuthInfoResponse,
+    CallbackTargetResponse,
     OAuthProviderResponse,
     OAuthProvidersListResponse,
     PreLoginInfoResponse,
@@ -164,6 +165,7 @@ class AuthHandler(Handler):
     async def initiate_auth_flow(
         self,
         email: str,
+        redirect_target: str | None = None,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
     ) -> AuthInfoResponse:
@@ -184,7 +186,9 @@ class AuthHandler(Handler):
                     )
                 ]
             )
-        data = client.generate_authorization_url()
+        data = client.generate_authorization_url(
+            redirect_target=redirect_target or "/"
+        )
         cookie_manager.set_auth_cookie(
             value=data.state, key=MAASOAuth2Cookie.AUTH_STATE
         )
@@ -202,10 +206,10 @@ class AuthHandler(Handler):
         methods=["GET"],
         tags=TAGS,
         responses={
-            204: {},
+            200: {"model": CallbackTargetResponse},
             401: {"model": UnauthorizedBodyResponse},
         },
-        status_code=204,
+        status_code=200,
     )
     async def handle_oauth_callback(
         self,
@@ -213,7 +217,7 @@ class AuthHandler(Handler):
         state: str,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
-    ) -> None:
+    ) -> CallbackTargetResponse:
         """Handle the OAuth callback by exchanging the authorization code for tokens."""
         stored_state = cookie_manager.get_cookie(
             key=MAASOAuth2Cookie.AUTH_STATE
@@ -248,6 +252,7 @@ class AuthHandler(Handler):
             value=tokens.refresh_token,
             key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN,
         )
+        return CallbackTargetResponse.from_state(state=state)
 
     @handler(
         path="/auth/oauth/providers/{provider_id}",

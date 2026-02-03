@@ -55,7 +55,8 @@ TEST_PROVIDER = OAuthProvider(
 class TestOauth2Client:
     def test_generate_authorization_url(self) -> None:
         client = OAuth2Client(TEST_PROVIDER)
-        data = client.generate_authorization_url()
+        client._generate_state = Mock(return_value="abc.def")
+        data = client.generate_authorization_url(redirect_target="/machines")
         expected_scope = "+".join(TEST_PROVIDER.scopes.split(" "))
         expected_url = (
             TEST_PROVIDER.issuer_url
@@ -67,7 +68,7 @@ class TestOauth2Client:
             + "&scope="
             + expected_scope
             + "&state="
-            + data.state
+            + "abc.def"
             + "&nonce="
             + data.nonce
         )

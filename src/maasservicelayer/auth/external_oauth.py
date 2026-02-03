@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import base64
 from dataclasses import dataclass
 from typing import Any
 
@@ -82,11 +83,15 @@ class OAuth2Client:
         self._jwks_cache: KeySet | None = None
         self._jwks_cache_time: float = 0.0
 
-    def generate_authorization_url(self) -> OAuthInitiateData:
+    def generate_authorization_url(
+        self, redirect_target: str
+    ) -> OAuthInitiateData:
         nonce = generate_token()
+        state = self._generate_state(redirect_target=redirect_target)
 
         auth_url, state = self.client.create_authorization_url(
             url=self.provider.metadata.authorization_endpoint,
+            state=state,
             nonce=nonce,
         )
         return OAuthInitiateData(
@@ -256,6 +261,11 @@ class OAuth2Client:
             access_token=tokens["access_token"],
             refresh_token=new_refresh_token,
         )
+
+    def _generate_state(self, redirect_target: str) -> str:
+        encoded = base64.urlsafe_b64encode(redirect_target.encode()).decode()
+        random_str = generate_token()
+        return f"{encoded}.{random_str}"
 
     async def _fetch_and_validate_tokens(
         self, code: str, nonce: str

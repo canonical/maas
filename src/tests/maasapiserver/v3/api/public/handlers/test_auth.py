@@ -17,6 +17,7 @@ from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
 )
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
+    CallbackTargetResponse,
     OAuthProviderResponse,
     OAuthProvidersListResponse,
     PreLoginInfoResponse,
@@ -296,7 +297,7 @@ class TestAuthApi:
         services_mock.external_oauth.get_client.return_value = client_mock
 
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/login_info?email=test@example.com"
+            f"{self.BASE_PATH}/login_info?email=test@example.com&redirect_target=/machines"
         )
 
         assert response.status_code == 200
@@ -505,7 +506,7 @@ class TestAuthApi:
         assert error_response.kind == "Error"
         assert error_response.code == 422
 
-    # POST /auth/oauth
+    # POST /auth/oauth/providers
     async def test_create_oauth_provider_success(
         self,
         services_mock: ServiceCollectionV3,
@@ -633,7 +634,7 @@ class TestAuthApi:
         assert error_response.kind == "Error"
         assert error_response.code == 502
 
-    # DELETE /auth/oauth/:provider_id
+    # DELETE /auth/oauth/providers/:provider_id
     async def test_delete_oauth_provider(
         self,
         services_mock: ServiceCollectionV3,
@@ -816,8 +817,10 @@ class TestAuthApi:
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
+        # Sample state with /machines as redirect target
+        state = "L21hY2hpbmVz.R8kFv9s1Xq2aL3pTz4uM0wY7"
         cookie_manager_get_cookie.side_effect = [
-            "stored_state",
+            state,
             "stored_nonce",
         ]
         services_mock.external_oauth = Mock(ExternalOAuthService)
@@ -834,9 +837,12 @@ class TestAuthApi:
         )
 
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/oauth/callback?state=stored_state&code=auth_code"
+            f"{self.BASE_PATH}/oauth/callback?state={state}&code=auth_code"
         )
-        assert response.status_code == 204
+        assert response.status_code == 200
+        target = CallbackTargetResponse(**response.json())
+        assert target.redirect_target == "/machines"
+        assert target.kind == "CallbackTarget"
         services_mock.external_oauth.get_callback.assert_called_once_with(
             code="auth_code", nonce="stored_nonce"
         )
@@ -863,8 +869,10 @@ class TestAuthApi:
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
+        # Sample state with /machines as redirect target
+        state = "L21hY2hpbmVz.R8kFv9s1Xq2aL3pTz4uM0wY7"
         cookie_manager_get_cookie.side_effect = [
-            "stored_state",
+            state,
             "stored_nonce",
         ]
         services_mock.external_oauth = Mock(ExternalOAuthService)
@@ -885,9 +893,12 @@ class TestAuthApi:
         )
 
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/oauth/callback?state=stored_state&code=auth_code"
+            f"{self.BASE_PATH}/oauth/callback?state={state}&code=auth_code"
         )
-        assert response.status_code == 204
+        assert response.status_code == 200
+        target = CallbackTargetResponse(**response.json())
+        assert target.redirect_target == "/machines"
+        assert target.kind == "CallbackTarget"
         services_mock.external_oauth.get_callback.assert_called_once_with(
             code="auth_code", nonce="stored_nonce"
         )

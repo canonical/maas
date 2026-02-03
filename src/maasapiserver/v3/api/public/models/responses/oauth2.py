@@ -1,5 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+import base64
 import typing
 
 from pydantic import BaseModel
@@ -35,6 +36,22 @@ class AuthInfoResponse(BaseModel):
     auth_url: str | None = None
     provider_name: str | None = None
     is_oidc: bool
+
+
+class CallbackTargetResponse(BaseModel):
+    """Content for a response returning the callback target URL."""
+
+    kind = "CallbackTarget"
+    redirect_target: str
+
+    @classmethod
+    def from_state(cls, state: str) -> typing.Self:
+        encoded_redirect, _ = state.split(".", 1)
+        return cls(
+            redirect_target=base64.urlsafe_b64decode(
+                encoded_redirect.encode()
+            ).decode()
+        )
 
 
 class OAuthProviderResponse(BaseModel):
