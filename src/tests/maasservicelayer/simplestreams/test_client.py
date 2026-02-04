@@ -4,8 +4,10 @@
 import asyncio
 from asyncio.subprocess import Process
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
+from aiohttp import ClientConnectorError, ClientSession
+from aiohttp.client_reqrep import ConnectionKey
 import pytest
 
 from maasservicelayer.simplestreams.client import (
@@ -239,6 +241,22 @@ class TestSimpleStreamsClient:
             proxy="http://proxy.com",
             method="GET",
         )
+
+    async def test_http_get_raise_exception_on_connection_error(self) -> None:
+        url = "http://foo.com"
+        client = SimpleStreamsClient(
+            url=url,
+            skip_pgp_verification=True,
+        )
+        await client.close_session()
+        mocked_session = Mock(ClientSession)
+        mocked_session.get.side_effect = ClientConnectorError(
+            connection_key=Mock(ConnectionKey), os_error=OSError()
+        )
+        client._session = mocked_session
+
+        with pytest.raises(SimpleStreamsClientException):
+            await client.http_get(f"{url}/bar")
 
     async def test_http_get_raise_status(self, mock_aioresponse) -> None:
         url = "http://foo.com"

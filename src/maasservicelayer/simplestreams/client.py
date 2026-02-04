@@ -9,7 +9,7 @@ import shutil
 import ssl
 from typing import Self
 
-from aiohttp import ClientResponseError, ClientSession
+from aiohttp import ClientConnectorError, ClientResponseError, ClientSession
 from aiohttp.client import TCPConnector
 from pydantic import ValidationError
 
@@ -140,7 +140,10 @@ class SimpleStreamsClient:
         return json.loads(content)
 
     async def http_get(self, url: str) -> dict:
-        response = await self._session.get(url, proxy=self.http_proxy)
+        try:
+            response = await self._session.get(url, proxy=self.http_proxy)
+        except ClientConnectorError as e:
+            raise SimpleStreamsClientException(str(e)) from e
         try:
             response.raise_for_status()
         except ClientResponseError as e:
