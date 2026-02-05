@@ -119,6 +119,11 @@ server {
         client_max_body_size 200G;
         proxy_pass http://apiserver;
     }
+
+    location /MAAS/a/v3/custom_images {
+        client_max_body_size 200G;
+        proxy_pass http://apiserver;
+    }
 }
 
 {{if tls_enabled}}
