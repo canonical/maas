@@ -13,6 +13,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+// Package dhcp implements a DHCP server as defined in RFC2131.
+//
+// The package provides tools for managing the full DHCP lifecycle, including
+// IP address allocation, lease persistence, and support for custom options.
 package dhcp
 
 import (

@@ -385,7 +385,7 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 
 func TestOptionMarshalers(t *testing.T) {
 	testcases := map[string]struct {
-		inType  int
+		inType  OptionType
 		inValue string
 		out     []byte
 		err     error

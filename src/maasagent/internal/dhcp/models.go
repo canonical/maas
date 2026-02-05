@@ -19,6 +19,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"maps"
 	"net"
 )
 
@@ -382,21 +383,10 @@ func (h *HostReservation) LoadOptions(ctx context.Context, tx *sql.Tx) error {
 
 	options := make(map[uint16]string)
 
-	for k, v := range vlan.Options {
-		options[k] = v
-	}
-
-	for k, v := range subnet.Options {
-		options[k] = v
-	}
-
-	for k, v := range iprange.Options {
-		options[k] = v
-	}
-
-	for k, v := range hrOptions {
-		options[k] = v
-	}
+	maps.Copy(options, vlan.Options)
+	maps.Copy(options, subnet.Options)
+	maps.Copy(options, iprange.Options)
+	maps.Copy(options, hrOptions)
 
 	h.Options = options
 

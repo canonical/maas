@@ -50,8 +50,10 @@ var (
 	ErrInvalidOptionValue    = errors.New("the option provided is of an invalid value")
 )
 
+type OptionType int
+
 const (
-	OptionTypeUint8 = iota
+	OptionTypeUint8 OptionType = iota + 1
 	OptionTypeUint16
 	OptionTypeUint32
 	OptionTypeUint64
@@ -67,119 +69,117 @@ const (
 
 type optionMarshaler func(s string) ([]byte, error)
 
-var (
-	optionMarshalers = map[int]optionMarshaler{
-		OptionTypeUint8: func(s string) ([]byte, error) {
-			n, err := strconv.Atoi(s)
+var optionMarshalers = map[OptionType]optionMarshaler{
+	OptionTypeUint8: func(s string) ([]byte, error) {
+		n, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, err
+		}
+
+		if n > int(math.MaxUint8) {
+			return nil, ErrInvalidOptionValue
+		}
+
+		return []byte{uint8(n)}, nil
+	},
+	OptionTypeUint16: func(s string) ([]byte, error) {
+		n, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, err
+		}
+
+		if n > int(math.MaxUint16) {
+			return nil, ErrInvalidOptionValue
+		}
+
+		buf := make([]byte, 2)
+
+		binary.BigEndian.PutUint16(buf, uint16(n))
+
+		return buf, nil
+	},
+	OptionTypeUint32: func(s string) ([]byte, error) {
+		n, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, err
+		}
+
+		if n > int(math.MaxUint32) {
+			return nil, ErrInvalidOptionValue
+		}
+
+		buf := make([]byte, 4)
+
+		binary.BigEndian.PutUint32(buf, uint32(n))
+
+		return buf, nil
+	},
+	OptionTypeUint64: func(s string) ([]byte, error) {
+		n, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, err
+		}
+
+		buf := make([]byte, 8)
+
+		binary.BigEndian.PutUint64(buf, uint64(n))
+
+		return buf, nil
+	},
+	OptionTypeIPv4: ipOptionMarshal(4),
+	OptionTypeIPv6: ipOptionMarshal(6),
+	OptionTypeIPv4List: func(s string) ([]byte, error) {
+		list := strings.Split(s, ",")
+
+		buf := make([]byte, 4*len(list))
+		for i, addr := range list {
+			ipBytes, err := ipOptionMarshal(4)(strings.TrimSpace(addr))
 			if err != nil {
 				return nil, err
 			}
 
-			if n > int(math.MaxUint8) {
+			if len(ipBytes) != 4 {
 				return nil, ErrInvalidOptionValue
 			}
 
-			return []byte{uint8(n)}, nil
-		},
-		OptionTypeUint16: func(s string) ([]byte, error) {
-			n, err := strconv.Atoi(s)
+			copy(buf[i*4:(i*4)+4], ipBytes)
+		}
+
+		return buf, nil
+	},
+	OptionTypeIPv6List: func(s string) ([]byte, error) {
+		list := strings.Split(s, ",")
+
+		buf := make([]byte, 16*len(list))
+		for i, addr := range list {
+			ipBytes, err := ipOptionMarshal(6)(strings.TrimSpace(addr))
 			if err != nil {
 				return nil, err
 			}
 
-			if n > int(math.MaxUint16) {
+			if len(ipBytes) != 16 {
 				return nil, ErrInvalidOptionValue
 			}
 
-			buf := make([]byte, 2)
+			copy(buf[i*16:(i*16)+16], ipBytes)
+		}
 
-			binary.BigEndian.PutUint16(buf, uint16(n))
+		return buf, nil
+	},
+	OptionTypeHex: hex.DecodeString,
+	OptionTypeZeroByteSeparatedList: func(s string) ([]byte, error) {
+		sList := strings.Split(s, ",")
 
-			return buf, nil
-		},
-		OptionTypeUint32: func(s string) ([]byte, error) {
-			n, err := strconv.Atoi(s)
-			if err != nil {
-				return nil, err
-			}
+		bytesList := make([][]byte, len(sList))
 
-			if n > int(math.MaxUint32) {
-				return nil, ErrInvalidOptionValue
-			}
+		for i, elem := range sList {
+			bytesList[i] = []byte(strings.TrimSpace(elem))
+		}
 
-			buf := make([]byte, 4)
-
-			binary.BigEndian.PutUint32(buf, uint32(n))
-
-			return buf, nil
-		},
-		OptionTypeUint64: func(s string) ([]byte, error) {
-			n, err := strconv.Atoi(s)
-			if err != nil {
-				return nil, err
-			}
-
-			buf := make([]byte, 8)
-
-			binary.BigEndian.PutUint64(buf, uint64(n))
-
-			return buf, nil
-		},
-		OptionTypeIPv4: ipOptionMarshal(4),
-		OptionTypeIPv6: ipOptionMarshal(6),
-		OptionTypeIPv4List: func(s string) ([]byte, error) {
-			list := strings.Split(s, ",")
-
-			buf := make([]byte, 4*len(list))
-			for i, addr := range list {
-				ipBytes, err := ipOptionMarshal(4)(strings.TrimSpace(addr))
-				if err != nil {
-					return nil, err
-				}
-
-				if len(ipBytes) != 4 {
-					return nil, ErrInvalidOptionValue
-				}
-
-				copy(buf[i*4:(i*4)+4], ipBytes)
-			}
-
-			return buf, nil
-		},
-		OptionTypeIPv6List: func(s string) ([]byte, error) {
-			list := strings.Split(s, ",")
-
-			buf := make([]byte, 16*len(list))
-			for i, addr := range list {
-				ipBytes, err := ipOptionMarshal(6)(strings.TrimSpace(addr))
-				if err != nil {
-					return nil, err
-				}
-
-				if len(ipBytes) != 16 {
-					return nil, ErrInvalidOptionValue
-				}
-
-				copy(buf[i*16:(i*16)+16], ipBytes)
-			}
-
-			return buf, nil
-		},
-		OptionTypeHex: hex.DecodeString,
-		OptionTypeZeroByteSeparatedList: func(s string) ([]byte, error) {
-			sList := strings.Split(s, ",")
-
-			bytesList := make([][]byte, len(sList))
-
-			for i, elem := range sList {
-				bytesList[i] = []byte(strings.TrimSpace(elem))
-			}
-
-			return bytes.Join(bytesList, []byte{0x00}), nil
-		},
-		// TODO: support suboptions
-	}
-)
+		return bytes.Join(bytesList, []byte{0x00}), nil
+	},
+	// TODO: support suboptions
+}
 
 func ipOptionMarshal(ipVer int) optionMarshaler {
 	return func(s string) ([]byte, error) {
@@ -204,7 +204,7 @@ func ipOptionMarshal(ipVer int) optionMarshaler {
 	}
 }
 
-func getDHCPv4OptionType(optCode uint16) int {
+func getDHCPv4OptionType(optCode uint16) OptionType {
 	// custom options
 	if optCode >= 224 && optCode < 255 {
 		// TODO: lookup custom option type
