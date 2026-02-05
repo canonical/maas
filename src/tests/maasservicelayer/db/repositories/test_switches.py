@@ -4,6 +4,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.switches import (
@@ -75,6 +76,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
     async def instance_builder(self) -> SwitchBuilder:
         return SwitchBuilder(
             target_image_id=None,
+            status=SwitchStatus.NEW,
         )
 
     async def test_create(
@@ -95,6 +97,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         """Test updating a switch."""
         builder = SwitchBuilder(
             target_image_id=1,
+            status=SwitchStatus.NEW,
         )
         updated = await repository_instance.update_by_id(
             created_instance.id, builder
@@ -128,17 +131,13 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         from maasservicelayer.exceptions.catalog import AlreadyExistsException
 
         # Create first switch with an interface
-        switch1 = await create_test_switch(
-            fixture, hostname="switch-1", state="registered"
-        )
+        switch1 = await create_test_switch(fixture, hostname="switch-1")
         await create_test_switch_interface(
             fixture, switch_id=switch1.id, mac_address="00:11:22:33:44:55"
         )
 
         # Create second switch
-        switch2 = await create_test_switch(
-            fixture, hostname="switch-2", state="registered"
-        )
+        switch2 = await create_test_switch(fixture, hostname="switch-2")
 
         # Try to create interface with duplicate MAC address through repository - should fail
         interface_repo = SwitchInterfacesRepository(
@@ -164,17 +163,13 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         from maasservicelayer.exceptions.catalog import AlreadyExistsException
 
         # Create first switch with an interface
-        switch1 = await create_test_switch(
-            fixture, hostname="switch-1", state="registered"
-        )
+        switch1 = await create_test_switch(fixture, hostname="switch-1")
         await create_test_switch_interface(
             fixture, switch_id=switch1.id, mac_address="00:11:22:33:44:55"
         )
 
         # Create second switch
-        switch2 = await create_test_switch(
-            fixture, hostname="switch-2", state="registered"
-        )
+        switch2 = await create_test_switch(fixture, hostname="switch-2")
 
         # Try to create multiple interfaces with duplicate MAC address - should fail
         interface_repo = SwitchInterfacesRepository(

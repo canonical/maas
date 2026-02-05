@@ -12,9 +12,14 @@ from maasapiserver.v3.api.public.models.responses.switches import (
     SwitchResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.boot_resources import BootResourceType
+from maascommon.enums.switches import SwitchStatus
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.switches import Switch, SwitchInterface
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.bootresources import BootResourceService
 from maasservicelayer.services.switches import (
     SwitchesService,
     SwitchInterfacesService,
@@ -27,30 +32,27 @@ from tests.maasapiserver.v3.api.public.handlers.base import (
 
 TEST_SWITCH = Switch(
     id=1,
-    hostname="test-switch",
-    vendor="Cisco",
-    model="Catalyst 2960",
-    platform="x86_64",
-    arch="amd64",
-    serial_number="TEST123456",
-    state="registered",
-    target_image_id=None,
+    status=SwitchStatus.NEW,
     created=utcnow(),
     updated=utcnow(),
 )
 
 TEST_SWITCH_2 = Switch(
     id=2,
-    hostname="test-switch-2",
-    vendor="Juniper",
-    model="EX2200",
-    platform="x86_64",
-    arch="amd64",
-    serial_number="TEST654321",
-    state="ready",
-    target_image_id=None,
+    status=SwitchStatus.SERVED_NOS,
+    target_image_id=10,
     created=utcnow(),
     updated=utcnow(),
+)
+
+TEST_NOS_IMAGE = BootResource(
+    id=1,
+    rtype=BootResourceType.UPLOADED,
+    name="onie/dellos10",
+    architecture="amd64/generic",
+    extra={},
+    rolling=False,
+    base_image="",
 )
 
 
@@ -81,17 +83,8 @@ class TestSwitchesApi(ApiCommonTests):
         admin_endpoints: list[Endpoint],
         mocked_api_client: AsyncClient,
         mocked_api_client_user: AsyncClient,
-        services_mock: ServiceCollectionV3,
     ):
-        """Override base test to add necessary mocks for our endpoints."""
-        # Mock services needed by POST endpoint
-        services_mock.switchinterfaces = Mock(SwitchInterfacesService)
-        services_mock.switchinterfaces.list.return_value = ListResult[
-            SwitchInterface
-        ](items=[], total=0)
-        services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.get_by_id.return_value = None
-
+        """Test proper unauthenticated/unauthorized responses for admin endpoints."""
         for endpoint in admin_endpoints:
             response = await mocked_api_client.request(
                 endpoint.method,
@@ -118,14 +111,24 @@ class TestSwitchesApi(ApiCommonTests):
             items=[TEST_SWITCH, TEST_SWITCH_2], total=2
         )
 
+        # TEST_SWITCH does not have target_image_id, so no need to mock boot_resources for it
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_by_id.return_value = TEST_NOS_IMAGE
+
         response = await mocked_api_client_user.get(f"{self.BASE_PATH}")
         assert response.status_code == 200
 
         switches_response = SwitchesListResponse(**response.json())
         assert len(switches_response.items) == 2
         assert switches_response.total == 2
-        assert switches_response.items[0].hostname == "test-switch"
-        assert switches_response.items[1].hostname == "test-switch-2"
+        assert switches_response.items[0].id == 1
+        assert switches_response.items[0].status == SwitchStatus.NEW
+        assert switches_response.items[0].target_image_id is None
+        assert switches_response.items[0].target_image is None
+        assert switches_response.items[1].id == 2
+        assert switches_response.items[1].status == SwitchStatus.SERVED_NOS
+        assert switches_response.items[1].target_image_id == 10
+        assert switches_response.items[1].target_image == TEST_NOS_IMAGE.name
 
     async def test_list_switches_with_pagination(
         self,
@@ -162,8 +165,9 @@ class TestSwitchesApi(ApiCommonTests):
 
         switch_response = SwitchResponse(**response.json())
         assert switch_response.id == 1
-        assert switch_response.hostname == "test-switch"
-        assert switch_response.vendor == "Cisco"
+        assert switch_response.status == SwitchStatus.NEW
+        assert switch_response.target_image_id is None
+        assert switch_response.target_image is None
 
     async def test_get_switch_not_found(
         self,
@@ -192,7 +196,6 @@ class TestSwitchesApi(ApiCommonTests):
 
         new_switch_data = {
             "mac_address": "00:11:22:33:44:55",
-            "hostname": "test-switch",
         }
 
         response = await mocked_api_client_admin.post(
@@ -202,8 +205,105 @@ class TestSwitchesApi(ApiCommonTests):
         assert response.headers["Location"] == f"{self.BASE_PATH}/1"
 
         switch_response = SwitchResponse(**response.json())
-        assert switch_response.hostname == "test-switch"
-        assert switch_response.state == "registered"
+        assert switch_response.status == SwitchStatus.NEW
+
+    async def test_create_switch_with_image(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        """Test creating a new switch with target image."""
+        services_mock.switches = Mock(SwitchesService)
+        services_mock.switchinterfaces = Mock(SwitchInterfacesService)
+        services_mock.switchinterfaces.list.return_value = ListResult[
+            SwitchInterface
+        ](items=[], total=0)
+        services_mock.switches.create.return_value = Switch(
+            **{
+                **TEST_SWITCH.dict(),
+                "target_image_id": TEST_NOS_IMAGE.id,
+                "target_image": TEST_NOS_IMAGE.name,
+            }
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = TEST_NOS_IMAGE
+        services_mock.boot_resources.get_by_id.return_value = TEST_NOS_IMAGE
+
+        new_switch_data = {
+            "mac_address": "00:11:22:33:44:55",
+            "image": "onie/dellos10",
+        }
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}", json=new_switch_data
+        )
+        assert response.status_code == 201
+        assert response.headers["Location"] == f"{self.BASE_PATH}/1"
+
+        switch_response = SwitchResponse(**response.json())
+        assert switch_response.status == SwitchStatus.NEW
+        assert switch_response.target_image_id == TEST_NOS_IMAGE.id
+        assert switch_response.target_image == TEST_NOS_IMAGE.name
+
+    async def test_create_switch_with_nonexistent_image(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        """Test creating a new switch with target image."""
+        services_mock.switches = Mock(SwitchesService)
+        services_mock.switchinterfaces = Mock(SwitchInterfacesService)
+        services_mock.switchinterfaces.list.return_value = ListResult[
+            SwitchInterface
+        ](items=[], total=0)
+
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = None
+
+        new_switch_data = {
+            "mac_address": "00:11:22:33:44:55",
+            "image": "onie/not-an-image",
+        }
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}", json=new_switch_data
+        )
+        assert response.status_code == 422
+
+    async def test_create_switch_with_non_onie_image(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        """Test creating a new switch with a non-onie image."""
+        services_mock.switches = Mock(SwitchesService)
+        services_mock.switchinterfaces = Mock(SwitchInterfacesService)
+        services_mock.switchinterfaces.list.return_value = ListResult[
+            SwitchInterface
+        ](items=[], total=0)
+
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.side_effect = [
+            BootResource(
+                id=2,
+                rtype=BootResourceType.UPLOADED,
+                name="ubuntu/noble",
+                architecture="amd64/generic",
+                extra={},
+                rolling=False,
+                base_image="",
+            )
+        ]
+
+        new_switch_data = {
+            "mac_address": "00:11:22:33:44:55",
+            "image": "ubuntu/noble",
+        }
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}", json=new_switch_data
+        )
+        assert response.status_code == 422
 
     async def test_create_switch_duplicate_mac(
         self,
@@ -247,19 +347,21 @@ class TestSwitchesApi(ApiCommonTests):
         """Test updating an existing switch."""
         services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_by_id.return_value = TEST_SWITCH
-
         updated_switch = Switch(
             **{
                 **TEST_SWITCH.dict(),
-                "hostname": "updated-switch",
-                "vendor": "Juniper",
+                "target_image_id": TEST_NOS_IMAGE.id,
+                "target_image": TEST_NOS_IMAGE.name,
             }
         )
         services_mock.switches.update_by_id.return_value = updated_switch
 
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = TEST_NOS_IMAGE
+        services_mock.boot_resources.get_by_id.return_value = TEST_NOS_IMAGE
+
         update_data = {
-            "hostname": "updated-switch",
-            "vendor": "Juniper",
+            "image": TEST_NOS_IMAGE.name,
         }
 
         response = await mocked_api_client_admin.patch(
@@ -268,8 +370,8 @@ class TestSwitchesApi(ApiCommonTests):
         assert response.status_code == 200
 
         switch_response = SwitchResponse(**response.json())
-        assert switch_response.hostname == "updated-switch"
-        assert switch_response.vendor == "Juniper"
+        assert switch_response.target_image_id == TEST_NOS_IMAGE.id
+        assert switch_response.target_image == TEST_NOS_IMAGE.name
 
     async def test_update_switch_not_found(
         self,
@@ -281,13 +383,34 @@ class TestSwitchesApi(ApiCommonTests):
         services_mock.switches.get_by_id.return_value = None
 
         update_data = {
-            "hostname": "updated-switch",
+            "image": "onie/dellos10",
         }
 
         response = await mocked_api_client_admin.patch(
             f"{self.BASE_PATH}/999", json=update_data
         )
         assert response.status_code == 404
+
+    async def test_update_switch_image_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        """Test updating a switch with non-existent image returns 422."""
+        services_mock.switches = Mock(SwitchesService)
+        services_mock.switches.get_by_id.return_value = TEST_SWITCH
+
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = None
+
+        update_data = {
+            "image": "onie/not-an-image",
+        }
+
+        response = await mocked_api_client_admin.patch(
+            f"{self.BASE_PATH}/1", json=update_data
+        )
+        assert response.status_code == 422
 
     async def test_update_switch_invalid_state(
         self,
@@ -296,22 +419,17 @@ class TestSwitchesApi(ApiCommonTests):
     ) -> None:
         """Test updating a switch in invalid state fails."""
         services_mock.switches = Mock(SwitchesService)
-        deployed_switch = Switch(
-            **{
-                **TEST_SWITCH.dict(),
-                "state": "deployed",
-            }
-        )
-        services_mock.switches.get_by_id.return_value = deployed_switch
+        # switch 2 is in SERVED_NOS state
+        services_mock.switches.get_by_id.return_value = TEST_SWITCH_2
 
         update_data = {
-            "hostname": "updated-switch",
+            "image": "onie/dellos10",
         }
 
         response = await mocked_api_client_admin.patch(
-            f"{self.BASE_PATH}/1", json=update_data
+            f"{self.BASE_PATH}/2", json=update_data
         )
-        assert response.status_code == 400
+        assert response.status_code == 409
 
     async def test_delete_switch(
         self,
@@ -333,7 +451,7 @@ class TestSwitchesApi(ApiCommonTests):
     ) -> None:
         """Test deleting a non-existent switch returns 404."""
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.get_by_id.return_value = None
+        services_mock.switches.delete_by_id.side_effect = NotFoundException()
 
         response = await mocked_api_client_admin.delete(
             f"{self.BASE_PATH}/999"

@@ -6,7 +6,9 @@ from fastapi import Depends, Response
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     ConflictBodyResponse,
+    ForbiddenBodyResponse,
     NotFoundBodyResponse,
+    UnauthorizedBodyResponse,
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
@@ -21,6 +23,7 @@ from maasapiserver.v3.api.public.models.responses.switches import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.switches import (
@@ -29,6 +32,7 @@ from maasservicelayer.db.repositories.switches import (
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    ConflictException,
     NotFoundException,
 )
 from maasservicelayer.services import ServiceCollectionV3
@@ -45,6 +49,7 @@ class SwitchesHandler(Handler):
         tags=TAGS,
         responses={
             200: {"model": SwitchesListResponse},
+            401: {"model": UnauthorizedBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -88,6 +93,7 @@ class SwitchesHandler(Handler):
         tags=TAGS,
         responses={
             200: {"model": SwitchResponse},
+            401: {"model": UnauthorizedBodyResponse},
             404: {"model": NotFoundBodyResponse},
         },
         response_model_exclude_none=True,
@@ -124,8 +130,10 @@ class SwitchesHandler(Handler):
         tags=TAGS,
         responses={
             201: {"model": SwitchResponse},
-            400: {"model": ValidationErrorBodyResponse},
+            401: {"model": UnauthorizedBodyResponse},
+            403: {"model": ForbiddenBodyResponse},
             409: {"model": ConflictBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=201,
@@ -182,7 +190,10 @@ class SwitchesHandler(Handler):
         tags=TAGS,
         responses={
             200: {"model": SwitchResponse},
+            401: {"model": UnauthorizedBodyResponse},
+            403: {"model": ForbiddenBodyResponse},
             404: {"model": NotFoundBodyResponse},
+            409: {"model": ConflictBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
@@ -209,6 +220,16 @@ class SwitchesHandler(Handler):
                 ]
             )
 
+        if existing_switch.status != SwitchStatus.NEW:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type="SwitchUpdateConflict",
+                        message=f"Switch with id '{switch_id}' is in status '{existing_switch.status}' and cannot be updated.",
+                    )
+                ]
+            )
+
         # Update the switch
         switch = await services.switches.update_by_id(
             switch_id, await switch_request.to_switch_builder(services)
@@ -226,6 +247,8 @@ class SwitchesHandler(Handler):
         tags=TAGS,
         responses={
             204: {},
+            401: {"model": UnauthorizedBodyResponse},
+            403: {"model": ForbiddenBodyResponse},
             404: {"model": NotFoundBodyResponse},
         },
         status_code=204,
@@ -239,8 +262,9 @@ class SwitchesHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         """Delete a switch and all related entries."""
-        switch = await services.switches.get_by_id(switch_id)
-        if not switch:
+        try:
+            await services.switches.delete_by_id(switch_id)
+        except NotFoundException as exc:
             raise NotFoundException(
                 details=[
                     BaseExceptionDetail(
@@ -248,7 +272,5 @@ class SwitchesHandler(Handler):
                         message=f"Switch with id '{switch_id}' was not found.",
                     )
                 ]
-            )
-
-        await services.switches.delete_by_id(switch_id)
+            ) from exc
         return Response(status_code=204)

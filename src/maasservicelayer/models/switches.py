@@ -3,6 +3,7 @@
 
 from typing import Optional
 
+from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.models.base import (
     generate_builder,
     MaasTimestampedBaseModel,
@@ -16,6 +17,7 @@ class Switch(MaasTimestampedBaseModel):
     A switch is a network device that can be monitored and managed by MAAS.
     """
 
+    status: SwitchStatus
     target_image_id: Optional[int]
 
 

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any
 
+from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.models.switches import Switch, SwitchInterface
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -16,6 +17,7 @@ async def create_test_switch_entry(
         "created": created_at,
         "updated": updated_at,
         "target_image_id": None,
+        "status": SwitchStatus.NEW,
     }
     switch.update(extra_details)
 

@@ -130,16 +130,15 @@ class ONIEBootMetadata(BootMethodMetadata):
 
     @property
     def bootloader_path(self) -> str:
-        return "MAAS/a/v3/tether-script"
+        return "MAAS/a/v3/nos-installer"
 
     @property
     def arch_octet(self) -> None:
         return None
 
-    # XXX: user_class isn't the right term. Probably needs to have a type property instead?
     @property
     def user_class(self) -> str:
-        return "ONIE"
+        return "onie_dhcp_user_class"
 
 
 class PXEBootMetadata(BootMethodMetadata):

@@ -85,8 +85,8 @@ CONDITIONAL_BOOTLOADER = tempita.Template(
     option vendor-class-identifier "HTTPClient";
     {{endif}}
 }
-{{elif user_class=="ONIE"}}
-  {{behaviour}} substring(option vendor-class-identifier, 0, 11) = \"onie_vendor\" {
+{{elif user_class=="onie_dhcp_user_class"}}
+  {{behaviour}} option user-class = \"{{user_class}}\" {
     option vivso.iana 01:01:01;
     option onie.installer_url = \"{{bootloader}}\";
   }

@@ -3,9 +3,9 @@
 
 from typing import Optional
 
-from pydantic import Field, validator
+from pydantic import BaseModel, Field, validator
 
-from maasapiserver.v3.api.public.models.requests.base import BaseModel
+from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.builders.switches import (
     SwitchBuilder,
     SwitchInterfaceBuilder,
@@ -18,6 +18,65 @@ from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.services import ServiceCollectionV3
 
 
+async def resolve_image_id(
+    image: str | None, services: ServiceCollectionV3
+) -> Optional[int]:
+    """Resolve the image name to a boot resource ID.
+
+    Supports both full format (onie/mellanox-3.8.0) and short format
+    (mellanox-3.8.0). When using short format, validates that it's
+    actually an ONIE image.
+
+    Args:
+        image: Image name
+        services: Service collection for accessing boot resources
+
+    Returns:
+        Boot resource ID if image name is provided and found, None otherwise
+
+    Raises:
+        ValidationException: If image name is provided but not found, or if
+            short format name doesn't reference an ONIE image
+    """
+    if not image:
+        return None
+
+    # Try to find the boot resource with the provided name
+    boot_resource = await services.boot_resources.get_one(
+        query=QuerySpec(where=BootResourceClauseFactory.with_name(image))
+    )
+
+    if (
+        boot_resource
+        and "/" in image
+        and not boot_resource.name.startswith("onie/")
+    ):
+        raise ValidationException.build_for_field(
+            field="image",
+            message=f"Image '{image}' was found but is not an ONIE image. "
+            f"Found: '{boot_resource.name}'.",
+        )
+
+    # If not found and name doesn't contain '/', try prefixing with 'onie/'
+    if not boot_resource and "/" not in image:
+        prefixed_name = f"onie/{image}"
+        boot_resource = await services.boot_resources.get_one(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.with_name(prefixed_name)
+            )
+        )
+
+    if not boot_resource:
+        raise ValidationException.build_for_field(
+            field="image",
+            message=f"Boot resource '{image}' not found. "
+            "Use full format 'onie/vendor-version' or short format 'vendor-version' for ONIE images. "
+            "Use 'boot_resources' endpoint to list available images.",
+        )
+
+    return boot_resource.id
+
+
 class SwitchRequest(BaseModel):
     """Request model for creating a switch."""
 
@@ -27,72 +86,15 @@ class SwitchRequest(BaseModel):
         description="Boot resource name for the NOS to install on the switch. "
         "Supports full format (e.g., 'onie/mellanox-3.8.0') or short format "
         "for ONIE images (e.g., 'mellanox-3.8.0').",
-        alias="target_image",
     )
-
-    async def resolve_image_id(
-        self, services: ServiceCollectionV3
-    ) -> Optional[int]:
-        """Resolve the image name to a boot resource ID.
-
-        Supports both full format (onie/mellanox-3.8.0) and short format
-        (mellanox-3.8.0). When using short format, validates that it's
-        actually an ONIE image.
-
-        Args:
-            services: Service collection for accessing boot resources
-
-        Returns:
-            Boot resource ID if image name is provided and found, None otherwise
-
-        Raises:
-            ValidationException: If image name is provided but not found, or if
-                short format name doesn't reference an ONIE image
-        """
-        if not self.image:
-            return None
-
-        # Try to find the boot resource with the provided name
-        boot_resource = await services.boot_resources.get_one(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_name(self.image)
-            )
-        )
-
-        # If not found and name doesn't contain '/', try prefixing with 'onie/'
-        if not boot_resource and "/" not in self.image:
-            prefixed_name = f"onie/{self.image}"
-            boot_resource = await services.boot_resources.get_one(
-                query=QuerySpec(
-                    where=BootResourceClauseFactory.with_name(prefixed_name)
-                )
-            )
-
-            # Validate that it's actually an ONIE image
-            if boot_resource and not boot_resource.name.startswith("onie/"):
-                raise ValidationException.build_for_field(
-                    field="image",
-                    message=f"Image '{self.image}' was found but is not an ONIE image. "
-                    f"Found: '{boot_resource.name}'. When using short format (vendor-version), "
-                    "the image must be an ONIE image.",
-                )
-
-        if not boot_resource:
-            raise ValidationException.build_for_field(
-                field="image",
-                message=f"Boot resource '{self.image}' not found. "
-                "Use full format 'onie/vendor-version' or short format 'vendor-version' for ONIE images. "
-                "Use 'boot_resources' endpoint to list available images.",
-            )
-
-        return boot_resource.id
 
     async def to_switch_builder(
         self, services: ServiceCollectionV3
     ) -> SwitchBuilder:
-        target_image_id = await self.resolve_image_id(services)
+        target_image_id = await resolve_image_id(self.image, services)
         return SwitchBuilder(
             target_image_id=target_image_id,
+            status=SwitchStatus.NEW,
         )
 
     def to_interface_builder(self, switch_id: int) -> SwitchInterfaceBuilder:
@@ -126,70 +128,12 @@ class SwitchUpdateRequest(BaseModel):
         description="Boot resource name for the NOS to install on the switch. "
         "Supports full format (e.g., 'onie/mellanox-3.8.0') or short format "
         "for ONIE images (e.g., 'mellanox-3.8.0').",
-        alias="target_image",
     )
-
-    async def resolve_image_id(
-        self, services: ServiceCollectionV3
-    ) -> Optional[int]:
-        """Resolve the image name to a boot resource ID.
-
-        Supports both full format (onie/mellanox-3.8.0) and short format
-        (mellanox-3.8.0). When using short format, validates that it's
-        actually an ONIE image.
-
-        Args:
-            services: Service collection for accessing boot resources
-
-        Returns:
-            Boot resource ID if image name is provided and found, None otherwise
-
-        Raises:
-            ValidationException: If image name is provided but not found, or if
-                short format name doesn't reference an ONIE image
-        """
-        if not self.image:
-            return None
-
-        # Try to find the boot resource with the provided name
-        boot_resource = await services.boot_resources.get_one(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_name(self.image)
-            )
-        )
-
-        # If not found and name doesn't contain '/', try prefixing with 'onie/'
-        if not boot_resource and "/" not in self.image:
-            prefixed_name = f"onie/{self.image}"
-            boot_resource = await services.boot_resources.get_one(
-                query=QuerySpec(
-                    where=BootResourceClauseFactory.with_name(prefixed_name)
-                )
-            )
-
-            # Validate that it's actually an ONIE image
-            if boot_resource and not boot_resource.name.startswith("onie/"):
-                raise ValidationException.build_for_field(
-                    field="image",
-                    message=f"Image '{self.image}' was found but is not an ONIE image. "
-                    f"Found: '{boot_resource.name}'. When using short format (vendor-version), "
-                    "the image must be an ONIE image.",
-                )
-
-        if not boot_resource:
-            raise ValidationException.build_for_field(
-                field="image",
-                message=f"Boot resource '{self.image}' not found. "
-                "Use full format 'onie/vendor-version' or short format 'vendor-version' for ONIE images. "
-                "Use 'boot_resources' endpoint to list available images.",
-            )
-
-        return boot_resource.id
 
     async def to_switch_builder(
         self, services: ServiceCollectionV3
     ) -> SwitchBuilder:
-        target_image_id = await self.resolve_image_id(services)
+        target_image_id = await resolve_image_id(self.image, services)
         return SwitchBuilder(
             target_image_id=target_image_id,
         )

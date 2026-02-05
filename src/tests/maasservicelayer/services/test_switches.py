@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.switches import (
     SwitchesRepository,
@@ -19,6 +20,7 @@ from tests.maasservicelayer.services.base import ServiceCommonTests
 
 TEST_SWITCH = Switch(
     id=1,
+    status=SwitchStatus.NEW,
     target_image_id=None,
     created=utcnow(),
     updated=utcnow(),
