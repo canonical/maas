@@ -57,6 +57,7 @@ from maasservicelayer.exceptions.constants import (
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
 from maasservicelayer.models.external_auth import (
+    AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
     RootKey,
@@ -862,6 +863,7 @@ class TestExternalOAuthService(ServiceCommonTests):
             enabled=True,
             created=utcnow(),
             updated=utcnow(),
+            token_type=AccessTokenType.JWT,
             metadata=ProviderMetadata(
                 authorization_endpoint="https://example.com/auth",
                 token_endpoint="https://example.com/token",

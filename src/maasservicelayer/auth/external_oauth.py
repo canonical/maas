@@ -14,6 +14,7 @@ import structlog
 
 from maascommon.logging.security import AUTHN_LOGIN_UNSUCCESSFUL, SECURITY
 from maasservicelayer.auth.oidc_jwt import OAuthAccessToken, OAuthIDToken
+from maasservicelayer.auth.token_cache import AccessTokenValidationCache
 from maasservicelayer.exceptions.catalog import (
     BadGatewayException,
     BaseExceptionDetail,
@@ -24,7 +25,10 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
-from maasservicelayer.models.external_auth import OAuthProvider
+from maasservicelayer.models.external_auth import (
+    AccessTokenType,
+    OAuthProvider,
+)
 from maasservicelayer.utils.date import utcnow
 
 JWKS_CACHE_TTL = 3600
@@ -82,6 +86,7 @@ class OAuth2Client:
         self.provider = provider
         self._jwks_cache: KeySet | None = None
         self._jwks_cache_time: float = 0.0
+        self._access_token_cache = AccessTokenValidationCache()
 
     def generate_authorization_url(
         self, redirect_target: str
@@ -128,104 +133,94 @@ class OAuth2Client:
         self, access_token: OAuthAccessToken | str, id_token_claims: JWTClaims
     ) -> OAuthUserData:
         allowed_keys = OAuthUserData.__annotations__.keys()
-        if self.provider.metadata.userinfo_endpoint:
-            try:
-                response = await self._request(
-                    url=self.provider.metadata.userinfo_endpoint,
-                    access_token=access_token.encoded
-                    if isinstance(access_token, OAuthAccessToken)
-                    else access_token,
-                )
-            except HTTPStatusError as e:
-                raise BadGatewayException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
-                            message="Failed to retrieve user info from OIDC server.",
-                        )
-                    ]
-                ) from e
-            if response["sub"] != id_token_claims["sub"]:
-                raise UnauthorizedException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=INVALID_TOKEN_VIOLATION_TYPE,
-                            message="Claim 'sub' does not match ID token 'sub'.",
-                        )
-                    ]
-                )
-            response_filtered = {
-                k: v for k, v in response.items() if k in allowed_keys
-            }
-            return OAuthUserData(**response_filtered)
 
-        # Fallback: fetch claims from id_token
-        id_token_claims_filtered = {
-            k: v for k, v in id_token_claims.items() if k in allowed_keys
+        # Try fetching claims from ID token first
+        claims = {
+            k: id_token_claims[k] for k in allowed_keys if k in id_token_claims
         }
-        return OAuthUserData(**id_token_claims_filtered)
+
+        missing_keys = [k for k in allowed_keys if k not in claims]
+
+        if not missing_keys:
+            return OAuthUserData(**claims)
+
+        token_str = (
+            access_token
+            if isinstance(access_token, str)
+            else access_token.encoded
+        )
+        response = await self._userinfo_request(access_token=token_str)
+
+        # Mandatory security check
+        if response.get("sub") != id_token_claims.get("sub"):
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="Claim 'sub' does not match ID token 'sub'.",
+                    )
+                ]
+            )
+
+        # Fill only missing claims from userinfo
+        for k in missing_keys:
+            if k in response:
+                claims[k] = response[k]
+
+        return OAuthUserData(
+            sub=claims["sub"],
+            email=claims["email"],
+            given_name=claims.get("given_name", None),
+            family_name=claims.get("family_name", None),
+            name=claims.get("name", None),
+        )
 
     async def validate_access_token(
         self, access_token: str
     ) -> OAuthAccessToken | str:
         """
-        Validates the access token by making a request to the userinfo endpoint.
-        Falls back to local validation, or introspection if userinfo is not available.
+        Validates an access token via JWT decoding, cache lookup, /introspection, or /userInfo fallback.
         """
-        if self.provider.metadata.userinfo_endpoint:
-            try:
-                await self._request(
-                    url=self.provider.metadata.userinfo_endpoint,
-                    access_token=access_token.encoded
-                    if isinstance(access_token, OAuthAccessToken)
-                    else access_token,
-                )
-                return access_token
-            except HTTPStatusError as e:
-                raise UnauthorizedException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=INVALID_TOKEN_VIOLATION_TYPE,
-                            message="Failed to validate access token with OIDC server.",
-                        )
-                    ]
-                ) from e
-        is_jwt = access_token.count(".") == 2
-        if is_jwt:
+        if self.provider.token_type == AccessTokenType.JWT:
             return OAuthAccessToken.from_token(
                 provider=self.provider,
                 encoded=access_token,
                 jwks=await self._get_provider_jwks(),
             )
+        # For opaque tokens, check cache first
+        is_cached = await self._access_token_cache.is_valid(access_token)
+        if is_cached:
+            return access_token
 
+        # If not cached, validate via introspection endpoint
         if self.provider.metadata.introspection_endpoint:
-            introspection = await self._introspect_token(
+            await self._introspect_token(
                 url=self.provider.metadata.introspection_endpoint,
                 access_token=access_token,
             )
-            if not introspection.get("active", False):
-                raise UnauthorizedException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=INVALID_TOKEN_VIOLATION_TYPE,
-                            message="Access token is not active.",
-                        )
-                    ]
-                )
+            await self._access_token_cache.add(access_token)
             return access_token
-        raise UnauthorizedException(
-            details=[
-                BaseExceptionDetail(
-                    type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
-                    message="Cannot validate access token: no userinfo or introspection endpoint available, and token is not a JWT.",
-                )
-            ]
-        )
+
+        # Fallback to userinfo endpoint validation, if no introspection endpoint
+        try:
+            await self._userinfo_request(access_token=access_token)
+            await self._access_token_cache.add(access_token)
+            return access_token
+        except BadGatewayException as e:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                        message="Cannot validate access token: no userinfo or introspection endpoint available, and token is opaque.",
+                    )
+                ]
+            ) from e
 
     async def revoke_token(self, token: str) -> None:
         revoke_url = self.provider.metadata.revocation_endpoint
         if revoke_url:
             await self._revoke_token(url=revoke_url, token=token)
+        await self._access_token_cache.remove(token)
 
     async def parse_raw_id_token(self, id_token: str) -> OAuthIDToken:
         return OAuthIDToken.from_token(
@@ -331,9 +326,7 @@ class OAuth2Client:
                 nonce=nonce,
             )
 
-    async def _introspect_token(
-        self, url: str, access_token: str
-    ) -> dict[str, Any]:
+    async def _introspect_token(self, url: str, access_token: str) -> None:
         response = await self.client.introspect_token(
             url=url, token=access_token
         )
@@ -346,7 +339,32 @@ class OAuth2Client:
                     )
                 ]
             )
-        return response.json()
+        result = response.json()
+        if not result.get("active", False):
+            await self._access_token_cache.remove(access_token)
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="Access token is not active.",
+                    )
+                ]
+            )
+
+    async def _userinfo_request(self, access_token: str) -> dict[str, Any]:
+        if self.provider.metadata.userinfo_endpoint:
+            return await self._request(
+                url=self.provider.metadata.userinfo_endpoint,
+                access_token=access_token,
+            )
+        raise BadGatewayException(
+            details=[
+                BaseExceptionDetail(
+                    type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                    message="Userinfo endpoint is not configured for the provider.",
+                )
+            ]
+        )
 
     async def _get_provider_jwks(self, force_refresh: bool = False) -> KeySet:
         current_time = utcnow().timestamp()

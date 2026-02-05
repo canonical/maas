@@ -15,6 +15,7 @@ from maasservicelayer.db.repositories.external_auth import (
 )
 from maasservicelayer.db.tables import RootKeyTable, UserProfileTable
 from maasservicelayer.models.external_auth import (
+    AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
 )
@@ -202,6 +203,7 @@ class TestExternalOAuthRepository(RepositoryCommonTests[OAuthProvider]):
             name="SampleOIDCProvider",
             redirect_uri="https://myapp.com/oauth/callback",
             scopes="openid profile email",
+            token_type=AccessTokenType.JWT,
             metadata=ProviderMetadata(
                 authorization_endpoint="",
                 token_endpoint="",

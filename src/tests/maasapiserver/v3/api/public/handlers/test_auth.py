@@ -15,6 +15,7 @@ import pytest
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
+    OAuthTokenTypeChoices,
 )
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     CallbackTargetResponse,
@@ -54,6 +55,7 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.django_session import DjangoSession
 from maasservicelayer.models.external_auth import (
+    AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
 )
@@ -78,6 +80,7 @@ TEST_PROVIDER_1 = OAuthProvider(
     redirect_uri="https://example.com/callback",
     scopes="openid email profile",
     enabled=True,
+    token_type=AccessTokenType.JWT,
     metadata=ProviderMetadata(
         authorization_endpoint="",
         token_endpoint="",
@@ -96,6 +99,7 @@ TEST_PROVIDER_2 = OAuthProvider(
     redirect_uri="https://example2.com/callback",
     scopes="openid email profile",
     enabled=True,
+    token_type=AccessTokenType.OPAQUE,
     metadata=ProviderMetadata(
         authorization_endpoint="https://example2.com/authorize",
         token_endpoint="https://example2.com/token",
@@ -414,6 +418,7 @@ class TestAuthApi:
             issuer_url="https://example.com",
             redirect_uri="https://example.com/callback",
             scopes="openid email profile",
+            token_type=OAuthTokenTypeChoices.JWT,
             enabled=True,
         )
         updated_provider = OAuthProvider(
@@ -426,6 +431,7 @@ class TestAuthApi:
             issuer_url="https://new-example.com",
             redirect_uri="https://example.com/callback",
             scopes="openid email profile",
+            token_type=AccessTokenType.JWT,
             enabled=True,
             metadata=ProviderMetadata(
                 authorization_endpoint="",
@@ -453,6 +459,7 @@ class TestAuthApi:
         assert (
             updated_provider_response.issuer_url == updated_provider.issuer_url
         )
+        assert updated_provider_response.token_type == request_body.token_type
 
     async def test_update_oauth_provider_not_found(
         self,
@@ -468,6 +475,7 @@ class TestAuthApi:
             redirect_uri="https://example.com/callback",
             scopes="openid email profile",
             enabled=True,
+            token_type=OAuthTokenTypeChoices.JWT,
         )
         services_mock.external_oauth.update_provider.return_value = None
         response = await mocked_api_client_admin.put(
@@ -521,6 +529,7 @@ class TestAuthApi:
             redirect_uri="https://example1.com/callback",
             scopes="openid email profile",
             enabled=True,
+            token_type=OAuthTokenTypeChoices.JWT,
         )
         created_provider = TEST_PROVIDER_1
         services_mock.external_oauth.create.return_value = created_provider
@@ -557,6 +566,7 @@ class TestAuthApi:
             redirect_uri="https://example.com/callback",
             scopes="openid email profile",
             enabled=True,
+            token_type=OAuthTokenTypeChoices.JWT,
         )
 
         response = await mocked_api_client_admin.post(
@@ -590,6 +600,7 @@ class TestAuthApi:
             redirect_uri="https://example.com/callback",
             scopes="openid email profile",
             enabled=True,
+            token_type=OAuthTokenTypeChoices.JWT,
         )
 
         response = await mocked_api_client_admin.post(
@@ -623,6 +634,7 @@ class TestAuthApi:
             redirect_uri="https://example.com/callback",
             scopes="openid email profile",
             enabled=True,
+            token_type=OAuthTokenTypeChoices.JWT,
         )
 
         response = await mocked_api_client_admin.post(
@@ -705,6 +717,7 @@ class TestAuthApi:
             redirect_uri="https://example.com/callback",
             scopes="openid email profile",
             enabled=True,
+            token_type=AccessTokenType.JWT,
             metadata=ProviderMetadata(
                 authorization_endpoint="",
                 token_endpoint="",
@@ -734,6 +747,7 @@ class TestAuthApi:
             "enabled": created_provider.enabled,
             "id": created_provider.id,
             "metadata": created_provider.metadata,
+            "token_type": "JWT",
             "user_count": 5,
         }
 

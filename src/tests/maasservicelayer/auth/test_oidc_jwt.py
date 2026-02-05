@@ -14,6 +14,7 @@ from maasservicelayer.auth.oidc_jwt import (
     OAuthIDToken,
 )
 from maasservicelayer.models.external_auth import (
+    AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
 )
@@ -30,6 +31,7 @@ TEST_PROVIDER = OAuthProvider(
     created=utcnow(),
     updated=utcnow(),
     enabled=True,
+    token_type=AccessTokenType.JWT,
     metadata=ProviderMetadata(
         authorization_endpoint="https://issuer.com/authorize",
         token_endpoint="https://issuer.com/token",

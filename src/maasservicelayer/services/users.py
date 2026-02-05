@@ -407,7 +407,10 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
 
     async def is_oidc_user(self, email: str) -> bool:
         user_profile = await self.repository.get_user_profile(username=email)
-        return True if (user_profile and user_profile.provider_id) else False
+        # Allow external login if profile does not exist, or is linked to an OIDC provider
+        if not user_profile or user_profile.provider_id:
+            return True
+        return False
 
     async def has_users(self) -> bool:
         return await self.repository.has_users()

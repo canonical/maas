@@ -6354,7 +6354,8 @@ CREATE TABLE public.maasserver_oidc_provider (
     redirect_uri text NOT NULL,
     scopes character varying(255) NOT NULL,
     enabled boolean NOT NULL,
-    metadata jsonb NOT NULL
+    metadata jsonb NOT NULL,
+    token_type integer NOT NULL
 );
 
 
@@ -8338,7 +8339,7 @@ ALTER TABLE ONLY temporal.buffered_events ALTER COLUMN id SET DEFAULT nextval('t
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0016
+0017
 \.
 
 
@@ -9417,7 +9418,7 @@ COPY public.maasserver_numanodehugepages (id, created, updated, page_size, total
 -- Data for Name: maasserver_oidc_provider; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_oidc_provider (id, created, updated, name, client_id, client_secret, issuer_url, redirect_uri, scopes, enabled, metadata) FROM stdin;
+COPY public.maasserver_oidc_provider (id, created, updated, name, client_id, client_secret, issuer_url, redirect_uri, scopes, enabled, metadata, token_type) FROM stdin;
 \.
 
 
@@ -16431,7 +16432,7 @@ ALTER TABLE ONLY public.maasserver_numanodehugepages
 --
 
 ALTER TABLE ONLY public.maasserver_oidcrevokedtoken
-    ADD CONSTRAINT maasserver_oidcrevokedtoken_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.maasserver_oidc_provider(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_oidcrevokedtoken_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.maasserver_oidc_provider(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --

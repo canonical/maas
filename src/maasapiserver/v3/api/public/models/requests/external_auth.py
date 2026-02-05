@@ -1,12 +1,19 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from enum import StrEnum
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, validator
 
 from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.models.external_auth import AccessTokenType
+
+
+class OAuthTokenTypeChoices(StrEnum):
+    JWT = "JWT"
+    OPAQUE = "Opaque"
 
 
 class OAuthProviderRequest(BaseModel):
@@ -24,6 +31,9 @@ class OAuthProviderRequest(BaseModel):
     )
     redirect_uri: str = Field(
         description="The callback URL in your application where the OIDC provider will redirect users after successful authentication.",
+    )
+    token_type: OAuthTokenTypeChoices = Field(
+        description="The type of access tokens issued by the OIDC provider (e.g., JWT or opaque).",
     )
     scopes: str = Field(
         description="A space-separated list of OIDC scopes defining the information requested from the provider.",
@@ -43,12 +53,18 @@ class OAuthProviderRequest(BaseModel):
         return value
 
     def to_builder(self) -> OAuthProviderBuilder:
+        token_type = (
+            AccessTokenType.JWT
+            if self.token_type == OAuthTokenTypeChoices.JWT
+            else AccessTokenType.OPAQUE
+        )
         return OAuthProviderBuilder(
             name=self.name,
             client_id=self.client_id,
             client_secret=self.client_secret,
             issuer_url=self.issuer_url,
             redirect_uri=self.redirect_uri,
+            token_type=token_type,
             scopes=self.scopes,
             enabled=self.enabled,
         )

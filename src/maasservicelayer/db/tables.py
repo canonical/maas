@@ -1678,6 +1678,7 @@ OIDCProviderTable = Table(
     Column("issuer_url", String(512), nullable=False),
     Column("redirect_uri", Text, nullable=False),
     Column("scopes", String(255), nullable=False),
+    Column("token_type", Integer, nullable=False),
     Column("enabled", Boolean, nullable=False),
     Column("metadata", JSONB, nullable=False),
 )
@@ -1702,6 +1703,7 @@ OIDCRevokedTokenTable = Table(
         BigInteger,
         ForeignKey(
             "maasserver_oidc_provider.id",
+            ondelete="CASCADE",
             deferrable=True,
             initially="DEFERRED",
         ),

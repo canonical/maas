@@ -5,8 +5,12 @@ import typing
 
 from pydantic import BaseModel
 
+from maasapiserver.v3.api.public.models.requests.external_auth import (
+    OAuthTokenTypeChoices,
+)
 from maasapiserver.v3.api.public.models.responses.base import PaginatedResponse
 from maasservicelayer.models.external_auth import (
+    AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
 )
@@ -66,6 +70,7 @@ class OAuthProviderResponse(BaseModel):
     id: int
     metadata: ProviderMetadata
     user_count: int | None
+    token_type: OAuthTokenTypeChoices
 
     @classmethod
     def from_model(
@@ -82,6 +87,9 @@ class OAuthProviderResponse(BaseModel):
             metadata=provider.metadata,
             id=provider.id,
             user_count=user_count,
+            token_type=OAuthTokenTypeChoices.JWT
+            if provider.token_type == AccessTokenType.JWT
+            else OAuthTokenTypeChoices.OPAQUE,
         )
 
 

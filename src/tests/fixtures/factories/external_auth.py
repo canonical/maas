@@ -5,6 +5,7 @@ from datetime import timedelta
 from typing import Any
 
 from maasservicelayer.models.external_auth import (
+    AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
     RootKey,
@@ -46,6 +47,7 @@ async def create_provider(
         "issuer_url": "https://example.com",
         "redirect_uri": "https://example.com/callback",
         "scopes": "openid email profile",
+        "token_type": AccessTokenType.JWT,
         "enabled": True,
         "metadata": ProviderMetadata(
             authorization_endpoint="",

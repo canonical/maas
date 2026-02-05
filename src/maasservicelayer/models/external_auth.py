@@ -2,6 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
+from enum import IntEnum
 
 from pydantic import BaseModel
 
@@ -26,6 +27,11 @@ class ProviderMetadata(BaseModel):
     jwks_uri: str
 
 
+class AccessTokenType(IntEnum):
+    JWT = 0
+    OPAQUE = 1
+
+
 @generate_builder()
 class OAuthProvider(MaasTimestampedBaseModel):
     issuer_url: str
@@ -33,6 +39,7 @@ class OAuthProvider(MaasTimestampedBaseModel):
     client_id: str
     client_secret: str
     redirect_uri: str
+    token_type: AccessTokenType
     scopes: str
     enabled: bool
     metadata: ProviderMetadata
