@@ -13,6 +13,7 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
+    PreconditionFailedBodyResponse,
     UnauthorizedBodyResponse,
 )
 from maasapiserver.common.utils.http import extract_absolute_uri
@@ -158,7 +159,7 @@ class AuthHandler(Handler):
         tags=TAGS,
         responses={
             200: {"model": AuthInfoResponse},
-            404: {"model": NotFoundBodyResponse},
+            412: {"model": PreconditionFailedBodyResponse},
         },
         status_code=200,
     )
@@ -177,15 +178,6 @@ class AuthHandler(Handler):
                 is_oidc=False,
             )
         client = await services.external_oauth.get_client()
-        if not client:
-            raise NotFoundException(
-                details=[
-                    BaseExceptionDetail(
-                        type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
-                        message="No external OAuth provider is configured.",
-                    )
-                ]
-            )
         data = client.generate_authorization_url(
             redirect_target=redirect_target or "/"
         )

@@ -609,7 +609,7 @@ class ExternalOAuthService(
                 details=[
                     BaseExceptionDetail(
                         type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
-                        message="No OIDC provider is configured.",
+                        message="No enabled OIDC provider is configured.",
                     )
                 ]
             )

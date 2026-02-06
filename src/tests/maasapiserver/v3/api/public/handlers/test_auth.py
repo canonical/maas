@@ -326,15 +326,17 @@ class TestAuthApi:
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.users = Mock(UsersService)
         services_mock.users.is_oidc_user.return_value = True
-        services_mock.external_oauth.get_client.return_value = None
+        services_mock.external_oauth.get_client.side_effect = (
+            PreconditionFailedException()
+        )
         response = await mocked_api_client.get(
             f"{self.BASE_PATH}/login_info?email=test@example.com"
         )
 
-        assert response.status_code == 404
+        assert response.status_code == 412
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
-        assert error_response.code == 404
+        assert error_response.code == 412
 
     async def test_get_oauth_initiate_not_oidc_user(
         self,

@@ -968,7 +968,7 @@ class TestExternalOAuthService(ServiceCommonTests):
             await service_instance.get_client()
         details = exc_info.value.details
         assert details is not None
-        assert details[0].message == "No OIDC provider is configured."
+        assert details[0].message == "No enabled OIDC provider is configured."
         assert details[0].type == MISSING_PROVIDER_CONFIG_VIOLATION_TYPE
 
     async def test_update_provider_success(

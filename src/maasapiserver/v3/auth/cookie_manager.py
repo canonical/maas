@@ -12,7 +12,7 @@ MAAS_STATE_COOKIE_NAME = "maas.auth_state_cookie"
 MAAS_NONCE_COOKIE_NAME = "maas.auth_nonce_cookie"
 
 # Local token cookies
-MAAS_LOCAL_JWT_TOKEN_COOKIE = "maas.local_jwt_token_cookie"
+MAAS_LOCAL_JWT_TOKEN_COOKIE_NAME = "maas.local_jwt_token_cookie"
 MAAS_LOCAL_REFRESH_TOKEN_COOKIE_NAME = "maas.local_refresh_token_cookie"
 
 # OAuth2 token cookies
@@ -22,7 +22,7 @@ MAAS_OAUTH2_REFRESH_TOKEN_COOKIE_NAME = "maas.oauth2_refresh_token_cookie"
 
 
 class MAASLocalCookie(StrEnum):
-    JWT_TOKEN = MAAS_LOCAL_JWT_TOKEN_COOKIE
+    JWT_TOKEN = MAAS_LOCAL_JWT_TOKEN_COOKIE_NAME
     REFRESH_TOKEN = MAAS_LOCAL_REFRESH_TOKEN_COOKIE_NAME
 
 
