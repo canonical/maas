@@ -1,111 +1,47 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-import os
-from pathlib import Path
-from string import Template
-from typing import Iterator
+from typing import Iterator, Optional
 
 from fastapi import Depends, Request
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
-import structlog
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.v3.api import services
-from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.utils.images import get_bootresource_store_path
-from maasserver.config import RegionConfiguration
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
 _FIVE_MB = 5 * (2**10) * (2**10)
-_SNAP_COMMON = Path(os.environ.get("SNAP_COMMON", ""))
-logger = structlog.getLogger()
 
 
 class OnieHeaders(BaseModel):
     """Headers that come out of a ONIE request for installer."""
 
-    serial_number: str = Field(alias="onie-serial-number")
     eth_address: str = Field(alias="onie-eth-addr")
-    vendor_id: str = Field(alias="onie-vendor-id")
-    machine: str = Field(alias="onie-machine")
-    machine_rev: str = Field(alias="onie-machine-rev")
-    arch: str = Field(alias="onie-arch")
-    security_key: str = Field(alias="onie-security-key")
-    operation: str = Field(alias="onie-operation")
-    version: str = Field(alias="onie-version")
+
+    serial_number: Optional[str] = Field(
+        default=None, alias="onie-serial-number"
+    )
+    vendor_id: Optional[str] = Field(default=None, alias="onie-vendor-id")
+    machine: Optional[str] = Field(default=None, alias="onie-machine")
+    machine_rev: Optional[str] = Field(default=None, alias="onie-machine-rev")
+    arch: Optional[str] = Field(default=None, alias="onie-arch")
+    security_key: Optional[str] = Field(
+        default=None, alias="onie-security-key"
+    )
+    operation: Optional[str] = Field(default=None, alias="onie-operation")
+    version: Optional[str] = Field(default=None, alias="onie-version")
 
     @staticmethod
-    def from_request(request: Request) -> "OnieHeaders | None":
-        headers = request.headers
-        onie_headers = {
-            k: v for k, v in headers.items() if k.startswith("onie")
-        }
+    def from_request(request: Request) -> Optional["OnieHeaders"]:
+        onie_headers = {k.lower(): v for k, v in request.headers.items()}
 
         try:
             return OnieHeaders(**onie_headers)
         except ValidationError:
             return None
-
-
-def _find_nos_script(filename: str) -> Path:
-    """Find a NOS script file in the builtin_scripts directory.
-
-    Uses the metadataserver module location to find scripts, which works
-    in both development and snap environments.
-
-    Args:
-        filename: Name of the script file to find
-
-    Returns:
-        Path to the script file
-
-    Raises:
-        FileNotFoundError: If the script file cannot be found
-    """
-    # Import metadataserver to find its installation location
-    import metadataserver
-
-    metadataserver_path = Path(metadataserver.__file__).parent
-    script_path = (
-        metadataserver_path / "builtin_scripts" / "nos_scripts" / filename
-    )
-
-    if script_path.exists():
-        return script_path
-
-    raise FileNotFoundError(f"NOS script not found: {filename}")
-
-
-def generate_tether_script(
-    api_url: str, mac_address: str = "", poll_interval: int = 60
-) -> str:
-    """Generate the tether script from template.
-
-    Loads the ONIE tether script template from the builtin_scripts directory
-    and substitutes the provided parameters.
-
-    Args:
-        api_url: Base API URL for the MAAS server
-        mac_address: MAC address of the management interface
-        poll_interval: Seconds to wait between polling attempts
-
-    Returns:
-        The tether script as a string
-    """
-    script_path = _find_nos_script("onie_tether.sh")
-    with open(script_path, "r", encoding="utf-8") as f:
-        template_content = f.read()
-
-    template = Template(template_content)
-    return template.substitute(
-        api_url=api_url,
-        mac_address=mac_address,
-        poll_interval=poll_interval,
-        v3_api_prefix=V3_API_PREFIX,
-    )
 
 
 class NOSInstallerHandler(Handler):
@@ -114,82 +50,48 @@ class NOSInstallerHandler(Handler):
     TAGS = ["Onie"]
 
     @handler(
-        path="/tether-script",
-        methods=["GET"],
-        tags=TAGS,
-        response_class=PlainTextResponse,
-        status_code=200,
-        dependencies=[],
-    )
-    async def get_tether_script(
-        self,
-        request: Request,
-        services_collection: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ):
-        """Serve the tether script to ONIE during initial boot.
-
-        This endpoint:
-        - Receives ONIE headers from the switch
-        - Returns a dynamically generated tether script
-
-        The tether script will poll the nos-installer endpoint to download
-        and install the assigned NOS when available.
-        """
-        onie_headers = OnieHeaders.from_request(request)
-
-        # Generate the tether script
-        # Get the configured MAAS URL from the region configuration
-        with RegionConfiguration.open() as config:
-            # Remove the /MAAS suffix if present, as we want just the base URL
-            api_url = (
-                str(config.maas_url).removesuffix("/MAAS").removesuffix("/")
-            )
-        script = generate_tether_script(
-            api_url=api_url,
-            mac_address=onie_headers.eth_address
-            if onie_headers
-            else "no ethernet address found",
-            poll_interval=60,
-        )
-
-        return PlainTextResponse(
-            content=script,
-            media_type="text/x-shellscript",
-            headers={
-                "Content-Disposition": 'attachment; filename="maas-onie-tether.sh"',
-            },
-        )
-
-    @handler(
         path="/nos-installer",
         methods=["GET"],
         tags=TAGS,
+        responses={
+            200: {
+                "content": {
+                    "application/octet-stream": {
+                        "schema": {
+                            "type": "string",
+                            "format": "binary",
+                        }
+                    }
+                },
+                "description": "NOS installer binary",
+            },
+            204: {"description": "No installer assigned or switch not found"},
+            400: {"description": "Bad request - MAC address not found"},
+        },
         response_model_exclude_none=True,
         dependencies=[],
     )
     async def get_nos_installer(
         self,
         request: Request,
-        mac: str = "",
         services_collection: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ):
         """Serve NOS installer binary.
 
-        This endpoint checks the switch state:
-        - 'ready' state: Returns the assigned NOS installer if present
-        - 'new' state: Updates heartbeat and returns empty response (no installer yet)
-        - Other states: Returns empty response
+        This endpoint:
+        - Receives ONIE headers from the switch
+        - Checks if an installer is assigned to the switch
+        - #TODO Verifies the installer arch matches the switch arch
+        - If assigned, streams the installer binary to the switch
 
-        If vendor mismatch is detected, marks switch as 'broken' and returns error.
-
-        Query parameters:
-        - mac: MAC address of the switch (query parameter for BusyBox wget compatibility)
         """
         # Get MAC address from query parameter
-        mac_address = mac
+        onie_headers = OnieHeaders.from_request(request)
+
+        mac_address = onie_headers.eth_address if onie_headers else None
         if not mac_address:
             return PlainTextResponse(
-                content="mac_address query parameter is required",
+                content="MAC address not found in headers",
                 status_code=400,
             )
 
