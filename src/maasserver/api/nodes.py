@@ -757,7 +757,7 @@ class NodesHandler(OperationsHandler):
         a pod of the specified type will be returned.
 
         @param (string) "not_pod_type": [required=false] Only nodes that don't
-        belong a pod of the specified type will be returned.
+        belong to a pod of the specified type will be returned.
 
         @param (string) "devices": [required=false] Only return nodes which
         have one or more devices containing the following constraints in the
@@ -771,6 +771,76 @@ class NodesHandler(OperationsHandler):
         - ``product_name``: The device product name, not case sensative
         - ``commissioning_driver``: The device uses this driver during
           commissioning.
+
+        @param (string) "arch" [required=false] Only nodes with the specified
+        architecture will be returned.
+
+        @param (string) "not_arch" [required=false] Only nodes without the
+        specified architecture will be returned.
+
+        @param (string) "cpu_speed" [required=false] Only nodes with CPUs
+        running at the specified speed (in MHz) will be returned.
+
+        @param (string) "deployment_target" [required=false] Only nodes with
+        the specified deployment target will be returned.
+
+        @param (string) "not_deployment_target" [required=false] Only nodes
+        without the specified deployment target will be returned.
+
+        @param (string) "fabric_classes" [required=false] Attached to fabric
+        with specified classes.
+
+        @param (string) "not_fabric_classes" [required=false] Not attached to
+        fabric with specified classes.
+
+        @param (string) "interfaces" [required=false] Only nodes with
+        interfaces matching the specified constraints will be returned.
+
+        @param (string) "not_hostname" [required=false] Hostnames to ignore.
+
+        @param (string) "not_id" [required=false] System IDs to ignore.
+
+        @param (string) "not_domain" [required=false] Domain names to ignore.
+
+        @param (string) "not_agent_name" [required=false] Excludes nodes with
+        events matching the agent name.
+
+        @param (string) "not_in_pool" [required=false] Only nodes not in the
+        specified resource pools will be returned.
+
+        @param (string) "not_in_zone" [required=false] Not in zone.
+
+        @param (string) "not_owner" [required=false] Only nodes not owned by
+        the specified users will be returned.
+
+        @param (string) "not_power_state" [required=false] Only nodes not in
+        the specified power states will be returned.
+
+        @param (string) "not_simple_status" [required=false] Exclude nodes
+        with the specified simplified status.
+
+        @param (string) "not_status" [required=false] Exclude nodes with the
+        specified status.
+
+        @param (string) "not_tags" [required=false] Not having tags.
+
+        @param (string) "owner" [required=false] Only nodes owned by the
+        specified users will be returned.
+
+        @param (string) "power_state" [required=false] Only nodes in the
+        specified power states will be returned.
+
+        @param (string) "simple_status" [required=false] Only includes nodes
+        with the specified simplified status.
+
+        @param (string) "storage" [required=false] Only nodes with storage
+        matching the specified constraints will be returned.
+
+        @param (string) "system_id" [required=false] Only nodes with the
+        specified system IDs will be returned.
+
+        @param (string) "tags" [required=false] Only nodes with the specified
+        tags will be returned.
 
         @success (http-status-code) "200" 200
 

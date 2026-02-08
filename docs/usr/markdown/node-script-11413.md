@@ -266,7 +266,7 @@ Optional String. A description of what<br>the script does.
 ##### Keyword "tags"
 Optional String. A comma separated list of tags<br>for this script.
 ##### Keyword "type"
-Optional String. The script_type defines when<br>the script should be used: ``commissioning`` or ``testing`` or<br>``release``. Defaults to ``testing``.
+Optional String. The script_type defines when<br>the script should be used: ``commissioning`` or ``testing`` or<br>``release` or ``deployment``. Defaults to ``testing``.
 ##### Keyword "hardware_type"
 Optional String. The hardware_type<br>defines what type of hardware the script is associated with. May be<br>CPU, memory, storage, network, or node.
 ##### Keyword "parallel"

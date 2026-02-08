@@ -384,9 +384,59 @@ Optional String. Only nodes that don't<br>belong to a specified pod will be retu
 ##### Keyword "pod_type"
 Optional String. Only nodes that belong to<br>a pod of the specified type will be returned.
 ##### Keyword "not_pod_type"
-Optional String. Only nodes that don't<br>belong a pod of the specified type will be returned.
+Optional String. Only nodes that don't<br>belong to a pod of the specified type will be returned.
 ##### Keyword "devices"
 Optional String. Only return nodes which<br>have one or more devices containing the following constraints in the<br>format key=value[,key2=value2[,…]]<br><br>Each key can be one of the following:<br><br>- ``vendor_id``: The device vendor id<br>- ``product_id``: The device product id<br>- ``vendor_name``: The device vendor name, not case sensitive<br>- ``product_name``: The device product name, not case sensitive<br>- ``commissioning_driver``: The device uses this driver during<br>commissioning.
+##### Keyword "arch"
+Optional String. Only nodes with the specified<br>architecture will be returned.
+##### Keyword "not_arch"
+Optional String. Only nodes without the<br>specified architecture will be returned.
+##### Keyword "cpu_speed"
+Optional String. Only nodes with CPUs<br>running at the specified speed (in MHz) will be returned.
+##### Keyword "deployment_target"
+Optional String. Only nodes with<br>the specified deployment target will be returned.
+##### Keyword "not_deployment_target"
+Optional String. Only nodes<br>without the specified deployment target will be returned.
+##### Keyword "fabric_classes"
+Optional String. Attached to fabric<br>with specified classes.
+##### Keyword "not_fabric_classes"
+Optional String. Not attached to<br>fabric with specified classes.
+##### Keyword "interfaces"
+Optional String. Only nodes with<br>interfaces matching the specified constraints will be returned.
+##### Keyword "not_hostname"
+Optional String. Hostnames to ignore.
+##### Keyword "not_id"
+Optional String. System IDs to ignore.
+##### Keyword "not_domain"
+Optional String. Domain names to ignore.
+##### Keyword "not_agent_name"
+Optional String. Excludes nodes with<br>events matching the agent name.
+##### Keyword "not_in_pool"
+Optional String. Only nodes not in the<br>specified resource pools will be returned.
+##### Keyword "not_in_zone"
+Optional String. Not in zone.
+##### Keyword "not_owner"
+Optional String. Only nodes not owned by<br>the specified users will be returned.
+##### Keyword "not_power_state"
+Optional String. Only nodes not in<br>the specified power states will be returned.
+##### Keyword "not_simple_status"
+Optional String. Exclude nodes<br>with the specified simplified status.
+##### Keyword "not_status"
+Optional String. Exclude nodes with the<br>specified status.
+##### Keyword "not_tags"
+Optional String. Not having tags.
+##### Keyword "owner"
+Optional String. Only nodes owned by the<br>specified users will be returned.
+##### Keyword "power_state"
+Optional String. Only nodes in the<br>specified power states will be returned.
+##### Keyword "simple_status"
+Optional String. Only includes nodes<br>with the specified simplified status.
+##### Keyword "storage"
+Optional String. Only nodes with storage<br>matching the specified constraints will be returned.
+##### Keyword "system_id"
+Optional String. Only nodes with the<br>specified system IDs will be returned.
+##### Keyword "tags"
+Optional String. Only nodes with the specified<br>tags will be returned.
 
 
 Note: This command accepts JSON.

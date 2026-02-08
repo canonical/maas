@@ -413,7 +413,9 @@ Optional String. Tags for the interface.
 ##### Keyword "vlan"
 Optional String. VLAN the interface is connected<br>to.
 ##### Keyword "parent"
-Optional Int. Parent interface id for this<br>bridge interface.
+Optional Int. Deprecated, use parents instead. Parent interface id for this<br>bridge interface.
+##### Keyword "parents"
+Optional Int. Parent interface ids that make<br>this bridge.
 ##### Keyword "bridge_type"
 Optional String. The type of bridge<br>to create. Possible values are: ``standard``, ``ovs``.
 ##### Keyword "bridge_stp"
