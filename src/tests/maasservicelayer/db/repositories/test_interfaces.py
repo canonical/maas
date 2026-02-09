@@ -25,6 +25,7 @@ from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
 )
 from tests.fixtures.factories.subnet import create_test_subnet_entry
+from tests.fixtures.factories.switches import create_test_switch
 from tests.fixtures.factories.user import create_test_user
 from tests.fixtures.factories.vlan import create_test_vlan_entry
 from tests.maasapiserver.fixtures.db import Fixture
@@ -187,6 +188,7 @@ class TestInterfaceRepository:
         )
 
         assert len(interfaces1_result.items) == interface1_count
+
         assert interfaces1_result.total == interface1_count
         assert len(interfaces2_result.items) == interface2_count
         assert interfaces2_result.total == interface2_count
@@ -538,3 +540,21 @@ class TestInterfaceRepository:
             and iface[0].mac_address == interface.mac_address
             and iface[0].name == interface.name
         )
+
+    async def test_create_switch_interface(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+        switch = await create_test_switch(fixture=fixture)
+        id = await interfaces_repository.create_switch_interface(
+            switch.id,
+            mac="00:11:22:33:44:55",
+        )
+        iface = (await fixture.get("maasserver_interface"))[0]
+        assert iface["id"] == id
+        assert iface["name"] == "mgmt0"
+        assert iface["type"] == "physical"
+        assert iface["mac_address"] == "00:11:22:33:44:55"
+        assert iface["switch_id"] == switch.id

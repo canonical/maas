@@ -5,12 +5,15 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.switches import SwitchStatus
+from maasservicelayer.builders.interfaces import InterfaceBuilder
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
+from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.repositories.switches import (
     SwitchClauseFactory,
     SwitchesRepository,
 )
+from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.models.switches import Switch
 from tests.fixtures.factories.switches import (
     create_test_switch,
@@ -88,6 +91,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         resource = await repository_instance.create(instance_builder)
         assert resource.id > 0
         assert resource.target_image_id is None
+        assert resource.status == SwitchStatus.NEW
 
     async def test_update_switch(
         self,
@@ -97,13 +101,14 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         """Test updating a switch."""
         builder = SwitchBuilder(
             target_image_id=1,
-            status=SwitchStatus.NEW,
+            status=SwitchStatus.SERVED_NOS,
         )
         updated = await repository_instance.update_by_id(
             created_instance.id, builder
         )
         assert updated.id == created_instance.id
         assert updated.target_image_id == 1
+        assert updated.status == SwitchStatus.SERVED_NOS
 
     async def test_delete_switch(
         self,
@@ -123,12 +128,6 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         fixture: Fixture,
     ) -> None:
         """Test that creating switches with duplicate MAC addresses in interfaces fails."""
-        from maasservicelayer.builders.switches import SwitchInterfaceBuilder
-        from maasservicelayer.context import Context
-        from maasservicelayer.db.repositories.switches import (
-            SwitchInterfacesRepository,
-        )
-        from maasservicelayer.exceptions.catalog import AlreadyExistsException
 
         # Create first switch with an interface
         switch1 = await create_test_switch(fixture, hostname="switch-1")
@@ -140,10 +139,8 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         switch2 = await create_test_switch(fixture, hostname="switch-2")
 
         # Try to create interface with duplicate MAC address through repository - should fail
-        interface_repo = SwitchInterfacesRepository(
-            Context(connection=db_connection)
-        )
-        builder = SwitchInterfaceBuilder(
+        interface_repo = InterfaceRepository(Context(connection=db_connection))
+        builder = InterfaceBuilder(
             name="mgmt", mac_address="00:11:22:33:44:55", switch_id=switch2.id
         )
         with pytest.raises(AlreadyExistsException):
@@ -155,13 +152,6 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         fixture: Fixture,
     ) -> None:
         """Test that creating multiple switches with duplicate MAC addresses in interfaces fails."""
-        from maasservicelayer.builders.switches import SwitchInterfaceBuilder
-        from maasservicelayer.context import Context
-        from maasservicelayer.db.repositories.switches import (
-            SwitchInterfacesRepository,
-        )
-        from maasservicelayer.exceptions.catalog import AlreadyExistsException
-
         # Create first switch with an interface
         switch1 = await create_test_switch(fixture, hostname="switch-1")
         await create_test_switch_interface(
@@ -172,19 +162,17 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         switch2 = await create_test_switch(fixture, hostname="switch-2")
 
         # Try to create multiple interfaces with duplicate MAC address - should fail
-        interface_repo = SwitchInterfacesRepository(
-            Context(connection=db_connection)
-        )
+        interface_repo = InterfaceRepository(Context(connection=db_connection))
 
         with pytest.raises(AlreadyExistsException):
             await interface_repo.create_many(
                 [
-                    SwitchInterfaceBuilder(
+                    InterfaceBuilder(
                         name="eth0",
                         mac_address="aa:bb:cc:dd:ee:ff",
                         switch_id=switch1.id,
                     ),
-                    SwitchInterfaceBuilder(
+                    InterfaceBuilder(
                         name="eth0",
                         mac_address="aa:bb:cc:dd:ee:ff",  # Duplicate MAC
                         switch_id=switch2.id,

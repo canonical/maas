@@ -1027,6 +1027,17 @@ InterfaceTable = Table(
         ),
         nullable=True,
     ),
+    Column(
+        "switch_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_switch.id",
+            deferrable=True,
+            initially="DEFERRED",
+            ondelete="CASCADE",
+        ),
+        nullable=True,
+    ),
     UniqueConstraint("node_config_id", "name"),
     Index("maasserver_interface_vlan_id_5f39995d", "vlan_id"),
     Index("maasserver_interface_numa_node_id_6e790407", "numa_node_id"),
@@ -1038,6 +1049,7 @@ InterfaceTable = Table(
         unique=True,
         postgresql_where=text("(type)::text = 'physical'::text"),
     ),
+    Index("maasserver_interface_switch_id_idx", "switch_id"),
 )
 
 IPRangeTable = Table(
@@ -2236,28 +2248,6 @@ SwitchTable = Table(
         nullable=True,
     ),
     Index("maasserver_switch_target_image_id_idx", "target_image_id"),
-)
-
-SwitchInterfaceTable = Table(
-    "maasserver_switchinterface",
-    METADATA,
-    Column("id", BigInteger, Identity(), primary_key=True),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-    Column("mac_address", Text, nullable=False),
-    Column(
-        "switch_id",
-        BigInteger,
-        ForeignKey(
-            "maasserver_switch.id",
-            deferrable=True,
-            initially="DEFERRED",
-            ondelete="CASCADE",
-        ),
-        nullable=False,
-    ),
-    UniqueConstraint("mac_address"),
-    Index("maasserver_switchinterface_switch_id_idx", "switch_id"),
 )
 
 SubnetTable = Table(

@@ -19,14 +19,3 @@ class Switch(MaasTimestampedBaseModel):
 
     status: SwitchStatus
     target_image_id: Optional[int]
-
-
-@generate_builder()
-class SwitchInterface(MaasTimestampedBaseModel):
-    """Model representing a switch interface.
-
-    Each switch has one or more interfaces with network connectivity information.
-    """
-
-    mac_address: str
-    switch_id: int

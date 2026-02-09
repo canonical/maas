@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from maascommon.enums.switches import SwitchStatus
-from maasservicelayer.models.switches import Switch, SwitchInterface
+from maasservicelayer.models.interfaces import Interface
+from maasservicelayer.models.switches import Switch
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -44,11 +45,22 @@ async def create_test_switch_interface_entry(
         "created": created_at,
         "updated": updated_at,
         "mac_address": "00:11:22:33:44:55",
+        "name": "mgmt0",
+        "type": "physical",
+        "params": {},
+        "enabled": True,
+        "acquired": True,
+        "mdns_discovery_state": True,
+        "neighbour_discovery_state": True,
+        "interface_speed": 0,
+        "link_connected": True,
+        "link_speed": 0,
+        "sriov_max_vf": 0,
     }
     interface.update(extra_details)
 
     [created_interface] = await fixture.create(
-        "maasserver_switchinterface",
+        "maasserver_interface",
         [interface],
     )
     return created_interface
@@ -66,9 +78,9 @@ async def create_test_switch(
 async def create_test_switch_interface(
     fixture: Fixture,
     **extra_details: Any,
-) -> SwitchInterface:
+) -> Interface:
     """Create a test SwitchInterface model instance."""
     interface_data = await create_test_switch_interface_entry(
         fixture, **extra_details
     )
-    return SwitchInterface(**interface_data)
+    return Interface(**interface_data)

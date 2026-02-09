@@ -13,17 +13,17 @@ from maasapiserver.v3.api.public.models.responses.switches import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import BootResourceType
+from maascommon.enums.interface import InterfaceType
 from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresources import BootResource
-from maasservicelayer.models.switches import Switch, SwitchInterface
+from maasservicelayer.models.interfaces import Interface
+from maasservicelayer.models.switches import Switch
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.bootresources import BootResourceService
-from maasservicelayer.services.switches import (
-    SwitchesService,
-    SwitchInterfacesService,
-)
+from maasservicelayer.services.interfaces import InterfacesService
+from maasservicelayer.services.switches import SwitchesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -188,11 +188,13 @@ class TestSwitchesApi(ApiCommonTests):
     ) -> None:
         """Test creating a new switch."""
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switchinterfaces = Mock(SwitchInterfacesService)
-        services_mock.switchinterfaces.list.return_value = ListResult[
-            SwitchInterface
-        ](items=[], total=0)
-        services_mock.switches.create.return_value = TEST_SWITCH
+        services_mock.interfaces = Mock(InterfacesService)
+        services_mock.interfaces.list.return_value = ListResult[Interface](
+            items=[], total=0
+        )
+        services_mock.switches.create_new_switch_and_interface.return_value = (
+            TEST_SWITCH
+        )
 
         new_switch_data = {
             "mac_address": "00:11:22:33:44:55",
@@ -214,16 +216,18 @@ class TestSwitchesApi(ApiCommonTests):
     ) -> None:
         """Test creating a new switch with target image."""
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switchinterfaces = Mock(SwitchInterfacesService)
-        services_mock.switchinterfaces.list.return_value = ListResult[
-            SwitchInterface
-        ](items=[], total=0)
-        services_mock.switches.create.return_value = Switch(
-            **{
-                **TEST_SWITCH.dict(),
-                "target_image_id": TEST_NOS_IMAGE.id,
-                "target_image": TEST_NOS_IMAGE.name,
-            }
+        services_mock.interfaces = Mock(InterfacesService)
+        services_mock.interfaces.list.return_value = ListResult[Interface](
+            items=[], total=0
+        )
+        services_mock.switches.create_new_switch_and_interface.return_value = (
+            Switch(
+                **{
+                    **TEST_SWITCH.dict(),
+                    "target_image_id": TEST_NOS_IMAGE.id,
+                    "target_image": TEST_NOS_IMAGE.name,
+                }
+            )
         )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = TEST_NOS_IMAGE
@@ -252,10 +256,10 @@ class TestSwitchesApi(ApiCommonTests):
     ) -> None:
         """Test creating a new switch with target image."""
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switchinterfaces = Mock(SwitchInterfacesService)
-        services_mock.switchinterfaces.list.return_value = ListResult[
-            SwitchInterface
-        ](items=[], total=0)
+        services_mock.interfaces = Mock(InterfacesService)
+        services_mock.interfaces.list.return_value = ListResult[Interface](
+            items=[], total=0
+        )
 
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None
@@ -277,10 +281,10 @@ class TestSwitchesApi(ApiCommonTests):
     ) -> None:
         """Test creating a new switch with a non-onie image."""
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switchinterfaces = Mock(SwitchInterfacesService)
-        services_mock.switchinterfaces.list.return_value = ListResult[
-            SwitchInterface
-        ](items=[], total=0)
+        services_mock.interfaces = Mock(InterfacesService)
+        services_mock.interfaces.list.return_value = ListResult[Interface](
+            items=[], total=0
+        )
 
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.side_effect = [
@@ -312,12 +316,10 @@ class TestSwitchesApi(ApiCommonTests):
     ) -> None:
         """Test creating a switch with duplicate MAC address fails."""
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switchinterfaces = Mock(SwitchInterfacesService)
-        services_mock.switchinterfaces.list.return_value = ListResult[
-            SwitchInterface
-        ](
+        services_mock.interfaces = Mock(InterfacesService)
+        services_mock.interfaces.list.return_value = ListResult[Interface](
             items=[
-                SwitchInterface(
+                Interface(
                     id=1,
                     created=datetime.now(timezone.utc),
                     updated=datetime.now(timezone.utc),
@@ -325,6 +327,7 @@ class TestSwitchesApi(ApiCommonTests):
                     mac_address="00:11:22:33:44:55",
                     switch_id=1,
                     ip_address_id=None,
+                    type=InterfaceType.PHYSICAL,
                 )
             ],
             total=1,

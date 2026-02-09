@@ -26,9 +26,7 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.switches import (
-    SwitchInterfaceClauseFactory,
-)
+from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -149,11 +147,11 @@ class SwitchesHandler(Handler):
     ) -> SwitchResponse:
         """Create a new switch with its management interface."""
         # Check for duplicate MAC address
-        existing_interfaces = await services.switchinterfaces.list(
+        existing_interfaces = await services.interfaces.list(
             page=1,
             size=1,
             query=QuerySpec(
-                where=SwitchInterfaceClauseFactory.with_mac_address(
+                where=InterfaceClauseFactory.with_mac_address(
                     switch_request.mac_address
                 )
             ),
@@ -162,20 +160,17 @@ class SwitchesHandler(Handler):
             raise AlreadyExistsException(
                 details=[
                     BaseExceptionDetail(
-                        type="SwitchInterfaceAlreadyExists",
-                        message=f"A switch with MAC address '{switch_request.mac_address}' already exists.",
+                        type="InterfaceAlreadyExists",
+                        message=f"An interface with MAC address '{switch_request.mac_address}' already exists.",
                     )
                 ]
             )
 
-        # Create the switch
-        switch = await services.switches.create(
-            await switch_request.to_switch_builder(services)
+        # Create the switch and interface
+        switch = await services.switches.create_new_switch_and_interface(
+            await switch_request.to_switch_builder(services),
+            switch_request.mac_address,
         )
-
-        # Create the management interface
-        interface_builder = switch_request.to_interface_builder(switch.id)
-        await services.switchinterfaces.create(interface_builder)
 
         response.headers["Location"] = f"{V3_API_PREFIX}/switches/{switch.id}"
         return await SwitchResponse.from_model(

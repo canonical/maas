@@ -6,19 +6,16 @@ from typing import Optional
 
 from structlog import get_logger
 
-from maasservicelayer.builders.switches import (
-    SwitchBuilder,
-    SwitchInterfaceBuilder,
-)
+from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.switches import (
-    SwitchesRepository,
-    SwitchInterfaceClauseFactory,
-    SwitchInterfacesRepository,
+from maasservicelayer.db.repositories.interfaces import (
+    InterfaceClauseFactory,
+    InterfaceRepository,
 )
+from maasservicelayer.db.repositories.switches import SwitchesRepository
 from maasservicelayer.exceptions.catalog import NotFoundException
-from maasservicelayer.models.switches import Switch, SwitchInterface
+from maasservicelayer.models.switches import Switch
 from maasservicelayer.services.base import BaseService
 
 logger = get_logger()
@@ -36,10 +33,29 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         self,
         context: Context,
         switches_repository: SwitchesRepository,
-        switchinterfaces_repository: SwitchInterfacesRepository,
+        interfaces_repository: InterfaceRepository,
     ):
         super().__init__(context, switches_repository)
-        self.switchinterfaces_repository = switchinterfaces_repository
+        self.interfaces_repository = interfaces_repository
+
+    async def create_new_switch_and_interface(
+        self,
+        builder: SwitchBuilder,
+        mac_address: str,
+    ) -> Switch:
+        """Create a new switch and interface.
+
+        Args:
+            builder: SwitchBuilder with the switch details
+            mac_address: MAC address for the management interface
+        Returns:
+            The created Switch
+        """
+        switch = await self.create(builder)
+        await self.interfaces_repository.create_switch_interface(
+            switch_id=switch.id, mac=mac_address
+        )
+        return switch
 
     async def get_switch_by_mac_address(
         self, mac_address: str
@@ -53,11 +69,9 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
             The Switch if found, None otherwise
         """
         # Find the interface with this MAC address
-        interface = await self.switchinterfaces_repository.get_one(
+        interface = await self.interfaces_repository.get_one(
             query=QuerySpec(
-                where=SwitchInterfaceClauseFactory.with_mac_address(
-                    mac_address
-                )
+                where=InterfaceClauseFactory.with_mac_address(mac_address)
             )
         )
 
@@ -106,18 +120,3 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
             return switch.target_image_id
 
         return None
-
-
-class SwitchInterfacesService(
-    BaseService[
-        SwitchInterface, SwitchInterfacesRepository, SwitchInterfaceBuilder
-    ]
-):
-    """Service for managing switch interfaces."""
-
-    def __init__(
-        self,
-        context: Context,
-        switchinterfaces_repository: SwitchInterfacesRepository,
-    ):
-        super().__init__(context, switchinterfaces_repository)

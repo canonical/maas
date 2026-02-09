@@ -53,47 +53,45 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # Create SwitchInterface table
-    op.create_table(
-        "maasserver_switchinterface",
-        sa.Column(
-            "id", sa.BigInteger(), sa.Identity(always=False), nullable=False
-        ),
-        sa.Column("created", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("mac_address", sa.Text(), nullable=False),
-        sa.Column(
-            "switch_id",
-            sa.BigInteger(),
-            sa.ForeignKey(
-                "maasserver_switch.id",
-                deferrable=True,
-                initially="DEFERRED",
-                ondelete="CASCADE",
-            ),
-            nullable=False,
-        ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("mac_address"),
+    op.add_column(
+        "maasserver_interface",
+        sa.Column("switch_id", sa.BigInteger(), nullable=True),
+    )
+
+    op.create_foreign_key(
+        "maasserver_interface_switch_id_fkey",
+        "maasserver_interface",
+        "maasserver_switch",
+        ["switch_id"],
+        ["id"],
+        ondelete="CASCADE",
+        initially="DEFERRED",
+        deferrable=True,
     )
 
     # Create indexes for SwitchInterface table
     op.create_index(
-        "maasserver_switchinterface_switch_id_idx",
-        "maasserver_switchinterface",
+        "maasserver_interface_switch_id_idx",
+        "maasserver_interface",
         ["switch_id"],
         unique=False,
     )
 
 
 def downgrade() -> None:
-    """Drop the maasserver_switchinterface and maasserver_switch tables."""
-    # Drop SwitchInterface table first (due to foreign key)
+    """Drop the maasserver_switch table and remove the FK from maasserver_interface table."""
     op.drop_index(
-        "maasserver_switchinterface_switch_id_idx",
-        table_name="maasserver_switchinterface",
+        "maasserver_interface_switch_id_idx",
+        table_name="maasserver_interface",
     )
-    op.drop_table("maasserver_switchinterface")
+
+    op.drop_constraint(
+        "maasserver_interface_switch_id_fkey",
+        "maasserver_interface",
+        type_="foreignkey",
+    )
+
+    op.drop_column("maasserver_interface", "switch_id")
 
     # Drop Switch table
     op.drop_index(
