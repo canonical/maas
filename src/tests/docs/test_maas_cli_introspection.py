@@ -93,3 +93,73 @@ def test_describe_parser():
         or "api" in node["overview"].lower()
     )
     assert len(node["options"]) >= 1
+
+
+def test_get_form_field_names():
+    """Test that _get_form_field_names extracts field names from forms."""
+    mod = load_module(
+        "_introspect_module", TOOLS_DIR / "maas_cli_introspection.py"
+    )
+
+    class Form:
+        declared_fields = {"field1": None, "field2": None}
+
+    assert mod._get_form_field_names(Form) == {"field1", "field2"}
+
+    class FormWithBase:
+        base_fields = {"base1": None}
+
+    assert mod._get_form_field_names(FormWithBase) == {"base1"}
+
+    assert mod._get_form_field_names(None) == set()
+
+    class EmptyForm:
+        declared_fields = {}
+
+    assert mod._get_form_field_names(EmptyForm) == set()
+
+
+def test_get_model_form_class():
+    """Test that _get_model_form_class extracts model_form from handlers."""
+    mod = load_module(
+        "_introspect_module", TOOLS_DIR / "maas_cli_introspection.py"
+    )
+
+    class Form:
+        pass
+
+    class Handler:
+        model_form = Form
+
+    assert mod._get_model_form_class(Handler) == Form
+
+    class HandlerNoForm:
+        pass
+
+    assert mod._get_model_form_class(HandlerNoForm) is None
+
+    class HandlerNoneForm:
+        model_form = None
+
+    assert mod._get_model_form_class(HandlerNoneForm) is None
+
+    class HandlerBadForm:
+        model_form = "not a class"
+
+    assert mod._get_model_form_class(HandlerBadForm) is None
+
+
+def test_get_action_form_registry():
+    """Test that _get_action_form_registry returns correct structure."""
+    mod = load_module(
+        "_introspect_module", TOOLS_DIR / "maas_cli_introspection.py"
+    )
+
+    registry = mod._get_action_form_registry()
+    assert isinstance(registry, list)
+    assert len(registry) > 0
+
+    for entry in registry:
+        assert len(entry) == 3
+        base_class, action_name, form_class = entry
+        assert isinstance(action_name, str)

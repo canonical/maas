@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+from inspect import getdoc
 
 try:
     import importlib.metadata as _ilm
@@ -48,27 +49,23 @@ def add_repo_src_to_path():
         sys.path.insert(0, src_dir)
 
 
+def _patch_maas_metadata():
+    """Patch importlib.metadata.distribution for 'maas' so imports succeed in-repo."""
+    if _ilm is not None:
+        _orig = getattr(_ilm, "distribution", None)
+        if _orig is not None:
+            def _fake(name):
+                if name == "maas":
+                    class _Dummy:
+                        version = "0.0.0"
+                    return _Dummy()
+                return _orig(name)
+            _ilm.distribution = _fake
+
+
 def build_parser(argv0="maas"):
     """Build and return the MAAS CLI argument parser."""
-    if _ilm is not None:
-        _orig_distribution = getattr(_ilm, "distribution", None)
-
-        def _fake_distribution(name):
-            if name == "maas":
-
-                class _Dummy:
-                    version = "0.0.0"
-
-                return _Dummy()
-            if _orig_distribution is None:
-                raise ModuleNotFoundError(
-                    f"distribution not available for {name}"
-                )
-            return _orig_distribution(name)
-
-        if _orig_distribution is not None:
-            _ilm.distribution = _fake_distribution
-
+    _patch_maas_metadata()
     try:
         from maascli.parser import prepare_parser
 
@@ -679,9 +676,273 @@ def discover_top_level_from_parser(parser):
     return commands
 
 
+def _get_form_field_names(form_class):
+    """Return the set of field names for a Django Form/ModelForm class."""
+    if form_class is None:
+        return set()
+    fields = getattr(form_class, "base_fields", None) or getattr(
+        form_class, "declared_fields", {}
+    )
+    return set(fields.keys())
+
+
+def _get_model_form_class(handler_class):
+    """Return the model_form class for a handler, or None."""
+    try:
+        form = getattr(handler_class, "model_form", None)
+        if form is not None and callable(form):
+            return form
+    except (NotImplementedError, AttributeError, TypeError):
+        pass
+    return None
+
+
+def _extract_docstring_params(doc):
+    """Extract @param names from annotated docstring; skip URI params."""
+    from maasserver.api.annotations import APIDocstringParser
+
+    if not doc or not APIDocstringParser.is_annotated_docstring(doc):
+        return set()
+    try:
+        parser = APIDocstringParser()
+        parser.parse(doc)
+        ap_dict = parser.get_dict()
+    except Exception:
+        return set()
+    out = set()
+    for param in ap_dict.get("params") or []:
+        name = (param.get("name") or "").strip()
+        if name and "{" not in name and "}" not in name:
+            out.add(name)
+    return out
+
+
+def _get_docstring_param_names(handler_class):
+    """Return param names from all action docstrings (skip URI params)."""
+    exports = getattr(handler_class, "exports", None)
+    if not exports:
+        return set()
+    param_names = set()
+    for _signature, func in exports.items():
+        param_names |= _extract_docstring_params(getdoc(func))
+    return param_names
+
+
+def _get_action_docstring_params(handler_class, action_name):
+    """Return param names from a single action's docstring (skip URI params)."""
+    func = getattr(handler_class, action_name, None)
+    return set() if func is None else _extract_docstring_params(getdoc(func))
+
+
+def _get_action_form_registry():
+    """(base_handler_class, action_name, form_class) for action-level forms."""
+    from maasserver.api.nodes import NodesHandler
+    from maasserver.node_constraint_filter_forms import ReadNodesForm
+
+    return [
+        (NodesHandler, "read", ReadNodesForm),
+    ]
+
+
+def _setup_django() -> bool:
+    """Ensure Django is configured for docstring sync checks."""
+    _patch_maas_metadata()
+    if "DJANGO_SETTINGS_MODULE" not in os.environ:
+        os.environ.setdefault(
+            "DJANGO_SETTINGS_MODULE",
+            "maasserver.djangosettings.settings",
+        )
+    try:
+        import django
+
+        django.setup()
+        return True
+    except ImportError:
+        print(
+            "Django is required for --check-docstring-sync. "
+            "Run with PYTHONPATH=src.",
+            file=sys.stderr,
+        )
+        return False
+
+
+def _get_api_resources():
+    """Return API resources or None on import failure."""
+    from maasserver.api.doc import find_api_resources
+
+    try:
+        from maasserver import urls_api as urlconf
+    except ImportError as e:
+        print(f"Cannot import maasserver.urls_api: {e}", file=sys.stderr)
+        return None
+    return find_api_resources(urlconf)
+
+
+def _iter_unique_handlers(resources):
+    """Yield (handler_class, name) for each unique handler."""
+    from piston3.handler import BaseHandler
+
+    seen = set()
+    for resource in sorted(
+        resources, key=lambda r: getattr(r.handler, "__name__", "")
+    ):
+        for handler in (resource.handler, resource.anonymous):
+            if handler is None:
+                continue
+            handler_class = (
+                type(handler) if isinstance(handler, BaseHandler) else handler
+            )
+            if handler_class in seen:
+                continue
+            seen.add(handler_class)
+            name = getattr(handler_class, "__name__", str(handler_class))
+            yield handler_class, name
+
+
+def _collect_model_form_reports(handler_class, name):
+    """Return report rows for handler-level model_form drift."""
+    form_class = _get_model_form_class(handler_class)
+    if form_class is None:
+        return []
+    form_fields = _get_form_field_names(form_class)
+    docstring_params = _get_docstring_param_names(handler_class)
+    missing = form_fields - docstring_params
+    if not missing:
+        return []
+    return [
+        (
+            name,
+            form_class.__name__,
+            sorted(form_fields),
+            sorted(docstring_params),
+            sorted(missing),
+        )
+    ]
+
+
+def _collect_action_form_reports(handler_class, name, action_form_registry):
+    """Return report rows for action-level form/docstring drift."""
+    rows = []
+    for base_class, action_name, action_form_class in action_form_registry:
+        if not issubclass(handler_class, base_class):
+            continue
+        form_fields = _get_form_field_names(action_form_class)
+        docstring_params = _get_action_docstring_params(handler_class, action_name)
+        missing = form_fields - docstring_params
+        if not missing:
+            continue
+        rows.append(
+            (
+                f"{name}.{action_name}",
+                action_form_class.__name__,
+                sorted(form_fields),
+                sorted(docstring_params),
+                sorted(missing),
+            )
+        )
+    return rows
+
+
+def _deduplicate_reports(reports):
+    """Group reports by form/docstring content; collect handler names."""
+    grouped = {}
+    for name, form_name, form_fields, doc_params, missing in reports:
+        key = (
+            form_name,
+            tuple(form_fields),
+            tuple(doc_params),
+            tuple(missing),
+        )
+        if key not in grouped:
+            grouped[key] = {
+                "form_name": form_name,
+                "form_fields": form_fields,
+                "doc_params": doc_params,
+                "missing": missing,
+                "handlers": [],
+            }
+        grouped[key]["handlers"].append(name)
+    return list(grouped.values())
+
+
+def _print_sync_report(reports, total_handlers):
+    """Print human-readable summary of sync check results."""
+    if not reports:
+        print(
+            f"All {total_handlers} handlers are in sync. "
+            "No form fields missing from docstrings "
+            "(model_form or action-level forms)."
+        )
+        return 0
+
+    deduplicated = _deduplicate_reports(reports)
+    total_missing = sum(len(item["missing"]) for item in deduplicated)
+    total_handlers_with_drift = sum(
+        len(item["handlers"]) for item in deduplicated
+    )
+
+    print("Handlers/actions with form fields missing from docstring params:\n")
+    for item in deduplicated:
+        handlers = item["handlers"]
+        if len(handlers) == 1:
+            handler_str = handlers[0]
+        else:
+            handler_str = f"{', '.join(handlers)}"
+        print(f"  {handler_str} (form: {item['form_name']})")
+        print(f"    Form fields:      {item['form_fields']}")
+        print(f"    Docstring params: {item['doc_params']}")
+        print(f"    Missing from docstring: {item['missing']}")
+        print()
+
+    print(f"Total handlers checked: {total_handlers}")
+    print(f"Total handlers with drift: {total_handlers_with_drift}")
+    print(f"Unique mismatches: {len(deduplicated)}")
+    print(f"Total form fields missing from docstrings: {total_missing}")
+    return 0
+
+
+def check_docstring_sync():
+    """Compare handler form fields vs docstring params; report what's missing."""
+    if not _setup_django():
+        return 2
+
+    resources = _get_api_resources()
+    if resources is None:
+        return 2
+
+    action_form_registry = _get_action_form_registry()
+    reports = []
+    total_handlers = 0
+
+    for handler_class, name in _iter_unique_handlers(resources):
+        total_handlers += 1
+        reports.extend(_collect_model_form_reports(handler_class, name))
+        reports.extend(
+            _collect_action_form_reports(
+                handler_class, name, action_form_registry
+            )
+        )
+
+    return _print_sync_report(reports, total_handlers)
+
+
 def main():
     """Main entry point for CLI introspection."""
     add_repo_src_to_path()
+
+    arg_parser = argparse.ArgumentParser(
+        description="Discover MAAS CLI commands or check docstring/form sync."
+    )
+    arg_parser.add_argument(
+        "--check-docstring-sync",
+        action="store_true",
+        help="Compare handler form fields vs docstring params; report missing.",
+    )
+    args = arg_parser.parse_args()
+
+    if args.check_docstring_sync:
+        return check_docstring_sync()
+
     try:
         parser = build_parser()
     except Exception:

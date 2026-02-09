@@ -501,7 +501,9 @@ cli-docs-introspect:
 	@cd docs/usr/tools \
 		&& PYTHONPATH=$(PWD)/src \
 		   PATH="$(PWD)/$(BIN_DIR):$$PATH" \
-		   $(python) maas_cli_introspection.py > $(PWD)/cli.json
+		$(if $(CHECK_DOCSTRING_SYNC), \
+		   $(python) maas_cli_introspection.py --check-docstring-sync, \
+		   $(python) maas_cli_introspection.py > $(PWD)/cli.json)
 .PHONY: cli-docs-introspect
 
 cli-docs-generate:
@@ -513,5 +515,6 @@ cli-docs-generate:
 	    --template-dir docs/usr/tools
 .PHONY: cli-docs-generate
 
-cli-docs: cli-docs-introspect cli-docs-generate
+cli-docs: cli-docs-introspect
+	@$(if $(CHECK_DOCSTRING_SYNC),,$(MAKE) cli-docs-generate)
 .PHONY: cli-docs
