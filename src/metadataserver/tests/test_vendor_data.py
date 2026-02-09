@@ -29,6 +29,7 @@ from metadataserver.vendor_data import (
     generate_kvm_pod_configuration,
     generate_ntp_configuration,
     generate_openvswitch_configuration,
+    generate_overlayroot_tmpfs_size_fix,
     generate_rack_controller_configuration,
     generate_snap_configuration,
     generate_system_info,
@@ -653,6 +654,85 @@ class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
                         "netplan apply --debug",
                     ],
                 ),
+            ],
+        )
+
+
+class TestGenerateOverlayrootTmpfsSizeFix(MAASServerTestCase):
+    def test_yields_nothing_when_node_is_not_ephemeral_deployment(self):
+        node = factory.make_Node()
+        config = list(generate_overlayroot_tmpfs_size_fix(node))
+        self.assertEqual(config, [])
+
+    def test_yields_nothing_when_no_overlayroot_size_parameter(self):
+        node = factory.make_Node(
+            ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
+        )
+        config = list(generate_overlayroot_tmpfs_size_fix(node))
+        self.assertEqual(config, [])
+
+    def test_yields_nothing_when_overlayroot_without_size(self):
+        node = factory.make_Node(
+            ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
+        )
+        tag = factory.make_Tag(kernel_opts="overlayroot=tmpfs")
+        node.tags.add(tag)
+        config = list(generate_overlayroot_tmpfs_size_fix(node))
+        self.assertEqual(config, [])
+
+    def test_yields_runcmd_when_overlayroot_with_size_in_tag(self):
+        node = factory.make_Node(
+            ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
+        )
+        tag = factory.make_Tag(kernel_opts="overlayroot=tmpfs:size=4G")
+        node.tags.add(tag)
+        config = list(generate_overlayroot_tmpfs_size_fix(node))
+        self.assertEqual(
+            config,
+            [
+                (
+                    "runcmd",
+                    [
+                        "mountpoint -q /media/root-rw && mount -o remount,size=4G /media/root-rw || true"
+                    ],
+                )
+            ],
+        )
+
+    def test_yields_runcmd_when_overlayroot_with_percentage_size(self):
+        node = factory.make_Node(
+            ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
+        )
+        tag = factory.make_Tag(kernel_opts="overlayroot=tmpfs:size=25%")
+        node.tags.add(tag)
+        config = list(generate_overlayroot_tmpfs_size_fix(node))
+        self.assertEqual(
+            config,
+            [
+                (
+                    "runcmd",
+                    [
+                        "mountpoint -q /media/root-rw && mount -o remount,size=25% /media/root-rw || true"
+                    ],
+                )
+            ],
+        )
+
+    def test_yields_runcmd_when_overlayroot_size_in_global_config(self):
+        node = factory.make_Node(
+            ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
+        )
+        Config.objects.set_config("kernel_opts", "overlayroot=tmpfs:size=2G")
+        config = list(generate_overlayroot_tmpfs_size_fix(node))
+        self.assertEqual(
+            config,
+            [
+                (
+                    "runcmd",
+                    [
+                        "mountpoint -q /media/root-rw && mount -o remount,size=2G /media/root-rw || true"
+                    ],
+                )
             ],
         )
 
