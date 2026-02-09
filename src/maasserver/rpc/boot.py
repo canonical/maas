@@ -697,7 +697,7 @@ def get_config(
 
             extra_kernel_opts += f" {driver_kernel_opts}"
 
-        extra_kernel_opts.strip()
+        extra_kernel_opts = extra_kernel_opts.strip()
 
         kparams = BootResource.objects.get_kparams_for_node(
             machine,
@@ -711,6 +711,12 @@ def get_config(
             ephemeral_opts = get_quirks_kernel_opts(
                 final_osystem, final_series
             )
+        if is_ephemeral and extra_kernel_opts:
+            if ephemeral_opts:
+                ephemeral_opts = f"{ephemeral_opts} {extra_kernel_opts}"
+            else:
+                ephemeral_opts = extra_kernel_opts
+            extra_kernel_opts = ""
     else:
         purpose = "commissioning"  # enlistment
         if configs["use_rack_proxy"]:
