@@ -8,6 +8,7 @@ from ipaddress import ip_address
 from itertools import chain
 from os import urandom
 import pkgutil
+import re
 from textwrap import dedent
 
 from netaddr import IPAddress
@@ -50,6 +51,7 @@ def get_vendor_data(node, proxy):
         generate_kvm_pod_configuration(node),
         generate_ephemeral_netplan_lock_removal(node),
         generate_ephemeral_deployment_network_configuration(node),
+        generate_overlayroot_tmpfs_size_fix(node),
         generate_openvswitch_configuration(node),
         generate_vcenter_configuration(node),
         generate_hardware_sync_systemd_configuration(node),
@@ -207,6 +209,28 @@ def generate_ephemeral_deployment_network_configuration(node):
             "rm -rf /run/netplan",
             "rm -rf /etc/netplan/50-cloud-init.yaml",
             "netplan apply --debug",
+        ],
+    )
+
+
+def generate_overlayroot_tmpfs_size_fix(node):
+    """Generate cloud-init runcmd to fix overlayroot tmpfs size."""
+    if not node.ephemeral_deploy:
+        return
+
+    kernel_opts = node.get_effective_kernel_options(
+        default_kernel_opts=Config.objects.get_config("kernel_opts")
+    )
+
+    match = re.search(r"overlayroot=tmpfs:size=([^\s]+)", kernel_opts)
+    if not match:
+        return
+
+    tmpfs_size = match.group(1)
+    yield (
+        "runcmd",
+        [
+            f"mountpoint -q /media/root-rw && mount -o remount,size={tmpfs_size} /media/root-rw || true"
         ],
     )
 
