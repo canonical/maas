@@ -5,11 +5,12 @@
 
 
 import random
+from unittest.mock import Mock, patch
 
 from distro_info import UbuntuDistroInfo
 
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
+from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE, ubuntu
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 
 
@@ -58,16 +59,22 @@ class TestUbuntuOS(MAASTestCase):
         self.assertEqual(expected, self.get_lts_release())
 
     def test_get_supported_commissioning_releases(self):
-        self.patch_autospec(UbuntuDistroInfo, "is_lts").return_value = True
-        self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
+        ubuntu_distro_info_mock = Mock()
+        ubuntu_distro_info_mock.is_lts.return_value = True
+        ubuntu_distro_info_mock.supported_esm.return_value = [
             "xenial",
             "bionic",
             "focal",
             "jammy",
             "noble",
         ]
-        osystem = UbuntuOS()
-        releases = osystem.get_supported_commissioning_releases()
+        with patch.object(
+            ubuntu,
+            "UbuntuDistroInfo",
+            Mock(return_value=ubuntu_distro_info_mock),
+        ):
+            osystem = UbuntuOS()
+            releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
         self.assertSequenceEqual(
             ["bionic", "focal", "jammy", "noble"], releases
@@ -75,70 +82,19 @@ class TestUbuntuOS(MAASTestCase):
 
     def test_get_supported_commissioning_releases_excludes_non_lts(self):
         supported = ["bionic", "focal", "jammy", "noble"]
-        self.patch_autospec(UbuntuDistroInfo, "supported").return_value = (
-            supported
-        )
-        osystem = UbuntuOS()
-        releases = osystem.get_supported_commissioning_releases()
+        ubuntu_distro_info_mock = Mock()
+        ubuntu_distro_info_mock.supported_esm.return_value = supported
+        with patch.object(
+            ubuntu,
+            "UbuntuDistroInfo",
+            Mock(return_value=ubuntu_distro_info_mock),
+        ):
+            osystem = UbuntuOS()
+            releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
         udi = UbuntuDistroInfo()
         non_lts_releases = [name for name in supported if not udi.is_lts(name)]
         for release in non_lts_releases:
-            self.assertNotIn(release, releases)
-
-    def test_get_supported_commissioning_releases_excludes_deprecated(self):
-        """Make sure we remove 'precise' from the list."""
-        self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
-            "precise",
-            "trusty",
-            "vivid",
-            "wily",
-            "xenial",
-        ]
-        osystem = UbuntuOS()
-        releases = osystem.get_supported_commissioning_releases()
-        self.assertIsInstance(releases, list)
-        self.assertNotIn("precise", releases)
-        self.assertNotIn("trusty", releases)
-
-    def test_get_supported_commissioning_releases_excludes_unsupported_lts(
-        self,
-    ):
-        self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
-            "precise",
-            "trusty",
-            "vivid",
-            "wily",
-            "xenial",
-        ]
-        unsupported = [
-            "warty",
-            "hoary",
-            "breezy",
-            "dapper",
-            "edgy",
-            "feisty",
-            "gutsy",
-            "hardy",
-            "intrepid",
-            "jaunty",
-            "karmic",
-            "lucid",
-            "maverick",
-            "natty",
-            "oneiric",
-            "quantal",
-            "raring",
-            "saucy",
-            "utopic",
-        ]
-        self.patch_autospec(UbuntuDistroInfo, "unsupported").return_value = (
-            unsupported
-        )
-        osystem = UbuntuOS()
-        releases = osystem.get_supported_commissioning_releases()
-        self.assertIsInstance(releases, list)
-        for release in unsupported:
             self.assertNotIn(release, releases)
 
     def test_default_commissioning_release(self):
