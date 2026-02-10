@@ -5,6 +5,7 @@ This document provides guidelines for AI coding agents (such as GitHub Copilot, 
 ## Table of Contents
 
 - [General Principles](#general-principles)
+- [Code Quality and Verbosity](#code-quality-and-verbosity)
 - [Security Requirements](#security-requirements)
 - [Documentation Standards](#documentation-standards)
 - [Collaboration Practices](#collaboration-practices)
@@ -14,14 +15,36 @@ This document provides guidelines for AI coding agents (such as GitHub Copilot, 
 
 ## General Principles
 
-- Prefer clear, descriptive variable and function names
-- Avoid abbreviations unless they are widely understood
 - Write code that is modular and testable
 - Prefer explicit over implicit code
 - Follow the project's established patterns and idioms
 - Suggest refactoring when code duplication is detected
 - Avoid generating large boilerplate unless explicitly requested
 - Always check existing code patterns in the same module before introducing new patterns
+
+## Code Quality and Verbosity
+
+Write clean, readable code that speaks for itself:
+
+- **Better naming over comments**: Use clear, descriptive names for variables, functions, and tests instead of explaining unclear code with comments. Avoid abbreviations unless widely understood.
+- **Avoid trivial comments**: Don't comment on obvious logic or implementation details
+- **Concise documentation**: Keep it simple and straightforward
+- **Clean test code**: No verbose docstrings in tests; fixtures should be self-documenting without obvious comments
+- **Reasonable merge proposals**: Keep changes focused and reasonably sized
+- **Copyright headers**: Add copyright header to all new files (update year as needed):
+  ```
+  #  Copyright 2026 Canonical Ltd.  This software is licensed under the
+  #  GNU Affero General Public License version 3 (see the file LICENSE).
+  ```
+
+### When to Comment
+
+Only add comments when:
+- Explaining *why* something is done (not *what* is being done)
+- Documenting non-obvious business logic or domain knowledge
+- Clarifying complex algorithms
+- Noting important gotchas or edge cases
+- Providing context that cannot be expressed in code
 
 ## Security Requirements
 
@@ -37,11 +60,12 @@ Across all parts of the codebase:
 
 ## Documentation Standards
 
-- Maintain up-to-date inline comments for complex logic
+- Keep inline comments focused on *why*, not *what*
+- Use concise docstrings for public functions, classes, and modules (purpose and usage, not implementation)
+- **Avoid redundancy and obvious statements**: Don't repeat what the code already shows or state the obvious
 - Update README files when functionality changes
 - Document API changes immediately
 - Keep architecture documentation synchronized with code changes
-- Use docstrings for all public functions, classes, and modules
 - Include type hints where applicable
 
 ## Collaboration Practices
@@ -113,8 +137,9 @@ Follow the isort configuration in `pyproject.toml`:
 - Write tests using `pytest` for new code
 - Follow existing test patterns in the subdirectory
 - Use appropriate fixtures (`db_connection`, `services_mock`, etc.)
-- Aim for high test coverage
 - Mock external dependencies appropriately
+- **Avoid trivial assertions**: Don't test obvious behavior or framework functionality
+- **Keep tests minimal**: Write only necessary tests that verify meaningful behavior
 
 ### Common Patterns
 
@@ -125,72 +150,13 @@ Follow the isort configuration in `pyproject.toml`:
 
 ## Go Guidelines
 
-MAAS Go code (primarily in `maasagent` and `host-info`) follows these standards:
+MAAS Go code (primarily in `maasagent` and `host-info`) follows the standards documented in [`go-style-guide.md`](go-style-guide.md).
 
-### Code Style
-
+Key points:
 - Follow standard Go formatting (`gofmt` / `go fmt`)
-- Use `golangci-lint` if configured in the project
-- Organize imports into standard library and external packages groups
-
-### Go Version
-
-- Check `go.mod` for the minimum required Go version
-- Currently using Go 1.24.4 for `maasagent` and Go 1.18 for `host-info`
-
-### Error Handling
-
-- Always check and handle errors explicitly
-- Use error wrapping with `fmt.Errorf` and `%w` for context
-- Don't ignore errors unless there's a documented reason
-- Prefer returning errors over panicking
-
-### Naming Conventions
-
-- Use `MixedCaps` or `mixedCaps` (not underscores) for multi-word names
-- Exported names start with capital letters
-- Keep names concise but descriptive
-- Use single-letter variables only for short scopes (e.g., loop indices)
-
-### Concurrency
-
-- Use channels and goroutines idiomatically
-- Avoid shared memory where possible; communicate by sharing
-- Always provide context with timeouts for potentially long operations
-- Use `sync` package primitives (Mutex, WaitGroup) carefully
-
-### Context Usage
-
-- Always pass `context.Context` as the first parameter
-- Respect context cancellation and deadlines
-- Use `context.Background()` only at the top level
-
-### Dependencies
-
-- Minimize external dependencies
-- Check `go.mod` and `go.sum` for existing dependencies before adding new ones
-- Use versioned imports from the `go.mod` file
-
-### Testing
-
-- Write tests in `_test.go` files
+- Check `go.mod` for Go version (currently Go 1.24.4 for `maasagent`, Go 1.18 for `host-info`)
 - Use table-driven tests where appropriate
-- Use `testify` for assertions (already in dependencies)
-- Mock interfaces, not concrete types
-- Strive for good test coverage
-
-### Logging
-
-- Use structured logging (e.g., `zerolog` as used in `maasagent`)
-- Include appropriate context in log messages
-- Use appropriate log levels (debug, info, warn, error)
-
-### Common Patterns
-
 - Follow the microcluster patterns in `maasagent`
-- Use dependency injection for better testability
-- Implement interfaces for abstraction
-- Keep functions focused and composable
 
 ## Subdirectory-Specific Rules
 
@@ -205,7 +171,7 @@ MAAS Go code (primarily in `maasagent` and `host-info`) follows these standards:
     - Follow Django model conventions for existing models
     - Maintain backward compatibility with existing APIs
     - Add new functionality to service layer when possible
-- **Testing**: Use Django test fixtures and `testtools`
+- **Testing**: Use Django test fixtures and `testtools`. Run tests with `bin/test.region`
 - **Notes**: This is legacy code; prefer adding new features to the v3 API when feasible
 
 ### `src/maasapiserver`
