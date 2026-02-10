@@ -1032,6 +1032,52 @@ class TestGetConfig(MAASServerTestCase):
         )
         self.assertEqual("", observed_config["extra_opts"])
 
+    def test_tag_kernel_opts_go_to_ephemeral_opts_for_ephemeral_deployment(
+        self,
+    ):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        make_usable_architecture(self)
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        tag_kernel_opts = "overlayroot=tmpfs:size=4G"
+        tag = factory.make_Tag(kernel_opts=tag_kernel_opts)
+        node = self.make_node_with_extra(
+            status=NODE_STATUS.DEPLOYING,
+            ephemeral_deploy=True,
+            primary_rack=rack_controller,
+        )
+        node.tags.add(tag)
+        mac = node.get_boot_interface().mac_address
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac
+        )
+        self.assertIn(tag_kernel_opts, observed_config["ephemeral_opts"])
+        self.assertEqual("", observed_config["extra_opts"])
+
+    def test_tag_kernel_opts_go_to_extra_opts_for_non_ephemeral_deployment(
+        self,
+    ):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        make_usable_architecture(self)
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        tag_kernel_opts = "console=ttyS0"
+        tag = factory.make_Tag(kernel_opts=tag_kernel_opts)
+        node = self.make_node_with_extra(
+            status=NODE_STATUS.DEPLOYING,
+            ephemeral_deploy=False,
+            primary_rack=rack_controller,
+        )
+        node.tags.add(tag)
+        mac = node.get_boot_interface().mac_address
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac
+        )
+        self.assertIn(tag_kernel_opts, observed_config["extra_opts"])
+        self.assertEqual("", observed_config["ephemeral_opts"])
+
     def test_returns_commissioning_for_insane_state(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
