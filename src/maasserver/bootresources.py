@@ -43,7 +43,6 @@ from maasserver.models import (
     RegionController,
 )
 from maasserver.sqlalchemy import service_layer
-from maasserver.utils import absolute_reverse
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -186,7 +185,7 @@ class ImportResourcesProgressService(TimerService):
         """\
     Boot image import process not started. Machines will not be able to
     provision without boot images. Visit the
-    <a href="%(images_link)s">boot images</a> page to start the import.
+    <a href="/MAAS/r/images">boot images</a> page to start the import.
     """
     )
 
@@ -196,7 +195,6 @@ class ImportResourcesProgressService(TimerService):
 
     @transactional
     def set_import_warning(self, warning):
-        warning %= {"images_link": absolute_reverse("/") + "r/images"}
         register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
 
     @transactional
