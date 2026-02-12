@@ -635,6 +635,7 @@ class ServiceCollectionV3:
             context=context,
             switches_repository=SwitchesRepository(context),
             interfaces_repository=InterfaceRepository(context),
+            interfaces_service=services.interfaces,
         )
         services.dnsdata = DNSDataService(
             context=context,

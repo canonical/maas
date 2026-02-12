@@ -23,12 +23,12 @@ from maasapiserver.v3.api.public.models.responses.switches import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.interface import InterfaceType
 from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
 from maasservicelayer.exceptions.catalog import (
-    AlreadyExistsException,
     BaseExceptionDetail,
     ConflictException,
     NotFoundException,
@@ -146,7 +146,7 @@ class SwitchesHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SwitchResponse:
         """Create a new switch with its management interface."""
-        # Check for duplicate MAC address
+        # Check for existing interface with this MAC address
         existing_interfaces = await services.interfaces.list(
             page=1,
             size=1,
@@ -156,21 +156,39 @@ class SwitchesHandler(Handler):
                 )
             ),
         )
-        if existing_interfaces.total > 0:
-            raise AlreadyExistsException(
-                details=[
-                    BaseExceptionDetail(
-                        type="InterfaceAlreadyExists",
-                        message=f"An interface with MAC address '{switch_request.mac_address}' already exists.",
-                    )
-                ]
-            )
 
-        # Create the switch and interface
-        switch = await services.switches.create_new_switch_and_interface(
-            await switch_request.to_switch_builder(services),
-            switch_request.mac_address,
-        )
+        if existing_interfaces.total > 0:
+            existing_interface = existing_interfaces.items[0]
+
+            # Check if it's an UNKNOWN interface that can be claimed
+            if (
+                existing_interface.type == InterfaceType.UNKNOWN
+                and existing_interface.node_config_id is None
+                and existing_interface.switch_id is None
+            ):
+                # Claim this UNKNOWN interface for the new switch
+                switch = (
+                    await services.switches.create_switch_and_link_interface(
+                        await switch_request.to_switch_builder(services),
+                        existing_interface.id,
+                    )
+                )
+            else:
+                # Interface is already assigned to a node or switch
+                raise ConflictException(
+                    details=[
+                        BaseExceptionDetail(
+                            type="InterfaceAlreadyAssigned",
+                            message=f"An interface with MAC address '{switch_request.mac_address}' is already assigned to another entity.",
+                        )
+                    ]
+                )
+        else:
+            # No existing interface, create both switch and interface
+            switch = await services.switches.create_new_switch_and_interface(
+                await switch_request.to_switch_builder(services),
+                switch_request.mac_address,
+            )
 
         response.headers["Location"] = f"{V3_API_PREFIX}/switches/{switch.id}"
         return await SwitchResponse.from_model(

@@ -2,7 +2,9 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime, timezone
-from typing import Optional
+
+# Forward declaration for type hints
+from typing import Optional, TYPE_CHECKING
 
 from structlog import get_logger
 
@@ -17,6 +19,9 @@ from maasservicelayer.db.repositories.switches import SwitchesRepository
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.switches import Switch
 from maasservicelayer.services.base import BaseService
+
+if TYPE_CHECKING:
+    from maasservicelayer.services.interfaces import InterfacesService
 
 logger = get_logger()
 
@@ -34,9 +39,11 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         context: Context,
         switches_repository: SwitchesRepository,
         interfaces_repository: InterfaceRepository,
+        interfaces_service: "InterfacesService",
     ):
         super().__init__(context, switches_repository)
         self.interfaces_repository = interfaces_repository
+        self.interfaces_service = interfaces_service
 
     async def create_new_switch_and_interface(
         self,
@@ -54,6 +61,29 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         switch = await self.create(builder)
         await self.interfaces_repository.create_switch_interface(
             switch_id=switch.id, mac=mac_address
+        )
+        return switch
+
+    async def create_switch_and_link_interface(
+        self,
+        builder: SwitchBuilder,
+        interface_id: int,
+    ) -> Switch:
+        """Create a new switch and link an existing interface to it.
+
+        This method is used when an UNKNOWN interface already exists
+        (e.g., created by DHCP lease commit) and needs to be claimed
+        by the new switch.
+
+        Args:
+            builder: SwitchBuilder with the switch details
+            interface_id: ID of the existing interface to link
+        Returns:
+            The created Switch
+        """
+        switch = await self.create(builder)
+        await self.interfaces_service.link_interface_to_switch(
+            interface_id=interface_id, switch_id=switch.id
         )
         return switch
 

@@ -33,6 +33,7 @@ from tests.maasapiserver.v3.api.public.handlers.base import (
 TEST_SWITCH = Switch(
     id=1,
     status=SwitchStatus.NEW,
+    target_image_id=None,
     created=utcnow(),
     updated=utcnow(),
 )
@@ -309,12 +310,12 @@ class TestSwitchesApi(ApiCommonTests):
         )
         assert response.status_code == 422
 
-    async def test_create_switch_duplicate_mac(
+    async def test_create_switch_with_assigned_interface(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
-        """Test creating a switch with duplicate MAC address fails."""
+        """Test creating a switch with a MAC address already assigned to another entity fails."""
         services_mock.switches = Mock(SwitchesService)
         services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.list.return_value = ListResult[Interface](
@@ -325,8 +326,7 @@ class TestSwitchesApi(ApiCommonTests):
                     updated=datetime.now(timezone.utc),
                     name="eth0",
                     mac_address="00:11:22:33:44:55",
-                    switch_id=1,
-                    ip_address_id=None,
+                    switch_id=1,  # Already assigned to a switch
                     type=InterfaceType.PHYSICAL,
                 )
             ],
@@ -341,6 +341,44 @@ class TestSwitchesApi(ApiCommonTests):
             f"{self.BASE_PATH}", json=new_switch_data
         )
         assert response.status_code == 409
+
+    async def test_create_switch_claims_unknown_interface(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        """Test creating a switch claims an existing UNKNOWN interface."""
+        services_mock.switches = Mock(SwitchesService)
+        services_mock.interfaces = Mock(InterfacesService)
+        # Return an UNKNOWN interface with no assignments
+        services_mock.interfaces.list.return_value = ListResult[Interface](
+            items=[
+                Interface(
+                    id=1,
+                    created=datetime.now(timezone.utc),
+                    updated=datetime.now(timezone.utc),
+                    name="eth0",
+                    mac_address="00:11:22:33:44:55",
+                    node_config_id=None,  # Not assigned to a node
+                    switch_id=None,  # Not assigned to a switch
+                    type=InterfaceType.UNKNOWN,  # UNKNOWN interface
+                )
+            ],
+            total=1,
+        )
+        services_mock.switches.create_switch_and_link_interface.return_value = TEST_SWITCH
+
+        new_switch_data = {
+            "mac_address": "00:11:22:33:44:55",
+        }
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}", json=new_switch_data
+        )
+        assert response.status_code == 201
+        assert response.headers["Location"] == f"{self.BASE_PATH}/1"
+        # Verify that create_switch_and_link_interface was called instead of create_new_switch_and_interface
+        services_mock.switches.create_switch_and_link_interface.assert_called_once()
 
     async def test_update_switch(
         self,

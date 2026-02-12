@@ -360,3 +360,51 @@ class TestInterfacesService:
         interface_repository_mock.get_for_ip.assert_called_once_with(
             ip_id=sip.id
         )
+
+    async def test_link_interface_to_switch(self):
+        """Test linking an interface to a switch updates switch_id and type."""
+        interface = Interface(
+            id=1,
+            name="eth0",
+            mac_address="00:11:22:33:44:55",
+            type=InterfaceType.UNKNOWN,
+            switch_id=None,
+        )
+
+        temporal_service_mock = Mock(TemporalService)
+        node_service_mock = Mock(NodesService)
+        dnsresource_service_mock = Mock(DNSResourcesService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
+        domain_service_mock = Mock(DomainsService)
+
+        interface_repository_mock = Mock(InterfaceRepository)
+        updated_interface = Interface(
+            id=1,
+            name="eth0",
+            mac_address="00:11:22:33:44:55",
+            type=InterfaceType.PHYSICAL,
+            switch_id=42,
+        )
+        interface_repository_mock.update_by_id.return_value = updated_interface
+
+        interface_service = InterfacesService(
+            context=Context(),
+            temporal_service=temporal_service_mock,
+            dnsresource_service=dnsresource_service_mock,
+            dnspublication_service=dnspublications_service_mock,
+            domain_service=domain_service_mock,
+            node_service=node_service_mock,
+            interface_repository=interface_repository_mock,
+        )
+
+        result = await interface_service.link_interface_to_switch(
+            interface_id=interface.id, switch_id=42
+        )
+
+        assert result == updated_interface
+        # Verify the builder passed includes both switch_id and type
+        call_args = interface_repository_mock.update_by_id.call_args
+        assert call_args[0][0] == interface.id  # interface_id argument
+        builder = call_args[0][1]  # builder argument
+        assert builder.switch_id == 42
+        assert builder.type == InterfaceType.PHYSICAL
