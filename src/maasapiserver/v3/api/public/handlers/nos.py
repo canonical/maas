@@ -65,7 +65,7 @@ class NOSInstallerHandler(Handler):
                 },
                 "description": "NOS installer binary",
             },
-            204: {"description": "No installer assigned or switch not found"},
+            404: {"description": "No installer assigned or switch not found"},
             400: {"description": "Bad request - MAC address not found"},
         },
         response_model_exclude_none=True,
@@ -103,18 +103,18 @@ class NOSInstallerHandler(Handler):
                 )
             )
         except NotFoundException:
-            # Switch not found - return 204 to avoid leaking information
+            # Switch not found - return 404 to avoid leaking information
             # about which switches are registered
             return PlainTextResponse(
                 content="",
-                status_code=204,  # No Content
+                status_code=404,  # Not Found
             )
 
         if not boot_resource_id:
             # No installer assigned yet or switch not in correct state
             return PlainTextResponse(
                 content="",
-                status_code=204,  # No Content
+                status_code=404,  # Not Found
             )
 
         # Get the boot resource
@@ -123,10 +123,10 @@ class NOSInstallerHandler(Handler):
                 id=boot_resource_id
             )
             if not boot_resource:
-                # Boot resource not found - return 204
+                # Boot resource not found - return 404
                 return PlainTextResponse(
                     content="",
-                    status_code=204,
+                    status_code=404,
                 )
 
             # Get the latest complete resource set for this boot resource
@@ -134,10 +134,10 @@ class NOSInstallerHandler(Handler):
                 boot_resource.id
             )
             if not resource_set:
-                # No complete resource set - return 204
+                # No complete resource set - return 404
                 return PlainTextResponse(
                     content="",
-                    status_code=204,
+                    status_code=404,
                 )
 
             # Get the files in the resource set
@@ -145,16 +145,16 @@ class NOSInstallerHandler(Handler):
                 resource_set.id
             )
             if not files:
-                # No files in resource set - return 204
+                # No files in resource set - return 404
                 return PlainTextResponse(
                     content="",
-                    status_code=204,
+                    status_code=404,
                 )
         except NotFoundException:
-            # Any boot resource related lookup failed - return 204
+            # Any boot resource related lookup failed - return 404
             return PlainTextResponse(
                 content="",
-                status_code=204,
+                status_code=404,
             )
 
         # Use the first file (uploaded boot resources typically have one file)

@@ -89,7 +89,7 @@ class TestNOSInstallerApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
-        """Test that non-existent switch returns 204."""
+        """Test that non-existent switch returns 404."""
         services_mock.switches = Mock(SwitchesService)
         services_mock.switches.check_installer_for_switch = AsyncMock(
             side_effect=NotFoundException()
@@ -99,7 +99,7 @@ class TestNOSInstallerApi(ApiCommonTests):
             self.BASE_PATH,
             headers=TEST_HEADERS,
         )
-        assert response.status_code == 204
+        assert response.status_code == 404
         assert response.text == ""
 
     async def test_get_nos_installer_no_boot_resource(
@@ -107,7 +107,7 @@ class TestNOSInstallerApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
-        """Test that missing boot resource returns 204."""
+        """Test that missing boot resource returns 404."""
         services_mock.switches = Mock(SwitchesService)
         services_mock.switches.check_installer_for_switch = AsyncMock(
             return_value=TEST_BOOT_RESOURCE_ID
@@ -119,7 +119,7 @@ class TestNOSInstallerApi(ApiCommonTests):
             self.BASE_PATH,
             headers=TEST_HEADERS,
         )
-        assert response.status_code == 204
+        assert response.status_code == 404
         assert response.text == ""
 
     async def test_get_nos_installer_boot_resource_not_found_exception(
@@ -127,7 +127,7 @@ class TestNOSInstallerApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
-        """Test that NotFoundException for boot resource returns 204."""
+        """Test that NotFoundException for boot resource returns 404."""
         services_mock.switches = Mock(SwitchesService)
         services_mock.switches.check_installer_for_switch = AsyncMock(
             return_value=TEST_BOOT_RESOURCE_ID
@@ -141,7 +141,7 @@ class TestNOSInstallerApi(ApiCommonTests):
             self.BASE_PATH,
             headers=TEST_HEADERS,
         )
-        assert response.status_code == 204
+        assert response.status_code == 404
         assert response.text == ""
 
     async def test_get_nos_installer_no_resource_set(
@@ -149,7 +149,7 @@ class TestNOSInstallerApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
-        """Test that missing resource set returns 204."""
+        """Test that missing resource set returns 404."""
         boot_resource = BootResource(
             id=TEST_BOOT_RESOURCE_ID,
             name="test-image",
@@ -179,7 +179,7 @@ class TestNOSInstallerApi(ApiCommonTests):
             self.BASE_PATH,
             headers=TEST_HEADERS,
         )
-        assert response.status_code == 204
+        assert response.status_code == 404
         assert response.text == ""
 
     async def test_get_nos_installer_no_files(
@@ -187,7 +187,7 @@ class TestNOSInstallerApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
-        """Test that resource set with no files returns 204."""
+        """Test that resource set with no files returns 404."""
         boot_resource = BootResource(
             id=TEST_BOOT_RESOURCE_ID,
             name="test-image",
@@ -229,7 +229,7 @@ class TestNOSInstallerApi(ApiCommonTests):
             self.BASE_PATH,
             headers=TEST_HEADERS,
         )
-        assert response.status_code == 204
+        assert response.status_code == 404
         assert response.text == ""
 
     @patch(
