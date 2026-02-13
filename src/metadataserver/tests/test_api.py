@@ -1372,7 +1372,7 @@ class TestInstallingAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status
         )
 
-    def test_signaling_installation_updates_last_ping(self):
+    def test_signaling_deployment_updates_last_ping(self):
         start_time = floor(time.time())
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
@@ -1384,20 +1384,20 @@ class TestInstallingAPI(MAASServerTestCase):
         self.assertEqual(response.status_code, http.client.OK)
 
         end_time = ceil(time.time())
-        script_set = node.current_installation_script_set
+        script_set = node.current_deployment_script_set
         self.assertGreaterEqual(
             ceil(script_set.last_ping.timestamp()), start_time
         )
         self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
 
-    def test_signaling_installation_with_netconf_sets_script_to_netconf(self):
+    def test_signaling_deployment_with_netconf_sets_script_to_netconf(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             owner=factory.make_User(),
             with_empty_script_sets=True,
         )
         script_result = (
-            node.current_installation_script_set.scriptresult_set.first()
+            node.current_deployment_script_set.scriptresult_set.first()
         )
         client = make_node_client(node=node)
         response = call_signal(
@@ -1410,14 +1410,14 @@ class TestInstallingAPI(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertEqual(SCRIPT_STATUS.APPLYING_NETCONF, script_result.status)
 
-    def test_signaling_installation_with_install_sets_script_to_install(self):
+    def test_signaling_deployment_with_install_sets_script_to_install(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             owner=factory.make_User(),
             with_empty_script_sets=True,
         )
         script_result = (
-            node.current_installation_script_set.scriptresult_set.first()
+            node.current_deployment_script_set.scriptresult_set.first()
         )
         script_result.status = random.choice(
             [SCRIPT_STATUS.PENDING, SCRIPT_STATUS.APPLYING_NETCONF]
@@ -1434,14 +1434,14 @@ class TestInstallingAPI(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertEqual(SCRIPT_STATUS.INSTALLING, script_result.status)
 
-    def test_signaling_installation_with_script_id_sets_script_to_run(self):
+    def test_signaling_deployment_with_script_id_sets_script_to_run(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             owner=factory.make_User(),
             with_empty_script_sets=True,
         )
         script_result = (
-            node.current_installation_script_set.scriptresult_set.first()
+            node.current_deployment_script_set.scriptresult_set.first()
         )
         client = make_node_client(node=node)
         response = call_signal(
@@ -1454,14 +1454,14 @@ class TestInstallingAPI(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)
 
-    def test_signaling_installation_with_script_name_sets_script_to_run(self):
+    def test_signaling_deployment_with_script_name_sets_script_to_run(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             owner=factory.make_User(),
             with_empty_script_sets=True,
         )
         script_result = (
-            node.current_installation_script_set.scriptresult_set.first()
+            node.current_deployment_script_set.scriptresult_set.first()
         )
         client = make_node_client(node=node)
         response = call_signal(
@@ -1481,7 +1481,7 @@ class TestInstallingAPI(MAASServerTestCase):
             with_empty_script_sets=True,
         )
         script_result = (
-            node.current_installation_script_set.scriptresult_set.first()
+            node.current_deployment_script_set.scriptresult_set.first()
         )
         script_status = factory.pick_choice(
             SCRIPT_STATUS_CHOICES,
@@ -1504,14 +1504,14 @@ class TestInstallingAPI(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertEqual(script_status, script_result.status)
 
-    def test_signaling_installation_with_script_id_ignores_not_pending(self):
+    def test_signaling_deployment_with_script_id_ignores_not_pending(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             owner=factory.make_User(),
             with_empty_script_sets=True,
         )
         script_result = (
-            node.current_installation_script_set.scriptresult_set.first()
+            node.current_deployment_script_set.scriptresult_set.first()
         )
         script_status = factory.pick_choice(
             SCRIPT_STATUS_CHOICES,

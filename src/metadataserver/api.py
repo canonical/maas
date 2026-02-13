@@ -763,7 +763,7 @@ class VersionIndexHandler(MetadataViewHandler):
 
     def _process_deploying(self, node, request, status):
         self._store_results(
-            node, node.current_installation_script_set, request, status
+            node, node.current_deployment_script_set, request, status
         )
         if status == SIGNAL_STATUS.FAILED:
             node.mark_failed(
