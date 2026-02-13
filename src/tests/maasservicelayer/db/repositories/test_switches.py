@@ -4,7 +4,6 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.builders.interfaces import InterfaceBuilder
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
@@ -79,7 +78,6 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
     async def instance_builder(self) -> SwitchBuilder:
         return SwitchBuilder(
             target_image_id=None,
-            status=SwitchStatus.NEW,
         )
 
     async def test_create(
@@ -91,7 +89,6 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         resource = await repository_instance.create(instance_builder)
         assert resource.id > 0
         assert resource.target_image_id is None
-        assert resource.status == SwitchStatus.NEW
 
     async def test_update_switch(
         self,
@@ -101,14 +98,12 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         """Test updating a switch."""
         builder = SwitchBuilder(
             target_image_id=1,
-            status=SwitchStatus.SERVED_NOS,
         )
         updated = await repository_instance.update_by_id(
             created_instance.id, builder
         )
         assert updated.id == created_instance.id
         assert updated.target_image_id == 1
-        assert updated.status == SwitchStatus.SERVED_NOS
 
     async def test_delete_switch(
         self,

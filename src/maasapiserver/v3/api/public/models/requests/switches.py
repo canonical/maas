@@ -5,7 +5,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, validator
 
-from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
@@ -91,7 +90,6 @@ class SwitchRequest(BaseModel):
         target_image_id = await resolve_image_id(self.image, services)
         return SwitchBuilder(
             target_image_id=target_image_id,
-            status=SwitchStatus.NEW,
         )
 
     @validator("mac_address")

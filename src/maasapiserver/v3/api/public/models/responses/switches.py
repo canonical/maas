@@ -9,7 +9,6 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.models.switches import Switch
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -19,7 +18,6 @@ class SwitchResponse(HalResponse[BaseHal]):
 
     kind = "Switch"
     id: int
-    status: SwitchStatus
     target_image_id: Optional[int]
     target_image: Optional[str]
 
@@ -50,7 +48,6 @@ class SwitchResponse(HalResponse[BaseHal]):
 
         return cls(
             id=switch.id,
-            status=switch.status,
             target_image_id=switch.target_image_id,
             target_image=target_image_name,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]

@@ -6,7 +6,6 @@ from typing import Union
 
 from pydantic import Field
 
-from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
 
 
@@ -18,7 +17,6 @@ class SwitchBuilder(ResourceBuilder):
     """
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    status: Union[SwitchStatus, Unset] = Field(default=UNSET, required=False)
     target_image_id: Union[int, None, Unset] = Field(
         default=UNSET, required=False
     )

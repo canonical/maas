@@ -2236,7 +2236,6 @@ SwitchTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("status", Integer, nullable=False),
     Column(
         "target_image_id",
         BigInteger,

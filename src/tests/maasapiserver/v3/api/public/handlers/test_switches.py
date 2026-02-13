@@ -14,7 +14,6 @@ from maasapiserver.v3.api.public.models.responses.switches import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import BootResourceType
 from maascommon.enums.interface import InterfaceType
-from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresources import BootResource
@@ -32,7 +31,6 @@ from tests.maasapiserver.v3.api.public.handlers.base import (
 
 TEST_SWITCH = Switch(
     id=1,
-    status=SwitchStatus.NEW,
     target_image_id=None,
     created=utcnow(),
     updated=utcnow(),
@@ -40,7 +38,6 @@ TEST_SWITCH = Switch(
 
 TEST_SWITCH_2 = Switch(
     id=2,
-    status=SwitchStatus.SERVED_NOS,
     target_image_id=10,
     created=utcnow(),
     updated=utcnow(),
@@ -123,11 +120,9 @@ class TestSwitchesApi(ApiCommonTests):
         assert len(switches_response.items) == 2
         assert switches_response.total == 2
         assert switches_response.items[0].id == 1
-        assert switches_response.items[0].status == SwitchStatus.NEW
         assert switches_response.items[0].target_image_id is None
         assert switches_response.items[0].target_image is None
         assert switches_response.items[1].id == 2
-        assert switches_response.items[1].status == SwitchStatus.SERVED_NOS
         assert switches_response.items[1].target_image_id == 10
         assert switches_response.items[1].target_image == TEST_NOS_IMAGE.name
 
@@ -166,7 +161,6 @@ class TestSwitchesApi(ApiCommonTests):
 
         switch_response = SwitchResponse(**response.json())
         assert switch_response.id == 1
-        assert switch_response.status == SwitchStatus.NEW
         assert switch_response.target_image_id is None
         assert switch_response.target_image is None
 
@@ -207,9 +201,6 @@ class TestSwitchesApi(ApiCommonTests):
         assert response.status_code == 201
         assert response.headers["Location"] == f"{self.BASE_PATH}/1"
 
-        switch_response = SwitchResponse(**response.json())
-        assert switch_response.status == SwitchStatus.NEW
-
     async def test_create_switch_with_image(
         self,
         services_mock: ServiceCollectionV3,
@@ -246,7 +237,6 @@ class TestSwitchesApi(ApiCommonTests):
         assert response.headers["Location"] == f"{self.BASE_PATH}/1"
 
         switch_response = SwitchResponse(**response.json())
-        assert switch_response.status == SwitchStatus.NEW
         assert switch_response.target_image_id == TEST_NOS_IMAGE.id
         assert switch_response.target_image == TEST_NOS_IMAGE.name
 
@@ -452,25 +442,6 @@ class TestSwitchesApi(ApiCommonTests):
             f"{self.BASE_PATH}/1", json=update_data
         )
         assert response.status_code == 422
-
-    async def test_update_switch_invalid_state(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
-    ) -> None:
-        """Test updating a switch in invalid state fails."""
-        services_mock.switches = Mock(SwitchesService)
-        # switch 2 is in SERVED_NOS state
-        services_mock.switches.get_by_id.return_value = TEST_SWITCH_2
-
-        update_data = {
-            "image": "onie/dellos10",
-        }
-
-        response = await mocked_api_client_admin.patch(
-            f"{self.BASE_PATH}/2", json=update_data
-        )
-        assert response.status_code == 409
 
     async def test_delete_switch(
         self,

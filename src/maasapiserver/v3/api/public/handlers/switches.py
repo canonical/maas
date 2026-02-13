@@ -24,7 +24,6 @@ from maasapiserver.v3.api.public.models.responses.switches import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.interface import InterfaceType
-from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
@@ -233,15 +232,8 @@ class SwitchesHandler(Handler):
                 ]
             )
 
-        if existing_switch.status != SwitchStatus.NEW:
-            raise ConflictException(
-                details=[
-                    BaseExceptionDetail(
-                        type="SwitchUpdateConflict",
-                        message=f"Switch with id '{switch_id}' is in status '{existing_switch.status}' and cannot be updated.",
-                    )
-                ]
-            )
+        # TODO - Check if the new target image is valid and compatible with the switch before updating
+        # TODO - If the switch is currently already deployed, consider the implications of changing the target image and whether to allow it or not
 
         # Update the switch
         switch = await services.switches.update_by_id(

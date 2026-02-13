@@ -5,7 +5,6 @@ from unittest.mock import Mock
 
 import pytest
 
-from maascommon.enums.switches import SwitchStatus
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.repositories.switches import SwitchesRepository
@@ -19,7 +18,6 @@ from tests.maasservicelayer.services.base import ServiceCommonTests
 
 TEST_SWITCH = Switch(
     id=1,
-    status=SwitchStatus.NEW,
     target_image_id=None,
     created=utcnow(),
     updated=utcnow(),
@@ -68,7 +66,6 @@ class TestSwitchesService:
         interfaces_service = Mock(InterfacesService)
         test_switch = Switch(
             id=1,
-            status=SwitchStatus.NEW,
             target_image_id=None,
             created=utcnow(),
             updated=utcnow(),
@@ -101,7 +98,6 @@ class TestSwitchesService:
         interfaces_service = Mock(InterfacesService)
         test_switch = Switch(
             id=1,
-            status=SwitchStatus.NEW,
             target_image_id=42,
             created=utcnow(),
             updated=utcnow(),
@@ -139,7 +135,6 @@ class TestSwitchesService:
         interfaces_service = Mock(InterfacesService)
         test_switch = Switch(
             id=1,
-            status=SwitchStatus.NEW,
             target_image_id=None,
             created=utcnow(),
             updated=utcnow(),
@@ -167,7 +162,7 @@ class TestSwitchesService:
 
         from maasservicelayer.builders.switches import SwitchBuilder
 
-        builder = SwitchBuilder(status=SwitchStatus.NEW)
+        builder = SwitchBuilder()
         result = await service.create_switch_and_link_interface(
             builder, interface_id=10
         )
