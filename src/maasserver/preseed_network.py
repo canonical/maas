@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preseed generation for curtin/netplan network."""
@@ -229,10 +229,8 @@ class InterfaceConfiguration:
                 iface_id, subnet_id, gateway_ip = gateway
                 if (
                     iface_id == self.id
-                    and subnet_id
-                    and subnet.id
-                    and gateway_ip
-                    and subnet.gateway_ip
+                    and subnet_id == subnet.id
+                    and gateway_ip == subnet.gateway_ip
                 ):
                     return subnet.gateway_ip
         return None
@@ -244,6 +242,8 @@ class InterfaceConfiguration:
         family = network.version
         node_config = self.node_config
         if not self.source_routing:
+            # If source routing is not enabled and a gateway for this family is
+            # already set, do nothing.
             if (
                 family == 4
                 and node_config.gateway_ipv4_set
