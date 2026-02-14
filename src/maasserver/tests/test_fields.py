@@ -822,6 +822,29 @@ class TestVirshAddressField(MAASTestCase):
             uri = f"{d}+{transport}://{user}@{host}:{port}/{path}?{param}"
             self.assertEqual(uri, VirshAddressField().clean(uri))
 
+    def test_accepts_username_with_allowed_special_characters(self):
+        driver = "qemu"
+        transport = "ssh"
+        host = factory.make_hostname()
+        port = "8080"
+        path = factory.make_name()
+        param = factory.make_name()
+        firstname = factory.make_name()
+        lastname = factory.make_name()
+
+        usernames = [
+            f"{firstname}.{lastname}",
+            f"{firstname}_{lastname}",
+            f"{firstname}-{lastname}",
+            f"{firstname}+{lastname}",
+            f"{firstname}.{lastname}_123",
+            f"{firstname}.{lastname}%40example.com",
+        ]
+
+        for user in usernames:
+            uri = f"{driver}+{transport}://{user}@{host}:{port}/{path}?{param}"
+            self.assertEqual(uri, VirshAddressField().clean(uri))
+
     def test_rejects_invalid_ipv4_address(self):
         ip = "12.34.56.999"
         error = self.assertRaises(

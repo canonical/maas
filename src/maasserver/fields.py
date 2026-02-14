@@ -58,7 +58,7 @@ VIRSH_ADDR_RE = re.compile(
     r"(((xen|qemu|test)"  # driver
     r"(?:\+\w+)?"  # +transport
     r"://"
-    r"(?:\w+@)?"  # username@
+    r"(?:[A-Za-z0-9._%+-]+@)?"  # username@
     rf"(?:{HOSTNAME_RE}|"  # hostname, or
     rf"{IPV4_RE}|"  # ipv4, or
     rf"{IPV6_RE})?"  # ipv6
