@@ -327,9 +327,15 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         controller = self.create_empty_controller()
         data = FakeCommissioningData()
         eth0_network = data.create_physical_network("eth0")
-        data.create_vlan_network("vlan0100", parent=eth0_network)
-        data.create_vlan_network("vlan101", parent=eth0_network)
-        data.create_vlan_network("eth0.0102", parent=eth0_network)
+        vlan0100_network = data.create_vlan_network(
+            "vlan0100", parent=eth0_network
+        )
+        vlan101_network = data.create_vlan_network(
+            "vlan101", parent=eth0_network
+        )
+        eth0_0102_network = data.create_vlan_network(
+            "eth0.0102", parent=eth0_network
+        )
 
         self.update_interfaces(controller, data)
 
@@ -344,10 +350,9 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             name="vlan0100", node_config=controller.current_config
         )
         self.assertEqual(INTERFACE_TYPE.VLAN, vlan0100.type)
-        # XXX: For some reason MAAS forces VLAN interfaces to have the
-        # same MAC as the parent. But in reality, VLAN interfaces may
-        # have different MAC addresses.
-        self.assertEqual(eth0_network.hwaddr, vlan0100.mac_address)
+        # VLAN interfaces use their own MAC from commissioning data,
+        # which may differ from the parent's MAC.
+        self.assertEqual(vlan0100_network.hwaddr, vlan0100.mac_address)
         self.assertTrue(vlan0100.enabled)
         self.assertTrue(vlan0100.link_connected)
         self.assertEqual([eth0], list(vlan0100.parents.all()))
@@ -355,10 +360,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             name="vlan101", node_config=controller.current_config
         )
         self.assertEqual(INTERFACE_TYPE.VLAN, vlan101.type)
-        # XXX: For some reason MAAS forces VLAN interfaces to have the
-        # same MAC as the parent. But in reality, VLAN interfaces may
-        # have different MAC addresses.
-        self.assertEqual(eth0_network.hwaddr, vlan101.mac_address)
+        self.assertEqual(vlan101_network.hwaddr, vlan101.mac_address)
         self.assertTrue(vlan101.enabled)
         self.assertTrue(vlan101.link_connected)
         self.assertEqual([eth0], list(vlan101.parents.all()))
@@ -366,10 +368,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             name="eth0.0102", node_config=controller.current_config
         )
         self.assertEqual(INTERFACE_TYPE.VLAN, eth0_0102.type)
-        # XXX: For some reason MAAS forces VLAN interfaces to have the
-        # same MAC as the parent. But in reality, VLAN interfaces may
-        # have different MAC addresses.
-        self.assertEqual(eth0_network.hwaddr, eth0_0102.mac_address)
+        self.assertEqual(eth0_0102_network.hwaddr, eth0_0102.mac_address)
         self.assertTrue(eth0_0102.enabled)
         self.assertTrue(eth0_0102.link_connected)
         self.assertEqual([eth0], list(eth0_0102.parents.all()))

@@ -432,6 +432,14 @@ def update_vlan_interface(node, name, network, links):
             node, interface, HARDWARE_SYNC_ACTIONS.UPDATED
         )
 
+    # Update MAC address from commissioning data. This ensures that VLAN
+    # interfaces with a manually set MAC address are reflected in the DB
+    # rather than always inheriting the parent's MAC.
+    mac_address = network["hwaddr"]
+    if interface.mac_address != mac_address:
+        interface.mac_address = mac_address
+        interface.save()
+
     if parent_nic.vlan.fabric_id != vlan.fabric_id:
         # XXX: We should surface this error to the API and UI, since
         # it's something the user needs to fix.

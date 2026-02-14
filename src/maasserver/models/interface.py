@@ -2150,10 +2150,10 @@ class VLANInterface(ChildInterface):
                 )
 
     def save(self, *args, **kwargs):
-        # Set the MAC address to the same as its parent.
+        # Default the MAC address to the parent's if not already set.
         if self.id is not None:
             parent = self.parents.first()
-            if parent is not None:
+            if parent is not None and not self.mac_address:
                 self.mac_address = parent.mac_address
         return super().save(*args, **kwargs)
 

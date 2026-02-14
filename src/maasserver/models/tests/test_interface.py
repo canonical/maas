@@ -2014,18 +2014,22 @@ class TestVLANInterface(MAASServerTestCase):
         )
         self.assertEqual(parent.mac_address, interface.mac_address)
 
-    def test_updating_parent_mac_address_updates_vlan_mac_address(self):
+    def test_updating_parent_mac_address_does_not_update_vlan_mac_address(
+        self,
+    ):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.VLAN, parents=[parent]
         )
+        original_mac = interface.mac_address
         parent.mac_address = factory.make_mac_address()
 
         with post_commit_hooks:
             parent.save()
 
         interface = reload_object(interface)
-        self.assertEqual(parent.mac_address, interface.mac_address)
+        self.assertEqual(original_mac, interface.mac_address)
+        self.assertNotEqual(parent.mac_address, interface.mac_address)
 
     def test_disable_parent_disables_vlan_interface(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
