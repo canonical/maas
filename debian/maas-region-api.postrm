@@ -44,7 +44,8 @@ case "$1" in
 
         # Remove sock file
         rm -f /var/lib/maas/maas-regiond.sock
-
+        rm -f /var/lib/maas/openfga-http.sock
+        
         # Remove Temporal configurations
         rm -rf /var/lib/maas/temporal
         ;;

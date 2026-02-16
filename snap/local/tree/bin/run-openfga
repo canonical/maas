@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+export MAAS_PATH="$SNAP"
+export MAAS_ROOT="$SNAP_DATA"
+export MAAS_DATA="$SNAP_COMMON/maas"
+export MAAS_OPENFGA_HTTP_SOCKET_PATH="$SNAP_DATA/openfga-http.sock"
+
+exec "$SNAP/usr/sbin/maas-openfga"

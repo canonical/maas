@@ -1,3 +1,6 @@
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from contextlib import contextmanager
 import os
 from pathlib import Path
@@ -126,6 +129,8 @@ def _set_up_template_db(
             str(tmp_python_path),
             "--settings",
             settings_name,
+            "--openfga-path",
+            os.getcwd() + "/src/maasopenfga/build/",
         ]
     )
     shutil.rmtree(tmp_python_path)

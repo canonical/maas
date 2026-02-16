@@ -170,7 +170,11 @@ class DjangoPristineDatabaseManager(TestResourceManager):
                     )
 
         # dbupgrade will run all the django and alembic migrations
-        call_command("dbupgrade")
+
+        # When we execute the unit tests we don't have OpenFGA built binaries available at the location where the migrator
+        # expects them, so we let the unit tests specify where to find them.
+        openfga_path = os.getcwd() + "/src/maasopenfga/build/"
+        call_command("dbupgrade", openfga_path=openfga_path)
 
         # Ensure that there are no sessions from Django.
         close_all_connections()

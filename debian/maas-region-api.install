@@ -25,3 +25,8 @@ usr/bin/maas-temporal-worker usr/sbin
 
 # Install maasservicelayer
 debian/tmp/usr/lib/python3*/dist-packages/maasservicelayer
+
+# Install OpenFGA binaries
+bin/maas-openfga usr/sbin
+bin/maas-openfga-migrator usr/sbin
+bin/maas-openfga-app-migrator usr/sbin

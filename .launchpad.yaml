@@ -26,5 +26,5 @@ jobs:
     environment: 
       NO_PROXY: localhost,127.0.0.1
     run: |
-      make build
-      make test
+      make
+      RUN_INTEGRATION_TESTS=0 make test

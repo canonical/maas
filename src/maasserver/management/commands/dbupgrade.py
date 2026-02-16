@@ -5,6 +5,7 @@
 Django command: Upgrade MAAS regiond database.
 """
 
+import getpass
 from importlib.resources import files
 import os
 import subprocess
@@ -34,6 +35,13 @@ class Command(BaseCommand):
                 "Nominates a database to synchronize. Defaults to the "
                 '"default" database.'
             ),
+        )
+        parser.add_argument(
+            "--openfga-path",
+            action="store",
+            dest="openfga_path",
+            default="/usr/sbin/",
+            help=("The path to the openfga migrator binaries."),
         )
 
     @classmethod
@@ -198,11 +206,12 @@ class Command(BaseCommand):
             "temporal_visibility",
         )
 
-        print("  Applied all migrations.")
+        print("  All temporal migrations applied.")
 
     @classmethod
-    def _build_alembic_postgres_dsn(self, conn_params):
-        user = conn_params.get("user") or ""
+    def _build_postgres_dsn(self, conn_params, driver, search_path=None):
+        # If the user is not set, use the current system user. Otherwise some drivers might crash https://github.com/jackc/pgx/issues/2495
+        user = conn_params.get("user") or getpass.getuser()
         password = conn_params.get("password") or ""
         host = conn_params.get("host") or "localhost"
         port = conn_params.get("port")
@@ -211,10 +220,15 @@ class Command(BaseCommand):
         auth = f"{user}:{password}@" if password else f"{user}@"
 
         if host.startswith("/"):  # It's a Unix socket
-            return f"postgresql+asyncpg://{auth}localhost/{dbname}?host={host}"
+            connstring = f"{driver}://{auth}localhost/{dbname}?host={host}"
+            if search_path:
+                connstring = f"{connstring}&search_path={search_path}"
         else:
             port_part = f":{port}" if port else ""
-            return f"postgresql+asyncpg://{auth}{host}{port_part}/{dbname}"
+            connstring = f"{driver}://{auth}{host}{port_part}/{dbname}"
+            if search_path:
+                connstring = f"{connstring}?search_path={search_path}"
+        return connstring
 
     @classmethod
     def _should_run_django_migrations(cls, database) -> bool:
@@ -239,6 +253,40 @@ class Command(BaseCommand):
                         );
                 """)
             return cursor.fetchone()[0]
+
+    def _openfga_migration(self, openfga_path, database, uri):
+        print("Running OpenFGA migrations:")
+        conn = connections[database]
+        with conn.cursor() as cursor:
+            cursor.execute("CREATE SCHEMA IF NOT EXISTS openfga;")
+
+        cmd = [
+            get_path(openfga_path + "/maas-openfga-migrator"),
+            uri,
+        ]
+
+        try:
+            subprocess.check_output(cmd, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            print("Failed to apply OpenFGA migrations")
+            print(e.stderr.decode("utf-8"))
+            sys.exit(e.returncode)
+        print("  All OpenFGA migrations applied.")
+
+    def _openfga_app_migration(self, openfga_path, uri):
+        print("Running OpenFGA model migrations:")
+        cmd = [
+            get_path(openfga_path + "/maas-openfga-app-migrator"),
+            uri,
+        ]
+
+        try:
+            subprocess.check_output(cmd, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            print("Failed to apply OpenFGA App migrations")
+            print(e.stderr.decode("utf-8"))
+            sys.exit(e.returncode)
+        print("  All OpenFGA model migrations applied.")
 
     def handle(self, *args, **options):
         database = options.get("database")
@@ -274,7 +322,9 @@ class Command(BaseCommand):
         )
         alembic_cfg = config.Config(alembic_ini_path)
         alembic_cfg.set_main_option("run_migrations", "true")
-        dsn = self._build_alembic_postgres_dsn(conn.get_connection_params())
+        dsn = self._build_postgres_dsn(
+            conn.get_connection_params(), "postgresql+asyncpg"
+        )
         alembic_cfg.set_main_option("sqlalchemy.url", dsn)
         command.upgrade(alembic_cfg, "head")
 
@@ -287,3 +337,16 @@ class Command(BaseCommand):
             )
 
         self._temporal_migration(database)
+
+        # When we execute the unit tests we don't have OpenFGA built binaries available at the location where the migrator
+        # expects them, so we let the unit tests specify where to find them.
+        openfga_path = options.get("openfga_path")
+        openfga_dsn = self._build_postgres_dsn(
+            conn.get_connection_params(), "postgres", search_path="openfga"
+        )
+        self._openfga_migration(openfga_path, database, openfga_dsn)
+
+        openfga_app_dsn = self._build_postgres_dsn(
+            conn.get_connection_params(), "postgres"
+        )
+        self._openfga_app_migration(openfga_path, openfga_app_dsn)

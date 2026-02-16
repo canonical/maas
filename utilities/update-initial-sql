@@ -24,7 +24,7 @@ msg "importing SQL dump"
 psql -c "\i $sql_dump_file" >/dev/null
 
 msg "upgrading schema"
-bin/maas-region dbupgrade
+bin/maas-region dbupgrade --openfga-path "$PWD/src/maasopenfga/build/"
 
 msg "dumping updated database file"
 pg_dump "$PGDATABASE" --no-owner --no-privileges --format=plain --restrict-key=jDB4gdI1N8dbUCAC3vcdCvWs48TBU3tT39yhtb0ijqwqYnAc3QoCur8LfK1MnsD -f "$sql_dump_file"

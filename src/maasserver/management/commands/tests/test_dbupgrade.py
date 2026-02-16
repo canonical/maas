@@ -90,6 +90,8 @@ class TestDBUpgrade(MAASTestCase):
             "dbupgrade",
             "--settings",
             "maasserver.djangosettings.settings",
+            "--openfga-path",
+            os.getcwd() + "/src/maasopenfga/build/",
         ]
         self.execute(cmd, env=env)
 
@@ -133,6 +135,32 @@ class TestDBUpgrade(MAASTestCase):
                     0,
                     "alembic_version table should not be empty",
                 )
+
+    def test_dbupgrade_creates_openfga_schema(self):
+        """Test ensures that a new installation creates the openfga schema."""
+        self.cluster.createdb(self.dbname)
+        self.execute_dbupgrade()
+        with closing(self.cluster.connect(self.dbname)) as conn:
+            with closing(conn.cursor()) as cursor:
+                cursor.execute("""
+                    SELECT schema_name
+                    FROM information_schema.schemata
+                    WHERE schema_name = 'openfga';
+                """)
+                self.assertIsNotNone(cursor.fetchone())
+
+    def test_dbupgrade_executes_openfga_migrations(self):
+        """Test ensures that the openfga migrations have been applied and the initial model has been created."""
+        self.cluster.createdb(self.dbname)
+        self.execute_dbupgrade()
+        with closing(self.cluster.connect(self.dbname)) as conn:
+            with closing(conn.cursor()) as cursor:
+                cursor.execute("""
+                    SELECT authorization_model_id
+                    FROM openfga.authorization_model
+                    WHERE authorization_model_id = '00000000000000000000000000';
+                """)
+                self.assertIsNotNone(cursor.fetchone())
 
     def test_dbupgrade_executes_also_django_migrations_if_upgrading_from_older_versions(
         self,

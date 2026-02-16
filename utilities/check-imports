@@ -240,6 +240,7 @@ Common = files("src/maascommon/**/*.py")
 CommonRule = Rule(
     Allow(StandardLibraries),
     Allow("distro_info|distro_info.*"),
+    Allow("httpx"),
     Allow("lxml|lxml.**"),
     Allow("maascommon|maascommon.**"),
     Allow("maasservicelayer.simplestreams.**"),

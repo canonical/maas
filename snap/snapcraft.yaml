@@ -308,6 +308,22 @@ parts:
     prime:
       - usr/sbin/maas-agent
 
+  maas-openfga:
+    plugin: make
+    source: src/maasopenfga
+    build-packages:
+      - golang-go
+    build-environment:
+      - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
+    organize:
+      bin/maas-openfga: usr/sbin/maas-openfga
+      bin/maas-openfga-migrator: usr/sbin/maas-openfga-migrator
+      bin/maas-openfga-app-migrator: usr/sbin/maas-openfga-app-migrator
+    prime:
+      - usr/sbin/maas-openfga
+      - usr/sbin/maas-openfga-migrator
+      - usr/sbin/maas-openfga-app-migrator
+  
   tree:
     plugin: dump
     source: snap/local/tree

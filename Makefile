@@ -72,7 +72,8 @@ build: \
   $(VENV) \
   $(BIN_SCRIPTS) \
   $(BIN_DIR)/py \
-  $(BIN_DIR)/golangci-lint
+  $(BIN_DIR)/golangci-lint \
+  go-bins
 .PHONY: build
 
 all: build ui go-bins doc
@@ -138,7 +139,7 @@ swagger-css: $(swagger-dist)
 	wget -O $(file) $(url)
 .PHONY: swagger-css
 
-go-bins: build-host-info build-agent
+go-bins: build-host-info build-agent build-openfga
 .PHONY: go-bins
 
 build-host-info:
@@ -148,6 +149,10 @@ build-host-info:
 build-agent:
 	$(MAKE) --no-print-directory -j -C src/maasagent build
 .PHONY: build-agent
+
+build-openfga:
+	$(MAKE) --no-print-directory -j -C src/maasopenfga build
+.PHONY: build-openfga
 
 test: test-py lint-oapi test-go
 .PHONY: test
@@ -274,6 +279,7 @@ format-py:
 format-go:
 	@$(MAKE) -C src/host-info format
 	@$(MAKE) -C src/maasagent format
+	@$(MAKE) -C src/maasopenfga format
 .PHONY: format-go
 
 generate-builders:
@@ -304,7 +310,7 @@ clean-ui-build:
 	$(MAKE) --no-print-directory -C src/maasui clean-build
 .PHONY: clean-build
 
-clean-go-bins: clean-host-info clean-agent
+clean-go-bins: clean-host-info clean-agent clean-openfga
 .PHONY: clean-go-bins
 
 clean-host-info:
@@ -315,9 +321,14 @@ clean-agent:
 	$(MAKE) --no-print-directory -C src/maasagent clean
 .PHONY: clean-agent
 
+clean-openfga:
+	$(MAKE) --no-print-directory -C src/maasopenfga clean
+.PHONY: clean-openfga
+
 
 clean: clean-ui clean-go-bins
 	@$(MAKE) -C src/maasagent clean
+	@$(MAKE) -C src/maasopenfga clean
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
@@ -348,7 +359,7 @@ dbshell: bin/database
 .PHONY: dbshell
 
 syncdb: bin/maas-region bin/database
-	$(dbrun) bin/maas-region dbupgrade $(DBUPGRADE_ARGS)
+	$(dbrun) bin/maas-region dbupgrade $(DBUPGRADE_ARGS) --openfga-path $(PWD)/src/maasopenfga/build/
 .PHONY: syncdb
 
 dumpdb: DB_DUMP ?= maasdb.dump
@@ -404,6 +415,9 @@ endif
 		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) --no-print-directory -C src/maasagent vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/maasagent/vendor \
+		--transform 's,^,$(packaging-dir)/,'
+	$(MAKE) --no-print-directory -C src/maasopenfga vendor
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/maasopenfga/vendor \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
 .PHONY: -packaging-tarball
@@ -467,9 +481,9 @@ $(SNAP_FILE):
 	$(snapcraft) pack -o $(SNAP_FILE)
 
 snap-tree-sync: RSYNC := rsync -v -r -u -l -t -W -L
-snap-tree-sync: $(UI_BUILD) clean-agent go-bins $(SNAP_UNPACKED_DIR_MARKER)
+snap-tree-sync: $(UI_BUILD) clean-agent clean-openfga go-bins $(SNAP_UNPACKED_DIR_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
-		--exclude 'maasui' --exclude 'maasagent' --exclude 'machine-resources' \
+		--exclude 'maasui' --exclude 'maasagent' --exclude 'maasopenfga' --exclude 'machine-resources' \
 		--exclude 'host-info' --exclude 'maas-offline-docs' \
 		--exclude '*.pyc' --exclude '__pycache__' \
 		src/ \
@@ -488,6 +502,9 @@ snap-tree-sync: $(UI_BUILD) clean-agent go-bins $(SNAP_UNPACKED_DIR_MARKER)
 		$(SNAP_UNPACKED_DIR)/usr/share/maas/machine-resources/
 	$(RSYNC) \
 		src/maasagent/build/ \
+		$(SNAP_UNPACKED_DIR)/usr/sbin/
+	$(RSYNC) \
+		src/maasopenfga/build/ \
 		$(SNAP_UNPACKED_DIR)/usr/sbin/
 .PHONY: snap-tree-sync
 

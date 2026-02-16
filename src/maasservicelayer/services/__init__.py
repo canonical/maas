@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Callable, Self
@@ -72,6 +72,9 @@ from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
 from maasservicelayer.db.repositories.nodes import NodesRepository
 from maasservicelayer.db.repositories.notifications import (
     NotificationsRepository,
+)
+from maasservicelayer.db.repositories.openfga_tuples import (
+    OpenFGATuplesRepository,
 )
 from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
@@ -173,6 +176,7 @@ from maasservicelayer.services.nodegrouptorackcontrollers import (
 )
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.notifications import NotificationsService
+from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 from maasservicelayer.services.package_repositories import (
     PackageRepositoriesService,
 )
@@ -281,6 +285,7 @@ class ServiceCollectionV3:
     nodes: NodesService
     notifications: NotificationsService
     oidc_revoked_tokens: OIDCRevokedTokenService
+    openfga_tuples: OpenFGATupleService
     package_repositories: PackageRepositoriesService
     racks: RacksService
     rdns: RDNSService
@@ -719,5 +724,9 @@ class ServiceCollectionV3:
             users_service=services.users,
             vlans_service=services.vlans,
             v3dnsrrsets_service=services.v3dnsrrsets,
+        )
+        services.openfga_tuples = OpenFGATupleService(
+            context=context,
+            openfga_tuple_repository=OpenFGATuplesRepository(context),
         )
         return services

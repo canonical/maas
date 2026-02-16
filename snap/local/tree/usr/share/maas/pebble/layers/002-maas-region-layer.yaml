@@ -38,3 +38,10 @@ services:
     override: replace
     command: sh -c "exec systemd-cat -t maas-temporal-worker $SNAP/bin/run-temporal-worker"
     startup: disabled
+
+  openfga:
+    override: replace
+    startup: enabled
+    command: sh -c "exec systemd-cat -t maas-openfga $SNAP/bin/run-openfga"
+    before:
+      - syslog

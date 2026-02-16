@@ -22,6 +22,7 @@ export MAAS_HTTP_SOCKET_WORKER_BASE_PATH="$SNAP_DATA/maas-regiond-webapp.sock"
 export MAAS_APISERVER_HTTP_SOCKET_PATH="$SNAP_DATA/apiserver-http.sock"
 export MAAS_INTERNALAPISERVER_HTTP_SOCKET_PATH="$SNAP_DATA/internalapiserver-http.sock"
 export MAAS_TEMPORAL_CONFIG_DIR="$SNAP_DATA/temporal"
+export MAAS_OPENFGA_HTTP_SOCKET_PATH="$SNAP_DATA/openfga-http.sock"
 
 # ensure these dirs exist here since the region creates config files for other
 # services

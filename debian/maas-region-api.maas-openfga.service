@@ -1,0 +1,17 @@
+[Unit]
+Description=MAAS OpenFGA
+Documentation=https://openfga.dev
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/maas/regiond.conf
+
+[Service]
+User=maas
+Group=maas
+Restart=always
+RestartSec=10s
+KillMode=mixed
+ExecStart=/usr/sbin/maas-openfga
+
+[Install]
+WantedBy=multi-user.target
