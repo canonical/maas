@@ -12,7 +12,6 @@ from random import randint
 from subprocess import CalledProcessError
 from typing import BinaryIO
 from unittest.mock import ANY, MagicMock, Mock, sentinel
-from urllib.parse import urljoin
 
 from django.db import transaction
 from django.utils import timezone
@@ -1673,12 +1672,11 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         error_expected = """\
         Boot image import process not started. Machines will not be able to
-        provision without boot images. Visit the <a href="%s">boot images</a>
+        provision without boot images. Visit the <a href="/MAAS/r/images">boot images</a>
         page to start the import.
         """
-        images_link = maas_url + urljoin(maas_url_path, "/r/images")
         self.assertEqual(
-            normalise_whitespace(error_expected % images_link),
+            normalise_whitespace(error_expected),
             normalise_whitespace(error_observed),
         )
 

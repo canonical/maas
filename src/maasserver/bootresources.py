@@ -78,11 +78,7 @@ from maasserver.models import (
 )
 from maasserver.msm import msm_status
 from maasserver.release_notifications import ReleaseNotifications
-from maasserver.utils import (
-    absolute_reverse,
-    get_maas_user_agent,
-    synchronised,
-)
+from maasserver.utils import get_maas_user_agent, synchronised
 from maasserver.utils.bootresource import (
     BOOTLOADERS_DIR,
     get_bootresource_store_path,
@@ -1223,7 +1219,7 @@ class ImportResourcesProgressService(TimerService):
         """\
     Boot image import process not started. Machines will not be able to
     provision without boot images. Visit the
-    <a href="%(images_link)s">boot images</a> page to start the import.
+    <a href="/MAAS/r/images">boot images</a> page to start the import.
     """
     )
 
@@ -1233,7 +1229,6 @@ class ImportResourcesProgressService(TimerService):
 
     @transactional
     def set_import_warning(self, warning):
-        warning %= {"images_link": absolute_reverse("/") + "r/images"}
         register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
 
     @transactional
