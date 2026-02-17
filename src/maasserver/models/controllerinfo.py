@@ -182,6 +182,14 @@ class ControllerInfo(CleanSave, TimestampedModel):
         return issues
 
 
+def get_maas_install_type() -> str:
+    install_types = ControllerInfo.objects.exclude(version="").values_list(
+        "install_type", flat=True
+    )
+    # all the controllers have the same install type, return the first
+    return install_types[0]
+
+
 def get_maas_version() -> Optional[MAASVersion]:
     """Return the version for the deployment.
 

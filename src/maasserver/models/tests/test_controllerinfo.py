@@ -4,6 +4,7 @@
 
 from maasserver.models import ControllerInfo, Notification
 from maasserver.models.controllerinfo import (
+    get_maas_install_type,
     get_maas_version,
     get_target_version,
     TargetVersion,
@@ -1157,3 +1158,15 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
             {"status": "inprogress", "version": "3.0.2"},
         )
         self.assertNotEqual(notification1.id, notification2.id)
+
+    def test_get_maas_install_type(self):
+        c1 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0-111.aaa"},
+                update={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        install_type = get_maas_install_type()
+        self.assertEqual(install_type, "deb")
