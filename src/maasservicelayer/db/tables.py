@@ -1629,7 +1629,12 @@ NotificationDismissalTable = Table(
     Column(
         "user_id",
         Integer,
-        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        ForeignKey(
+            "auth_user.id",
+            deferrable=True,
+            initially="DEFERRED",
+            ondelete="CASCADE",
+        ),
         nullable=False,
     ),
     Column(
@@ -1695,8 +1700,11 @@ OIDCRevokedTokenTable = Table(
         "user_email",
         String(150),
         ForeignKey(
-            "auth_user.username", deferrable=True, initially="DEFERRED"
-        ),  # OIDC user profiles have their usernames equal to the email.
+            "auth_user.username",  # OIDC user profiles have their usernames equal to the email.
+            deferrable=True,
+            initially="DEFERRED",
+            ondelete="CASCADE",
+        ),
         unique=False,
         nullable=False,
     ),
@@ -1829,7 +1837,12 @@ RefreshTokenTable = Table(
     Column(
         "user_id",
         Integer,
-        ForeignKey("auth_user.id", deferrable=True, initially="DEFERRED"),
+        ForeignKey(
+            "auth_user.id",
+            deferrable=True,
+            initially="DEFERRED",
+            ondelete="CASCADE",
+        ),
         nullable=False,
     ),
     Index("maasserver_refreshtoken_user_id_5f4d1d1a", "user_id"),
