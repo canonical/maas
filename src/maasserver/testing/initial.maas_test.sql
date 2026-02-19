@@ -8539,7 +8539,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0017
+0018
 \.
 
 
@@ -16686,14 +16686,6 @@ ALTER TABLE ONLY public.maasserver_nodeuserdata
 
 
 --
--- Name: maasserver_notificationdismissal maasserver_notificat_user_id_87cc11da_fk_auth_user; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_notificationdismissal
-    ADD CONSTRAINT maasserver_notificat_user_id_87cc11da_fk_auth_user FOREIGN KEY (user_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
 -- Name: maasserver_notification maasserver_notification_user_id_5a4d1d18_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16707,6 +16699,14 @@ ALTER TABLE ONLY public.maasserver_notification
 
 ALTER TABLE ONLY public.maasserver_notificationdismissal
     ADD CONSTRAINT maasserver_notificationdismissal_notification_id_fe4f68d4_fk FOREIGN KEY (notification_id) REFERENCES public.maasserver_notification(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_notificationdismissal maasserver_notificationdismissal_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_notificationdismissal
+    ADD CONSTRAINT maasserver_notificationdismissal_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.auth_user(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -16850,7 +16850,7 @@ ALTER TABLE ONLY public.maasserver_rdns
 --
 
 ALTER TABLE ONLY public.maasserver_refreshtoken
-    ADD CONSTRAINT maasserver_refreshtoken_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_refreshtoken_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.auth_user(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --
