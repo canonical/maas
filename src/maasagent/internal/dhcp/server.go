@@ -245,7 +245,7 @@ func (s *Server) serveXDP(ctx context.Context) error {
 		defer runtime.UnlockOSThread()
 
 		for {
-			pkt, err := reader.Read() //nolint:govet // flagged as shadow declaraion, but is a separate goroutine
+			pkt, err := reader.Read()
 			if err != nil {
 				if errors.Is(err, ringbuf.ErrClosed) {
 					return

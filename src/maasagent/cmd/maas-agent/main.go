@@ -410,7 +410,7 @@ func Run() int {
 	mux := http.NewServeMux()
 
 	// TODO: make this configurable based on the config parameters
-	//nolint:govet // false positive
+
 	if err := setupMetrics(&meterProvider, mux); err != nil {
 		log.Error().Err(err).Msg("Cannot setup metrics")
 		return 1
@@ -423,7 +423,6 @@ func Run() int {
 	go func() { fatal <- setupHTTP(mux) }()
 
 	if cfg.Tracing.Enabled {
-		//nolint:govet // false positive
 		if err := setupTracer(&tracerProvider, cfg.Tracing.OTLPHTTPEndpoint); err != nil {
 			log.Error().Err(err).Msg("Failed to setup tracing")
 			return 1

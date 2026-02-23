@@ -790,7 +790,7 @@ func (h *RecursiveHandler) fetchAnswer(server netip.Addr, r *dns.Msg) (*dns.Msg,
 				wconn.MarkUnusable()
 			}
 
-			if err := conn.Close(); err != nil { //nolint:govet // false positive shadow
+			if err := conn.Close(); err != nil {
 				log.Warn().Err(err).Msgf("Cannot return connection back to the pool")
 			}
 		} else { // MAAS authoritative server returned a NS for a non-authoritative zone

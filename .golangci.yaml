@@ -57,6 +57,8 @@ linters:
         along with this program.  If not, see <http://www.gnu.org/licenses/>.
     govet:
       enable-all: true
+      disable:
+        - shadow
     nolintlint:
       require-explanation: true
       require-specific: true
