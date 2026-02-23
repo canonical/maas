@@ -1,3 +1,0 @@
-# maas-agent
-
-MAAS Agent.
