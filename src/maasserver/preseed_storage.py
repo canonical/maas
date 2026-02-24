@@ -13,6 +13,7 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
+from maasserver.exceptions import MAASAPINotFound
 from maasserver.models import FilesystemGroup, Partition, PhysicalBlockDevice
 from maasserver.models.partitiontable import (
     BIOS_GRUB_PARTITION_SIZE,
@@ -225,9 +226,18 @@ class CurtinStorageGenerator:
     def _find_grub_devices(self):
         """Save which devices should have grub installed."""
         for raid in self.operations["raid"]:
-            partition_ids, block_devices_ids = zip(
-                *raid.filesystems.values_list("partition", "block_device")
-            )
+            try:
+                partition_ids, block_devices_ids = zip(
+                    *raid.filesystems.values_list("partition", "block_device"),
+                )
+            except ValueError as e:
+                # We could just continue here with perhaps a warning, but
+                # the code used to assume that the above was always unpackable,
+                # so making it a loud but clearer exception seems to be safer
+                # for debugging when this happens.
+                raise MAASAPINotFound(
+                    f"could not find partition ids and block device ids for RAID {raid.uuid}: {e}"
+                ) from e
             partition_ids = set(partition_ids)
             partition_ids.discard(None)
             block_devices_ids = set(block_devices_ids)
