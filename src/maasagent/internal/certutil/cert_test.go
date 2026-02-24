@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -13,219 +13,256 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package certutil_test
+package certutil
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/pem"
-	"math/big"
 	"os"
-	"path/filepath"
 	"testing"
-	"time"
-
-	"maas.io/core/src/maasagent/internal/certutil"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
+	certtest "maas.io/core/src/maasagent/internal/testing/cert"
 )
 
-// GenerateTestKeyPair returns a generated RSA private key and a self-signed
-// certificate
-func GenerateTestKeyPair(t *testing.T) (*rsa.PrivateKey, *x509.Certificate) {
-	t.Helper()
+func TestWriteCertificatePEM(t *testing.T) {
+	cert := certtest.GenerateTestCertificate(t)
+	certPEMBlock := &pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]}
+	certBytes := pem.EncodeToMemory(certPEMBlock)
 
-	key, err := rsa.GenerateKey(rand.Reader, 1024) // 1024 is enough for tests
-	if err != nil {
-		t.Fatalf("failed to generate private key: %v", err)
+	notCertPEMBlock := &pem.Block{Type: "BADCERTIFICATE", Bytes: []byte{}}
+	notCertBytes := pem.EncodeToMemory(notCertPEMBlock)
+
+	badCertPEMBlock := &pem.Block{Type: "CERTIFICATE", Bytes: []byte{}}
+	badCertBytes := pem.EncodeToMemory(badCertPEMBlock)
+
+	testcases := map[string]struct {
+		in  []byte
+		out []byte
+		err string
+	}{
+		"valid": {
+			in:  certBytes,
+			out: certBytes,
+		},
+		"missing CERTIFICATE block": {
+			in:  notCertBytes,
+			err: "unexpected PEM block type: BADCERTIFICATE",
+		},
+		"bad certificate": {
+			in:  badCertBytes,
+			err: "invalid certificate",
+		},
 	}
 
-	tmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: t.Name()},
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(24 * time.Hour),
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-		KeyUsage:    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
+			fs := afero.NewMemMapFs()
 
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
-	if err != nil {
-		t.Fatalf("failed to create certificate: %v", err)
-	}
+			err := WriteCertificatePEM(fs, "/cert.pem", tc.in)
+			if tc.err != "" {
+				require.ErrorContains(t, err, tc.err)
 
-	cert, err := x509.ParseCertificate(der)
-	if err != nil {
-		t.Fatalf("failed to parse generated certificate: %v", err)
-	}
+				_, err := afero.ReadFile(fs, "/cert.pem")
+				require.ErrorIs(t, err, os.ErrNotExist)
+			} else {
+				require.NoError(t, err)
 
-	return key, cert
-}
+				got, err := afero.ReadFile(fs, "/cert.pem")
+				require.NoError(t, err)
 
-// GenerateTestKeyPair returns a generated RSA private key
-func GenerateTestKey(t *testing.T) *rsa.PrivateKey {
-	t.Helper()
-
-	key, err := rsa.GenerateKey(rand.Reader, 1024) // 1024 is enough for tests
-	if err != nil {
-		t.Fatalf("failed to generate private key: %v", err)
-	}
-
-	return key
-}
-
-// GenerateTestKeyPair returns a generated RSA private key.
-func GenerateTestCertificate(t *testing.T, key *rsa.PrivateKey) *x509.Certificate {
-	t.Helper()
-
-	tmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: t.Name()},
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(24 * time.Hour),
-		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
-
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
-	if err != nil {
-		t.Fatalf("failed to create certificate: %v", err)
-	}
-
-	cert, err := x509.ParseCertificate(der)
-	if err != nil {
-		t.Fatalf("failed to parse generated certificate: %v", err)
-	}
-
-	return cert
-}
-
-// writePEM is an internal helper that writes a PEM block to a file.
-func writePEM(t *testing.T, fs afero.Fs,
-	path, blockType string, bytes []byte, perm os.FileMode) {
-	t.Helper()
-
-	f, err := fs.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
-	if err != nil {
-		t.Fatalf("failed to open file %s: %v", path, err)
-	}
-	defer f.Close()
-
-	if err := pem.Encode(f, &pem.Block{Type: blockType, Bytes: bytes}); err != nil {
-		t.Fatalf("failed to encode %s to %s: %v", blockType, path, err)
+				require.Equal(t, tc.out, got)
+			}
+		})
 	}
 }
 
-// WritePrivateKeyPEM writes a private key to the given path in PEM format.
-func WritePrivateKeyPEM(t *testing.T, fs afero.Fs,
-	path string, priv *rsa.PrivateKey) {
-	writePEM(t, fs, path, "RSA PRIVATE KEY",
-		x509.MarshalPKCS1PrivateKey(priv), 0o600)
+func TestWriteCACertificatePEM(t *testing.T) {
+	ca1 := certtest.GenerateTestCA(t)
+	ca1PEM := ca1.Certificate[0]
+	ca1PEMBlock := &pem.Block{Type: "CERTIFICATE", Bytes: ca1PEM}
+	ca1Bytes := pem.EncodeToMemory(ca1PEMBlock)
+
+	ca2 := certtest.GenerateTestCA(t)
+	ca2PEM := ca2.Certificate[0]
+	ca2PEMBlock := &pem.Block{Type: "CERTIFICATE", Bytes: ca2PEM}
+	ca2Bytes := pem.EncodeToMemory(ca2PEMBlock)
+
+	caNotCertPEMBlock := &pem.Block{Type: "BADCERTIFICATE", Bytes: []byte{}}
+	caNotCertBytes := pem.EncodeToMemory(caNotCertPEMBlock)
+
+	caBadPEMBlock := &pem.Block{Type: "CERTIFICATE", Bytes: []byte{}}
+	caBadBytes := pem.EncodeToMemory(caBadPEMBlock)
+
+	testcases := map[string]struct {
+		in  []byte
+		out []byte
+		err string
+	}{
+		"all valid": {
+			in:  append(append([]byte(nil), ca1Bytes...), ca2Bytes...),
+			out: append(append([]byte(nil), ca1Bytes...), ca2Bytes...),
+		},
+		"first valid, second non-cert": {
+			in:  append(append([]byte(nil), ca1Bytes...), caNotCertBytes...),
+			err: "unexpected PEM block type",
+		},
+		"first valid, second bad": {
+			in:  append(append([]byte(nil), ca1Bytes...), caBadBytes...),
+			err: "invalid certificate in CA",
+		},
+		"first non-cert, second valid": {
+			in:  append(append([]byte(nil), caNotCertBytes...), ca2Bytes...),
+			err: "unexpected PEM block type",
+		},
+		"first bad, second valid": {
+			in:  append(append([]byte(nil), caBadBytes...), ca2Bytes...),
+			err: "invalid certificate in CA",
+		},
+		"first non-cert, second bad": {
+			in:  append(append([]byte(nil), caNotCertBytes...), caBadBytes...),
+			err: "unexpected PEM block type",
+		},
+		"single valid": {
+			in:  append([]byte(nil), ca1Bytes...),
+			out: append([]byte(nil), ca1Bytes...),
+		},
+		"single non-cert": {
+			in:  append([]byte(nil), caNotCertBytes...),
+			err: "unexpected PEM block type",
+		},
+		"single bad": {
+			in:  append([]byte(nil), caBadBytes...),
+			err: "invalid certificate in CA",
+		},
+		"empty": {
+			in:  []byte{},
+			err: "did not find any CERTIFICATE blocks",
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			fs := afero.NewMemMapFs()
+
+			err := WriteCertificatePEM(fs, "/ca.pem", tc.in)
+			if tc.err != "" {
+				require.ErrorContains(t, err, tc.err)
+
+				_, err := afero.ReadFile(fs, "/ca.pem")
+				require.ErrorIs(t, err, os.ErrNotExist)
+			} else {
+				require.NoError(t, err)
+
+				got, err := afero.ReadFile(fs, "/ca.pem")
+				require.NoError(t, err)
+
+				require.Equal(t, tc.out, got)
+			}
+		})
+	}
 }
 
-// WriteCertificatePEM writes a certificate to the given path in PEM format.
-func WriteCertificatePEM(t *testing.T, fs afero.Fs,
-	path string, cert *x509.Certificate) {
-	writePEM(t, fs, path, "CERTIFICATE", cert.Raw, 0o644)
+func TestWritePrivateKey(t *testing.T) {
+	cert := certtest.GenerateTestCertificate(t)
+
+	fs := afero.NewMemMapFs()
+	err := WritePrivateKey(fs, "tls.key", cert.PrivateKey)
+
+	require.NoError(t, err)
+
+	data, err := afero.ReadFile(fs, "tls.key")
+	require.NoError(t, err)
+
+	block, _ := pem.Decode(data)
+	require.Equal(t, "PRIVATE KEY", block.Type)
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	require.NoError(t, err)
+
+	want, err := x509.MarshalPKCS8PrivateKey(cert.PrivateKey)
+	require.NoError(t, err)
+
+	got, err := x509.MarshalPKCS8PrivateKey(key)
+	require.NoError(t, err)
+
+	assert.Equal(t, want, got)
 }
 
-type CertificateBundleTestSuite struct {
-	suite.Suite
-	fs              afero.Fs
-	dataPathFactory func(string) string
-}
+func TestCreateCSR(t *testing.T) {
+	cert := certtest.GenerateTestCertificate(t)
 
-func (s *CertificateBundleTestSuite) SetupTest() {
-	s.fs = afero.NewMemMapFs()
-	s.dataPathFactory = func(string) string { return "certificates" }
-}
-
-func TestCertificateBundleTestSuite(t *testing.T) {
-	suite.Run(t, new(CertificateBundleTestSuite))
-}
-
-func (s *CertificateBundleTestSuite) TestLoadCertBundle() {
-	keyFile := filepath.Join("certificates", "client.key")
-	certFile := filepath.Join("certificates", "client.pem")
-
-	key, cert := GenerateTestKeyPair(s.T())
-	WritePrivateKeyPEM(s.T(), s.fs, keyFile, key)
-	WriteCertificatePEM(s.T(), s.fs, certFile, cert)
-
-	bundle, err := certutil.LoadCertBundle(
-		certutil.WithFS(s.fs),
-		certutil.WithDataPathFactory(s.dataPathFactory),
-	)
-
-	require.NoError(s.T(), err)
-
-	assert.Equal(s.T(), key, bundle.PrivateKey)
-	assert.Equal(s.T(), cert, bundle.Certificate)
-}
-
-func (s *CertificateBundleTestSuite) TestNewCertBundle() {
-	bundle, err := certutil.NewCertBundle(
-		certutil.WithFS(s.fs),
-		certutil.WithDataPathFactory(s.dataPathFactory),
-		certutil.WithRSAKeySize(1024),
-	)
-
-	require.NoError(s.T(), err)
-
-	keyFile := filepath.Join("certificates", "client.key")
-
-	info, err := s.fs.Stat(keyFile)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), os.FileMode(0o600), info.Mode().Perm())
-
-	assert.NotNil(s.T(), bundle.PrivateKey)
-	assert.Nil(s.T(), bundle.Certificate)
-}
-
-func (s *CertificateBundleTestSuite) TestGenerateCSR() {
-	bundle, err := certutil.NewCertBundle(
-		certutil.WithFS(s.fs),
-		certutil.WithDataPathFactory(s.dataPathFactory),
-		certutil.WithRSAKeySize(1024),
-	)
-	require.NoError(s.T(), err)
-
-	csrPEM, err := bundle.GenerateCSRPEM(s.T().Name())
-	require.NoError(s.T(), err)
+	csrPEM, err := CreateCSR(t.Name(), cert.PrivateKey)
+	require.NoError(t, err)
 
 	block, _ := pem.Decode(csrPEM)
-	if block == nil || block.Type != "CERTIFICATE REQUEST" {
-		s.T().Fatal("invalid PEM block type")
-	}
+	require.Equal(t, "CERTIFICATE REQUEST", block.Type)
 
 	csr, err := x509.ParseCertificateRequest(block.Bytes)
-	assert.NoError(s.T(), err)
+	require.NoError(t, err)
 
-	assert.Equal(s.T(), s.T().Name(), csr.Subject.CommonName)
+	assert.Equal(t, t.Name(), csr.Subject.CommonName)
 }
 
-func (s *CertificateBundleTestSuite) TestSetCertificateFromPem() {
-	bundle, err := certutil.NewCertBundle(
-		certutil.WithFS(s.fs),
-		certutil.WithDataPathFactory(s.dataPathFactory),
-		certutil.WithRSAKeySize(1024),
-	)
-	require.NoError(s.T(), err)
+func TestWriteCertificate(t *testing.T) {
+	expected := certtest.GenerateTestCertificate(t)
+	certFile := "cert.pem"
 
-	require.NotNil(s.T(), bundle.PrivateKey)
-	require.Nil(s.T(), bundle.Certificate)
+	fs := afero.NewMemMapFs()
 
-	cert := GenerateTestCertificate(s.T(), bundle.PrivateKey)
-	require.NotNil(s.T(), cert)
+	require.NoError(t, WriteCertificate(fs, certFile, expected))
 
-	pemData := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+	data, err := afero.ReadFile(fs, certFile)
+	require.NoError(t, err)
 
-	assert.NoError(s.T(), bundle.SetCertificateFromPEM(s.fs, pemData))
-	assert.NotNil(s.T(), bundle.Certificate)
+	block, _ := pem.Decode(data)
+	require.NotNil(t, block, "failed to decode PEM")
+
+	got, err := x509.ParseCertificate(block.Bytes)
+	require.NoError(t, err)
+	require.Equal(t, expected.Leaf, got)
+}
+
+func TestLoadX509KeyPair(t *testing.T) {
+	expected := certtest.GenerateTestCertificate(t)
+	certFile := "cert.pem"
+	keyFile := "cert.key"
+
+	fs := afero.NewMemMapFs()
+
+	require.NoError(t, WriteCertificate(fs, certFile, expected))
+	require.NoError(t, WritePrivateKey(fs, keyFile, expected.PrivateKey))
+
+	got, err := LoadX509KeyPair(fs, certFile, keyFile)
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+	require.Equal(t, expected, got)
+}
+
+func TestLoadCAPool(t *testing.T) {
+	ca := certtest.GenerateTestCA(t)
+	caFile := "ca.pem"
+
+	fs := afero.NewMemMapFs()
+
+	require.NoError(t, WriteCertificate(fs, caFile, ca))
+
+	leaf, err := x509.ParseCertificate(ca.Certificate[0])
+	require.NoError(t, err)
+
+	expected, err := x509.SystemCertPool()
+	require.NoError(t, err)
+	expected.AddCert(leaf)
+
+	require.NoError(t, err)
+
+	got, err := LoadCAPool(fs, caFile)
+	require.NoError(t, err)
+	require.True(t, expected.Equal(got))
 }

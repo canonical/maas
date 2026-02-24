@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,6 +41,30 @@ func TestWriteFile(t *testing.T) {
 	require.Equal(t, expected, result)
 
 	fi, err := os.Stat(path)
+	require.NoError(t, err)
+
+	require.Equal(t, os.FileMode(0o640), fi.Mode())
+}
+
+func TestWriteFileWithFs(t *testing.T) {
+	fs := afero.NewMemMapFs()
+
+	path := t.Name()
+
+	err := WriteFileWithFs(fs, path, []byte("hello"), 0o640)
+	require.NoError(t, err)
+
+	expected := []byte("hello world")
+
+	err = WriteFileWithFs(fs, path, expected, 0o640)
+	require.NoError(t, err)
+
+	result, err := afero.ReadFile(fs, path)
+	require.NoError(t, err)
+
+	require.Equal(t, expected, result)
+
+	fi, err := fs.Stat(path)
 	require.NoError(t, err)
 
 	require.Equal(t, os.FileMode(0o640), fi.Mode())

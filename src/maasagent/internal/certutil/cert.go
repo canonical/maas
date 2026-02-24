@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,168 +17,80 @@ package certutil
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/rand"
-	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/spf13/afero"
-	"maas.io/core/src/maasagent/internal/pathutil"
+	"maas.io/core/src/maasagent/internal/atomicfile"
 )
 
-// TODO: MAAS controller is using RSA 4096, this default is here to match it.
-// We should consider moving to ECDSA instead.
-const (
-	defaultRSAKeySize = 4096
-)
-
-type dataPathFactory func(string) string
-
-// CertBundle holds a private key along with a certificate.
-// It is expected that certificate can be nil. In that case the caller should
-// generate CSR and then save the signed certificate to update the bundle.
-type CertBundle struct {
-	fs              afero.Fs
-	PrivateKey      *rsa.PrivateKey
-	Certificate     *x509.Certificate
-	dataPathFactory dataPathFactory
-	keySize         int
-}
-
-type CertBundleOption func(*CertBundle)
-
-// WithDataPathFactory used for testing.
-func WithDataPathFactory(factory dataPathFactory) CertBundleOption {
-	return func(cb *CertBundle) {
-		cb.dataPathFactory = factory
-	}
-}
-
-// WithFS sets a custom filesystem for testing purposes.
-func WithFS(fs afero.Fs) CertBundleOption {
-	return func(cb *CertBundle) {
-		cb.fs = fs
-	}
-}
-
-// WithRSAKeySize sets a custom key size to speed up testing.
-func WithRSAKeySize(n int) CertBundleOption {
-	return func(cb *CertBundle) {
-		cb.keySize = n
-	}
-}
-
-// NewCertBundle creates a new CertBundle with only a private key field being
-// initialized with a newly generated key.
-func NewCertBundle(opts ...CertBundleOption) (*CertBundle, error) {
-	cb := &CertBundle{
-		keySize:         defaultRSAKeySize,
-		dataPathFactory: pathutil.GetDataPath,
-		fs:              afero.NewOsFs(),
+// WriteCertificate encodes the entire certificate chain from a tls.Certificate
+// into PEM format and writes it to the specified path. The certificates are
+// written in order, starting with the leaf. It uses an atomic write to
+// prevent file corruption.
+func WriteCertificate(fs afero.Fs, path string, cert tls.Certificate) error {
+	if len(cert.Certificate) == 0 {
+		return fmt.Errorf("certificate contains no data")
 	}
 
-	for _, opt := range opts {
-		opt(cb)
+	var buf bytes.Buffer
+
+	for i, der := range cert.Certificate {
+		block := &pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: der,
+		}
+
+		if err := pem.Encode(&buf, block); err != nil {
+			return fmt.Errorf("failed to encode certificate at index %d: %w", i, err)
+		}
 	}
 
-	certsDir := cb.dataPathFactory("certificates")
-
-	keyFile := filepath.Join(filepath.Clean(certsDir), "client.key")
-
-	key, err := rsa.GenerateKey(rand.Reader, cb.keySize)
-	if err != nil {
-		return nil, err
+	if err := atomicfile.WriteFileWithFs(fs, path, buf.Bytes(), 0o644); err != nil {
+		return fmt.Errorf("failed to write certificate chain to %s: %w", path, err)
 	}
-
-	f, err := cb.fs.OpenFile(keyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file for writing: %w", err)
-	}
-	defer f.Close() //nolint:errcheck // we could log this, but we decided not to.
-
-	if err := pem.Encode(
-		f,
-		&pem.Block{
-			Bytes: x509.MarshalPKCS1PrivateKey(key),
-			Type:  "RSA PRIVATE KEY",
-		},
-	); err != nil {
-		return nil, fmt.Errorf("failed to encode private key to PEM: %w", err)
-	}
-
-	cb.PrivateKey = key
-
-	return cb, nil
-}
-
-// LoadCertBundle returns a new CertBundle using an existing private key and
-// certificate from disk.
-func LoadCertBundle(opts ...CertBundleOption) (*CertBundle, error) {
-	cb := &CertBundle{
-		dataPathFactory: pathutil.GetDataPath,
-		fs:              afero.NewOsFs(),
-	}
-
-	for _, opt := range opts {
-		opt(cb)
-	}
-
-	certsDir := cb.dataPathFactory("certificates")
-
-	keyFile := filepath.Join(filepath.Clean(certsDir), "client.key")
-	certFile := filepath.Join(filepath.Clean(certsDir), "client.pem")
-
-	key, err := loadPrivateKey(cb.fs, keyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	cb.PrivateKey = key
-
-	cert, err := loadCertificate(cb.fs, certFile)
-	if err != nil {
-		return nil, err
-	}
-
-	cb.Certificate = cert
-
-	return cb, nil
-}
-
-// SetCertificateFromPEM writes a certificate as PEM to disk, and updates the
-// bundle.
-func (cb *CertBundle) SetCertificateFromPEM(fs afero.Fs, pemData []byte) error {
-	block, _ := pem.Decode(pemData)
-	if block == nil {
-		return fmt.Errorf("failed to decode PEM block")
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return fmt.Errorf("failed to parse certificate: %w", err)
-	}
-
-	certsDir := cb.dataPathFactory("certificates")
-	certFile := filepath.Join(certsDir, "client.pem")
-
-	if err := afero.WriteFile(fs, certFile, pemData, 0o644); err != nil {
-		return fmt.Errorf("failed to write certificate to file: %w", err)
-	}
-
-	cb.Certificate = cert
 
 	return nil
 }
 
-// GenerateCSRPEM generates a PEM encoded CSR for a given Common Name and using
-// a private key from the bundle to sign it.
-func (cb *CertBundle) GenerateCSRPEM(cn string) ([]byte, error) {
+// WritePrivateKey marshals the given crypto.PrivateKey into PKCS#8 PEM format
+// and writes it to the specified path. It uses an atomic write to prevent
+// file corruption.
+func WritePrivateKey(fs afero.Fs, path string, key crypto.PrivateKey) error {
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return fmt.Errorf("failed to marshal private key: %v", err)
+	}
+
+	var buf bytes.Buffer
+
+	block := &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: der,
+	}
+
+	if err := pem.Encode(&buf, block); err != nil {
+		return fmt.Errorf("failed to encode key: %w", err)
+	}
+
+	if err := atomicfile.WriteFileWithFs(fs, path, buf.Bytes(), 0o600); err != nil {
+		return fmt.Errorf("failed to write key to %s: %w", path, err)
+	}
+
+	return nil
+}
+
+// CreateCSR generates a PEM-encoded certificate signing request (CSR) using
+// the provided private key and common name (CN).
+// The CSR is created in PKCS#10 format.
+func CreateCSR(cn string, key crypto.PrivateKey) ([]byte, error) {
 	derBytes, err := x509.CreateCertificateRequest(rand.Reader,
-		&x509.CertificateRequest{Subject: pkix.Name{CommonName: cn}}, cb.PrivateKey)
+		&x509.CertificateRequest{Subject: pkix.Name{CommonName: cn}}, key)
 	if err != nil {
 		return nil, fmt.Errorf("error creating CSR: %w", err)
 	}
@@ -188,43 +100,82 @@ func (cb *CertBundle) GenerateCSRPEM(cn string) ([]byte, error) {
 	err = pem.Encode(pemBytes, &pem.Block{Type: "CERTIFICATE REQUEST",
 		Bytes: derBytes})
 	if err != nil {
-		return nil, fmt.Errorf("error encoding certificate PEM: %w", err)
+		return nil, fmt.Errorf("error encoding CSR into PEM: %w", err)
 	}
 
-	return pemBytes.Bytes(), err
+	return pemBytes.Bytes(), nil
 }
 
-// loadPrivateKey would try to load PEM-encoded key from file.
-func loadPrivateKey(fs afero.Fs, path string) (*rsa.PrivateKey, error) {
-	b, err := afero.ReadFile(fs, path)
-	if err != nil {
-		return nil, err
+// WriteCertificatePEM validates that the provided certPEM contains at least
+// one valid PEM-encoded X.509 certificate (scanning all CERTIFICATE blocks),
+// and writes the PEM data to a file.
+//
+// Returns an error if no valid CERTIFICATE blocks are found in certPEM, if any
+// block cannot be parsed as an X.509 certificate, or if writing the file fails.
+func WriteCertificatePEM(fs afero.Fs, path string, certPEM []byte) error {
+	tail := certPEM
+	found := false
+
+	for {
+		block, next := pem.Decode(tail)
+		if block == nil {
+			break
+		}
+
+		if block.Type != "CERTIFICATE" {
+			return fmt.Errorf("unexpected PEM block type: %s", block.Type)
+		}
+
+		if _, err := x509.ParseCertificate(block.Bytes); err != nil {
+			return fmt.Errorf("invalid certificate in CA: %w", err)
+		}
+
+		found = true
+		tail = next
 	}
 
-	block, _ := pem.Decode(b)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block")
+	if !found {
+		return fmt.Errorf("did not find any CERTIFICATE blocks")
 	}
 
-	return x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err := atomicfile.WriteFileWithFs(fs, path, certPEM, 0o644); err != nil {
+		return fmt.Errorf("failed to write CA PEM to file: %w", err)
+	}
+
+	return nil
 }
 
-// loadCertificate loads a PEM-encoded certificate from the given file.
-func loadCertificate(fs afero.Fs, path string) (*x509.Certificate, error) {
-	data, err := afero.ReadFile(fs, path)
+// LoadX509KeyPair works like tls.LoadX509KeyPair but allows using afero.Fs
+func LoadX509KeyPair(fs afero.Fs, certFile string,
+	keyFile string) (tls.Certificate, error) {
+	keyPEM, err := afero.ReadFile(fs, keyFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read certificate file: %w", err)
+		return tls.Certificate{}, fmt.Errorf("failed to read private key: %w", err)
 	}
 
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block")
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
+	certPEM, err := afero.ReadFile(fs, certFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse certificate: %w", err)
+		return tls.Certificate{}, fmt.Errorf("failed to read certificate: %w", err)
 	}
 
-	return cert, nil
+	return tls.X509KeyPair(certPEM, keyPEM)
+}
+
+// LoadCAPool returns x509.SystemCertPool with added PEM data read from afero.Fs
+func LoadCAPool(fs afero.Fs, caFile string) (*x509.CertPool, error) {
+	caPEM, err := afero.ReadFile(fs, caFile)
+	if err != nil {
+		return nil, fmt.Errorf("read CA file: %w", err)
+	}
+
+	pool, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, fmt.Errorf("system cert pool: %w", err)
+	}
+
+	if ok := pool.AppendCertsFromPEM(caPEM); !ok {
+		return nil, fmt.Errorf("no certificates found in %s", caFile)
+	}
+
+	return pool, nil
 }

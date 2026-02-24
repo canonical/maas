@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -18,6 +18,8 @@ package atomicfile
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/afero"
 )
 
 // WriteFile writes data to a temporary filename.tmp, then replaces an existing
@@ -60,4 +62,48 @@ func WriteFile(filename string, data []byte, perm os.FileMode) (err error) {
 	}
 
 	return os.Rename(tname, filename)
+}
+
+// WriteFileWithFs writes data to a temporary filename.tmp, then replaces an
+// existing file with the same name atomically.
+// However on non-Unix platforms os.Rename is not an atomic operation, hence the
+// whole WriteFileWithFs is not atomic.
+//
+//nolint:nonamedreturns // named return is needed for cleanup
+func WriteFileWithFs(fs afero.Fs, filename string, data []byte,
+	perm os.FileMode) (err error) {
+	tf, err := afero.TempFile(fs, filepath.Dir(filename),
+		filepath.Base(filename)+".*.tmp")
+	if err != nil {
+		return err
+	}
+
+	tname := tf.Name()
+
+	defer func() {
+		if err != nil {
+			//nolint:errcheck,gosec // we already return a more important error
+			tf.Close()
+			//nolint:errcheck,gosec // we already return a more important error
+			fs.Remove(tname)
+		}
+	}()
+
+	if _, err := tf.Write(data); err != nil {
+		return err
+	}
+
+	if err := fs.Chmod(tname, perm); err != nil {
+		return err
+	}
+
+	if err := tf.Sync(); err != nil {
+		return err
+	}
+
+	if err := tf.Close(); err != nil {
+		return err
+	}
+
+	return fs.Rename(tname, filename)
 }
