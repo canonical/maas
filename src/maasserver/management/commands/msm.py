@@ -4,13 +4,14 @@
 """Commands for managing enrolment with a Site Manager instance."""
 
 import argparse
+import base64
 from contextlib import closing
 from datetime import datetime
+import json
 from ssl import CertificateError
 from urllib.parse import urlparse
 
 from django.core.management.base import CommandError
-from jose import ExpiredSignatureError, JOSEError, jwt
 from jsonschema import validate, ValidationError
 import pytz
 import yaml
@@ -83,28 +84,28 @@ class Command(BaseCommandWithConnection):
                 print("Could not determine the status of enrolment")
 
     def _enrol(self, options):
-        # We don't know exactly what to expect from these claims, so don't verify them
-        decode_opts = {
-            "verify_signature": False,
-            "verify_aud": False,
-            "verify_sub": False,
-            "verify_iss": False,
-        }
         enrolment_token = options["enrolment_token"]
         config = ""
         if options["config_file"] is not None:
             with closing(options["config_file"]) as cfg_file:
                 config = cfg_file.read()
         try:
-            decoded = jwt.decode(
-                enrolment_token,
-                "",
-                algorithms=["HS256"],
-                options=decode_opts,
-            )
-        except ExpiredSignatureError:
-            raise CommandError("Enrolment token is expired.")  # noqa: B904
-        except JOSEError:
+            # Manually decode JWT without verification to extract claims
+            parts = enrolment_token.split(".")
+            if len(parts) != 3:
+                raise CommandError("Invalid enrolment token format.")
+            
+            # Decode payload (add padding if needed)
+            payload_part = parts[1]
+            payload_part += "=" * (4 - len(payload_part) % 4)
+            decoded = json.loads(base64.urlsafe_b64decode(payload_part))
+            
+            # Check expiration manually
+            if "exp" in decoded:
+                import time
+                if time.time() > decoded["exp"]:
+                    raise CommandError("Enrolment token is expired.")
+        except (ValueError, json.JSONDecodeError, KeyError):
             raise CommandError("Invalid enrolment token.")  # noqa: B904
         # validate the yaml config
         if config:
