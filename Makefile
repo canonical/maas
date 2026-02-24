@@ -181,7 +181,7 @@ test-perf-quiet: bin/pytest
 	bin/pytest -q --disable-warnings --show-capture=no --no-header --no-summary src/perftests
 .PHONY: test-perf-quiet
 
-update-initial-sql: bin/database bin/maas-region cleandb
+update-initial-sql: build bin/database bin/maas-region cleandb
 	$(dbrun) utilities/update-initial-sql src/maasserver/testing/initial.maas_test.sql
 .PHONY: update-initial-sql
 
@@ -358,7 +358,7 @@ dbshell: bin/database
 	bin/database --preserve shell
 .PHONY: dbshell
 
-syncdb: bin/maas-region bin/database
+syncdb: build bin/maas-region bin/database
 	$(dbrun) bin/maas-region dbupgrade $(DBUPGRADE_ARGS) --openfga-path $(PWD)/src/maasopenfga/build/
 .PHONY: syncdb
 
