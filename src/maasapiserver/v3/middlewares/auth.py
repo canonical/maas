@@ -2,13 +2,12 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
+import base64
 from datetime import timedelta
 import json
 from typing import Awaitable, Callable, Dict, Sequence
 
 from fastapi import Request, Response
-from jose import jwt
-from jose.exceptions import JWTError
 from macaroonbakery import bakery
 import macaroonbakery._utils as utils
 from pymacaroons import Macaroon
@@ -573,8 +572,16 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
     ) -> AuthenticatedUser:
         token = auth_header.split(" ")[1]
         try:
-            header = jwt.get_unverified_claims(token)
-        except JWTError:
+            # Manually decode JWT without verification to extract claims (including issuer)
+            parts = token.split(".")
+            if len(parts) != 3:
+                raise ValueError("Invalid JWT format")
+            
+            # Decode payload (add padding if needed)
+            payload_part = parts[1]
+            payload_part += "=" * (4 - len(payload_part) % 4)
+            header = json.loads(base64.urlsafe_b64decode(payload_part))
+        except (ValueError, json.JSONDecodeError):
             raise BadRequestException(  # noqa: B904
                 details=[
                     BaseExceptionDetail(
