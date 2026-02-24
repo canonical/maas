@@ -5,11 +5,11 @@ from datetime import timedelta
 from json import dumps as _dumps
 from typing import Callable
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
+import base64
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
-from jose import jwt
 from macaroonbakery.bakery import Macaroon
 import pytest
 
@@ -168,10 +168,11 @@ class TestAuthApi:
 
         token_response = TokenResponse(**response.json())
         assert token_response.token_type == "bearer"
-        assert (
-            jwt.get_unverified_claims(token_response.access_token)["sub"]
-            == "username"
-        )
+        # Manually decode JWT to get claims without verification
+        payload_part = token_response.access_token.split(".")[1]
+        payload_part += "=" * (4 - len(payload_part) % 4)
+        claims = _loads(base64.urlsafe_b64decode(payload_part))
+        assert claims["sub"] == "username"
         assert token_response.refresh_token == "abc123"
 
     async def test_post_validation_failed(
@@ -259,7 +260,10 @@ class TestAuthApi:
         token_response = TokenResponse(**response.json())
         assert token_response.kind == "Tokens"
         assert token_response.token_type == "bearer"
-        decoded_token = jwt.get_unverified_claims(token_response.access_token)
+        # Manually decode JWT to get claims without verification
+        payload_part = token_response.access_token.split(".")[1]
+        payload_part += "=" * (4 - len(payload_part) % 4)
+        decoded_token = _loads(base64.urlsafe_b64decode(payload_part))
         assert decoded_token["sub"] == "username"
         assert decoded_token["user_id"] == 0
         assert token_response.refresh_token is None
@@ -281,7 +285,10 @@ class TestAuthApi:
         token_response = TokenResponse(**response.json())
         assert token_response.kind == "Tokens"
         assert token_response.token_type == "bearer"
-        decoded_token = jwt.get_unverified_claims(token_response.access_token)
+        # Manually decode JWT to get claims without verification
+        payload_part = token_response.access_token.split(".")[1]
+        payload_part += "=" * (4 - len(payload_part) % 4)
+        decoded_token = _loads(base64.urlsafe_b64decode(payload_part))
         assert decoded_token["sub"] == "username"
         assert decoded_token["user_id"] == 0
         assert token_response.refresh_token is None

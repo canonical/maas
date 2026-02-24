@@ -145,7 +145,7 @@ parts:
       - python3-httpx
       - python3-hvac
       - python3-idna # for macaroonbakery
-      - python3-jose
+      - python3-joserfc
       - python3-jsonschema
       - python3-lxml
       - python3-macaroonbakery
