@@ -449,6 +449,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         from maasserver.models import Filesystem
 
         # don't use filesystem_set as the object might not be saved yet
+        if self.pk is None:
+            return None
         fs = Filesystem.objects.filter(filesystem_group=self).first()
         if fs is None:
             return None

@@ -172,8 +172,8 @@ class Event(CleanSave, TimestampedModel):
 
     class Meta:
         verbose_name = "Event record"
-        index_together = (("node", "id"),)
         indexes = [
+            Index(fields=["node", "id"]),
             # Needed to get the latest event for each node on the
             # machine listing page.
             Index(fields=["node", "-created", "-id"])

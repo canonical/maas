@@ -174,4 +174,6 @@ class Space(CleanSave, TimestampedModel):
         # Circular imports.
         from maasserver.models import Subnet
 
+        if self.pk is None:
+            return Subnet.objects.none()
         return Subnet.objects.filter(vlan__space=self)
