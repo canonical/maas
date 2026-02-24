@@ -168,12 +168,13 @@ func NewDHCPService(
 		controllerV6:       controllerV6,
 		omapiConnFactory:   net.Dial,
 		omapiClientFactory: omapi.NewClient,
-		dataPathFactory:    pathutil.GetMAASDataPath,
-		internal:           internal,
-		stateLock:          &sync.RWMutex{},
-		runningV4:          &atomic.Bool{},
-		runningV6:          &atomic.Bool{},
-		running:            &atomic.Bool{},
+		//nolint:staticcheck // TODO: replace this with DataPath
+		dataPathFactory: pathutil.MAASDataPath,
+		internal:        internal,
+		stateLock:       &sync.RWMutex{},
+		runningV4:       &atomic.Bool{},
+		runningV6:       &atomic.Bool{},
+		running:         &atomic.Bool{},
 	}
 
 	s.serverStart = s.startInternalServer

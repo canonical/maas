@@ -21,62 +21,184 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetDataPath(t *testing.T) {
+func TestDataPath(t *testing.T) {
 	testcases := map[string]struct {
-		in  func(t *testing.T)
-		out string
+		setup func(t *testing.T)
+		in    string
+		out   string
 	}{
 		"snap": {
-			in: func(t *testing.T) {
-				t.Setenv("SNAP_DATA", "/var/snap/maas/x1")
+			setup: func(t *testing.T) {
+				t.Setenv("SNAP_COMMON", "/var/snap/maas/common")
 			},
-			out: "/var/snap/maas/x1/foo",
+			in:  "foo",
+			out: "/var/snap/maas/common/var/lib/maas/foo",
 		},
 		"deb": {
-			in: func(t *testing.T) {
-				t.Setenv("SNAP_DATA", "")
-			}, out: "/var/lib/maas/foo",
+			setup: func(t *testing.T) {
+				t.Setenv("SNAP_COMMON", "")
+			},
+			in:  "foo",
+			out: "/var/lib/maas/foo",
+		},
+		"clean input path": {
+			setup: func(t *testing.T) {
+				t.Setenv("SNAP_COMMON", "")
+			},
+			in:  "bar/../baz",
+			out: "/var/lib/maas/baz",
 		},
 	}
 
 	for name, tc := range testcases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
-			tc.in(t)
-
-			res := GetDataPath("foo")
-			assert.Equal(t, tc.out, res)
+			tc.setup(t)
+			assert.Equal(t, tc.out, DataPath(tc.in))
 		})
 	}
 }
 
-func TestGetMAASDataPath(t *testing.T) {
+func TestDataDir(t *testing.T) {
+	t.Run("snap", func(t *testing.T) {
+		t.Setenv("SNAP_COMMON", "/var/snap/maas/common")
+		assert.Equal(t, "/var/snap/maas/common/var/lib/maas", DataDir())
+	})
+
+	t.Run("deb", func(t *testing.T) {
+		t.Setenv("SNAP_COMMON", "")
+		assert.Equal(t, "/var/lib/maas", DataDir())
+	})
+}
+
+func TestConfigPath(t *testing.T) {
 	testcases := map[string]struct {
-		in  func(t *testing.T)
-		out string
+		setup func(t *testing.T)
+		in    string
+		out   string
 	}{
 		"snap": {
-			in: func(t *testing.T) {
-				t.Setenv("MAAS_DATA", "/var/snap/maas/common")
-			},
-			out: "/var/snap/maas/common/foo",
+			setup: func(t *testing.T) { t.Setenv("SNAP_COMMON", "/var/snap/maas/common") },
+			in:    "conf",
+			out:   "/var/snap/maas/common/etc/maas/conf",
 		},
 		"deb": {
-			in: func(t *testing.T) {
-				t.Setenv("MAAS_DATA", "")
-			}, out: "/var/lib/maas/foo",
+			setup: func(t *testing.T) { t.Setenv("SNAP_COMMON", "") },
+			in:    "conf",
+			out:   "/etc/maas/conf",
 		},
 	}
 
 	for name, tc := range testcases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
-			tc.in(t)
+			tc.setup(t)
+			assert.Equal(t, tc.out, ConfigPath(tc.in))
+		})
+	}
+}
 
-			res := GetMAASDataPath("foo")
-			assert.Equal(t, tc.out, res)
+func TestConfigDir(t *testing.T) {
+	t.Run("snap", func(t *testing.T) {
+		t.Setenv("SNAP_COMMON", "/var/snap/maas/common")
+		assert.Equal(t, "/var/snap/maas/common/etc/maas", ConfigDir())
+	})
+
+	t.Run("deb", func(t *testing.T) {
+		t.Setenv("SNAP_COMMON", "")
+		assert.Equal(t, "/etc/maas", ConfigDir())
+	})
+}
+
+func TestRunDir(t *testing.T) {
+	testcases := map[string]struct {
+		setup func(t *testing.T)
+		out   string
+	}{
+		"snap": {
+			setup: func(t *testing.T) {
+				t.Setenv("SNAP_INSTANCE_NAME", "maas")
+			},
+			out: "/run/snap.maas",
+		},
+		"deb": {
+			setup: func(t *testing.T) {
+				t.Setenv("SNAP_INSTANCE_NAME", "")
+			},
+			out: "/run/maas",
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			tc.setup(t)
+			assert.Equal(t, tc.out, RunDir())
+		})
+	}
+}
+
+func TestCachePath(t *testing.T) {
+	testcases := map[string]struct {
+		setup func(t *testing.T)
+		in    string
+		out   string
+	}{
+		"snap": {
+			setup: func(t *testing.T) { t.Setenv("SNAP_COMMON", "/var/snap/maas/common") },
+			in:    "cachefile",
+			out:   "/var/snap/maas/common/var/cache/maas/cachefile",
+		},
+		"deb": {
+			setup: func(t *testing.T) { t.Setenv("SNAP_COMMON", "") },
+			in:    "cachefile",
+			out:   "/var/cache/maas/cachefile",
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			tc.setup(t)
+			assert.Equal(t, tc.out, CachePath(tc.in))
+		})
+	}
+}
+
+func TestCacheDir(t *testing.T) {
+	t.Run("snap", func(t *testing.T) {
+		t.Setenv("SNAP_COMMON", "/var/snap/maas/common")
+		assert.Equal(t, "/var/snap/maas/common/var/cache/maas", CacheDir())
+	})
+
+	t.Run("deb", func(t *testing.T) {
+		t.Setenv("SNAP_COMMON", "")
+		assert.Equal(t, "/var/cache/maas", CacheDir())
+	})
+}
+
+func TestMAASDataPath(t *testing.T) {
+	testcases := map[string]struct {
+		setup func(t *testing.T)
+		in    string
+		out   string
+	}{
+		"env set": {
+			setup: func(t *testing.T) {
+				t.Setenv("MAAS_DATA", "/custom/maas")
+			},
+			in:  "foo",
+			out: "/custom/maas/foo",
+		},
+		"env empty": {
+			setup: func(t *testing.T) {
+				t.Setenv("MAAS_DATA", "")
+			},
+			in:  "foo",
+			out: "/var/lib/maas/foo",
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			tc.setup(t)
+			assert.Equal(t, tc.out, MAASDataPath(tc.in))
 		})
 	}
 }

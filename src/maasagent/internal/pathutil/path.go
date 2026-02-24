@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -16,28 +16,85 @@
 package pathutil
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
 
-// GetDataPath returns directory for MAAS data files depending on
-// MAAS installation type (snap or deb).
-func GetDataPath(path string) string {
-	dataDir := os.Getenv("SNAP_DATA")
+const (
+	defaultDataDir   = "/var/lib/maas"
+	defaultConfigDir = "/etc/maas"
+	defaultCacheDir  = "/var/cache/maas"
+	defaultRunDir    = "/run/maas"
+)
 
-	if dataDir != "" {
-		return filepath.Join(filepath.Clean(dataDir), path)
+// DataPath returns the MAAS data path (snap or deb) with the given relative path appended.
+func DataPath(path string) string {
+	base := defaultDataDir
+	if dataDir := os.Getenv("SNAP_COMMON"); dataDir != "" {
+		base = filepath.Join(filepath.Clean(dataDir), defaultDataDir)
 	}
 
-	return filepath.Join("/var/lib/maas", path)
+	return filepath.Join(base, path)
 }
 
-func GetMAASDataPath(path string) string {
-	maasDir := os.Getenv("MAAS_DATA")
+// DataDir returns the root MAAS data directory (snap or deb).
+func DataDir() string {
+	return DataPath("")
+}
 
-	if maasDir != "" {
+// ConfigPath returns the MAAS config path (snap or deb) with the given relative path appended.
+func ConfigPath(path string) string {
+	path = filepath.Clean(path)
+
+	base := defaultConfigDir
+	if dataDir := os.Getenv("SNAP_COMMON"); dataDir != "" {
+		base = filepath.Join(filepath.Clean(dataDir), defaultConfigDir)
+	}
+
+	return filepath.Join(base, path)
+}
+
+// ConfigDir returns the root MAAS config directory (snap or deb).
+func ConfigDir() string {
+	return ConfigPath("")
+}
+
+// RunDir returns the MAAS runtime directory (snap or deb).
+func RunDir() string {
+	if name := os.Getenv("SNAP_INSTANCE_NAME"); name != "" {
+		return fmt.Sprintf("/run/snap.%s", name)
+	}
+
+	return defaultRunDir
+}
+
+// CachePath returns the MAAS cache path (snap or deb) with the given relative path appended.
+func CachePath(path string) string {
+	path = filepath.Clean(path)
+
+	base := defaultCacheDir
+	if dataDir := os.Getenv("SNAP_COMMON"); dataDir != "" {
+		base = filepath.Join(filepath.Clean(dataDir), defaultCacheDir)
+	}
+
+	return filepath.Join(base, path)
+}
+
+// CacheDir returns the root MAAS cache directory (snap or deb).
+func CacheDir() string {
+	return CachePath("")
+}
+
+// MAASDataPath returns MAAS_DATA (if set) or the default MAAS data path.
+//
+// Deprecated: Use DataPath instead.
+func MAASDataPath(path string) string {
+	path = filepath.Clean(path)
+
+	if maasDir := os.Getenv("MAAS_DATA"); maasDir != "" {
 		return filepath.Join(filepath.Clean(maasDir), path)
 	}
 
-	return filepath.Join("/var/lib/maas", path)
+	return filepath.Join(defaultDataDir, path)
 }

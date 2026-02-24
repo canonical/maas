@@ -54,7 +54,7 @@ type ClusterServiceOption func(*ClusterService)
 func NewClusterService(systemID string,
 	options ...ClusterServiceOption) (*ClusterService, error) {
 	s := &ClusterService{systemID: systemID,
-		dataPathFactory: pathutil.GetDataPath,
+		dataPathFactory: pathutil.DataPath,
 	}
 
 	for _, opt := range options {
