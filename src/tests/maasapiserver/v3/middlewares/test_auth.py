@@ -30,17 +30,13 @@ from maasapiserver.v3.auth.cookie_manager import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
-    DjangoSessionAuthenticationProvider,
     EXTERNAL_USER_CHECK_INTERVAL,
     LocalAuthenticationProvider,
     MacaroonAuthenticationProvider,
     OIDCAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
-from maasapiserver.v3.middlewares.context import (
-    ContextMiddleware,
-    TRACE_ID_HEADER_KEY,
-)
+from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maascommon.logging.security import (
     ADMIN,
@@ -90,7 +86,6 @@ from maasservicelayer.services.external_auth import (
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.user import (
-    create_test_session,
     create_test_user,
     create_test_user_profile,
 )
@@ -139,7 +134,6 @@ def auth_app(
         V3AuthenticationMiddleware,
         providers_cache=AuthenticationProvidersCache(
             jwt_authentication_providers=[LocalAuthenticationProvider()],
-            session_authentication_provider=DjangoSessionAuthenticationProvider(),
             macaroon_authentication_provider=MacaroonAuthenticationProvider(),
             oidc_authentication_provider=OIDCAuthenticationProvider(),
         ),
@@ -238,100 +232,73 @@ class TestV3AuthenticationMiddleware:
         assert authenticated_user.username == "test"
         assert authenticated_user.roles == {UserRole.USER}
 
-    async def test_authentication_with_sessionid(
-        self, fixture: Fixture, auth_client: AsyncClient
-    ) -> None:
-        # invalid session_id
-        invalid_token_response = await auth_client.get(
-            f"{V3_API_PREFIX}/users/me",
-            headers={"Cookie": "sessionid=invalid"},
-        )
-        assert invalid_token_response.status_code == 401
-
-        # valid user session_id
-        user = await create_test_user(fixture)
-        session_id = "mysession"
-        await create_test_session(
-            fixture=fixture, user_id=user.id, session_id=session_id
-        )
-        authenticated_v3_response = await auth_client.get(
-            f"{V3_API_PREFIX}/users/me",
-            headers={"Cookie": f"sessionid={session_id}"},
-        )
-        assert authenticated_v3_response.status_code == 200
-        authenticated_user = AuthenticatedUser(
-            **authenticated_v3_response.json()
-        )
-        assert authenticated_user.username == "myusername"
-        assert authenticated_user.roles == {UserRole.USER}
-
-        # valid admin session_id
-        admin = await create_test_user(
-            fixture, username="admin", is_superuser=True
-        )
-        admin_session_id = "adminsession"
-        await create_test_session(
-            fixture=fixture, user_id=admin.id, session_id=admin_session_id
-        )
-        authenticated_v3_response = await auth_client.get(
-            f"{V3_API_PREFIX}/users/me",
-            headers={"Cookie": f"sessionid={admin_session_id}"},
-        )
-        assert authenticated_v3_response.status_code == 200
-        authenticated_admin = AuthenticatedUser(
-            **authenticated_v3_response.json()
-        )
-        assert authenticated_admin.username == "admin"
-        assert authenticated_admin.roles == {UserRole.ADMIN, UserRole.USER}
-
     async def test_authentication_creates_logging_context(
         self,
         fixture: Fixture,
-        auth_client: AsyncClient,
         mocker: MockerFixture,
     ) -> None:
         mock_logger = mocker.patch("maasapiserver.v3.middlewares.auth.logger")
-
-        # invalid session_id
-        await auth_client.get(
-            f"{V3_API_PREFIX}/users/me",
-            headers={
-                "Cookie": "sessionid=invalid",
-                TRACE_ID_HEADER_KEY: "mock_trace_id",
-            },
+        request_mock = Mock(Request)
+        request_mock.cookies = {}
+        request_mock.state.services.external_oauth.get_encryptor = AsyncMock(
+            return_value=None
         )
+        authenticated_user = AuthenticatedUser(
+            id=0, username="myuser", roles={UserRole.USER}
+        )
+        authenticated_admin = AuthenticatedUser(
+            id=1, username="admin", roles={UserRole.USER, UserRole.ADMIN}
+        )
+        local_auth_provider_mock = Mock(LocalAuthenticationProvider)
+        authentication_providers_cache = AuthenticationProvidersCache(
+            jwt_authentication_providers=[local_auth_provider_mock],
+            macaroon_authentication_provider=None,
+            oidc_authentication_provider=None,
+        )
+        auth_middleware = V3AuthenticationMiddleware(
+            app=None, providers_cache=authentication_providers_cache
+        )
+        auth_middleware._jwt_authentication = AsyncMock(
+            side_effect=[
+                BadRequestException(),
+                authenticated_user,
+                authenticated_admin,
+            ]
+        )
+
+        # invalid JWT token
+        request_mock.headers = {"Authorization": "bearer invalid_token"}
+
+        with pytest.raises(BadRequestException):
+            await auth_middleware.dispatch(request_mock, AsyncMock(Callable))
         mock_logger.assert_not_called()
 
-        # valid user session_id
+        # valid user JWT Token
         user = await create_test_user(
             fixture, username="myuser", is_superuser=False
         )
-        session_id = "mysession"
-        await create_test_session(
-            fixture=fixture, user_id=user.id, session_id=session_id
+        valid_token = JWT.create(
+            "123", user.username, user.id, [UserRole.USER]
         )
-        await auth_client.get(
-            f"{V3_API_PREFIX}/users/me",
-            headers={"Cookie": f"sessionid={session_id}"},
-        )
+        request_mock.headers = {
+            "Authorization": "bearer " + valid_token.encoded
+        }
+        await auth_middleware.dispatch(request_mock, AsyncMock(Callable))
         mock_logger.info.assert_called_with(
             AUTHN_AUTH_SUCCESSFUL, type=SECURITY, userID="myuser", role=USER
         )
 
-        # valid admin session_id
+        # valid admin JWT Token
         admin = await create_test_user(
             fixture, username="admin", is_superuser=True
         )
-        admin_session_id = "adminsession"
-        await create_test_session(
-            fixture=fixture,
-            user_id=admin.id,
-            session_id=admin_session_id,
+        valid_admin_token = JWT.create(
+            "123", admin.username, admin.id, [UserRole.ADMIN]
         )
-        await auth_client.get(
-            f"{V3_API_PREFIX}/users/me",
-            headers={"Cookie": f"sessionid={admin_session_id}"},
-        )
+        request_mock.headers = {
+            "Authorization": "bearer " + valid_admin_token.encoded
+        }
+        await auth_middleware.dispatch(request_mock, AsyncMock(Callable))
         mock_logger.info.assert_called_with(
             AUTHN_AUTH_SUCCESSFUL, type=SECURITY, userID="admin", role=ADMIN
         )
@@ -351,7 +318,6 @@ class TestV3AuthenticationMiddleware:
 
         authentication_providers_cache = AuthenticationProvidersCache(
             jwt_authentication_providers=None,
-            session_authentication_provider=None,
             oidc_authentication_provider=None,
             macaroon_authentication_provider=macaroon_auth_provider_mock,
         )
@@ -393,7 +359,6 @@ class TestV3AuthenticationMiddleware:
         oidc_auth_provider_mock.authenticate.return_value = authenticated_user
         authentication_providers_cache = AuthenticationProvidersCache(
             jwt_authentication_providers=None,
-            session_authentication_provider=None,
             macaroon_authentication_provider=None,
             oidc_authentication_provider=oidc_auth_provider_mock,
         )
@@ -425,20 +390,16 @@ class TestAuthenticationProvidersCache:
     def test_constructor(self) -> None:
         cache = AuthenticationProvidersCache()
         assert cache.size() == 0
-        assert cache.get_session_provider() is None
 
-        session_provider = DjangoSessionAuthenticationProvider()
         macaroon_provider = MacaroonAuthenticationProvider()
         oidc_authentication_provider = OIDCAuthenticationProvider()
         cache = AuthenticationProvidersCache(
             jwt_authentication_providers=[LocalAuthenticationProvider()],
-            session_authentication_provider=session_provider,
             macaroon_authentication_provider=macaroon_provider,
             oidc_authentication_provider=oidc_authentication_provider,
         )
         assert cache.size() == 1
         assert cache.get(LocalAuthenticationProvider.get_issuer()) is not None
-        assert cache.get_session_provider() is session_provider
         assert cache.get_macaroon_provider() is macaroon_provider
         assert cache.get_oidc_provider() is oidc_authentication_provider
 
@@ -465,45 +426,6 @@ class TestAuthenticationProvidersCache:
         assert id(replacement) == id(
             cache.get(LocalAuthenticationProvider.get_issuer())
         )
-
-
-class TestDjangoSessionAuthenticationProvider:
-    def mock_request(self, user) -> Mock:
-        request = Mock(Request)
-        request.state.services.users = Mock(UsersService)
-        request.state.services.users.get_by_session_id.return_value = user
-        return request
-
-    async def test_dispatch(self) -> None:
-        sessionid = "test"
-
-        user = _make_user()
-        request = self.mock_request(user)
-
-        provider = DjangoSessionAuthenticationProvider()
-        authenticated_user = await provider.authenticate(request, sessionid)
-
-        assert authenticated_user.username == user.username
-        assert authenticated_user.roles == {UserRole.USER}
-
-    async def test_dispatch_admin(self) -> None:
-        sessionid = "test"
-
-        user = _make_user(is_superuser=True)
-        request = self.mock_request(user)
-
-        provider = DjangoSessionAuthenticationProvider()
-        authenticated_user = await provider.authenticate(request, sessionid)
-
-        assert authenticated_user.username == user.username
-        assert authenticated_user.roles == {UserRole.ADMIN, UserRole.USER}
-
-    async def test_dispatch_unauthenticated(self) -> None:
-        request = self.mock_request(None)
-
-        provider = DjangoSessionAuthenticationProvider()
-        with pytest.raises(UnauthorizedException):
-            await provider.authenticate(request, "")
 
 
 class TestLocalAuthenticationProvider:
@@ -1188,6 +1110,28 @@ class TestOIDCAuthenticationProvider:
             value="newaccesstoken", key="maas.oauth2_access_token_cookie"
         )
 
+    async def test_dispatch_fails_to_refresh_token(self) -> None:
+        user = _make_oidc_user()
+        request = self.mock_request()
+        request.state.services.external_oauth.get_user_from_id_token.return_value = user
+        request.state.services.external_oauth.refresh_access_token.side_effect = UnauthorizedException()
+
+        provider = OIDCAuthenticationProvider()
+        provider._is_token_valid = AsyncMock(return_value=False)
+        provider._clear_oauth_cookies = Mock()
+
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await provider.authenticate(request, "accesstoken")
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+        assert details[0].message == "Please sign in again to continue."
+        provider._is_token_valid.assert_awaited_once_with(
+            request, "accesstoken"
+        )
+        request.state.cookie_manager.set_auth_cookie.assert_not_called()
+        provider._clear_oauth_cookies.assert_called_once_with(request)
+
     async def test_dispatch_with_missing_cookies(
         self, mocker: MockerFixture
     ) -> None:
@@ -1199,6 +1143,7 @@ class TestOIDCAuthenticationProvider:
         mock_logger = mocker.patch("maasapiserver.v3.middlewares.auth.logger")
 
         provider = OIDCAuthenticationProvider()
+        provider._clear_oauth_cookies = Mock()
 
         with pytest.raises(BadRequestException) as exc_info:
             await provider.authenticate(request, "accesstoken")
@@ -1209,3 +1154,4 @@ class TestOIDCAuthenticationProvider:
         )
         assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
         mock_logger.info.assert_called_with(AUTHN_AUTH_FAILED, type=SECURITY)
+        provider._clear_oauth_cookies.assert_called_once_with(request)

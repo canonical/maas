@@ -605,11 +605,12 @@ class ExternalOAuthService(
     async def get_client(self) -> OAuth2Client:
         provider = await self.get_provider()
         if not provider:
-            raise PreconditionFailedException(
+            raise ConflictException(
                 details=[
                     BaseExceptionDetail(
                         type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
-                        message="No enabled OIDC provider is configured.",
+                        message="No enabled OIDC provider is configured. Configure and enable an OIDC provider before "
+                        "using OAuth operations.",
                     )
                 ]
             )
@@ -624,12 +625,14 @@ class ExternalOAuthService(
     ) -> OAuthProvider | None:
         enable_requested = builder.enabled is True
         existing_enabled = await self.get_provider()
+        builder.issuer_url = builder.ensure_set(builder.issuer_url).rstrip("/")
 
         if (
             not enable_requested
             or not existing_enabled
             or existing_enabled.id == id
         ):
+            builder.metadata = await self.get_provider_metadata(builder)
             return await self.update_by_id(id=id, builder=builder)
 
         raise ConflictException(

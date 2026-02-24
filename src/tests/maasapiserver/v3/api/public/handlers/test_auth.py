@@ -112,8 +112,7 @@ TEST_PROVIDER_2 = OAuthProvider(
 class TestAuthApi:
     BASE_PATH = f"{V3_API_PREFIX}/auth"
 
-    # POST /auth/login
-
+    # GET /auth/login
     async def test_get(
         self,
         services_mock: ServiceCollectionV3,
@@ -127,6 +126,7 @@ class TestAuthApi:
         assert pre_login_info.is_authenticated is True
         assert pre_login_info.no_users is True
 
+    # POST /auth/login
     async def test_post(
         self,
         services_mock: ServiceCollectionV3,
@@ -327,16 +327,16 @@ class TestAuthApi:
         services_mock.users = Mock(UsersService)
         services_mock.users.is_oidc_user.return_value = True
         services_mock.external_oauth.get_client.side_effect = (
-            PreconditionFailedException()
+            ConflictException()
         )
         response = await mocked_api_client.get(
             f"{self.BASE_PATH}/login_info?email=test@example.com"
         )
 
-        assert response.status_code == 412
+        assert response.status_code == 409
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
-        assert error_response.code == 412
+        assert error_response.code == 409
 
     async def test_get_oauth_initiate_not_oidc_user(
         self,

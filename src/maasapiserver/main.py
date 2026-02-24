@@ -27,6 +27,9 @@ from maasapiserver.common.middlewares.exceptions import (
     ExceptionMiddleware,
 )
 from maasapiserver.common.middlewares.prometheus import PrometheusMiddleware
+from maasapiserver.common.middlewares.response_finalizer import (
+    ResponseFinalizerMiddleware,
+)
 from maasapiserver.settings import (
     api_service_socket_path,
     Config,
@@ -39,7 +42,6 @@ from maasapiserver.v3.api.public.handlers import APIv3, APIv3UI
 from maasapiserver.v3.listeners.vault import VaultMigrationPostgresListener
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
-    DjangoSessionAuthenticationProvider,
     LocalAuthenticationProvider,
     MacaroonAuthenticationProvider,
     OIDCAuthenticationProvider,
@@ -86,7 +88,6 @@ def craft_public_app(
                     jwt_authentication_providers=[
                         LocalAuthenticationProvider()
                     ],
-                    session_authentication_provider=DjangoSessionAuthenticationProvider(),
                     macaroon_authentication_provider=MacaroonAuthenticationProvider(),
                     oidc_authentication_provider=OIDCAuthenticationProvider(),
                 ),
@@ -94,6 +95,7 @@ def craft_public_app(
             MiddlewareHandler(ServicesMiddleware, cache=cache),
             MiddlewareHandler(transaction_middleware_class, db=db),
             MiddlewareHandler(ExceptionMiddleware),
+            MiddlewareHandler(ResponseFinalizerMiddleware),
             MiddlewareHandler(ContextMiddleware),
         ],
         exception_handlers=[
@@ -146,6 +148,7 @@ def craft_internal_app(
             MiddlewareHandler(TransactionMiddleware, db=db),
             MiddlewareHandler(RequireClientCertMiddleware),
             MiddlewareHandler(ExceptionMiddleware),
+            MiddlewareHandler(ResponseFinalizerMiddleware),
             MiddlewareHandler(ContextMiddleware),
         ],
         exception_handlers=[

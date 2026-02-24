@@ -964,15 +964,19 @@ class TestExternalOAuthService(ServiceCommonTests):
         service_instance.cache = service_instance.build_cache_object()
         service_instance.get_provider = AsyncMock(return_value=None)
 
-        with pytest.raises(PreconditionFailedException) as exc_info:
+        with pytest.raises(ConflictException) as exc_info:
             await service_instance.get_client()
         details = exc_info.value.details
         assert details is not None
-        assert details[0].message == "No enabled OIDC provider is configured."
+        assert (
+            details[0].message
+            == "No enabled OIDC provider is configured. Configure and enable an OIDC provider before using OAuth operations."
+        )
         assert details[0].type == MISSING_PROVIDER_CONFIG_VIOLATION_TYPE
 
     async def test_update_provider_success(
         self,
+        builder_model: OAuthProviderBuilder,
         service_instance: ExternalOAuthService,
         test_instance: OAuthProvider,
     ) -> None:
@@ -980,13 +984,21 @@ class TestExternalOAuthService(ServiceCommonTests):
         test_instance.client_id = "updated_id"
         test_instance.enabled = False
         service_instance.update_by_id = AsyncMock(return_value=test_instance)
+        service_instance.get_provider_metadata = AsyncMock(
+            return_value=test_instance.metadata
+        )
+        builder_model.issuer_url = test_instance.issuer_url
 
         updated_provider = await service_instance.update_provider(
-            id=1, builder=test_instance
+            id=1, builder=builder_model
         )
 
         assert updated_provider is not None
         assert updated_provider.client_id == "updated_id"
+        assert updated_provider.metadata == test_instance.metadata
+        service_instance.get_provider_metadata.assert_awaited_once_with(
+            builder_model
+        )
         assert not updated_provider.enabled
 
     async def test_update_provider_enables_when_none_enabled(
@@ -998,12 +1010,19 @@ class TestExternalOAuthService(ServiceCommonTests):
         service_instance.get_provider = AsyncMock(return_value=None)
         service_instance.update_by_id = AsyncMock(return_value=test_instance)
         builder_model.enabled = True
+        builder_model.issuer_url = test_instance.issuer_url
+        service_instance.get_provider_metadata = AsyncMock(
+            return_value=test_instance.metadata
+        )
         updated_provider = await service_instance.update_provider(
             id=1, builder=builder_model
         )
 
         service_instance.update_by_id.assert_awaited_once_with(
             id=1, builder=builder_model
+        )
+        service_instance.get_provider_metadata.assert_awaited_once_with(
+            builder_model
         )
         assert updated_provider == test_instance
 

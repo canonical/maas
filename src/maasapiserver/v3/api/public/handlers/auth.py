@@ -13,7 +13,6 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
-    PreconditionFailedBodyResponse,
     UnauthorizedBodyResponse,
 )
 from maasapiserver.common.utils.http import extract_absolute_uri
@@ -159,7 +158,7 @@ class AuthHandler(Handler):
         tags=TAGS,
         responses={
             200: {"model": AuthInfoResponse},
-            412: {"model": PreconditionFailedBodyResponse},
+            409: {"model": ConflictBodyResponse},
         },
         status_code=200,
     )

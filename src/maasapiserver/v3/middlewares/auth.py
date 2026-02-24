@@ -82,31 +82,6 @@ class AuthenticationProvider(abc.ABC):
         pass
 
 
-class DjangoSessionAuthenticationProvider(AuthenticationProvider):
-    async def authenticate(
-        self, request: Request, token: str
-    ) -> AuthenticatedUser:
-        user = await request.state.services.users.get_by_session_id(token)
-        if not user:
-            raise UnauthorizedException(
-                details=[
-                    BaseExceptionDetail(
-                        type=INVALID_TOKEN_VIOLATION_TYPE,
-                        message="The sessionid is not valid.",
-                    )
-                ]
-            )
-        return AuthenticatedUser(
-            id=user.id,
-            username=user.username,
-            roles=(
-                {UserRole.ADMIN, UserRole.USER}
-                if user.is_superuser
-                else {UserRole.USER}
-            ),
-        )
-
-
 class JWTAuthenticationProvider(AuthenticationProvider):
     @classmethod
     @abc.abstractmethod
@@ -428,6 +403,7 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
         )
 
         if not id_token or not refresh_token:
+            self._clear_oauth_cookies(request)
             logger.info(
                 AUTHN_AUTH_FAILED,
                 type=SECURITY,
@@ -488,6 +464,7 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
                 refresh_token=refresh_token
             )
         except UnauthorizedException as e:
+            self._clear_oauth_cookies(request)
             raise UnauthorizedException(
                 details=[
                     BaseExceptionDetail(
@@ -497,16 +474,24 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
                 ]
             ) from e
 
+    def _clear_oauth_cookies(self, request: Request) -> None:
+        cookie_manager = request.state.cookie_manager
+        for key in (
+            MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN,
+            MAASOAuth2Cookie.OAUTH2_ID_TOKEN,
+            MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN,
+        ):
+            cookie_manager.clear_cookie(key)
+
 
 class AuthenticationProvidersCache:
-    # All the 3 auth provider will never be None at runtime (see src/maasapiserver/main.py:113)
+    # All the 3 auth provider will never be None at runtime (see src/maasapiserver/main.py:87)
     # We default them to None to easily use this in tests.
     def __init__(
         self,
         jwt_authentication_providers: Sequence[
             JWTAuthenticationProvider
         ] = None,  # pyright: ignore [reportArgumentType]
-        session_authentication_provider: AuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
         macaroon_authentication_provider: MacaroonAuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
         oidc_authentication_provider: OIDCAuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
     ):
@@ -520,7 +505,6 @@ class AuthenticationProvidersCache:
                 for jwt_authentication_provider in jwt_authentication_providers
             }
         )
-        self.session_authentication_provider = session_authentication_provider
         self.macaroon_authentication_provider = (
             macaroon_authentication_provider
         )
@@ -528,9 +512,6 @@ class AuthenticationProvidersCache:
 
     def get(self, key: str) -> JWTAuthenticationProvider | None:
         return self.jwt_authentication_providers_cache.get(key, None)
-
-    def get_session_provider(self) -> AuthenticationProvider:
-        return self.session_authentication_provider
 
     def get_macaroon_provider(self) -> MacaroonAuthenticationProvider:
         return self.macaroon_authentication_provider
@@ -576,16 +557,12 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
         request.state.cookie_manager = cookie_manager
 
         auth_header = request.headers.get("Authorization", None)
-        sessionid = request.cookies.get("sessionid", None)
         access_token = cookie_manager.get_cookie(
             MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN
         )
 
         user = None
-        # TODO: once the UI moves to the new authentication mechanism, we should drop the support for the django session here.
-        #  This is not supposed to be part of the current v3 api contract
-        #
-        # If no sessionid nor auth_header nor macaroon is specified then the request is unauthenticated and we let the handler
+        # If no OIDC token, auth_header or macaroon is specified then the request is unauthenticated and we let the handler
         # decide wether or not to serve it.
         if access_token:
             user = await self._oidc_authentication(request, access_token)
@@ -598,8 +575,7 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
             )
         ):
             user = await self._macaroon_authentication(request, macaroons)
-        elif sessionid:
-            user = await self._session_authentication(request, sessionid)
+
         request.state.authenticated_user = user
 
         if user is not None:
@@ -615,12 +591,6 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
         # Bind the response to the cookie manager to set any pending cookies.
         request.state.cookie_manager.bind_response(response)
         return response
-
-    async def _session_authentication(
-        self, request: Request, sessionid: str
-    ) -> AuthenticatedUser:
-        session_provider = self.providers_cache.get_session_provider()
-        return await session_provider.authenticate(request, sessionid)
 
     async def _jwt_authentication(
         self, request: Request, auth_header: str
