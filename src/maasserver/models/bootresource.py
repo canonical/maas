@@ -597,7 +597,8 @@ class BootResource(CleanSave, TimestampedModel):
         return None
 
     def split_arch(self) -> tuple[str, str]:
-        return tuple(self.architecture.split("/", 1))
+        arch, _, subarch = str(self.architecture).partition("/")
+        return arch, subarch
 
     def split_base_image(self) -> tuple[str, str]:
         # handle older custom images that may not have a base image
@@ -610,7 +611,8 @@ class BootResource(CleanSave, TimestampedModel):
                 cfg["commissioning_distro_series"],
             )
 
-        return tuple(self.base_image.split("/", 1))
+        osys, _, distro_series = str(self.base_image).partition("/")
+        return osys, distro_series
 
     def get_next_version_name(self):
         """Return the version a `BootResourceSet` should use when adding to
