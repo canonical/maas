@@ -98,10 +98,6 @@ class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
           Agent to authenticate the MAAS server during HTTPS communication.
         - url: the URL the Agent must use to send its registration request to
           MAAS.
-
-        The fingerprint and url are grouped under the `controllers` key in the
-        token. If multiple controllers are available, the token can be extended
-        to include additional (fingerprint, url) pairs.
         """
         rack_id = resource.id
 
@@ -149,9 +145,8 @@ class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
         # bootstrap token: secret, (fingerprint, url)
         token = {
             "secret": secret,
-            "controllers": [
-                {"fingerprint": fingerprint, "url": internal_api_url}
-            ],
+            "fingerprint": fingerprint,
+            "url": internal_api_url,
         }
 
         # once the token is created, we store the short-lived secret

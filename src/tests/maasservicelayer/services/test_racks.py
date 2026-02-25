@@ -136,12 +136,9 @@ class TestRacksService(ServiceCommonTests):
         token = await rack_service.generate_bootstrap_token(rack)
 
         # verify token
-        assert ["controllers", "secret"] == sorted(token.keys())
-        for controller in token["controllers"]:
-            assert ["fingerprint", "url"] == sorted(controller.keys())
         assert len(token["secret"]) == 64
-        assert token["controllers"][0]["url"] == "https://example.com:5242"
-        assert token["controllers"][0]["fingerprint"] == "fingerprint"
+        assert token["url"] == "https://example.com:5242"
+        assert token["fingerprint"] == "fingerprint"
 
         # verify calls
         mock_certificate_from_pem.assert_called_once_with(
@@ -217,12 +214,9 @@ class TestRacksService(ServiceCommonTests):
         token = await rack_service.generate_bootstrap_token(rack)
 
         # verify token
-        assert ["controllers", "secret"] == sorted(token.keys())
-        for controller in token["controllers"]:
-            assert ["fingerprint", "url"] == sorted(controller.keys())
         assert len(token["secret"]) == 64
-        assert token["controllers"][0]["url"] == "https://example.com:5242"
-        assert token["controllers"][0]["fingerprint"] == ""
+        assert token["url"] == "https://example.com:5242"
+        assert token["fingerprint"] == ""
 
         # verify calls
         bootstraptokens_service_mock.create.assert_called_once()
