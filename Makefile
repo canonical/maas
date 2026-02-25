@@ -359,7 +359,7 @@ dbshell: bin/database
 .PHONY: dbshell
 
 syncdb: build bin/maas-region bin/database
-	$(dbrun) bin/maas-region dbupgrade $(DBUPGRADE_ARGS) --openfga-path $(PWD)/src/maasopenfga/build/
+	$(dbrun) bin/maas-region dbupgrade $(DBUPGRADE_ARGS) --openfga-path $(CURDIR)/src/maasopenfga/build/
 .PHONY: syncdb
 
 dumpdb: DB_DUMP ?= maasdb.dump
