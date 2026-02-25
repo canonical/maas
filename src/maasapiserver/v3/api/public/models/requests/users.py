@@ -38,7 +38,7 @@ class BaseUserRequest(BaseModel):
     is_superuser: bool
     first_name: str
     last_name: str
-    email: Optional[str]
+    email: Optional[str] = None
 
     @validator("email")
     def check_email(cls, v: str) -> str:
