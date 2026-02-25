@@ -4,7 +4,7 @@
 from base64 import b64decode
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import BaseModel, ConfigDict, Field, root_validator, validator
 
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.db.filters import QuerySpec
@@ -99,9 +99,10 @@ class BootSourceRequest(BaseModel):
         return value
 
 
-# Extra.forbid will raise a validation error if the user passes fields not defined.
+# extra='forbid' will raise a validation error if the user passes fields not defined.
 # Used mainly because of the 'url' being immutable.
-class BootSourceUpdateRequest(BootSourceRequest, extra=Extra.forbid):
+class BootSourceUpdateRequest(BootSourceRequest):
+    model_config = ConfigDict(extra="forbid")
     priority: int = Field(
         description="Priority value. Higher values mean higher priority. Must "
         "be non-negative.",
