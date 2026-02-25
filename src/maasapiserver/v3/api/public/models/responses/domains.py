@@ -144,17 +144,17 @@ class TXTRecordResponse(HalResponse[BaseHal]):
 class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
     kind = "DomainResourceRecordSet"
     name: str
-    node_id: Optional[int]
-    ttl: Optional[int]
+    node_id: Optional[int] = None
+    ttl: Optional[int] = None
     rrtype: DNSResourceTypeEnum
-    a_records: list[ARecordResponse] | None
-    aaaa_records: list[AAAARecordResponse] | None
-    cname_record: CNAMERecordResponse | None
-    mx_records: list[MXRecordResponse] | None
-    ns_records: list[NSRecordResponse] | None
-    sshfp_records: list[SSHFPRecordResponse] | None
-    srv_records: list[SRVRecordResponse] | None
-    txt_records: list[TXTRecordResponse] | None
+    a_records: list[ARecordResponse] | None = None
+    aaaa_records: list[AAAARecordResponse] | None = None
+    cname_record: CNAMERecordResponse | None = None
+    mx_records: list[MXRecordResponse] | None = None
+    ns_records: list[NSRecordResponse] | None = None
+    sshfp_records: list[SSHFPRecordResponse] | None = None
+    srv_records: list[SRVRecordResponse] | None = None
+    txt_records: list[TXTRecordResponse] | None = None
 
     @classmethod
     def from_model(
