@@ -11,6 +11,6 @@ from maasservicelayer.models.base import (
 
 @generate_builder()
 class Fabric(MaasTimestampedBaseModel):
-    name: Optional[str]
-    description: Optional[str]
-    class_type: Optional[str]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    class_type: Optional[str] = None

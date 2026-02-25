@@ -21,16 +21,16 @@ DEVICE_ID_REGEX = re.compile(r"^[\da-f]{4}$", re.I)
 @generate_builder()
 class Machine(Node):
     description: str
-    owner: Optional[str]
+    owner: Optional[str] = None
     cpu_speed: int
     memory: int
     osystem: str
-    architecture: Optional[str]
+    architecture: Optional[str] = None
     distro_series: str
-    hwe_kernel: Optional[str]
+    hwe_kernel: Optional[str] = None
     locked: bool
     cpu_count: int
-    power_type: Optional[PowerTypeEnum]
+    power_type: Optional[PowerTypeEnum] = None
     fqdn: str
 
 

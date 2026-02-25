@@ -12,12 +12,12 @@ from maasservicelayer.models.base import (
 
 @generate_builder()
 class Notification(MaasTimestampedBaseModel):
-    ident: str | None
+    ident: str | None = None
     users: bool
     admins: bool
     message: str
     context: dict[str, Any]
-    user_id: Optional[int]
+    user_id: Optional[int] = None
     category: NotificationCategoryEnum
     dismissable: bool
 

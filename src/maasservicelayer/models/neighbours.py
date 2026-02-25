@@ -13,9 +13,9 @@ from maasservicelayer.models.fields import MacAddress
 
 @generate_builder()
 class Neighbour(MaasTimestampedBaseModel):
-    ip: IPvAnyAddress | None
+    ip: IPvAnyAddress | None = None
     time: int
     count: int
-    mac_address: MacAddress | None
-    vid: int | None
+    mac_address: MacAddress | None = None
+    vid: int | None = None
     interface_id: int

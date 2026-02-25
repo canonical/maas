@@ -11,4 +11,4 @@ class FileStorage(MaasBaseModel):
     filename: str
     content: bytes
     key: str
-    owner_id: Optional[int]
+    owner_id: Optional[int] = None
