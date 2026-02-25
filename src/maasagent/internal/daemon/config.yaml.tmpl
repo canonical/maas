@@ -1,0 +1,34 @@
+# The base URL of the MAAS controller. Populated from the bootstrap token.
+controller: "{{ .ControllerURL }}"
+tls:
+  key_file: "{{ join .CertDir "agent.key" }}"
+  cert_file: "{{ join .CertDir "agent.crt" }}"
+  ca_file: "{{ join .CertDir "ca.pem" }}"
+services:
+  # HTTP Proxy service used for caching OS packages and images
+  http_proxy:
+    cache:
+      # Directory where cached content is stored.
+      dir: "{{ join .CacheDir "httpproxy" }}"
+      # Maximum disk space used by the proxy cache. Supports units (MB, GB).
+      size: 20GB
+  # DNS Resolver service for local name resolution and forwarding
+  dns:
+    cache:
+      # Memory limit for the DNS cache.
+      # Increase for environments with many unique lookups.
+      size: 50MB
+    # Maximum time to wait for upstream DNS servers to respond.
+    dial_timeout: 5s
+    # Number of persistent connections kept open to upstream DNS servers.
+    connection_pool: 5
+observability:
+  logging:
+    # Log granularity: debug, info, warn, error.
+    level: error
+  metrics:
+    # When enabled, exposes a Prometheus-compatible endpoint at /metrics.
+    enabled: false
+  profiling:
+    # When enabled, exposes Go pprof data at /debug/pprof.
+    enabled: false

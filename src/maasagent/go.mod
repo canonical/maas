@@ -9,6 +9,7 @@ require (
 	github.com/canonical/pebble v1.10.2
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/cilium/ebpf v0.18.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
