@@ -529,6 +529,44 @@ class TestBootResourceStore(MAASServerTestCase):
         mock_delete.assert_called_once()
         mock_resource_set_cleaner.assert_called_once()
 
+    def test_finalize_includes_pending_uploaded_resources(self):
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        region = factory.make_RegionController()
+        uploaded_resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED
+        )
+        resource_set = factory.make_BootResourceSet(uploaded_resource)
+        rfile = factory.make_BootResourceFile(resource_set, size=1024)
+        # Mark the file as complete on one region.
+        rfile.bootresourcefilesync_set.create(region=region, size=rfile.size)
+        store = BootResourceStore()
+        store._resources_to_delete = set()
+        mock_resource_cleaner = self.patch(store, "resource_cleaner")
+        mock_execute_workflow = self.patch(bootresources, "execute_workflow")
+        mock_resource_set_cleaner = self.patch(store, "resource_set_cleaner")
+        store.finalize()
+        mock_resource_cleaner.assert_called_once()
+        mock_execute_workflow.assert_called_once()
+        mock_resource_set_cleaner.assert_called_once()
+
+    def test_finalize_triggers_workflow_when_only_pending_uploaded(self):
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        region = factory.make_RegionController()
+        uploaded_resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED
+        )
+        resource_set = factory.make_BootResourceSet(uploaded_resource)
+        rfile = factory.make_BootResourceFile(resource_set, size=1024)
+        rfile.bootresourcefilesync_set.create(region=region, size=rfile.size)
+        store = BootResourceStore()
+        # No synced resources to delete, no content_to_finalize.
+        store._resources_to_delete = set()
+        mock_execute_workflow = self.patch(bootresources, "execute_workflow")
+        self.patch(store, "resource_cleaner")
+        self.patch(store, "resource_set_cleaner")
+        store.finalize()
+        mock_execute_workflow.assert_called_once()
+
 
 class TestBootResourceTransactional(MAASTransactionServerTestCase):
     """Test methods on `BootResourceStore` that manage their own transactions.
@@ -542,6 +580,84 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         self.region = factory.make_RegionController()
         MAAS_ID.set(self.region.system_id)
         self.patch(bootresourcefile, "execute_workflow")
+
+    def test_get_pending_uploaded_resources_returns_empty_with_single_region(
+        self,
+    ):
+        with transaction.atomic():
+            uploaded = factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.UPLOADED
+            )
+            resource_set = factory.make_BootResourceSet(uploaded)
+            rfile = factory.make_BootResourceFile(resource_set, size=1024)
+            rfile.bootresourcefilesync_set.create(
+                region=self.region, size=rfile.size
+            )
+        store = BootResourceStore()
+        result = store.get_pending_uploaded_resources()
+        self.assertEqual([], result)
+
+    def test_get_pending_uploaded_resources_returns_partially_synced(self):
+        region2 = factory.make_RegionController()
+        with transaction.atomic():
+            uploaded = factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.UPLOADED
+            )
+            resource_set = factory.make_BootResourceSet(uploaded)
+            rfile = factory.make_BootResourceFile(resource_set, size=1024)
+            # Only region2 has a complete copy; self.region does not.
+            rfile.bootresourcefilesync_set.create(
+                region=region2, size=rfile.size
+            )
+        store = BootResourceStore()
+        result = store.get_pending_uploaded_resources()
+        self.assertEqual(1, len(result))
+        self.assertEqual(rfile.sha256, result[0].sha256)
+        self.assertEqual([rfile.id], result[0].rfile_ids)
+
+    def test_get_pending_uploaded_resources_excludes_fully_synced(self):
+        factory.make_RegionController()
+        with transaction.atomic():
+            uploaded = factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.UPLOADED
+            )
+            resource_set = factory.make_BootResourceSet(uploaded)
+            rfile = factory.make_BootResourceFile(resource_set, size=1024)
+            # Both regions have a complete copy.
+            for region in RegionController.objects.all():
+                rfile.bootresourcefilesync_set.create(
+                    region=region, size=rfile.size
+                )
+        store = BootResourceStore()
+        result = store.get_pending_uploaded_resources()
+        self.assertEqual([], result)
+
+    def test_get_pending_uploaded_resources_excludes_no_copy(self):
+        """In case an image is being uploaded and no region has a complete set, it must be excluded."""
+        factory.make_RegionController()
+        with transaction.atomic():
+            uploaded = factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.UPLOADED
+            )
+            resource_set = factory.make_BootResourceSet(uploaded)
+            factory.make_BootResourceFile(resource_set, size=1024)
+            # No BootResourceFileSync records.
+        store = BootResourceStore()
+        result = store.get_pending_uploaded_resources()
+        self.assertEqual([], result)
+
+    def test_get_pending_uploaded_resources_excludes_synced_resources(self):
+        region2 = factory.make_RegionController()
+        with transaction.atomic():
+            synced = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+            resource_set = factory.make_BootResourceSet(synced)
+            rfile = factory.make_BootResourceFile(resource_set, size=1024)
+            rfile.bootresourcefilesync_set.create(
+                region=region2, size=rfile.size
+            )
+        store = BootResourceStore()
+        result = store.get_pending_uploaded_resources()
+        self.assertEqual([], result)
 
     def test_insert_does_nothing_if_file_already_synced(self):
         _, _, product = make_product()
@@ -1019,6 +1135,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
             store = BootResourceStore()
             store._content_to_finalize = {1: sentinel.content}
+            store.get_pending_uploaded_resources = lambda: []
             testcase.patch(store, "resource_cleaner")
             testcase.patch(bootresources, "execute_workflow")
             testcase.patch(bootresources, "discard_persistent_error")
