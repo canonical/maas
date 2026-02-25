@@ -12,5 +12,5 @@ from maasservicelayer.models.base import (
 @generate_builder()
 class DNSResource(MaasTimestampedBaseModel):
     name: str
-    address_ttl: Optional[int]
+    address_ttl: Optional[int] = None
     domain_id: int

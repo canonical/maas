@@ -15,12 +15,12 @@ from maasservicelayer.models.fields import IPv4v6Network
 
 @generate_builder()
 class Subnet(MaasTimestampedBaseModel):
-    name: Optional[str]
-    description: Optional[str]
+    name: Optional[str] = None
+    description: Optional[str] = None
     cidr: IPv4v6Network
     rdns_mode: RdnsMode
-    gateway_ip: Optional[IPvAnyAddress]
-    dns_servers: Optional[list[str]]
+    gateway_ip: Optional[IPvAnyAddress] = None
+    dns_servers: Optional[list[str]] = None
     allow_dns: bool
     allow_proxy: bool
     active_discovery: bool

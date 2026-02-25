@@ -19,7 +19,7 @@ class Node(MaasTimestampedBaseModel):
     status: NodeStatus
     node_type: NodeTypeEnum
     power_state: PowerState
-    power_state_updated: datetime | None
+    power_state_updated: datetime | None = None
     owner_id: Optional[int] = None
     error_description: str = ""
     current_commissioning_script_set_id: int | None = None

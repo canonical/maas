@@ -24,12 +24,12 @@ class UISubnetStatistics(BaseModel):
 
 
 class UISubnet(MaasTimestampedBaseModel):
-    name: Optional[str]
-    description: Optional[str]
+    name: Optional[str] = None
+    description: Optional[str] = None
     cidr: IPv4v6Network
     rdns_mode: RdnsMode
-    gateway_ip: Optional[IPvAnyAddress]
-    dns_servers: Optional[list[str]]
+    gateway_ip: Optional[IPvAnyAddress] = None
+    dns_servers: Optional[list[str]] = None
     allow_dns: bool
     allow_proxy: bool
     active_discovery: bool
@@ -37,12 +37,12 @@ class UISubnet(MaasTimestampedBaseModel):
     disabled_boot_architectures: list[str]
     vlan_id: int
     vlan_vid: int
-    vlan_name: Optional[str]
+    vlan_name: Optional[str] = None
     vlan_dhcp_on: bool
-    vlan_external_dhcp: Optional[IPvAnyAddress]
-    vlan_relay_vlan_id: Optional[int]
+    vlan_external_dhcp: Optional[IPvAnyAddress] = None
+    vlan_relay_vlan_id: Optional[int] = None
     fabric_id: int
-    fabric_name: Optional[str]
-    space_id: Optional[int]
-    space_name: Optional[str]
+    fabric_name: Optional[str] = None
+    space_id: Optional[int] = None
+    space_name: Optional[str] = None
     statistics: Optional[UISubnetStatistics] = None
