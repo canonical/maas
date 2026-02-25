@@ -21,9 +21,11 @@ class NotificationRequest(BaseModel):
         default=NotificationCategoryEnum.INFO,
     )
     ident: str | None = Field(
+        default=None,
         description="Unique identifier for this notification."
     )
     user_id: int | None = Field(
+        default=None,
         description="User ID this notification is intended for."
         "By default it will not be targeted to any individual user."
     )
