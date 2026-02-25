@@ -20,6 +20,7 @@ class BootSourceSelectionStatus(MaasBaseModel):
 
 
 class BootSourceSelectionStatistic(MaasBaseModel):
+    id: int
     last_updated: datetime | None = None
     last_deployed: datetime | None = None
     size: int
