@@ -19,10 +19,10 @@ class Token(MaasBaseModel):
     token_type: int
     timestamp: int
     is_approved: bool
-    callback: Optional[str]
+    callback: Optional[str] = None
     callback_confirmed: bool
     consumer_id: int
-    user_id: Optional[int]
+    user_id: Optional[int] = None
 
 
 @generate_builder()

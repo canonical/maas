@@ -31,7 +31,7 @@ class User(MaasBaseModel):
 @generate_builder()
 class UserProfile(MaasBaseModel):
     completed_intro: bool
-    auth_last_check: Optional[datetime]
+    auth_last_check: Optional[datetime] = None
     is_local: bool
     user_id: int
     provider_id: Optional[int] = None

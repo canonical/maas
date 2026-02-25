@@ -16,8 +16,8 @@ from maasservicelayer.models.base import (
 class Link(BaseModel):
     id: int
     ip_type: IpAddressType
-    ip_address: Optional[IPvAnyAddress]
-    ip_subnet: Optional[int]
+    ip_address: Optional[IPvAnyAddress] = None
+    ip_subnet: Optional[int] = None
 
     # derived from StaticIPAddress.get_interface_link_type
     @property
@@ -44,7 +44,7 @@ class Link(BaseModel):
 class Interface(MaasTimestampedBaseModel):
     name: str
     type: InterfaceType
-    mac_address: Optional[str]
+    mac_address: Optional[str] = None
     vlan_id: Optional[int] = None
     # TODO
     # effective_mtu: int = 0

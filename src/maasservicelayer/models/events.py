@@ -38,12 +38,12 @@ class EventType(MaasTimestampedBaseModel):
 @generate_builder()
 class Event(MaasTimestampedBaseModel):
     type: EventType
-    node_id: Optional[int]
-    node_system_id: Optional[str]
+    node_id: Optional[int] = None
+    node_system_id: Optional[str] = None
     node_hostname: str
-    user_id: Optional[int]
+    user_id: Optional[int] = None
     owner: str
-    ip_address: Optional[IPvAnyAddress]
+    ip_address: Optional[IPvAnyAddress] = None
     endpoint: EndpointChoicesEnum
     user_agent: str
     description: str

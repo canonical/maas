@@ -11,6 +11,8 @@ from maasservicelayer.enums.rbac import RbacPermission
 
 
 class UserDetailsResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    
     username: str
     fullname: Optional[str] = Field(validation_alias="name")
     email: Optional[str]

@@ -13,4 +13,4 @@ from maasservicelayer.models.base import (
 class Domain(MaasTimestampedBaseModel):
     name: str
     authoritative: bool
-    ttl: Optional[int]
+    ttl: Optional[int] = None

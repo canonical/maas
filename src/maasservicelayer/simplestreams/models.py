@@ -124,7 +124,7 @@ class BootloaderFile(DownloadableFile):
 
 
 class ImageFile(DownloadableFile):
-    kpackage: str | None
+    kpackage: str | None = None
 
 
 class Version(BaseModel, ABC):
@@ -165,8 +165,8 @@ class Version(BaseModel, ABC):
 class BootloaderVersion(Version):
     grub2_signed: BootloaderFile | None = Field(None, alias="grub2-signed")
     shim_signed: BootloaderFile | None = Field(None, alias="shim-signed")
-    grub2: BootloaderFile | None
-    syslinux: BootloaderFile | None
+    grub2: BootloaderFile | None = None
+    syslinux: BootloaderFile | None = None
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
@@ -180,13 +180,13 @@ class BootloaderVersion(Version):
 
 
 class MultiFileImageVersion(Version):
-    support_eol: date | None
-    support_esm_eol: date | None
+    support_eol: date | None = None
+    support_esm_eol: date | None = None
     boot_initrd: ImageFile = Field(..., alias="boot-initrd")
     boot_kernel: ImageFile = Field(..., alias="boot-kernel")
     manifest: ImageFile
     root_image_gz: ImageFile | None = Field(None, alias="root-image.gz")
-    squashfs: ImageFile | None
+    squashfs: ImageFile | None = None
 
     # TODO: switch to field_validator when we migrate to pydantic 2.x
     _validate_support_eol = validator(
@@ -237,7 +237,7 @@ class Product(BaseModel, ABC):
 
         # When serializing the object as a dict and then re-converting it into a
         # model we might not need to to the pre-processing.
-        if v.get("versions") and isinstance(v["versions"], dict):
+        if isinstance(v, dict) and v.get("versions") and isinstance(v["versions"], dict):
             versions = []
             for prod_name, version in v["versions"].items():
                 versions.append(
@@ -345,7 +345,7 @@ class SimpleStreamsProductList(BaseModel, ABC):
 
         # When serializing the object as a dict and then re-converting it into a
         # model we might not need to do the pre-processing.
-        if v.get("products") and isinstance(v["products"], dict):
+        if isinstance(v, dict) and v.get("products") and isinstance(v["products"], dict):
             products = []
             for product_name, product in v["products"].items():
                 product = cls.product_class()(

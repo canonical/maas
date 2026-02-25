@@ -11,5 +11,5 @@ from maasservicelayer.models.base import (
 
 @generate_builder()
 class Space(MaasTimestampedBaseModel):
-    name: Optional[str]
-    description: Optional[str]
+    name: Optional[str] = None
+    description: Optional[str] = None

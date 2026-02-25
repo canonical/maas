@@ -13,4 +13,4 @@ class Consumer(MaasBaseModel):
     key: str
     secret: str
     status: str
-    user_id: Optional[int]
+    user_id: Optional[int] = None
