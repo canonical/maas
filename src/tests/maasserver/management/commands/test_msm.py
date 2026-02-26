@@ -8,6 +8,7 @@ from django.core.management.base import CommandError
 import pytest
 from temporalio.client import WorkflowExecutionDescription
 
+from maascommon.utils import jwt as jwt_utils
 from maasserver.management.commands import msm
 from maasserver.secrets import SecretManager
 from maasservicelayer.services import ServiceCollectionV3
@@ -82,7 +83,9 @@ class TestMSM:
         mock_prompt = mocker.patch.object(
             msm, "prompt_yes_no", return_value=False
         )
-        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(
+            jwt_utils, "decode_unverified_jwt", return_value=SAMPLE_JWT_PAYLOAD
+        )
         opts = self._configure_kwargs()
         msm.Command().handle(**opts)
         mock_prompt.assert_called_once()
@@ -92,7 +95,9 @@ class TestMSM:
         mock_prompt = mocker.patch.object(
             msm, "prompt_yes_no", return_value=True
         )
-        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(
+            jwt_utils, "decode_unverified_jwt", return_value=SAMPLE_JWT_PAYLOAD
+        )
         opts = self._configure_kwargs()
         msm.Command().handle(**opts)
         mock_prompt.assert_called_once()
@@ -104,7 +109,9 @@ class TestMSM:
         mock_prompt = mocker.patch.object(
             msm, "prompt_yes_no", return_value=True
         )
-        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(
+            jwt_utils, "decode_unverified_jwt", return_value=SAMPLE_JWT_PAYLOAD
+        )
         opts = self._configure_kwargs(non_interactive=True)
         msm.Command().handle(**opts)
         mock_prompt.assert_not_called()
@@ -125,7 +132,9 @@ class TestMSM:
 
     def test_enrol_no_config(self, mocker, msm_enrol_mock):
         mocker.patch.object(msm, "prompt_yes_no", return_value=True)
-        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(
+            jwt_utils, "decode_unverified_jwt", return_value=SAMPLE_JWT_PAYLOAD
+        )
         opts = self._configure_kwargs()
         opts["config_file"] = None
         msm.Command().handle(**opts)
@@ -134,7 +143,9 @@ class TestMSM:
         )
 
     def test_enrol_extra_field(self, mocker, msm_enrol_mock):
-        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(
+            jwt_utils, "decode_unverified_jwt", return_value=SAMPLE_JWT_PAYLOAD
+        )
         mocker.patch.object(msm, "prompt_yes_no", return_value=False)
         opts = self._configure_kwargs()
         new_cfg = YAML_CONFIG + "extra: 'field'"
@@ -145,7 +156,9 @@ class TestMSM:
             msm.Command().handle(**opts)
 
     def test_enrol_invalid_timezone(self, mocker, msm_enrol_mock):
-        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(
+            jwt_utils, "decode_unverified_jwt", return_value=SAMPLE_JWT_PAYLOAD
+        )
         mocker.patch.object(msm, "prompt_yes_no", return_value=True)
         opts = self._configure_kwargs()
         bad_cfg = YAML_CONFIG.replace(
@@ -160,7 +173,9 @@ class TestMSM:
             msm.Command().handle(**opts)
 
     def test_enrol_invalid_country(self, mocker, msm_enrol_mock):
-        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(
+            jwt_utils, "decode_unverified_jwt", return_value=SAMPLE_JWT_PAYLOAD
+        )
         mocker.patch.object(msm, "prompt_yes_no", return_value=True)
         opts = self._configure_kwargs()
         bad_cfg = YAML_CONFIG.replace("country: US", "country: USA")
@@ -171,7 +186,9 @@ class TestMSM:
             msm.Command().handle(**opts)
 
     def test_enrol_config_missing_header(self, mocker, msm_enrol_mock):
-        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(
+            jwt_utils, "decode_unverified_jwt", return_value=SAMPLE_JWT_PAYLOAD
+        )
         mocker.patch.object(msm, "prompt_yes_no", return_value=False)
         opts = self._configure_kwargs()
         # remove the first line from the config file
@@ -183,7 +200,9 @@ class TestMSM:
             msm.Command().handle(**opts)
 
     def test_enrol_bad_config_format(self, mocker, msm_enrol_mock):
-        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(
+            jwt_utils, "decode_unverified_jwt", return_value=SAMPLE_JWT_PAYLOAD
+        )
         mocker.patch.object(msm, "prompt_yes_no", return_value=False)
         opts = self._configure_kwargs()
         # remove the value from the last entry in the config file
@@ -195,7 +214,9 @@ class TestMSM:
             msm.Command().handle(**opts)
 
     def test_enrol_wrong_config_type(self, mocker, msm_enrol_mock):
-        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(
+            jwt_utils, "decode_unverified_jwt", return_value=SAMPLE_JWT_PAYLOAD
+        )
         mocker.patch.object(msm, "prompt_yes_no", return_value=False)
         opts = self._configure_kwargs()
         bad_cfg = YAML_CONFIG.replace(
