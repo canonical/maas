@@ -3,9 +3,10 @@ adopt-info: maas
 summary: Metal as a Service
 description: |
   Total automation of your physical servers for amazing data center operational efficiency.
-grade: stable
+grade: devel
 confinement: strict
-base: core24
+base: core26
+build-base: devel
 assumes:
   - snapd2.53
 system-usernames:
@@ -323,7 +324,7 @@ parts:
       - usr/sbin/maas-openfga
       - usr/sbin/maas-openfga-migrator
       - usr/sbin/maas-openfga-app-migrator
-  
+
   tree:
     plugin: dump
     source: snap/local/tree
