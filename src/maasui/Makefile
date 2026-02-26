@@ -9,6 +9,15 @@ export PATH := $(NODEJS_BIN):$(PATH)
 NODEJS_VERSION := 22.21.1
 YARN_VERSION := 1.22.22
 
+UNAME_ARCH := $(shell uname -m)
+NODEJS_ARCH := $(shell \
+	if [ "$(UNAME_ARCH)" = "x86_64" ]; then echo "x64"; \
+	elif [ "$(UNAME_ARCH)" = "aarch64" ]; then echo "arm64"; \
+	elif [ "$(UNAME_ARCH)" = "ppc64le" ]; then echo "ppc64le"; \
+	elif [ "$(UNAME_ARCH)" = "s390x" ]; then echo "s390x"; \
+	else echo "unknown"; \
+	fi)
+
 UI_REVISION := $(shell git -C $(SRC_DIR) rev-parse HEAD)
 TARBALL_NAME := maas_ui_$(UI_REVISION).tgz
 
@@ -38,7 +47,11 @@ build-local: $(BUILD_DIR)/index.html
 .PHONY: build-local
 
 $(NODEJS_BIN)/node:
-	curl -sfL https://nodejs.org/dist/v$(NODEJS_VERSION)/node-v$(NODEJS_VERSION)-linux-x64.tar.xz | tar --recursive-unlink --one-top-level=$(NODEJS_DIR) --strip-components=1 --extract -J
+	@if [ "$(NODEJS_ARCH)" = "unknown" ]; then \
+		echo "Unsupported architecture: $(UNAME_ARCH)" 1>&2; \
+		exit 1; \
+	fi
+	curl -sfL https://nodejs.org/dist/v$(NODEJS_VERSION)/node-v$(NODEJS_VERSION)-linux-$(NODEJS_ARCH).tar.xz | tar --recursive-unlink --one-top-level=$(NODEJS_DIR) --strip-components=1 --extract -J
 	@touch --no-create $@
 
 $(NODEJS_BIN)/yarn: $(NODEJS_BIN)/node
