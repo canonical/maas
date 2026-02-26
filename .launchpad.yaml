@@ -6,7 +6,7 @@ pipeline:
 jobs:
   install-dependencies:
     architectures: amd64
-    series: noble
+    series: resolute
     packages:
       - make
       - sudo
@@ -15,15 +15,15 @@ jobs:
       make install-dependencies
   lint:
     architectures: amd64
-    series: noble 
+    series: resolute
     root: false
     run: |
       make lint
   test:
     architectures: amd64
-    series: noble
+    series: resolute
     root: false
-    environment: 
+    environment:
       NO_PROXY: localhost,127.0.0.1
     run: |
       make
