@@ -2,9 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
-import base64
 from datetime import timedelta
-import json
 from typing import Awaitable, Callable, Dict, Sequence
 
 from fastapi import Request, Response
@@ -27,6 +25,7 @@ from maascommon.logging.security import (
     AUTHN_AUTH_SUCCESSFUL,
     SECURITY,
 )
+from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
@@ -572,16 +571,8 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
     ) -> AuthenticatedUser:
         token = auth_header.split(" ")[1]
         try:
-            # Manually decode JWT without verification to extract claims (including issuer)
-            parts = token.split(".")
-            if len(parts) != 3:
-                raise ValueError("Invalid JWT format")
-            
-            # Decode payload (add padding if needed)
-            payload_part = parts[1]
-            payload_part += "=" * (4 - len(payload_part) % 4)
-            header = json.loads(base64.urlsafe_b64decode(payload_part))
-        except (ValueError, json.JSONDecodeError):
+            header = decode_unverified_jwt(token, check_expiration=False)
+        except JWTDecodeError:
             raise BadRequestException(  # noqa: B904
                 details=[
                     BaseExceptionDetail(
