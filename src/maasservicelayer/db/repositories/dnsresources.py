@@ -120,6 +120,20 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
 
         await self.execute_stmt(stmt)
 
+    async def unlink_ip_from_all_dnsresources(
+        self, staticipaddress_id: int
+    ) -> None:
+        """Remove all DNS resource associations for a specific IP address.
+
+        Args:
+            staticipaddress_id: The ID of the IP address to unlink
+        """
+        stmt = delete(DNSResourceIPAddressTable).where(
+            DNSResourceIPAddressTable.c.staticipaddress_id
+            == staticipaddress_id
+        )
+        await self.execute_stmt(stmt)
+
     async def get_dnsdata_for_dnsresource(
         self, dnsrr_id: int
     ) -> list[DNSData]:
@@ -132,3 +146,30 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
         result = (await self.execute_stmt(stmt)).all()
 
         return [DNSData(**r._asdict()) for r in result]
+
+    async def get_dnsresources_for_ip(
+        self, ip: StaticIPAddress
+    ) -> List[DNSResource]:
+        """Get all DNS resources linked to a specific IP address.
+
+        Args:
+            ip: The StaticIPAddress to find DNS resources for
+
+        Returns:
+            List of DNSResource objects linked to this IP
+        """
+        stmt = (
+            select(DNSResourceTable)
+            .select_from(DNSResourceTable)
+            .join(
+                DNSResourceIPAddressTable,
+                DNSResourceIPAddressTable.c.dnsresource_id
+                == DNSResourceTable.c.id,
+            )
+            .filter(
+                DNSResourceIPAddressTable.c.staticipaddress_id == ip.id,
+            )
+        )
+
+        result = (await self.execute_stmt(stmt)).all()
+        return [DNSResource(**row._asdict()) for row in result]

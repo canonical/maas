@@ -3,8 +3,8 @@
 
 """create_switch_table
 
-Revision ID: 0017
-Revises: 0015
+Revision ID: 0019
+Revises: 0018
 Create Date: 2025-11-28 12:00:00.000000+00:00
 
 """

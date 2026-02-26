@@ -15,10 +15,13 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
 from maasservicelayer.models.base import MaasBaseModel
+from maasservicelayer.models.dnsdata import DNSData
+from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
@@ -37,6 +40,7 @@ class TestCommonStaticIPAddressService(ServiceCommonTests):
         return StaticIPAddressService(
             context=Context(),
             temporal_service=Mock(TemporalService),
+            dnsresource_repository=Mock(DNSResourceRepository),
             staticipaddress_repository=Mock(StaticIPAddressRepository),
         )
 
@@ -103,6 +107,7 @@ class TestStaticIPAddressService:
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
             temporal_service=mock_temporal,
+            dnsresource_repository=Mock(DNSResourceRepository),
             staticipaddress_repository=repository_mock,
         )
 
@@ -149,6 +154,7 @@ class TestStaticIPAddressService:
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
             temporal_service=mock_temporal,
+            dnsresource_repository=Mock(DNSResourceRepository),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -190,6 +196,7 @@ class TestStaticIPAddressService:
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
             temporal_service=mock_temporal,
+            dnsresource_repository=Mock(DNSResourceRepository),
             staticipaddress_repository=repository_mock,
         )
 
@@ -233,6 +240,7 @@ class TestStaticIPAddressService:
 
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
+            dnsresource_repository=Mock(DNSResourceRepository),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
         )
@@ -289,6 +297,7 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
+            dnsresource_repository=Mock(DNSResourceRepository),
             context=Context(),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
@@ -348,6 +357,7 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
+            dnsresource_repository=Mock(DNSResourceRepository),
             context=Context(),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
@@ -393,12 +403,15 @@ class TestStaticIPAddressService:
         mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
         mock_staticipaddress_repository.get_by_id.return_value = sip
         mock_staticipaddress_repository.delete_by_id.return_value = sip
+        mock_dnsresource_repository = Mock(DNSResourceRepository)
+        mock_dnsresource_repository.get_dnsresources_for_ip.return_value = []
 
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
             temporal_service=mock_temporal,
+            dnsresource_repository=mock_dnsresource_repository,
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -412,6 +425,9 @@ class TestStaticIPAddressService:
         mock_staticipaddress_repository.unlink_from_interfaces.assert_called_once_with(
             staticipaddress_id=sip.id
         )
+        mock_dnsresource_repository.unlink_ip_from_all_dnsresources.assert_called_once_with(
+            staticipaddress_id=sip.id
+        )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(
@@ -420,3 +436,185 @@ class TestStaticIPAddressService:
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
+
+    async def test_delete_cleans_up_orphaned_dns_resource(self) -> None:
+        """Test that orphaned DNS resources are deleted when an IP is deleted."""
+        now = utcnow()
+        sip = StaticIPAddress(
+            id=2,
+            ip="10.0.0.2",
+            lease_time=30,
+            subnet_id=1,
+            alloc_type=IpAddressType.AUTO,
+            created=now,
+            updated=now,
+        )
+
+        # DNS resource that will become orphaned
+        dnsresource = DNSResource(
+            id=1,
+            name="test-host",
+            domain_id=1,
+            created=now,
+            updated=now,
+        )
+
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_by_id.return_value = sip
+        mock_staticipaddress_repository.delete_by_id.return_value = sip
+
+        mock_dnsresource_repository = Mock(DNSResourceRepository)
+        # This IP is linked to one DNS resource
+        mock_dnsresource_repository.get_dnsresources_for_ip.return_value = [
+            dnsresource
+        ]
+        # After unlinking, the DNS resource has no remaining IPs
+        mock_dnsresource_repository.get_ips_for_dnsresource.return_value = []
+        # And no DNS data either
+        mock_dnsresource_repository.get_dnsdata_for_dnsresource.return_value = []
+
+        mock_temporal = Mock(TemporalService)
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            dnsresource_repository=mock_dnsresource_repository,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        await staticipaddress_service.delete_by_id(id=sip.id)
+
+        # Verify DNS resource was deleted
+        mock_dnsresource_repository.get_dnsresources_for_ip.assert_called_once_with(
+            sip
+        )
+        mock_dnsresource_repository.get_ips_for_dnsresource.assert_called_once_with(
+            dnsresource.id
+        )
+        mock_dnsresource_repository.get_dnsdata_for_dnsresource.assert_called_once_with(
+            dnsresource.id
+        )
+        mock_dnsresource_repository.delete_by_id.assert_called_once_with(
+            dnsresource.id
+        )
+
+    async def test_delete_keeps_dns_resource_with_remaining_ips(self) -> None:
+        """Test that DNS resources with other IPs are kept when an IP is deleted."""
+        now = utcnow()
+        sip = StaticIPAddress(
+            id=2,
+            ip="10.0.0.2",
+            lease_time=30,
+            subnet_id=1,
+            alloc_type=IpAddressType.AUTO,
+            created=now,
+            updated=now,
+        )
+
+        # DNS resource that has other IPs
+        dnsresource = DNSResource(
+            id=1,
+            name="test-host",
+            domain_id=1,
+            created=now,
+            updated=now,
+        )
+
+        other_ip = StaticIPAddress(
+            id=3,
+            ip="10.0.0.3",
+            lease_time=30,
+            subnet_id=1,
+            alloc_type=IpAddressType.AUTO,
+            created=now,
+            updated=now,
+        )
+
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_by_id.return_value = sip
+        mock_staticipaddress_repository.delete_by_id.return_value = sip
+
+        mock_dnsresource_repository = Mock(DNSResourceRepository)
+        mock_dnsresource_repository.get_dnsresources_for_ip.return_value = [
+            dnsresource
+        ]
+        # After unlinking, the DNS resource still has other IPs
+        mock_dnsresource_repository.get_ips_for_dnsresource.return_value = [
+            other_ip
+        ]
+
+        mock_temporal = Mock(TemporalService)
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            dnsresource_repository=mock_dnsresource_repository,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        await staticipaddress_service.delete_by_id(id=sip.id)
+
+        # Verify DNS resource was NOT deleted
+        mock_dnsresource_repository.delete_by_id.assert_not_called()
+
+    async def test_delete_keeps_dns_resource_with_dnsdata(self) -> None:
+        """Test that DNS resources with DNS data are kept even without IPs."""
+        now = utcnow()
+        sip = StaticIPAddress(
+            id=2,
+            ip="10.0.0.2",
+            lease_time=30,
+            subnet_id=1,
+            alloc_type=IpAddressType.AUTO,
+            created=now,
+            updated=now,
+        )
+
+        dnsresource = DNSResource(
+            id=1,
+            name="test-host",
+            domain_id=1,
+            created=now,
+            updated=now,
+        )
+
+        dnsdata = DNSData(
+            id=1,
+            dnsresource_id=1,
+            rrtype="CNAME",
+            rrdata="other-host.example.com",
+            created=now,
+            updated=now,
+        )
+
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_by_id.return_value = sip
+        mock_staticipaddress_repository.delete_by_id.return_value = sip
+
+        mock_dnsresource_repository = Mock(DNSResourceRepository)
+        mock_dnsresource_repository.get_dnsresources_for_ip.return_value = [
+            dnsresource
+        ]
+        # No remaining IPs
+        mock_dnsresource_repository.get_ips_for_dnsresource.return_value = []
+        # But has DNS data (like a CNAME record)
+        mock_dnsresource_repository.get_dnsdata_for_dnsresource.return_value = [
+            dnsdata
+        ]
+
+        mock_temporal = Mock(TemporalService)
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            dnsresource_repository=mock_dnsresource_repository,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        await staticipaddress_service.delete_by_id(id=sip.id)
+
+        # Verify DNS resource was NOT deleted because it has DNS data
+        mock_dnsresource_repository.get_dnsdata_for_dnsresource.assert_called_once_with(
+            dnsresource.id
+        )
+        mock_dnsresource_repository.delete_by_id.assert_not_called()

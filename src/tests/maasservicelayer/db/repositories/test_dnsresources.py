@@ -98,6 +98,43 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
             dnsresource.id for dnsresource in result
         }
 
+    async def test_get_dnsresources_for_ip(
+        self, repository_instance: DNSResourceRepository, fixture: Fixture
+    ) -> None:
+        """Test retrieving all DNS resources for a specific IP across all domains."""
+        subnet = await create_test_subnet_entry(fixture)
+        domain1 = await create_test_domain_entry(fixture, name="example1.com")
+        domain2 = await create_test_domain_entry(fixture, name="example2.com")
+        sip = (
+            await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        )[0]
+
+        # Create DNS resources in different domains linked to the same IP
+        dnsresource1 = await create_test_dnsresource_entry(
+            fixture, domain1, sip, name="host1"
+        )
+        dnsresource2 = await create_test_dnsresource_entry(
+            fixture, domain2, sip, name="host2"
+        )
+
+        # Create a DNS resource in domain1 not linked to this IP
+        other_sip = (
+            await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        )[0]
+        await create_test_dnsresource_entry(
+            fixture, domain1, other_sip, name="other-host"
+        )
+
+        result = await repository_instance.get_dnsresources_for_ip(
+            StaticIPAddress(**sip)
+        )
+
+        # Should return both DNS resources linked to this IP across all domains
+        assert len(result) == 2
+        result_ids = {dnsresource.id for dnsresource in result}
+        assert dnsresource1.id in result_ids
+        assert dnsresource2.id in result_ids
+
     async def test_link_ip(
         self, repository_instance: DNSResourceRepository, fixture: Fixture
     ) -> None:
@@ -134,6 +171,7 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
                 for _ in range(3)
             ]
         ]
+
         dnsresource = await create_test_dnsresource_entry(fixture, domain)
 
         for sip in sips:
@@ -173,8 +211,38 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
             (await create_test_dnsdata_entry(fixture, dnsresource))
             for _ in range(3)
         ]
-
         result = await repository_instance.get_dnsdata_for_dnsresource(
             dnsresource.id
         )
         assert result == dnsdatas
+
+    async def test_unlink_ip_from_all_dnsresources(
+        self, repository_instance: DNSResourceRepository, fixture: Fixture
+    ) -> None:
+        """Test unlinking an IP from all associated DNS resources."""
+        subnet = await create_test_subnet_entry(fixture)
+        domain = await create_test_domain_entry(fixture)
+        sip = (
+            await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        )[0]
+
+        # Create multiple DNS resources linked to the same IP
+        dnsresource1 = await create_test_dnsresource_entry(
+            fixture, domain, sip, name="host1"
+        )
+        dnsresource2 = await create_test_dnsresource_entry(
+            fixture, domain, sip, name="host2"
+        )
+
+        # Unlink the IP from all DNS resources
+        await repository_instance.unlink_ip_from_all_dnsresources(sip["id"])
+
+        # Verify both DNS resources no longer have this IP
+        remaining1 = await repository_instance.get_ips_for_dnsresource(
+            dnsresource1.id
+        )
+        remaining2 = await repository_instance.get_ips_for_dnsresource(
+            dnsresource2.id
+        )
+        assert len(remaining1) == 0
+        assert len(remaining2) == 0
