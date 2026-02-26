@@ -4,10 +4,8 @@
 """Commands for managing enrolment with a Site Manager instance."""
 
 import argparse
-import base64
 from contextlib import closing
 from datetime import datetime
-import json
 from ssl import CertificateError
 from urllib.parse import urlparse
 
@@ -18,6 +16,7 @@ import yaml
 
 from maascli.init import prompt_yes_no
 from maascommon.enums.msm import MSMStatusEnum
+from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
 from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.sqlalchemy import service_layer
 
@@ -90,23 +89,15 @@ class Command(BaseCommandWithConnection):
             with closing(options["config_file"]) as cfg_file:
                 config = cfg_file.read()
         try:
-            # Manually decode JWT without verification to extract claims
-            parts = enrolment_token.split(".")
-            if len(parts) != 3:
-                raise CommandError("Invalid enrolment token format.")
-            
-            # Decode payload (add padding if needed)
-            payload_part = parts[1]
-            payload_part += "=" * (4 - len(payload_part) % 4)
-            decoded = json.loads(base64.urlsafe_b64decode(payload_part))
-            
-            # Check expiration manually
-            if "exp" in decoded:
-                import time
-                if time.time() > decoded["exp"]:
-                    raise CommandError("Enrolment token is expired.")
-        except (ValueError, json.JSONDecodeError, KeyError):
-            raise CommandError("Invalid enrolment token.")  # noqa: B904
+            decoded = decode_unverified_jwt(
+                enrolment_token, check_expiration=True
+            )
+        except JWTDecodeError as e:
+            raise CommandError(f"Invalid enrolment token: {e}") from e
+        base_url = decoded.get("service-url")
+        if not base_url:
+            raise CommandError("Enrolment token missing 'service-url' claim")
+
         # validate the yaml config
         if config:
             try:
@@ -121,7 +112,6 @@ class Command(BaseCommandWithConnection):
                 raise CommandError(  # noqa: B904
                     f"Invalid config file: {e.problem}: line {e.problem_mark.line}, column: {e.problem_mark.column}"
                 )
-        base_url = decoded["service-url"]
 
         if not options["non_interactive"]:
             # check if we've previously been enroled

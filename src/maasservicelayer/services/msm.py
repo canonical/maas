@@ -2,15 +2,14 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
-import base64
 from dataclasses import dataclass
 from enum import StrEnum
-import json
 
 import structlog
 from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.enums.msm import MSMStatusEnum
+from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
 from maascommon.workflows.msm import (
     MSM_ENROL_SITE_WORKFLOW_NAME,
     MSM_HEARTBEAT_WORKFLOW_NAME,
@@ -86,24 +85,15 @@ class MSMService(Service):
         maas_name = await self.config_service.get(MAASNameConfig.name)
         maas_url = await self.config_service.get(MAASUrlConfig.name)
         try:
-            # Manually decode JWT without verification to extract claims
-            parts = encoded.split(".")
-            if len(parts) != 3:
-                raise MSMException("invalid JWT format")
-            
-            # Decode payload (add padding if needed)
-            payload_part = parts[1]
-            payload_part += "=" * (4 - len(payload_part) % 4)
-            claims = json.loads(base64.urlsafe_b64decode(payload_part))
-            
-            # Validate audience manually
-            aud = claims.get("aud")
-            if aud != SITE_AUDIENCE:
-                raise MSMException(f"invalid audience: expected {SITE_AUDIENCE}, got {aud}")
-        except (ValueError, json.JSONDecodeError, KeyError) as ex:
-            raise MSMException(f"invalid JWT: {str(ex)}") from ex
+            claims = decode_unverified_jwt(
+                encoded,
+                check_expiration=False,
+                expected_audience=SITE_AUDIENCE,
+            )
+        except JWTDecodeError as ex:
+            raise MSMException(str(ex)) from ex
 
-        url = claims.get("service-url", None)
+        url = claims.get("service-url")
         if not url:
             raise MSMException("missing 'service-url' claim")
 
