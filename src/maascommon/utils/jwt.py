@@ -3,10 +3,12 @@
 
 """Utilities for working with JWT tokens."""
 
-import base64
 import json
 import time
 from typing import Any
+
+from joserfc import jws
+from joserfc.errors import JoseError
 
 
 class JWTDecodeError(Exception):
@@ -21,8 +23,10 @@ def decode_unverified_jwt(
     """
     Decode a JWT without signature verification to extract claims.
 
-    This is useful when you need to read JWT claims before verification
-    or when verification isn't required (e.g., public information).
+    This function uses joserfc.jws.extract_compact to safely extract
+    JWT claims without validating the signature. This is useful when
+    you need to read JWT claims before verification (e.g., to determine
+    the issuer) or when verification isn't required.
 
     Args:
         token: JWT token string
@@ -34,20 +38,26 @@ def decode_unverified_jwt(
 
     Raises:
         JWTDecodeError: If the token is invalid, expired, or audience doesn't match
+
+    Example:
+        >>> token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+        >>> claims = decode_unverified_jwt(token, check_expiration=False)
+        >>> issuer = claims.get("iss")
     """
     try:
-        parts = token.split(".")
-        if len(parts) != 3:
-            raise JWTDecodeError("invalid JWT format")
+        # Use joserfc to safely extract JWT components without verification
+        token_bytes = token.encode("utf-8")
+        compact_sig = jws.extract_compact(token_bytes)
 
-        payload_part = parts[1]
-        payload_part += "=" * (4 - len(payload_part) % 4)
-        claims = json.loads(base64.urlsafe_b64decode(payload_part))
+        # Decode the payload to get claims
+        claims = json.loads(compact_sig.payload.decode("utf-8"))
 
+        # Validate expiration if requested
         if check_expiration and "exp" in claims:
             if time.time() > claims["exp"]:
                 raise JWTDecodeError("token is expired")
 
+        # Validate audience if requested
         if expected_audience is not None:
             aud = claims.get("aud")
             if aud != expected_audience:
@@ -57,5 +67,11 @@ def decode_unverified_jwt(
 
         return claims
 
-    except (ValueError, json.JSONDecodeError, KeyError) as ex:
+    except (
+        JoseError,
+        ValueError,
+        json.JSONDecodeError,
+        KeyError,
+        AttributeError,
+    ) as ex:
         raise JWTDecodeError(f"invalid JWT: {str(ex)}") from ex
