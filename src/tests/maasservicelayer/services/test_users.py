@@ -1,9 +1,10 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import time
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.consumer import ConsumerState
 from maascommon.enums.token import TokenType
@@ -43,6 +44,7 @@ from maasservicelayer.db.repositories.users import (
     UserClauseFactory,
     UsersRepository,
 )
+from maasservicelayer.db.tables import OpenFGATupleTable
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     NotFoundException,
@@ -54,6 +56,7 @@ from maasservicelayer.models.tokens import Token
 from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.services import (
     ConsumersService,
+    OpenFGATupleService,
     ServiceCollectionV3,
     TokensService,
     UsersService,
@@ -73,6 +76,7 @@ from tests.fixtures.factories.notifications import (
     create_test_notification_dismissal_entry,
     create_test_notification_entry,
 )
+from tests.fixtures.factories.openfga_tuples import create_openfga_tuple
 from tests.fixtures.factories.sslkey import create_test_sslkey
 from tests.fixtures.factories.token import create_test_user_token
 from tests.fixtures.factories.user import (
@@ -148,6 +152,14 @@ class TestIntegrationUserService:
         self, fixture: Fixture, services: ServiceCollectionV3
     ):
         user = await create_test_user(fixture, username="foo")
+        await create_openfga_tuple(
+            fixture,
+            user=f"user:{user.id}",
+            user_type="user",
+            relation="member",
+            object_type="group",
+            object_id="testgroup",
+        )
         await create_test_user_profile(fixture, user_id=user.id)
         consumer = await create_test_user_consumer(fixture, user_id=user.id)
         await create_test_user_token(
@@ -178,6 +190,12 @@ class TestIntegrationUserService:
         )
         assert notifications == []
 
+        retrieved_openfga_tuples = await fixture.get(
+            OpenFGATupleTable.fullname,
+            eq(OpenFGATupleTable.c._user, f"user:{user.id}"),
+        )
+        assert retrieved_openfga_tuples == []
+
 
 @pytest.mark.asyncio
 class TestCommonUsersService(ServiceCommonTests):
@@ -195,6 +213,7 @@ class TestCommonUsersService(ServiceCommonTests):
             filestorage_service=Mock(FileStorageService),
             consumers_service=Mock(ConsumersService),
             tokens_service=Mock(TokensService),
+            openfga_tuple_service=Mock(OpenFGATupleService),
         )
         # we test the pre delete hook in the next tests
         service.pre_delete_hook = AsyncMock()
@@ -231,6 +250,7 @@ class TestUsersService:
             filestorage_service=Mock(FileStorageService),
             consumers_service=Mock(ConsumersService),
             tokens_service=Mock(TokensService),
+            openfga_tuple_service=Mock(OpenFGATupleService),
         )
 
     async def test_get_by_session_id(
@@ -486,6 +506,9 @@ class TestUsersService:
             query=QuerySpec(
                 where=FileStorageClauseFactory.with_owner_id(TEST_USER.id)
             )
+        )
+        users_service.openfga_tuple_service.delete_user.assert_called_once_with(
+            TEST_USER.id
         )
 
     async def test_post_delete_hook_creates_log(

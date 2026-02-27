@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import hashlib
@@ -70,6 +70,7 @@ from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.notifications import NotificationsService
+from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 from maasservicelayer.services.sshkeys import SshKeysService
 from maasservicelayer.services.sslkey import SSLKeysService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
@@ -96,6 +97,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         filestorage_service: FileStorageService,
         consumers_service: ConsumersService,
         tokens_service: TokensService,
+        openfga_tuple_service: OpenFGATupleService,
     ):
         super().__init__(context, users_repository)
         self.staticipaddress_service = staticipaddress_service
@@ -107,6 +109,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         self.filestorage_service = filestorage_service
         self.consumers_service = consumers_service
         self.tokens_service = tokens_service
+        self.openfga_tuple_service = openfga_tuple_service
 
     async def get_or_create_MAAS_user(self) -> User:
         # DO NOT create a profile for the MAAS technical users.
@@ -292,6 +295,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
                 where=FileStorageClauseFactory.with_owner_id(resource.id)
             )
         )
+        await self.openfga_tuple_service.delete_user(resource.id)
         logger.info(
             f"{USER_DELETED}:{resource.username}",
             type=SECURITY,

@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Script`."""
@@ -13,7 +13,11 @@ from formencode.validators import Bool, Int, String
 from piston3.utils import rc
 
 from maascommon.logging.security import DELETED, UPDATED
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.support import (
+    check_permission,
+    operation,
+    OperationsHandler,
+)
 from maasserver.api.utils import get_mandatory_param, get_optional_param
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -42,7 +46,7 @@ class NodeScriptsHandler(OperationsHandler):
     def resource_uri(cls):
         return ("scripts_handler", [])
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def create(self, request):
         """@description-title Create a new script
         @description Create a new script.
@@ -278,7 +282,7 @@ class NodeScriptHandler(OperationsHandler):
         )
         return script
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def delete(self, request, name):
         """@description-title Delete a script
         @description Deletes a script with the given name.
@@ -312,7 +316,7 @@ class NodeScriptHandler(OperationsHandler):
         )
         return rc.DELETED
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def update(self, request, name):
         """@description-title Update a script
         @description Update a script with the given name.
@@ -440,7 +444,7 @@ class NodeScriptHandler(OperationsHandler):
                 script.script.data, content_type="application/binary"
             )
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     @operation(idempotent=False)
     def revert(self, request, name):
         """@description-title Revert a script version
@@ -493,7 +497,7 @@ class NodeScriptHandler(OperationsHandler):
         except ValueError as e:
             raise MAASAPIValidationError(e.args[0])  # noqa: B904
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     @operation(idempotent=False)
     def add_tag(self, request, name):
         """@description-title Add a tag
@@ -537,7 +541,7 @@ class NodeScriptHandler(OperationsHandler):
         )
         return script
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     @operation(idempotent=False)
     def remove_tag(self, request, name):
         """@description-title Remove a tag

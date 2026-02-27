@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -8,6 +8,7 @@ import random
 from django.urls import reverse
 
 from maasserver.api import auth
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.models import Device, Domain
 from maasserver.models import node as node_module
@@ -433,3 +434,43 @@ class TestDeviceAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content
         )
+
+
+class TestDevicesAPIOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_list_can_view_own_devices(self):
+        self.openfga_client.can_view_devices.return_value = False
+
+        d1 = factory.make_Device(owner=self.user)
+        d2 = factory.make_Device(owner=self.user)
+        factory.make_Device(owner=factory.make_User())
+
+        response = self.client.get(reverse("devices_handler"))
+
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertCountEqual(
+            {d1.system_id, d2.system_id},
+            {
+                device.get("system_id")
+                for device in json_load_bytes(response.content)
+            },
+        )
+        self.openfga_client.can_view_devices.assert_called_once_with(self.user)
+
+    def test_list_can_view_all_devices(self):
+        self.openfga_client.can_view_devices.return_value = True
+
+        d1 = factory.make_Device(owner=self.user)
+        d2 = factory.make_Device(owner=self.user)
+        d3 = factory.make_Device(owner=factory.make_User())
+
+        response = self.client.get(reverse("devices_handler"))
+
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertCountEqual(
+            {d1.system_id, d2.system_id, d3.system_id},
+            {
+                device.get("system_id")
+                for device in json_load_bytes(response.content)
+            },
+        )
+        self.openfga_client.can_view_devices.assert_called_once_with(self.user)

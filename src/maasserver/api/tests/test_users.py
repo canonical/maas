@@ -12,6 +12,7 @@ from django.urls import reverse
 
 from maascommon.events import AUDIT
 import maasserver.api.auth
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models import Node, SSHKey, SSLKey, StaticIPAddress
 from maasserver.models.event import Event
@@ -563,4 +564,39 @@ class TestUser(APITestCase.ForUser):
         self.assertIsNotNone(event)
         self.assertEqual(
             event.description, "Deleted admin '%s'." % user.username
+        )
+
+
+class TestUsersAPIOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_create_requires_can_edit_identities(self):
+        self.openfga_client.can_edit_identities.return_value = True
+        response = self.client.post(
+            reverse("users_handler"),
+            {
+                "username": factory.make_name("user"),
+                "email": factory.make_email_address(),
+                "password": factory.make_string(),
+                "is_superuser": "1" if factory.pick_bool() else "0",
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_identities.assert_called_once_with(
+            self.user
+        )
+
+
+class TestUserAPIOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_delete_requires_can_edit_identities(self):
+        self.openfga_client.can_edit_identities.return_value = True
+        user = factory.make_User()
+        response = self.client.delete(
+            reverse("user_handler", args=[user.username])
+        )
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.status_code
+        )
+        self.openfga_client.can_edit_identities.assert_called_once_with(
+            self.user
         )

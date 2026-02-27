@@ -1,4 +1,4 @@
-# Copyright 2023 Canonical Ltd.  This software is licensed under the
+# Copyright 2023-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -17,7 +17,7 @@ def get_image_sync_uri(file_id, system_id):
     return reverse("image_sync_progress_handler", args=[file_id, system_id])
 
 
-class TestImageSyncProgressHandler(APITestCase.ForAdmin):
+class TestImageSyncProgressHandler(APITestCase.ForInternalUser):
     def test_handler_path(self):
         self.assertEqual(
             "/MAAS/api/2.0/images-sync-progress/1/a/",
@@ -141,7 +141,7 @@ class TestImageSyncProgressHandler(APITestCase.ForAdmin):
         )
 
 
-class TestImagesSyncProgressHandler(APITestCase.ForAdmin):
+class TestImagesSyncProgressHandler(APITestCase.ForInternalUser):
     def test_read(self):
         regions = [factory.make_RegionController() for _ in range(3)]
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)

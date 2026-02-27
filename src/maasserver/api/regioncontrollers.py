@@ -1,17 +1,16 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-
+from django.shortcuts import get_object_or_404
 from formencode.validators import StringBool
 from piston3.utils import rc
 
 from maasserver.api.nodes import NodeHandler, NodesHandler
-from maasserver.api.support import admin_method
+from maasserver.api.support import check_permission
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ControllerForm
 from maasserver.models import RegionController
-from maasserver.permissions import NodePermission
 
 # Region controller's fields exposed on the API.
 DISPLAYED_REGION_CONTROLLER_FIELDS = (
@@ -72,6 +71,7 @@ class RegionControllerHandler(NodeHandler):
     model = RegionController
     fields = DISPLAYED_REGION_CONTROLLER_FIELDS
 
+    @check_permission("can_edit_controllers")
     def delete(self, request, system_id):
         """@description-title Delete a region controller
         @description Deletes a region controller with the given system_id.
@@ -103,15 +103,13 @@ class RegionControllerHandler(NodeHandler):
         @error (content) "cannot-delete" If MAAS is unable to delete the
         region controller.
         """
-        node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin
-        )
+        node = get_object_or_404(self.model, system_id=system_id)
         node.as_self().delete(
             force=get_optional_param(request.GET, "force", False, StringBool)
         )
         return rc.DELETED
 
-    @admin_method
+    @check_permission("can_edit_controllers")
     def update(self, request, system_id):
         """@description-title Update a region controller
         @description Updates a region controller with the given system_id.
@@ -159,9 +157,7 @@ class RegionControllerHandler(NodeHandler):
         @error-example "no-perms"
             This method is reserved for admin users.
         """
-        region = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin
-        )
+        region = get_object_or_404(self.model, system_id=system_id)
         form = ControllerForm(data=request.data, instance=region)
 
         if form.is_valid():

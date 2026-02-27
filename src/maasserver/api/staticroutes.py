@@ -1,11 +1,11 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `StaticRoute`."""
 
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
@@ -44,7 +44,7 @@ class StaticRoutesHandler(OperationsHandler):
         """
         return StaticRoute.objects.all()
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def create(self, request):
         """@description-title Create a static route
         @description Creates a static route.

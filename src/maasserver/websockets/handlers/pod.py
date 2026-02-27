@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The Pod handler for the WebSocket connection."""
@@ -8,6 +8,7 @@ import dataclasses
 import attr
 from django.http import HttpRequest
 
+from maasserver.authorization import can_view_configurations, clear_caches
 from maasserver.clusterrpc.pods import (
     discover_pod_projects,
     get_best_discovered_result,
@@ -19,7 +20,6 @@ from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.virtualmachine import get_vm_host_resources
 from maasserver.models.zone import Zone
 from maasserver.permissions import PodPermission
-from maasserver.rbac import rbac
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.vmhost import (
@@ -117,7 +117,7 @@ class PodHandler(TimestampedModelHandler):
                 "resources": self.dehydrate_resources(obj, for_list=for_list),
             }
         )
-        if self.user.is_superuser:
+        if can_view_configurations(self.user):
             data["power_parameters"] = obj.get_power_parameters()
         if not for_list:
             if obj.host:
@@ -184,8 +184,8 @@ class PodHandler(TimestampedModelHandler):
 
         @transactional
         def create_obj(params):
-            # Clear rbac cache before check (this is in its own thread).
-            rbac.clear()
+            # Clear rbac/openfga cache before check (this is in its own thread).
+            clear_caches()
 
             if not self.user.has_perm(self._meta.create_permission):
                 raise HandlerPermissionError()
@@ -213,8 +213,8 @@ class PodHandler(TimestampedModelHandler):
 
         @transactional
         def update_obj(params):
-            # Clear rbac cache before check (this is in its own thread).
-            rbac.clear()
+            # Clear rbac/openfga cache before check (this is in its own thread).
+            clear_caches()
 
             obj = self.get_object(params)
             if not self.user.has_perm(self._meta.edit_permission, obj):
@@ -246,8 +246,8 @@ class PodHandler(TimestampedModelHandler):
 
         @transactional
         def get_object(params):
-            # Clear rbac cache before check (this is in its own thread).
-            rbac.clear()
+            # Clear rbac/openfga cache before check (this is in its own thread).
+            clear_caches()
 
             obj = self.get_object(params)
             if not self.user.has_perm(self._meta.delete_permission, obj):
@@ -267,8 +267,8 @@ class PodHandler(TimestampedModelHandler):
 
         @transactional
         def get_object(params):
-            # Clear rbac cache before check (this is in its own thread).
-            rbac.clear()
+            # Clear rbac/openfga cache before check (this is in its own thread).
+            clear_caches()
 
             obj = self.get_object(params)
             if not self.user.has_perm(self._meta.edit_permission, obj):
@@ -291,7 +291,8 @@ class PodHandler(TimestampedModelHandler):
         def get_object(params):
             # Running inside new database thread, be sure the rbac cache is
             # cleared so accessing information will not be already cached.
-            rbac.clear()
+            clear_caches()
+
             obj = self.get_object(params)
             if not self.user.has_perm(PodPermission.compose, obj):
                 raise HandlerPermissionError()

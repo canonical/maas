@@ -61,6 +61,12 @@ def parse_args() -> Namespace:
         default=1000,
     )
     parser.add_argument(
+        "--resourcepools",
+        help="number of resource pools to create",
+        type=int,
+        default=100,
+    )
+    parser.add_argument(
         "--log-queries",
         help="log SQL queries",
         action="store_true",
@@ -170,6 +176,7 @@ def main():
         args.ownerdata_prefix,
         args.tag_prefix,
         args.redfish_address,
+        args.resourcepools,
     )
     enable_triggers()
     end_time = time.monotonic()

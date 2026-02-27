@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Subnet`."""
@@ -7,7 +7,11 @@ from formencode.validators import StringBool
 from piston3.utils import rc
 
 from maascommon.utils.network import IPRangeStatistics
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.support import (
+    check_permission,
+    operation,
+    OperationsHandler,
+)
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.subnet import SubnetForm
@@ -55,7 +59,7 @@ class SubnetsHandler(OperationsHandler):
         """
         return Subnet.objects.all()
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def create(self, request):
         """@description-title Create a subnet
         @description Creates a new subnet.

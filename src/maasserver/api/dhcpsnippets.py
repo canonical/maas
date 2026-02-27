@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `DHCPSnippet`."""
@@ -10,7 +10,7 @@ from piston3.utils import rc
 from maascommon.logging.security import DELETED
 from maasserver.api.reservedip import ReservedIpHandler, ReservedIpsHandler
 from maasserver.api.support import (
-    admin_method,
+    check_permission,
     deprecated,
     operation,
     OperationsHandler,
@@ -95,7 +95,7 @@ class DHCPSnippetHandler(OperationsHandler):
         """
         return DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def update(self, request, id):
         """@description-title Update a DHCP snippet
         @description Update a DHCP snippet with the given id.
@@ -141,7 +141,7 @@ class DHCPSnippetHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def delete(self, request, id):
         """@description-title Delete a DHCP snippet
         @description Delete a DHCP snippet with the given id.
@@ -168,7 +168,7 @@ class DHCPSnippetHandler(OperationsHandler):
         )
         return rc.DELETED
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     @operation(idempotent=False)
     def revert(self, request, id):
         """@description-title Revert DHCP snippet to earlier version
@@ -252,7 +252,7 @@ class DHCPSnippetsHandler(OperationsHandler):
             "value", "subnet", "node"
         )
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def create(self, request):
         """@description-title Create a DHCP snippet
         @description Creates a DHCP snippet.

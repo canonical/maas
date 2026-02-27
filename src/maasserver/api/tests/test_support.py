@@ -1,6 +1,5 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
 
 from collections import namedtuple
 import http.client
@@ -12,14 +11,15 @@ from piston3.authentication import NoAuthentication
 
 from maasserver.api.doc import get_api_description
 from maasserver.api.support import (
-    admin_method,
     AdminRestrictedResource,
+    check_permission,
     deprecated,
     Emitter,
     OperationsHandlerMixin,
     OperationsResource,
     RestrictedResource,
 )
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models.config import Config, ConfigManager
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -147,31 +147,43 @@ class TestRestrictedResources(MAASTestCase):
         self.assertTrue(resource.is_authentication_attempted)
 
 
-class TestAdminMethodDecorator(MAASServerTestCase):
-    def test_non_admin_are_rejected(self):
+class TestAdminMethodDecorator(OpenFGAMockMixin, MAASServerTestCase):
+    def test_permission_denied(self):
+        self.openfga_client.can_edit_global_entities.return_value = False
+
         FakeRequest = namedtuple("FakeRequest", ["user"])
-        request = FakeRequest(user=factory.make_User())
+        user = factory.make_User()
+        request = FakeRequest(user=user)
         mock = Mock()
 
-        @admin_method
+        @check_permission("can_edit_global_entities")
         def api_method(self, request):
             return mock()
 
         self.assertRaises(PermissionDenied, api_method, "self", request)
         self.assertEqual([], mock.mock_calls)
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
 
-    def test_admin_can_call_method(self):
+    def test_permission_success(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+
         FakeRequest = namedtuple("FakeRequest", ["user"])
-        request = FakeRequest(user=factory.make_admin())
+        user = factory.make_User()
+        request = FakeRequest(user=user)
         return_value = factory.make_name("return")
         mock = Mock(return_value=return_value)
 
-        @admin_method
+        @check_permission("can_edit_global_entities")
         def api_method(self, request):
             return mock()
 
         response = api_method("self", request)
         self.assertEqual((return_value, [call()]), (response, mock.mock_calls))
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
 
 
 class TestDeprecatedMethodDecorator(MAASServerTestCase):

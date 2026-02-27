@@ -6,7 +6,7 @@ from typing import List
 from django.contrib.auth.models import User
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models import BMC, Machine, Pod, Tag
+from maasserver.models import BMC, Machine, Pod, ResourcePool, Tag
 from maasserver.testing.commissioning import FakeCommissioningData
 from metadataserver.builtin_scripts.hooks import (
     process_lxd_results,
@@ -39,6 +39,7 @@ def make_machines(
     tags: List[Tag],
     users: List[User],
     redfish_address: str,
+    resourcepools: List[ResourcePool],
 ):
     bmcs = cycle(vmhosts)
     owners = cycle(users)
@@ -88,6 +89,7 @@ def make_machines(
             instance_power_parameters=instance_power_parameters,
             status=status,
             owner=owner,
+            pool=random.choice(resourcepools),
         )
         machine.tags.add(*random.choices(tags, k=10))
         lxd_info = json.dumps(machine_info.render()).encode()

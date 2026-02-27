@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for ReserveIPs API."""
@@ -9,6 +9,7 @@ from django.urls import reverse
 from twisted.internet import defer
 
 import maasserver.api.reservedip as reservedip_module
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.models import ReservedIP
 from maasserver.models.signals import subnet as subnet_signals_module
@@ -243,4 +244,76 @@ class TestReservedIPAPI(APITestCase.ForUser):
 
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+
+class TestReservedIPsOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def setUp(self):
+        super().setUp()
+        d = defer.succeed(None)
+        self.patch(reservedip_module, "post_commit_do").return_value = d
+        self.patch(subnet_signals_module, "start_workflow")
+
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        uri = reverse("reservedips_handler")
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+
+        response = self.client.post(
+            uri,
+            {
+                "ip": "10.0.0.70",
+                "subnet": subnet.id,
+                "mac_address": "01:02:03:04:05:06",
+            },
+        )
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
+        )
+
+
+class TestReservedIPOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def setUp(self):
+        super().setUp()
+        d = defer.succeed(None)
+        self.patch(reservedip_module, "post_commit_do").return_value = d
+        self.patch(subnet_signals_module, "start_workflow")
+
+    def test_update_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        reserved_ip = factory.make_ReservedIP()
+        uri = reverse("reservedip_handler", args=[reserved_ip.id])
+
+        response = self.client.put(
+            uri,
+            {
+                "ip": reserved_ip.ip,
+                "mac_address": reserved_ip.mac_address,
+                "comment": "updated comment",
+            },
+        )
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_delete_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        reserved_ip = factory.make_ReservedIP()
+        uri = reverse("reservedip_handler", args=[reserved_ip.id])
+
+        response = self.client.delete(uri)
+
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
         )

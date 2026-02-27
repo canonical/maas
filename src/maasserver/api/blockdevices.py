@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `BlockDevice`."""
@@ -6,8 +6,9 @@
 from django.core.exceptions import PermissionDenied
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
+from maasserver.authorization import can_edit_machine_in_pool
 from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -63,7 +64,9 @@ def raise_error_for_invalid_state_on_allocated_operations(
             "Cannot %s block device because the machine is not Ready "
             "or Allocated." % operation
         )
-    if node.status == NODE_STATUS.READY and not user.is_superuser:
+    if node.status == NODE_STATUS.READY and not can_edit_machine_in_pool(
+        user, node.pool_id
+    ):
         raise PermissionDenied(
             "Cannot %s block device because you don't have the "
             "permissions on a Ready machine." % operation
@@ -103,7 +106,6 @@ class BlockDevicesHandler(OperationsHandler):
         )
         return machine.current_config.blockdevice_set.all()
 
-    @admin_method
     def create(self, request, system_id):
         """@description-title Create a block device
         @description Create a physical block device.

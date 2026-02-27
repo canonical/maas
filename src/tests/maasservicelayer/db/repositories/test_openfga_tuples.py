@@ -11,12 +11,39 @@ from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.openfga_tuples import (
+    OpenFGATuplesClauseFactory,
     OpenFGATuplesRepository,
 )
 from maasservicelayer.db.tables import OpenFGATupleTable
 from tests.fixtures.factories.openfga_tuples import create_openfga_tuple
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.utils.ulid import is_ulid
+
+
+class TestOpenFGATuplesClauseFactory:
+    def test_with_object_type(self) -> None:
+        clause = OpenFGATuplesClauseFactory.with_object_type("type")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("openfga.tuple.object_type = 'type'")
+
+    def test_with_object_id(self) -> None:
+        clause = OpenFGATuplesClauseFactory.with_object_id("id")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("openfga.tuple.object_id = 'id'")
+
+    def test_with_relation(self):
+        clause = OpenFGATuplesClauseFactory.with_relation("relation")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("openfga.tuple.relation = 'relation'")
+
+    def test_with_user(self):
+        clause = OpenFGATuplesClauseFactory.with_user("user:user")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("openfga.tuple._user = 'user:user'")
 
 
 @pytest.mark.usefixtures("ensuremaasdb")

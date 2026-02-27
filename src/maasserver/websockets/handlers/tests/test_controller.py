@@ -3,6 +3,7 @@
 
 
 from maasserver import bootresources
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.config import RegionConfiguration
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ControllerForm
@@ -589,3 +590,15 @@ class TestControllerHandler(MAASServerTestCase):
 
         list_results = handler.list({})
         self.assertFalse(list_results[0]["vault_configured"])
+
+
+class TestControllerHandlerOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_register_info_requires_can_edit_controllers(self):
+        self.openfga_client.can_edit_controllers.return_value = True
+        SecretManager().set_simple_secret("rpc-shared", "abc")
+        user = factory.make_User()
+        handler = ControllerHandler(user, {}, None)
+        handler.register_info({})
+        self.openfga_client.can_edit_controllers.assert_called_once_with(user)

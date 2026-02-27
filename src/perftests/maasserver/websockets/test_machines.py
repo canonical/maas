@@ -1,14 +1,24 @@
-# Copyright 2022-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2022-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+
 import math
+
+from django.contrib.auth.models import User
 
 from maasserver.models import Machine
 from maasserver.websockets.handlers.machine import MachineHandler
 
 
-def test_perf_list_machines_Websocket_endpoint(perf, admin, maasdb):
+def test_perf_list_machines_Websocket_endpoint(
+    perf, maasdb, mock_maas_env, openfga_server
+):
     # This should test the websocket calls that are used to load
     # the machine listing page on the initial page load.
+
+    admin = User.objects.filter(is_superuser=True).first()
+    if admin is None:
+        raise Exception("No superuser found in the database.")
+
     machine_count = Machine.objects.all().count()
     expected_pages = math.ceil(machine_count / 50)
     num_pages = 0
@@ -30,9 +40,16 @@ def test_perf_list_machines_Websocket_endpoint(perf, admin, maasdb):
     assert num_pages == expected_pages
 
 
-def test_perf_list_machines_Websocket_endpoint_all(perf, admin, maasdb):
+def test_perf_list_machines_Websocket_endpoint_all(
+    perf, maasdb, mock_maas_env, openfga_server
+):
     # How long would it take to list all the machines using the
     # websocket without any pagination.
+
+    admin = User.objects.filter(is_superuser=True).first()
+    if admin is None:
+        raise Exception("No superuser found in the database.")
+
     machine_count = Machine.objects.all().count()
     with perf.record("test_perf_list_machines_Websocket_endpoint_all"):
         ws_handler = MachineHandler(admin, {}, None)

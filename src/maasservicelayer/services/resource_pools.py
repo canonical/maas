@@ -1,6 +1,9 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import List
+
+from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.builders.resource_pools import ResourcePoolBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -20,6 +23,7 @@ from maasservicelayer.models.resource_pools import (
     ResourcePoolWithSummary,
 )
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 
 
 class ResourcePoolsService(
@@ -31,8 +35,10 @@ class ResourcePoolsService(
         self,
         context: Context,
         resource_pools_repository: ResourcePoolRepository,
+        openfga_tuples_service: OpenFGATupleService,
     ):
         super().__init__(context, resource_pools_repository)
+        self.openfga_tuples_service = openfga_tuples_service
 
     async def list_ids(self) -> set[int]:
         """Returns all the ids of the resource pools in the db."""
@@ -57,3 +63,25 @@ class ResourcePoolsService(
                     )
                 ]
             )
+
+    async def post_create_hook(self, resource: ResourcePool) -> None:
+        await self.openfga_tuples_service.create(
+            OpenFGATupleBuilder.build_pool(str(resource.id))
+        )
+
+    async def post_create_many_hook(
+        self, resources: List[ResourcePool]
+    ) -> None:
+        for resource in resources:
+            await self.openfga_tuples_service.create(
+                OpenFGATupleBuilder.build_pool(str(resource.id))
+            )
+
+    async def post_delete_hook(self, resource: ResourcePool) -> None:
+        await self.openfga_tuples_service.delete_pool(resource.id)
+
+    async def post_delete_many_hook(
+        self, resources: List[ResourcePool]
+    ) -> None:
+        for resource in resources:
+            await self.openfga_tuples_service.delete_pool(resource.id)

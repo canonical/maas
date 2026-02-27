@@ -6,6 +6,7 @@
 import pytest
 from twisted.internet import defer
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.models.reservedip import ReservedIP
 from maasserver.testing.factory import factory
@@ -311,4 +312,56 @@ class TestReservedIPHandler(MAASServerTestCase):
                 }
             ],
             reserved_ips,
+        )
+
+
+class TestReservedIPHandlerOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def setUp(self):
+        super().setUp()
+        d = defer.succeed(None)
+        self.patch(reservedip_module, "post_commit_do").return_value = d
+
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        user = factory.make_User()
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        handler = ReservedIPHandler(user, {}, None)
+        handler.create(
+            {
+                "ip": "10.0.0.55",
+                "subnet": subnet.id,
+                "mac_address": "00:11:22:33:44:55",
+                "comment": "this is a comment",
+            }
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+
+    def test_update_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        reservedip = factory.make_ReservedIP()
+        user = factory.make_User()
+        handler = ReservedIPHandler(user, {}, None)
+        handler.update(
+            {
+                "id": reservedip.id,
+                "mac_address": reservedip.mac_address,
+                "comment": "test update",
+            }
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+
+    def test_delete_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        reservedip = factory.make_ReservedIP()
+        user = factory.make_User()
+        handler = ReservedIPHandler(user, {}, None)
+        handler.delete({"id": reservedip.id})
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
         )

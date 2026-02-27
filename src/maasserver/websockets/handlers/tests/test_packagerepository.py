@@ -4,6 +4,7 @@
 """Tests for `maasserver.websockets.handlers.packagerepository`"""
 
 from maascommon.events import AUDIT
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import Event, PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -107,4 +108,43 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
             PackageRepository.DoesNotExist,
             PackageRepository.objects.get,
             id=package_repository.id,
+        )
+
+
+class TestPackageRepositoryHandlerOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        user = factory.make_User()
+        handler = PackageRepositoryHandler(user, {}, None)
+        package_repository_name = factory.make_name("package_repository_name")
+        handler.create(
+            {
+                "name": package_repository_name,
+                "url": factory.make_url(scheme="http"),
+            }
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+
+    def test_update_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        package_repository = factory.make_PackageRepository()
+        user = factory.make_User()
+        handler = PackageRepositoryHandler(user, {}, None)
+        handler.update({"id": package_repository.id})
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+
+    def test_delete_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        package_repository = factory.make_PackageRepository()
+        user = factory.make_User()
+        handler = PackageRepositoryHandler(user, {}, None)
+        handler.delete({"id": package_repository.id})
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
         )

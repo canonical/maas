@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `SSHKey`."""
@@ -19,6 +19,7 @@ from maascommon.logging.security import DELETED
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.audit import create_audit_event
+from maasserver.authorization import can_edit_global_entities
 from maasserver.enum import ENDPOINT, KEYS_PROTOCOL_TYPE
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.forms import SSHKeyForm
@@ -70,7 +71,8 @@ class SSHKeysHandler(OperationsHandler):
         """
         user = request.user
         username = get_optional_param(request.POST, "user")
-        if username is not None and request.user.is_superuser:
+        user_can_edit_global_entities = can_edit_global_entities(request.user)
+        if username is not None and user_can_edit_global_entities:
             supplied_user = get_one(User.objects.filter(username=username))
             if supplied_user is not None:
                 user = supplied_user
@@ -80,7 +82,7 @@ class SSHKeysHandler(OperationsHandler):
                 raise MAASAPIValidationError(
                     "Supplied username does not match any current users."
                 )
-        elif username is not None and not request.user.is_superuser:
+        elif username is not None and not user_can_edit_global_entities:
             raise MAASAPIValidationError(
                 "Only administrators can specify a user"
                 " when creating an SSH key."

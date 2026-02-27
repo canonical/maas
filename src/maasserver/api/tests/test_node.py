@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from functools import partial
@@ -12,6 +12,7 @@ from django.urls import reverse
 from twisted.internet.defer import succeed
 
 from maasserver.api import auth
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES
 from maasserver.models import Config, Node, NodeKey
 from maasserver.models import node as node_module
@@ -1010,3 +1011,19 @@ class TestPowerMixin(APITestCase.ForUser):
         node_method = self.patch(node_module.Node, "abort_operation")
         self.client.post(self.get_node_uri(node), {"op": "abort"})
         node_method.mock_called_once_with(self.user, None)
+
+
+class TestPowerMixinOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_get_power_parameters_requires_can_edit_machines(self):
+        self.openfga_client.can_edit_machines.return_value = True
+        power_parameters = {factory.make_string(): factory.make_string()}
+        factory.make_Node(power_parameters=power_parameters)
+        response = self.client.get(
+            reverse("machines_handler"), {"op": "power_parameters"}
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_machines.assert_called_once_with(
+            self.user
+        )

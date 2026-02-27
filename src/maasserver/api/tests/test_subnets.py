@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -11,6 +11,7 @@ from django.http import QueryDict
 from django.urls import reverse
 
 from maascommon.utils.network import inet_ntop, IPRangeStatistics
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -1072,3 +1073,17 @@ class TestSubnetIPAddressesAPI(APITestCase.ForUser):
             with_username=True, with_summary=False
         )
         self.assertEqual(expected_result, result)
+
+
+class TestSubnetsOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        subnet_name = factory.make_name("subnet")
+        uri = get_subnets_uri()
+        response = self.client.post(uri, {"name": subnet_name})
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
+        )

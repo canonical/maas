@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `Boot Source Selections` API."""
@@ -11,6 +11,7 @@ from maasserver.api.boot_source_selections import (
     DISPLAYED_BOOTSOURCESELECTION_FIELDS,
 )
 from maasserver.audit import Event
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import BootSourceSelection
 from maasserver.models.signals import bootsources
 from maasserver.testing.api import APITestCase
@@ -327,3 +328,68 @@ class TestBootSourceSelectionsAPI(APITestCase.ForUser):
             params,
         )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+
+class TestBootSourceSelectionOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_GET_requires_can_view_boot_entities(self):
+        self.openfga_client.can_view_boot_entities.return_value = True
+        boot_source_selection = factory.make_BootSourceSelection()
+        response = self.client.get(
+            get_boot_source_selection_uri(boot_source_selection)
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_view_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_PUT_requires_can_view_boot_entities(self):
+        self.openfga_client.can_edit_boot_entities.return_value = True
+        boot_source_selection = factory.make_BootSourceSelection()
+        new_values = {"release": factory.make_name("release")}
+        response = self.client.put(
+            get_boot_source_selection_uri(boot_source_selection), new_values
+        )
+        self.assertNotEqual(http.client.FORBIDDEN, response.status_code)
+        self.openfga_client.can_edit_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_DELETE_requires_can_view_boot_entities(self):
+        self.openfga_client.can_edit_boot_entities.return_value = True
+        boot_source_selection = factory.make_BootSourceSelection()
+        response = self.client.delete(
+            get_boot_source_selection_uri(boot_source_selection)
+        )
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
+        self.openfga_client.can_edit_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+
+class TestBootSourceSelectionsOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_GET_requires_can_view_boot_entities(self):
+        self.openfga_client.can_view_boot_entities.return_value = True
+        boot_source = factory.make_BootSource()
+        response = self.client.get(
+            reverse("boot_source_selections_handler", args=[boot_source.id])
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_view_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_POST_requires_can_edit_boot_entities(self):
+        self.openfga_client.can_edit_boot_entities.return_value = True
+        boot_source = factory.make_BootSource()
+        response = self.client.post(
+            reverse("boot_source_selections_handler", args=[boot_source.id]),
+            {},
+        )
+        self.assertNotEqual(http.client.FORBIDDEN, response.status_code)
+        self.openfga_client.can_edit_boot_entities.assert_called_once_with(
+            self.user
+        )

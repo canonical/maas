@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Package Repositories API."""
@@ -13,33 +13,37 @@ from maascommon.events import AUDIT
 from maasserver.api.packagerepositories import (
     DISPLAYED_PACKAGE_REPOSITORY_FIELDS,
 )
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import Event, PackageRepository
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import reload_object
 
 
+def get_package_repository_uri(package_repository):
+    """Return the Package Repository's URI on the API."""
+    return reverse("package_repository_handler", args=[package_repository.id])
+
+
+def get_package_repositories_uri():
+    """Return the Package Repositories URI on the API."""
+    return reverse("package_repositories_handler", args=[])
+
+
 class TestPackageRepositoryAPI(APITestCase.ForUser):
     """Tests for /api/2.0/package-repositories/<package-repository>/."""
-
-    @staticmethod
-    def get_package_repository_uri(package_repository):
-        """Return the Package Repository's URI on the API."""
-        return reverse(
-            "package_repository_handler", args=[package_repository.id]
-        )
 
     def test_handler_path(self):
         package_repository = factory.make_PackageRepository()
         self.assertEqual(
             "/MAAS/api/2.0/package-repositories/%s/" % package_repository.id,
-            self.get_package_repository_uri(package_repository),
+            get_package_repository_uri(package_repository),
         )
 
     def test_read_by_id(self):
         package_repository = factory.make_PackageRepository()
         response = self.client.get(
-            self.get_package_repository_uri(package_repository)
+            get_package_repository_uri(package_repository)
         )
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -47,7 +51,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
         parsed_package_repository = json.loads(response.content.decode())
         self.assertEqual(
             parsed_package_repository["resource_uri"],
-            self.get_package_repository_uri(package_repository),
+            get_package_repository_uri(package_repository),
         )
         del parsed_package_repository["resource_uri"]
         self.assertEqual(
@@ -67,7 +71,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
         parsed_package_repository = json.loads(response.content.decode())
         self.assertEqual(
             parsed_package_repository["resource_uri"],
-            self.get_package_repository_uri(package_repository),
+            get_package_repository_uri(package_repository),
         )
         del parsed_package_repository["resource_uri"]
         self.assertEqual(
@@ -103,7 +107,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             ],
         }
         response = self.client.put(
-            self.get_package_repository_uri(package_repository), new_values
+            get_package_repository_uri(package_repository), new_values
         )
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -140,7 +144,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             ],
         }
         response = self.client.put(
-            self.get_package_repository_uri(package_repository), new_values
+            get_package_repository_uri(package_repository), new_values
         )
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content
@@ -166,7 +170,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             ],
         }
         response = self.client.put(
-            self.get_package_repository_uri(package_repository), new_values
+            get_package_repository_uri(package_repository), new_values
         )
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -204,7 +208,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             ],
         }
         response = self.client.put(
-            self.get_package_repository_uri(package_repository), new_values
+            get_package_repository_uri(package_repository), new_values
         )
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content
@@ -229,7 +233,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             ],
         }
         response = self.client.put(
-            self.get_package_repository_uri(package_repository), new_values
+            get_package_repository_uri(package_repository), new_values
         )
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content
@@ -259,7 +263,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             ],
         }
         response = self.client.put(
-            self.get_package_repository_uri(package_repository), new_values
+            get_package_repository_uri(package_repository), new_values
         )
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content
@@ -268,7 +272,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
     def test_update_admin_only(self):
         package_repository = factory.make_PackageRepository()
         response = self.client.put(
-            self.get_package_repository_uri(package_repository),
+            get_package_repository_uri(package_repository),
             {"url": factory.make_url(scheme="http")},
         )
         self.assertEqual(
@@ -279,7 +283,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
         self.become_admin()
         package_repository = factory.make_PackageRepository()
         response = self.client.delete(
-            self.get_package_repository_uri(package_repository)
+            get_package_repository_uri(package_repository)
         )
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content
@@ -295,7 +299,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
     def test_delete_admin_only(self):
         package_repository = factory.make_PackageRepository()
         response = self.client.delete(
-            self.get_package_repository_uri(package_repository)
+            get_package_repository_uri(package_repository)
         )
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content
@@ -318,21 +322,16 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
 class TestPackageRepositoriesAPI(APITestCase.ForUser):
     """Tests for /api/2.0/package-repositories."""
 
-    @staticmethod
-    def get_package_repositories_uri():
-        """Return the Package Repositories URI on the API."""
-        return reverse("package_repositories_handler", args=[])
-
     def test_handler_path(self):
         self.assertEqual(
             "/MAAS/api/2.0/package-repositories/",
-            self.get_package_repositories_uri(),
+            get_package_repositories_uri(),
         )
 
     def test_read(self):
         for _ in range(3):
             factory.make_PackageRepository()
-        response = self.client.get(self.get_package_repositories_uri())
+        response = self.client.get(get_package_repositories_uri())
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -353,9 +352,7 @@ class TestPackageRepositoriesAPI(APITestCase.ForUser):
         url = factory.make_url(scheme="http")
         enabled = factory.pick_bool()
         params = {"name": name, "url": url, "enabled": enabled}
-        response = self.client.post(
-            self.get_package_repositories_uri(), params
-        )
+        response = self.client.post(get_package_repositories_uri(), params)
         parsed_result = json.loads(response.content.decode())
         package_repository = PackageRepository.objects.get(
             id=parsed_result["id"]
@@ -366,8 +363,53 @@ class TestPackageRepositoriesAPI(APITestCase.ForUser):
 
     def test_create_admin_only(self):
         response = self.client.post(
-            self.get_package_repositories_uri(), {"url": factory.make_string()}
+            get_package_repositories_uri(), {"url": factory.make_string()}
         )
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content
         )
+
+
+class TestPackageRepositoriesOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        name = factory.make_name("name")
+        url = factory.make_url(scheme="http")
+        enabled = factory.pick_bool()
+        params = {"name": name, "url": url, "enabled": enabled}
+        response = self.client.post(get_package_repositories_uri(), params)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
+        )
+
+
+class TestPackageRepositoryOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_update_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        package_repository = factory.make_PackageRepository()
+        response = self.client.put(
+            get_package_repository_uri(package_repository),
+            {"url": factory.make_url(scheme="http")},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called()
+
+    def test_delete_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        package_repository = factory.make_PackageRepository()
+        response = self.client.delete(
+            get_package_repository_uri(package_repository),
+        )
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called()

@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The base class that all handlers must extend."""
@@ -25,9 +25,9 @@ from twisted.internet.defer import ensureDeferred
 
 from maascommon.tracing import regenerate_trace_id
 from maasserver import concurrency
+from maasserver.authorization import clear_caches
 from maasserver.permissions import NodePermission
 from maasserver.prometheus.middleware import wrap_query_counter_cursor
-from maasserver.rbac import rbac
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -423,8 +423,8 @@ class Handler(metaclass=HandlerMetaclass):
                 if IAsynchronous.providedBy(
                     method
                 ) or asyncio.iscoroutinefunction(method):
-                    # Running in the io thread so clear RBAC now.
-                    rbac.clear()
+                    # Running in the io thread so clear RBAC/openfga now.
+                    clear_caches()
 
                     # Reload the user from the database.
                     d = concurrency.webapp.run(
@@ -438,10 +438,11 @@ class Handler(metaclass=HandlerMetaclass):
                     @wraps(method)
                     @transactional
                     def prep_user_execute(params):
-                        # Clear RBAC and reload the user to ensure that
-                        # its up to date. `rbac.clear` must be done inside
+                        # Clear RBAC/openfga and reload the user to ensure that
+                        # its up to date. This must be done inside
                         # the thread because it uses thread locals internally.
-                        rbac.clear()
+                        clear_caches()
+
                         self.user.refresh_from_db()
 
                         # Perform the work in the database.

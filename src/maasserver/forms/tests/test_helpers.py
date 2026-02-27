@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for forms helpers."""
@@ -7,17 +7,11 @@ from django.forms import CharField
 
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import (
-    AdminMachineForm,
     AdminMachineWithMACAddressesForm,
-    AdminNodeForm,
     get_machine_create_form,
-    get_machine_edit_form,
-    get_node_edit_form,
     list_all_usable_architectures,
     MAASModelForm,
-    MachineForm,
     MachineWithPowerAndMACAddressesForm,
-    NodeForm,
     pick_default_architecture,
     remove_None_values,
 )
@@ -111,22 +105,6 @@ class TestHelpers(MAASServerTestCase):
 
     def test_remove_None_values_leaves_empty_dict_untouched(self):
         self.assertEqual({}, remove_None_values({}))
-
-    def test_get_machine_edit_form_returns_MachineForm_if_non_admin(self):
-        user = factory.make_User()
-        self.assertEqual(MachineForm, get_machine_edit_form(user))
-
-    def test_get_machine_edit_form_returns_AdminMachineForm_if_admin(self):
-        admin = factory.make_admin()
-        self.assertEqual(AdminMachineForm, get_machine_edit_form(admin))
-
-    def test_get_node_edit_form_returns_NodeForm_if_non_admin(self):
-        user = factory.make_User()
-        self.assertEqual(NodeForm, get_node_edit_form(user))
-
-    def test_get_node_edit_form_returns_AdminNodeForm_if_admin(self):
-        admin = factory.make_admin()
-        self.assertEqual(AdminNodeForm, get_node_edit_form(admin))
 
     def test_get_machine_create_form_if_non_admin(self):
         user = factory.make_User()

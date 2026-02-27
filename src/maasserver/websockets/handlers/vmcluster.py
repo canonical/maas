@@ -1,12 +1,12 @@
-# Copyright 2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2021-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from django.http import HttpRequest
 
+from maasserver.authorization import clear_caches
 from maasserver.forms.vmcluster import UpdateVMClusterForm
 from maasserver.models import VMCluster
 from maasserver.permissions import VMClusterPermission
-from maasserver.rbac import rbac
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
@@ -126,8 +126,9 @@ class VMClusterHandler(TimestampedModelHandler):
     async def list(self, params):
         @transactional
         def get_objects(params):
-            # Clear rbac cache before check (this is in its own thread).
-            rbac.clear()
+            # Clear rbac/openfga cache before check (this is in its own thread).
+            clear_caches()
+
             return VMCluster.objects.get_clusters(
                 self.user, self._meta.view_permission
             )
@@ -198,8 +199,8 @@ class VMClusterHandler(TimestampedModelHandler):
 
         @transactional
         def get_vmcluster(params):
-            # Clear rbac cache before check (this is in its own thread).
-            rbac.clear()
+            # Clear rbac/openfga cache before check (this is in its own thread).
+            clear_caches()
 
             return VMCluster.objects.get_cluster_or_404(
                 user=self.user, perm=self._meta.delete_permission, **params
@@ -215,7 +216,7 @@ class VMClusterHandler(TimestampedModelHandler):
         @transactional
         def update_obj(params):
             # Clear rbac cache before check (this is in its own thread).
-            rbac.clear()
+            clear_caches()
 
             obj = self.get_object(params)
             if not self.user.has_perm(self._meta.edit_permission, obj):

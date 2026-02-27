@@ -1,10 +1,14 @@
-# Tests for custom sessionbase to configure timeout
+# Copyright 2023-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+import pytest
 
 from maasserver.models import Config
 from maasserver.sessiontimeout import SessionStore
 from maasserver.websockets.handlers.config import ConfigHandler
 
 
+@pytest.mark.usefixtures("mock_openfga")
 class TestSessionTimeout:
     def test_default_config(self, factory):
         admin = factory.make_admin()

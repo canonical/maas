@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Domain`."""
@@ -6,8 +6,8 @@
 from piston3.utils import rc
 
 from maasserver.api.support import (
-    admin_method,
     AnonymousOperationsHandler,
+    check_permission,
     operation,
     OperationsHandler,
 )
@@ -52,7 +52,7 @@ class DomainsHandler(OperationsHandler):
         """
         return Domain.objects.get_all_with_resource_record_count()
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def create(self, request):
         """@description-title Create a domain
         @description Create a domain.
@@ -76,7 +76,7 @@ class DomainsHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     @operation(idempotent=False)
     def set_serial(self, request):
         """@description-title Set the SOA serial number

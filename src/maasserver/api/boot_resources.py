@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `BootResouce`."""
@@ -25,7 +25,11 @@ from maascommon.workflows.bootresource import (
     SYNC_BOOTRESOURCES_WORKFLOW_NAME,
     SyncRequestParam,
 )
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.support import (
+    check_permission,
+    operation,
+    OperationsHandler,
+)
 from maasserver.bootresources import (
     import_resources,
     is_import_resources_running,
@@ -197,7 +201,7 @@ class BootResourcesHandler(OperationsHandler):
             status=int(http.client.OK),
         )
 
-    @admin_method
+    @check_permission("can_edit_boot_entities")
     def create(self, request):
         """@description-title Create a new boot resource
         @description Creates a new boot resource. The file upload must be done
@@ -252,7 +256,7 @@ class BootResourcesHandler(OperationsHandler):
             status=int(http.client.CREATED),
         )
 
-    @admin_method
+    @check_permission("can_edit_boot_entities")
     @operation(idempotent=False, exported_as="import")
     def import_resources(self, request):
         """@description-title Import boot resources
@@ -268,7 +272,7 @@ class BootResourcesHandler(OperationsHandler):
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET),
         )
 
-    @admin_method
+    @check_permission("can_edit_boot_entities")
     @operation(idempotent=False)
     def stop_import(self, request):
         """@description-title Stop import boot resources
@@ -341,7 +345,7 @@ class BootResourceHandler(OperationsHandler):
             status=int(http.client.OK),
         )
 
-    @admin_method
+    @check_permission("can_edit_boot_entities")
     def delete(self, request, id):
         """@description-title Delete a boot resource
         @description Delete a boot resource by id.
@@ -376,7 +380,7 @@ class BootResourceFileUploadHandler(OperationsHandler):
     api_doc_section_name = "Boot resource file upload"
     read = create = delete = None
 
-    @admin_method
+    @check_permission("can_edit_boot_entities")
     def update(self, request, resource_id, id):
         """@description-title Upload chunk of boot resource file.
         @description Uploads a chunk of boot resource file

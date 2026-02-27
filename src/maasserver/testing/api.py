@@ -1,4 +1,4 @@
-# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Helpers for API testing."""
@@ -20,6 +20,8 @@ from testscenarios import multiply_scenarios
 from maasserver.macaroon_auth import external_auth_enabled
 from maasserver.models.user import create_auth_token
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import OpenFGAMock
+from maasserver.testing.openfga import OpenFGAClientMock
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -85,6 +87,19 @@ class APITestType(abc.ABCMeta):
         return cls.forUsers(admin=factory.make_admin)
 
     @property
+    def ForInternalUser(cls):
+        """API test for administrative users only."""
+
+        def _make_worker():
+            user = get_worker_user()
+
+            # Pre-create the auth token.
+            create_auth_token(user)
+            return user
+
+        return cls.forUsers(user=_make_worker)
+
+    @property
     def ForAnonymousAndUserAndAdmin(cls):
         """API test for anonymous, normal, and administrative users."""
         return cls.forUsers(
@@ -133,6 +148,9 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
     # a subclass; it will be set for you.
     client = None
 
+    # Mock openfga automatically for the test. Set to False to disable this behavior and mock it manually in the test.
+    auto_mock_openfga = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Create scenarios for userfactories and clientfactories.
@@ -174,6 +192,9 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
         self.user = self.userfactory()
         self.client = self.clientfactory()
         self.client.login(user=self.user)
+
+        if self.auto_mock_openfga:
+            self.useFixture(OpenFGAMock(client=OpenFGAClientMock()))
 
     def assertIsInstance(self, *args, **kwargs):
         return unittest.TestCase.assertIsInstance(self, *args, **kwargs)

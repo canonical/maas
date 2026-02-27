@@ -1,10 +1,10 @@
-# Copyright 2023 Canonical Ltd.  This software is licensed under the
+# Copyright 2023-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from django.db.models import F
 from django.shortcuts import get_object_or_404
 
-from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.api.support import internal_method, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.models.node import RegionController
@@ -20,7 +20,7 @@ class ImagesSyncProgressHandler(OperationsHandler):
     def resource_uri(cls, *args, **kwargs):
         return ("images_sync_progress_handler", [])
 
-    @admin_method
+    @internal_method
     def read(self, request):
         with_sources = get_optional_param(request.GET, "sources", True)
         qs = (
@@ -46,7 +46,7 @@ class ImagesSyncProgressHandler(OperationsHandler):
             for file in qs
         }
 
-    @admin_method
+    @internal_method
     def create(self, request):
         data = request.data
         region = get_object_or_404(
@@ -88,7 +88,7 @@ class ImageSyncProgressHandler(OperationsHandler):
             ),
         )
 
-    @admin_method
+    @internal_method
     def update(self, request, file_id, system_id):
         data = request.data
         size = data.get("size", 0)
@@ -99,7 +99,7 @@ class ImageSyncProgressHandler(OperationsHandler):
             region=region,
         )
 
-    @admin_method
+    @internal_method
     def read(self, request, file_id, system_id):
         boot_file = get_object_or_404(BootResourceFile, id=file_id)
         region = get_object_or_404(RegionController, system_id=system_id)

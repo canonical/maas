@@ -1,4 +1,4 @@
-# Copyright 2014-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Tag`."""
@@ -14,7 +14,11 @@ from piston3.utils import rc
 
 from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maasserver.api.nodes import NODES_PREFETCH, NODES_SELECT_RELATED
-from maasserver.api.support import operation, OperationsHandler
+from maasserver.api.support import (
+    check_permission,
+    operation,
+    OperationsHandler,
+)
 from maasserver.api.utils import (
     extract_oauth_key,
     get_list_from_dict_or_multidict,
@@ -60,13 +64,6 @@ def check_rack_controller_access(request, rack_controller):
         )
 
 
-def get_tag_or_404(name, user, to_edit=False):
-    """Fetch a Tag by name or raise an Http404 exception."""
-    if to_edit and not user.is_superuser:
-        raise PermissionDenied()
-    return get_object_or_404(Tag, name=name)
-
-
 class TagHandler(OperationsHandler):
     """
     Tags are properties that can be associated with a Node and serve as
@@ -98,8 +95,9 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        return get_tag_or_404(name=name, user=request.user)
+        return get_object_or_404(Tag, name=name)
 
+    @check_permission("can_edit_global_entities")
     def update(self, request, name):
         """@description-title Update a tag
         @description Update elements of a given tag.
@@ -128,7 +126,7 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        tag = get_tag_or_404(name=name, user=request.user, to_edit=True)
+        tag = get_object_or_404(Tag, name=name)
         name = tag.name
         form = TagForm(request.data, instance=tag)
         if not form.is_valid():
@@ -154,6 +152,7 @@ class TagHandler(OperationsHandler):
         )
         return new_tag
 
+    @check_permission("can_edit_global_entities")
     def delete(self, request, name):
         """@description-title Delete a tag
         @description Deletes a tag by name.
@@ -168,7 +167,7 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        tag = get_tag_or_404(name=name, user=request.user, to_edit=True)
+        tag = get_object_or_404(Tag, name=name)
         tag.delete()
         create_audit_event(
             EVENT_TYPES.TAG,
@@ -187,7 +186,7 @@ class TagHandler(OperationsHandler):
         # This is done because this operation actually returns a list of nodes
         # and not a list of tags as this handler is defined to return.
         self.fields = None
-        tag = get_tag_or_404(name=name, user=request.user)
+        tag = get_object_or_404(Tag, name=name)
         nodes = model.objects.get_nodes(
             request.user, NodePermission.view, from_nodes=tag.node_set.all()
         )
@@ -312,6 +311,7 @@ class TagHandler(OperationsHandler):
             nodes = Node.objects.none()
         return nodes
 
+    @check_permission("can_edit_global_entities")
     @operation(idempotent=False)
     def rebuild(self, request, name):
         """@description-title Trigger a tag-node mapping rebuild
@@ -332,10 +332,11 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        tag = get_tag_or_404(name=name, user=request.user, to_edit=True)
+        tag = get_object_or_404(Tag, name=name)
         tag.populate_nodes()
         return {"rebuilding": tag.name}
 
+    @check_permission("can_edit_global_entities")
     @operation(idempotent=False)
     def update_nodes(self, request, name):
         """@description-title Update nodes associated with this tag
@@ -385,10 +386,7 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        if not request.user.is_superuser:
-            raise PermissionDenied()
-
-        tag = get_tag_or_404(name=name, user=request.user)
+        tag = get_object_or_404(Tag, name=name)
         definition = request.data.get("definition", None)
         if definition is not None and tag.definition != definition:
             return HttpResponse(
@@ -424,6 +422,7 @@ class TagsHandler(OperationsHandler):
     api_doc_section_name = "Tags"
     update = delete = None
 
+    @check_permission("can_edit_global_entities")
     def create(self, request):
         """@description-title Create a new tag
         @description Create a new tag.
@@ -459,9 +458,6 @@ class TagsHandler(OperationsHandler):
         @error-example "no-perms"
             No content
         """
-        if not request.user.is_superuser:
-            raise PermissionDenied()
-
         form = TagForm(request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)

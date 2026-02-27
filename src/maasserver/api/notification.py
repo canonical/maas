@@ -1,11 +1,16 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.support import (
+    check_permission,
+    operation,
+    OperationsHandler,
+)
+from maasserver.authorization import can_view_notifications
 from maasserver.exceptions import MAASAPIForbidden, MAASAPIValidationError
 from maasserver.forms.notification import NotificationForm
 from maasserver.models.notification import Notification
@@ -50,7 +55,7 @@ class NotificationsHandler(OperationsHandler):
         """
         return Notification.objects.find_for_user(request.user).order_by("id")
 
-    @admin_method
+    @check_permission("can_edit_notifications")
     def create(self, request):
         """@description-title Create a notification
         @description Create a new notification.
@@ -124,15 +129,14 @@ class NotificationHandler(OperationsHandler):
             No Notification matches the given query.
         """
         notification = get_object_or_404(Notification, id=id)
-        if (
-            notification.is_relevant_to(request.user)
-            or request.user.is_superuser
+        if notification.is_relevant_to(request.user) or can_view_notifications(
+            request.user
         ):
             return notification
         else:
             raise MAASAPIForbidden()
 
-    @admin_method
+    @check_permission("can_edit_notifications")
     def update(self, request, id):
         """@description-title Update a notification
         @description Update a notification with a given id.
@@ -189,7 +193,7 @@ class NotificationHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @admin_method
+    @check_permission("can_edit_notifications")
     def delete(self, request, id):
         """@description-title Delete a notification
         @description Delete a notification with a given id.

@@ -9,6 +9,7 @@ import json
 from django.conf import settings
 from django.urls import reverse
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import Zone
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -87,4 +88,21 @@ class TestZonesAPI(APITestCase.ForUser):
         self.assertEqual(
             sorted((zone.name for zone in zones), key=lambda s: s.lower()),
             [zone.get("name") for zone in parsed_result],
+        )
+
+
+class TestZonesOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        name = factory.make_name("name")
+        description = factory.make_name("description")
+        response = self.client.post(
+            reverse("zones_handler"),
+            {"name": name, "description": description},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
         )

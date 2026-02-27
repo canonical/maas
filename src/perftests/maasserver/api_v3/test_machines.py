@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import math
@@ -58,7 +58,6 @@ async def test_perf_list_machines_APIv3_endpoint_all(
     # APIv3 without any pagination.
     machine_count = await get_machine_count(db_connection)
     machine_pages = math.ceil(machine_count / MAX_PAGE_SIZE)
-    print(machine_pages)
     responses = [None] * machine_pages
     with perf.record("test_perf_list_machines_APIv3_endpoint_all"):
         # Extracted from a clean load of labmaas with empty local

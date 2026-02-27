@@ -1,3 +1,6 @@
+# Copyright 2022-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from django.db import transaction
 
 from ...sqlalchemy import service_layer
@@ -24,6 +27,7 @@ def generate(
     ownerdata_prefix: str,
     tag_prefix: str,
     redfish_address: str,
+    resourcepool_count: int,
 ):
     service_layer.init()
     from metadataserver.builtin_scripts import load_builtin_scripts
@@ -38,6 +42,7 @@ def generate(
         make_rackcontrollers,
         make_rackcontrollers_primary_or_secondary,
     )
+    from .resourcepool import make_resourcepools
     from .storage import make_storage_setup
     from .tag import make_tags
     from .user import make_users
@@ -92,10 +97,13 @@ def generate(
     rackcontrollers = make_rackcontrollers(rackcontroller_infos, tags)
     make_rackcontrollers_primary_or_secondary(rackcontrollers, vlans)
 
+    LOGGER.info(f"creating {resourcepool_count} resource pools")
+    resourcepools = make_resourcepools(resourcepool_count)
+
     LOGGER.info(f"creating {machine_count} machines")
     make_storage_setup(machine_infos)
     machines = make_machines(
-        machine_infos, vmhosts, tags, users, redfish_address
+        machine_infos, vmhosts, tags, users, redfish_address, resourcepools
     )
 
     LOGGER.info("creating 5 pci devices per machine")

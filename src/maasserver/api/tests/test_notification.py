@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Notification API."""
@@ -9,6 +9,7 @@ import random
 
 from django.urls import reverse
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models.notification import Notification, NotificationDismissal
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -300,3 +301,50 @@ class TestNotificationAPI_Anonymous(APITestCase.ForAnonymous):
         uri = get_notification_uri(notification)
         response = self.client.delete(uri)
         self.assertEqual(response.status_code, http.client.UNAUTHORIZED)
+
+
+class TestNotificationsOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_create_requires_can_edit_notifications(self):
+        self.openfga_client.can_edit_notifications.return_value = True
+        uri = get_notifications_uri()
+        response = self.client.post(uri, {"message": factory.make_name()})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_edit_notifications.assert_called_once_with(
+            self.user
+        )
+
+
+class TestNotificationOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_view_all_if_can_view_notifications(self):
+        self.openfga_client.can_view_notifications.return_value = True
+        other = factory.make_User()
+        notification = factory.make_Notification(user=other)
+        uri = get_notification_uri(notification)
+        response = self.client.get(uri)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_view_notifications.assert_called()
+
+    def test_update_requires_can_edit_notifications(self):
+        self.openfga_client.can_edit_notifications.return_value = True
+        notification = factory.make_Notification()
+        message_new = factory.make_name("message")
+        uri = get_notification_uri(notification)
+        response = self.client.put(uri, {"message": message_new})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_edit_notifications.assert_called_once_with(
+            self.user
+        )
+
+    def test_delete_requires_can_edit_notifications(self):
+        self.openfga_client.can_edit_notifications.return_value = True
+        notification = factory.make_Notification()
+        uri = get_notification_uri(notification)
+        response = self.client.delete(uri)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
+        self.openfga_client.can_edit_notifications.assert_called_once_with(
+            self.user
+        )

@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node actions.
@@ -22,6 +22,7 @@ from django.http.request import HttpRequest
 from maascommon.osystem import LINUX_OSYSTEMS
 from maasserver import locks
 from maasserver.audit import create_audit_event
+from maasserver.authorization import can_edit_machines
 from maasserver.enum import (
     ENDPOINT,
     NODE_ACTION_TYPE,
@@ -516,7 +517,7 @@ class Deploy(NodeAction):
     ):
         """See `NodeAction.execute`."""
         if install_kvm or register_vmhost:
-            if not self.user.is_superuser:
+            if not can_edit_machines(self.user):
                 raise NodeActionError(
                     "You must be a MAAS administrator to deploy a machine "
                     "as a MAAS-managed VM host."

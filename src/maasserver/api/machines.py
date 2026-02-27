@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -39,12 +39,13 @@ from maasserver.api.nodes import (
     PowersMixin,
     WorkloadAnnotationsMixin,
 )
-from maasserver.api.support import admin_method, operation
+from maasserver.api.support import check_permission, operation
 from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_list,
     get_optional_param,
 )
+from maasserver.authorization import can_edit_machines
 from maasserver.clusterrpc.driver_parameters import get_all_power_types
 from maasserver.enum import (
     BMC_TYPE,
@@ -66,7 +67,6 @@ from maasserver.exceptions import (
 from maasserver.forms import (
     AdminMachineForm,
     get_machine_create_form,
-    get_machine_edit_form,
     MachineForm,
 )
 from maasserver.forms.clone import CloneForm
@@ -666,8 +666,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
             system_id=system_id, user=request.user, perm=NodePermission.admin
         )
 
-        Form = get_machine_edit_form(request.user)
-        form = Form(data=request.data, instance=machine)
+        form = AdminMachineForm(data=request.data, instance=machine)
 
         if form.is_valid():
             return form.save()
@@ -865,8 +864,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
 
         if not series:
             series = Config.objects.get_config("default_distro_series")
-        Form = get_machine_edit_form(request.user)
-        form = Form(instance=machine, data={})
+        form = MachineForm(instance=machine, data={})
         form.set_distro_series(series=series)
         if license_key is not None:
             form.set_license_key(license_key=license_key)
@@ -2098,7 +2096,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
             request.data, "deployed", default=False, validator=StringBool
         )
         machine = create_machine(request)
-        if request.user.is_superuser and commission and not deployed:
+        if can_edit_machines(request.user) and commission and not deployed:
             form = CommissionForm(
                 instance=machine, user=request.user, data=request.data
             )
@@ -2700,7 +2698,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
         return chassis_type
 
-    @admin_method
+    @check_permission("can_edit_machines")
     @operation(idempotent=False)
     def add_chassis(self, request):
         """@description-title Add special hardware

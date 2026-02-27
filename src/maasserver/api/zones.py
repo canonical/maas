@@ -1,11 +1,11 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Zone`."""
 
 from maasserver.api.support import (
-    admin_method,
     AnonymousOperationsHandler,
+    check_permission,
     ModelCollectionOperationsHandler,
     ModelOperationsHandler,
 )
@@ -126,7 +126,7 @@ class ZonesHandler(ModelCollectionOperationsHandler):
     handler_url_name = "zones_handler"
     api_doc_section_name = "Zones"
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def create(self, request):
         """@description Creates a new zone.
         @param (string) "name" [required=true] The new zone's name.

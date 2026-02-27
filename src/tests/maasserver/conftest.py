@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2022-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from contextlib import contextmanager
@@ -17,6 +17,10 @@ from maasserver.vault import (
     get_region_vault_client,
     get_region_vault_client_if_enabled,
 )
+
+__all__ = ["mock_openfga"]
+
+from tests.fixtures import mock_openfga
 
 
 @pytest.fixture(autouse=True)

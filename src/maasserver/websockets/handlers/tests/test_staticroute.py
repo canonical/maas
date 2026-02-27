@@ -5,6 +5,7 @@
 
 import random
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models.staticroute import StaticRoute
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -129,4 +130,50 @@ class TestStaticRouteHandler(MAASServerTestCase):
         handler = StaticRouteHandler(user, {}, None)
         self.assertRaises(
             HandlerPermissionError, handler.delete, {"id": staticroute.id}
+        )
+
+
+class TestStaticRouteHandlerOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        user = factory.make_User()
+        source = factory.make_Subnet()
+        destination = factory.make_Subnet(
+            version=source.get_ipnetwork().version
+        )
+        gateway_ip = factory.pick_ip_in_Subnet(source)
+        metric = random.randint(0, 500)
+        handler = StaticRouteHandler(user, {}, None)
+        handler.create(
+            {
+                "source": source.id,
+                "destination": destination.id,
+                "gateway_ip": gateway_ip,
+                "metric": metric,
+            }
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+
+    def test_update_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        user = factory.make_User()
+        staticroute = factory.make_StaticRoute()
+        handler = StaticRouteHandler(user, {}, None)
+        handler.update({"id": staticroute.id})
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+
+    def test_delete_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        user = factory.make_User()
+        staticroute = factory.make_StaticRoute()
+        handler = StaticRouteHandler(user, {}, None)
+        handler.delete({"id": staticroute.id})
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
         )

@@ -1,7 +1,12 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from pathlib import Path
+
+from aiohttp import web
 import pytest
 
+from maascommon.enums.openfga import OPENFGA_STORE_ID
 from maascommon.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
@@ -61,3 +66,48 @@ def osystem_registry():
     yield
     _registry.clear()
     _registry.update(registry_copy)
+
+
+class StubOpenFGAServer:
+    def __init__(self):
+        self.allowed = True
+        self.last_payload = None
+        self.status_code = 200
+        self.list_objects_response = {"objects": []}
+
+    async def check_handler(self, request):
+        self.last_payload = await request.json()
+        if self.status_code != 200:
+            return web.Response(status=self.status_code)
+        return web.json_response({"allowed": self.allowed, "resolution": ""})
+
+    async def list_objects_handler(self, request):
+        self.last_payload = await request.json()
+        if self.status_code != 200:
+            return web.Response(status=self.status_code)
+        return web.json_response(self.list_objects_response)
+
+
+@pytest.fixture
+async def stub_openfga_server(tmp_path: Path):
+    socket_path = str(tmp_path / "test-openfga.sock")
+    handler_store = StubOpenFGAServer()
+
+    app = web.Application()
+    app.router.add_post(
+        f"/stores/{OPENFGA_STORE_ID}/check", handler_store.check_handler
+    )
+    app.router.add_post(
+        f"/stores/{OPENFGA_STORE_ID}/list-objects",
+        handler_store.list_objects_handler,
+    )
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+
+    site = web.UnixSite(runner, socket_path)
+    await site.start()
+
+    yield handler_store, socket_path
+
+    await runner.cleanup()

@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for static route API."""
@@ -8,6 +8,7 @@ import random
 
 from django.urls import reverse
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -169,4 +170,31 @@ class TestStaticRouteAPI(APITestCase.ForUser):
         response = self.client.delete(uri)
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+
+class TestStaticRoutesOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        source = factory.make_Subnet()
+        destination = factory.make_Subnet(
+            version=source.get_ipnetwork().version
+        )
+        gateway_ip = factory.pick_ip_in_Subnet(source)
+        uri = get_staticroutes_uri()
+        response = self.client.post(
+            uri,
+            {
+                "source": source.id,
+                "destination": destination.id,
+                "gateway_ip": gateway_ip,
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
         )

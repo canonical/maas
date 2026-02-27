@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The config handler for the WebSocket connection."""
@@ -6,6 +6,10 @@
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 
+from maasserver.authorization import (
+    can_edit_configurations,
+    can_view_configurations,
+)
 from maasserver.enum import ENDPOINT
 from maasserver.forms import ConfigForm
 from maasserver.forms.settings import (
@@ -26,7 +30,7 @@ from maasserver.websockets.base import (
 
 def get_config_keys(user):
     config_keys = list(CONFIG_ITEMS) + ["uuid", "maas_url"]
-    if user.is_superuser:
+    if can_view_configurations(user):
         config_keys.append("rpc_shared_secret")
     return config_keys
 
@@ -87,7 +91,7 @@ class ConfigHandler(Handler):
 
     def bulk_update(self, params):
         """Update config values in bulk."""
-        if not self.user.is_superuser:
+        if not can_edit_configurations(self.user):
             raise HandlerPermissionError()
         if "items" not in params:
             raise HandlerPKError("Missing map of items in params")
@@ -119,7 +123,7 @@ class ConfigHandler(Handler):
 
     def update(self, params):
         """Update a config value."""
-        if not self.user.is_superuser:
+        if not can_edit_configurations(self.user):
             raise HandlerPermissionError()
         if "name" not in params:
             raise HandlerPKError("Missing name in params")

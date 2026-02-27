@@ -475,9 +475,18 @@ class ServiceCollectionV3:
                 ZonesService.__name__, ZonesService.build_cache_object
             ),  # type: ignore
         )
+        services.openfga_tuples = OpenFGATupleService(
+            context=context,
+            openfga_tuple_repository=OpenFGATuplesRepository(context),
+            cache=cache.get(
+                OpenFGATupleService.__name__,
+                OpenFGATupleService.build_cache_object,
+            ),  # type: ignore
+        )
         services.resource_pools = ResourcePoolsService(
             context=context,
             resource_pools_repository=ResourcePoolRepository(context),
+            openfga_tuples_service=services.openfga_tuples,
         )
         services.machines = MachinesService(
             context=context,
@@ -545,6 +554,7 @@ class ServiceCollectionV3:
             filestorage_service=services.filestorage,
             consumers_service=services.consumers,
             tokens_service=services.tokens,
+            openfga_tuple_service=services.openfga_tuples,
         )
         services.domains = DomainsService(
             context=context,
@@ -724,9 +734,5 @@ class ServiceCollectionV3:
             users_service=services.users,
             vlans_service=services.vlans,
             v3dnsrrsets_service=services.v3dnsrrsets,
-        )
-        services.openfga_tuples = OpenFGATupleService(
-            context=context,
-            openfga_tuple_repository=OpenFGATuplesRepository(context),
         )
         return services

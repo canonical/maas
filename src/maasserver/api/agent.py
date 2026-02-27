@@ -1,7 +1,7 @@
-# Copyright 2023 Canonical Ltd.  This software is licensed under the
+# Copyright 2023-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.api.support import internal_method, OperationsHandler
 from maasserver.dhcp import generate_dhcp_configuration
 from maasserver.models.node import RackController
 
@@ -33,7 +33,7 @@ class AgentConfigHandler(OperationsHandler):
             ),
         )
 
-    @admin_method
+    @internal_method
     def read(self, request, system_id, service_name):
         if service_name == "dhcp":
             agent = RackController.objects.get(system_id=system_id)

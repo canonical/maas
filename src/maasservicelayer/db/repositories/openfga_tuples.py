@@ -3,11 +3,12 @@
 
 from sqlalchemy import delete, insert
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.openfga import OPENFGA_STORE_ID
 from maascommon.utils.ulid import generate_ulid
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.mappers.base import (
     BaseDomainDataMapper,
     CreateOrUpdateResource,
@@ -24,6 +25,26 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.utils.date import utcnow
+
+
+class OpenFGATuplesClauseFactory(ClauseFactory):
+    @classmethod
+    def with_object_type(cls, object_type: str) -> Clause:
+        return Clause(
+            condition=eq(OpenFGATupleTable.c.object_type, object_type)
+        )
+
+    @classmethod
+    def with_object_id(cls, object_id: str) -> Clause:
+        return Clause(condition=eq(OpenFGATupleTable.c.object_id, object_id))
+
+    @classmethod
+    def with_relation(cls, relation: str) -> Clause:
+        return Clause(condition=eq(OpenFGATupleTable.c.relation, relation))
+
+    @classmethod
+    def with_user(cls, user: str) -> Clause:
+        return Clause(condition=eq(OpenFGATupleTable.c._user, user))
 
 
 class OpenFGATuplesDataMapper(BaseDomainDataMapper):

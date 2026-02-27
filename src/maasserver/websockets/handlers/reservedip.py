@@ -5,6 +5,7 @@
 
 from django.db.models.query import QuerySet
 
+from maasserver.authorization import can_edit_global_entities
 from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.forms.reservedip import ReservedIPForm
 from maasserver.models import Interface
@@ -63,7 +64,7 @@ class ReservedIPHandler(TimestampedModelHandler):
         return data
 
     def create(self, params: dict) -> dict:
-        if not self.user.is_superuser:
+        if not can_edit_global_entities(self.user):
             raise HandlerPermissionError()
 
         reserved_ip = super().create(params)
@@ -73,7 +74,7 @@ class ReservedIPHandler(TimestampedModelHandler):
         return reserved_ip
 
     def update(self, params: dict):
-        if not self.user.is_superuser:
+        if not can_edit_global_entities(self.user):
             raise HandlerPermissionError()
 
         entry_id = params.get("id")
@@ -87,7 +88,7 @@ class ReservedIPHandler(TimestampedModelHandler):
         return updated_reserved_ip
 
     def delete(self, params: dict) -> None:
-        if not self.user.is_superuser:
+        if not can_edit_global_entities(self.user):
             raise HandlerPermissionError()
 
         reserved_ip = self.get_object(params)

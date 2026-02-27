@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -18,8 +18,8 @@ from piston3.utils import rc
 
 from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
 from maasserver.api.support import (
-    admin_method,
     AnonymousOperationsHandler,
+    check_permission,
     deprecated,
     operation,
     OperationsHandler,
@@ -1280,7 +1280,7 @@ class PowerMixin:
 class PowersMixin:
     """Mixin which adds power commands to a nodes type."""
 
-    @admin_method
+    @check_permission("can_edit_machines")
     @operation(idempotent=True)
     def power_parameters(self, request):
         """@description-title Get power parameters

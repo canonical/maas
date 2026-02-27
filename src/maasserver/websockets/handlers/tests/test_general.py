@@ -7,6 +7,7 @@ from unittest.mock import sentinel
 from distro_info import UbuntuDistroInfo
 import petname
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
     BOND_MODE_CHOICES,
@@ -461,3 +462,79 @@ class TestGeneralHandler(MAASServerTestCase):
         handler = GeneralHandler(factory.make_User(), {}, None)
         result = handler.install_type({})
         self.assertEqual("snap", result)
+
+
+class TestGeneralHandlerOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_machine_actions_for_users_that_can_edit_machines(self):
+        self.openfga_client.can_edit_machines.return_value = True
+        user = factory.make_User()
+        handler = GeneralHandler(user, {}, None)
+        actions_expected = handler.machine_actions({})
+        self.assertCountEqual(
+            {
+                "commission",
+                "acquire",
+                "deploy",
+                "on",
+                "off",
+                "release",
+                "abort",
+                "test",
+                "rescue-mode",
+                "exit-rescue-mode",
+                "mark-broken",
+                "mark-fixed",
+                "override-failed-testing",
+                "lock",
+                "unlock",
+                "tag",
+                "untag",
+                "clone",
+                "set-zone",
+                "set-pool",
+                "delete",
+            },
+            [action["name"] for action in actions_expected],
+        )
+        self.openfga_client.can_edit_machines.assert_called_once_with(user)
+
+    def test_machine_actions_for_users_with_no_edit_permissions(self):
+        self.openfga_client.can_edit_machines.return_value = False
+        user = factory.make_User()
+        handler = GeneralHandler(user, {}, None)
+        actions_expected = handler.machine_actions({})
+        self.assertCountEqual(
+            {
+                "acquire",
+                "deploy",
+                "on",
+                "off",
+                "release",
+                "mark-broken",
+                "lock",
+                "unlock",
+            },
+            [action["name"] for action in actions_expected],
+        )
+        self.openfga_client.can_edit_machines.assert_called_once_with(user)
+
+    def test_controller_actions_for_users_that_can_edit_controllers(self):
+        self.openfga_client.can_edit_controllers.return_value = True
+        user = factory.make_User()
+        handler = GeneralHandler(user, {}, None)
+        actions_expected = handler.region_controller_actions({})
+        self.assertCountEqual(
+            {"set-zone", "delete"},
+            [action["name"] for action in actions_expected],
+        )
+        self.openfga_client.can_edit_controllers.assert_called_once_with(user)
+
+    def test_controller_actions_for_users_with_no_permissions(self):
+        self.openfga_client.can_edit_controllers.return_value = False
+        user = factory.make_User()
+        handler = GeneralHandler(user, {}, None)
+        actions_expected = handler.region_controller_actions({})
+        self.assertEqual([], actions_expected)
+        self.openfga_client.can_edit_controllers.assert_called_once_with(user)

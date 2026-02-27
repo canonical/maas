@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
@@ -213,7 +213,6 @@ class TestVLAN(MAASServerTestCase):
         with post_commit_hooks:
             fabric = factory.make_Fabric()
             vlan = factory.make_VLAN(fabric=fabric)
-            print(vlan.dhcp_on)
             subnet = factory.make_Subnet(vlan=vlan)
             vlan.delete()
         self.assertEqual(reload_object(subnet).vlan, fabric.get_default_vlan())

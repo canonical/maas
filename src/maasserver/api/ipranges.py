@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `ip-ranges`."""
@@ -6,6 +6,7 @@
 from piston3.utils import rc
 
 from maasserver.api.support import OperationsHandler
+from maasserver.authorization import can_edit_global_entities
 from maasserver.enum import IPRANGE_TYPE
 from maasserver.exceptions import MAASAPIForbidden, MAASAPIValidationError
 from maasserver.forms.iprange import IPRangeForm
@@ -23,7 +24,7 @@ DISPLAYED_IPRANGE_FIELDS = (
 
 
 def raise_error_if_not_owner(iprange, user):
-    if not user.is_superuser and iprange.user_id != user.id:
+    if not can_edit_global_entities(user) and iprange.user_id != user.id:
         raise MAASAPIForbidden(
             "Unable to modify IP range. You don't own the IP range."
         )
@@ -83,7 +84,7 @@ class IPRangesHandler(OperationsHandler):
         if (
             "type" in request.data
             and request.data["type"] == IPRANGE_TYPE.DYNAMIC
-            and not request.user.is_superuser
+            and not can_edit_global_entities(request.user)
         ):
             raise MAASAPIForbidden(
                 "Unable to create dynamic IP range. "

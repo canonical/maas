@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django-enabled test cases."""
@@ -84,8 +84,19 @@ class CountQueries:
 
     @property
     def count(self):
-        """Number of queries."""
-        return self._end_count - self._start_count
+        total = self._end_count - self._start_count
+        if total <= 0:
+            return self._sqlalchemy_counter.count
+
+        recent = self.connection.queries[-total:]
+
+        # Do not count queries that contain COUNTQUERIES-IGNOREME in their SQL, as these are used to prevent counting of queries in some cases.
+        filtered = [
+            q
+            for q in recent
+            if "COUNTQUERIES-IGNOREME" not in q.get("sql", "")
+        ]
+        return len(filtered) + self._sqlalchemy_counter.count
 
     @property
     def queries(self):

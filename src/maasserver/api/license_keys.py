@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `LicenseKey`."""
@@ -6,7 +6,7 @@
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
-from maasserver.api.support import OperationsHandler
+from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import LicenseKeyForm
 from maasserver.models import LicenseKey
@@ -20,6 +20,7 @@ class LicenseKeysHandler(OperationsHandler):
 
     update = delete = None
 
+    @check_permission("can_view_license_keys")
     def read(self, request):
         """@description-title List license keys
         @description List all available license keys.
@@ -32,6 +33,7 @@ class LicenseKeysHandler(OperationsHandler):
         """
         return LicenseKey.objects.all().order_by("osystem", "distro_series")
 
+    @check_permission("can_edit_license_keys")
     def create(self, request):
         """@description-title Define a license key
         @description Define a license key.
@@ -95,6 +97,7 @@ class LicenseKeyHandler(OperationsHandler):
     # Creation happens on the LicenseKeysHandler.
     create = None
 
+    @check_permission("can_view_license_keys")
     def read(self, request, osystem, distro_series):
         """@description-title Read license key
         @description Read a license key for the given operating sytem and
@@ -122,6 +125,7 @@ class LicenseKeyHandler(OperationsHandler):
             LicenseKey, osystem=osystem, distro_series=distro_series
         )
 
+    @check_permission("can_edit_license_keys")
     def update(self, request, osystem, distro_series):
         """@description-title Update license key
         @description Update a license key for the given operating system and
@@ -159,6 +163,7 @@ class LicenseKeyHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
         return form.save()
 
+    @check_permission("can_edit_license_keys")
     def delete(self, request, osystem, distro_series):
         """@description-title Delete license key
         @description Delete license key for the given operation system and

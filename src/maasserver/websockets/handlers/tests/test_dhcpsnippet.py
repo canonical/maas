@@ -7,6 +7,7 @@ from email.utils import format_datetime
 import random
 
 from maascommon.events import AUDIT
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import DHCPSnippet, Event, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -211,4 +212,52 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
             HandlerValidationError,
             handler.revert,
             {"id": dhcp_snippet.id, "to": textfile.id},
+        )
+
+
+class TestDHCPSnippetHandlerOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        user = factory.make_User()
+        handler = DHCPSnippetHandler(user, {}, None)
+        dhcp_snippet_name = factory.make_name("dhcp_snippet_name")
+        with post_commit_hooks:
+            handler.create(
+                {"name": dhcp_snippet_name, "value": factory.make_string()}
+            )
+        self.assertIsNotNone(DHCPSnippet.objects.get(name=dhcp_snippet_name))
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+
+    def test_update_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        user = factory.make_User()
+        handler = DHCPSnippetHandler(user, {}, None)
+        dhcp_snippet = factory.make_DHCPSnippet()
+        node = factory.make_Node()
+        with post_commit_hooks:
+            handler.update({"id": dhcp_snippet.id, "node": node.system_id})
+        dhcp_snippet = reload_object(dhcp_snippet)
+        self.assertEqual(node, dhcp_snippet.node)
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+
+    def test_delete_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        user = factory.make_User()
+        handler = DHCPSnippetHandler(user, {}, None)
+        with post_commit_hooks:
+            dhcp_snippet = factory.make_DHCPSnippet()
+        handler.delete({"id": dhcp_snippet.id})
+        self.assertRaises(
+            DHCPSnippet.DoesNotExist,
+            DHCPSnippet.objects.get,
+            id=dhcp_snippet.id,
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
         )

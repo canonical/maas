@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Network`."""
@@ -8,7 +8,7 @@ from piston3.utils import rc
 
 from maasserver.api.subnets import SubnetHandler, SubnetsHandler
 from maasserver.api.support import (
-    admin_method,
+    check_permission,
     deprecated,
     operation,
     OperationsHandler,
@@ -59,7 +59,7 @@ class NetworkHandler(OperationsHandler):
             Subnet.objects.get_object_by_specifiers_or_raise(name)
         )
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def update(self, request, name):
         """Update network definition.
 
@@ -80,7 +80,7 @@ class NetworkHandler(OperationsHandler):
         """
         return rc.NOT_HERE
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def delete(self, request, name):
         """Delete network definition.
 
@@ -89,7 +89,7 @@ class NetworkHandler(OperationsHandler):
         """
         return rc.NOT_HERE
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     @operation(idempotent=False)
     def connect_macs(self, request, name):
         """Connect the given MAC addresses to this network.
@@ -99,7 +99,7 @@ class NetworkHandler(OperationsHandler):
         """
         return rc.NOT_HERE
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     @operation(idempotent=False)
     def disconnect_macs(self, request, name):
         """Disconnect the given MAC addresses from this network.
@@ -175,7 +175,7 @@ class NetworksHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
         return render_networks_json(form.filter_subnets(Subnet.objects.all()))
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def create(self, request):
         """Define a network.
 

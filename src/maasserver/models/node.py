@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node objects."""
@@ -151,6 +151,7 @@ from maasserver.node_status import (
     MONITORED_STATUSES,
     NODE_TRANSITIONS,
 )
+from maasserver.openfga import get_openfga_client
 from maasserver.permissions import NodePermission
 from maasserver.routablepairs import (
     get_routable_address_map,
@@ -483,25 +484,20 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         # Nonetheless, the code should not crash with corrupt data.
         if user is None:
             return nodes.none()
-        if user.is_superuser and not rbac.is_enabled():
-            # Admin is allowed to see all nodes.
-            return nodes
 
-        # Non-admins aren't allowed to see controllers.
-        if not user.is_superuser:
-            nodes = nodes.exclude(
-                Q(
-                    node_type__in=[
-                        NODE_TYPE.RACK_CONTROLLER,
-                        NODE_TYPE.REGION_CONTROLLER,
-                        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                    ]
-                )
-            )
-
-        visible_pools, view_all_pools = [], []
-        deploy_pools, admin_pools = [], []
         if rbac.is_enabled():
+            # Non-admins aren't allowed to see controllers.
+            if not user.is_superuser:
+                nodes = nodes.exclude(
+                    Q(
+                        node_type__in=[
+                            NODE_TYPE.RACK_CONTROLLER,
+                            NODE_TYPE.REGION_CONTROLLER,
+                            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                        ]
+                    )
+                )
+
             fetched_pools = rbac.get_resource_pool_ids(
                 user.username,
                 "view",
@@ -514,24 +510,21 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
             deploy_pools = fetched_pools["deploy-machines"]
             admin_pools = fetched_pools["admin-machines"]
 
-        if perm == NodePermission.view:
-            condition = Q(Q(owner__isnull=True) | Q(owner=user))
-            if rbac.is_enabled():
+            if perm == NodePermission.view:
+                condition = Q(Q(owner__isnull=True) | Q(owner=user))
                 condition |= Q(pool_id__in=view_all_pools)
-        elif perm == NodePermission.edit:
-            condition = Q(Q(owner__isnull=True) | Q(owner=user))
-            if rbac.is_enabled():
+            elif perm == NodePermission.edit:
+                condition = Q(Q(owner__isnull=True) | Q(owner=user))
                 condition = Q(Q(pool_id__in=deploy_pools) & Q(condition))
-        elif perm == NodePermission.admin:
-            # There is no built-in Q object that represents False, but
-            # this one does.
-            condition = Q(id__in=[])
-        else:
-            raise NotImplementedError(
-                "Invalid permission check (invalid permission name: %s)."
-                % perm
-            )
-        if rbac.is_enabled():
+            elif perm == NodePermission.admin:
+                # There is no built-in Q object that represents False, but
+                # this one does.
+                condition = Q(id__in=[])
+            else:
+                raise NotImplementedError(
+                    "Invalid permission check (invalid permission name: %s)."
+                    % perm
+                )
             # XXX blake_r 2018-12-12 - This should be cleaned up to only use
             # the `condition` instead of using both `nodes.filter` and
             # `condition`. The RBAC unit tests cover the expected result.
@@ -569,7 +562,59 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
                     )
                     | Q(node_type=NODE_TYPE.DEVICE, owner=user)
                 )
+        else:
+            view_all_pools = (
+                get_openfga_client().list_pools_with_view_machines_access(user)
+            )
+            visible_pools = get_openfga_client().list_pools_with_view_available_machines_access(
+                user
+            )
+            if perm == NodePermission.view:
+                # visible pools: free and own machines.
+                condition = Q(
+                    Q(Q(owner__isnull=True) | Q(owner=user))
+                    & Q(pool_id__in=visible_pools)
+                )
+                # view all pools: all machines
+                condition |= Q(pool_id__in=view_all_pools)
+            elif perm == NodePermission.edit:
+                deploy_pools = (
+                    get_openfga_client().list_pool_with_deploy_machines_access(
+                        user
+                    )
+                )
+                # deploy pools: free and own machines.
+                condition = Q(
+                    Q(Q(owner__isnull=True) | Q(owner=user))
+                    & Q(pool_id__in=deploy_pools)
+                )
+            elif perm == NodePermission.admin:
+                # There is no built-in Q object that represents False, but
+                # this one does.
+                condition = Q(pool_id__in=[])
 
+            admin_pools = (
+                get_openfga_client().list_pools_with_edit_machines_access(user)
+            )
+            condition |= Q(pool_id__in=admin_pools)
+            condition = Q(Q(node_type=NODE_TYPE.MACHINE) & condition)
+            if get_openfga_client().can_view_devices(user):
+                condition |= Q(
+                    node_type__in=[
+                        NODE_TYPE.DEVICE,
+                    ]
+                )
+            else:
+                condition |= Q(Q(node_type=NODE_TYPE.DEVICE) & Q(owner=user))
+
+            if get_openfga_client().can_view_controllers(user):
+                condition |= Q(
+                    node_type__in=[
+                        NODE_TYPE.RACK_CONTROLLER,
+                        NODE_TYPE.REGION_CONTROLLER,
+                        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                    ]
+                )
         return nodes.filter(condition)
 
     def get_nodes(self, user, perm, ids=None, from_nodes=None):

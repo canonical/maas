@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import http.client
@@ -18,12 +18,12 @@ from maasserver.exceptions import MAASAPIException, MAASAPINotFound
 from maasserver.middleware import (
     AccessMiddleware,
     APIRPCErrorsMiddleware,
+    AuthorizationCacheMiddleware,
     CSRFHelperMiddleware,
     DebuggingLoggerMiddleware,
     ExceptionMiddleware,
     ExternalAuthInfoMiddleware,
     is_public_path,
-    RBACMiddleware,
     RPCErrorsMiddleware,
     TracingMiddleware,
 )
@@ -632,12 +632,12 @@ class TestExternalAuthInfoMiddleware(MAASServerTestCase):
         self.assertEqual(request.external_auth_info.url, "https://example.com")
 
 
-class TestRBACMiddleware(MAASServerTestCase):
+class TestAuthorizationCacheMiddleware(MAASServerTestCase):
     def process_request(self, request):
         def get_response(request):
             return None
 
-        middleware = RBACMiddleware(get_response)
+        middleware = AuthorizationCacheMiddleware(get_response)
         return middleware(request)
 
     def test_calls_rbac_clear(self):

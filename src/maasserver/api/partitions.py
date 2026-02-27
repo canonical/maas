@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Partition`."""
@@ -10,6 +10,7 @@ from piston3.utils import rc
 
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
+from maasserver.authorization import can_edit_machine_in_pool
 from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -58,7 +59,9 @@ def raise_error_for_invalid_state_on_allocated_operations(
             "Cannot %s partition because the node is not Ready "
             "or Allocated." % operation
         )
-    if node.status == NODE_STATUS.READY and not user.is_superuser:
+    if node.status == NODE_STATUS.READY and not can_edit_machine_in_pool(
+        user, node.pool_id
+    ):
         raise PermissionDenied(
             "Cannot %s partition because you don't have the "
             "permissions on a Ready node." % operation

@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -287,7 +287,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
 
     def test_get_no_numa_nodes_for_device(self):
         user = factory.make_User()
-        device = factory.make_Device()
+        device = factory.make_Device(owner=user)
         handler = DeviceHandler(user, {}, None)
         result = handler.get({"system_id": device.system_id})
         self.assertNotIn("numa_nodes", result)

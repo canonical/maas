@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom test-case classes."""
@@ -38,9 +38,11 @@ from maasserver.models.signals import vlan as vlan_signals_module
 from maasserver.sqlalchemy import service_layer
 from maasserver.testing.fixtures import (
     IntroCompletedFixture,
+    OpenFGAMock,
     PackageRepositoryFixture,
     RBACClearFixture,
 )
+from maasserver.testing.openfga import OpenFGAClientMock
 from maasserver.testing.orm import PostCommitHooksTestMixin
 from maasserver.testing.resources import DjangoDatabasesManager
 from maasserver.testing.testclient import MAASSensibleClient
@@ -67,6 +69,9 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
     # tests explicitly sets these attributes to False.
     mock_cache_boot_source = True
     mock_delete_large_object_content_later = True
+
+    # Mock openfga automatically for the test. Set to False to disable this behavior and mock it manually in the test.
+    auto_mock_openfga = True
 
     @property
     def client(self):
@@ -103,6 +108,9 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
 
         if self.mock_cache_boot_source:
             self.patch(bootsources_module, "post_commit_do")
+
+        if self.auto_mock_openfga:
+            self.useFixture(OpenFGAMock(client=OpenFGAClientMock()))
 
     def setUpFixtures(self):
         """This should be called by a subclass once other set-up is done."""

@@ -1,4 +1,4 @@
-# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import http.client
@@ -7,6 +7,7 @@ import uuid
 from django.conf import settings
 from django.urls import reverse
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE, NODE_STATUS
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.api import APITestCase
@@ -1191,3 +1192,101 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
         )
         node = reload_object(node)
         self.assertEqual(block_device, node.boot_disk)
+
+
+class TestBlockDeviceAPIOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_read_calls_openfga(self):
+        self.openfga_client.can_view_machines_in_pool.return_value = True
+
+        machine_owner = factory.make_User()
+        node = factory.make_Node(owner=machine_owner)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        uri = get_blockdevices_uri(node)
+        response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_view_machines_in_pool.assert_called_once_with(
+            self.user, node.pool.id
+        )
+
+    def test_create_physicalblockdevice_calls_openfga(self):
+        self.openfga_client.can_edit_machines_in_pool.return_value = True
+        node = factory.make_Node(with_boot_disk=False)
+        uri = get_blockdevices_uri(node)
+        response = self.client.post(
+            uri,
+            {
+                "name": "sda",
+                "block_size": 1024,
+                "size": MIN_BLOCK_DEVICE_SIZE,
+                "path": "/dev/sda",
+                "model": "A2M0003",
+                "serial": "42",
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_machines_in_pool.assert_called_once_with(
+            self.user, node.pool.id
+        )
+
+    def test_format_calls_openfga(self):
+        self.openfga_client.can_edit_machines_in_pool.return_value = True
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        fstype = factory.pick_filesystem_type()
+        fsuuid = "%s" % uuid.uuid4()
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {"op": "format", "fstype": fstype, "uuid": fsuuid}
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_machines_in_pool.assert_called_once_with(
+            self.user, node.pool.id
+        )
+
+    def test_unformat_calls_openfga(self):
+        self.openfga_client.can_edit_machines_in_pool.return_value = True
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(uri, {"op": "unformat"})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_machines_in_pool.assert_called_once_with(
+            self.user, node.pool.id
+        )
+
+    def test_mount_calls_openfga(self):
+        self.openfga_client.can_edit_machines_in_pool.return_value = True
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("mount-options")
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri,
+            {
+                "op": "mount",
+                "mount_point": mount_point,
+                "mount_options": mount_options,
+            },
+        )
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_machines_in_pool.assert_called_once_with(
+            self.user, node.pool.id
+        )

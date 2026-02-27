@@ -1,11 +1,11 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Fabric`."""
 
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.fabric import FabricForm
 from maasserver.models import Fabric
@@ -49,7 +49,7 @@ class FabricsHandler(OperationsHandler):
         """
         return prefetch_queryset(Fabric.objects.all(), FABRIC_PREFETCH)
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def create(self, request):
         """@description-title Create a fabric
         @description Create a fabric.

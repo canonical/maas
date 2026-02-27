@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Signals coming off models."""
@@ -17,6 +17,7 @@ __all__ = [
     "iprange",
     "nodes",
     "regionrackrpcconnection",
+    "resourcepool",
     "partitions",
     "podhints",
     "power",
@@ -24,6 +25,7 @@ __all__ = [
     "services",
     "staticipaddress",
     "subnet",
+    "users",
     "vlan",
 ]
 
@@ -44,9 +46,11 @@ from maasserver.models.signals import (
     podhints,
     power,
     regionrackrpcconnection,
+    resourcepool,
     scriptresult,
     services,
     staticipaddress,
     subnet,
+    users,
     vlan,
 )

@@ -1,10 +1,10 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Supporting infrastructure for Piston-based APIs in MAAS."""
 
 __all__ = [
-    "admin_method",
+    "check_permission",
     "AnonymousOperationsHandler",
     "ModelCollectionOperationsHandler",
     "ModelOperationsHandler",
@@ -26,7 +26,10 @@ from piston3.handler import AnonymousBaseHandler, BaseHandler, HandlerMetaClass
 from piston3.resource import Resource
 from piston3.utils import HttpStatusCode, rc
 
+from maascommon.constants import MAAS_USER_USERNAME
+from maasserver import openfga
 from maasserver.api.doc import get_api_description
+from maasserver.authorization import can_edit_global_entities
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -36,6 +39,8 @@ from maasserver.utils.orm import get_one
 from provisioningserver.logger import LegacyLogger
 
 log = LegacyLogger()
+
+UNAUTHORIZED_MESSAGE = "User is not allowed access to this API."
 
 
 class OperationsResource(Resource):
@@ -110,7 +115,7 @@ class RestrictedResource(OperationsResource):
     def authenticate(self, request, rm):
         actor, anonymous = super().authenticate(request, rm)
         if not anonymous and not request.user.is_active:
-            raise PermissionDenied("User is not allowed access to this API.")
+            raise PermissionDenied(UNAUTHORIZED_MESSAGE)
         else:
             return actor, anonymous
 
@@ -120,8 +125,8 @@ class AdminRestrictedResource(RestrictedResource):
 
     def authenticate(self, request, rm):
         actor, anonymous = super().authenticate(request, rm)
-        if anonymous or not request.user.is_superuser:
-            raise PermissionDenied("User is not allowed access to this API.")
+        if anonymous or not can_edit_global_entities(request.user):
+            raise PermissionDenied(UNAUTHORIZED_MESSAGE)
         else:
             return actor, anonymous
 
@@ -200,25 +205,50 @@ def deprecated(use):
     return _decorator
 
 
-METHOD_RESERVED_ADMIN = "This method is reserved for admin users."
+METHOD_RESERVED_INTERNAL = (
+    "This method is reserved for the MAAS internal user."
+)
 
 
-def admin_method(func):
-    """Decorator to protect a method from non-admin users.
-
-    If a non-admin tries to call a method decorated with this decorator,
-    they will get an HTTP "forbidden" error and a message saying the
-    operation is accessible only to administrators.
-    """
+def internal_method(func):
+    """Decorator to protect a method from non-MAAS-internal users."""
 
     @wraps(func)
     def wrapper(self, request, *args, **kwargs):
-        if not request.user.is_superuser:
-            raise PermissionDenied(METHOD_RESERVED_ADMIN)
-        else:
-            return func(self, request, *args, **kwargs)
+        if request.user.username != MAAS_USER_USERNAME:
+            raise PermissionDenied(METHOD_RESERVED_INTERNAL)
+        return func(self, request, *args, **kwargs)
 
     return wrapper
+
+
+def check_permission(permission_method_name):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, request, *args, **kwargs):
+            from maasserver.rbac import rbac
+
+            if rbac.is_enabled():
+                if request.user.is_superuser:
+                    return func(self, request, *args, **kwargs)
+                raise PermissionDenied(
+                    f"User does not have permission to perform this operation. The user should have permission '{permission_method_name}'"
+                )
+
+            client = openfga.get_openfga_client()
+
+            permission_func = getattr(client, permission_method_name)
+
+            if not permission_func(request.user):
+                raise PermissionDenied(
+                    f"User does not have permission to perform this operation. The user should have permission '{permission_method_name}'"
+                )
+
+            return func(self, request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class OperationsHandlerType(HandlerMetaClass):
@@ -486,7 +516,7 @@ class ModelOperationsHandler(
                 raise PermissionDenied()
         return instance
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def update(self, request, **kwargs):
         """PUT request.  Update a model instance.
 
@@ -501,7 +531,7 @@ class ModelOperationsHandler(
             raise MAASAPIValidationError(form.errors)
         return form.save()
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def delete(self, request, **kwargs):
         """DELETE request.  Delete a model instance."""
         filters = {self.id_field: kwargs[self.id_field]}

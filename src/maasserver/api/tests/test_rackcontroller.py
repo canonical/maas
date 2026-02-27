@@ -1,4 +1,4 @@
-# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils.http import urlencode
 
 from maasserver.api import rackcontrollers
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.models.bmc import Pod
 from maasserver.models.signals import vlan as vlan_signals_module
@@ -361,3 +362,53 @@ class TestRackControllersAPI(APITestCase.ForUser):
             explain_unexpected_response(http.client.FORBIDDEN, response),
         )
         get_all_power_types.assert_not_called()
+
+
+class TestRegionControllerAPIOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_update_requires_can_edit_controllers(self):
+        self.openfga_client.can_edit_controllers.return_value = True
+        rack = factory.make_RackController()
+        response = self.client.put(
+            reverse("rackcontroller_handler", args=[rack.system_id]), {}
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_edit_controllers.assert_called_once_with(
+            self.user
+        )
+
+    def test_list_boot_images_requires_can_edit_controllers(self):
+        self.openfga_client.can_edit_controllers.return_value = True
+        rack = factory.make_RackController()
+        response = self.client.post(
+            reverse("rackcontroller_handler", args=[rack.system_id]),
+            {"op": "import_boot_images"},
+        )
+        self.assertEqual(http.client.ACCEPTED, response.status_code)
+        self.openfga_client.can_edit_controllers.assert_called_once_with(
+            self.user
+        )
+
+    def test_list_boot_images_requires_can_view_controllers(self):
+        self.openfga_client.can_view_controllers.return_value = True
+        rack = factory.make_RackController()
+        response = self.client.get(
+            reverse("rackcontroller_handler", args=[rack.system_id]),
+            {"op": "list_boot_images"},
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_view_controllers.assert_called_once_with(
+            self.user
+        )
+
+    def test_delete_requires_can_edit_controllers(self):
+        self.openfga_client.can_edit_controllers.return_value = True
+        rack = factory.make_RackController()
+        response = self.client.delete(
+            reverse("rackcontroller_handler", args=[rack.system_id])
+        )
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
+        self.openfga_client.can_edit_controllers.assert_called_once_with(
+            self.user
+        )

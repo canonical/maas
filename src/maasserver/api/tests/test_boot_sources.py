@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `Boot Sources` API."""
@@ -9,6 +9,7 @@ from django.urls import reverse
 
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.audit import Event
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import BootSource
 from maasserver.models.signals import bootsources
 from maasserver.testing.api import APITestCase
@@ -260,3 +261,63 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         }
         response = self.client.post(reverse("boot_sources_handler"), params)
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+
+class TestBootSourceOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_GET_requires_can_view_boot_entities(self):
+        self.openfga_client.can_view_boot_entities.return_value = True
+        factory.make_BootSource()
+        response = self.client.get(reverse("boot_sources_handler"))
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_view_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_PUT_requires_can_view_boot_entities(self):
+        self.openfga_client.can_edit_boot_entities.return_value = True
+        boot_source = factory.make_BootSource()
+        new_values = {
+            "url": "http://example.com/",
+            "keyring_filename": factory.make_name("filename"),
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_edit_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_DELETE_requires_can_view_boot_entities(self):
+        self.openfga_client.can_edit_boot_entities.return_value = True
+        boot_source = factory.make_BootSource()
+        response = self.client.delete(get_boot_source_uri(boot_source))
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
+        self.openfga_client.can_edit_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+
+class TestBootSourcesOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_GET_requires_can_view_boot_entities(self):
+        self.openfga_client.can_view_boot_entities.return_value = True
+        response = self.client.get(reverse("boot_sources_handler"))
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_view_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_POST_requires_can_edit_boot_entities(self):
+        self.openfga_client.can_edit_boot_entities.return_value = True
+        params = {
+            "url": "http://example.com/",
+            "keyring_filename": "",
+            "keyring_data": (
+                factory.make_file_upload(content=sample_binary_data)
+            ),
+        }
+        response = self.client.post(reverse("boot_sources_handler"), params)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        self.openfga_client.can_edit_boot_entities.assert_called_once_with(
+            self.user
+        )

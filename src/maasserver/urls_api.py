@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
@@ -317,6 +317,24 @@ node_device_handler = RestrictedResource(
 node_devices_handler = RestrictedResource(
     NodeDevicesHandler, authentication=api_auth
 )
+boot_source_handler = RestrictedResource(
+    BootSourceHandler, authentication=api_auth
+)
+boot_sources_handler = RestrictedResource(
+    BootSourcesHandler, authentication=api_auth
+)
+boot_source_selection_handler = RestrictedResource(
+    BootSourceSelectionHandler, authentication=api_auth
+)
+boot_source_selections_handler = RestrictedResource(
+    BootSourceSelectionsHandler, authentication=api_auth
+)
+license_key_handler = RestrictedResource(
+    LicenseKeyHandler, authentication=api_auth
+)
+license_keys_handler = RestrictedResource(
+    LicenseKeysHandler, authentication=api_auth
+)
 
 # Admin handlers.
 commissioning_script_handler = AdminRestrictedResource(
@@ -324,24 +342,6 @@ commissioning_script_handler = AdminRestrictedResource(
 )
 commissioning_scripts_handler = AdminRestrictedResource(
     CommissioningScriptsHandler, authentication=api_auth
-)
-boot_source_handler = AdminRestrictedResource(
-    BootSourceHandler, authentication=api_auth
-)
-boot_sources_handler = AdminRestrictedResource(
-    BootSourcesHandler, authentication=api_auth
-)
-boot_source_selection_handler = AdminRestrictedResource(
-    BootSourceSelectionHandler, authentication=api_auth
-)
-boot_source_selections_handler = AdminRestrictedResource(
-    BootSourceSelectionsHandler, authentication=api_auth
-)
-license_key_handler = AdminRestrictedResource(
-    LicenseKeyHandler, authentication=api_auth
-)
-license_keys_handler = AdminRestrictedResource(
-    LicenseKeysHandler, authentication=api_auth
 )
 
 

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `BootSource`."""
@@ -13,7 +13,7 @@ from piston3.handler import typemapper
 from piston3.utils import rc
 
 from maascommon.logging.security import CREATED, DELETED, UPDATED
-from maasserver.api.support import OperationsHandler
+from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
@@ -40,6 +40,7 @@ class BootSourceHandler(OperationsHandler):
     model = BootSource
     fields = DISPLAYED_BOOTSOURCE_FIELDS
 
+    @check_permission("can_view_boot_entities")
     def read(self, request, id):
         """@description-title Read a boot source
         @description Read a boot source with the given id.
@@ -59,6 +60,7 @@ class BootSourceHandler(OperationsHandler):
         """
         return get_object_or_404(BootSource, id=id)
 
+    @check_permission("can_edit_boot_entities")
     def update(self, request, id):
         """@description-title Update a boot source
         @description Update a boot source with the given id.
@@ -108,6 +110,7 @@ class BootSourceHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
+    @check_permission("can_edit_boot_entities")
     def delete(self, request, id):
         """@description-title Delete a boot source
         @description Delete a boot source with the given id.
@@ -157,6 +160,7 @@ class BootSourcesHandler(OperationsHandler):
     def resource_uri(cls):
         return ("boot_sources_handler", [])
 
+    @check_permission("can_view_boot_entities")
     def read(self, request):
         """@description-title List boot sources
         @description List all boot sources.
@@ -169,6 +173,7 @@ class BootSourcesHandler(OperationsHandler):
         """
         return BootSource.objects.all()
 
+    @check_permission("can_edit_boot_entities")
     def create(self, request):
         """@description-title Create a boot source
         @description Create a new boot source. Note that in addition to

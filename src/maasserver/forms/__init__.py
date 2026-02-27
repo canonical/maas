@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Forms."""
@@ -31,8 +31,6 @@ __all__ = [
     "FormatBlockDeviceForm",
     "FormatPartitionForm",
     "get_machine_create_form",
-    "get_machine_edit_form",
-    "get_node_edit_form",
     "GlobalKernelOptsForm",
     "KeyForm",
     "LicenseKeyForm",
@@ -97,6 +95,7 @@ from maascommon.osystem import (
 )
 from maasserver.api.utils import get_optional_param, get_overridden_query_dict
 from maasserver.audit import create_audit_event
+from maasserver.authorization import can_edit_global_entities
 from maasserver.clusterrpc.driver_parameters import (
     get_driver_choices,
     get_driver_parameters,
@@ -1320,20 +1319,6 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
         return machine
 
 
-def get_machine_edit_form(user):
-    if user.is_superuser:
-        return AdminMachineForm
-    else:
-        return MachineForm
-
-
-def get_node_edit_form(user):
-    if user.is_superuser:
-        return AdminNodeForm
-    else:
-        return NodeForm
-
-
 class KeyForm(MAASModelForm):
     """Base class for `SSHKeyForm` and `SSLKeyForm`."""
 
@@ -1603,7 +1588,7 @@ class DeviceWithMACsForm(WithMACAddressesMixin, DeviceForm):
 
 
 def get_machine_create_form(user):
-    if user.is_superuser:
+    if can_edit_global_entities(user):
         return AdminMachineWithMACAddressesForm
     else:
         return MachineWithPowerAndMACAddressesForm

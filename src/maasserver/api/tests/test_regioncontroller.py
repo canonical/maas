@@ -1,4 +1,4 @@
-# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import http.client
@@ -6,6 +6,7 @@ import http.client
 from django.urls import reverse
 from django.utils.http import urlencode
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import NODE_TYPE
 from maasserver.models.bmc import Pod
 from maasserver.testing.api import APITestCase, explain_unexpected_response
@@ -179,4 +180,30 @@ class TestRegionControllersAPI(APITestCase.ForUser):
                 "interface_test_status_name",
             },
             parsed_result[0].keys(),
+        )
+
+
+class TestRegionControllerAPIOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_update_requires_can_edit_controllers(self):
+        self.openfga_client.can_edit_controllers.return_value = True
+        region = factory.make_RegionController()
+        response = self.client.put(
+            reverse("regioncontroller_handler", args=[region.system_id]), {}
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_edit_controllers.assert_called_once_with(
+            self.user
+        )
+
+    def test_delete_requires_can_edit_controllers(self):
+        self.openfga_client.can_edit_controllers.return_value = True
+        region = factory.make_RegionController()
+        response = self.client.delete(
+            reverse("regioncontroller_handler", args=[region.system_id])
+        )
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
+        self.openfga_client.can_edit_controllers.assert_called_once_with(
+            self.user
         )

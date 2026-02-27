@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The controller handler for the WebSocket connection."""
@@ -16,6 +16,7 @@ from django.db.models import (
     Subquery,
 )
 
+from maasserver.authorization import can_edit_controllers
 from maasserver.config import RegionConfiguration
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import ControllerForm
@@ -258,7 +259,7 @@ class ControllerHandler(NodeHandler):
 
         User must be a superuser to perform this action.
         """
-        if not self.user.is_superuser:
+        if not can_edit_controllers(self.user):
             raise HandlerPermissionError()
 
         secret = SecretManager().get_simple_secret("rpc-shared")

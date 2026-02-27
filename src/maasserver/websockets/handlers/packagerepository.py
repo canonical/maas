@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The PackageRepository handler for the WebSocket connection."""
@@ -6,6 +6,7 @@
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 
+from maasserver.authorization import can_edit_global_entities
 from maasserver.enum import ENDPOINT
 from maasserver.forms.packagerepository import PackageRepositoryForm
 from maasserver.models import PackageRepository
@@ -28,7 +29,7 @@ class PackageRepositoryHandler(TimestampedModelHandler):
 
     def create(self, params):
         """Create the object from params iff admin."""
-        if not self.user.is_superuser:
+        if not can_edit_global_entities(self.user):
             raise HandlerPermissionError()
 
         request = HttpRequest()
@@ -49,7 +50,7 @@ class PackageRepositoryHandler(TimestampedModelHandler):
 
     def update(self, params):
         """Update the object from params iff admin."""
-        if not self.user.is_superuser:
+        if not can_edit_global_entities(self.user):
             raise HandlerPermissionError()
 
         obj = self.get_object(params)
@@ -70,6 +71,6 @@ class PackageRepositoryHandler(TimestampedModelHandler):
 
     def delete(self, params):
         """Delete the object from params iff admin."""
-        if not self.user.is_superuser:
+        if not can_edit_global_entities(self.user):
             raise HandlerPermissionError()
         return super().delete(params)

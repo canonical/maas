@@ -1,8 +1,9 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from functools import partial
 import http.client
+from unittest.mock import MagicMock
 
 from django.urls import reverse
 
@@ -18,6 +19,7 @@ from maasserver.permissions import (
 from maasserver.rbac import ALL_RESOURCES, FakeRBACClient, rbac
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import OpenFGAMock
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.nodeinituser import get_node_init_user
 
@@ -76,6 +78,17 @@ class EnableRBACMixin:
         rbac._store.client = client
         rbac._store.cleared = False  # Prevent re-creation of the client
         self.rbac_store = client.store
+
+
+class OpenFGAMockMixin:
+    """Mixin to disable auto-mocking and set up a custom OpenFGA client mock."""
+
+    auto_mock_openfga = False
+
+    def setUp(self):
+        super().setUp()
+        self.openfga_client = MagicMock()
+        self.useFixture(OpenFGAMock(client=self.openfga_client))
 
 
 class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
@@ -1118,6 +1131,57 @@ class TestMAASAuthorizationBackendForUnrestrictedRead(MAASServerTestCase):
         )
 
 
+class TestMAASAuthorizationBackendForUnrestrictedReadOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    scenarios = (
+        ("dnsdata", {"factory": factory.make_DNSData}),
+        ("dnsresource", {"factory": factory.make_DNSResource}),
+        ("domain", {"factory": factory.make_Domain}),
+        ("fabric", {"factory": factory.make_Fabric}),
+        ("subnet", {"factory": factory.make_Subnet}),
+        ("space", {"factory": factory.make_Space}),
+        ("staticroute", {"factory": factory.make_StaticRoute}),
+        ("vlan", {"factory": factory.make_VLAN}),
+    )
+
+    def test_user_can_view(self):
+        self.openfga_client.can_view_global_entities.return_value = True
+
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertTrue(
+            backend.has_perm(user, NodePermission.view, self.factory())
+        )
+        self.openfga_client.can_view_global_entities.assert_called_once_with(
+            user
+        )
+
+    def test_user_can_edit(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertTrue(
+            backend.has_perm(user, NodePermission.edit, self.factory())
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+
+    def test_user_can_admin(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertTrue(
+            backend.has_perm(user, NodePermission.admin, self.factory())
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+
+
 class TestMAASAuthorizationBackendForAdminRestricted(MAASServerTestCase):
     scenarios = (("discovery", {"factory": factory.make_Discovery}),)
 
@@ -1442,3 +1506,153 @@ class TestMAASAuthorizationBackendPod(MAASServerTestCase, EnableRBACMixin):
         self.assertTrue(
             backend.has_perm(user, PodPermission.dynamic_compose, pod3)
         )
+
+
+class TestMAASAuthorizationBackendResourcePoolOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_create_requires_can_edit_machines(self):
+        self.openfga_client.can_edit_machines.return_value = False
+
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+
+        self.assertFalse(backend.has_perm(user, ResourcePoolPermission.create))
+        self.openfga_client.can_edit_machines.assert_called_once_with(user)
+
+    def test_view_always_viewable(self):
+        self.openfga_client.can_view_available_machines_in_pool.return_value = False
+
+        backend = MAASAuthorizationBackend()
+        pool = factory.make_ResourcePool()
+        user = factory.make_User()
+        self.assertFalse(
+            backend.has_perm(user, ResourcePoolPermission.view, pool)
+        )
+        self.openfga_client.can_view_available_machines_in_pool.assert_called_once_with(
+            user, pool.id
+        )
+
+    def test_edit_requires_can_edit_machines_in_pool(self):
+        self.openfga_client.can_edit_machines_in_pool.return_value = False
+
+        backend = MAASAuthorizationBackend()
+        pool = factory.make_ResourcePool()
+        user = factory.make_User()
+        self.assertFalse(
+            backend.has_perm(user, ResourcePoolPermission.edit, pool)
+        )
+        self.openfga_client.can_edit_machines_in_pool.assert_called_once_with(
+            user, pool.id
+        )
+
+
+class TestMAASAuthorizationBackendPodOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_create_requires_can_edit_machines(self):
+        self.openfga_client.can_edit_machines.return_value = False
+
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+
+        self.assertFalse(backend.has_perm(user, PodPermission.create))
+        self.openfga_client.can_edit_machines.assert_called_once_with(user)
+
+    def test_edit_requires_can_edit_machines_in_pool(self):
+        self.openfga_client.can_edit_machines_in_pool.return_value = False
+
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        pod = factory.make_Pod(pool=pool)
+
+        self.assertFalse(backend.has_perm(user, PodPermission.edit, pod))
+        self.openfga_client.can_edit_machines_in_pool.assert_called_once_with(
+            user, pool.id
+        )
+
+    def test_dynamic_compose_requires_can_deploy_machines_in_pool(self):
+        self.openfga_client.can_deploy_machines_in_pool.return_value = True
+
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        pod = factory.make_Pod(pool=pool)
+
+        self.assertTrue(
+            backend.has_perm(user, PodPermission.dynamic_compose, pod)
+        )
+        self.openfga_client.can_deploy_machines_in_pool.assert_called_once_with(
+            user, pool.id
+        )
+
+    def test_dynamic_compose_requires_can_edit_machines_in_pool(self):
+        self.openfga_client.can_deploy_machines_in_pool.return_value = False
+        self.openfga_client.can_edit_machines_in_pool.return_value = True
+
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        pod = factory.make_Pod(pool=pool)
+
+        self.assertTrue(
+            backend.has_perm(user, PodPermission.dynamic_compose, pod)
+        )
+        self.openfga_client.can_edit_machines_in_pool.assert_called_once_with(
+            user, pool.id
+        )
+
+    def test_view_requires_can_view_available_machines_in_pool(self):
+        self.openfga_client.can_view_available_machines_in_pool.return_value = True
+
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        pool = factory.make_ResourcePool()
+        pod = factory.make_Pod(pool=pool)
+
+        self.assertTrue(backend.has_perm(user, PodPermission.view, pod))
+        self.openfga_client.can_view_available_machines_in_pool.assert_called_once_with(
+            user, pool.id
+        )
+
+
+class TestMAASAuthorizationBackendInterfaceOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_unowned_interface_requires_admin(self):
+        self.openfga_client.can_edit_machines.return_value = True
+
+        backend = MAASAuthorizationBackend()
+        interface = factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
+        user = factory.make_User()
+
+        for perm in [
+            NodePermission.view,
+            NodePermission.edit,
+            NodePermission.admin,
+        ]:
+            self.assertTrue(backend.has_perm(user, perm, interface))
+
+    def test_user_can_view_if_can_view_machines(self):
+        self.openfga_client.can_view_machines_in_pool.return_value = True
+
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node(owner=factory.make_User())
+        nic = factory.make_Interface(node=node)
+        self.assertTrue(backend.has_perm(user, NodePermission.view, nic))
+
+    def test_user_can_view_when_no_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node()
+        nic = factory.make_Interface(node=node)
+        self.assertTrue(backend.has_perm(user, NodePermission.view, nic))
+
+    def test_user_can_view_when_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        nic = factory.make_Interface(node=node)
+        self.assertTrue(backend.has_perm(user, NodePermission.view, nic))

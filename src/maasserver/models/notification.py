@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a notification message."""
@@ -19,6 +19,7 @@ from django.db.models import (
 )
 from markupsafe import Markup
 
+from maasserver.authorization import can_view_notifications
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -170,7 +171,7 @@ class NotificationManager(Manager):
         """
         if user is None:
             return Notification.objects.none()
-        elif user.is_superuser:
+        elif can_view_notifications(user):
             query = self._sql_find_ids_for_admins
         else:
             query = self._sql_find_ids_for_users
@@ -261,11 +262,16 @@ class Notification(CleanSave, TimestampedModel):
 
     def is_relevant_to(self, user):
         """Is this notification relevant to the given user?"""
-        return user is not None and (
-            (self.user_id is not None and self.user_id == user.id)
-            or (self.users and not user.is_superuser)
-            or (self.admins and user.is_superuser)
-        )
+        if user is not None:
+            if self.user_id is not None and self.user_id == user.id:
+                return True
+
+            can_user_view_all_notification = can_view_notifications(user)
+            if (self.users and not can_user_view_all_notification) or (
+                self.admins and can_user_view_all_notification
+            ):
+                return True
+        return False
 
     def dismiss(self, user):
         """Dismiss this notification.

@@ -374,7 +374,7 @@ cleandb:
 .PHONY: cleandb
 
 sampledata: SAMPLEDATA_MACHINES ?= 100
-sampledata: syncdb bin/maas-sampledata
+sampledata: build syncdb bin/maas-sampledata
 	$(dbrun) bin/maas-sampledata --machine $(SAMPLEDATA_MACHINES)
 .PHONY: sampledata
 

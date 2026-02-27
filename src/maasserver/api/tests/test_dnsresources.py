@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DNSResource API."""
@@ -11,6 +11,7 @@ from django.conf import settings
 from django.urls import reverse
 
 from maasserver.api.dnsresources import get_dnsresource_queryset
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import NODE_STATUS
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
@@ -512,4 +513,29 @@ class TestDNSResourceAPI(APITestCase.ForUser):
         response = self.client.delete(uri)
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+
+class TestDNSResourcesAPIOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        dnsresource_name = factory.make_name("dnsresource")
+        domain = factory.make_Domain()
+        sip = factory.make_StaticIPAddress()
+        uri = get_dnsresources_uri()
+        response = self.client.post(
+            uri,
+            {
+                "name": dnsresource_name,
+                "domain": domain.id,
+                "ip_addresses": str(sip.ip),
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
         )

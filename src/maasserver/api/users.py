@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `User`."""
@@ -11,7 +11,11 @@ from piston3.utils import rc
 
 from maascommon.logging.security import CREATED, DELETED
 from maasserver.api.ssh_keys import SSHKeysHandler
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.support import (
+    check_permission,
+    operation,
+    OperationsHandler,
+)
 from maasserver.api.utils import extract_bool, get_mandatory_param
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -59,7 +63,7 @@ class UsersHandler(OperationsHandler):
         """
         return request.user
 
-    @admin_method
+    @check_permission("can_edit_identities")
     def create(self, request):
         """@description-title Create a MAAS user account
         @description Creates a MAAS user account.
@@ -152,7 +156,7 @@ class UserHandler(OperationsHandler):
         """
         return get_object_or_404(User, username=username)
 
-    @admin_method
+    @check_permission("can_edit_identities")
     def delete(self, request, username):
         """@description-title Delete a user
         @description Deletes a given username.

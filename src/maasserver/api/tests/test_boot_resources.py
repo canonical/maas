@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `Boot Resources` API."""
@@ -22,6 +22,7 @@ from maasserver.api.boot_resources import (
     boot_resource_to_dict,
     filestore_add_file,
 )
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -614,3 +615,53 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
             )
         self.assertEqual(content, self.read_content(rfile))
         mock_filestore.assert_called_once()
+
+
+class TestBootResourceFileUploadAPIOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_PUT_requires_can_edit_boot_entities(self):
+        self.openfga_client.can_edit_boot_entities.return_value = True
+        params = {
+            "name": factory.make_name("name"),
+            "architecture": make_usable_architecture(self),
+            "content": (factory.make_file_upload(content=sample_binary_data)),
+        }
+        response = self.client.post(reverse("boot_resources_handler"), params)
+        self.assertNotEqual(http.client.FORBIDDEN, response.status_code)
+        self.openfga_client.can_edit_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_stop_import_requires_can_edit_boot_entities(self):
+        self.openfga_client.can_edit_boot_entities.return_value = True
+        self.patch(boot_resources, "stop_import_resources")
+        response = self.client.post(
+            reverse("boot_resources_handler"), {"op": "stop_import"}
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_edit_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_import_requires_can_edit_boot_entities(self):
+        self.openfga_client.can_edit_boot_entities.return_value = True
+        self.patch(boot_resources, "import_resources")
+        response = self.client.post(
+            reverse("boot_resources_handler"), {"op": "import"}
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_edit_boot_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_DELETE_requires_can_edit_boot_entities(self):
+        self.openfga_client.can_edit_boot_entities.return_value = True
+
+        resource = factory.make_BootResource()
+        response = self.client.delete(get_boot_resource_uri(resource))
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
+        self.assertIsNone(reload_object(resource))
+        self.openfga_client.can_edit_boot_entities.assert_called_once_with(
+            self.user
+        )

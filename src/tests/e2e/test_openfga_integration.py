@@ -1,68 +1,13 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import timedelta
-import os
-import subprocess
-import time
-
 import pytest
-import yaml
 
-from maascommon.openfga.client.client import OpenFGAClient
+from maascommon.openfga.async_client import OpenFGAClient
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from tests.e2e.env import skip_if_integration_disabled
-
-
-@pytest.fixture
-def project_root_path(request):
-    return request.config.rootpath
-
-
-@pytest.fixture
-def openfga_socket_path(tmpdir):
-    return tmpdir / "openfga-http.sock"
-
-
-@pytest.fixture
-def openfga_server(tmpdir, project_root_path, openfga_socket_path, db):
-    """Fixture to start the OpenFGA server as a subprocess for testing. After the test is done, it ensures that the server process is terminated."""
-    binary_path = project_root_path / "src/maasopenfga/build/maas-openfga"
-
-    # Set the environment variable for the OpenFGA server to use the socket path in the temporary directory
-    env = os.environ.copy()
-    env["MAAS_OPENFGA_HTTP_SOCKET_PATH"] = str(openfga_socket_path)
-
-    regiond_conf = {
-        "database_host": db.config.host,
-        "database_name": db.config.name,
-        "database_user": "ubuntu",
-    }
-
-    # Write the regiond configuration to a file in the temporary directory
-    with open(tmpdir / "regiond.conf", "w") as f:
-        f.write(yaml.dump(regiond_conf))
-
-    env["SNAP_DATA"] = str(tmpdir)
-
-    pid = subprocess.Popen(binary_path, env=env)
-
-    timeout = timedelta(seconds=30)
-    start_time = time.monotonic()
-    while True:
-        if time.monotonic() - start_time > timeout.total_seconds():
-            pid.terminate()
-            raise TimeoutError(
-                "OpenFGA server did not start within the expected time."
-            )
-        if not openfga_socket_path.exists():
-            time.sleep(0.5)
-        else:
-            break
-    yield pid
-    pid.terminate()
 
 
 @pytest.mark.asyncio
@@ -77,15 +22,15 @@ class TestIntegrationConfigurationsService:
             Context(connection=db_connection), cache=CacheForServices()
         )
 
-        # Create pool:0, pool:1 and pool:2
-        for i in range(0, 3):
+        # Create pool:1, pool:2 and pool:3. pool:1 is the default and already exists
+        for i in range(1, 4):
             await services.openfga_tuples.create(
                 OpenFGATupleBuilder.build_pool(str(i))
             )
 
         # team A can edit and view everything
         await services.openfga_tuples.create(
-            OpenFGATupleBuilder.build_group_can_edit_pools(group_id="teamA")
+            OpenFGATupleBuilder.build_group_can_edit_machines(group_id="teamA")
         )
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_group_can_edit_global_entities(
@@ -93,7 +38,12 @@ class TestIntegrationConfigurationsService:
             )
         )
         await services.openfga_tuples.create(
-            OpenFGATupleBuilder.build_group_can_edit_permissions(
+            OpenFGATupleBuilder.build_group_can_edit_controllers(
+                group_id="teamA"
+            )
+        )
+        await services.openfga_tuples.create(
+            OpenFGATupleBuilder.build_group_can_edit_identities(
                 group_id="teamA"
             )
         )
@@ -101,6 +51,24 @@ class TestIntegrationConfigurationsService:
             OpenFGATupleBuilder.build_group_can_edit_configurations(
                 group_id="teamA"
             )
+        )
+        await services.openfga_tuples.create(
+            OpenFGATupleBuilder.build_group_can_edit_boot_entities(
+                group_id="teamA"
+            )
+        )
+        await services.openfga_tuples.create(
+            OpenFGATupleBuilder.build_group_can_edit_notifications(
+                group_id="teamA"
+            )
+        )
+        await services.openfga_tuples.create(
+            OpenFGATupleBuilder.build_group_can_edit_license_keys(
+                group_id="teamA"
+            )
+        )
+        await services.openfga_tuples.create(
+            OpenFGATupleBuilder.build_group_can_view_devices(group_id="teamA")
         )
 
         # alice belongs to group team A
@@ -112,7 +80,7 @@ class TestIntegrationConfigurationsService:
 
         # team B can_edit_machines and can_view_machines in pool:0
         await services.openfga_tuples.create(
-            OpenFGATupleBuilder.build_group_can_edit_machines(
+            OpenFGATupleBuilder.build_group_can_edit_machines_in_pool(
                 group_id="teamB", pool_id="0"
             )
         )
@@ -125,14 +93,27 @@ class TestIntegrationConfigurationsService:
 
         # team C can_view_machines in pool:0
         await services.openfga_tuples.create(
-            OpenFGATupleBuilder.build_group_can_deploy_machines(
+            OpenFGATupleBuilder.build_group_can_deploy_machines_in_pool(
                 group_id="teamC", pool_id="0"
             )
         )
-        # bob belongs to group team B
+        # carl belongs to group team C
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_user_member_group(
                 user_id="carl", group_id="teamC"
+            )
+        )
+
+        # team D can_view_machines in pool:0
+        await services.openfga_tuples.create(
+            OpenFGATupleBuilder.build_group_can_view_available_machines_in_pool(
+                group_id="teamD", pool_id="0"
+            )
+        )
+        # carl belongs to group team C
+        await services.openfga_tuples.create(
+            OpenFGATupleBuilder.build_user_member_group(
+                user_id="dingo", group_id="teamD"
             )
         )
 
@@ -140,68 +121,136 @@ class TestIntegrationConfigurationsService:
 
         client = OpenFGAClient(str(openfga_socket_path))
         # alice should have all permissions on pool1 because of teamA's system rights
-        assert (await client.can_edit_pools(user_id="alice")) is True
-        assert (await client.can_view_pools(user_id="alice")) is True
-
         for i in range(0, 3):
             assert (
-                await client.can_edit_machines(user_id="alice", pool_id=str(i))
+                await client.can_edit_machines_in_pool(
+                    user_id="alice", pool_id=str(i)
+                )
             ) is True
             assert (
-                await client.can_view_machines(user_id="alice", pool_id=str(i))
+                await client.can_view_machines_in_pool(
+                    user_id="alice", pool_id=str(i)
+                )
             ) is True
             assert (
-                await client.can_deploy_machines(
+                await client.can_view_available_machines_in_pool(
+                    user_id="alice", pool_id=str(i)
+                )
+            ) is True
+            assert (
+                await client.can_deploy_machines_in_pool(
                     user_id="alice", pool_id=str(i)
                 )
             ) is True
 
-        assert (await client.can_view_global_entities(user_id="alice")) is True
+        assert (await client.can_edit_machines(user_id="alice")) is True
         assert (await client.can_edit_global_entities(user_id="alice")) is True
-        assert (await client.can_view_permissions(user_id="alice")) is True
-        assert (await client.can_edit_permissions(user_id="alice")) is True
-        assert (await client.can_view_configurations(user_id="alice")) is True
+        assert (await client.can_view_global_entities(user_id="alice")) is True
+        assert (await client.can_edit_controllers(user_id="alice")) is True
+        assert (await client.can_view_controllers(user_id="alice")) is True
+        assert (await client.can_edit_identities(user_id="alice")) is True
+        assert (await client.can_view_identities(user_id="alice")) is True
         assert (await client.can_edit_configurations(user_id="alice")) is True
+        assert (await client.can_view_configurations(user_id="alice")) is True
+        assert (await client.can_edit_notifications(user_id="alice")) is True
+        assert (await client.can_view_notifications(user_id="alice")) is True
+        assert (await client.can_edit_boot_entities(user_id="alice")) is True
+        assert (await client.can_view_boot_entities(user_id="alice")) is True
+        assert (await client.can_view_license_keys(user_id="alice")) is True
+        assert (await client.can_edit_license_keys(user_id="alice")) is True
+        assert (await client.can_view_devices(user_id="alice")) is True
 
         # bob should just have edit,view and deploy permissions on pool1 because of teamB's rights
-        assert (await client.can_edit_pools(user_id="bob")) is False
-        assert (await client.can_view_pools(user_id="bob")) is False
-
         assert (
-            await client.can_edit_machines(user_id="bob", pool_id="0")
+            await client.can_edit_machines_in_pool(user_id="bob", pool_id="0")
         ) is True
         assert (
-            await client.can_view_machines(user_id="bob", pool_id="0")
+            await client.can_view_machines_in_pool(user_id="bob", pool_id="0")
         ) is True
         assert (
-            await client.can_deploy_machines(user_id="bob", pool_id="0")
+            await client.can_view_available_machines_in_pool(
+                user_id="bob", pool_id="0"
+            )
+        ) is True
+        assert (
+            await client.can_deploy_machines_in_pool(
+                user_id="bob", pool_id="0"
+            )
         ) is True
 
         for i in range(1, 3):
             assert (
-                await client.can_edit_machines(user_id="bob", pool_id=str(i))
+                await client.can_edit_machines_in_pool(
+                    user_id="bob", pool_id=str(i)
+                )
             ) is False
             assert (
-                await client.can_view_machines(user_id="bob", pool_id=str(i))
+                await client.can_view_machines_in_pool(
+                    user_id="bob", pool_id=str(i)
+                )
             ) is False
             assert (
-                await client.can_deploy_machines(user_id="bob", pool_id=str(i))
+                await client.can_view_available_machines_in_pool(
+                    user_id="bob", pool_id=str(i)
+                )
+            ) is False
+            assert (
+                await client.can_deploy_machines_in_pool(
+                    user_id="bob", pool_id=str(i)
+                )
             ) is False
 
+        assert (await client.can_edit_machines(user_id="bob")) is False
         assert (await client.can_view_global_entities(user_id="bob")) is False
         assert (await client.can_edit_global_entities(user_id="bob")) is False
-        assert (await client.can_view_permissions(user_id="bob")) is False
-        assert (await client.can_edit_permissions(user_id="bob")) is False
-        assert (await client.can_view_configurations(user_id="bob")) is False
+        assert (await client.can_edit_identities(user_id="bob")) is False
+        assert (await client.can_view_identities(user_id="bob")) is False
         assert (await client.can_edit_configurations(user_id="bob")) is False
+        assert (await client.can_view_configurations(user_id="bob")) is False
+        assert (await client.can_view_notifications(user_id="bob")) is False
+        assert (await client.can_edit_notifications(user_id="bob")) is False
+        assert (await client.can_view_boot_entities(user_id="bob")) is False
+        assert (await client.can_edit_boot_entities(user_id="bob")) is False
+        assert (await client.can_view_license_keys(user_id="bob")) is False
+        assert (await client.can_edit_license_keys(user_id="bob")) is False
+        assert (await client.can_view_devices(user_id="bob")) is False
 
-        # carl should just have deploy and view permissions on pool0 because of teamC's rights
+        # carl should just have deploy permissions on pool0 because of teamC's rights
         assert (
-            await client.can_edit_machines(user_id="carl", pool_id="0")
+            await client.can_edit_machines_in_pool(user_id="carl", pool_id="0")
         ) is False
         assert (
-            await client.can_view_machines(user_id="carl", pool_id="0")
+            await client.can_view_machines_in_pool(user_id="carl", pool_id="0")
+        ) is False
+        assert (
+            await client.can_view_available_machines_in_pool(
+                user_id="carl", pool_id="0"
+            )
+        ) is False
+        assert (
+            await client.can_deploy_machines_in_pool(
+                user_id="carl", pool_id="0"
+            )
+        ) is True
+
+        # dingo should just view permissions on pool0 because of teamD's rights
+        assert (
+            await client.can_edit_machines_in_pool(
+                user_id="dingo", pool_id="0"
+            )
+        ) is False
+        assert (
+            await client.can_view_machines_in_pool(
+                user_id="dingo", pool_id="0"
+            )
+        ) is False
+        assert (
+            await client.can_view_available_machines_in_pool(
+                user_id="dingo", pool_id="0"
+            )
         ) is True
         assert (
-            await client.can_deploy_machines(user_id="carl", pool_id="0")
-        ) is True
+            await client.can_deploy_machines_in_pool(
+                user_id="dingo", pool_id="0"
+            )
+        ) is False

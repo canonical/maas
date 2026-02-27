@@ -1,7 +1,7 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-
+from django.shortcuts import get_object_or_404
 from formencode.validators import StringBool
 from piston3.utils import rc
 
@@ -11,13 +11,12 @@ from maasserver.api.nodes import (
     PowerMixin,
     PowersMixin,
 )
-from maasserver.api.support import admin_method, operation
+from maasserver.api.support import check_permission, operation
 from maasserver.api.utils import get_optional_param
 from maasserver.clusterrpc.driver_parameters import get_all_power_types
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ControllerForm
 from maasserver.models import BootResource, RackController
-from maasserver.permissions import NodePermission
 
 # Rack controller's fields exposed on the API.
 DISPLAYED_RACK_CONTROLLER_FIELDS = (
@@ -79,6 +78,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
     model = RackController
     fields = DISPLAYED_RACK_CONTROLLER_FIELDS
 
+    @check_permission("can_edit_controllers")
     def delete(self, request, system_id):
         """@description-title Delete a rack controller
         @description Deletes a rack controller with the given system_id. A
@@ -114,15 +114,13 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         currently set as a primary rack controller on VLANs fabric-0.untagged
         and no other rack controller can provide DHCP.
         """
-        node = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin
-        )
-        node.as_self().delete(
+        rack = get_object_or_404(self.model, system_id=system_id)
+        rack.as_self().delete(
             force=get_optional_param(request.GET, "force", False, StringBool)
         )
         return rc.DELETED
 
-    @admin_method
+    @check_permission("can_edit_controllers")
     def update(self, request, system_id):
         """@description-title Update a rack controller
         @description Updates a rack controller with the given system_id.
@@ -167,9 +165,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @error (http-status-code) "403" 403
         @error (content) "no-perms" This method is reserved for admin users.
         """
-        rack = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin
-        )
+        rack = get_object_or_404(self.model, system_id=system_id)
         form = ControllerForm(data=request.data, instance=rack)
 
         if form.is_valid():
@@ -177,7 +173,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @admin_method
+    @check_permission("can_edit_controllers")
     @operation(idempotent=False)
     def import_boot_images(self, request, system_id):
         """@description-title Import boot images
@@ -196,12 +192,10 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @error-example "not-found"
             No RackController matches the given query.
         """
-        self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.admin
-        )
+        get_object_or_404(self.model, system_id=system_id)
         return rc.ACCEPTED
 
-    @admin_method
+    @check_permission("can_view_controllers")
     @operation(idempotent=True)
     def list_boot_images(self, request, system_id):
         """@description-title List available boot images
@@ -218,9 +212,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @error-example "not-found"
             No RackController matches the given query.
         """
-        self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NodePermission.view
-        )
+        get_object_or_404(self.model, system_id=system_id)
         images = []
         for res in BootResource.objects.all():
             arch, subarch = res.split_arch()
@@ -259,7 +251,7 @@ class RackControllersHandler(NodesHandler, PowersMixin):
     api_doc_section_name = "RackControllers"
     base_model = RackController
 
-    @admin_method
+    @check_permission("can_edit_controllers")
     @operation(idempotent=False)
     def import_boot_images(self, request):
         """@description-title Import boot images on all rack controllers
@@ -270,7 +262,7 @@ class RackControllersHandler(NodesHandler, PowersMixin):
         """
         return rc.ACCEPTED
 
-    @admin_method
+    @check_permission("can_view_controllers")
     @operation(idempotent=True)
     def describe_power_types(self, request):
         """@description-title Get power information from rack controllers

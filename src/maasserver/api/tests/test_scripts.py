@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the script API."""
@@ -12,6 +12,7 @@ import random
 from django.urls import reverse
 
 from maascommon.events import AUDIT
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import Event, Script, VersionedTextFile
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -24,16 +25,16 @@ from metadataserver.enum import (
 )
 
 
+def get_scripts_uri():
+    """Return the script's URI on the API."""
+    return reverse("scripts_handler", args=[])
+
+
 class TestScriptsAPI(APITestCase.ForUser):
     """Tests for /api/2.0/scripts/."""
 
-    @staticmethod
-    def get_scripts_uri():
-        """Return the script's URI on the API."""
-        return reverse("scripts_handler", args=[])
-
     def test_hander_path(self):
-        self.assertEqual("/MAAS/api/2.0/scripts/", self.get_scripts_uri())
+        self.assertEqual("/MAAS/api/2.0/scripts/", get_scripts_uri())
 
     def test_POST(self):
         self.become_admin()
@@ -51,7 +52,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         comment = factory.make_name("comment")
 
         response = self.client.post(
-            self.get_scripts_uri(),
+            get_scripts_uri(),
             {
                 "name": name,
                 "title": title,
@@ -102,7 +103,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         comment = factory.make_name("comment")
 
         response = self.client.post(
-            self.get_scripts_uri(),
+            get_scripts_uri(),
             {
                 "title": title,
                 "description": description,
@@ -135,12 +136,12 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertEqual(comment, script.script.comment)
 
     def test_POST_requires_admin(self):
-        response = self.client.post(self.get_scripts_uri())
+        response = self.client.post(get_scripts_uri())
         self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_GET(self):
         scripts = [factory.make_Script() for _ in range(3)]
-        response = self.client.get(self.get_scripts_uri())
+        response = self.client.get(get_scripts_uri())
         self.assertEqual(response.status_code, http.client.OK)
         parsed_results = response.json()
 
@@ -159,7 +160,7 @@ class TestScriptsAPI(APITestCase.ForUser):
             )
 
         response = self.client.get(
-            self.get_scripts_uri(), {"type": script.script_type}
+            get_scripts_uri(), {"type": script.script_type}
         )
         self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
@@ -178,7 +179,7 @@ class TestScriptsAPI(APITestCase.ForUser):
             )
 
         response = self.client.get(
-            self.get_scripts_uri(), {"hardware_type": script.hardware_type}
+            get_scripts_uri(), {"hardware_type": script.hardware_type}
         )
         self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
@@ -196,7 +197,7 @@ class TestScriptsAPI(APITestCase.ForUser):
             factory.make_Script()
 
         response = self.client.get(
-            self.get_scripts_uri(),
+            get_scripts_uri(),
             {"filters": f"{random.choice(tags)},{name_script.name}"},
         )
         self.assertEqual(response.status_code, http.client.OK)
@@ -213,9 +214,7 @@ class TestScriptsAPI(APITestCase.ForUser):
             script = factory.make_Script()
             scripts[script.name] = script
 
-        response = self.client.get(
-            self.get_scripts_uri(), {"include_script": True}
-        )
+        response = self.client.get(get_scripts_uri(), {"include_script": True})
         self.assertEqual(response.status_code, http.client.OK)
         parsed_results = response.json()
 
@@ -676,3 +675,65 @@ class TestScriptAPI(APITestCase.ForUser):
             {"op": "remove_tag", "tag": random.choice(script.tags)},
         )
         self.assertEqual(response.status_code, http.client.FORBIDDEN)
+
+
+class TestScriptsAPIOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        response = self.client.post(get_scripts_uri())
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
+        )
+
+
+class TestScriptAPIOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def get_script_uri(self, script):
+        return reverse("script_handler", args=[script.id])
+
+    def test_update_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        script = factory.make_Script()
+        response = self.client.put(self.get_script_uri(script))
+        self.assertEqual(response.status_code, http.client.OK)
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_revert_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        script = factory.make_Script()
+        response = self.client.post(
+            self.get_script_uri(script), {"op": "revert"}
+        )
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_add_tag_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        script = factory.make_Script()
+        response = self.client.post(
+            self.get_script_uri(script),
+            {"op": "add_tag", "tag": factory.make_name("tag")},
+        )
+        self.assertEqual(response.status_code, http.client.OK)
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_delete_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        script = factory.make_Script()
+        response = self.client.delete(self.get_script_uri(script))
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
+        self.assertIsNone(reload_object(script))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertEqual(
+            event.description, "Deleted script '%s'." % script.name
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
+        )

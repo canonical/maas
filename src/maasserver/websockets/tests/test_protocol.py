@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -18,6 +18,7 @@ from twisted.web.server import NOT_DONE_YET
 from apiclient.utils import ascii_url
 from maascommon.utils.url import splithost
 from maasserver.eventloop import services
+from maasserver.testing.factory import factory
 from maasserver.testing.factory import factory as maas_factory
 from maasserver.testing.listener import FakePostgresListenerService
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -551,12 +552,13 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_handleRequest_sends_response(self):
+        user = yield deferToDatabase(factory.make_User)
         node = yield deferToDatabase(self.make_node)
         # Need to delete the node as the transaction is committed
         self.addCleanup(self.clean_node, node)
 
         protocol, _ = self.make_protocol()
-        protocol.user = MagicMock()
+        protocol.user = user
         message = {
             "type": MSG_TYPE.REQUEST,
             "request_id": 1,

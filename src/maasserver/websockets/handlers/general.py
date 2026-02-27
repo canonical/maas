@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The general handler for the WebSocket connection."""
@@ -7,6 +7,7 @@ from collections import OrderedDict
 
 import petname
 
+from maasserver.authorization import can_edit_controllers, can_edit_machines
 from maasserver.certificates import get_maas_certificate
 from maasserver.clusterrpc.driver_parameters import get_all_power_types
 from maasserver.enum import (
@@ -136,20 +137,21 @@ class GeneralHandler(Handler):
 
     def _node_actions(self, params, node_type):
         # Only admins can perform controller actions
-        if not self.user.is_superuser and node_type in [
+        if node_type in [
             NODE_TYPE.RACK_CONTROLLER,
             NODE_TYPE.REGION_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-        ]:
+        ] and not can_edit_controllers(self.user):
             return []
 
         actions = OrderedDict()
+        user_can_edit_machines = can_edit_machines(self.user)
         for name, action in ACTIONS_DICT.items():
             if node_type not in action.for_type:
                 continue
             if (
                 action.get_permission(node_type) == NodePermission.admin
-                and not self.user.is_superuser
+                and not user_can_edit_machines
             ):
                 continue
             actions[name] = action
@@ -183,7 +185,6 @@ class GeneralHandler(Handler):
                 Node.objects.get(hostname=new_hostname)
             except Node.DoesNotExist:
                 return new_hostname
-        return ""
 
     def bond_options(self, params):
         """Return all the possible bond options."""

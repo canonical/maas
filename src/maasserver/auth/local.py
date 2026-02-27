@@ -1,6 +1,13 @@
+# Copyright 2022-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
 
+from maasserver.authorization import (
+    can_edit_global_entities,
+    can_edit_machines,
+)
 from maasserver.enum import NODE_TYPE
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import Pod
@@ -19,6 +26,7 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.vlan import VLAN
 from maasserver.models.vmcluster import VMCluster
+from maasserver.openfga import get_openfga_client
 from maasserver.permissions import (
     NodePermission,
     PodPermission,
@@ -107,7 +115,8 @@ class MAASAuthorizationBackend(ModelBackend):
         if perm == NodePermission.admin and obj is None:
             # User wants to admin writes to all nodes (aka. create a node),
             # must be superuser for those permissions.
-            return user.is_superuser
+            return can_edit_machines(user)
+
         elif perm == NodePermission.view and obj is None:
             # XXX 2018-11-20 blake_r: View permission without an obj is used
             # for device create as a standard user. Currently there is no
@@ -197,7 +206,7 @@ class MAASAuthorizationBackend(ModelBackend):
             if node is None:
                 # Doesn't matter the permission level if the interface doesn't
                 # have a node, the user must be a global admin.
-                return user.is_superuser
+                return can_edit_machines(user)
             if perm == NodePermission.view:
                 return self._can_view(
                     rbac_enabled,
@@ -234,10 +243,12 @@ class MAASAuthorizationBackend(ModelBackend):
             # logged-in user; so everyone can view, but only an admin can
             # do anything else.
             if perm == NodePermission.view:
-                return True
+                if rbac_enabled:
+                    return True
+                return get_openfga_client().can_view_global_entities(user)
             elif perm in ADMIN_PERMISSIONS:
                 # Admin permission is solely granted to superusers.
-                return user.is_superuser
+                return can_edit_global_entities(user)
             else:
                 raise NotImplementedError(
                     "Invalid permission check (invalid permission name: %s)."
@@ -246,7 +257,7 @@ class MAASAuthorizationBackend(ModelBackend):
         elif is_instance_or_subclass(obj, ADMIN_RESTRICTED_MODELS):
             # Only administrators are allowed to read/write these objects.
             if perm in ADMIN_PERMISSIONS:
-                return user.is_superuser
+                return can_edit_global_entities(user)
             else:
                 raise NotImplementedError(
                     "Invalid permission check (invalid permission name: %s)."
@@ -313,7 +324,9 @@ class MAASAuthorizationBackend(ModelBackend):
         return (
             machine.owner_id is None
             or machine.owner_id == user.id
-            or user.is_superuser
+            or get_openfga_client().can_view_machines_in_pool(
+                user, machine.pool_id
+            )
         )
 
     def _can_edit(
@@ -330,15 +343,19 @@ class MAASAuthorizationBackend(ModelBackend):
                 or can_admin
             )
             return (editable and can_edit) or can_admin
-        return editable or user.is_superuser
+        return editable or get_openfga_client().can_edit_machines_in_pool(
+            user, machine.pool_id
+        )
 
     def _can_admin(self, rbac_enabled, user, machine, admin_pools):
         if machine.pool_id is None:
             # Not a machine to be admin on this must have global admin.
-            return user.is_superuser
+            return get_openfga_client().can_edit_machines(user)
         if rbac_enabled:
             return machine.pool_id in admin_pools
-        return user.is_superuser
+        return get_openfga_client().can_edit_machines_in_pool(
+            user, machine.pool_id
+        )
 
     def _perm_resource_pool(self, user, perm, rbac, visible_pools, obj=None):
         # `create` permissions is called without an `obj`.
@@ -349,7 +366,7 @@ class MAASAuthorizationBackend(ModelBackend):
         ):
             if rbac_enabled:
                 return rbac.can_admin_resource_pool(user.username)
-            return user.is_superuser
+            return get_openfga_client().can_edit_machines(user)
 
         # From this point forward the `obj` must be a `ResourcePool`.
         if not isinstance(obj, ResourcePool):
@@ -366,11 +383,13 @@ class MAASAuthorizationBackend(ModelBackend):
                         "edit"
                     ]
                 )
-            return user.is_superuser
+            return get_openfga_client().can_edit_machines_in_pool(user, obj.id)
         elif perm == ResourcePoolPermission.view:
             if rbac_enabled:
                 return obj.id in visible_pools
-            return True
+            return get_openfga_client().can_view_available_machines_in_pool(
+                user, obj.id
+            )
 
         raise ValueError("unknown ResourcePoolPermission value: %s" % perm)
 
@@ -388,7 +407,9 @@ class MAASAuthorizationBackend(ModelBackend):
         # `create` permissions is called without an `obj`.
         rbac_enabled = rbac.is_enabled()
         if perm == PodPermission.create:
-            return user.is_superuser
+            if rbac_enabled:
+                return user.is_superuser
+            return get_openfga_client().can_edit_machines(user)
 
         # From this point forward the `obj` must be a `ResourcePool`.
         if not isinstance(obj, Pod):
@@ -399,20 +420,29 @@ class MAASAuthorizationBackend(ModelBackend):
         if perm == PodPermission.edit or perm == PodPermission.compose:
             if rbac_enabled:
                 return obj.pool_id in admin_pools
-            return user.is_superuser
+            return get_openfga_client().can_edit_machines_in_pool(
+                user, obj.pool_id
+            )
         elif perm == PodPermission.dynamic_compose:
             if rbac_enabled:
                 return (
                     obj.pool_id in deploy_pools or obj.pool_id in admin_pools
                 )
-            return True
+            return get_openfga_client().can_deploy_machines_in_pool(
+                user, obj.pool_id
+            ) or get_openfga_client().can_edit_machines_in_pool(
+                user, obj.pool_id
+            )
+
         elif perm == PodPermission.view:
             if rbac_enabled:
                 return (
                     obj.pool_id in visible_pools
                     or obj.pool_id in view_all_pools
                 )
-            return True
+            return get_openfga_client().can_view_available_machines_in_pool(
+                user, obj.pool_id
+            )
 
         raise ValueError("unknown PodPermission value: %s" % perm)
 
@@ -438,16 +468,22 @@ class MAASAuthorizationBackend(ModelBackend):
                     obj.pool_id in visible_pools
                     or obj.pool_id in view_all_pools
                 )
-            return True
+            return get_openfga_client().can_view_available_machines_in_pool(
+                user, obj.pool_id
+            )
 
         if perm == VMClusterPermission.edit:
             if rbac_enabled:
                 return obj.pool_id in admin_pools
-            return user.is_superuser
+            return get_openfga_client().can_edit_machines_in_pool(
+                user, obj.pool_id
+            )
 
         if perm == VMClusterPermission.delete:
             if rbac_enabled:
                 return obj.pool_id in admin_pools
-            return user.is_superuser
+            return get_openfga_client().can_edit_machines_in_pool(
+                user, obj.pool_id
+            )
 
         raise ValueError("unknown VMClusterPermission value: %s" % perm)

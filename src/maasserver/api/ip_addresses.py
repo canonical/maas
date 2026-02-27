@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handler: `StaticIPAddress`."""
@@ -13,6 +13,10 @@ from piston3.utils import rc
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.support import operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param, get_optional_param
+from maasserver.authorization import (
+    can_edit_global_entities,
+    can_view_ipaddresses,
+)
 from maasserver.enum import INTERFACE_LINK_TYPE, INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -261,7 +265,7 @@ class IPAddressesHandler(OperationsHandler):
             request.POST, "discovered", default=False, validator=StringBool
         )
 
-        if force is True and not request.user.is_superuser:
+        if force is True and not can_edit_global_entities(request.user):
             return HttpResponseForbidden(
                 content_type="text/plain",
                 content="Force-releasing an IP address requires admin "
@@ -369,12 +373,13 @@ class IPAddressesHandler(OperationsHandler):
         # automatic address to <machine-interface>, but it isn't deployed at
         # the moment".
         query = StaticIPAddress.objects.exclude(ip__isnull=True)
-        if _all and not request.user.is_superuser:
+        user_can_view_ipaddresses = can_view_ipaddresses(request.user)
+        if _all and not user_can_view_ipaddresses:
             return HttpResponseForbidden(
                 content_type="text/plain",
                 content="Listing all IP addresses requires admin privileges.",
             )
-        if owner is not None and not request.user.is_superuser:
+        if owner is not None and not user_can_view_ipaddresses:
             return HttpResponseForbidden(
                 content_type="text/plain",
                 content="Listing another user's IP addresses requires admin "
@@ -382,7 +387,7 @@ class IPAddressesHandler(OperationsHandler):
             )
         # Add additional filters based on permissions, and based on the
         # request parameters.
-        if not request.user.is_superuser:
+        if not user_can_view_ipaddresses:
             # If the requesting user isn't an admin, always filter by the
             # currently-logged-in API user.
             query = query.filter(user=request.user)

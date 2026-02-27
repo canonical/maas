@@ -66,32 +66,44 @@ type group
 
 type maas
   relations
-
-    define can_edit_pools: [group#member]
-    define can_view_pools: [group#member] or can_edit_pools
-
     define can_edit_machines: [group#member]
     define can_deploy_machines: [group#member] or can_edit_machines
-
+    define can_view_machines: [group#member] or can_edit_machines
+    define can_view_available_machines: [group#member] or can_edit_machines or can_view_machines
+    
     define can_edit_global_entities: [group#member] 
     define can_view_global_entities: [group#member] or can_edit_global_entities
+    
+    define can_edit_controllers: [group#member]
+    define can_view_controllers: [group#member] or can_edit_controllers
 
-    define can_edit_permissions: [group#member]
-    define can_view_permissions: [group#member] or can_edit_permissions
+    define can_edit_identities: [group#member]
+    define can_view_identities: [group#member] or can_edit_identities
 
     define can_edit_configurations: [group#member]
     define can_view_configurations: [group#member] or can_edit_configurations
+
+    define can_edit_notifications: [group#member]
+    define can_view_notifications: [group#member] or can_edit_notifications
+
+    define can_edit_boot_entities: [group#member]
+    define can_view_boot_entities: [group#member] or can_edit_boot_entities
+
+    define can_edit_license_keys: [group#member]
+    define can_view_license_keys: [group#member] or can_edit_license_keys
+
+    define can_view_devices: [group#member]
+
+    define can_view_ipaddresses: [group#member]
 
 type pool
   relations
     define parent: [maas]
 
-    define can_edit: [group#member] or can_edit_pools from parent
-    define can_view: [group#member] or can_edit or can_view_pools from parent
-
-    define can_edit_machines: [group#member] or can_edit or can_edit_machines from parent
-    define can_deploy_machines: [group#member] or can_edit or can_edit_machines or can_deploy_machines from parent
-    define can_view_machines: [group#member] or can_deploy_machines or can_edit_machines or can_view or can_edit
+    define can_edit_machines: [group#member] or can_edit_machines from parent
+    define can_deploy_machines: [group#member] or can_edit_machines or can_deploy_machines from parent
+    define can_view_machines: [group#member] or can_edit_machines or can_view_machines from parent
+    define can_view_available_machines: [group#member] or can_edit_machines or can_view_machines or can_view_available_machines from parent
 `
 
 	model, err := parser.TransformDSLToProto(modelDSL)

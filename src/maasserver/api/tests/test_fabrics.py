@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Fabric API."""
@@ -8,6 +8,7 @@ import random
 
 from django.urls import reverse
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models.fabric import Fabric
 from maasserver.models.signals import vlan as vlan_signals_module
 from maasserver.testing.api import APITestCase
@@ -196,4 +197,18 @@ class TestFabricAPI(APITestCase.ForUser):
         response = self.client.delete(uri)
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+
+class TestFabricsAPIOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        fabric_name = factory.make_name("fabric")
+        uri = get_fabrics_uri()
+        response = self.client.post(uri, {"name": fabric_name})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
         )

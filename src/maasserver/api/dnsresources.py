@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `DNSResource`."""
@@ -7,7 +7,7 @@ from django.db.models.query import QuerySet
 from formencode.validators import StringBool
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.dnsresource import DNSResourceForm
@@ -176,7 +176,7 @@ class DNSResourcesHandler(OperationsHandler):
         user = request.user
         return get_dnsresource_queryset(_all, domainname, name, rrtype, user)
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def create(self, request):
         """@description-title Create a DNS resource
         @description Create a DNS resource.

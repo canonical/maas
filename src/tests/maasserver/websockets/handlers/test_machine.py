@@ -1,5 +1,6 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+
 from operator import attrgetter
 
 from django.db import transaction
@@ -35,6 +36,7 @@ def force_rbac_off():
 
 
 @pytest.mark.usefixtures("maasdb")
+@pytest.mark.usefixtures("mock_openfga")
 class TestMachineHandler:
     maxDiff = None
 
@@ -303,6 +305,7 @@ class TestMachineHandler:
         assert node_data["power_parameters"] == sanitised_power_params
 
 
+@pytest.mark.usefixtures("mock_openfga")
 @pytest.mark.usefixtures("maasdb")
 class TestMachineHandlerNewSchema:
     def test_filter_simple(self, mocker):
@@ -876,6 +879,7 @@ class TestMachineHandlerNewSchema:
 
 
 @pytest.mark.allow_transactions
+@pytest.mark.usefixtures("mock_openfga")
 @pytest.mark.usefixtures("maasdb")
 class TestMachineHandlerWithServiceLayer:
     def test_list_no_power_params_certificate(self):

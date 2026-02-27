@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Space API."""
@@ -10,6 +10,7 @@ import random
 from django.conf import settings
 from django.urls import reverse
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import VLAN
 from maasserver.models.space import Space
 from maasserver.testing.api import APITestCase
@@ -287,4 +288,18 @@ class TestSpaceAPI(APITestCase.ForUser):
         response = self.client.delete(uri)
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+
+class TestSpacesOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        space_name = factory.make_name("space")
+        uri = get_spaces_uri()
+        response = self.client.post(uri, {"name": space_name})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
         )

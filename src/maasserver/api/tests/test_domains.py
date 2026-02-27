@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Domain API."""
@@ -10,6 +10,7 @@ import random
 from django.conf import settings
 from django.urls import reverse
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import GlobalDefault
 from maasserver.models.dnspublication import zone_serial
 from maasserver.models.domain import Domain
@@ -249,4 +250,32 @@ class TestDomainAPI(APITestCase.ForUser):
         response = self.client.delete(uri)
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+
+class TestDomainAPIOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        domain_name = factory.make_name("domain")
+        uri = get_domains_uri()
+        response = self.client.post(uri, {"name": domain_name})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
+        )
+
+    def test_can_set_serial(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        uri = get_domains_uri()
+        serial = random.randint(1, INT_MAX)
+        response = self.client.post(
+            uri, {"op": "set_serial", "serial": str(serial)}
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            self.user
         )

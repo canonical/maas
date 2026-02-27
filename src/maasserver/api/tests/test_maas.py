@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import http.client
@@ -8,6 +8,7 @@ from django.conf import settings
 from django.urls import reverse
 from testtools.content import text_content
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import PackageRepository
 from maasserver.models.config import Config
 from maasserver.testing.api import APITestCase
@@ -333,3 +334,17 @@ class TestMAASHandlerAPIForProxyPort(APITestCase.ForUser):
             self.assertEqual(
                 http.client.BAD_REQUEST, response.status_code, response.content
             )
+
+
+class TestMAASAPIOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def test_set_config_requires_can_edit_configurations(self):
+        self.openfga_client.can_edit_configurations.return_value = True
+        ntp_servers = factory.make_hostname() + " " + factory.make_hostname()
+        response = self.client.post(
+            reverse("maas_handler"),
+            {"op": "set_config", "name": "ntp_server", "value": ntp_servers},
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        self.openfga_client.can_edit_configurations.assert_called_once_with(
+            self.user
+        )

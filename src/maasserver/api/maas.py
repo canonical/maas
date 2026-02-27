@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handler: MAAS."""
@@ -9,7 +9,11 @@ from django.http import HttpResponse
 from formencode import validators
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.support import (
+    check_permission,
+    operation,
+    OperationsHandler,
+)
 from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
@@ -67,7 +71,7 @@ class MaasHandler(OperationsHandler):
     api_doc_section_name = "MAAS server"
     create = read = update = delete = None
 
-    @admin_method
+    @check_permission("can_edit_configurations")
     @operation(idempotent=False)
     def set_config(self, request):
         """@description-title Set a configuration value

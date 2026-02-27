@@ -28,10 +28,13 @@ class TestOpenFGATupleBuilder:
     @pytest.mark.parametrize(
         "method_name, relation",
         [
-            ("build_group_can_edit_pool", "can_edit"),
-            ("build_group_can_view_pool", "can_view"),
-            ("build_group_can_edit_machines", "can_edit_machines"),
-            ("build_group_can_deploy_machines", "can_deploy_machines"),
+            ("build_group_can_edit_machines_in_pool", "can_edit_machines"),
+            ("build_group_can_view_machines_in_pool", "can_view_machines"),
+            (
+                "build_group_can_view_available_machines_in_pool",
+                "can_view_available_machines",
+            ),
+            ("build_group_can_deploy_machines_in_pool", "can_deploy_machines"),
         ],
     )
     def test_group_pool_scoped_builders(self, method_name, relation):
@@ -50,16 +53,13 @@ class TestOpenFGATupleBuilder:
     @pytest.mark.parametrize(
         "method_name, relation",
         [
-            ("build_group_can_edit_pools", "can_edit_pools"),
-            ("build_group_can_view_pools", "can_view_pools"),
+            ("build_group_can_edit_machines", "can_edit_machines"),
+            ("build_group_can_view_machines", "can_view_machines"),
             (
-                "build_group_can_edit_machines_in_pools",
-                "can_edit_machines",
+                "build_group_can_view_available_machines",
+                "can_view_available_machines",
             ),
-            (
-                "build_group_can_deploy_machines_in_pools",
-                "can_deploy_machines",
-            ),
+            ("build_group_can_deploy_machines", "can_deploy_machines"),
             (
                 "build_group_can_view_global_entities",
                 "can_view_global_entities",
@@ -68,22 +68,24 @@ class TestOpenFGATupleBuilder:
                 "build_group_can_edit_global_entities",
                 "can_edit_global_entities",
             ),
+            ("build_group_can_edit_controllers", "can_edit_controllers"),
+            ("build_group_can_view_controllers", "can_view_controllers"),
+            ("build_group_can_view_identities", "can_view_identities"),
+            ("build_group_can_edit_identities", "can_edit_identities"),
+            ("build_group_can_view_configurations", "can_view_configurations"),
+            ("build_group_can_edit_configurations", "can_edit_configurations"),
+            ("build_group_can_edit_notifications", "can_edit_notifications"),
+            ("build_group_can_view_notifications", "can_view_notifications"),
             (
-                "build_group_can_view_permissions",
-                "can_view_permissions",
+                "build_group_can_edit_boot_entities",
+                "can_edit_boot_entities",
             ),
             (
-                "build_group_can_edit_permissions",
-                "can_edit_permissions",
+                "build_group_can_view_boot_entities",
+                "can_view_boot_entities",
             ),
-            (
-                "build_group_can_view_configurations",
-                "can_view_configurations",
-            ),
-            (
-                "build_group_can_edit_configurations",
-                "can_edit_configurations",
-            ),
+            ("build_group_can_view_devices", "can_view_devices"),
+            ("build_group_can_view_ipaddresses", "can_view_ipaddresses"),
         ],
     )
     def test_group_global_scoped_builders(self, method_name, relation):

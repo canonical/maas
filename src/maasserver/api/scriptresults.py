@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `ScriptResults`."""
@@ -18,7 +18,11 @@ from django.shortcuts import get_object_or_404
 from formencode.validators import Bool, String, StringBool
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.support import (
+    check_permission,
+    operation,
+    OperationsHandler,
+)
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.models import Node, ScriptSet
@@ -326,7 +330,7 @@ class NodeScriptResultHandler(OperationsHandler):
         script_set.hardware_type = hardware_type
         return script_set
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def delete(self, request, system_id, id):
         """@description-title Delete script results
         @description Delete script results from the given system_id with the
@@ -509,7 +513,7 @@ class NodeScriptResultHandler(OperationsHandler):
                 'Unknown filetype "%s" must be txt or tar.xz' % filetype
             )
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def update(self, request, system_id, id):
         """@description-title Update specific script result
         @description Update a set of test results for a given system_id and

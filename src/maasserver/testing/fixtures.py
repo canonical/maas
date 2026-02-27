@@ -1,14 +1,16 @@
-# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """maasserver fixtures."""
 
 import inspect
 import logging
+from unittest.mock import patch
 
 from django.db import connection
 import fixtures
 
+from maasserver import openfga as openfga_module
 from maasserver.models import Config
 from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.secrets import SecretManager
@@ -131,3 +133,20 @@ class RBACEnabled(fixtures.Fixture):
             rbac.clear()
 
         self.addCleanup(cleanup)
+
+
+class OpenFGAMock(fixtures.Fixture):
+    """Fixture to mock OpenFGA."""
+
+    def __init__(self, client):
+        super().__init__()
+        self.openfga_mock = client
+
+    def _setUp(self):
+        patcher = patch.object(openfga_module, "_get_client")
+        mock_client = patcher.start()
+
+        mock_client.return_value = self.openfga_mock
+
+        self.addCleanup(patcher.stop)
+        self.addCleanup(openfga_module.get_openfga_client.cache_clear)

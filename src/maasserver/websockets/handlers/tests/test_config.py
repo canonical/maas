@@ -1,10 +1,11 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.config`"""
 
 import random
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.forms.settings import CONFIG_ITEMS, get_config_field
 from maasserver.models.config import Config
 from maasserver.secrets import SecretManager
@@ -315,4 +316,32 @@ class TestConfigHandler(MAASServerTestCase):
         self.assertEqual(
             ("config", "update", {"name": "curtin_verbose", "value": True}),
             updated,
+        )
+
+
+class TestConfigHandlerOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_bulk_update_requires_can_edit_configurations(self):
+        self.openfga_client.can_edit_configurations.return_value = True
+        admin = factory.make_admin()
+        handler = ConfigHandler(admin, {}, None)
+        updated = handler.bulk_update(
+            {"items": {"curtin_verbose": True, "enable_analytics": False}}
+        )
+        self.assertEqual(
+            {"curtin_verbose": True, "enable_analytics": False}, updated
+        )
+        self.openfga_client.can_edit_configurations.assert_called_once_with(
+            admin
+        )
+
+    def test_update_requires_can_edit_configurations(self):
+        self.openfga_client.can_edit_configurations.return_value = True
+        admin = factory.make_admin()
+        handler = ConfigHandler(admin, {}, None)
+        updated = handler.update({"name": "curtin_verbose", "value": True})
+        self.assertEqual({"name": "curtin_verbose", "value": True}, updated)
+        self.openfga_client.can_edit_configurations.assert_called_once_with(
+            admin
         )

@@ -1,11 +1,12 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 
+from maasserver.testing.openfga import OpenFGAClientMock
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -65,3 +66,10 @@ class AsyncIteratorMock:
 @pytest.fixture
 def services_mock():
     yield Mock(ServiceCollectionV3)
+
+
+@pytest.fixture
+def mock_openfga(mocker):
+    openfga_mock = OpenFGAClientMock()
+    mocker.patch("maasserver.openfga._get_client", return_value=openfga_mock)
+    yield

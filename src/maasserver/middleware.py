@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Access middleware."""
@@ -27,9 +27,10 @@ from django.utils.encoding import force_str
 
 from maascommon.logging.security import ADMIN, AUTHZ_FAIL, SECURITY, USER
 from maascommon.tracing import get_trace_id, set_trace_id
+from maasserver import openfga
+from maasserver.authorization import clear_caches
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.exceptions import MAASAPIException
-from maasserver.rbac import rbac
 from maasserver.sqlalchemy import service_layer
 from maasserver.utils.orm import is_retryable_failure
 from provisioningserver.logger import LegacyLogger
@@ -444,8 +445,8 @@ class ExternalAuthInfoMiddleware:
         return self.get_response(request)
 
 
-class RBACMiddleware:
-    """Middleware that cleans the RBAC thread-local cache.
+class AuthorizationCacheMiddleware:
+    """Middleware that cleans the RBAC and openfga thread-local cache.
 
 
     At the end of each request the RBAC client that is held in the thread-local
@@ -457,8 +458,9 @@ class RBACMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        """Clear the cache before and after the request, to ensure that any cached data from a previous request is not used, and that any cached data from this request is not used in the next one."""
+        # TODO: Fix RBACFixture and move to clear_caches()
+        openfga.get_openfga_client().clear_cache()
         result = self.get_response(request)
-        # Now that the response has been handled, clear the thread-local
-        # state of the RBAC connection.
-        rbac.clear()
+        clear_caches()
         return result

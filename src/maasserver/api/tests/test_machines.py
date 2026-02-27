@@ -1,6 +1,5 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
 
 import http.client
 import json
@@ -15,6 +14,7 @@ from maasserver import eventloop
 from maasserver.api import auth
 from maasserver.api import machines as machines_module
 from maasserver.api.machines import AllocationOptions, get_allocation_options
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import BMC_TYPE, BRIDGE_TYPE, INTERFACE_TYPE, NODE_STATUS
 import maasserver.forms as forms_module
 from maasserver.forms.pods import ComposeMachineForm, ComposeMachineForPodsForm
@@ -540,7 +540,7 @@ class TestMachinesAPI(APITestCase.ForUser):
 
         expected_counts = [1, 2, 3]
         self.assertEqual(machines_count, expected_counts)
-        base_count = 94
+        base_count = 92
         for idx, machine_count in enumerate(machines_count):
             self.assertEqual(
                 queries_count[idx], base_count + (machine_count * 7)
@@ -3697,3 +3697,225 @@ class TestGetAllocationOptions(MAASTestCase):
             enable_hw_sync=True,
         )
         self.assertEqual(expected_options, options)
+
+
+class TestMachinesAPIOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
+    def setUp(self):
+        super().setUp()
+        self.machines_url = reverse("machines_handler")
+
+    def test_read_filters_machines(self):
+        p1 = factory.make_ResourcePool()
+        p2 = factory.make_ResourcePool()
+
+        n1 = factory.make_Node(pool=p1)
+        n2 = factory.make_Node(pool=p2)
+
+        self.openfga_client.list_pools_with_view_available_machines_access.return_value = [
+            p1.id,
+            p2.id,
+        ]
+
+        response = self.client.get(self.machines_url)
+
+        self.assertEqual(response.status_code, http.client.OK)
+        response_data = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
+        machine_ids = [machine["system_id"] for machine in response_data]
+        self.assertIn(n1.system_id, machine_ids)
+        self.assertIn(n2.system_id, machine_ids)
+
+        self.openfga_client.list_pools_with_view_available_machines_access.assert_called_once_with(
+            self.user
+        )
+
+    def test_read_filters_machines_owned_by_other_users(self):
+        p1 = factory.make_ResourcePool()
+        p2 = factory.make_ResourcePool()
+        p3 = factory.make_ResourcePool()
+
+        n1 = factory.make_Node(pool=p1)
+        other_user = factory.make_User()
+        n2 = factory.make_Node(pool=p2, owner=other_user)
+        n3 = factory.make_Node(pool=p3)
+
+        self.openfga_client.list_pools_with_view_available_machines_access.return_value = [
+            p1.id,
+            p2.id,
+        ]
+
+        response = self.client.get(self.machines_url)
+
+        self.assertEqual(response.status_code, http.client.OK)
+        response_data = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
+        machine_ids = [machine["system_id"] for machine in response_data]
+        self.assertIn(n1.system_id, machine_ids)
+        self.assertNotIn(n2.system_id, machine_ids)
+        self.assertNotIn(n3.system_id, machine_ids)
+
+        self.openfga_client.list_pools_with_view_available_machines_access.assert_called_once_with(
+            self.user
+        )
+
+    def test_read_includes_machines_owned_by_other_users_if_view_all(self):
+        p1 = factory.make_ResourcePool()
+        p2 = factory.make_ResourcePool()
+        p3 = factory.make_ResourcePool()
+
+        n1 = factory.make_Node(pool=p1)
+        other_user = factory.make_User()
+        n2 = factory.make_Node(pool=p2, owner=other_user)
+        n3 = factory.make_Node(pool=p3)
+
+        self.openfga_client.list_pools_with_view_available_machines_access.return_value = [
+            p1.id,
+            p2.id,
+        ]
+        self.openfga_client.list_pools_with_view_machines_access.return_value = [
+            p1.id,
+            p2.id,
+        ]
+
+        response = self.client.get(self.machines_url)
+
+        self.assertEqual(response.status_code, http.client.OK)
+        response_data = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
+        machine_ids = [machine["system_id"] for machine in response_data]
+        self.assertIn(n1.system_id, machine_ids)
+        self.assertIn(n2.system_id, machine_ids)
+        self.assertNotIn(n3.system_id, machine_ids)
+
+        self.openfga_client.list_pools_with_view_available_machines_access.assert_called_once_with(
+            self.user
+        )
+        self.openfga_client.list_pools_with_view_machines_access.assert_called_once_with(
+            self.user
+        )
+
+    def test_allocate_checks_view_deployable_machines_access(self):
+        p = factory.make_ResourcePool()
+
+        self.openfga_client.list_pool_with_deploy_machines_access.return_value = [
+            p.id
+        ]
+
+        available_status = NODE_STATUS.READY
+        machine = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True, pool=p
+        )
+        response = self.client.post(self.machines_url, {"op": "allocate"})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        machine = Machine.objects.get(system_id=machine.system_id)
+        self.assertEqual(self.user, machine.owner)
+        self.openfga_client.list_pool_with_deploy_machines_access.assert_called_once()
+
+    def test_allocate_returns_409_if_not_deployable(self):
+        p = factory.make_ResourcePool()
+
+        self.openfga_client.list_pool_with_deploy_machines_access.return_value = []
+
+        available_status = NODE_STATUS.READY
+        factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True, pool=p
+        )
+        response = self.client.post(self.machines_url, {"op": "allocate"})
+        self.assertEqual(
+            http.client.CONFLICT, response.status_code, response.content
+        )
+        self.openfga_client.list_pool_with_deploy_machines_access.assert_called_once()
+
+    def test_release_returns_403_if_owned_by_another_user(self):
+        p = factory.make_ResourcePool()
+
+        self.openfga_client.list_pool_with_deploy_machines_access.return_value = [
+            p.id
+        ]
+
+        other_user = factory.make_User()
+        machine = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED,
+            owner=other_user,
+            with_boot_disk=True,
+            pool=p,
+        )
+        response = self.client.post(
+            self.machines_url,
+            {"op": "release", "machines": [machine.system_id]},
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+        self.openfga_client.list_pool_with_deploy_machines_access.assert_called_once()
+
+    def test_release_success_if_can_edit_machines(self):
+        self.patch(Machine, "_stop")
+        self.patch(Machine, "_set_status")
+
+        p = factory.make_ResourcePool()
+
+        self.openfga_client.list_pool_with_deploy_machines_access.return_value = [
+            p.id
+        ]
+        self.openfga_client.list_pools_with_edit_machines_access.return_value = [
+            p.id
+        ]
+
+        other_user = factory.make_User()
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED,
+            owner=other_user,
+            with_boot_disk=True,
+            pool_id=p.id,
+        )
+        response = self.client.post(
+            self.machines_url,
+            {"op": "release", "machines": {machine.system_id}},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.list_pool_with_deploy_machines_access.assert_called_once()
+        self.openfga_client.list_pools_with_edit_machines_access.assert_called_once()
+
+    def test_release_success_if_is_owner(self):
+        self.patch(Machine, "_stop")
+        self.patch(Machine, "_set_status")
+
+        p = factory.make_ResourcePool()
+
+        self.openfga_client.list_pool_with_deploy_machines_access.return_value = [
+            p.id
+        ]
+        self.openfga_client.list_pools_with_edit_machines_access.return_value = []
+
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED,
+            owner=self.user,
+            with_boot_disk=True,
+            pool_id=p.id,
+        )
+        response = self.client.post(
+            self.machines_url,
+            {"op": "release", "machines": [machine.system_id]},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.list_pool_with_deploy_machines_access.assert_called_once()
+
+    def test_add_chassis_requires_can_edit_machines(self):
+        self.openfga_client.can_edit_machines.return_value = True
+        response = self.client.post(self.machines_url, {"op": "add_chassis"})
+        self.assertNotEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_machines.assert_called_once_with(
+            self.user
+        )

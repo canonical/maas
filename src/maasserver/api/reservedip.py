@@ -1,10 +1,10 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from django.core.handlers.wsgi import WSGIRequest
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.reservedip import ReservedIPForm
@@ -42,7 +42,7 @@ class ReservedIpsHandler(OperationsHandler):
         """
         return ReservedIP.objects.all()
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def create(self, request: WSGIRequest):
         """@description-title Create a Reserved IP
         @description Create a new Reserved IP.
@@ -115,7 +115,7 @@ class ReservedIpHandler(OperationsHandler):
         reserved_ip = ReservedIP.objects.get_reserved_ip_or_404(id)
         return reserved_ip
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def update(self, request: WSGIRequest, id: int):
         """@description-title Update a reserved IP
         @description Update a reserved IP given its ID.
@@ -149,7 +149,7 @@ class ReservedIpHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @admin_method
+    @check_permission("can_edit_global_entities")
     def delete(self, request: WSGIRequest, id: int):
         """@description-title Delete a reserved IP
         @description Delete a reserved IP given its ID.

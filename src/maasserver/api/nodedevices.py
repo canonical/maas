@@ -1,4 +1,4 @@
-# Copyright 2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2020-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `NodeDevice`."""
@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.models import Node, NodeDevice
@@ -227,7 +227,7 @@ class NodeDeviceHandler(OperationsHandler):
         """
         return self._get_node_device(request, system_id, id)
 
-    @admin_method
+    @check_permission("can_edit_machines")
     def delete(self, request, system_id, id):
         """@description-title Delete a node device
         @description Delete a node device with the given system_id and id.
