@@ -8,6 +8,7 @@ from ipaddress import ip_address
 from urllib.parse import urlencode, urlparse
 
 from django.urls import reverse
+from packaging.version import InvalidVersion, parse
 import yaml
 
 from maascommon.osystem import (
@@ -16,10 +17,12 @@ from maascommon.osystem import (
     OperatingSystemRegistry,
     Token,
 )
+from maascommon.utils.images import format_ubuntu_distro_series
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import NODE_STATUS, PRESEED_TYPE
 from maasserver.models import PackageRepository
 from maasserver.models.config import Config
+from maasserver.models.node import Node as NodeModel
 from maasserver.models.subnet import get_boot_rackcontroller_ips, Subnet
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
@@ -157,16 +160,7 @@ def get_cloud_init_legacy_apt_config_to_inject_key_to_archive(node):
     return apt_sources
 
 
-def get_archive_config(request, node, preserve_sources=False):
-    arch = node.split_arch()[0]
-    archive = PackageRepository.objects.get_default_archive(arch)
-    repositories = PackageRepository.objects.get_additional_repositories(arch)
-    apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller(), node)
-
-    # Process the default Ubuntu Archives or Mirror.
-    archives = {}
-    archives["apt"] = {}
-    archives["apt"]["preserve_sources_list"] = preserve_sources
+def generate_urls_for_sources_list(archive) -> str:
     # Always generate a custom list of repositories. deb-src is enabled in the
     # ephemeral environment due to the cloud-init template having it enabled.
     # It is disabled in a deployed environment due to the Curtin template
@@ -204,7 +198,43 @@ def get_archive_config(request, node, preserve_sources=False):
                 " ".join(components),
             )
 
-    archives["apt"]["sources_list"] = urls
+    return urls
+
+
+def get_archive_config(
+    request, node: NodeModel, preserve_sources=False
+) -> dict:
+    arch = node.split_arch()[0]
+    archive = PackageRepository.objects.get_default_archive(arch)
+    repositories = PackageRepository.objects.get_additional_repositories(arch)
+    apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller(), node)
+
+    # Process the default Ubuntu Archives or Mirror.
+    archives = {}
+    archives["apt"] = {}
+    archives["apt"]["preserve_sources_list"] = preserve_sources
+
+    osystem = node.get_osystem()
+    series = node.get_distro_series()
+
+    if osystem == "ubuntu":
+        version = format_ubuntu_distro_series(series)
+        try:
+            parsed_version = parse(version)
+        except InvalidVersion:
+            # If version cannot be parsed, we assume a version that
+            # matches the deb822 format behavior since it is most recent.
+            # See below.
+            parsed_version = parse("24.04")
+
+        # From 24.04 on, Ubuntu uses as default the deb822 format for APT repositories.
+        # If providing both, this creates duplicate repositories entries that confuses
+        # apt update. See https://bugs.launchpad.net/maas/+bug/2093303 for more details.
+        if parsed_version >= parse("24.04"):
+            archives["apt"]["sources_list"] = ""
+    else:
+        urls = generate_urls_for_sources_list(archive)
+        archives["apt"]["sources_list"] = urls
 
     if apt_proxy:
         archives["apt"]["proxy"] = apt_proxy
