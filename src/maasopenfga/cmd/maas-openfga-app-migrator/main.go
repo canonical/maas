@@ -25,13 +25,11 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
-
-	_ "maas.io/core/src/maasopenfga/internal/migrations"
+	"maas.io/core/src/maasopenfga/internal/migrations"
 )
 
 const (
 	appMigrationsTable = "openfga.goose_app_db_version"
-	migrationsPath     = "."
 )
 
 // Note that this migrator should manage the openfga schema manually because we might need to access also the MAAS tables in
@@ -45,6 +43,7 @@ func main() {
 
 	uri := os.Args[1]
 
+	goose.SetBaseFS(migrations.MigrationsFS)
 	goose.SetLogger(goose.NopLogger())
 	goose.SetTableName(appMigrationsTable)
 
@@ -68,7 +67,7 @@ func main() {
 		panic(fmt.Errorf("failed to initialize database connection: %w", err))
 	}
 
-	if err := goose.Up(db, migrationsPath); err != nil {
+	if err := goose.Up(db, migrations.MigrationDir); err != nil {
 		panic(fmt.Errorf("failed to run migrations: %w", err))
 	}
 }
