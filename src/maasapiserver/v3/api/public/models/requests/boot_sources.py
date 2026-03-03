@@ -4,7 +4,7 @@
 from base64 import b64decode
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field, root_validator, validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.db.filters import QuerySpec
@@ -59,11 +59,29 @@ class BootSourceRequest(BaseModel):
         default=False,
     )
 
-    @root_validator
-    def validate_keyring_fields(cls, values):
-        skip_verification = values.get("skip_keyring_verification")
-        keyring_filename = values.get("keyring_filename")
-        keyring_data = values.get("keyring_data")
+    @field_validator("keyring_filename", mode="after")
+    @classmethod
+    def validate_b64_keyring_filename(cls, value: str | None) -> str:
+        return "" if value is None else value
+
+    @field_validator("keyring_data", mode="after")
+    @classmethod
+    def validate_b64_keyring_data(cls, value: str) -> str:
+        value = "" if value is None else value
+        try:
+            b64decode(value)
+        except Exception as e:
+            raise ValidationException.build_for_field(
+                field="keyring_data",
+                message="keyring_data must be valid Base64 encoded binary data.",
+            ) from e
+        return value
+
+    @model_validator(mode="after")
+    def validate_keyring_fields(self) -> "BootSourceRequest":
+        skip_verification = self.skip_keyring_verification
+        keyring_filename = self.keyring_filename
+        keyring_data = self.keyring_data
 
         has_filename = bool(keyring_filename)
         has_data = bool(keyring_data)
@@ -80,23 +98,7 @@ class BootSourceRequest(BaseModel):
                 message="One of keyring_filename or keyring_data must be specified.",
             )
 
-        return values
-
-    @validator("keyring_filename")
-    def validate_b64_keyring_filename(cls, value: str | None) -> str:
-        return "" if value is None else value
-
-    @validator("keyring_data")
-    def validate_b64_keyring_data(cls, value: str) -> str:
-        value = "" if value is None else value
-        try:
-            b64decode(value)
-        except Exception as e:
-            raise ValidationException.build_for_field(
-                field="keyring_data",
-                message="keyring_data must be valid Base64 encoded binary data.",
-            ) from e
-        return value
+        return self
 
 
 # extra='forbid' will raise a validation error if the user passes fields not defined.
@@ -131,10 +133,10 @@ class BootSourceCreateRequest(BootSourceRequest):
     url: str = Field(
         description="URL of SimpleStreams server providing boot source information."
     )
-    # TODO: switch to field_validator when we migrate to pydantic 2.x
-    _validate_url = validator("url", pre=True, allow_reuse=True)(
-        validate_url_format
-    )
+    @field_validator("url", mode="before")
+    @classmethod
+    def _validate_url(cls, v: str) -> str:
+        return validate_url_format(v)
 
     async def to_builder(
         self, services: ServiceCollectionV3
@@ -156,7 +158,7 @@ class BootSourceFetchRequest(BootSourceRequest):
     url: str = Field(
         description="URL of SimpleStreams server providing boot source information."
     )
-    # TODO: switch to field_validator when we migrate to pydantic 2.x
-    _validate_url = validator("url", pre=True, allow_reuse=True)(
-        validate_url_format
-    )
+    @field_validator("url", mode="before")
+    @classmethod
+    def _validate_url(cls, v: str) -> str:
+        return validate_url_format(v)
