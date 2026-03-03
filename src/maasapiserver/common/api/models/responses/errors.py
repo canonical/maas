@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi.encoders import jsonable_encoder
 from macaroonbakery import httpbakery
@@ -12,7 +12,7 @@ from maasservicelayer.exceptions.catalog import BaseExceptionDetail
 
 
 class ErrorBodyResponse(BaseModel):
-    kind = "Error"
+    kind: Literal["Error"] = "Error"
     code: int
     message: str
     details: Optional[list[BaseExceptionDetail]] = None

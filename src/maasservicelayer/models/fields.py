@@ -5,9 +5,13 @@ from ipaddress import _BaseNetwork, IPv4Network, IPv6Network
 import re
 from typing import Any, Union
 
-from pydantic.networks import NetworkType
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import core_schema
 
 from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
+
+# Type alias for network validation input
+NetworkType = Union[str, IPv4Network, IPv6Network]
 
 
 class IPv4v6Network(_BaseNetwork):
@@ -18,12 +22,21 @@ class IPv4v6Network(_BaseNetwork):
     """
 
     @classmethod
-    def __modify_schema__(cls, field_schema: dict[str, Any]) -> None:
-        field_schema.update(type="string", format="ipvanynetwork")
-
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.union_schema([
+                core_schema.is_instance_schema(IPv4Network),
+                core_schema.is_instance_schema(IPv6Network),
+                core_schema.str_schema(),
+            ]),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda v: str(v),
+                return_schema=core_schema.str_schema(),
+            ),
+        )
 
     @classmethod
     def validate(cls, value: NetworkType) -> Union[IPv4Network, IPv6Network]:
@@ -53,12 +66,13 @@ class MacAddress(str):
         return str.__new__(cls, content)
 
     @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(pattern=MAC_FIELD_RE.pattern)
-
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.str_schema(pattern=MAC_FIELD_RE.pattern),
+        )
 
     @classmethod
     def validate(cls, value: str) -> str:
@@ -86,8 +100,13 @@ class PackageRepoUrl(str):
         return str.__new__(cls, content)
 
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.str_schema(pattern=cls.COMBINED_RE.pattern),
+        )
 
     @classmethod
     def validate(cls, value: str) -> str:
