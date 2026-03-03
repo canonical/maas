@@ -9,6 +9,7 @@ This document provides guidelines for AI coding agents (such as GitHub Copilot, 
 - [Security Requirements](#security-requirements)
 - [Documentation Standards](#documentation-standards)
 - [Collaboration Practices](#collaboration-practices)
+- [Conventional Commits](#conventional-commits)
 - [Python Guidelines](#python-guidelines)
 - [Go Guidelines](#go-guidelines)
 - [Subdirectory-Specific Rules](#subdirectory-specific-rules)
@@ -75,6 +76,94 @@ Across all parts of the codebase:
 - Reference related issues in commits and pull requests
 - Link to relevant documentation when making architectural changes
 - Ensure code is compatible with the project's current dependency versions
+
+## Conventional Commits
+
+All commits and pull/merge requests must follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. This ensures consistent, readable commit history and enables automated changelog generation.
+
+### Commit Message Format
+
+```
+<type>[scope][!]: <description>
+
+[body]
+
+[footer(s)]
+```
+
+- **type**: Kind of change (feat, fix, refactor, perf, test, build, chore, docs)
+- **scope**: Optional - affected component or system (e.g., bootresources, network, security, deps)
+- **!**: Add before colon if commit introduces breaking changes
+- **description**: Brief summary, aim for 72 characters or less
+- **body**: Optional - detailed explanation of the change
+- **footer**: Optional - metadata like `Resolves LP:2066936` or `BREAKING CHANGE: description`
+
+### Allowed Types
+
+| Type | Purpose |
+| :--- | :--- |
+| **feat** | A new feature |
+| **fix** | A bug fix (should reference the bug) |
+| **refactor** | Code change that doesn't fix a bug or add a feature |
+| **perf** | Performance improvement |
+| **test** | Adding or correcting tests |
+| **build** | Build, packaging, or dependency changes |
+| **chore** | Changes that don't fit other types (e.g., version bumps) |
+| **docs** | Documentation-only changes |
+
+### Allowed Scopes (MAAS)
+
+Use one of these scopes where applicable:
+
+- **bootresources**: Images download and synchronization
+- **dhcp**: DHCP service
+- **dns**: DNS service
+- **network**: Networking-related changes
+- **power**: Power drivers and machine power management
+- **security**: Security improvements or fixes
+- **storage**: Storage management
+- **tftp**: TFTP service
+- **deps**: Dependency changes
+- **ci**: CI/CD changes
+
+### Guidelines
+
+- Use scope when applicable to help categorize and group commits
+- For breaking changes, include `!` before the colon AND add a `BREAKING CHANGE:` footer
+- Always reference related bugs: `Resolves LP:2066936` (Launchpad) or `Resolves GH:123` (GitHub)
+- Keep commit titles concise; put detailed reasoning in the body
+- Explain *why* a change was made, not just *what* changed
+
+### Examples
+
+Good commit with breaking change:
+```
+feat(bootresources)!: replace tcpdump with maas-netmon
+
+New binary `maas-netmon` is introduced for ARP network discovery.
+
+BREAKING CHANGE: Binary doesn't read PCAP format, thus it is not 
+possible to pass in stdin or file as an argument anymore.
+```
+
+Good bug fix:
+```
+fix(network): correct VLAN configuration parsing
+
+The parser was incorrectly handling tagged VLANs with non-standard
+MTU values, causing network interface initialization to fail.
+
+Resolves LP:2066936
+```
+
+Good feature:
+```
+feat(bootresources): check if controller has enough disk space
+
+- Don't export images from DB if they don't fit in the disk
+- Don't retry downloads on out-of-disk errors
+- Notify user about out-of-disk errors
+```
 
 ## Python Guidelines
 
