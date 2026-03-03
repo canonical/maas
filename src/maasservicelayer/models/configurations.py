@@ -7,8 +7,14 @@ from socket import gethostname
 from typing import Any, ClassVar, Generic, Optional, Type, TypeVar
 
 from netaddr import AddrFormatError, IPAddress, IPNetwork
-from pydantic import AnyHttpUrl, Field, IPvAnyAddress, validator
-from pydantic.generics import GenericModel
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    IPvAnyAddress,
+    field_validator,
+)
 
 from maascommon.constants import IMPORT_RESOURCES_SERVICE_PERIOD, NODE_TIMEOUT
 from maascommon.enums.discovery import (
@@ -47,11 +53,15 @@ class DatabaseConfiguration(MaasBaseModel):
     value: Any
 
 
-class Config(GenericModel, Generic[T]):
+class Config(BaseModel, Generic[T]):
+    model_config: ClassVar[ConfigDict] = ConfigDict(
+        arbitrary_types_allowed=True
+    )
+
     name: ClassVar[str]
     description: ClassVar[str]
     help_text: ClassVar[Optional[str]] = None
-    default: ClassVar
+    default: ClassVar[Any]
 
     # If the config should be exposed to the users via API.
     is_public: ClassVar[bool] = True
@@ -102,7 +112,8 @@ class MAASProxyPortConfig(Config[Optional[int]]):
     )
     value: Optional[int] = Field(default=default, description=description)
 
-    @validator("value")
+    @field_validator("value", mode="after")
+    @classmethod
     def validate_port(cls, value):
         if value is None:
             return None
@@ -196,7 +207,8 @@ class MAASInternalDomainConfig(Config[Optional[str]]):
     )
     value: Optional[str] = Field(default=default, description=description)
 
-    @validator("value")
+    @field_validator("value", mode="after")
+    @classmethod
     def validate_value(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
@@ -228,7 +240,8 @@ class DNSTrustedAclConfig(Config[Optional[str]]):
     )
     value: Optional[str] = Field(default=default, description=description)
 
-    @validator("value")
+    @field_validator("value", mode="after")
+    @classmethod
     def validate_value(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
@@ -288,7 +301,8 @@ class RemoteSyslogConfig(Config[Optional[str]]):
     )
     value: Optional[str] = Field(default=default, description=description)
 
-    @validator("value")
+    @field_validator("value", mode="after")
+    @classmethod
     def validate_value(cls, value: Optional[str]) -> Optional[str]:
         if not value:
             return None
@@ -309,13 +323,11 @@ class MAASSyslogPortConfig(Config[Optional[int]]):
     )
     value: Optional[int] = Field(default=default, description=description)
 
-    @validator("value")
+    @field_validator("value", mode="after")
+    @classmethod
     def validate_port(cls, value):
         if value is None:
             return None
-        # Allow the internal syslog port
-        if value == 5247:
-            return value
         if value > 65535 or value <= 0:
             raise ValueError(
                 "Unable to change port number. Port number is not between 0 - 65535."
@@ -752,7 +764,8 @@ class MAASAutoIPMIKGBmcKeyConfig(Config[Optional[str]]):
     )
     value: Optional[str] = Field(default=default, description=description)
 
-    @validator("value")
+    @field_validator("value", mode="after")
+    @classmethod
     def validate_value(cls, value: Optional[str]) -> Optional[str]:
         """
         Ensure that the provided IPMI k_g value is valid. This validator is used to
@@ -827,7 +840,8 @@ class NTPServersConfig(Config[Optional[str]]):
     )
     value: Optional[str] = Field(default=default, description=description)
 
-    @validator("value")
+    @field_validator("value", mode="after")
+    @classmethod
     def validate_value(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
@@ -932,7 +946,8 @@ class HardwareSyncIntervalConfig(Config[Optional[str]]):
     )
     value: Optional[str] = Field(default=default, description=description)
 
-    @validator("value")
+    @field_validator("value", mode="after")
+    @classmethod
     def validate_systemd_interval(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
