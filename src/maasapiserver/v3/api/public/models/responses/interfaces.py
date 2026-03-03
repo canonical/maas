@@ -3,7 +3,7 @@
 
 from typing import Optional, Self
 
-from pydantic import BaseModel, Field, IPvAnyAddress
+from pydantic import BaseModel, ConfigDict, Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -26,6 +26,8 @@ class LinkResponse(BaseModel):
 
 
 class InterfaceResponse(HalResponse[BaseHal]):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     kind = "Interface"
     id: int
     name: str
@@ -39,9 +41,6 @@ class InterfaceResponse(HalResponse[BaseHal]):
     link_speed: int = 0
     sriov_max_vf: int = 0
     links: list[LinkResponse] = Field(default_factory=list)
-
-    class Config:  # pyright: ignore [reportIncompatibleVariableOverride]
-        arbitrary_types_allowed = True
 
     @classmethod
     def from_model(
