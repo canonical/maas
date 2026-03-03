@@ -5,7 +5,7 @@ import re
 from typing import Optional
 
 from fastapi import Query
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from maasservicelayer.builders.users import UserBuilder
 from maasservicelayer.db.filters import Clause
@@ -40,7 +40,8 @@ class BaseUserRequest(BaseModel):
     last_name: str
     email: Optional[str] = None
 
-    @validator("email")
+    @field_validator("email", mode="after")
+    @classmethod
     def check_email(cls, v: str) -> str:
         match = re.fullmatch(r"^(?!\.)[\w\.\+\-]+@([\w-]+\.)+[\w-]{2,4}$", v)
         if not match:
