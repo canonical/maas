@@ -54,6 +54,7 @@ python3-passlib
 python3-petname
 python3-pexpect
 python3-psycopg2
+python3-pydantic
 python3-pyinotify
 python3-pylxd
 python3-pyparsing
