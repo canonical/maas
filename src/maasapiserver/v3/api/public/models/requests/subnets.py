@@ -2,9 +2,9 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv6Address
-from typing import Any, Optional
+from typing import Optional
 
-from pydantic import Field, IPvAnyAddress, validator
+from pydantic import Field, IPvAnyAddress, field_validator, ValidationInfo
 
 from maasapiserver.v3.api.public.models.requests.base import (
     OptionalNamedBaseModel,
@@ -65,14 +65,18 @@ class SubnetRequest(OptionalNamedBaseModel):
         default_factory=list,
     )
 
-    @validator("gateway_ip")
+    @field_validator("gateway_ip", mode="after")
+    @classmethod
     def ensure_gatweway_ip_in_cidr(
-        cls, v: Optional[IPvAnyAddress], values: dict[str, Any]
-    ):
+        cls, v: Optional[IPvAnyAddress], info: ValidationInfo
+    ) -> Optional[IPvAnyAddress]:
         if v is None:
             return v
         gateway_ip: IPvAnyAddress = v
-        network: IPv4v6Network = values["cidr"]
+        network_data = info.data.get("cidr")
+        if not isinstance(network_data, IPv4v6Network):
+            return gateway_ip
+        network: IPv4v6Network = network_data
         if gateway_ip in network:
             return gateway_ip
         elif (
