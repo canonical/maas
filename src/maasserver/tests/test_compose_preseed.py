@@ -3,21 +3,26 @@
 
 from ipaddress import ip_address
 import random
+from typing import Optional
 
 from django.urls import reverse
+from packaging.version import InvalidVersion, parse
 import yaml
 
 from maascommon.osystem import BOOT_IMAGE_PURPOSE, NoSuchOperatingSystem
+from maascommon.utils.images import format_ubuntu_distro_series
 import maasserver.compose_preseed as cp_module
 from maasserver.compose_preseed import (
     build_metadata_url,
     compose_enlistment_preseed,
     compose_preseed,
+    generate_urls_for_sources_list,
     get_apt_proxy,
 )
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES, PRESEED_TYPE
 from maasserver.models import NodeKey, PackageRepository
 from maasserver.models.config import Config
+from maasserver.models.node import Node
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -388,43 +393,32 @@ class TestComposePreseed(MAASServerTestCase):
             expected_package_mirrors,
         )
 
-    def assertAptConfig(self, config, apt_proxy):
+    def assertAptConfig(self, config, apt_proxy, node: Optional[Node] = None):
         archive = PackageRepository.objects.get_default_archive("amd64")
-        components = set(archive.KNOWN_COMPONENTS)
 
-        if archive.disabled_components:
-            for comp in archive.COMPONENTS_TO_DISABLE:
-                if comp in archive.disabled_components:
-                    components.remove(comp)
+        if node is not None and node.get_osystem() == "ubuntu":
+            try:
+                parsed_version = parse(
+                    format_ubuntu_distro_series(node.get_distro_series())
+                )
+            except InvalidVersion:
+                parsed_version = parse("24.04")
 
-        components = " ".join(components)
-        sources_list = f"deb {archive.url} $RELEASE {components}\n"
-        if archive.disable_sources:
-            sources_list += "# "
-        sources_list += f"deb-src {archive.url} $RELEASE {components}\n"
+            is_ubuntu_2404_or_later = parsed_version >= parse("24.04")
+        else:
+            is_ubuntu_2404_or_later = False
 
-        for pocket in archive.POCKETS_TO_DISABLE:
-            if pocket in archive.disabled_pockets:
-                continue
-            sources_list += "deb {} $RELEASE-{} {}\n".format(
-                archive.url,
-                pocket,
-                components,
-            )
-            if archive.disable_sources:
-                sources_list += "# "
-            sources_list += "deb-src {} $RELEASE-{} {}\n".format(
-                archive.url,
-                pocket,
-                components,
-            )
+        if is_ubuntu_2404_or_later:
+            expected_sources_list = ""
+        else:
+            expected_sources_list = generate_urls_for_sources_list(archive)
 
         self.assertEqual(
             config.get("apt", {}),
             {
                 "preserve_sources_list": False,
                 "proxy": apt_proxy,
-                "sources_list": sources_list,
+                "sources_list": expected_sources_list,
             },
         )
         self.assertEqual(
@@ -481,7 +475,7 @@ class TestComposePreseed(MAASServerTestCase):
             {"consumer_key", "endpoint", "token_key", "token_secret", "type"},
         )
         self.assertEqual(preseed["rsyslog"]["remotes"].keys(), {"maas"})
-        self.assertAptConfig(preseed, apt_proxy)
+        self.assertAptConfig(preseed, apt_proxy, node)
         self.assertEqual(
             preseed["snap"],
             {
@@ -874,7 +868,7 @@ class TestComposePreseed(MAASServerTestCase):
             f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('curtin-metadata')}",
             preseed["datasource"]["MAAS"]["metadata_url"],
         )
-        self.assertAptConfig(preseed, expected_apt_proxy)
+        self.assertAptConfig(preseed, expected_apt_proxy, node)
         self.assertEqual(
             preseed["snap"],
             {
