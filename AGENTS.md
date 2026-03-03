@@ -206,6 +206,45 @@ Follow the isort configuration in `pyproject.toml`:
 - For new code in `maascommon`, `maasservicelayer`, `maasapiserver`, and `maastemporalworker`, ensure Pyright compliance
 - Use Pydantic models for data validation where appropriate
 
+### Pydantic v2 Models
+
+The codebase uses Pydantic v2 for data validation. Follow these patterns:
+
+**Model Definition**:
+- Use `model_config = ConfigDict(...)` for model configuration
+- All class attributes require type annotations
+- Mark non-field class attributes with `ClassVar`
+- Use `Field()` for field customization (default, alias, description, etc.)
+
+**Validators**:
+- Use `@field_validator(mode="before"|"after")` for field-level validation
+- Use `@model_validator(mode="after"|"before")` for model-level validation
+- Return the validated value from validators
+- Mark class methods with `@classmethod`
+
+**Serialization**:
+- Use `.model_dump()` to serialize to dict
+- Use `.model_dump_json()` to serialize to JSON string
+- Use `.model_validate()` to instantiate from dict
+- Use `.model_validate_json()` to instantiate from JSON string
+- Use `.model_json_schema()` to get JSON schema
+
+**Field Aliases**:
+- Use `validation_alias` for input field names during parsing
+- Use `serialization_alias` for output field names during serialization
+- Use both when input/output names differ from Python field names
+
+**Configuration Options**:
+- `populate_by_name=True` - accept both field name and alias on input
+- `arbitrary_types_allowed=True` - allow custom types as fields
+- `extra="forbid"` - reject fields not defined in model
+- `extra="ignore"` - silently ignore extra fields
+
+**Type Annotations**:
+- Use `Type | None` for optional types (Python 3.10+)
+- Use `list[T]`, `dict[K, V]`, `set[T]` for container types
+- Use `Optional[Type]` only when necessary for compatibility
+
 ### Async Code
 
 - Use `async`/`await` patterns in asynchronous contexts
