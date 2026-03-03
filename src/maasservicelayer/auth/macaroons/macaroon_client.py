@@ -70,7 +70,7 @@ class CandidAsyncClient(MacaroonAsyncClient):
         """Return details about a user."""
         url = self._url + quote(f"/v1/u/{username}")
         details = await self._request(method="GET", url=url)
-        return UserDetailsResponse.parse_obj(details)
+        return UserDetailsResponse.model_validate(details)
 
     async def get_groups(self, username: str) -> GetGroupsResponse:
         """Return a list of names for groups a user belongs to."""
@@ -97,7 +97,7 @@ class RbacAsyncClient(MacaroonAsyncClient):
         """Return details about a user."""
         url = self._url + quote(f"{self.API_BASE_URL}/user/{username}")
         details = await self._request(method="GET", url=url)
-        return UserDetailsResponse.parse_obj(details)
+        return UserDetailsResponse.model_validate(details)
 
     async def get_resources(
         self, resource_type: RbacResourceType
@@ -107,7 +107,7 @@ class RbacAsyncClient(MacaroonAsyncClient):
             method="GET", url=self._get_resource_type_url(resource_type)
         )
         return ResourceListResponse(
-            resources=[Resource.parse_obj(res) for res in result]
+            resources=[Resource.model_validate(res) for res in result]
         )
 
     async def update_resources(
@@ -130,7 +130,7 @@ class RbacAsyncClient(MacaroonAsyncClient):
                 # Notify the caller of the conflict explicitly.
                 raise SyncConflictException()  # noqa: B904
             raise
-        return UpdateResourcesResponse.parse_obj(result)
+        return UpdateResourcesResponse.model_validate(result)
 
     async def allowed_for_user(
         self,

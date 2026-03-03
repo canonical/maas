@@ -4,7 +4,7 @@
 import re
 from typing import Optional
 
-from pydantic import validator
+from pydantic import field_validator
 
 from maascommon.enums.node import HardwareDeviceTypeEnum
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
@@ -48,7 +48,8 @@ class HardwareDevice(MaasTimestampedBaseModel):
     # physical_blockdevice_id: Optional[int]
     # node_config_id: int
 
-    @validator("vendor_id", "product_id")
+    @field_validator("vendor_id", "product_id", mode="after")
+    @classmethod
     def validate_hex_ids(cls, id):
         if not DEVICE_ID_REGEX.match(id):
             raise ValueError("Must be an 8 byte hex value")

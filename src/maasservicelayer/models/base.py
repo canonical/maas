@@ -6,7 +6,7 @@ from datetime import datetime
 import hashlib
 from typing import Any, Generic, Sequence, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from maasservicelayer.utils.date import utcnow
 
@@ -33,12 +33,12 @@ class MaasBaseModel(BaseModel):
     def __eq__(self, other: Any) -> bool:
         # Pydantic is not comparing nested objects. This is the workaround to do it.
         if other.__class__ is self.__class__:
-            return self.dict() == other.dict()
+            return self.model_dump() == other.model_dump()
         return False
 
     def etag(self) -> str:
         m = hashlib.sha256()
-        m.update(str(self.dict()).encode("utf-8"))
+        m.update(str(self.model_dump()).encode("utf-8"))
         return m.hexdigest()
 
 
@@ -72,24 +72,17 @@ class ResourceBuilder(BaseModel):
     The base class for all the builders.
     """
 
-    class Config:
-        """
-        We need to set arbitrary_types_allowed = True so to have the sentinel object Unset.
-        In any case, the make_builder function is going to generate the model from a class that extends BaseModel, so its field
-        type can't have arbitrary types unless the original class has this config.
-        """
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __eq__(self, other):
         # Pydantic is not comparing nested objects. This is the workaround to do it.
         if other.__class__ is self.__class__:
-            return self.dict() == other.dict()
+            return self.model_dump() == other.model_dump()
         return False
 
     def populated_fields(self) -> dict[str, Any]:
         """Returns the name, value of all the fields that aren't UNSET."""
-        field_dict = self.dict(exclude_unset=True)
+        field_dict = self.model_dump(exclude_unset=True)
         # exclude all the UNSET values
         field_dict = {
             k: v for k, v in field_dict.items() if not isinstance(v, Unset)
