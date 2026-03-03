@@ -2338,6 +2338,21 @@ TokenTable = Table(
     Index("piston3_token_consumer_id_b178993d", "consumer_id"),
 )
 
+UserGroupTable = Table(
+    "maasserver_usergroup",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("name", String(256), nullable=False, unique=True),
+    Column("description", Text, nullable=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Index(
+        "maasserver_usergroup_name_idx",
+        "name",
+        unique=True,
+    ),
+)
+
 UserProfileTable = Table(
     "maasserver_userprofile",
     METADATA,

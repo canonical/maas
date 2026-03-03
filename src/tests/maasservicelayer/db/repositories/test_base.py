@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
 from operator import eq
@@ -336,3 +336,21 @@ class TestMyRepository:
         repo = MyRepository(Context(connection=db_connection))
         deleted_resources = await repo.delete_many(QuerySpec())
         assert len(deleted_resources) == 2
+
+    async def test_list_all(self, db_connection: AsyncConnection) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        resources = await repo.list_all()
+        assert len(resources) == 2
+
+    async def test_list_all_with_query(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        resources = await repo.list_all(
+            query=QuerySpec(
+                Clause(
+                    condition=eq(A.c.data, "foo"),
+                )
+            )
+        )
+        assert len(resources) == 1

@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasapiserver.common.api.base import API
@@ -47,6 +47,7 @@ from maasapiserver.v3.api.public.handlers.subnets import (
     UISubnetsHandler,
 )
 from maasapiserver.v3.api.public.handlers.tags import TagsHandler
+from maasapiserver.v3.api.public.handlers.usergroups import UserGroupsHandler
 from maasapiserver.v3.api.public.handlers.users import UsersHandler
 from maasapiserver.v3.api.public.handlers.vlans import VlansHandler
 from maasapiserver.v3.api.public.handlers.zones import ZonesHandler
@@ -81,6 +82,7 @@ APIv3 = API(
         SSLKeysHandler(),
         SubnetsHandler(),
         TagsHandler(),
+        UserGroupsHandler(),
         UsersHandler(),
         VlansHandler(),
         ZonesHandler(),

@@ -104,6 +104,7 @@ from maasserver.api.support import (
     RestrictedResource,
 )
 from maasserver.api.tags import TagHandler, TagsHandler
+from maasserver.api.usergroups import UserGroupHandler, UserGroupsHandler
 from maasserver.api.users import UserHandler, UsersHandler
 from maasserver.api.version import VersionHandler
 from maasserver.api.virtualmachine import (
@@ -255,6 +256,12 @@ interfaces_handler = RestrictedResource(
 )
 tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
+usergroup_handler = RestrictedResource(
+    UserGroupHandler, authentication=api_auth
+)
+usergroups_handler = RestrictedResource(
+    UserGroupsHandler, authentication=api_auth
+)
 version_handler = OperationsResource(VersionHandler)  # Allow anon.
 node_results_handler = RestrictedResource(
     NodeResultsHandler, authentication=api_auth
@@ -587,6 +594,12 @@ patterns += [
     ),
     re_path(r"^tags/(?P<name>[^/]+)/$", tag_handler, name="tag_handler"),
     re_path(r"^tags/$", tags_handler, name="tags_handler"),
+    re_path(
+        r"^groups/(?P<id>[^/]+)/$",
+        usergroup_handler,
+        name="usergroup_handler",
+    ),
+    re_path(r"^groups/$", usergroups_handler, name="usergroups_handler"),
     re_path(
         r"^commissioning-results/$",
         node_results_handler,

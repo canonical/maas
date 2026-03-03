@@ -38,7 +38,7 @@ class TestOpenFGAClient:
         server, _ = stub_openfga_server
         server.list_objects_response = {"objects": ["pool:1", "pool:2"]}
 
-        result = await getattr(client, method)("u1")
+        result = await getattr(client, method)(1)
 
         assert result == [1, 2]
         assert server.last_payload["relation"] == rel
@@ -52,10 +52,10 @@ class TestOpenFGAClient:
         server.status_code = status
 
         with pytest.raises(httpx.HTTPStatusError):
-            await client.can_edit_machines("u1")
+            await client.can_edit_machines(1)
 
         with pytest.raises(httpx.HTTPStatusError):
-            await client.list_pools_with_view_machines_access("u1")
+            await client.list_pools_with_view_machines_access(1)
 
     async def test_async_client_closes_properly(self):
         client = OpenFGAClient()

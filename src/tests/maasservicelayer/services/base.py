@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
 
@@ -98,6 +98,14 @@ class ServiceCommonTests(ReadOnlyServiceCommonTests):
         assert objects == []
         service_instance.repository.list.assert_awaited_once_with(
             page=1, size=10, query=QuerySpec()
+        )
+
+    async def test_list_all(self, service_instance):
+        service_instance.repository.list_all.return_value = []
+        objects = await service_instance.list_all(query=QuerySpec())
+        assert objects == []
+        service_instance.repository.list_all.assert_awaited_once_with(
+            query=QuerySpec()
         )
 
     async def test_update_many(

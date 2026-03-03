@@ -111,6 +111,7 @@ from maasservicelayer.db.repositories.tokens import (
     TokensRepository,
 )
 from maasservicelayer.db.repositories.ui_subnets import UISubnetsRepository
+from maasservicelayer.db.repositories.usergroups import UserGroupsRepository
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
@@ -207,6 +208,7 @@ from maasservicelayer.services.tokens import (
     TokensService,
 )
 from maasservicelayer.services.ui_subnets import UISubnetsService
+from maasservicelayer.services.usergroups import UserGroupsService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.services.vmcluster import VmClustersService
@@ -304,6 +306,7 @@ class ServiceCollectionV3:
     tags: TagsService
     temporal: TemporalService
     tokens: TokensService
+    usergroups: UserGroupsService
     users: UsersService
     v3dnsrrsets: V3DNSResourceRecordSetsService
     v3subnet_utilization: V3SubnetUtilizationService
@@ -486,6 +489,11 @@ class ServiceCollectionV3:
         services.resource_pools = ResourcePoolsService(
             context=context,
             resource_pools_repository=ResourcePoolRepository(context),
+            openfga_tuples_service=services.openfga_tuples,
+        )
+        services.usergroups = UserGroupsService(
+            context=context,
+            usergroups_repository=UserGroupsRepository(context),
             openfga_tuples_service=services.openfga_tuples,
         )
         services.machines = MachinesService(

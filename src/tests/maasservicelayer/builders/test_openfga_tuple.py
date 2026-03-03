@@ -38,8 +38,8 @@ class TestOpenFGATupleBuilder:
         ],
     )
     def test_group_pool_scoped_builders(self, method_name, relation):
-        group_id = "g1"
-        pool_id = "p1"
+        group_id = 1
+        pool_id = "1"
 
         method = getattr(OpenFGATupleBuilder, method_name)
         builder = method(group_id, pool_id)
@@ -89,7 +89,7 @@ class TestOpenFGATupleBuilder:
         ],
     )
     def test_group_global_scoped_builders(self, method_name, relation):
-        group_id = "g1"
+        group_id = 1
 
         method = getattr(OpenFGATupleBuilder, method_name)
         builder = method(group_id)

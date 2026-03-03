@@ -28,12 +28,39 @@ import (
 )
 
 const (
-	administratorGroupName = "administrators"
-	usersGroupName         = "users"
+	administratorGroupName = "Administrators"
+	usersGroupName         = "Users"
 )
 
 func init() {
 	goose.AddMigrationContext(Up00002, Down00002)
+}
+
+// Get group id for a given group name.
+func getGroupID(ctx context.Context, tx *sql.Tx, groupName string) (int64, error) {
+	builder := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	selectStmt, selectArgs, err := builder.
+		Select("id").
+		From("maasserver_usergroup").
+		Where(sq.Eq{"name": groupName}).
+		ToSql()
+	if err != nil {
+		return 0, err
+	}
+
+	var groupID int64
+
+	err = tx.QueryRowContext(ctx, selectStmt, selectArgs...).Scan(&groupID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("group '%s' does not exist", groupName)
+		}
+
+		return 0, err
+	}
+
+	return groupID, nil
 }
 
 // Create a new maas:0 -> parent -> pool:id for every pool in the database.
@@ -111,7 +138,7 @@ func createPools(ctx context.Context, tx *sql.Tx) error {
 }
 
 // Create a new group with relations to the maas:0 object.
-func createGroup(ctx context.Context, tx *sql.Tx, groupName string, relations *[]string) error {
+func createGroup(ctx context.Context, tx *sql.Tx, groupID int64, relations *[]string) error {
 	builder := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	for _, relation := range *relations {
@@ -129,7 +156,7 @@ func createGroup(ctx context.Context, tx *sql.Tx, groupName string, relations *[
 			).
 			Values(
 				storeID,
-				fmt.Sprintf("group:%s#member", groupName),
+				fmt.Sprintf("group:%d#member", groupID),
 				"userset",
 				relation,
 				"maas",
@@ -152,7 +179,7 @@ func createGroup(ctx context.Context, tx *sql.Tx, groupName string, relations *[
 
 // For every user in auth_users, add them to the users group. if is_superuser is true,
 // also add them to the administrators group. If false, add them to the users group.
-func addUsersToGroup(ctx context.Context, tx *sql.Tx) error {
+func addUsersToGroup(ctx context.Context, tx *sql.Tx, administratorGroupID int64, usersGroupID int64) error {
 	builder := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	selectStmt, selectArgs, err := builder.
@@ -195,9 +222,9 @@ func addUsersToGroup(ctx context.Context, tx *sql.Tx) error {
 	}
 
 	for _, u := range users {
-		groupName := usersGroupName
+		groupID := usersGroupID
 		if u.isSuperUser {
-			groupName = administratorGroupName
+			groupID = administratorGroupID
 		}
 
 		insertStmt, insertArgs, err := builder.
@@ -218,7 +245,7 @@ func addUsersToGroup(ctx context.Context, tx *sql.Tx) error {
 				"user",
 				"member",
 				"group",
-				groupName,
+				fmt.Sprintf("%v", groupID),
 				ulid.Make().String(),
 				sq.Expr("NOW()"),
 			).
@@ -240,20 +267,32 @@ func Up00002(ctx context.Context, tx *sql.Tx) error {
 		return fmt.Errorf("failed to create pools: %w", err)
 	}
 
+	var administratorGroupID, usersGroupID int64
+
+	administratorGroupID, err := getGroupID(ctx, tx, administratorGroupName)
+	if err != nil {
+		return fmt.Errorf("failed to get administrator group id: %w", err)
+	}
+
+	usersGroupID, err = getGroupID(ctx, tx, usersGroupName)
+	if err != nil {
+		return fmt.Errorf("failed to get users group id: %w", err)
+	}
+
 	relations := []string{"can_edit_machines", "can_edit_global_entities", "can_edit_controllers", "can_edit_identities",
 		"can_edit_configurations", "can_edit_notifications", "can_edit_boot_entities", "can_edit_license_keys",
 		"can_view_devices",
 		"can_view_ipaddresses"}
-	if err := createGroup(ctx, tx, administratorGroupName, &relations); err != nil {
+	if err := createGroup(ctx, tx, administratorGroupID, &relations); err != nil {
 		return fmt.Errorf("failed to create administrators group: %w", err)
 	}
 
 	relations = []string{"can_deploy_machines", "can_view_deployable_machines", "can_view_global_entities"}
-	if err := createGroup(ctx, tx, usersGroupName, &relations); err != nil {
+	if err := createGroup(ctx, tx, usersGroupID, &relations); err != nil {
 		return fmt.Errorf("failed to create users group: %w", err)
 	}
 
-	if err := addUsersToGroup(ctx, tx); err != nil {
+	if err := addUsersToGroup(ctx, tx, administratorGroupID, usersGroupID); err != nil {
 		return fmt.Errorf("failed to add users to groups: %w", err)
 	}
 

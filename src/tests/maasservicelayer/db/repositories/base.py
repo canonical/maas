@@ -300,6 +300,7 @@ class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
         deleted_resources = await repository_instance.delete_many(
             query=QuerySpec()
         )
+        print(deleted_resources)
         assert len(deleted_resources) == num_objects
         resources = await repository_instance.get_many(query=QuerySpec())
         assert len(resources) == 0

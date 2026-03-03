@@ -23,19 +23,19 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_user_member_group(
-        cls, user_id: str, group_id: str
+        cls, user_id: int, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"user:{user_id}",
             user_type="user",
             relation="member",
-            object_id=group_id,
+            object_id=str(group_id),
             object_type="group",
         )
 
     @classmethod
     def build_group_can_edit_machines_in_pool(
-        cls, group_id: str, pool_id: str
+        cls, group_id: int, pool_id: str
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -47,7 +47,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_machines_in_pool(
-        cls, group_id: str, pool_id: str
+        cls, group_id: int, pool_id: str
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -59,7 +59,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_available_machines_in_pool(
-        cls, group_id: str, pool_id: str
+        cls, group_id: int, pool_id: str
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -71,7 +71,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_deploy_machines_in_pool(
-        cls, group_id: str, pool_id: str
+        cls, group_id: int, pool_id: str
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -83,7 +83,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_edit_machines(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -95,7 +95,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_machines(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -107,7 +107,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_available_machines(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -119,7 +119,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_deploy_machines(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -131,7 +131,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_global_entities(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -143,7 +143,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_edit_global_entities(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -155,7 +155,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_edit_controllers(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -167,7 +167,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_controllers(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -179,7 +179,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_identities(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -191,7 +191,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_edit_identities(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -203,7 +203,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_boot_entities(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -215,7 +215,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_edit_boot_entities(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -227,7 +227,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_configurations(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -239,7 +239,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_edit_configurations(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -251,7 +251,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_edit_notifications(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -263,7 +263,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_notifications(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -275,7 +275,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_edit_license_keys(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -287,7 +287,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_license_keys(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -299,7 +299,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_devices(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
@@ -311,7 +311,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
 
     @classmethod
     def build_group_can_view_ipaddresses(
-        cls, group_id: str
+        cls, group_id: int
     ) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",

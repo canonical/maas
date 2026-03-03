@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2023-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC
@@ -140,6 +140,10 @@ class ReadOnlyService(Service, Generic[M, ROR]):
         self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[M]:
         return await self.repository.list(page=page, size=size, query=query)
+
+    async def list_all(self, query: QuerySpec | None = None) -> List[M]:
+        # Please, prefer not to use this method. It's here just as a utility for v2 endpoints that need to use the service layer.
+        return await self.repository.list_all(query=query)
 
 
 class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):

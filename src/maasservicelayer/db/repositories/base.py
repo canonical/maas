@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
@@ -234,6 +234,17 @@ class ReadOnlyRepository(Repository, Generic[T]):
             ],
             total=total,
         )
+
+    async def list_all(self, query: QuerySpec | None = None) -> List[T]:
+        # Please, prefer not to use this method. It's here just as a utility for v2 endpoints that need to use the service layer.
+        stmt = self.select_all_statement().order_by(
+            desc(self.get_repository_table().c.id)
+        )
+        if query:
+            stmt = query.enrich_stmt(stmt)
+
+        result = (await self.execute_stmt(stmt)).all()
+        return [self.get_model_factory()(**row._asdict()) for row in result]
 
 
 class BaseRepository(ReadOnlyRepository[T], Generic[T]):

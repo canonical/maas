@@ -5,8 +5,11 @@
 
 from django.db import connection
 
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.usergroups import UserGroupsClauseFactory
 
 
 class TestUserUsername(MAASServerTestCase):
@@ -31,6 +34,14 @@ class TestPostSaveUserSignal(MAASServerTestCase):
     def test_save_creates_openfga_tuple(self):
         user = self.user_factory()
 
+        group = service_layer.services.usergroups.get_one(
+            QuerySpec(
+                where=UserGroupsClauseFactory.with_name(
+                    "Administrators" if user.is_superuser else "Users"
+                )
+            )
+        )
+
         with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT object_type, object_id, relation FROM openfga.tuple WHERE _user = 'user:%s'",
@@ -40,7 +51,7 @@ class TestPostSaveUserSignal(MAASServerTestCase):
 
         self.assertEqual("group", openfga_tuple[0])
         self.assertEqual(
-            "administrators" if user.is_superuser else "users",
+            str(group.id),
             openfga_tuple[1],
         )
         self.assertEqual("member", openfga_tuple[2])

@@ -28,229 +28,215 @@ class TestIntegrationConfigurationsService:
                 OpenFGATupleBuilder.build_pool(str(i))
             )
 
-        # team A can edit and view everything
+        # group 1000 can edit and view everything
         await services.openfga_tuples.create(
-            OpenFGATupleBuilder.build_group_can_edit_machines(group_id="teamA")
+            OpenFGATupleBuilder.build_group_can_edit_machines(group_id=1000)
         )
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_group_can_edit_global_entities(
-                group_id="teamA"
+                group_id=1000
             )
         )
         await services.openfga_tuples.create(
-            OpenFGATupleBuilder.build_group_can_edit_controllers(
-                group_id="teamA"
-            )
+            OpenFGATupleBuilder.build_group_can_edit_controllers(group_id=1000)
         )
         await services.openfga_tuples.create(
-            OpenFGATupleBuilder.build_group_can_edit_identities(
-                group_id="teamA"
-            )
+            OpenFGATupleBuilder.build_group_can_edit_identities(group_id=1000)
         )
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_group_can_edit_configurations(
-                group_id="teamA"
+                group_id=1000
             )
         )
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_group_can_edit_boot_entities(
-                group_id="teamA"
+                group_id=1000
             )
         )
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_group_can_edit_notifications(
-                group_id="teamA"
+                group_id=1000
             )
         )
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_group_can_edit_license_keys(
-                group_id="teamA"
+                group_id=1000
             )
         )
         await services.openfga_tuples.create(
-            OpenFGATupleBuilder.build_group_can_view_devices(group_id="teamA")
+            OpenFGATupleBuilder.build_group_can_view_devices(group_id=1000)
         )
 
-        # alice belongs to group team A
+        # user 1000 belongs to group 1000
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_user_member_group(
-                user_id="alice", group_id="teamA"
+                user_id=1000, group_id=1000
             )
         )
 
-        # team B can_edit_machines and can_view_machines in pool:0
+        # group 2000 can_edit_machines and can_view_machines in pool:0
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_group_can_edit_machines_in_pool(
-                group_id="teamB", pool_id="0"
+                group_id=2000, pool_id="0"
             )
         )
-        # bob belongs to group team B
+        # user 2000 belongs to group 2000
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_user_member_group(
-                user_id="bob", group_id="teamB"
+                user_id=2000, group_id=2000
             )
         )
 
-        # team C can_view_machines in pool:0
+        # group 3000 can_view_machines in pool:0
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_group_can_deploy_machines_in_pool(
-                group_id="teamC", pool_id="0"
+                group_id=3000, pool_id="0"
             )
         )
-        # carl belongs to group team C
+        # user 3000 belongs to group 3000
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_user_member_group(
-                user_id="carl", group_id="teamC"
+                user_id=3000, group_id=3000
             )
         )
 
-        # team D can_view_machines in pool:0
+        # group 4000 can_view_machines in pool:0
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_group_can_view_available_machines_in_pool(
-                group_id="teamD", pool_id="0"
+                group_id=4000, pool_id="0"
             )
         )
-        # carl belongs to group team C
+        # user 4000 belongs to group 4000
         await services.openfga_tuples.create(
             OpenFGATupleBuilder.build_user_member_group(
-                user_id="dingo", group_id="teamD"
+                user_id=4000, group_id=4000
             )
         )
 
         await db_connection.commit()
 
         client = OpenFGAClient(str(openfga_socket_path))
-        # alice should have all permissions on pool1 because of teamA's system rights
+        # user 1000 should have all permissions on pool1 because of group 1000's system rights
         for i in range(0, 3):
             assert (
                 await client.can_edit_machines_in_pool(
-                    user_id="alice", pool_id=str(i)
+                    user_id=1000, pool_id=str(i)
                 )
             ) is True
             assert (
                 await client.can_view_machines_in_pool(
-                    user_id="alice", pool_id=str(i)
+                    user_id=1000, pool_id=str(i)
                 )
             ) is True
             assert (
                 await client.can_view_available_machines_in_pool(
-                    user_id="alice", pool_id=str(i)
+                    user_id=1000, pool_id=str(i)
                 )
             ) is True
             assert (
                 await client.can_deploy_machines_in_pool(
-                    user_id="alice", pool_id=str(i)
+                    user_id=1000, pool_id=str(i)
                 )
             ) is True
 
-        assert (await client.can_edit_machines(user_id="alice")) is True
-        assert (await client.can_edit_global_entities(user_id="alice")) is True
-        assert (await client.can_view_global_entities(user_id="alice")) is True
-        assert (await client.can_edit_controllers(user_id="alice")) is True
-        assert (await client.can_view_controllers(user_id="alice")) is True
-        assert (await client.can_edit_identities(user_id="alice")) is True
-        assert (await client.can_view_identities(user_id="alice")) is True
-        assert (await client.can_edit_configurations(user_id="alice")) is True
-        assert (await client.can_view_configurations(user_id="alice")) is True
-        assert (await client.can_edit_notifications(user_id="alice")) is True
-        assert (await client.can_view_notifications(user_id="alice")) is True
-        assert (await client.can_edit_boot_entities(user_id="alice")) is True
-        assert (await client.can_view_boot_entities(user_id="alice")) is True
-        assert (await client.can_view_license_keys(user_id="alice")) is True
-        assert (await client.can_edit_license_keys(user_id="alice")) is True
-        assert (await client.can_view_devices(user_id="alice")) is True
+        assert (await client.can_edit_machines(user_id=1000)) is True
+        assert (await client.can_edit_global_entities(user_id=1000)) is True
+        assert (await client.can_view_global_entities(user_id=1000)) is True
+        assert (await client.can_edit_controllers(user_id=1000)) is True
+        assert (await client.can_view_controllers(user_id=1000)) is True
+        assert (await client.can_edit_identities(user_id=1000)) is True
+        assert (await client.can_view_identities(user_id=1000)) is True
+        assert (await client.can_edit_configurations(user_id=1000)) is True
+        assert (await client.can_view_configurations(user_id=1000)) is True
+        assert (await client.can_edit_notifications(user_id=1000)) is True
+        assert (await client.can_view_notifications(user_id=1000)) is True
+        assert (await client.can_edit_boot_entities(user_id=1000)) is True
+        assert (await client.can_view_boot_entities(user_id=1000)) is True
+        assert (await client.can_view_license_keys(user_id=1000)) is True
+        assert (await client.can_edit_license_keys(user_id=1000)) is True
+        assert (await client.can_view_devices(user_id=1000)) is True
 
-        # bob should just have edit,view and deploy permissions on pool1 because of teamB's rights
+        # user 2000 should just have edit,view and deploy permissions on pool1 because of group 2000's rights
         assert (
-            await client.can_edit_machines_in_pool(user_id="bob", pool_id="0")
+            await client.can_edit_machines_in_pool(user_id=2000, pool_id="0")
         ) is True
         assert (
-            await client.can_view_machines_in_pool(user_id="bob", pool_id="0")
+            await client.can_view_machines_in_pool(user_id=2000, pool_id="0")
         ) is True
         assert (
             await client.can_view_available_machines_in_pool(
-                user_id="bob", pool_id="0"
+                user_id=2000, pool_id="0"
             )
         ) is True
         assert (
-            await client.can_deploy_machines_in_pool(
-                user_id="bob", pool_id="0"
-            )
+            await client.can_deploy_machines_in_pool(user_id=2000, pool_id="0")
         ) is True
 
         for i in range(1, 3):
             assert (
                 await client.can_edit_machines_in_pool(
-                    user_id="bob", pool_id=str(i)
+                    user_id=2000, pool_id=str(i)
                 )
             ) is False
             assert (
                 await client.can_view_machines_in_pool(
-                    user_id="bob", pool_id=str(i)
+                    user_id=2000, pool_id=str(i)
                 )
             ) is False
             assert (
                 await client.can_view_available_machines_in_pool(
-                    user_id="bob", pool_id=str(i)
+                    user_id=2000, pool_id=str(i)
                 )
             ) is False
             assert (
                 await client.can_deploy_machines_in_pool(
-                    user_id="bob", pool_id=str(i)
+                    user_id=2000, pool_id=str(i)
                 )
             ) is False
 
-        assert (await client.can_edit_machines(user_id="bob")) is False
-        assert (await client.can_view_global_entities(user_id="bob")) is False
-        assert (await client.can_edit_global_entities(user_id="bob")) is False
-        assert (await client.can_edit_identities(user_id="bob")) is False
-        assert (await client.can_view_identities(user_id="bob")) is False
-        assert (await client.can_edit_configurations(user_id="bob")) is False
-        assert (await client.can_view_configurations(user_id="bob")) is False
-        assert (await client.can_view_notifications(user_id="bob")) is False
-        assert (await client.can_edit_notifications(user_id="bob")) is False
-        assert (await client.can_view_boot_entities(user_id="bob")) is False
-        assert (await client.can_edit_boot_entities(user_id="bob")) is False
-        assert (await client.can_view_license_keys(user_id="bob")) is False
-        assert (await client.can_edit_license_keys(user_id="bob")) is False
-        assert (await client.can_view_devices(user_id="bob")) is False
+        assert (await client.can_edit_machines(user_id=2000)) is False
+        assert (await client.can_view_global_entities(user_id=2000)) is False
+        assert (await client.can_edit_global_entities(user_id=2000)) is False
+        assert (await client.can_edit_identities(user_id=2000)) is False
+        assert (await client.can_view_identities(user_id=2000)) is False
+        assert (await client.can_edit_configurations(user_id=2000)) is False
+        assert (await client.can_view_configurations(user_id=2000)) is False
+        assert (await client.can_view_notifications(user_id=2000)) is False
+        assert (await client.can_edit_notifications(user_id=2000)) is False
+        assert (await client.can_view_boot_entities(user_id=2000)) is False
+        assert (await client.can_edit_boot_entities(user_id=2000)) is False
+        assert (await client.can_view_license_keys(user_id=2000)) is False
+        assert (await client.can_edit_license_keys(user_id=2000)) is False
+        assert (await client.can_view_devices(user_id=2000)) is False
 
-        # carl should just have deploy permissions on pool0 because of teamC's rights
+        # user 3000 should just have deploy permissions on pool0 because of group 3000's rights
         assert (
-            await client.can_edit_machines_in_pool(user_id="carl", pool_id="0")
+            await client.can_edit_machines_in_pool(user_id=3000, pool_id="0")
         ) is False
         assert (
-            await client.can_view_machines_in_pool(user_id="carl", pool_id="0")
+            await client.can_view_machines_in_pool(user_id=3000, pool_id="0")
         ) is False
         assert (
             await client.can_view_available_machines_in_pool(
-                user_id="carl", pool_id="0"
+                user_id=3000, pool_id="0"
             )
         ) is False
         assert (
-            await client.can_deploy_machines_in_pool(
-                user_id="carl", pool_id="0"
-            )
+            await client.can_deploy_machines_in_pool(user_id=3000, pool_id="0")
         ) is True
 
-        # dingo should just view permissions on pool0 because of teamD's rights
+        # user 4000 should just view permissions on pool0 because of group 4000's rights
         assert (
-            await client.can_edit_machines_in_pool(
-                user_id="dingo", pool_id="0"
-            )
+            await client.can_edit_machines_in_pool(user_id=4000, pool_id="0")
         ) is False
         assert (
-            await client.can_view_machines_in_pool(
-                user_id="dingo", pool_id="0"
-            )
+            await client.can_view_machines_in_pool(user_id=4000, pool_id="0")
         ) is False
         assert (
             await client.can_view_available_machines_in_pool(
-                user_id="dingo", pool_id="0"
+                user_id=4000, pool_id="0"
             )
         ) is True
         assert (
-            await client.can_deploy_machines_in_pool(
-                user_id="dingo", pool_id="0"
-            )
+            await client.can_deploy_machines_in_pool(user_id=4000, pool_id="0")
         ) is False

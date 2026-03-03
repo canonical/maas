@@ -70,3 +70,26 @@ class OpenFGATupleService(Service):
             )
         )
         await self.delete_many(query)
+
+    async def delete_group(self, group_id: int) -> None:
+        # Delete users who are members of this group AND entitlement tuples associated with this group
+        membership_query = QuerySpec(
+            where=OpenFGATuplesClauseFactory.or_clauses(
+                [
+                    OpenFGATuplesClauseFactory.and_clauses(
+                        [
+                            OpenFGATuplesClauseFactory.with_object_type(
+                                "group"
+                            ),
+                            OpenFGATuplesClauseFactory.with_object_id(
+                                str(group_id)
+                            ),
+                        ]
+                    ),
+                    OpenFGATuplesClauseFactory.with_user(
+                        f"group:{group_id}#member"
+                    ),
+                ]
+            )
+        )
+        await self.delete_many(membership_query)
