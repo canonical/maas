@@ -3,7 +3,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, model_validator
 
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maasservicelayer.builders.notifications import NotificationBuilder
@@ -50,17 +50,17 @@ class NotificationRequest(BaseModel):
         default=True,
     )
 
-    @root_validator
-    def validate_recipient(cls, values: dict[str, Any]):
+    @model_validator(mode="after")
+    def validate_recipient(self) -> "NotificationRequest":
         if (
-            values["user_id"] is None
-            and values["for_users"] is False
-            and values["for_admins"] is False
+            self.user_id is None
+            and self.for_users is False
+            and self.for_admins is False
         ):
             raise ValueError(
                 "Either 'user_id', 'for_users' or 'for_admin' must be specified."
             )
-        return values
+        return self
 
     def to_builder(self) -> NotificationBuilder:
         return NotificationBuilder(
