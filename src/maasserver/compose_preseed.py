@@ -160,7 +160,7 @@ def get_cloud_init_legacy_apt_config_to_inject_key_to_archive(node):
     return apt_sources
 
 
-def generate_urls_for_sources_list(archive) -> str:
+def generate_urls_for_sources_list(archive: PackageRepository) -> str:
     # Always generate a custom list of repositories. deb-src is enabled in the
     # ephemeral environment due to the cloud-init template having it enabled.
     # It is disabled in a deployed environment due to the Curtin template
@@ -201,11 +201,26 @@ def generate_urls_for_sources_list(archive) -> str:
     return urls
 
 
+def get_ubuntu_version(series: str):
+    version = format_ubuntu_distro_series(series)
+
+    try:
+        parsed_version = parse(version)
+    except InvalidVersion:
+        # If version cannot be parsed, we assume a version that
+        # matches the deb822 format behavior since it is most recent.
+        parsed_version = parse("24.04")
+
+    return parsed_version
+
+
 def get_archive_config(
     request, node: NodeModel, preserve_sources=False
 ) -> dict:
     arch = node.split_arch()[0]
-    archive = PackageRepository.objects.get_default_archive(arch)
+    archive: PackageRepository = PackageRepository.objects.get_default_archive(
+        arch
+    )
     repositories = PackageRepository.objects.get_additional_repositories(arch)
     apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller(), node)
 
@@ -214,24 +229,29 @@ def get_archive_config(
     archives["apt"] = {}
     archives["apt"]["preserve_sources_list"] = preserve_sources
 
+    if "sources" not in archives["apt"]:
+        archives["apt"]["sources"] = {}
+
     osystem = node.get_osystem()
     series = node.get_distro_series()
 
-    if osystem == "ubuntu":
-        version = format_ubuntu_distro_series(series)
-        try:
-            parsed_version = parse(version)
-        except InvalidVersion:
-            # If version cannot be parsed, we assume a version that
-            # matches the deb822 format behavior since it is most recent.
-            # See below.
-            parsed_version = parse("24.04")
+    is_ubuntu_and_later_than_or_equal_to_24_04 = (
+        osystem == "ubuntu" and get_ubuntu_version(series) >= parse("24.04")
+    )
 
+    if is_ubuntu_and_later_than_or_equal_to_24_04:
         # From 24.04 on, Ubuntu uses as default the deb822 format for APT repositories.
         # If providing both, this creates duplicate repositories entries that confuses
         # apt update. See https://bugs.launchpad.net/maas/+bug/2093303 for more details.
-        if parsed_version >= parse("24.04"):
-            archives["apt"]["sources_list"] = ""
+        archives["apt"]["sources_list"] = ""
+
+        archives["apt"]["primary"] = [
+            {"arches": ["default"], "uri": archive.url}
+        ]
+        # Should we really use the same url here? It is not the same by default in Ubuntu.
+        archives["apt"]["security"] = [
+            {"arches": ["default"], "uri": archive.url}
+        ]
     else:
         urls = generate_urls_for_sources_list(archive)
         archives["apt"]["sources_list"] = urls
@@ -262,9 +282,6 @@ def get_archive_config(
                 url = ""
                 for dist in repo.distributions:
                     url += f"deb {repo.url} {dist} {components}\n"
-
-        if "sources" not in archives["apt"].keys():
-            archives["apt"]["sources"] = {}
 
         repo_name = make_clean_repo_name(repo)
 
