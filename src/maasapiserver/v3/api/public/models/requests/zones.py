@@ -4,7 +4,7 @@
 from typing import Optional
 
 from fastapi import Query
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
 from maasservicelayer.builders.zones import ZoneBuilder
@@ -35,9 +35,8 @@ class ZoneRequest(NamedBaseModel):
         description="The description of the zone.", default=""
     )
 
-    # TODO: move to @field_validator when we migrate to pydantic 2.x
-    # This handles the case where the client sends a request with {"description": null}.
-    @validator("description")
+    @field_validator("description", mode="after")
+    @classmethod
     def set_default(cls, v: str) -> str:
         return v if v else ""
 

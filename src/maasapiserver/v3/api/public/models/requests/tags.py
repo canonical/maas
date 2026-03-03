@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from lxml import etree  # pyright: ignore [reportAttributeAccessIssue]
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
 from maasservicelayer.builders.tags import TagBuilder
@@ -35,8 +35,9 @@ class TagRequest(NamedBaseModel):
         default="",
     )
 
-    @validator("definition")
-    def validate_definition(cls, v: str):
+    @field_validator("definition", mode="after")
+    @classmethod
+    def validate_definition(cls, v: str) -> str:
         if v != "":
             try:
                 etree.XPath(v)
