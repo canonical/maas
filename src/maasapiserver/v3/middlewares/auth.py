@@ -335,7 +335,7 @@ class MacaroonAuthenticationProvider:
         else:
             superuser = True
         return ValidateUserResponse(
-            **user_details.dict(), active=True, superuser=superuser
+            **user_details.model_dump(), active=True, superuser=superuser
         )
 
     async def _validate_user_rbac(
@@ -361,7 +361,7 @@ class MacaroonAuthenticationProvider:
         except MacaroonApiException:
             raise
         return ValidateUserResponse(
-            **user_details.dict(),
+            **user_details.model_dump(),
             active=(superuser or access_to_pools),
             superuser=superuser,
         )
