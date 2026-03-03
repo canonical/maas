@@ -5,7 +5,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import Depends, Header, Query, Request, Response
-from pydantic import conlist
+
 from starlette import status
 import structlog
 
@@ -452,9 +452,7 @@ class CustomImagesHandler(Handler):
     )
     async def bulk_delete_custom_images(
         self,
-        ids: conlist(int, min_items=1, unique_items=True) = Query(  # pyright: ignore[reportInvalidTypeForm] # noqa: B008
-            description="ids of custom images to delete", alias="id"
-        ),
+        ids: Annotated[list[int], Query(min_length=1, unique_items=True, description="ids of custom images to delete", alias="id")],
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         await services.boot_resources.delete_many(

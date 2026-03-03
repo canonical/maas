@@ -1,7 +1,9 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from pydantic import BaseModel, conint, Field, IPvAnyAddress
+from typing import Annotated
+
+from pydantic import BaseModel, Field, IPvAnyAddress
 
 from maasservicelayer.builders.staticroutes import StaticRouteBuilder
 from maasservicelayer.db.filters import QuerySpec
@@ -10,7 +12,7 @@ from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 
-StrictNonNegativeInt = conint(strict=True, ge=0)
+StrictNonNegativeInt = Annotated[int, Field(ge=0, strict=True)]
 
 
 class StaticRouteRequest(BaseModel):
@@ -20,7 +22,7 @@ class StaticRouteRequest(BaseModel):
     destination_id: int = Field(
         description="Destination subnet ID for the route."
     )
-    metric: StrictNonNegativeInt = Field(  # pyright: ignore [reportInvalidTypeForm]
+    metric: StrictNonNegativeInt = Field(
         description="Weight of the route on a deployed machine.", default=0
     )
 
