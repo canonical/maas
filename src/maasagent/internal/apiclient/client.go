@@ -18,14 +18,9 @@ package apiclient
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"net/url"
-	"slices"
 )
 
 type APIClient struct {
@@ -33,6 +28,9 @@ type APIClient struct {
 	httpClient *http.Client
 }
 
+// NewAPIClient returns API client to communicate with the region controller.
+//
+// Deprecated: please use client/client.go
 func NewAPIClient(baseURL *url.URL, httpClient *http.Client) *APIClient {
 	return &APIClient{
 		baseURL:    baseURL,
@@ -61,28 +59,4 @@ func (c *APIClient) Request(ctx context.Context, method, path string,
 	}
 
 	return resp, nil
-}
-
-// TLSConfigWithFingerprintPinning returns a *tls.Config that only accepts
-// server certificates matching the given SHA256 fingerprint.
-func TLSConfigWithFingerprintPinning(fingerprints []string) *tls.Config {
-	return &tls.Config{
-		InsecureSkipVerify: true, //nolint:gosec // G402: we verify fingerprint manually
-		VerifyPeerCertificate: func(rawCerts [][]byte,
-			verifiedChains [][]*x509.Certificate) error {
-			if len(rawCerts) == 0 {
-				return fmt.Errorf("no server certificates")
-			}
-			// We are interested in a leaf certificate only
-			cert := rawCerts[0]
-			hash := sha256.Sum256(cert)
-			got := hex.EncodeToString(hash[:])
-
-			if slices.Contains(fingerprints, got) {
-				return nil
-			}
-
-			return fmt.Errorf("certificate fingerprint mismatch: got %s", got)
-		},
-	}
 }

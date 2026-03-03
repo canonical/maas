@@ -136,6 +136,7 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 		s.T().Fatal(err)
 	}
 
+	//nolint:staticcheck // TODO: migrate to new client
 	apiClient := apiclient.NewAPIClient(configBaseURL, s.configHTTPServer.Client())
 	dataPath := s.T().TempDir()
 
@@ -620,6 +621,7 @@ func TestQueueFlush(t *testing.T) {
 					MAC: "00:00:00:00:00",
 				},
 			},
+			//nolint:staticcheck // TODO: migrate to new client
 			apiClient: apiclient.NewAPIClient(
 				dummyURL,
 				&http.Client{
@@ -642,6 +644,7 @@ func TestQueueFlush(t *testing.T) {
 					MAC: "00:00:00:00:00",
 				},
 			},
+			//nolint:staticcheck // TODO: migrate to new client
 			apiClient: apiclient.NewAPIClient(
 				dummyURL,
 				&http.Client{
@@ -659,6 +662,7 @@ func TestQueueFlush(t *testing.T) {
 		},
 		"max retries": {
 			err: http.ErrServerClosed,
+			//nolint:staticcheck // TODO: migrate to new client
 			apiClient: apiclient.NewAPIClient(
 				dummyURL,
 				&http.Client{
@@ -671,6 +675,7 @@ func TestQueueFlush(t *testing.T) {
 		},
 		"bad status": {
 			err: ErrFailedToPostNotifications,
+			//nolint:staticcheck // TODO: migrate to new client
 			apiClient: apiclient.NewAPIClient(
 				dummyURL,
 				&http.Client{

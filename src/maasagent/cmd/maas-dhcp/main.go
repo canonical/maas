@@ -178,6 +178,7 @@ func run() int {
 		return 2
 	}
 
+	//nolint:staticcheck // TODO: migrate to new client
 	mockAPIClient := apiclient.NewAPIClient(testURL, testServer.Client())
 
 	dhcpService = dhcp.NewDHCPService(

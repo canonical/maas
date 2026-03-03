@@ -460,6 +460,7 @@ func Run() int {
 
 	httpClient := setupHTTPClient(cert, ca)
 
+	//nolint:staticcheck // TODO: migrate to new client
 	apiClient := apiclient.NewAPIClient(u, &httpClient)
 
 	var workerPool worker.WorkerPool
