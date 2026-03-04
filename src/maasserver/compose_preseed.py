@@ -232,6 +232,9 @@ def generate_deb822_for_sources(archive: PackageRepository) -> str:
 def get_ubuntu_version(series: str):
     version = format_ubuntu_distro_series(series)
 
+    # This avoids issues with things like "24.04 LTS".
+    version, _, _ = version.partition(" ")
+
     try:
         parsed_version = parse(version)
     except InvalidVersion:
