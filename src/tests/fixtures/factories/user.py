@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime, timedelta
@@ -11,6 +11,7 @@ from maasservicelayer.models.django_session import DjangoSession
 from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.utils.date import utcnow
+from maastesting.factory import factory
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -18,11 +19,12 @@ async def create_test_user(fixture: Fixture, **extra_details: Any) -> User:
     date_joined = utcnow()
 
     user = {
-        "username": "myusername",
+        "username": factory.make_username(),
         "password": "pbkdf2_sha256$260000$f1nMJPH4Z5Wc8QxkTsZ1p6$ylZBpgGE3FNlP2zOU21cYiLtvxwtkglsPKUETtXhzDw=",  # hash('test')
         "is_superuser": False,
         "first_name": "first",
         "last_name": "last",
+        "email": factory.make_email_address(),
         "is_staff": False,
         "is_active": True,
         "date_joined": date_joined,

@@ -8,8 +8,14 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.v3.api.public.models.requests.usergroup_members import (
+    UserGroupMemberRequest,
+)
 from maasapiserver.v3.api.public.models.requests.usergroups import (
     UserGroupRequest,
+)
+from maasapiserver.v3.api.public.models.responses.usergroup_members import (
+    UserGroupMembersListResponse,
 )
 from maasapiserver.v3.api.public.models.responses.usergroups import (
     UserGroupResponse,
@@ -26,9 +32,15 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.usergroup_members import UserGroupMember
 from maasservicelayer.models.usergroups import UserGroup
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.usergroups import UserGroupsService
+from maasservicelayer.models.users import User
+from maasservicelayer.services import ServiceCollectionV3, UsersService
+from maasservicelayer.services.usergroups import (
+    UserAlreadyInGroup,
+    UserGroupNotFound,
+    UserGroupsService,
+)
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -43,6 +55,20 @@ TEST_GROUP = UserGroup(
     updated=utcnow(),
 )
 
+TEST_USER = User(
+    id=10,
+    username="user1",
+    password="pass",
+    is_superuser=False,
+    first_name="",
+    last_name="",
+    is_staff=False,
+    is_active=True,
+    date_joined=utcnow(),
+    email="u1@example.com",
+    last_login=None,
+)
+
 
 class TestUserGroupsApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/groups"
@@ -52,6 +78,7 @@ class TestUserGroupsApi(ApiCommonTests):
         return [
             Endpoint(method="GET", path=f"{self.BASE_PATH}"),
             Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1/members"),
         ]
 
     @pytest.fixture
@@ -60,6 +87,8 @@ class TestUserGroupsApi(ApiCommonTests):
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
+            Endpoint(method="POST", path=f"{self.BASE_PATH}/1/members"),
+            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1/members/10"),
         ]
 
     # GET /groups
@@ -255,3 +284,147 @@ class TestUserGroupsApi(ApiCommonTests):
             headers={"if-match": "correct"},
         )
         assert response.status_code == 204
+
+    # GET /groups/{group_id}/members
+    async def test_list_members(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.usergroups.list_usergroup_members.return_value = [
+            UserGroupMember(
+                id=10, group_id=1, username="user1", email="u1@test.com"
+            ),
+            UserGroupMember(
+                id=20, group_id=1, username="user2", email="u2@test.com"
+            ),
+        ]
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members"
+        )
+        assert response.status_code == 200
+        members_response = UserGroupMembersListResponse(**response.json())
+        assert len(members_response.items) == 2
+        assert members_response.items[0].username == "user1"
+        assert members_response.items[1].username == "user2"
+
+    async def test_list_members_empty(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.usergroups.list_usergroup_members.return_value = []
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members"
+        )
+        assert response.status_code == 200
+        members_response = UserGroupMembersListResponse(**response.json())
+        assert len(members_response.items) == 0
+
+    async def test_list_members_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = None
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/999/members"
+        )
+        assert response.status_code == 404
+
+    # POST /groups/{group_id}/members
+    async def test_add_member(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        member_request = UserGroupMemberRequest(user_id=10)
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = TEST_USER
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.add_user_to_group_by_id.return_value = None
+        services_mock.usergroups.list_usergroup_members.return_value = [
+            UserGroupMember(
+                id=10, group_id=1, username="user1", email="u1@test.com"
+            ),
+        ]
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members",
+            json=jsonable_encoder(member_request),
+        )
+        assert response.status_code == 200
+
+    async def test_add_member_group_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        member_request = UserGroupMemberRequest(user_id=10)
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = TEST_USER
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.add_user_to_group_by_id.side_effect = (
+            UserGroupNotFound()
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/999/members",
+            json=jsonable_encoder(member_request),
+        )
+        assert response.status_code == 404
+
+    async def test_add_member_already_in_group(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        member_request = UserGroupMemberRequest(user_id=10)
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = TEST_USER
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.add_user_to_group_by_id.side_effect = (
+            UserAlreadyInGroup()
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/1/members",
+            json=jsonable_encoder(member_request),
+        )
+        assert response.status_code == 409
+
+    # DELETE /groups/{group_id}/members/{user_id}
+    async def test_remove_member(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.usergroups.remove_user_from_group.return_value = None
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members/10"
+        )
+        assert response.status_code == 204
+
+    async def test_remove_member_group_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = None
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/999/members/10"
+        )
+        assert response.status_code == 404

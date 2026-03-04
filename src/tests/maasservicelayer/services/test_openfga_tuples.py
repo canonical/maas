@@ -96,6 +96,23 @@ class TestIntegrationOpenFGAService:
         )
         assert len(retrieved_tuple) == 0
 
+    async def test_remove_user_from_group(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ):
+        await create_openfga_tuple(
+            fixture, "user:1", "user", "member", "group", "2000"
+        )
+        await services.openfga_tuples.remove_user_from_group(2000, 1)
+        retrieved_tuple = await fixture.get(
+            OpenFGATupleTable.fullname,
+            and_(
+                eq(OpenFGATupleTable.c.object_type, "group"),
+                eq(OpenFGATupleTable.c.object_id, "2000"),
+                eq(OpenFGATupleTable.c._user, "user:1"),
+            ),
+        )
+        assert len(retrieved_tuple) == 0
+
 
 @pytest.mark.asyncio
 class TestOpenFGAService:

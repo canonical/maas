@@ -93,3 +93,18 @@ class OpenFGATupleService(Service):
             )
         )
         await self.delete_many(membership_query)
+
+    async def remove_user_from_group(
+        self, group_id: int, user_id: int
+    ) -> None:
+        query = QuerySpec(
+            where=OpenFGATuplesClauseFactory.and_clauses(
+                [
+                    OpenFGATuplesClauseFactory.with_user(f"user:{user_id}"),
+                    OpenFGATuplesClauseFactory.with_relation("member"),
+                    OpenFGATuplesClauseFactory.with_object_type("group"),
+                    OpenFGATuplesClauseFactory.with_object_id(str(group_id)),
+                ]
+            )
+        )
+        await self.delete_many(query)

@@ -112,6 +112,9 @@ from maasservicelayer.db.repositories.tokens import (
 )
 from maasservicelayer.db.repositories.ui_subnets import UISubnetsRepository
 from maasservicelayer.db.repositories.usergroups import UserGroupsRepository
+from maasservicelayer.db.repositories.usergroups_members import (
+    UserGroupMembersRepository,
+)
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
@@ -494,6 +497,7 @@ class ServiceCollectionV3:
         services.usergroups = UserGroupsService(
             context=context,
             usergroups_repository=UserGroupsRepository(context),
+            usergroup_members_repository=UserGroupMembersRepository(context),
             openfga_tuples_service=services.openfga_tuples,
         )
         services.machines = MachinesService(

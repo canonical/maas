@@ -8,8 +8,10 @@ from django.db import connection
 from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.worker_user import get_worker_user
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.usergroups import UserGroupsClauseFactory
+from metadataserver.nodeinituser import get_node_init_user
 
 
 class TestUserUsername(MAASServerTestCase):
@@ -55,6 +57,25 @@ class TestPostSaveUserSignal(MAASServerTestCase):
             openfga_tuple[1],
         )
         self.assertEqual("member", openfga_tuple[2])
+
+
+class TestPostSaveUserSystemUsersIgnoredSignal(MAASServerTestCase):
+    scenarios = (
+        ("MAAS", {"user_factory": get_worker_user}),
+        ("maas-init-node", {"user_factory": get_node_init_user}),
+    )
+
+    def test_save_user_is_ignored(self):
+        user = self.user_factory()
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT object_type, object_id, relation FROM openfga.tuple WHERE _user = 'user:%s'",
+                [user.id],
+            )
+            openfga_tuple = cursor.fetchone()
+
+        self.assertIsNone(openfga_tuple)
 
 
 class TestPostDeleteUserSignal(MAASServerTestCase):

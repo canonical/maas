@@ -419,6 +419,7 @@ BootSourceSelectionLegacyTable = Table(
         "boot_source_id",
     ),
 )
+
 BootSourceSelectionStatusView = Table(
     "maasserver_bootsourceselectionstatus_view",
     METADATA,
@@ -2351,6 +2352,15 @@ UserGroupTable = Table(
         "name",
         unique=True,
     ),
+)
+
+UserGroupMembersView = Table(
+    "maasserver_usergroup_members_view",
+    METADATA,
+    Column("id", Integer, Identity(), primary_key=True),
+    Column("group_id", BigInteger, primary_key=True),
+    Column("username", String(150), nullable=False),
+    Column("email", String(254), nullable=True),
 )
 
 UserProfileTable = Table(

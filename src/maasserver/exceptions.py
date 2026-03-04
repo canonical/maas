@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Exceptions."""
@@ -255,3 +255,9 @@ class NetworkingResetProblem(MAASException):
 
 class MAASBadDeprecation(MAASException):
     """Raised when an API endpoint or operation has it's deprecation incorrectly assigned."""
+
+
+class UserAlreadyGroupMemberConflict(MAASAPIException):
+    """Raised when a user is already member of a UserGroup."""
+
+    api_error = int(http.client.CONFLICT)

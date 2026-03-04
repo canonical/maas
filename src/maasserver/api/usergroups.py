@@ -5,10 +5,22 @@
 
 from piston3.utils import rc
 
-from maasserver.api.support import check_permission, OperationsHandler
-from maasserver.exceptions import MAASAPIBadRequest, MAASAPINotFound
+from maasserver.api.support import (
+    check_permission,
+    operation,
+    OperationsHandler,
+)
+from maasserver.exceptions import (
+    MAASAPIBadRequest,
+    MAASAPINotFound,
+    UserAlreadyGroupMemberConflict,
+)
 from maasserver.sqlalchemy import service_layer
 from maasservicelayer.builders.usergroups import UserGroupBuilder
+from maasservicelayer.services.usergroups import (
+    UserAlreadyInGroup,
+    UserGroupNotFound,
+)
 
 DISPLAYED_USERGROUP_FIELDS = ("id", "name", "description")
 
@@ -95,6 +107,104 @@ class UserGroupHandler(OperationsHandler):
         if group is None:
             raise MAASAPINotFound(f"UserGroup with id {id} not found.")
         service_layer.services.usergroups.delete_by_id(int(id))
+        return rc.DELETED
+
+    @operation(idempotent=True)
+    @check_permission("can_view_identities")
+    def list_members(self, request, id):
+        """@description Lists members of a user group.
+        @param (url-string) "{id}" [required=true] A group ID.
+
+        @success (http-status-code) "server_success" 200
+        @success (json) "content_success" A JSON list of group members.
+
+        @error (http-status-code) "404" 404
+        @error (content) "notfound" The group is not found.
+        """
+        group = service_layer.services.usergroups.get_by_id(int(id))
+        if group is None:
+            raise MAASAPINotFound(f"UserGroup with id {id} not found.")
+
+        members = service_layer.services.usergroups.list_usergroup_members(
+            int(id)
+        )
+        return [
+            {
+                "username": member.username,
+                "email": member.email,
+            }
+            for member in members
+        ]
+
+    @operation(idempotent=False)
+    @check_permission("can_edit_identities")
+    def add_member(self, request, id):
+        """@description Adds a user to a user group.
+        @param (url-string) "{id}" [required=true] A group ID.
+        @param (string) "username" [required=true] The username to add.
+
+        @success (http-status-code) "server_success" 200
+
+        @error (http-status-code) "400" 400
+        @error (content) "badrequest" username is required.
+        @error (http-status-code) "404" 404
+        @error (content) "notfound" The group or user is not found.
+        @error (http-status-code) "409" 409
+        @error (content) "conflict" The user is already a member of the group.
+
+        """
+        username = request.data.get("username")
+        if not username:
+            raise MAASAPIBadRequest("username is required.")
+
+        user = service_layer.services.users.get_by_username(username)
+        if user is None:
+            raise MAASAPINotFound(f"User '{username}' not found.")
+
+        try:
+            service_layer.services.usergroups.add_user_to_group_by_id(
+                user.id, int(id)
+            )
+        except UserGroupNotFound as err:
+            raise MAASAPINotFound(
+                f"UserGroup with id {id} not found."
+            ) from err
+        except UserAlreadyInGroup as err:
+            raise UserAlreadyGroupMemberConflict(
+                f"User `{user.username}` is already a member of the group with ID `{id}`."
+            ) from err
+
+        return rc.ALL_OK
+
+    @operation(idempotent=False)
+    @check_permission("can_edit_identities")
+    def remove_member(self, request, id):
+        """@description Removes a user from a user group.
+        @param (url-string) "{id}" [required=true] A group ID.
+        @param (string) "username" [required=true] The username to remove.
+
+        @success (http-status-code) "server_success" 204
+
+        @error (http-status-code) "400" 400
+        @error (content) "badrequest" username is required.
+        @error (http-status-code) "404" 404
+        @error (content) "notfound" The user is not found.
+        """
+        username = request.data.get("username")
+        if not username:
+            raise MAASAPIBadRequest("username is required.")
+
+        group = service_layer.services.usergroups.get_by_id(int(id))
+        if group is None:
+            raise MAASAPINotFound(f"UserGroup with id {id} not found.")
+
+        user = service_layer.services.users.get_by_username(username)
+        if user is None:
+            raise MAASAPINotFound(f"User '{username}' not found.")
+
+        service_layer.services.usergroups.remove_user_from_group(
+            int(id), user.id
+        )
         return rc.DELETED
 
 

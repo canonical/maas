@@ -13,11 +13,18 @@ from maasapiserver.common.api.models.responses.errors import (
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
+from maasapiserver.v3.api.public.models.requests.usergroup_members import (
+    UserGroupMemberRequest,
+)
 from maasapiserver.v3.api.public.models.requests.usergroups import (
     UserGroupRequest,
 )
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
+)
+from maasapiserver.v3.api.public.models.responses.usergroup_members import (
+    UserGroupMemberResponse,
+    UserGroupMembersListResponse,
 )
 from maasapiserver.v3.api.public.models.responses.usergroups import (
     UserGroupResponse,
@@ -26,8 +33,20 @@ from maasapiserver.v3.api.public.models.responses.usergroups import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ConflictException,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+    USER_ALREADY_IN_GROUP,
+)
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.usergroups import (
+    UserAlreadyInGroup,
+    UserGroupNotFound,
+)
 
 
 class UserGroupsHandler(Handler):
@@ -199,4 +218,117 @@ class UserGroupsHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         await services.usergroups.delete_by_id(group_id, etag_if_match)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    # Membership endpoints
+
+    @handler(
+        path="/groups/{group_id}/members",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": UserGroupMembersListResponse,
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_group_members(
+        self,
+        group_id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> UserGroupMembersListResponse:
+        group = await services.usergroups.get_by_id(group_id)
+        if not group:
+            raise NotFoundException()
+
+        members = await services.usergroups.list_usergroup_members(group_id)
+        return UserGroupMembersListResponse(
+            items=[
+                UserGroupMemberResponse.from_model(member)
+                for member in members
+            ],
+        )
+
+    @handler(
+        path="/groups/{group_id}/members",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            200: {},
+            404: {"model": NotFoundBodyResponse},
+            409: {"model": ConflictBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def add_group_member(
+        self,
+        group_id: int,
+        member_request: UserGroupMemberRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        user = await services.users.get_by_id(id=member_request.user_id)
+        if not user:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message=str(
+                            f"User with ID `{member_request.user_id}` not found.`"
+                        ),
+                    )
+                ]
+            )
+
+        try:
+            await services.usergroups.add_user_to_group_by_id(
+                member_request.user_id, group_id
+            )
+        except UserGroupNotFound as err:
+            raise NotFoundException() from err
+        except UserAlreadyInGroup as err:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=USER_ALREADY_IN_GROUP,
+                        message=str(err),
+                    )
+                ]
+            ) from err
+
+        return Response(status_code=200)
+
+    @handler(
+        path="/groups/{group_id}/members/{user_id}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def remove_group_member(
+        self,
+        group_id: int,
+        user_id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        group = await services.usergroups.get_by_id(group_id)
+        if not group:
+            raise NotFoundException()
+
+        await services.usergroups.remove_user_from_group(group_id, user_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)

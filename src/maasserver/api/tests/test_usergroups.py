@@ -1,5 +1,5 @@
-#  Copyright 2026 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `UserGroup` API."""
 
@@ -11,6 +11,7 @@ from django.urls import reverse
 
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.testing.api import APITestCase
+from maasserver.testing.factory import factory
 
 
 def _parse(response):
@@ -135,20 +136,19 @@ class TestUserGroupAPI(APITestCase.ForUser):
 
     def test_read(self):
         self.become_admin()
-        created, _ = _create_group(self.client, "read-group", "Readable")
-        group_id = created["id"]
+        group = factory.make_Usergroup()
 
         response = self.client.get(
-            reverse("usergroup_handler", args=[group_id])
+            reverse("usergroup_handler", args=[group.id])
         )
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
         parsed = _parse(response)
-        self.assertEqual("read-group", parsed["name"])
-        self.assertEqual("Readable", parsed["description"])
+        self.assertEqual(group.name, parsed["name"])
+        self.assertEqual(group.description, parsed["description"])
         self.assertEqual(
-            f"/MAAS/api/2.0/groups/{group_id}/", parsed["resource_uri"]
+            f"/MAAS/api/2.0/groups/{group.id}/", parsed["resource_uri"]
         )
 
     def test_read_404(self):
@@ -160,14 +160,13 @@ class TestUserGroupAPI(APITestCase.ForUser):
 
     def test_update_requires_admin(self):
         self.become_admin()
-        created, _ = _create_group(self.client, "update-group")
-        group_id = created["id"]
+        group = factory.make_Usergroup()
 
         self.user.is_superuser = False
         self.user.save()
 
         response = self.client.put(
-            reverse("usergroup_handler", args=[group_id]),
+            reverse("usergroup_handler", args=[group.id]),
             {"name": "new-name"},
         )
         self.assertEqual(
@@ -176,11 +175,10 @@ class TestUserGroupAPI(APITestCase.ForUser):
 
     def test_update(self):
         self.become_admin()
-        created, _ = _create_group(self.client, "old-name", "old desc")
-        group_id = created["id"]
+        group = factory.make_Usergroup()
 
         response = self.client.put(
-            reverse("usergroup_handler", args=[group_id]),
+            reverse("usergroup_handler", args=[group.id]),
             {"name": "new-name", "description": "new desc"},
         )
         self.assertEqual(
@@ -192,11 +190,10 @@ class TestUserGroupAPI(APITestCase.ForUser):
 
     def test_update_name_only(self):
         self.become_admin()
-        created, _ = _create_group(self.client, "partial-name", "keep this")
-        group_id = created["id"]
+        group = factory.make_Usergroup()
 
         response = self.client.put(
-            reverse("usergroup_handler", args=[group_id]),
+            reverse("usergroup_handler", args=[group.id]),
             {"name": "changed-name"},
         )
         self.assertEqual(
@@ -204,22 +201,21 @@ class TestUserGroupAPI(APITestCase.ForUser):
         )
         parsed = _parse(response)
         self.assertEqual("changed-name", parsed["name"])
-        self.assertEqual("keep this", parsed["description"])
+        self.assertEqual(group.description, parsed["description"])
 
     def test_update_description_only(self):
         self.become_admin()
-        created, _ = _create_group(self.client, "keep-name", "old")
-        group_id = created["id"]
+        group = factory.make_Usergroup()
 
         response = self.client.put(
-            reverse("usergroup_handler", args=[group_id]),
+            reverse("usergroup_handler", args=[group.id]),
             {"description": "updated"},
         )
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
         parsed = _parse(response)
-        self.assertEqual("keep-name", parsed["name"])
+        self.assertEqual(group.name, parsed["name"])
         self.assertEqual("updated", parsed["description"])
 
     def test_update_404(self):
@@ -233,15 +229,10 @@ class TestUserGroupAPI(APITestCase.ForUser):
         )
 
     def test_delete_requires_admin(self):
-        self.become_admin()
-        created, _ = _create_group(self.client, "delete-group")
-        group_id = created["id"]
-
-        self.user.is_superuser = False
-        self.user.save()
+        group = factory.make_Usergroup()
 
         response = self.client.delete(
-            reverse("usergroup_handler", args=[group_id])
+            reverse("usergroup_handler", args=[group.id])
         )
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content
@@ -249,11 +240,10 @@ class TestUserGroupAPI(APITestCase.ForUser):
 
     def test_delete(self):
         self.become_admin()
-        created, _ = _create_group(self.client, "to-delete")
-        group_id = created["id"]
+        group = factory.make_Usergroup()
 
         response = self.client.delete(
-            reverse("usergroup_handler", args=[group_id])
+            reverse("usergroup_handler", args=[group.id])
         )
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content
@@ -261,7 +251,7 @@ class TestUserGroupAPI(APITestCase.ForUser):
 
         # Verify it's gone
         response = self.client.get(
-            reverse("usergroup_handler", args=[group_id])
+            reverse("usergroup_handler", args=[group.id])
         )
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
@@ -275,6 +265,228 @@ class TestUserGroupAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
         )
+
+    # Membership endpoints
+    def test_list_members_requires_admin(self):
+        group = factory.make_Usergroup()
+
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_members"},
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_list_members_empty(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_members"},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.assertEqual([], _parse(response))
+
+    def test_list_members_404(self):
+        self.become_admin()
+        response = self.client.get(
+            reverse("usergroup_handler", args=[99999]),
+            {"op": "list_members"},
+        )
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+    def test_list_members_returns_added_members(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+        member = factory.make_User()
+
+        self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": member.username},
+        )
+
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_members"},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        parsed = _parse(response)
+        usernames = {m["username"] for m in parsed}
+        self.assertIn(member.username, usernames)
+
+    def test_add_member_requires_admin(self):
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": "someone"},
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_add_member(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+        member = factory.make_User()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": member.username},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+
+    def test_add_member_requires_username(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member"},
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+
+    def test_add_member_user_not_found(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": "nonexistent-user"},
+        )
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+    def test_add_member_group_not_found(self):
+        self.become_admin()
+        member = factory.make_User()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[99999]),
+            {"op": "add_member", "username": member.username},
+        )
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+    def test_add_member_already_in_group(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+        member = factory.make_User()
+
+        self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": member.username},
+        )
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": member.username},
+        )
+        self.assertEqual(
+            http.client.CONFLICT, response.status_code, response.content
+        )
+
+    def test_remove_member_requires_admin(self):
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "remove_member", "username": "someone"},
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_remove_member(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+        member = factory.make_User()
+
+        self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": member.username},
+        )
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "remove_member", "username": member.username},
+        )
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
+
+    def test_remove_member_requires_username(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "remove_member"},
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+
+    def test_remove_member_group_not_found(self):
+        self.become_admin()
+        user = factory.make_User()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[9999]),
+            {"op": "remove_member", "username": user.username},
+        )
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+    def test_remove_member_user_not_found(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "remove_member", "username": "nonexistent-user"},
+        )
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+    def test_remove_member_not_in_group_after_removal(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+        member = factory.make_User()
+
+        self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": member.username},
+        )
+        self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "remove_member", "username": member.username},
+        )
+
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_members"},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        parsed = _parse(response)
+        usernames = {m["username"] for m in parsed}
+        self.assertNotIn(member.username, usernames)
 
 
 class TestUserGroupsOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
@@ -389,6 +601,90 @@ class TestUserGroupsOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
         self.openfga_client.can_edit_identities.return_value = False
         response = self.client.delete(
             reverse("usergroup_handler", args=[group_id])
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_list_members_requires_can_view_identities(self):
+        group = factory.make_Usergroup()
+        self.openfga_client.can_view_identities.return_value = True
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_members"},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_view_identities.assert_called_once_with(
+            self.user
+        )
+
+    def test_list_members_denied_without_view_permission(self):
+        group = factory.make_Usergroup()
+        self.openfga_client.can_view_identities.return_value = False
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_members"},
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_add_member_requires_can_edit_identities(self):
+        group = factory.make_Usergroup()
+        self.openfga_client.can_edit_identities.return_value = True
+        member = factory.make_User()
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": member.username},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_identities.assert_called_once_with(
+            self.user
+        )
+
+    def test_add_member_denied_without_edit_permission(self):
+        group = factory.make_Usergroup()
+        self.openfga_client.can_edit_identities.return_value = False
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": "someone"},
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_remove_member_requires_can_edit_identities(self):
+        group = factory.make_Usergroup()
+        self.openfga_client.can_edit_identities.return_value = True
+        member = factory.make_User()
+
+        self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "add_member", "username": member.username},
+        )
+        self.openfga_client.reset_mock()
+        self.openfga_client.can_edit_identities.return_value = True
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "remove_member", "username": member.username},
+        )
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
+        self.openfga_client.can_edit_identities.assert_called_once_with(
+            self.user
+        )
+
+    def test_remove_member_denied_without_edit_permission(self):
+        group = factory.make_Usergroup()
+        self.openfga_client.can_edit_identities.return_value = False
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "remove_member", "username": "someone"},
         )
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content

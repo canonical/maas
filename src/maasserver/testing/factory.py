@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -119,6 +119,7 @@ from maasserver.models.rdns import RDNS
 from maasserver.models.virtualmachine import VirtualMachine, VirtualMachineDisk
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.sessiontimeout import SessionStore
+from maasserver.sqlalchemy import service_layer
 from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing import get_data
 from maasserver.testing.testclient import MAASSensibleRequestFactory
@@ -126,6 +127,8 @@ from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
 from maasserver.worker_user import get_worker_user
+from maasservicelayer.builders.usergroups import UserGroupBuilder
+from maasservicelayer.models.usergroups import UserGroup
 from maasservicelayer.utils.image_local_files import SyncLocalBootResourceFile
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
@@ -1439,6 +1442,15 @@ class Factory(maastesting.factory.Factory):
         session["_auth_user_id"] = user.id
         session.save()
         return session
+
+    def make_Usergroup(self, name=None, description=None) -> UserGroup:
+        if name is None:
+            name = self.make_name("group")
+        if description is None:
+            description = self.make_string()
+        builder = UserGroupBuilder(name=name, description=description)
+        group = service_layer.services.usergroups.create(builder)
+        return group
 
     def make_ResourcePool(self, name=None, description=None, nodes=None):
         if name is None:

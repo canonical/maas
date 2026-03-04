@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -316,6 +316,14 @@ class Command(BaseCommand):
                 verbosity=options.get("verbosity"),
             )
 
+        # When we execute the unit tests we don't have OpenFGA built binaries available at the location where the migrator
+        # expects them, so we let the unit tests specify where to find them. We have to run the openfga built-in migrations before the alembic ones because the alembic migrations depend on some of the database structures created by the openfga built-in migrations.
+        openfga_path = options.get("openfga_path")
+        openfga_dsn = self._build_postgres_dsn(
+            conn.get_connection_params(), "postgres", search_path="openfga"
+        )
+        self._openfga_migration(openfga_path, database, openfga_dsn)
+
         # Run alembic migrations
         alembic_ini_path = str(
             files("maasservicelayer.db.alembic") / "alembic.ini"
@@ -337,14 +345,6 @@ class Command(BaseCommand):
             )
 
         self._temporal_migration(database)
-
-        # When we execute the unit tests we don't have OpenFGA built binaries available at the location where the migrator
-        # expects them, so we let the unit tests specify where to find them.
-        openfga_path = options.get("openfga_path")
-        openfga_dsn = self._build_postgres_dsn(
-            conn.get_connection_params(), "postgres", search_path="openfga"
-        )
-        self._openfga_migration(openfga_path, database, openfga_dsn)
 
         openfga_app_dsn = self._build_postgres_dsn(
             conn.get_connection_params(), "postgres"

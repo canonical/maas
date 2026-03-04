@@ -15,13 +15,18 @@ from maasservicelayer.db.repositories.usergroups import (
     UserGroupsClauseFactory,
     UserGroupsRepository,
 )
+from maasservicelayer.db.repositories.usergroups_members import (
+    UserGroupMembersRepository,
+)
 from maasservicelayer.db.tables import OpenFGATupleTable
 from maasservicelayer.models.base import MaasBaseModel
+from maasservicelayer.models.usergroup_members import UserGroupMember
 from maasservicelayer.models.usergroups import UserGroup
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 from maasservicelayer.services.usergroups import (
+    UserAlreadyInGroup,
     UserGroupNotFound,
     UserGroupsService,
 )
@@ -48,6 +53,7 @@ class TestCommonUserGroupsService(ServiceCommonTests):
         return UserGroupsService(
             context=Context(),
             usergroups_repository=Mock(UserGroupsRepository),
+            usergroup_members_repository=Mock(UserGroupMembersRepository),
             openfga_tuples_service=Mock(OpenFGATupleService),
         )
 
@@ -67,19 +73,44 @@ class TestUserGroupsService:
     async def test_add_user_to_group(self) -> None:
         usergroups_repository = Mock(UserGroupsRepository)
         usergroups_repository.get_one.return_value = TEST_GROUP
+        usergroup_members_repository = Mock(UserGroupMembersRepository)
+        usergroup_members_repository.exists.return_value = False
         openfga_tuples_service = Mock(OpenFGATupleService)
 
         service = UserGroupsService(
             context=Context(),
             usergroups_repository=usergroups_repository,
+            usergroup_members_repository=usergroup_members_repository,
             openfga_tuples_service=openfga_tuples_service,
         )
 
         await service.add_user_to_group(1, TEST_GROUP.name)
         usergroups_repository.get_one.assert_awaited_once()
+        usergroup_members_repository.exists.assert_awaited_once()
         openfga_tuples_service.create.assert_awaited_once_with(
             OpenFGATupleBuilder.build_user_member_group(1, TEST_GROUP.id)
         )
+
+    async def test_add_user_to_group_raises_if_already_member(self) -> None:
+        usergroups_repository = Mock(UserGroupsRepository)
+        usergroups_repository.get_one.return_value = TEST_GROUP
+        usergroup_members_repository = Mock(UserGroupMembersRepository)
+        usergroup_members_repository.exists.return_value = True
+        openfga_tuples_service = Mock(OpenFGATupleService)
+
+        service = UserGroupsService(
+            context=Context(),
+            usergroups_repository=usergroups_repository,
+            usergroup_members_repository=usergroup_members_repository,
+            openfga_tuples_service=openfga_tuples_service,
+        )
+
+        with pytest.raises(UserAlreadyInGroup):
+            await service.add_user_to_group(1, TEST_GROUP.name)
+
+        usergroups_repository.get_one.assert_awaited_once()
+        usergroup_members_repository.exists.assert_awaited_once()
+        openfga_tuples_service.create.assert_not_awaited()
 
     async def test_delete_by_id(self) -> None:
         usergroups_repository = Mock(UserGroupsRepository)
@@ -90,6 +121,7 @@ class TestUserGroupsService:
         service = UserGroupsService(
             context=Context(),
             usergroups_repository=usergroups_repository,
+            usergroup_members_repository=Mock(UserGroupMembersRepository),
             openfga_tuples_service=openfga_tuples_service,
         )
 
@@ -99,6 +131,105 @@ class TestUserGroupsService:
         )
         openfga_tuples_service.delete_group.assert_awaited_once_with(
             TEST_GROUP.id
+        )
+
+    async def test_add_user_to_group_by_id(self) -> None:
+        usergroups_repository = Mock(UserGroupsRepository)
+        usergroups_repository.get_by_id.return_value = TEST_GROUP
+        usergroup_members_repository = Mock(UserGroupMembersRepository)
+        usergroup_members_repository.exists.return_value = False
+        openfga_tuples_service = Mock(OpenFGATupleService)
+
+        service = UserGroupsService(
+            context=Context(),
+            usergroups_repository=usergroups_repository,
+            usergroup_members_repository=usergroup_members_repository,
+            openfga_tuples_service=openfga_tuples_service,
+        )
+
+        await service.add_user_to_group_by_id(1, TEST_GROUP.id)
+        usergroups_repository.get_by_id.assert_awaited_once_with(
+            id=TEST_GROUP.id
+        )
+        usergroup_members_repository.exists.assert_awaited_once()
+        openfga_tuples_service.create.assert_awaited_once_with(
+            OpenFGATupleBuilder.build_user_member_group(1, TEST_GROUP.id)
+        )
+
+    async def test_add_user_to_group_by_id_raises_if_already_member(
+        self,
+    ) -> None:
+        usergroups_repository = Mock(UserGroupsRepository)
+        usergroups_repository.get_by_id.return_value = TEST_GROUP
+        usergroup_members_repository = Mock(UserGroupMembersRepository)
+        usergroup_members_repository.exists.return_value = True
+        openfga_tuples_service = Mock(OpenFGATupleService)
+
+        service = UserGroupsService(
+            context=Context(),
+            usergroups_repository=usergroups_repository,
+            usergroup_members_repository=usergroup_members_repository,
+            openfga_tuples_service=openfga_tuples_service,
+        )
+
+        with pytest.raises(UserAlreadyInGroup):
+            await service.add_user_to_group_by_id(1, TEST_GROUP.id)
+        usergroups_repository.get_by_id.assert_awaited_once_with(
+            id=TEST_GROUP.id
+        )
+        usergroup_members_repository.exists.assert_awaited_once()
+        openfga_tuples_service.create.assert_not_awaited()
+
+    async def test_add_user_to_group_by_id_not_found(self) -> None:
+        usergroups_repository = Mock(UserGroupsRepository)
+        usergroups_repository.get_by_id.return_value = None
+
+        service = UserGroupsService(
+            context=Context(),
+            usergroups_repository=usergroups_repository,
+            usergroup_members_repository=Mock(UserGroupMembersRepository),
+            openfga_tuples_service=Mock(OpenFGATupleService),
+        )
+
+        with pytest.raises(UserGroupNotFound):
+            await service.add_user_to_group_by_id(1, 999)
+
+    async def test_list_usergroup_members(self) -> None:
+        members = [
+            UserGroupMember(
+                id=10, group_id=1, username="user1", email="u1@test.com"
+            ),
+            UserGroupMember(
+                id=20, group_id=1, username="user2", email="u2@test.com"
+            ),
+        ]
+        usergroup_members_repository = Mock(UserGroupMembersRepository)
+        usergroup_members_repository.list_all.return_value = members
+
+        service = UserGroupsService(
+            context=Context(),
+            usergroups_repository=Mock(UserGroupsRepository),
+            usergroup_members_repository=usergroup_members_repository,
+            openfga_tuples_service=Mock(OpenFGATupleService),
+        )
+
+        result = await service.list_usergroup_members(1)
+        assert result == members
+        usergroup_members_repository.list_all.assert_awaited_once()
+
+    async def test_remove_user_from_group(self) -> None:
+        openfga_tuples_service = Mock(OpenFGATupleService)
+
+        service = UserGroupsService(
+            context=Context(),
+            usergroups_repository=Mock(UserGroupsRepository),
+            usergroup_members_repository=Mock(UserGroupMembersRepository),
+            openfga_tuples_service=openfga_tuples_service,
+        )
+
+        await service.remove_user_from_group(1, 10)
+        openfga_tuples_service.remove_user_from_group.assert_awaited_once_with(
+            1, 10
         )
 
 
@@ -240,3 +371,118 @@ class TestIntegrationUserGroupsService:
             )
         )
         assert exists is True
+
+    async def test_list_usergroup_members(
+        self,
+        fixture: Fixture,
+        services: ServiceCollectionV3,
+    ) -> None:
+        group = await create_test_usergroup(
+            fixture, name="members-group", description="test"
+        )
+        user1 = await create_test_user(
+            fixture, username="member1", email="mail1@example.com"
+        )
+        user2 = await create_test_user(
+            fixture, username="member2", email="mail2@example.com"
+        )
+
+        await create_openfga_tuple(
+            fixture,
+            f"user:{user1.id}",
+            "user",
+            "member",
+            "group",
+            str(group.id),
+        )
+        await create_openfga_tuple(
+            fixture,
+            f"user:{user2.id}",
+            "user",
+            "member",
+            "group",
+            str(group.id),
+        )
+
+        members = await services.usergroups.list_usergroup_members(group.id)
+        assert len(members) == 2
+        usernames = {m.username for m in members}
+        assert usernames == {"member1", "member2"}
+
+    async def test_list_usergroup_members_empty(
+        self,
+        fixture: Fixture,
+        services: ServiceCollectionV3,
+    ) -> None:
+        group = await create_test_usergroup(
+            fixture, name="empty-group", description="test"
+        )
+        members = await services.usergroups.list_usergroup_members(group.id)
+        assert len(members) == 0
+
+    async def test_remove_user_from_group(
+        self,
+        fixture: Fixture,
+        services: ServiceCollectionV3,
+    ) -> None:
+        group = await create_test_usergroup(
+            fixture, name="remove-group", description="test"
+        )
+        user = await create_test_user(fixture, username="to-remove")
+
+        await create_openfga_tuple(
+            fixture,
+            f"user:{user.id}",
+            "user",
+            "member",
+            "group",
+            str(group.id),
+        )
+
+        members_before = await services.usergroups.list_usergroup_members(
+            group.id
+        )
+        assert len(members_before) == 1
+
+        await services.usergroups.remove_user_from_group(group.id, user.id)
+
+        membership_tuples = await fixture.get(
+            OpenFGATupleTable.fullname,
+            and_(
+                eq(OpenFGATupleTable.c._user, f"user:{user.id}"),
+                eq(OpenFGATupleTable.c.relation, "member"),
+                eq(OpenFGATupleTable.c.object_type, "group"),
+                eq(OpenFGATupleTable.c.object_id, str(group.id)),
+            ),
+        )
+        assert len(membership_tuples) == 0
+
+    async def test_add_user_to_group_by_id(
+        self,
+        fixture: Fixture,
+        services: ServiceCollectionV3,
+    ) -> None:
+        group = await create_test_usergroup(
+            fixture, name="add-by-id-group", description="test"
+        )
+        user = await create_test_user(fixture)
+
+        await services.usergroups.add_user_to_group_by_id(user.id, group.id)
+
+        membership_tuples = await fixture.get(
+            OpenFGATupleTable.fullname,
+            and_(
+                eq(OpenFGATupleTable.c._user, f"user:{user.id}"),
+                eq(OpenFGATupleTable.c.relation, "member"),
+                eq(OpenFGATupleTable.c.object_type, "group"),
+                eq(OpenFGATupleTable.c.object_id, str(group.id)),
+            ),
+        )
+        assert len(membership_tuples) == 1
+
+    async def test_add_user_to_group_by_id_not_found(
+        self,
+        services: ServiceCollectionV3,
+    ) -> None:
+        with pytest.raises(UserGroupNotFound):
+            await services.usergroups.add_user_to_group_by_id(1, 99999)

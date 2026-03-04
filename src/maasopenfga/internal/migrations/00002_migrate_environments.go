@@ -185,6 +185,7 @@ func addUsersToGroup(ctx context.Context, tx *sql.Tx, administratorGroupID int64
 	selectStmt, selectArgs, err := builder.
 		Select("id", "is_superuser").
 		From("auth_user").
+		Where(sq.And{sq.NotEq{"username": "MAAS"}, sq.NotEq{"username": "maas-init-node"}}). // Ignore the internal users
 		ToSql()
 	if err != nil {
 		return err

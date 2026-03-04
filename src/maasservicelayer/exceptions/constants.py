@@ -59,3 +59,6 @@ CANNOT_DELETE_DEFAULT_PACKAGE_REPO_VIOLATION_TYPE = (
 
 # Boot resources
 MISSING_FILE_CONTENT_VIOLATION_TYPE = "MissingFileContentViolationType"
+
+# User groups
+USER_ALREADY_IN_GROUP = "UserAlreadyInGroup"

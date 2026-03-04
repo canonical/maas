@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_delete, post_save, pre_delete
 
 from maasserver.models import Event
+from maasserver.models.user import SYSTEM_USERS
 from maasserver.sqlalchemy import service_layer
 from maasserver.utils.signals import SignalsManager
 
@@ -25,11 +26,14 @@ def pre_delete_set_event_username(sender, instance, **kwargs):
 
 def post_created_user(sender, instance, created, **kwargs):
     if created:
-        # Guarantee backwards compatibility and assign users to pre-defined groups (users/administrators)
-        service_layer.services.usergroups.add_user_to_group(
-            instance.id,
-            "Administrators" if instance.is_superuser else "Users",
-        )
+        if (
+            instance.username not in SYSTEM_USERS
+        ):  # Do not add system users to groups.
+            # Guarantee backwards compatibility and assign users to pre-defined groups (users/administrators)
+            service_layer.services.usergroups.add_user_to_group(
+                instance.id,
+                "Administrators" if instance.is_superuser else "Users",
+            )
 
 
 def post_delete_user(sender, instance, **kwargs):
