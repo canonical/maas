@@ -1,11 +1,11 @@
-# Copyright 2025 Canonical Ltd. This software is licensed under the
+# Copyright 2026 Canonical Ltd. This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """create_switch_table
 
-Revision ID: 0019
-Revises: 0018
-Create Date: 2025-11-28 12:00:00.000000+00:00
+Revision ID: 0020
+Revises: 0019
+Create Date: 2026-03-04 12:00:00.000000+00:00
 
 """
 
@@ -15,8 +15,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision: str = "0019"
-down_revision: str | None = "0018"
+revision: str = "0020"
+down_revision: str | None = "0019"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
