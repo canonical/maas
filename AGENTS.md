@@ -230,9 +230,10 @@ The codebase uses Pydantic v2 for data validation. Follow these patterns:
 - Use `.model_json_schema()` to get JSON schema
 
 **Field Aliases**:
-- Use `validation_alias` for input field names during parsing
-- Use `serialization_alias` for output field names during serialization
-- Use both when input/output names differ from Python field names
+- Use `alias` when the input and output field names are the same
+- Use `validation_alias` for input field names when they differ from output names
+- Use `serialization_alias` for output field names when they differ from input names
+- Use both `validation_alias` and `serialization_alias` only when input/output names differ from each other
 
 **Configuration Options**:
 - `populate_by_name=True` - accept both field name and alias on input

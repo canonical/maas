@@ -35,11 +35,9 @@ class HalResponse(BaseModel, Generic[HAL]):
     }
     """
 
-    hal_links: Optional[HAL] = Field(
-        default=None, alias="_links", serialization_alias="_links"
-    )
+    hal_links: Optional[HAL] = Field(default=None, alias="_links")
     hal_embedded: Optional[Dict[str, Any]] = Field(
-        default=None, alias="_embedded", serialization_alias="_embedded"
+        default=None, alias="_embedded"
     )
 
     model_config = ConfigDict(populate_by_name=True)
