@@ -8,7 +8,7 @@ from ipaddress import ip_address
 from urllib.parse import urlencode, urlparse
 
 from django.urls import reverse
-from packaging.version import InvalidVersion, parse
+from packaging.version import InvalidVersion, parse, Version
 import yaml
 
 from maascommon.osystem import (
@@ -229,7 +229,7 @@ def generate_deb822_for_sources(archive: PackageRepository) -> str:
     return content
 
 
-def get_ubuntu_version(series: str):
+def get_ubuntu_version(series: str) -> Version:
     version = format_ubuntu_distro_series(series)
 
     # This avoids issues with things like "24.04 LTS".

@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 from django.urls import reverse
-from packaging.version import InvalidVersion, parse
+from packaging.version import parse
 import yaml
 
 from maascommon.osystem import (
@@ -28,10 +28,10 @@ from maascommon.osystem.custom import CustomOS
 from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver import preseed as preseed_module
 from maasserver.compose_preseed import (
-    format_ubuntu_distro_series,
     generate_deb822_for_sources,
     generate_urls_for_sources_list,
     get_archive_config,
+    get_ubuntu_version,
     make_clean_repo_name,
 )
 from maasserver.enum import (
@@ -1469,19 +1469,11 @@ class TestCurtinUtilities(BootImageHelperMixin, MAASServerTestCase):
         if archive is None:
             archive = PackageRepository.objects.get_default_archive("amd64")
 
-        if node is not None and node.get_osystem() == "ubuntu":
-            try:
-                parsed_version = parse(
-                    format_ubuntu_distro_series(node.get_distro_series())
-                )
-            except InvalidVersion:
-                parsed_version = parse("24.04")
-
-            is_ubuntu_2404_or_later = parsed_version >= parse("24.04")
-        else:
-            is_ubuntu_2404_or_later = False
-
-        if is_ubuntu_2404_or_later:
+        if (
+            node is not None
+            and node.get_osystem() == "ubuntu"
+            and get_ubuntu_version(node.get_distro_series()) >= parse("24.04")
+        ):
             expected_sources_list = generate_deb822_for_sources(archive)
         else:
             expected_sources_list = generate_urls_for_sources_list(archive)

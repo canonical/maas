@@ -6,11 +6,10 @@ import random
 from typing import Optional
 
 from django.urls import reverse
-from packaging.version import InvalidVersion, parse
+from packaging.version import parse
 import yaml
 
 from maascommon.osystem import BOOT_IMAGE_PURPOSE, NoSuchOperatingSystem
-from maascommon.utils.images import format_ubuntu_distro_series
 import maasserver.compose_preseed as cp_module
 from maasserver.compose_preseed import (
     build_metadata_url,
@@ -19,6 +18,7 @@ from maasserver.compose_preseed import (
     generate_deb822_for_sources,
     generate_urls_for_sources_list,
     get_apt_proxy,
+    get_ubuntu_version,
 )
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES, PRESEED_TYPE
 from maasserver.models import NodeKey, PackageRepository
@@ -397,19 +397,11 @@ class TestComposePreseed(MAASServerTestCase):
     def assertAptConfig(self, config, apt_proxy, node: Optional[Node] = None):
         archive = PackageRepository.objects.get_default_archive("amd64")
 
-        if node is not None and node.get_osystem() == "ubuntu":
-            try:
-                parsed_version = parse(
-                    format_ubuntu_distro_series(node.get_distro_series())
-                )
-            except InvalidVersion:
-                parsed_version = parse("24.04")
-
-            is_ubuntu_2404_or_later = parsed_version >= parse("24.04")
-        else:
-            is_ubuntu_2404_or_later = False
-
-        if is_ubuntu_2404_or_later:
+        if (
+            node is not None
+            and node.get_osystem() == "ubuntu"
+            and get_ubuntu_version(node.get_distro_series()) >= parse("24.04")
+        ):
             expected_sources_list = generate_deb822_for_sources(archive)
         else:
             expected_sources_list = generate_urls_for_sources_list(archive)
@@ -431,6 +423,13 @@ class TestComposePreseed(MAASServerTestCase):
                 ],
             },
         )
+
+    def test_get_ubuntu_version(self):
+        self.assertEqual(get_ubuntu_version("precise"), parse("12.04"))
+        self.assertEqual(get_ubuntu_version("jammy"), parse("22.04"))
+        self.assertEqual(get_ubuntu_version("noble"), parse("24.04"))
+        self.assertEqual(get_ubuntu_version("oracular"), parse("24.10"))
+        self.assertEqual(get_ubuntu_version("resolute"), parse("26.04"))
 
     def test_compose_preseed_for_commissioning_node_skips_apt_proxy(self):
         rack_controller = factory.make_RackController()
