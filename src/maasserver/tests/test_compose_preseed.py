@@ -16,6 +16,7 @@ from maasserver.compose_preseed import (
     build_metadata_url,
     compose_enlistment_preseed,
     compose_preseed,
+    generate_deb822_for_sources,
     generate_urls_for_sources_list,
     get_apt_proxy,
 )
@@ -409,7 +410,7 @@ class TestComposePreseed(MAASServerTestCase):
             is_ubuntu_2404_or_later = False
 
         if is_ubuntu_2404_or_later:
-            expected_sources_list = ""
+            expected_sources_list = generate_deb822_for_sources(archive)
         else:
             expected_sources_list = generate_urls_for_sources_list(archive)
 
@@ -419,6 +420,7 @@ class TestComposePreseed(MAASServerTestCase):
                 "preserve_sources_list": False,
                 "proxy": apt_proxy,
                 "sources_list": expected_sources_list,
+                "sources": {},
             },
         )
         self.assertEqual(
