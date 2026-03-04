@@ -27,11 +27,13 @@ class IPv4v6Network(_BaseNetwork):
     ) -> core_schema.CoreSchema:
         return core_schema.no_info_after_validator_function(
             cls.validate,
-            core_schema.union_schema([
-                core_schema.is_instance_schema(IPv4Network),
-                core_schema.is_instance_schema(IPv6Network),
-                core_schema.str_schema(),
-            ]),
+            core_schema.union_schema(
+                [
+                    core_schema.is_instance_schema(IPv4Network),
+                    core_schema.is_instance_schema(IPv6Network),
+                    core_schema.str_schema(),
+                ]
+            ),
             serialization=core_schema.plain_serializer_function_ser_schema(
                 lambda v: str(v),
                 return_schema=core_schema.str_schema(),
