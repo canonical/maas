@@ -201,6 +201,34 @@ def generate_urls_for_sources_list(archive: PackageRepository) -> str:
     return urls
 
 
+def generate_deb822_for_sources(archive: PackageRepository) -> str:
+    components = set(archive.KNOWN_COMPONENTS)
+    if archive.disabled_components:
+        for comp in archive.COMPONENTS_TO_DISABLE:
+            if comp in archive.disabled_components:
+                components.remove(comp)
+
+    types = "deb" if archive.disable_sources else "deb deb-src"
+
+    suites = ["$RELEASE"]
+    for pocket in archive.POCKETS_TO_DISABLE:
+        if (
+            not archive.disabled_pockets
+            or pocket not in archive.disabled_pockets
+        ):
+            suites.append(f"$RELEASE-{pocket}")
+
+    content = f"Types: {types}\n"
+    content += f"URIs: {archive.url}\n"
+    content += f"Suites: {' '.join(suites)}\n"
+    content += f"Components: {' '.join(components)}\n"
+    if not archive.key:
+        content += (
+            "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n"
+        )
+    return content
+
+
 def get_ubuntu_version(series: str):
     version = format_ubuntu_distro_series(series)
 
@@ -243,18 +271,15 @@ def get_archive_config(
         # From 24.04 on, Ubuntu uses as default the deb822 format for APT repositories.
         # If providing both, this creates duplicate repositories entries that confuses
         # apt update. See https://bugs.launchpad.net/maas/+bug/2093303 for more details.
-        archives["apt"]["sources_list"] = ""
-
-        archives["apt"]["primary"] = [
-            {"arches": ["default"], "uri": archive.url}
-        ]
-        # Should we really use the same url here? It is not the same by default in Ubuntu.
-        archives["apt"]["security"] = [
-            {"arches": ["default"], "uri": archive.url}
-        ]
+        #
+        # Furthermore, sources_list plays a "double role" for cloud-init. If provided
+        # with something that follows the deb822 format as below, it will populate
+        # ubuntu.sources. If not, it will populate sources.list.
+        archives["apt"]["sources_list"] = generate_deb822_for_sources(archive)
     else:
-        urls = generate_urls_for_sources_list(archive)
-        archives["apt"]["sources_list"] = urls
+        archives["apt"]["sources_list"] = generate_urls_for_sources_list(
+            archive
+        )
 
     if apt_proxy:
         archives["apt"]["proxy"] = apt_proxy
