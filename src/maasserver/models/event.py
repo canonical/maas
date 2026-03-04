@@ -176,7 +176,7 @@ class Event(CleanSave, TimestampedModel):
             Index(fields=["node", "id"]),
             # Needed to get the latest event for each node on the
             # machine listing page.
-            Index(fields=["node", "-created", "-id"])
+            Index(fields=["node", "-created", "-id"]),
         ]
 
     @property

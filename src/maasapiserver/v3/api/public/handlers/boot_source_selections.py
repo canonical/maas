@@ -219,7 +219,15 @@ class BootSourceSelectionsHandler(Handler):
     )
     async def bulk_delete_selections(
         self,
-        ids: Annotated[list[int], Query(min_length=1, unique_items=True, description="ids of selections to delete", alias="id")],
+        ids: Annotated[
+            list[int],
+            Query(
+                min_length=1,
+                unique_items=True,
+                description="ids of selections to delete",
+                alias="id",
+            ),
+        ],
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         deleted = await services.boot_source_selections.delete_many(

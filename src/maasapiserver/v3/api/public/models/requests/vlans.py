@@ -51,7 +51,7 @@ class VlanCreateRequest(OptionalNamedBaseModel):
     space_id: Optional[int] = Field(
         default=None,
         description="The space this VLAN should be placed in. If not specified, the VLAN will be "
-        "placed in the 'undefined' space."
+        "placed in the 'undefined' space.",
     )
 
     async def to_builder(

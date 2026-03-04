@@ -156,8 +156,14 @@ class Version(BaseModel, ABC):
 
 
 class BootloaderVersion(Version):
-    grub2_signed: BootloaderFile | None = Field(None, validation_alias="grub2-signed", serialization_alias="grub2-signed")
-    shim_signed: BootloaderFile | None = Field(None, validation_alias="shim-signed", serialization_alias="shim-signed")
+    grub2_signed: BootloaderFile | None = Field(
+        None,
+        validation_alias="grub2-signed",
+        serialization_alias="grub2-signed",
+    )
+    shim_signed: BootloaderFile | None = Field(
+        None, validation_alias="shim-signed", serialization_alias="shim-signed"
+    )
     grub2: BootloaderFile | None = None
     syslinux: BootloaderFile | None = None
 
@@ -175,10 +181,18 @@ class BootloaderVersion(Version):
 class MultiFileImageVersion(Version):
     support_eol: date | None = None
     support_esm_eol: date | None = None
-    boot_initrd: ImageFile = Field(..., validation_alias="boot-initrd", serialization_alias="boot-initrd")
-    boot_kernel: ImageFile = Field(..., validation_alias="boot-kernel", serialization_alias="boot-kernel")
+    boot_initrd: ImageFile = Field(
+        ..., validation_alias="boot-initrd", serialization_alias="boot-initrd"
+    )
+    boot_kernel: ImageFile = Field(
+        ..., validation_alias="boot-kernel", serialization_alias="boot-kernel"
+    )
     manifest: ImageFile
-    root_image_gz: ImageFile | None = Field(None, validation_alias="root-image.gz", serialization_alias="root-image.gz")
+    root_image_gz: ImageFile | None = Field(
+        None,
+        validation_alias="root-image.gz",
+        serialization_alias="root-image.gz",
+    )
     squashfs: ImageFile | None = None
 
     @field_validator("support_eol", "support_esm_eol", mode="before")
@@ -199,7 +213,9 @@ class MultiFileImageVersion(Version):
 
 class SingleFileImageVersion(Version):
     manifest: ImageFile
-    root_tgz: ImageFile = Field(..., validation_alias="root-tgz", serialization_alias="root-tgz")
+    root_tgz: ImageFile = Field(
+        ..., validation_alias="root-tgz", serialization_alias="root-tgz"
+    )
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
@@ -230,7 +246,11 @@ class Product(BaseModel, ABC):
 
         # When serializing the object as a dict and then re-converting it into a
         # model we might not need to to the pre-processing.
-        if isinstance(v, dict) and v.get("versions") and isinstance(v["versions"], dict):
+        if (
+            isinstance(v, dict)
+            and v.get("versions")
+            and isinstance(v["versions"], dict)
+        ):
             versions = []
             for prod_name, version in v["versions"].items():
                 versions.append(
@@ -252,7 +272,11 @@ class Product(BaseModel, ABC):
 
 class BootloaderProduct(Product):
     arches: str
-    bootloader_type: str = Field(..., validation_alias="bootloader-type", serialization_alias="bootloader-type")
+    bootloader_type: str = Field(
+        ...,
+        validation_alias="bootloader-type",
+        serialization_alias="bootloader-type",
+    )
     versions: list[BootloaderVersion]
 
     @override
@@ -329,7 +353,11 @@ class SimpleStreamsProductList(BaseModel, ABC):
 
         # When serializing the object as a dict and then re-converting it into a
         # model we might not need to do the pre-processing.
-        if isinstance(v, dict) and v.get("products") and isinstance(v["products"], dict):
+        if (
+            isinstance(v, dict)
+            and v.get("products")
+            and isinstance(v["products"], dict)
+        ):
             products = []
             for product_name, product in v["products"].items():
                 product = cls.product_class()(
