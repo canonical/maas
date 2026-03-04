@@ -328,6 +328,8 @@ class MAASSyslogPortConfig(Config[Optional[int]]):
     def validate_port(cls, value):
         if value is None:
             return None
+        if value == 5247:
+            return value
         if value > 65535 or value <= 0:
             raise ValueError(
                 "Unable to change port number. Port number is not between 0 - 65535."

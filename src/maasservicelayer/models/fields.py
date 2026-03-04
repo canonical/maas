@@ -1,65 +1,45 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import _BaseNetwork, IPv4Network, IPv6Network
+from ipaddress import IPv4Network, IPv6Network
 import re
-from typing import Any, Union
+from typing import Any
 
 from pydantic import GetCoreSchemaHandler
-from pydantic_core import core_schema
+from pydantic.networks import IPvAnyNetwork
+from pydantic_core import core_schema, PydanticCustomError
 
 from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
 
-# Type alias for network validation input
-NetworkType = Union[str, IPv4Network, IPv6Network]
 
+class IPv4v6Network(IPvAnyNetwork):
+    """IPv4 or IPv6 network validator with strict=False.
 
-class IPv4v6Network(_BaseNetwork):
-    """Re-implementation of pydantic's IPvAnyNetwork.
-
-    We need this because pydantic uses `strict=True` by default, but that doesn't
-    allow us to set host bits, resulting in all networks having /32.
+    Inherits from pydantic's IPvAnyNetwork but allows host bits in CIDR
+    notation (e.g., 192.168.1.5/24 instead of requiring 192.168.1.0/24).
+    Validates that prefix length is greater than 0.
     """
 
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
-    ) -> core_schema.CoreSchema:
-        return core_schema.no_info_after_validator_function(
-            cls.validate,
-            core_schema.union_schema(
-                [
-                    core_schema.is_instance_schema(IPv4Network),
-                    core_schema.is_instance_schema(IPv6Network),
-                    core_schema.str_schema(),
-                ]
-            ),
-            serialization=core_schema.plain_serializer_function_ser_schema(
-                lambda v: str(v),
-                return_schema=core_schema.str_schema(),
-            ),
-        )
-
-    @classmethod
-    def validate(cls, value: NetworkType) -> Union[IPv4Network, IPv6Network]:
-        ip = None
+    def __new__(cls, value):
+        """Validate an IPv4 or IPv6 network with strict=False."""
         try:
-            ip = IPv4Network(value, strict=False)
+            network = IPv4Network(value, strict=False)
         except ValueError:
-            pass
-
-        if ip is None:
             try:
-                ip = IPv6Network(value, strict=False)
+                network = IPv6Network(value, strict=False)
             except ValueError:
-                raise ValueError("Value is not a valid IPv4 or IPv6 network.")  # noqa: B904
+                raise PydanticCustomError(
+                    "ip_any_network",
+                    "value is not a valid IPv4 or IPv6 network",
+                )
 
-        if ip.prefixlen == 0:
-            raise ValueError(
-                "The prefix length of the CIDR must be greater than 0."
+        if network.prefixlen == 0:
+            raise PydanticCustomError(
+                "ip_any_network",
+                "The prefix length of the CIDR must be greater than 0.",
             )
 
-        return ip
+        return network
 
 
 class MacAddress(str):
