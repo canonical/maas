@@ -55,7 +55,9 @@ class DNSResourceRecordSetRequest(BaseModel):
     txt_records: list[TXTRecord] | None = None
 
     @model_validator(mode="after")
-    def validate_domain_name_based_on_type(self) -> "DNSResourceRecordSetRequest":
+    def validate_domain_name_based_on_type(
+        self,
+    ) -> "DNSResourceRecordSetRequest":
         if self.name not in SPECIAL_NAMES:
             if self.rrtype == DNSResourceTypeEnum.SRV:
                 if not re.match(SRV_NAME_RE, self.name):

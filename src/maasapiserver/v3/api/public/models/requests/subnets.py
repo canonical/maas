@@ -4,7 +4,7 @@
 from ipaddress import IPv6Address
 from typing import Optional
 
-from pydantic import Field, IPvAnyAddress, field_validator, ValidationInfo
+from pydantic import Field, field_validator, IPvAnyAddress, ValidationInfo
 
 from maasapiserver.v3.api.public.models.requests.base import (
     OptionalNamedBaseModel,

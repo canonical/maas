@@ -4,7 +4,13 @@
 from collections.abc import Sequence
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from maasservicelayer.auth.macaroons.models.base import Resource
 from maasservicelayer.enums.rbac import RbacPermission
@@ -54,7 +60,9 @@ class PermissionResourcesMapping(BaseModel):
 
     @field_validator("resources", mode="before")
     @classmethod
-    def preprocess_resources(cls, data: Optional[list[str]]) -> Optional[list[int]]:
+    def preprocess_resources(
+        cls, data: Optional[list[str]]
+    ) -> Optional[list[int]]:
         if data == [""] or data is None:
             return None
         return [int(id) for id in data]

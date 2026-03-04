@@ -12,8 +12,8 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    IPvAnyAddress,
     field_validator,
+    IPvAnyAddress,
 )
 
 from maascommon.constants import IMPORT_RESOURCES_SERVICE_PERIOD, NODE_TIMEOUT
