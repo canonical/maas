@@ -29,6 +29,7 @@ from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver import preseed as preseed_module
 from maasserver.compose_preseed import (
     format_ubuntu_distro_series,
+    generate_deb822_for_sources,
     generate_urls_for_sources_list,
     get_archive_config,
     make_clean_repo_name,
@@ -1481,7 +1482,7 @@ class TestCurtinUtilities(BootImageHelperMixin, MAASServerTestCase):
             is_ubuntu_2404_or_later = False
 
         if is_ubuntu_2404_or_later:
-            expected_sources_list = ""
+            expected_sources_list = generate_deb822_for_sources(archive)
         else:
             expected_sources_list = generate_urls_for_sources_list(archive)
 
