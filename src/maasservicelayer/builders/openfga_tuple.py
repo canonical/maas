@@ -1,7 +1,6 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-
 from pydantic import Field
 
 from maascommon.openfga.base import (
@@ -19,11 +18,11 @@ class OpenFGATupleBuilder(ResourceBuilder):
     the generated code.
     """
 
-    object_id: str | Unset = Field(default=UNSET, required=False)
-    object_type: str | Unset = Field(default=UNSET, required=False)
-    relation: str | Unset = Field(default=UNSET, required=False)
-    user: str | Unset = Field(default=UNSET, required=False)
-    user_type: str | Unset = Field(default=UNSET, required=False)
+    object_id: str | Unset = Field(default=UNSET)
+    object_type: str | Unset = Field(default=UNSET)
+    relation: str | Unset = Field(default=UNSET)
+    user: str | Unset = Field(default=UNSET)
+    user_type: str | Unset = Field(default=UNSET)
 
     @classmethod
     def build_user_member_group(
