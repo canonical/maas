@@ -482,11 +482,67 @@ class BuilderModule(GenericModule[BuilderModel]):
         header += imports + "\n\n"
         return header + class_defs
 
+    def _normalize_ast(self, tree: ast.Module) -> ast.Module:
+        """Normalize AST by sorting imports to ignore import order differences."""
+        # Separate imports from other statements
+        imports = []
+        other_stmts = []
+
+        for node in tree.body:
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                imports.append(node)
+            else:
+                other_stmts.append(node)
+
+        # Sort imports by module name for consistent comparison
+        def import_key(node):
+            if isinstance(node, ast.Import):
+                return node.names[0].name
+            elif isinstance(node, ast.ImportFrom):
+                return node.module or ""
+            return ""
+
+        imports.sort(key=import_key)
+
+        # Reconstruct tree with sorted imports
+        tree.body = imports + other_stmts
+        return tree
+
     def outputs_match(self, other: "BuilderModule") -> bool:
-        """Check if two modules would generate identical output."""
+        """Check if two modules would generate identical output.
+
+        Compares AST representations to ignore formatting differences while
+        detecting substantive code changes like invalid Field() parameters.
+        """
         if not isinstance(other, BuilderModule):
             return False
-        return self.get_output() == other.get_output()
+
+        # Compare against actual file content on disk using AST comparison
+        # This catches substantive differences (e.g., required=False) while
+        # ignoring formatting differences introduced by ruff
+        try:
+            filepath = os.path.join(BUILDERS_PATH, self.filename)
+            with open(filepath, "r") as f:
+                existing_content = f.read()
+
+            generated_output = self.get_output()
+
+            # Parse both as AST and compare with normalized imports
+            try:
+                existing_tree = self._normalize_ast(
+                    ast.parse(existing_content)
+                )
+                generated_tree = self._normalize_ast(
+                    ast.parse(generated_output)
+                )
+                return ast.dump(existing_tree) == ast.dump(generated_tree)
+            except SyntaxError:
+                # If either has syntax errors, fall back to string comparison
+                return generated_output == existing_content
+
+        except FileNotFoundError:
+            # File doesn't exist yet, compare generated outputs
+            return self.get_output() == other.get_output()
 
 
 def extract_source_methods_and_imports(
