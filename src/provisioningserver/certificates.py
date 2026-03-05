@@ -12,6 +12,8 @@ import secrets
 from tempfile import mkstemp
 from typing import NamedTuple, Optional, Self, Tuple
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 from OpenSSL import crypto
 
 from provisioningserver.path import get_tentative_data_path
@@ -295,10 +297,16 @@ class Certificate(NamedTuple):
     @staticmethod
     def _check_key_match(key: crypto.PKey, cert: crypto.X509):
         data = secrets.token_bytes()
-        signature = crypto.sign(key, data, "sha512")
+        crypto_key = key.to_cryptography_key()
+        signature = crypto_key.sign(
+            data, padding.PKCS1v15(), hashes.SHA512()
+        )
         try:
-            crypto.verify(cert, signature, data, "sha512")
-        except crypto.Error:
+            cert_crypto = cert.to_cryptography()
+            cert_crypto.public_key().verify(
+                signature, data, padding.PKCS1v15(), hashes.SHA512()
+            )
+        except Exception:
             raise CertificateError("Private and public keys don't match")  # noqa: B904
 
     @staticmethod
