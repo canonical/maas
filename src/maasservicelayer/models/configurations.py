@@ -224,11 +224,19 @@ class DNSTrustedAclConfig(Config[Optional[str]]):
     This field normalizes the list to a space-separated list.
     """
 
-    _separators = re.compile(r"[,\s]+")
-    _pt_ipv4 = r"(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
-    _pt_ipv6 = r"(?:([0-9A-Fa-f]{1,4})?[:]([0-9A-Fa-f]{1,4})?[:](.*))"
-    _pt_ip = re.compile(rf"^({_pt_ipv4}|{_pt_ipv6})$", re.VERBOSE)
-    _pt_subnet = re.compile(rf"^({_pt_ipv4}|{_pt_ipv6})/\d+$", re.VERBOSE)
+    _separators: ClassVar[re.Pattern[str]] = re.compile(r"[,\s]+")
+    _pt_ipv4: ClassVar[str] = r"(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
+    _pt_ipv6: ClassVar[str] = (
+        r"(?:([0-9A-Fa-f]{1,4})?[:]([0-9A-Fa-f]{1,4})?[:](.*))"
+    )
+    _pt_ip: ClassVar[re.Pattern[str]] = re.compile(
+        rf"^({_pt_ipv4}|{_pt_ipv6})$",
+        re.VERBOSE,
+    )
+    _pt_subnet: ClassVar[re.Pattern[str]] = re.compile(
+        rf"^({_pt_ipv4}|{_pt_ipv6})/\d+$",
+        re.VERBOSE,
+    )
 
     name: ClassVar[str] = "dns_trusted_acl"
     default: ClassVar[Optional[str]] = None
