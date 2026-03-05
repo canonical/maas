@@ -328,6 +328,7 @@ class MAASSyslogPortConfig(Config[Optional[int]]):
     def validate_port(cls, value):
         if value is None:
             return None
+        # Allow the internal syslog port
         if value == 5247:
             return value
         if value > 65535 or value <= 0:
@@ -339,7 +340,7 @@ class MAASSyslogPortConfig(Config[Optional[int]]):
                 "Unable to change port number. Port number is reserved for system services."
             )
         # 5239-5240 -> reserved for region HTTP.
-        # 5241 - 4247 -> reserved for other MAAS services.
+        # 5241 - 5247 -> reserved for other MAAS services.
         # 5248 -> reserved for rack HTTP.
         # 5250 - 5270 -> reserved for region workers (RPC).
         # 5271 - 5274 -> reserved for communication between Rack Controller (specifically maas-agent) and Region Controller.
