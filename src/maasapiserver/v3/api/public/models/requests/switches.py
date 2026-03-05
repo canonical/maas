@@ -3,7 +3,7 @@
 
 from typing import Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.db.filters import QuerySpec
@@ -11,6 +11,7 @@ from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -76,7 +77,7 @@ async def resolve_image_id(
 class SwitchRequest(BaseModel):
     """Request model for creating a switch."""
 
-    mac_address: str
+    mac_address: MacAddress
     image: Optional[str] = Field(
         default=None,
         description="Boot resource name for the NOS to install on the switch. "
@@ -91,22 +92,6 @@ class SwitchRequest(BaseModel):
         return SwitchBuilder(
             target_image_id=target_image_id,
         )
-
-    @validator("mac_address")
-    def validate_mac_address(cls, v: str) -> str:
-        """Validate MAC address format."""
-        v = v.lower().strip()
-        if not v:
-            raise ValueError("MAC address cannot be empty")
-        # Remove common separators and validate
-        cleaned = v.replace(":", "").replace("-", "").replace(".", "")
-        if len(cleaned) != 12:
-            raise ValueError("MAC address must be 12 hex digits")
-        try:
-            int(cleaned, 16)
-        except ValueError as e:
-            raise ValueError("MAC address must contain only hex digits") from e
-        return v
 
 
 class SwitchUpdateRequest(BaseModel):

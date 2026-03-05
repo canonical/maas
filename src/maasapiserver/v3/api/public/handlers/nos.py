@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.v3.api import services
+from maascommon.fields import normalise_macaddress
 from maascommon.utils.images import get_bootresource_store_path
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
@@ -94,6 +95,9 @@ class NOSInstallerHandler(Handler):
                 content="MAC address not found in headers",
                 status_code=400,
             )
+
+        # Normalize MAC address to ensure consistent lookups
+        mac_address = normalise_macaddress(mac_address)
 
         try:
             # Check if switch has an assigned installer
