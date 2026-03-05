@@ -65,7 +65,7 @@ class TestBootloaderProductList:
         bootloader_product_list = SimpleStreamsBootloaderProductList(
             **BOOTLOADER_PRODUCTS
         )
-        json_version = bootloader_product_list.dict()
+        json_version = bootloader_product_list.model_dump()
 
         SimpleStreamsBootloaderProductList(**json_version)
 
@@ -90,7 +90,7 @@ class TestMultiFileProductList:
         ubuntu_product_list = SimpleStreamsMultiFileProductList(
             **UBUNTU_PRODUCTS
         )
-        json_version = ubuntu_product_list.dict()
+        json_version = ubuntu_product_list.model_dump()
 
         SimpleStreamsMultiFileProductList(**json_version)
 
@@ -115,7 +115,7 @@ class TestSingleFileProductList:
         centos_product_list = SimpleStreamsSingleFileProductList(
             **CENTOS_PRODUCTS
         )
-        json_version = centos_product_list.dict()
+        json_version = centos_product_list.model_dump()
 
         SimpleStreamsSingleFileProductList(**json_version)
 

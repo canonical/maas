@@ -299,7 +299,7 @@ class TestSubnetsService:
         subnets_repository_mock = Mock(SubnetsRepository)
         subnets_repository_mock.exists.return_value = False
         subnets_repository_mock.get_one.return_value = subnet
-        new_subnet = subnet.copy()
+        new_subnet = subnet.model_copy()
         new_subnet.allow_dns = False
         subnets_repository_mock.update_by_id.return_value = new_subnet
 

@@ -174,7 +174,7 @@ class TestMSMEnrol:
         services: ServiceCollectionV3,
         temporal_client_mock: Mock,
     ):
-        bad_payload = msm_enrol_payload.copy()
+        bad_payload = dict(msm_enrol_payload)
         bad_payload.pop("service-url")
         encoded = jwt.encode({"alg": TOKEN_ALGORITHM}, bad_payload, jwt_key)
         with pytest.raises(MSMException):

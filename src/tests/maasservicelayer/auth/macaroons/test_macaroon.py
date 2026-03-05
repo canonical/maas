@@ -183,6 +183,7 @@ class TestAsyncMacaroon:
             locator,
         )
         m1 = m.copy()
+
         assert len(m.macaroon.caveats) == 1
         assert len(m1.macaroon.caveats) == 1
         assert m._caveat_data, m1._caveat_data
