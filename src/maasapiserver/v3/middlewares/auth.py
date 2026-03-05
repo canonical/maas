@@ -3,6 +3,7 @@
 
 import abc
 from datetime import timedelta
+import json
 from typing import Awaitable, Callable, Dict, Sequence
 
 from fastapi import Request, Response
@@ -78,7 +79,7 @@ class AuthenticationProvider(abc.ABC):
         pass
 
 
-class JWTAuthenticationProvider(AuthenticationProvider):
+class JWTAuthenticationProvider(AuthenticationProvider, abc.ABC):
     @classmethod
     @abc.abstractmethod
     def get_issuer(cls):
