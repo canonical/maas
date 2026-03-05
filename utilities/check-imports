@@ -304,6 +304,7 @@ RackControllerRule = Rule(
     Allow("cryptography.hazmat.primitives.asymmetric.padding"),
     Allow("cryptography.hazmat.primitives.hashes"),
     Allow("cryptography.hazmat.primitives.kdf.pbkdf2.PBKDF2HMAC"),
+    Allow("cryptography.hazmat.primitives.asymmetric.padding"),
     Allow("curtin|curtin.**"),
     Allow("distro_info|distro_info.*"),
     Allow("formencode|formencode.**"),

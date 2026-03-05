@@ -20,7 +20,6 @@ from twisted.internet.defer import (
     DeferredLock,
     inlineCallbacks,
     maybeDeferred,
-    returnValue,
 )
 from twisted.internet.endpoints import UNIXClientEndpoint
 from twisted.internet.task import deferLater
@@ -323,7 +322,7 @@ class ServiceMonitor:
             state = self._updateServiceState(name, active_state, process_state)
         else:
             state = self._serviceStates[name]
-        returnValue(state)
+        return state
 
     @asynchronous
     def ensureServices(self):
@@ -413,7 +412,7 @@ class ServiceMonitor:
                     state.process_state,
                 )
             )
-            returnValue(state)
+            return state
 
     @asynchronous
     @inlineCallbacks
@@ -774,7 +773,7 @@ class ServiceMonitor:
                         "Unable to parse the active state from systemd for "
                         f"service '{service.service_name}', active state reported as '{active_state}'."
                     )
-                returnValue((active_state_enum, process_state))
+                return (active_state_enum, process_state)
         raise ServiceParsingError(
             f"Unable to parse the output from systemd for service '{service.service_name}'."
         )
@@ -799,7 +798,7 @@ class ServiceMonitor:
             )
         # Supervisor doesn't provide a process status, so make sure its correct
         # based on the active_state.
-        returnValue((active_state_enum, self.PROCESS_STATE[active_state_enum]))
+        return (active_state_enum, self.PROCESS_STATE[active_state_enum])
 
     @inlineCallbacks
     def _ensureService(self, service):

@@ -3,7 +3,7 @@
 
 """Networks monitoring service for region controllers."""
 
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 
 from maasserver.config import RegionConfiguration
 from maasserver.models.node import RegionController
@@ -28,7 +28,7 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
         regiond = yield deferToDatabase(self._getRegion)
         credentials = yield regiond.start_refresh()
         with RegionConfiguration.open() as config:
-            returnValue((config.maas_url, regiond.system_id, credentials))
+            return (config.maas_url, regiond.system_id, credentials)
 
     def reportNeighbours(self, neighbours):
         """Record the specified list of neighbours."""
