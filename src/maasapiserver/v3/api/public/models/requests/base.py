@@ -52,7 +52,7 @@ class OrderByQueryFilter(BaseModel):
             title="Properties to order by. You can wrap the property with `asc()` or `desc()` to modify the ordering",
         )
     )
-    _order_by_columns: ClassVar[dict[str, OrderByClause]] = Field(exclude=True)
+    order_by_columns: ClassVar[dict[str, OrderByClause]] = Field(exclude=True)
 
     @classmethod
     def _clean_field(cls, field: str) -> str:
@@ -71,7 +71,7 @@ class OrderByQueryFilter(BaseModel):
             return None
         for elem in v:
             field = cls._clean_field(elem)
-            if field not in cls._order_by_columns:
+            if field not in cls.order_by_columns:
                 raise ValidationException.build_for_field(
                     "order_by",
                     f"'{elem}' is not an allowed property.",
@@ -92,7 +92,7 @@ class OrderByQueryFilter(BaseModel):
         if not self.order_by:
             return []
         for field in self.order_by:
-            orig_clause = self._order_by_columns.get(self._clean_field(field))
+            orig_clause = self.order_by_columns.get(self._clean_field(field))
             assert orig_clause is not None
 
             clause = deepcopy(orig_clause)

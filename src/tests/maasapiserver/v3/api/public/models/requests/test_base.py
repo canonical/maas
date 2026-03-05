@@ -71,7 +71,7 @@ DummyTable = Table(
 
 
 class OrderByQueryTestClass(OrderByQueryFilter):
-    _order_by_columns = {
+    order_by_columns = {
         "id": OrderByClause(column=DummyTable.c.id),
         "name": OrderByClause(column=DummyTable.c.name),
     }

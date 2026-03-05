@@ -18,7 +18,7 @@ from maasservicelayer.db.repositories.ui_subnets import (
 
 
 class UISubnetOrderByQueryFilter(OrderByQueryFilter):
-    _order_by_columns = {
+    order_by_columns = {
         "cidr": UISubnetsOrderByClauses.by_cidr(),
         "fabric": UISubnetsOrderByClauses.by_fabric_name(),
         "space": UISubnetsOrderByClauses.by_space_name(),
