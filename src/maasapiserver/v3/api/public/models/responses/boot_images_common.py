@@ -4,6 +4,7 @@
 """Common responses for boot resources and selections."""
 
 from datetime import datetime
+from typing import ClassVar
 
 from pydantic import BaseModel
 
@@ -25,7 +26,7 @@ from maasservicelayer.models.bootsourceselections import (
 
 
 class ImageResponse(HalResponse[BaseHal]):
-    kind = "Image"
+    kind: ClassVar[str] = "Image"
     id: int
     os: str
     release: str
@@ -75,11 +76,11 @@ class ImageResponse(HalResponse[BaseHal]):
 
 
 class ImageListResponse(PaginatedResponse[ImageResponse]):
-    kind = "ImageList"
+    kind: ClassVar[str] = "ImageList"
 
 
 class ImageStatusResponse(BaseModel):
-    kind = "ImageStatus"
+    kind: ClassVar[str] = "ImageStatus"
     id: int
     status: ImageStatus
     update_status: ImageUpdateStatus
@@ -98,11 +99,11 @@ class ImageStatusResponse(BaseModel):
 
 
 class ImageStatusListResponse(PaginatedResponse[ImageStatusResponse]):
-    kind = "ImageStatusList"
+    kind: ClassVar[str] = "ImageStatusList"
 
 
 class ImageStatisticResponse(BaseModel):
-    kind = "ImageStatistic"
+    kind: ClassVar[str] = "ImageStatistic"
     id: int
     last_updated: datetime | None = None
     last_deployed: datetime | None = None
@@ -123,4 +124,4 @@ class ImageStatisticResponse(BaseModel):
 
 
 class ImageStatisticListResponse(PaginatedResponse[ImageStatisticResponse]):
-    kind = "ImageStatisticList"
+    kind: ClassVar[str] = "ImageStatisticList"

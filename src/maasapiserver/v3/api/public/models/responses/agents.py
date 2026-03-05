@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd. This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -13,7 +13,7 @@ from maasservicelayer.models.agents import Agent
 
 
 class AgentResponse(HalResponse[BaseHal]):
-    kind = "Agent"
+    kind: ClassVar[str] = "Agent"
     id: int
     rack_id: int
     rackcontroller_id: Optional[
@@ -35,4 +35,4 @@ class AgentResponse(HalResponse[BaseHal]):
 
 
 class AgentListResponse(PaginatedResponse[AgentResponse]):
-    kind = "AgentList"
+    kind: ClassVar[str] = "AgentList"

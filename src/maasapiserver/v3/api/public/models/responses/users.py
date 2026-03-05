@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from pydantic import BaseModel
 
@@ -22,7 +22,7 @@ class UserInfoResponse(BaseModel):
 
 
 class UserResponse(HalResponse[BaseHal]):
-    kind = "User"
+    kind: ClassVar[str] = "User"
     id: int
     username: str
     is_superuser: bool
@@ -52,11 +52,11 @@ class UserResponse(HalResponse[BaseHal]):
 
 
 class UsersListResponse(PaginatedResponse[UserResponse]):
-    kind = "UsersList"
+    kind: ClassVar[str] = "UsersList"
 
 
 class UserWithSummaryResponse(HalResponse[BaseHal]):
-    kind = "UserWithSummary"
+    kind: ClassVar[str] = "UserWithSummary"
     id: int
     completed_intro: bool
     email: Optional[str] = None
@@ -92,4 +92,4 @@ class UserWithSummaryResponse(HalResponse[BaseHal]):
 
 
 class UsersWithSummaryListResponse(PaginatedResponse[UserWithSummaryResponse]):
-    kind = "UserWithSummaryList"
+    kind: ClassVar[str] = "UserWithSummaryList"

@@ -3,7 +3,7 @@
 
 from base64 import b64encode
 import json
-from typing import List, Self
+from typing import ClassVar, List, Self
 
 from pydantic import BaseModel
 
@@ -17,7 +17,7 @@ from maasservicelayer.models.racks import Rack, RackWithSummary
 
 
 class RackResponse(HalResponse[BaseHal]):
-    kind = "Rack"
+    kind: ClassVar[str] = "Rack"
     id: int
     name: str
 
@@ -35,11 +35,11 @@ class RackResponse(HalResponse[BaseHal]):
 
 
 class RackListResponse(PaginatedResponse[RackResponse]):
-    kind = "RackList"
+    kind: ClassVar[str] = "RackList"
 
 
 class RackBootstrapTokenResponse(BaseModel):
-    kind = "RackBootstrapToken"
+    kind: ClassVar[str] = "RackBootstrapToken"
     token: str
 
     @classmethod
@@ -50,7 +50,7 @@ class RackBootstrapTokenResponse(BaseModel):
 
 
 class RackWithSummaryResponse(HalResponse[BaseHal]):
-    kind = "RackWithSummary"
+    kind: ClassVar[str] = "RackWithSummary"
     id: int
     name: str
     registered_agents_system_ids: List[str]
@@ -72,4 +72,4 @@ class RackWithSummaryResponse(HalResponse[BaseHal]):
 
 
 class RackWithSummaryListResponse(PaginatedResponse[RackWithSummaryResponse]):
-    kind = "RackWithSummaryList"
+    kind: ClassVar[str] = "RackWithSummaryList"

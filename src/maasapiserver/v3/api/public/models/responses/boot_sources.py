@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from pydantic import BaseModel
 
@@ -19,7 +19,7 @@ from maasservicelayer.models.bootsources import (
 
 
 class BootSourceResponse(HalResponse[BaseHal]):
-    kind = "BootSource"
+    kind: ClassVar[str] = "BootSource"
     id: int
     url: str
     keyring_filename: Optional[str]
@@ -49,7 +49,7 @@ class BootSourceResponse(HalResponse[BaseHal]):
 
 
 class BootSourcesListResponse(PaginatedResponse[BootSourceResponse]):
-    kind = "BootSourcesList"
+    kind: ClassVar[str] = "BootSourcesList"
 
 
 class BaseSourceAvailableImageResponse(BaseModel):
@@ -60,7 +60,7 @@ class BaseSourceAvailableImageResponse(BaseModel):
 
 
 class SourceAvailableImageResponse(BaseSourceAvailableImageResponse):
-    kind = "SourceAvailableImage"
+    kind: ClassVar[str] = "SourceAvailableImage"
 
     @classmethod
     def from_model(
@@ -76,12 +76,12 @@ class SourceAvailableImageResponse(BaseSourceAvailableImageResponse):
 
 
 class SourceAvailableImageListResponse(BaseModel):
-    kind = "SourceAvailableImageList"
+    kind: ClassVar[str] = "SourceAvailableImageList"
     items: list[SourceAvailableImageResponse]
 
 
 class BootSourceAvailableImageResponse(BaseSourceAvailableImageResponse):
-    kind = "BootSourceAvailableImage"
+    kind: ClassVar[str] = "BootSourceAvailableImage"
 
     @classmethod
     def from_model(
@@ -99,11 +99,11 @@ class BootSourceAvailableImageResponse(BaseSourceAvailableImageResponse):
 class BootSourceAvailableImageListResponse(
     PaginatedResponse[BootSourceAvailableImageResponse]
 ):
-    kind = "BootSourceAvailableImageList"
+    kind: ClassVar[str] = "BootSourceAvailableImageList"
 
 
 class UISourceAvailableImageResponse(BaseSourceAvailableImageResponse):
-    kind = "UISourceAvailableImage"
+    kind: ClassVar[str] = "UISourceAvailableImage"
     source_id: int
     source_url: str
 
@@ -124,10 +124,10 @@ class UISourceAvailableImageResponse(BaseSourceAvailableImageResponse):
 
 
 class UISourceAvailableImageListResponse(BaseModel):
-    kind = "UISourceAvailableImageList"
+    kind: ClassVar[str] = "UISourceAvailableImageList"
     items: list[UISourceAvailableImageResponse]
 
 
 class BootSourceSyncResponse(BaseModel):
-    kind = "BootSourceSync"
+    kind: ClassVar[str] = "BootSourceSync"
     monitor_url: str

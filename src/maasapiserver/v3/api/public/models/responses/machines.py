@@ -1,7 +1,7 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -21,7 +21,7 @@ from maasservicelayer.models.machines import (
 
 
 class MachineResponse(HalResponse[BaseHal]):
-    kind = "Machine"
+    kind: ClassVar[str] = "Machine"
     id: int
     system_id: str
     description: str
@@ -66,11 +66,11 @@ class MachineResponse(HalResponse[BaseHal]):
 
 
 class MachinesListResponse(PaginatedResponse[MachineResponse]):
-    kind = "MachinesList"
+    kind: ClassVar[str] = "MachinesList"
 
 
 class UsbDeviceResponse(HalResponse[BaseHal]):
-    kind = "MachineHardwareDevice"
+    kind: ClassVar[str] = "MachineHardwareDevice"
     id: int
     type: HardwareDeviceTypeEnum
     vendor_id: str
@@ -104,11 +104,11 @@ class UsbDeviceResponse(HalResponse[BaseHal]):
 
 
 class UsbDevicesListResponse(PaginatedResponse[UsbDeviceResponse]):
-    kind = "MachineHardwareDevicesList"
+    kind: ClassVar[str] = "MachineHardwareDevicesList"
 
 
 class PciDeviceResponse(HalResponse[BaseHal]):
-    kind = "MachinePciDevice"
+    kind: ClassVar[str] = "MachinePciDevice"
     id: int
     type: HardwareDeviceTypeEnum
     vendor_id: str
@@ -144,11 +144,11 @@ class PciDeviceResponse(HalResponse[BaseHal]):
 
 
 class PciDevicesListResponse(PaginatedResponse[PciDeviceResponse]):
-    kind = "MachinePciDevicesList"
+    kind: ClassVar[str] = "MachinePciDevicesList"
 
 
 class PowerDriverResponse(HalResponse[BaseHal]):
-    kind = "MachinePowerParameters"
+    kind: ClassVar[str] = "MachinePowerParameters"
     power_type: PowerTypeEnum
     power_parameters: dict
 

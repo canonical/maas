@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64encode
-from typing import List, Optional, Self
+from typing import ClassVar, List, Optional, Self
 
 from pydantic import BaseModel
 
@@ -15,7 +15,7 @@ from maasservicelayer.models.filestorage import FileStorage
 
 
 class FileResponse(HalResponse[BaseHal]):
-    kind = "File"
+    kind: ClassVar[str] = "File"
 
     id: int
     filename: str
@@ -42,7 +42,7 @@ class FileResponse(HalResponse[BaseHal]):
 class FileListItemResponse(HalResponse[BaseHal]):
     # Files returned as part of a list query should not contain file content.
     # A separate, specific GET is required to retrieve content.
-    kind = "FileListItem"
+    kind: ClassVar[str] = "FileListItem"
 
     id: int
     filename: str
@@ -65,6 +65,6 @@ class FileListItemResponse(HalResponse[BaseHal]):
 
 
 class FileListResponse(BaseModel):
-    kind = "FileList"
+    kind: ClassVar[str] = "FileList"
 
     items: List[FileListItemResponse]
