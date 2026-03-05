@@ -148,6 +148,43 @@ class TestCertificate(MAASTestCase):
         )
         self.assertEqual(str(error), "Private and public keys don't match")
 
+    def test_check_key_match_uses_cryptography_api(self):
+        """Test that _check_key_match properly uses the cryptography library."""
+        cert = Certificate.generate("maas")
+        # This should succeed without raising an exception
+        Certificate._check_key_match(cert.key, cert.cert)
+
+    def test_check_key_match_raises_on_mismatch(self):
+        """Test that _check_key_match raises CertificateError on key mismatch."""
+        cert1 = Certificate.generate("maas1")
+        cert2 = Certificate.generate("maas2")
+
+        error = self.assertRaises(
+            CertificateError,
+            Certificate._check_key_match,
+            cert1.key,
+            cert2.cert,
+        )
+        self.assertEqual(str(error), "Private and public keys don't match")
+
+    def test_check_key_match_with_different_key_sizes(self):
+        """Test key matching works with different RSA key sizes."""
+        cert_2048 = Certificate.generate("maas", key_bits=2048)
+        cert_4096 = Certificate.generate("maas", key_bits=4096)
+
+        # Same cert and key should work
+        Certificate._check_key_match(cert_2048.key, cert_2048.cert)
+        Certificate._check_key_match(cert_4096.key, cert_4096.cert)
+
+        # Mismatched should fail
+        error = self.assertRaises(
+            CertificateError,
+            Certificate._check_key_match,
+            cert_2048.key,
+            cert_4096.cert,
+        )
+        self.assertEqual(str(error), "Private and public keys don't match")
+
     def test_from_pem_ca_certs(self):
         other_cert = Certificate.generate("maas")
         other_cert_pem = other_cert.certificate_pem()
