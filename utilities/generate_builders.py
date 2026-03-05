@@ -129,6 +129,7 @@ def add_imports(module_name: str, field: str, imports: set):
 
 def handle_composite_type(type_, imports: set):
     from typing import Union
+
     outer = get_origin(type_)
     if outer is UnionType or outer is Union:
         inner = get_args(type_)
@@ -189,23 +190,29 @@ def normalize_imports(imports: set) -> set:
     return normalized
 
 
-
 def format_annotation(annotation) -> str:
     from typing import Union
+
     origin = get_origin(annotation)
     if origin is UnionType or origin is Union:
-        return " | ".join(format_annotation(arg) for arg in get_args(annotation))
+        return " | ".join(
+            format_annotation(arg) for arg in get_args(annotation)
+        )
     return process_string(str(annotation))
 
 
 def annotation_contains_unset(annotation) -> bool:
     from typing import Union
+
     if annotation is Unset:
         return True
     origin = get_origin(annotation)
     if origin is UnionType or origin is Union:
-        return any(annotation_contains_unset(arg) for arg in get_args(annotation))
+        return any(
+            annotation_contains_unset(arg) for arg in get_args(annotation)
+        )
     return False
+
 
 def process_field_annotation(annotation, imports: set) -> str:
     """Process a field annotation and update imports, rendering a |-style union."""
@@ -411,9 +418,7 @@ class BuilderModule(GenericModule[BuilderModel]):
                             methods=methods_list,
                         )
                     )
-        return cls(
-            filename=filename, models=models, file_header=file_header
-        )
+        return cls(filename=filename, models=models, file_header=file_header)
 
     def to_file(self) -> str:
         """Generate the complete file output."""
@@ -461,7 +466,9 @@ class BuilderModule(GenericModule[BuilderModel]):
 
         module_imports |= self.source_imports
         # Filter out unused Union import (we now use PEP 604 syntax)
-        module_imports = {imp for imp in module_imports if imp != "from typing import Union"}
+        module_imports = {
+            imp for imp in module_imports if imp != "from typing import Union"
+        }
         module_imports = normalize_imports(module_imports)
 
         imports = "\n".join(sorted(module_imports))
