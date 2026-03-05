@@ -429,7 +429,7 @@ class BuilderModule(GenericModule[BuilderModel]):
             raise Exception("Cannot update models of different modules.")
         models_self = sorted(self.models, key=lambda m: m.name)
         models_other = sorted(other.models, key=lambda m: m.name)
-        for model, other_model in zip(models_self, models_other):
+        for model, other_model in zip(models_self, models_other, strict=False):
             model.update_methods(other_model.methods)
         # Preserve source methods, imports, and file header from existing builder
         self.source_methods = other.source_methods
@@ -441,7 +441,7 @@ class BuilderModule(GenericModule[BuilderModel]):
         models_other = sorted(other.models, key=lambda m: m.name)
         if len(models_self) != len(models_other):
             return False
-        for m1, m2 in zip(models_self, models_other):
+        for m1, m2 in zip(models_self, models_other, strict=False):
             if m1 != m2:
                 return False
         return True

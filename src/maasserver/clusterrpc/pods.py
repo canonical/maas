@@ -248,7 +248,7 @@ def decompose_machine(client, pod_type, context, pod_id, name):
 def _collect_results_and_failures(results, clients, result_key):
     """Return dicts with results and failures from an RPC to multiple clients."""
     discovered, failures = {}, {}
-    for client, (success, result) in zip(clients, results):
+    for client, (success, result) in zip(clients, results, strict=False):
         if success:
             discovered[client.ident] = result[result_key]
         else:
@@ -258,7 +258,7 @@ def _collect_results_and_failures(results, clients, result_key):
 
 def _collect_xor_results_and_failures(results, clients, keys):
     discovered, failures = {}, {}
-    for client, (success, result) in zip(clients, results):
+    for client, (success, result) in zip(clients, results, strict=False):
         if success:
             value = None
             for key in keys:

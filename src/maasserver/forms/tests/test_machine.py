@@ -338,7 +338,9 @@ class TestMachineForm(MAASServerTestCase):
         machine = factory.make_Machine(owner=user)
         release_names = ("noble", "8", "8", "my-custom")
         osystem_names = ("ubuntu", "centos", "rhel", "custom")
-        for osystem_name, release_name in zip(osystem_names, release_names):
+        for osystem_name, release_name in zip(
+            osystem_names, release_names, strict=False
+        ):
             make_usable_osystem(
                 self, osystem_name=osystem_name, releases=[release_name]
             )

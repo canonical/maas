@@ -267,6 +267,7 @@ class TestInterfaceRepository:
             for created_dhcp, response_link in zip(
                 created_links,
                 response_links,
+                strict=False,
             ):
                 assert created_dhcp.ip_type == IpAddressType.DHCP
                 assert created_discovery.ip_type == IpAddressType.DISCOVERED

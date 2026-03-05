@@ -56,7 +56,9 @@ class TestScriptHandler(MAASServerTestCase):
             key=lambda i: i["id"],
         )
         sorted_results = sorted(handler.list({}), key=lambda i: i["id"])
-        for expected, real in zip(expected_scripts, sorted_results):
+        for expected, real in zip(
+            expected_scripts, sorted_results, strict=False
+        ):
             self.assertDictEqual(expected, real)
 
     def test_delete(self):

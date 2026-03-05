@@ -514,7 +514,7 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
     def test_returns_all_addresses_for_all_interfaces(self):
         v4_ips = [factory.make_ipv4_address() for _ in range(2)]
         v6_ips = [factory.make_ipv6_address() for _ in range(2)]
-        ips = zip(v4_ips, v6_ips)
+        ips = zip(v4_ips, v6_ips, strict=False)
         interfaces = {
             factory.make_name("eth", sep=""): {
                 AF_INET: [{"addr": str(ipv4)}],

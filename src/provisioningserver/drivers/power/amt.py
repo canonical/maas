@@ -125,7 +125,9 @@ class AMTPowerDriver(PowerDriver):
         xmldecls = xmldecl.finditer(xml)
         starts = [match.start() for match in xmldecls]
         ends = starts[1:] + [len(xml)]
-        frags = (xml[start:end] for start, end in zip(starts, ends))
+        frags = (
+            xml[start:end] for start, end in zip(starts, ends, strict=False)
+        )
         return (etree.fromstring(frag) for frag in frags)
 
     def get_power_state(self, xml: bytes) -> str:
