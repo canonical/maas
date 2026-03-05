@@ -199,7 +199,6 @@ APIServerRule = Rule(
     Allow("django.contrib.auth.hashers.*"),
     Allow("fastapi|fastapi.**"),
     Allow("h11"),
-    Allow("jose|jose.**"),
     Allow("lxml|lxml.**"),
     Allow("maasapiserver|maasapiserver.**"),
     Allow("maascommon|maascommon.**"),
@@ -241,14 +240,15 @@ CommonRule = Rule(
     Allow(StandardLibraries),
     Allow("distro_info|distro_info.*"),
     Allow("httpx"),
+    Allow("joserfc|joserfc.**"),
     Allow("lxml|lxml.**"),
     Allow("maascommon|maascommon.**"),
     Allow("maasservicelayer.simplestreams.**"),
-    Allow("OpenSSL|OpenSSL.**"),
     Allow("netaddr|netaddr.**"),
+    Allow("OpenSSL|OpenSSL.**"),
     Allow("temporalio.client.**"),
-    Allow("temporalio.worker.**"),
     Allow("temporalio.converter.**"),
+    Allow("temporalio.worker.**"),
 )
 
 MAASCLI = files("src/maascli/**/*.py")
@@ -368,7 +368,6 @@ RegionControllerRule = Rule(
     Allow("django|django.**"),
     Allow("formencode|formencode.**"),
     Allow("hvac|hvac.**"),
-    Allow("jose|jose.**"),
     Allow("jsonschema|jsonschema.**"),
     Allow("lxml|lxml.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
@@ -415,7 +414,6 @@ RegionControllerWorkerRule = Rule(
     Allow("cryptography.hazmat.primitives.ciphers.aead.AESGCM"),
     Allow("google.protobuf|google.protobuf.**"),  # for Temporal
     Allow("httpx|httpx.**"),
-    Allow("jose|jose.**"),
     Allow("maascommon|maascommon.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasapiserver.**"),
@@ -479,7 +477,7 @@ ServiceLayerRule = Rule(
         "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
     ),
     Allow("httpx|httpx.**"),
-    Allow("jose|jose.**"),
+    Allow("joserfc|joserfc.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
     Allow("maascommon|maascommon.**"),
     # TODO: move remaining utils to maascommon
@@ -503,6 +501,7 @@ ServiceLayerRule = Rule(
     Allow("provisioningserver.utils.version.**"),
     Allow("psycopg2|psycopg2.**"),
     Allow("pydantic|pydantic.**"),
+    Allow("pydantic_core|pydantic_core.**"),
     Allow("pymacaroons|pymacaroons.**"),
     Allow("pythonjsonlogger|pythonjsonlogger.**"),
     Allow("sqlalchemy|sqlalchemy.**"),
