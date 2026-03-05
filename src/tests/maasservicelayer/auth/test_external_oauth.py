@@ -154,7 +154,7 @@ class TestOauth2Client:
     async def test_validate_access_token_opaque_cached(
         self,
     ) -> None:
-        provider = TEST_PROVIDER.copy()
+        provider = TEST_PROVIDER.model_copy()
         provider.token_type = AccessTokenType.OPAQUE
         client = OAuth2Client(provider)
         client._access_token_cache = Mock()
@@ -173,7 +173,7 @@ class TestOauth2Client:
         mock_token_cache = Mock()
         mock_token_cache.is_valid = AsyncMock(return_value=False)
         mock_token_cache.add = AsyncMock()
-        provider = TEST_PROVIDER.copy()
+        provider = TEST_PROVIDER.model_copy()
         provider.token_type = AccessTokenType.OPAQUE
         provider.metadata.introspection_endpoint = (
             "https://issuer.com/introspect"
@@ -200,7 +200,7 @@ class TestOauth2Client:
         mock_token_cache = Mock()
         mock_token_cache.is_valid = AsyncMock(return_value=False)
         mock_token_cache.add = AsyncMock()
-        provider = TEST_PROVIDER.copy()
+        provider = TEST_PROVIDER.model_copy()
         provider.token_type = AccessTokenType.OPAQUE
         provider.metadata.introspection_endpoint = None
         provider.metadata.userinfo_endpoint = "https://issuer.com/userinfo"
@@ -224,7 +224,7 @@ class TestOauth2Client:
     ) -> None:
         mock_token_cache = Mock()
         mock_token_cache.is_valid = AsyncMock(return_value=False)
-        provider = TEST_PROVIDER.copy()
+        provider = TEST_PROVIDER.model_copy()
         provider.token_type = AccessTokenType.OPAQUE
         provider.metadata.introspection_endpoint = None
         provider.metadata.userinfo_endpoint = None

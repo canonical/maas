@@ -60,7 +60,9 @@ class TestAsyncVaultApiClient:
 
         request = AppRoleLoginRequest(role_id="role_id", secret_id="secret_id")
         response = await client.auth_approle_login("approle", request=request)
-        assert response == AppRoleLoginResponse.parse_obj(expected_response)
+        assert response == AppRoleLoginResponse.model_validate(
+            expected_response
+        )
         mock_aioresponse.assert_called_with(
             url="http://test:5200/v1/auth/approle/login",
             data='{"role_id": "role_id", "secret_id": "secret_id"}',
@@ -134,7 +136,9 @@ class TestAsyncVaultApiClient:
 
         headers = {"X-Vault-Token": "mytoken"}
         response = await client.token_lookup_self(headers=headers)
-        assert response == TokenLookupSelfResponse.parse_obj(expected_response)
+        assert response == TokenLookupSelfResponse.model_validate(
+            expected_response
+        )
         mock_aioresponse.assert_called_with(
             url="http://test:5200/v1/auth/token/lookup-self",
             headers=headers,
@@ -255,7 +259,7 @@ class TestAsyncVaultApiClient:
         response = await client.kv_v2_read(
             path="test/dummy", kv_v2_mount_path="secret", headers=headers
         )
-        assert response == KvV2ReadResponse.parse_obj(expected_response)
+        assert response == KvV2ReadResponse.model_validate(expected_response)
         mock_aioresponse.assert_called_with(
             url="http://test:5200/v1/secret/data/test/dummy",
             headers=headers,
@@ -324,7 +328,7 @@ class TestAsyncVaultApiClient:
             request=KvV2WriteRequest(data={"test_key": "test_value"}),
             headers=headers,
         )
-        assert response == KvV2WriteResponse.parse_obj(expected_response)
+        assert response == KvV2WriteResponse.model_validate(expected_response)
         mock_aioresponse.assert_called_with(
             url="http://test:5200/v1/secret/data/test/dummy",
             data='{"options": null, "data": {"test_key": "test_value"}}',
