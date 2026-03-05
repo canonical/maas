@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import date, datetime
-from typing import Self, Union
+from typing import Self
 
 from pydantic import Field
 
@@ -23,31 +23,21 @@ class BootSourceCacheBuilder(ResourceBuilder):
     the generated code.
     """
 
-    arch: Union[str, Unset] = Field(default=UNSET, required=False)
-    boot_source_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    bootloader_type: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    extra: Union[dict, Unset] = Field(default=UNSET, required=False)
-    kflavor: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    label: Union[str, Unset] = Field(default=UNSET, required=False)
-    latest_version: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    os: Union[str, Unset] = Field(default=UNSET, required=False)
-    release: Union[str, Unset] = Field(default=UNSET, required=False)
-    release_codename: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    release_title: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    subarch: Union[str, Unset] = Field(default=UNSET, required=False)
-    support_eol: Union[date, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    arch: str | Unset = Field(default=UNSET)
+    boot_source_id: int | Unset = Field(default=UNSET)
+    bootloader_type: str | None | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    extra: dict | Unset = Field(default=UNSET)
+    kflavor: str | None | Unset = Field(default=UNSET)
+    label: str | Unset = Field(default=UNSET)
+    latest_version: str | None | Unset = Field(default=UNSET)
+    os: str | Unset = Field(default=UNSET)
+    release: str | Unset = Field(default=UNSET)
+    release_codename: str | None | Unset = Field(default=UNSET)
+    release_title: str | None | Unset = Field(default=UNSET)
+    subarch: str | Unset = Field(default=UNSET)
+    support_eol: date | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
 
     def __hash__(self):
         return hash(

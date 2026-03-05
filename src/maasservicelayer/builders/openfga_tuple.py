@@ -1,7 +1,6 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Union
 
 from pydantic import Field
 
@@ -20,11 +19,11 @@ class OpenFGATupleBuilder(ResourceBuilder):
     the generated code.
     """
 
-    object_id: Union[str, Unset] = Field(default=UNSET, required=False)
-    object_type: Union[str, Unset] = Field(default=UNSET, required=False)
-    relation: Union[str, Unset] = Field(default=UNSET, required=False)
-    user: Union[str, Unset] = Field(default=UNSET, required=False)
-    user_type: Union[str, Unset] = Field(default=UNSET, required=False)
+    object_id: str | Unset = Field(default=UNSET, required=False)
+    object_type: str | Unset = Field(default=UNSET, required=False)
+    relation: str | Unset = Field(default=UNSET, required=False)
+    user: str | Unset = Field(default=UNSET, required=False)
+    user_type: str | Unset = Field(default=UNSET, required=False)
 
     @classmethod
     def build_user_member_group(

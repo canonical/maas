@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,6 +15,6 @@ class DjangoSessionBuilder(ResourceBuilder):
     the generated code.
     """
 
-    expire_date: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    session_data: Union[str, Unset] = Field(default=UNSET, required=False)
-    session_key: Union[str, Unset] = Field(default=UNSET, required=False)
+    expire_date: datetime | Unset = Field(default=UNSET)
+    session_data: str | Unset = Field(default=UNSET)
+    session_key: str | Unset = Field(default=UNSET)

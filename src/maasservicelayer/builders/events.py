@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -22,25 +21,19 @@ class EventBuilder(ResourceBuilder):
     the generated code.
     """
 
-    action: Union[str, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, Unset] = Field(default=UNSET, required=False)
-    endpoint: Union[EndpointChoicesEnum, Unset] = Field(
-        default=UNSET, required=False
-    )
-    ip_address: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    node_hostname: Union[str, Unset] = Field(default=UNSET, required=False)
-    node_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
-    node_system_id: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    owner: Union[str, Unset] = Field(default=UNSET, required=False)
-    type: Union[EventType, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    user_agent: Union[str, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
+    action: str | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | Unset = Field(default=UNSET)
+    endpoint: EndpointChoicesEnum | Unset = Field(default=UNSET)
+    ip_address: IPvAnyAddress | None | Unset = Field(default=UNSET)
+    node_hostname: str | Unset = Field(default=UNSET)
+    node_id: int | None | Unset = Field(default=UNSET)
+    node_system_id: str | None | Unset = Field(default=UNSET)
+    owner: str | Unset = Field(default=UNSET)
+    type: EventType | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    user_agent: str | Unset = Field(default=UNSET)
+    user_id: int | None | Unset = Field(default=UNSET)
 
 
 class EventTypeBuilder(ResourceBuilder):
@@ -50,10 +43,8 @@ class EventTypeBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, Unset] = Field(default=UNSET, required=False)
-    level: Union[LoggingLevelEnum, Unset] = Field(
-        default=UNSET, required=False
-    )
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | Unset = Field(default=UNSET)
+    level: LoggingLevelEnum | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
