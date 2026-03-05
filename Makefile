@@ -276,6 +276,12 @@ format-py:
 	@tox -e format
 .PHONY: format-py
 
+# Run ruff autofix across the Python files via tox.
+# This invokes the `ruff-fix` tox environment which performs `ruff --fix`.
+fix-py:
+	@tox -e ruff-fix
+.PHONY: fix-py
+
 format-go:
 	@$(MAKE) -C src/host-info format
 	@$(MAKE) -C src/maasagent format
