@@ -2,11 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 import ssl
-from typing import Callable, Type
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.openapi.utils import get_openapi
 import uvicorn
 from uvicorn.config import HTTPProtocolType
@@ -16,27 +16,31 @@ from maasapiserver.common.constants import API_PREFIX
 
 
 class MiddlewareHandler:
-    def __init__(self, middleware_class, **kwargs):
-        self.middleware_class = middleware_class
-        self.kwargs = kwargs
+    def __init__(
+        self,
+        middleware_class: type,
+        **kwargs: object,
+    ) -> None:
+        self.middleware_class: type = middleware_class
+        self.kwargs: dict[str, object] = kwargs
 
-    def get_middleware(self):
+    def get_middleware(self) -> type:
         return self.middleware_class
 
-    def get_kwargs(self):
+    def get_kwargs(self) -> dict[str, object]:
         return self.kwargs
 
 
 @dataclass
 class ExceptionHandler:
-    exception_type: Type[Exception]
-    handler: Callable
+    exception_type: type[Exception]
+    handler: Callable[[Request, Exception], Response | Awaitable[Response]]
 
 
 @dataclass
 class EventListener:
     event: str
-    handler: Callable
+    handler: Callable[..., object]
 
 
 @dataclass
@@ -87,7 +91,7 @@ class App:
         self._app = self._prepare_app()
         self._server = self._prepare_server()
 
-    def _prepare_app(self):
+    def _prepare_app(self) -> FastAPI:
         app = FastAPI(
             title=self._app_title,
             name=self._name,
