@@ -57,8 +57,7 @@ class SelectionRequest(BaseSelectionRequest):
 class BulkSelectionRequest(BaseModel):
     selections: list[SelectionRequest] = Field(
         description="Boot source selections to create",
-        min_items=1,
-        unique_items=True,
+        min_length=1,
     )
 
     def get_builders(self) -> list[BootSourceSelectionBuilder]:
