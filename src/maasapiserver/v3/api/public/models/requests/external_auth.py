@@ -46,10 +46,11 @@ class OAuthProviderRequest(BaseModel):
     @classmethod
     def validate_http_urls(cls, value: str, info: ValidationInfo) -> str:
         parsed = urlparse(value)
+        field_name = info.field_name or "url"
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValidationException.build_for_field(
-                field=info.field_name,
-                message=f"{info.field_name.replace('_', ' ').capitalize()} must be a valid HTTP or HTTPS address.",
+                field=field_name,
+                message=f"{field_name.replace('_', ' ').capitalize()} must be a valid HTTP or HTTPS address.",
             )
         return value
 
