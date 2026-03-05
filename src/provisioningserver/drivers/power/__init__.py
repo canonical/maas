@@ -8,7 +8,7 @@ import sys
 
 from jsonschema import validate
 from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 from provisioningserver.drivers import (
@@ -360,7 +360,7 @@ class PowerDriver(PowerDriverBase):
                 # Wait before retrying.
                 yield pause(waiting_time, self.clock)
             else:
-                returnValue(state)
+                return state
         else:
             raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
 
