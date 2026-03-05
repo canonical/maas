@@ -1,8 +1,6 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Union
-
 from pydantic import Field
 
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
@@ -15,5 +13,5 @@ class NodeGroupToRackControllerBuilder(ResourceBuilder):
     the generated code.
     """
 
-    subnet_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    uuid: Union[str, Unset] = Field(default=UNSET, required=False)
+    subnet_id: int | Unset = Field(default=UNSET)
+    uuid: str | Unset = Field(default=UNSET)

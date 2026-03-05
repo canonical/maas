@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -23,54 +22,38 @@ class MachineBuilder(ResourceBuilder):
     the generated code.
     """
 
-    architecture: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
+    architecture: str | None | Unset = Field(default=UNSET)
+    boot_interface_id: int | None | Unset = Field(default=UNSET)
+    cpu_count: int | Unset = Field(default=UNSET)
+    cpu_speed: int | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    current_commissioning_script_set_id: int | None | Unset = Field(
+        default=UNSET
     )
-    boot_interface_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
+    current_config_id: int | None | Unset = Field(default=UNSET)
+    current_installation_script_set_id: int | None | Unset = Field(
+        default=UNSET
     )
-    cpu_count: Union[int, Unset] = Field(default=UNSET, required=False)
-    cpu_speed: Union[int, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    current_commissioning_script_set_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    current_config_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    current_installation_script_set_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    current_testing_script_set_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    description: Union[str, Unset] = Field(default=UNSET, required=False)
-    distro_series: Union[str, Unset] = Field(default=UNSET, required=False)
-    domain_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
-    error_description: Union[str, Unset] = Field(default=UNSET, required=False)
-    fqdn: Union[str, Unset] = Field(default=UNSET, required=False)
-    hostname: Union[str, Unset] = Field(default=UNSET, required=False)
-    hwe_kernel: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    locked: Union[bool, Unset] = Field(default=UNSET, required=False)
-    memory: Union[int, Unset] = Field(default=UNSET, required=False)
-    node_type: Union[NodeTypeEnum, Unset] = Field(
-        default=UNSET, required=False
-    )
-    osystem: Union[str, Unset] = Field(default=UNSET, required=False)
-    owner: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    owner_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
-    power_state: Union[PowerState, Unset] = Field(
-        default=UNSET, required=False
-    )
-    power_state_updated: Union[datetime, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    power_type: Union[PowerTypeEnum, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    status: Union[NodeStatus, Unset] = Field(default=UNSET, required=False)
-    system_id: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    current_testing_script_set_id: int | None | Unset = Field(default=UNSET)
+    description: str | Unset = Field(default=UNSET)
+    distro_series: str | Unset = Field(default=UNSET)
+    domain_id: int | None | Unset = Field(default=UNSET)
+    error_description: str | Unset = Field(default=UNSET)
+    fqdn: str | Unset = Field(default=UNSET)
+    hostname: str | Unset = Field(default=UNSET)
+    hwe_kernel: str | None | Unset = Field(default=UNSET)
+    locked: bool | Unset = Field(default=UNSET)
+    memory: int | Unset = Field(default=UNSET)
+    node_type: NodeTypeEnum | Unset = Field(default=UNSET)
+    osystem: str | Unset = Field(default=UNSET)
+    owner: str | None | Unset = Field(default=UNSET)
+    owner_id: int | None | Unset = Field(default=UNSET)
+    power_state: PowerState | Unset = Field(default=UNSET)
+    power_state_updated: datetime | None | Unset = Field(default=UNSET)
+    power_type: PowerTypeEnum | None | Unset = Field(default=UNSET)
+    status: NodeStatus | Unset = Field(default=UNSET)
+    system_id: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
 
 
 class PciDeviceBuilder(ResourceBuilder):
@@ -80,21 +63,17 @@ class PciDeviceBuilder(ResourceBuilder):
     the generated code.
     """
 
-    bus_number: Union[int, Unset] = Field(default=UNSET, required=False)
-    commissioning_driver: Union[str, Unset] = Field(
-        default=UNSET, required=False
-    )
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    device_number: Union[int, Unset] = Field(default=UNSET, required=False)
-    hardware_type: Union[HardwareDeviceTypeEnum, Unset] = Field(
-        default=UNSET, required=False
-    )
-    pci_address: Union[str, Unset] = Field(default=UNSET, required=False)
-    product_id: Union[str, Unset] = Field(default=UNSET, required=False)
-    product_name: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    vendor_id: Union[str, Unset] = Field(default=UNSET, required=False)
-    vendor_name: Union[str, Unset] = Field(default=UNSET, required=False)
+    bus_number: int | Unset = Field(default=UNSET)
+    commissioning_driver: str | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    device_number: int | Unset = Field(default=UNSET)
+    hardware_type: HardwareDeviceTypeEnum | Unset = Field(default=UNSET)
+    pci_address: str | Unset = Field(default=UNSET)
+    product_id: str | Unset = Field(default=UNSET)
+    product_name: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    vendor_id: str | Unset = Field(default=UNSET)
+    vendor_name: str | Unset = Field(default=UNSET)
 
 
 class UsbDeviceBuilder(ResourceBuilder):
@@ -104,17 +83,13 @@ class UsbDeviceBuilder(ResourceBuilder):
     the generated code.
     """
 
-    bus_number: Union[int, Unset] = Field(default=UNSET, required=False)
-    commissioning_driver: Union[str, Unset] = Field(
-        default=UNSET, required=False
-    )
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    device_number: Union[int, Unset] = Field(default=UNSET, required=False)
-    hardware_type: Union[HardwareDeviceTypeEnum, Unset] = Field(
-        default=UNSET, required=False
-    )
-    product_id: Union[str, Unset] = Field(default=UNSET, required=False)
-    product_name: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    vendor_id: Union[str, Unset] = Field(default=UNSET, required=False)
-    vendor_name: Union[str, Unset] = Field(default=UNSET, required=False)
+    bus_number: int | Unset = Field(default=UNSET)
+    commissioning_driver: str | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    device_number: int | Unset = Field(default=UNSET)
+    hardware_type: HardwareDeviceTypeEnum | Unset = Field(default=UNSET)
+    product_id: str | Unset = Field(default=UNSET)
+    product_name: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    vendor_id: str | Unset = Field(default=UNSET)
+    vendor_name: str | Unset = Field(default=UNSET)

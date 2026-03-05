@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,8 +15,8 @@ class BootstrapTokenBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    expires_at: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    rack_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    secret: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    expires_at: datetime | Unset = Field(default=UNSET)
+    rack_id: int | Unset = Field(default=UNSET)
+    secret: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
