@@ -235,7 +235,7 @@ class TestNotificationsService:
         notifications_repo_mock: Mock,
         notifications_service: NotificationsService,
     ) -> None:
-        notification = TEST_NOTIFICATION.copy()
+        notification = TEST_NOTIFICATION.model_copy()
         notification.dismissable = False
         notifications_repo_mock.get_one.return_value = notification
 
