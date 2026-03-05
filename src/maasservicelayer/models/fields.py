@@ -1,45 +1,58 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Network, IPv6Network
 import re
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import GetCoreSchemaHandler
-from pydantic.networks import IPvAnyNetwork
+from pydantic import BeforeValidator, GetCoreSchemaHandler
 from pydantic_core import core_schema, PydanticCustomError
 
 from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
 
 
-class IPv4v6Network(IPvAnyNetwork):
-    """IPv4 or IPv6 network validator with strict=False.
+def _validate_ipv4v6_network(value: Any) -> IPv4Network | IPv6Network:
+    """Validate an IPv4 or IPv6 network with strict=False.
 
-    Inherits from pydantic's IPvAnyNetwork but allows host bits in CIDR
-    notation (e.g., 192.168.1.5/24 instead of requiring 192.168.1.0/24).
-    Validates that prefix length is greater than 0.
+    Allows host bits in CIDR notation (e.g., 192.168.1.5/24 instead of
+    requiring 192.168.1.0/24). Validates that prefix length is greater than 0.
     """
-
-    def __new__(cls, value):
-        """Validate an IPv4 or IPv6 network with strict=False."""
-        try:
-            network = IPv4Network(value, strict=False)
-        except ValueError:
-            try:
-                network = IPv6Network(value, strict=False)
-            except ValueError:
-                raise PydanticCustomError(
-                    "ip_any_network",
-                    "value is not a valid IPv4 or IPv6 network",
-                )
-
-        if network.prefixlen == 0:
+    # If already a network object, validate it
+    if isinstance(value, (IPv4Network, IPv6Network)):
+        if value.prefixlen == 0:
             raise PydanticCustomError(
                 "ip_any_network",
                 "The prefix length of the CIDR must be greater than 0.",
             )
+        return value
 
-        return network
+    # Parse string input
+    try:
+        network = IPv4Network(value, strict=False)
+    except ValueError:
+        try:
+            network = IPv6Network(value, strict=False)
+        except ValueError:
+            raise PydanticCustomError(
+                "ip_any_network",
+                "value is not a valid IPv4 or IPv6 network",
+            ) from None
+
+    if network.prefixlen == 0:
+        raise PydanticCustomError(
+            "ip_any_network",
+            "The prefix length of the CIDR must be greater than 0.",
+        )
+
+    return network
+
+
+# Type alias for IPv4 or IPv6 networks with strict=False behavior,
+# allowing host bits in CIDR notation (e.g., 192.168.1.5/24).
+IPv4v6Network = Annotated[
+    IPv4Network | IPv6Network,
+    BeforeValidator(_validate_ipv4v6_network),
+]
 
 
 class MacAddress(str):

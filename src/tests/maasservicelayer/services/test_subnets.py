@@ -1,10 +1,11 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv4Address, IPv4Network
+from ipaddress import IPv4Address, IPv4Network, IPv6Network
 from unittest.mock import Mock
 
 import pytest
+from pytest import param
 
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.subnet import RdnsMode
@@ -65,18 +66,38 @@ class TestIntegrationSubnetsService:
     @pytest.mark.parametrize(
         "first_subnet_cidr, second_subnet_cidr, should_raise",
         [
-            ("10.0.0.0/16", "10.0.1.0/24", True),
-            ("10.0.0.0/24", "10.0.1.0/24", False),
-            ("2001:db8::/32", "2001:db8:0:1::/64", True),
-            ("2001:db8::/64", "2001:db8:1::/64", False),
+            param(
+                IPv4Network("10.0.0.0/16"),
+                IPv4Network("10.0.1.0/24"),
+                True,
+                id="ipv4_overlapping",
+            ),
+            param(
+                IPv4Network("10.0.0.0/24"),
+                IPv4Network("10.0.1.0/24"),
+                False,
+                id="ipv4_non_overlapping",
+            ),
+            param(
+                IPv6Network("2001:db8::/32"),
+                IPv6Network("2001:db8:0:1::/64"),
+                True,
+                id="ipv6_overlapping",
+            ),
+            param(
+                IPv6Network("2001:db8::/64"),
+                IPv6Network("2001:db8:1::/64"),
+                False,
+                id="ipv6_non_overlapping",
+            ),
         ],
     )
     async def test_create_with_overlap(
         self,
         fixture: Fixture,
         services: ServiceCollectionV3,
-        first_subnet_cidr: str,
-        second_subnet_cidr: str,
+        first_subnet_cidr: IPv4Network | IPv6Network,
+        second_subnet_cidr: IPv4Network | IPv6Network,
         should_raise: bool,
     ):
         fabric = await create_test_fabric_entry(fixture)
@@ -86,7 +107,7 @@ class TestIntegrationSubnetsService:
         )
 
         builder = SubnetBuilder(
-            name=second_subnet_cidr,
+            name=str(second_subnet_cidr),
             cidr=second_subnet_cidr,
             description="",
             rdns_mode=RdnsMode.DEFAULT,
@@ -108,21 +129,57 @@ class TestIntegrationSubnetsService:
     @pytest.mark.parametrize(
         "first_subnet_cidr, second_subnet_cidr, new_second_subnet_cidr, should_raise",
         [
-            ("10.0.0.0/16", "20.0.0.0/24", "10.0.1.0/24", True),
-            ("10.0.0.0/24", "20.0.0.0/16", "20.0.1.0/24", False),
-            ("2001:db8::/32", "3001:db8::/32", "2001:db8:0:1::/64", True),
-            ("2001:db8:1::/48", "2001:db8:2::/48", "2001:db8:2::/64", False),
-            ("fd00::/8", "fd01::/64", "fd00:abcd::/64", True),
-            ("fd00:1::/48", "fd00:2::/48", "fd00:3::/48", False),
+            param(
+                IPv4Network("10.0.0.0/16"),
+                IPv4Network("20.0.0.0/24"),
+                IPv4Network("10.0.1.0/24"),
+                True,
+                id="ipv4_update_overlapping",
+            ),
+            param(
+                IPv4Network("10.0.0.0/24"),
+                IPv4Network("20.0.0.0/16"),
+                IPv4Network("20.0.1.0/24"),
+                False,
+                id="ipv4_update_non_overlapping",
+            ),
+            param(
+                IPv6Network("2001:db8::/32"),
+                IPv6Network("3001:db8::/32"),
+                IPv6Network("2001:db8:0:1::/64"),
+                True,
+                id="ipv6_update_overlapping_32_64",
+            ),
+            param(
+                IPv6Network("2001:db8:1::/48"),
+                IPv6Network("2001:db8:2::/48"),
+                IPv6Network("2001:db8:2::/64"),
+                False,
+                id="ipv6_update_non_overlapping_48_64",
+            ),
+            param(
+                IPv6Network("fd00::/8"),
+                IPv6Network("fd01::/64"),
+                IPv6Network("fd00:abcd::/64"),
+                True,
+                id="ipv6_update_overlapping_8_64",
+            ),
+            param(
+                IPv6Network("fd00:1::/48"),
+                IPv6Network("fd00:2::/48"),
+                IPv6Network("fd00:3::/48"),
+                False,
+                id="ipv6_update_non_overlapping_48_48",
+            ),
         ],
     )
     async def test_update_with_overlap(
         self,
         fixture: Fixture,
         services: ServiceCollectionV3,
-        first_subnet_cidr: str,
-        second_subnet_cidr: str,
-        new_second_subnet_cidr: str,
+        first_subnet_cidr: IPv4Network | IPv6Network,
+        second_subnet_cidr: IPv4Network | IPv6Network,
+        new_second_subnet_cidr: IPv4Network | IPv6Network,
         should_raise: bool,
     ):
         fabric = await create_test_fabric_entry(fixture)

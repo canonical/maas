@@ -1,7 +1,7 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv6Address
+from ipaddress import IPv4Network, IPv6Address, IPv6Network
 from typing import Optional
 
 from pydantic import Field, field_validator, IPvAnyAddress, ValidationInfo
@@ -74,9 +74,9 @@ class SubnetRequest(OptionalNamedBaseModel):
             return v
         gateway_ip: IPvAnyAddress = v
         network_data = info.data.get("cidr")
-        if not isinstance(network_data, IPv4v6Network):
+        if not isinstance(network_data, (IPv4Network, IPv6Network)):
             return gateway_ip
-        network: IPv4v6Network = network_data
+        network: IPv4Network | IPv6Network = network_data
         if gateway_ip in network:
             return gateway_ip
         elif (
