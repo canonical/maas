@@ -51,7 +51,9 @@ class TestSubnetClauseFactory:
         )
 
     def test_with_cidr_overlap(self) -> None:
-        clause = SubnetClauseFactory.with_cidr_overlap(cidr="10.0.0.0/24")
+        clause = SubnetClauseFactory.with_cidr_overlap(
+            cidr=IPv4Network("10.0.0.0/24")
+        )
         assert str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == (
