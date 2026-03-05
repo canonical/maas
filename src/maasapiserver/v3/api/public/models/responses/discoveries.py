@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Self
+from typing import ClassVar, Self
 
 from pydantic import IPvAnyAddress
 
@@ -18,7 +18,7 @@ from maasservicelayer.models.fields import IPv4v6Network, MacAddress
 
 
 class DiscoveryResponse(HalResponse[BaseHal]):
-    kind = "Discovery"
+    kind: ClassVar[str] = "Discovery"
     id: int
     discovery_id: str | None
     neighbour_id: int | None
@@ -78,4 +78,4 @@ class DiscoveryResponse(HalResponse[BaseHal]):
 
 
 class DiscoveriesListResponse(PaginatedResponse[DiscoveryResponse]):
-    kind = "DiscoveriesList"
+    kind: ClassVar[str] = "DiscoveriesList"

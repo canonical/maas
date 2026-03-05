@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv6Address
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from maasapiserver.v3.api.public.models.dnsresourcerecordsets import (
     AAAARecord,
@@ -26,7 +26,7 @@ from maasservicelayer.models.domains import Domain
 
 
 class DomainResponse(HalResponse[BaseHal]):
-    kind = "Domain"
+    kind: ClassVar[str] = "Domain"
     authoritative: bool
     ttl: Optional[int]
     id: int
@@ -49,11 +49,11 @@ class DomainResponse(HalResponse[BaseHal]):
 
 
 class DomainsListResponse(PaginatedResponse[DomainResponse]):
-    kind = "DomainsList"
+    kind: ClassVar[str] = "DomainsList"
 
 
 class ARecordResponse(HalResponse[BaseHal]):
-    kind = "ARecord"
+    kind: ClassVar[str] = "ARecord"
     ipv4address: IPv4Address
 
     @classmethod
@@ -62,7 +62,7 @@ class ARecordResponse(HalResponse[BaseHal]):
 
 
 class AAAARecordResponse(HalResponse[BaseHal]):
-    kind = "AAAARecord"
+    kind: ClassVar[str] = "AAAARecord"
     ipv6address: IPv6Address
 
     @classmethod
@@ -71,7 +71,7 @@ class AAAARecordResponse(HalResponse[BaseHal]):
 
 
 class CNAMERecordResponse(HalResponse[BaseHal]):
-    kind = "CNAMERecord"
+    kind: ClassVar[str] = "CNAMERecord"
     cname: str
 
     @classmethod
@@ -80,7 +80,7 @@ class CNAMERecordResponse(HalResponse[BaseHal]):
 
 
 class MXRecordResponse(HalResponse[BaseHal]):
-    kind = "MXRecord"
+    kind: ClassVar[str] = "MXRecord"
     exchange: str
     preference: int
 
@@ -92,7 +92,7 @@ class MXRecordResponse(HalResponse[BaseHal]):
 
 
 class NSRecordResponse(HalResponse[BaseHal]):
-    kind = "NSRecord"
+    kind: ClassVar[str] = "NSRecord"
     nsdname: str
 
     @classmethod
@@ -101,7 +101,7 @@ class NSRecordResponse(HalResponse[BaseHal]):
 
 
 class SSHFPRecordResponse(HalResponse[BaseHal]):
-    kind = "SSHFPRecord"
+    kind: ClassVar[str] = "SSHFPRecord"
     algorithm: int
     fingerprint_type: int
     fingerprint: str
@@ -116,7 +116,7 @@ class SSHFPRecordResponse(HalResponse[BaseHal]):
 
 
 class SRVRecordResponse(HalResponse[BaseHal]):
-    kind = "SRVRecord"
+    kind: ClassVar[str] = "SRVRecord"
     port: int
     priority: int
     target: str
@@ -133,7 +133,7 @@ class SRVRecordResponse(HalResponse[BaseHal]):
 
 
 class TXTRecordResponse(HalResponse[BaseHal]):
-    kind = "TXTRecord"
+    kind: ClassVar[str] = "TXTRecord"
     data: str
 
     @classmethod
@@ -142,7 +142,7 @@ class TXTRecordResponse(HalResponse[BaseHal]):
 
 
 class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
-    kind = "DomainResourceRecordSet"
+    kind: ClassVar[str] = "DomainResourceRecordSet"
     name: str
     node_id: Optional[int] = None
     ttl: Optional[int] = None
@@ -287,4 +287,4 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
 class DomainResourceRecordSetListResponse(
     PaginatedResponse[DomainResourceRecordSetResponse]
 ):
-    kind = "DomainResourceRecordSetList"
+    kind: ClassVar[str] = "DomainResourceRecordSetList"

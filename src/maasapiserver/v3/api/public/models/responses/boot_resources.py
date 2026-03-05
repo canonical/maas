@@ -1,6 +1,6 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-from typing import Self
+from typing import ClassVar, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -12,7 +12,7 @@ from maasservicelayer.models.bootresources import BootResource
 
 
 class BootResourceResponse(HalResponse[BaseHal]):
-    kind = "BootResource"
+    kind: ClassVar[str] = "BootResource"
     id: int
     os: str
     release: str
@@ -40,11 +40,11 @@ class BootResourceResponse(HalResponse[BaseHal]):
 
 
 class BootResourceListResponse(PaginatedResponse[BootResourceResponse]):
-    kind = "BootResourceList"
+    kind: ClassVar[str] = "BootResourceList"
 
 
 class BootloaderResponse(HalResponse[BaseHal]):
-    kind = "Bootloader"
+    kind: ClassVar[str] = "Bootloader"
     id: int
     name: str
     architecture: str
@@ -70,4 +70,4 @@ class BootloaderResponse(HalResponse[BaseHal]):
 
 
 class BootloaderListResponse(PaginatedResponse[BootloaderResponse]):
-    kind = "BootloaderList"
+    kind: ClassVar[str] = "BootloaderList"

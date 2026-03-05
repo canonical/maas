@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from pydantic import IPvAnyAddress
 
@@ -16,7 +16,7 @@ from maasservicelayer.models.vlans import Vlan
 
 
 class VlanResponse(HalResponse[BaseHal]):
-    kind = "Vlan"
+    kind: ClassVar[str] = "Vlan"
     id: int
     vid: int
     name: Optional[str]
@@ -56,4 +56,4 @@ class VlanResponse(HalResponse[BaseHal]):
 
 
 class VlansListResponse(PaginatedResponse[VlanResponse]):
-    kind = "VlansList"
+    kind: ClassVar[str] = "VlansList"

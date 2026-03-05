@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Self
+from typing import ClassVar, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -13,7 +13,7 @@ from maasservicelayer.models.tags import Tag
 
 
 class TagResponse(HalResponse[BaseHal]):
-    kind = "Tag"
+    kind: ClassVar[str] = "Tag"
     id: int
     name: str
     comment: str
@@ -37,4 +37,4 @@ class TagResponse(HalResponse[BaseHal]):
 
 
 class TagsListResponse(PaginatedResponse[TagResponse]):
-    kind = "TagsList"
+    kind: ClassVar[str] = "TagsList"

@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Self
+from typing import ClassVar, Self
 
 from pydantic import IPvAnyAddress
 
@@ -15,7 +15,7 @@ from maasservicelayer.models.staticroutes import StaticRoute
 
 
 class StaticRouteResponse(HalResponse[BaseHal]):
-    kind = "StaticRoute"
+    kind: ClassVar[str] = "StaticRoute"
     id: int
     destination_id: int
     gateway_ip: IPvAnyAddress
@@ -39,4 +39,4 @@ class StaticRouteResponse(HalResponse[BaseHal]):
 
 
 class StaticRoutesListResponse(PaginatedResponse[StaticRouteResponse]):
-    kind = "StaticRoutesList"
+    kind: ClassVar[str] = "StaticRoutesList"

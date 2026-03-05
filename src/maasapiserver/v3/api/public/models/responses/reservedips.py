@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from pydantic import IPvAnyAddress
 
@@ -16,7 +16,7 @@ from maasservicelayer.models.reservedips import ReservedIP
 
 
 class ReservedIPResponse(HalResponse[BaseHal]):
-    kind = "ReservedIP"
+    kind: ClassVar[str] = "ReservedIP"
     id: int
     ip: IPvAnyAddress
     mac_address: MacAddress
@@ -40,4 +40,4 @@ class ReservedIPResponse(HalResponse[BaseHal]):
 
 
 class ReservedIPsListResponse(PaginatedResponse[ReservedIPResponse]):
-    kind = "ReservedIPsList"
+    kind: ClassVar[str] = "ReservedIPsList"
