@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from pydantic import IPvAnyAddress
 
@@ -17,7 +17,7 @@ from maasservicelayer.models.subnets import Subnet
 
 
 class SubnetResponse(HalResponse[BaseHal]):
-    kind = "Subnet"
+    kind: ClassVar[str] = "Subnet"
     id: int
     name: Optional[str]
     description: Optional[str]
@@ -55,4 +55,4 @@ class SubnetResponse(HalResponse[BaseHal]):
 
 
 class SubnetsListResponse(PaginatedResponse[SubnetResponse]):
-    kind = "SubnetsList"
+    kind: ClassVar[str] = "SubnetsList"

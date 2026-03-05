@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -14,7 +14,7 @@ from maasservicelayer.models.sshkeys import SshKey
 
 
 class SshKeyResponse(HalResponse[BaseHal]):
-    kind = "SshKey"
+    kind: ClassVar[str] = "SshKey"
     id: int
     key: str
     protocol: Optional[SshKeysProtocolType] = None
@@ -36,4 +36,4 @@ class SshKeyResponse(HalResponse[BaseHal]):
 
 
 class SshKeysListResponse(PaginatedResponse[SshKeyResponse]):
-    kind = "SshKeysList"
+    kind: ClassVar[str] = "SshKeysList"

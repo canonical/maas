@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any, Optional, Self
+from typing import Any, ClassVar, Optional, Self
 
 from markupsafe import Markup
 
@@ -15,7 +15,7 @@ from maasservicelayer.models.notifications import Notification
 
 
 class NotificationResponse(HalResponse[BaseHal]):
-    kind = "Notification"
+    kind: ClassVar[str] = "Notification"
     id: int
     ident: str | None
     users: bool
@@ -51,4 +51,4 @@ class NotificationResponse(HalResponse[BaseHal]):
 
 
 class NotificationsListResponse(PaginatedResponse[NotificationResponse]):
-    kind = "NotificationsList"
+    kind: ClassVar[str] = "NotificationsList"

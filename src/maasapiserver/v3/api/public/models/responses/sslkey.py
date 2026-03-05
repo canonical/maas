@@ -1,7 +1,7 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Self
+from typing import ClassVar, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -13,7 +13,7 @@ from maasservicelayer.models.sslkeys import SSLKey
 
 
 class SSLKeyResponse(HalResponse[BaseHal]):
-    kind = "SSLKey"
+    kind: ClassVar[str] = "SSLKey"
     id: int
     key: str
 
@@ -26,11 +26,11 @@ class SSLKeyResponse(HalResponse[BaseHal]):
 
 
 class SSLKeyListResponse(PaginatedResponse[SSLKeyResponse]):
-    kind = "SSLKeys"
+    kind: ClassVar[str] = "SSLKeys"
 
 
 class SSLKeyWithSummaryResponse(SSLKeyResponse):
-    kind = "SSLKeyWithSummary"
+    kind: ClassVar[str] = "SSLKeyWithSummary"
     display: str
 
     @classmethod
@@ -45,4 +45,4 @@ class SSLKeyWithSummaryResponse(SSLKeyResponse):
 class SSLKeysWithSummaryListResponse(
     PaginatedResponse[SSLKeyWithSummaryResponse]
 ):
-    kind = "SSLKeysWithSummary"
+    kind: ClassVar[str] = "SSLKeysWithSummary"

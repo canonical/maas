@@ -3,7 +3,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from pydantic import BaseModel, IPvAnyAddress
 
@@ -53,7 +53,7 @@ class EventTypeResponse(BaseModel):
 
 
 class EventResponse(HalResponse[BaseHal]):
-    kind = "Event"
+    kind: ClassVar[str] = "Event"
     id: int
     created: datetime
     updated: datetime
@@ -91,4 +91,4 @@ class EventResponse(HalResponse[BaseHal]):
 
 
 class EventsListResponse(PaginatedResponse[EventResponse]):
-    kind = "EventsList"
+    kind: ClassVar[str] = "EventsList"

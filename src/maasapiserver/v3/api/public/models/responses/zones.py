@@ -1,7 +1,7 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Self
+from typing import ClassVar, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -13,7 +13,7 @@ from maasservicelayer.models.zones import Zone, ZoneWithSummary
 
 
 class ZoneResponse(HalResponse[BaseHal]):
-    kind = "Zone"
+    kind: ClassVar[str] = "Zone"
     id: int
     name: str
     description: str
@@ -33,11 +33,11 @@ class ZoneResponse(HalResponse[BaseHal]):
 
 
 class ZonesListResponse(PaginatedResponse[ZoneResponse]):
-    kind = "ZonesList"
+    kind: ClassVar[str] = "ZonesList"
 
 
 class ZoneWithSummaryResponse(HalResponse[BaseHal]):
-    kind = "ZoneWithSummary"
+    kind: ClassVar[str] = "ZoneWithSummary"
     id: int
     name: str
     description: str
@@ -65,4 +65,4 @@ class ZoneWithSummaryResponse(HalResponse[BaseHal]):
 
 
 class ZonesWithSummaryListResponse(PaginatedResponse[ZoneWithSummaryResponse]):
-    kind = "ZonesWithSummaryList"
+    kind: ClassVar[str] = "ZonesWithSummaryList"

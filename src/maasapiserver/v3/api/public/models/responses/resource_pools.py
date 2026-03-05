@@ -1,7 +1,7 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from enum import StrEnum
-from typing import Self
+from typing import ClassVar, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -16,7 +16,7 @@ from maasservicelayer.models.resource_pools import (
 
 
 class ResourcePoolResponse(HalResponse[BaseHal]):
-    kind = "ResourcePool"
+    kind: ClassVar[str] = "ResourcePool"
     id: int
     name: str
     description: str
@@ -38,7 +38,7 @@ class ResourcePoolResponse(HalResponse[BaseHal]):
 
 
 class ResourcePoolsListResponse(PaginatedResponse[ResourcePoolResponse]):
-    kind = "ResourcePoolList"
+    kind: ClassVar[str] = "ResourcePoolList"
 
 
 class ResourcePoolPermission(StrEnum):
@@ -47,7 +47,7 @@ class ResourcePoolPermission(StrEnum):
 
 
 class ResourcePoolWithSummaryResponse(ResourcePoolResponse):
-    kind = "ResourcePoolWithSummary"
+    kind: ClassVar[str] = "ResourcePoolWithSummary"
     machine_total_count: int
     machine_ready_count: int
     is_default: bool
@@ -79,4 +79,4 @@ class ResourcePoolWithSummaryResponse(ResourcePoolResponse):
 class ResourcePoolsWithSummaryListResponse(
     PaginatedResponse[ResourcePoolWithSummaryResponse]
 ):
-    kind = "ResourcePoolsWithSummaryList"
+    kind: ClassVar[str] = "ResourcePoolsWithSummaryList"

@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self, TypedDict
+from typing import ClassVar, Optional, Self, TypedDict
 
 from pydantic import Field, IPvAnyAddress
 
@@ -36,7 +36,7 @@ UISubnetEmbeddedType = TypedDict(
 
 
 class UISubnetResponse(HalResponse[BaseHal]):
-    kind = "UISubnet"
+    kind: ClassVar[str] = "UISubnet"
     id: int
     name: Optional[str]
     description: Optional[str]
@@ -104,4 +104,4 @@ class UISubnetResponse(HalResponse[BaseHal]):
 
 
 class UISubnetsListResponse(PaginatedResponse[UISubnetResponse]):
-    kind = "UISubnetsList"
+    kind: ClassVar[str] = "UISubnetsList"

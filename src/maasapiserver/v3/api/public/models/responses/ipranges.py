@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import ClassVar, Optional, Self
 
 from pydantic import IPvAnyAddress
 
@@ -16,7 +16,7 @@ from maasservicelayer.models.ipranges import IPRange
 
 
 class IPRangeResponse(HalResponse[BaseHal]):
-    kind = "IPRange"
+    kind: ClassVar[str] = "IPRange"
     id: int
     type: IPRangeType
     start_ip: IPvAnyAddress
@@ -42,4 +42,4 @@ class IPRangeResponse(HalResponse[BaseHal]):
 
 
 class IPRangeListResponse(PaginatedResponse[IPRangeResponse]):
-    kind = "IPRangesList"
+    kind: ClassVar[str] = "IPRangesList"

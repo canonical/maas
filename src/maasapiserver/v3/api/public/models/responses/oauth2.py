@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import base64
 import typing
+from typing import ClassVar
 
 from pydantic import BaseModel
 
@@ -19,7 +20,7 @@ from maasservicelayer.models.external_auth import (
 class TokenResponse(BaseModel):
     """Content for a response returning a JWT and a refresh token."""
 
-    kind = "Tokens"
+    kind: ClassVar[str] = "Tokens"
     token_type: str
     access_token: str
     refresh_token: str | None = None
@@ -28,7 +29,7 @@ class TokenResponse(BaseModel):
 class PreLoginInfoResponse(BaseModel):
     """Content for a response returning pre-login information."""
 
-    kind = "PreLoginInfo"
+    kind: ClassVar[str] = "PreLoginInfo"
     is_authenticated: bool
     no_users: bool
     # TODO: Delete this once we drop support for rbac/candid.
@@ -38,7 +39,7 @@ class PreLoginInfoResponse(BaseModel):
 class AuthInfoResponse(BaseModel):
     """Content for a response returning authentication flow information."""
 
-    kind = "AuthInfo"
+    kind: ClassVar[str] = "AuthInfo"
     auth_url: str | None = None
     provider_name: str | None = None
     is_oidc: bool
@@ -47,7 +48,7 @@ class AuthInfoResponse(BaseModel):
 class CallbackTargetResponse(BaseModel):
     """Content for a response returning the callback target URL."""
 
-    kind = "CallbackTarget"
+    kind: ClassVar[str] = "CallbackTarget"
     redirect_target: str
 
     @classmethod
@@ -61,7 +62,7 @@ class CallbackTargetResponse(BaseModel):
 
 
 class OAuthProviderResponse(BaseModel):
-    kind = "AuthProvider"
+    kind: ClassVar[str] = "AuthProvider"
     issuer_url: str
     name: str
     client_id: str
@@ -96,4 +97,4 @@ class OAuthProviderResponse(BaseModel):
 
 
 class OAuthProvidersListResponse(PaginatedResponse[OAuthProviderResponse]):
-    kind = "AuthProvidersList"
+    kind: ClassVar[str] = "AuthProvidersList"
