@@ -128,7 +128,13 @@ from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
 from maasserver.worker_user import get_worker_user
 from maasservicelayer.builders.usergroups import UserGroupBuilder
+from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroups import UserGroup
+from maasservicelayer.services.openfga_tuples import (
+    EntitlementsBuilderFactory,
+    MAASTupleBuilderFactory,
+    PoolTupleBuilderFactory,
+)
 from maasservicelayer.utils.image_local_files import SyncLocalBootResourceFile
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
@@ -1407,6 +1413,49 @@ class Factory(maastesting.factory.Factory):
 
     def make_email(self):
         return "%s@example.com" % self.make_string(10)
+
+    def make_Entitlement(
+        self,
+        group=None,
+        resource_type=None,
+        resource_id=None,
+        entitlement=None,
+    ) -> OpenFGATuple:
+        if group is None:
+            group = self.make_Usergroup()
+        if resource_type is None:
+            resource_type = random.choice(["maas", "pool"])
+        if resource_type == "maas":
+            if resource_id is None:
+                resource_id = 0
+            else:
+                assert resource_id == 0
+        elif resource_type == "pool":
+            if resource_id is not None:
+                exists = ResourcePool.objects.filter(id=resource_id).exists()
+                if not exists:
+                    raise ValueError(
+                        "No ResourcePool with id %s exists" % resource_id
+                    )
+            else:
+                resource_id = ResourcePool.objects.first().id
+
+        if entitlement is None:
+            if resource_type == "maas":
+                entitlement = random.choice(
+                    list(MAASTupleBuilderFactory.ENTITLEMENTS.keys())
+                )
+            elif resource_type == "pool":
+                entitlement = random.choice(
+                    list(PoolTupleBuilderFactory.ENTITLEMENTS.keys())
+                )
+
+        builder_factory = EntitlementsBuilderFactory.get_factory(
+            entitlement, resource_type
+        )
+        return service_layer.services.openfga_tuples.upsert(
+            builder_factory.build_tuple(group.id, resource_id)
+        )
 
     def make_User(
         self,

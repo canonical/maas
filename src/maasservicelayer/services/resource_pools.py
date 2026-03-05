@@ -65,7 +65,7 @@ class ResourcePoolsService(
             )
 
     async def post_create_hook(self, resource: ResourcePool) -> None:
-        await self.openfga_tuples_service.create(
+        await self.openfga_tuples_service.upsert(
             OpenFGATupleBuilder.build_pool(str(resource.id))
         )
 
@@ -73,7 +73,7 @@ class ResourcePoolsService(
         self, resources: List[ResourcePool]
     ) -> None:
         for resource in resources:
-            await self.openfga_tuples_service.create(
+            await self.openfga_tuples_service.upsert(
                 OpenFGATupleBuilder.build_pool(str(resource.id))
             )
 

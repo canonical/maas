@@ -49,11 +49,11 @@ class TestOpenFGATuplesClauseFactory:
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestOpenFGATuplesRepository:
-    async def test_create(
+    async def test_upsert(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         repository = OpenFGATuplesRepository(Context(connection=db_connection))
-        t = await repository.create(
+        t = await repository.upsert(
             OpenFGATupleBuilder(
                 user="user:alice",
                 user_type="user",
@@ -84,6 +84,36 @@ class TestOpenFGATuplesRepository:
         assert tuple_dict["inserted_at"] is not None
         assert tuple_dict["condition_name"] is None
         assert tuple_dict["condition_context"] is None
+
+    async def test_upsert_replaces_tuple(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        repository = OpenFGATuplesRepository(Context(connection=db_connection))
+
+        await create_openfga_tuple(
+            fixture,
+            user="user:1",
+            user_type="user",
+            relation="member",
+            object_type="group",
+            object_id="0",
+        )
+
+        t = await repository.upsert(
+            OpenFGATupleBuilder(
+                user="user:1",
+                user_type="user",
+                relation="member",
+                object_type="group",
+                object_id="0",
+            )
+        )
+
+        assert t.user == "user:1"
+        assert t.relation == "member"
+        assert t.user_type == "user"
+        assert t.object_id == "0"
+        assert t.object_type == "group"
 
     async def test_delete_many(
         self, db_connection: AsyncConnection, fixture: Fixture

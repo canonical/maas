@@ -24,90 +24,90 @@ class TestIntegrationConfigurationsService:
 
         # Create pool:1, pool:2 and pool:3. pool:1 is the default and already exists
         for i in range(1, 4):
-            await services.openfga_tuples.create(
+            await services.openfga_tuples.upsert(
                 OpenFGATupleBuilder.build_pool(str(i))
             )
 
         # group 1000 can edit and view everything
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_edit_machines(group_id=1000)
         )
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_edit_global_entities(
                 group_id=1000
             )
         )
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_edit_controllers(group_id=1000)
         )
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_edit_identities(group_id=1000)
         )
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_edit_configurations(
                 group_id=1000
             )
         )
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_edit_boot_entities(
                 group_id=1000
             )
         )
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_edit_notifications(
                 group_id=1000
             )
         )
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_edit_license_keys(
                 group_id=1000
             )
         )
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_view_devices(group_id=1000)
         )
 
         # user 1000 belongs to group 1000
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_user_member_group(
                 user_id=1000, group_id=1000
             )
         )
 
         # group 2000 can_edit_machines and can_view_machines in pool:0
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_edit_machines_in_pool(
                 group_id=2000, pool_id="0"
             )
         )
         # user 2000 belongs to group 2000
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_user_member_group(
                 user_id=2000, group_id=2000
             )
         )
 
         # group 3000 can_view_machines in pool:0
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_deploy_machines_in_pool(
                 group_id=3000, pool_id="0"
             )
         )
         # user 3000 belongs to group 3000
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_user_member_group(
                 user_id=3000, group_id=3000
             )
         )
 
         # group 4000 can_view_machines in pool:0
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_view_available_machines_in_pool(
                 group_id=4000, pool_id="0"
             )
         )
         # user 4000 belongs to group 4000
-        await services.openfga_tuples.create(
+        await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_user_member_group(
                 user_id=4000, group_id=4000
             )

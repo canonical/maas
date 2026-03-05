@@ -1,18 +1,24 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.v3.api.public.models.requests.entitlements import (
+    EntitlementRequest,
+)
 from maasapiserver.v3.api.public.models.requests.usergroup_members import (
     UserGroupMemberRequest,
 )
 from maasapiserver.v3.api.public.models.requests.usergroups import (
     UserGroupRequest,
+)
+from maasapiserver.v3.api.public.models.responses.entitlements import (
+    EntitlementResponse,
 )
 from maasapiserver.v3.api.public.models.responses.usergroup_members import (
     UserGroupMembersListResponse,
@@ -32,10 +38,13 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroup_members import UserGroupMember
 from maasservicelayer.models.usergroups import UserGroup
 from maasservicelayer.models.users import User
 from maasservicelayer.services import ServiceCollectionV3, UsersService
+from maasservicelayer.services.openfga_tuples import OpenFGATupleService
+from maasservicelayer.services.resource_pools import ResourcePoolsService
 from maasservicelayer.services.usergroups import (
     UserAlreadyInGroup,
     UserGroupNotFound,
@@ -89,6 +98,13 @@ class TestUserGroupsApi(ApiCommonTests):
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="POST", path=f"{self.BASE_PATH}/1/members"),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1/members/10"),
+            Endpoint(method="POST", path=f"{self.BASE_PATH}/1/entitlements"),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1/entitlements"
+                "?resource_type=maas&resource_id=0"
+                "&entitlement=can_edit_machines",
+            ),
         ]
 
     # GET /groups
@@ -428,3 +444,282 @@ class TestUserGroupsApi(ApiCommonTests):
             f"{self.BASE_PATH}/999/members/10"
         )
         assert response.status_code == 404
+
+    # POST /groups/{group_id}/entitlements
+    async def test_add_entitlement_maas(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        entitlement_request = EntitlementRequest(
+            resource_type="maas",
+            resource_id=0,
+            entitlement="can_edit_machines",
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.upsert = AsyncMock(
+            return_value=OpenFGATuple(
+                object_type="maas",
+                object_id="0",
+                relation="can_edit_machines",
+                user="group:1#member",
+                user_type="userset",
+            )
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements",
+            json=jsonable_encoder(entitlement_request),
+        )
+        assert response.status_code == 200
+        result = EntitlementResponse(**response.json())
+        assert result.resource_type == "maas"
+        assert result.resource_id == 0
+        assert result.entitlement == "can_edit_machines"
+
+    async def test_add_entitlement_pool(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        entitlement_request = EntitlementRequest(
+            resource_type="pool",
+            resource_id=5,
+            entitlement="can_edit_machines",
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.exists = AsyncMock(return_value=True)
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.upsert = AsyncMock(
+            return_value=OpenFGATuple(
+                object_type="pool",
+                object_id="5",
+                relation="can_edit_machines",
+                user="group:1#member",
+                user_type="userset",
+            )
+        )
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements",
+            json=jsonable_encoder(entitlement_request),
+        )
+        assert response.status_code == 200
+        result = EntitlementResponse(**response.json())
+        assert result.resource_type == "pool"
+        assert result.resource_id == 5
+        assert result.entitlement == "can_edit_machines"
+
+    async def test_add_entitlement_group_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        entitlement_request = EntitlementRequest(
+            resource_type="maas",
+            resource_id=0,
+            entitlement="can_edit_machines",
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = None
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/999/entitlements",
+            json=jsonable_encoder(entitlement_request),
+        )
+        assert response.status_code == 404
+
+    async def test_add_entitlement_invalid_resource_type(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        entitlement_request = {
+            "resource_type": "invalid",
+            "resource_id": 0,
+            "entitlement": "can_edit_machines",
+        }
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements",
+            json=entitlement_request,
+        )
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.code == 422
+
+    async def test_add_entitlement_maas_invalid(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        entitlement_request = EntitlementRequest(
+            resource_type="maas",
+            resource_id=-1,  # should be 0 for maas entitlements
+            entitlement="can_edit_machines",
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements",
+            json=jsonable_encoder(entitlement_request),
+        )
+        assert response.status_code == 400
+
+    async def test_add_entitlement_pool_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        entitlement_request = EntitlementRequest(
+            resource_type="pool",
+            resource_id=999,
+            entitlement="can_edit_machines",
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.exists = AsyncMock(return_value=False)
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements",
+            json=jsonable_encoder(entitlement_request),
+        )
+        assert response.status_code == 404
+
+    async def test_add_entitlement_invalid_entitlement_name(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        entitlement_request = EntitlementRequest(
+            resource_type="maas",
+            resource_id=0,
+            entitlement="nonexistent_entitlement",
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+
+        response = await mocked_api_client_admin.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements",
+            json=jsonable_encoder(entitlement_request),
+        )
+        assert response.status_code == 400
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.code == 400
+
+    # DELETE /groups/{group_id}/entitlements
+    async def test_remove_entitlement_maas(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.delete_entitlement = AsyncMock(
+            return_value=None
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements",
+            params={
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        assert response.status_code == 204
+        services_mock.openfga_tuples.delete_entitlement.assert_called_once_with(
+            TEST_GROUP.id, "can_edit_machines", "maas", 0
+        )
+
+    async def test_remove_entitlement_pool(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.delete_entitlement = AsyncMock(
+            return_value=None
+        )
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements",
+            params={
+                "resource_type": "pool",
+                "resource_id": 5,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        assert response.status_code == 204
+        services_mock.openfga_tuples.delete_entitlement.assert_called_once_with(
+            TEST_GROUP.id, "can_edit_machines", "pool", 5
+        )
+
+    async def test_remove_entitlement_group_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = None
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/999/entitlements",
+            params={
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        assert response.status_code == 404
+
+    async def test_remove_entitlement_invalid_resource_type(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements",
+            params={
+                "resource_type": "invalid",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.code == 422
+
+    async def test_remove_entitlement_invalid_entitlement_name(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+
+        response = await mocked_api_client_admin.delete(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements",
+            params={
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "nonexistent",
+            },
+        )
+        assert response.status_code == 400
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.code == 400

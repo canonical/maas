@@ -78,7 +78,7 @@ class UserGroupsService(
             raise UserGroupNotFound()
 
         await self._check_already_member(user_id, group.id)
-        await self.openfga_tuples_service.create(
+        await self.openfga_tuples_service.upsert(
             OpenFGATupleBuilder.build_user_member_group(user_id, group.id)
         )
 
@@ -88,7 +88,7 @@ class UserGroupsService(
             raise UserGroupNotFound()
 
         await self._check_already_member(user_id, group_id)
-        await self.openfga_tuples_service.create(
+        await self.openfga_tuples_service.upsert(
             OpenFGATupleBuilder.build_user_member_group(user_id, group.id)
         )
 

@@ -3,15 +3,19 @@
 
 from typing import Union
 
-from fastapi import Depends, Header, Response
+from fastapi import Depends, Header, Query, Response
 from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
 )
 from maasapiserver.v3.api import services
+from maasapiserver.v3.api.public.models.requests.entitlements import (
+    EntitlementRequest,
+)
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.usergroup_members import (
     UserGroupMemberRequest,
@@ -21,6 +25,9 @@ from maasapiserver.v3.api.public.models.requests.usergroups import (
 )
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
+)
+from maasapiserver.v3.api.public.models.responses.entitlements import (
+    EntitlementResponse,
 )
 from maasapiserver.v3.api.public.models.responses.usergroup_members import (
     UserGroupMemberResponse,
@@ -32,8 +39,10 @@ from maasapiserver.v3.api.public.models.responses.usergroups import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.openfga.base import OpenFGAEntitlementResourceType
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
     BaseExceptionDetail,
     ConflictException,
     NotFoundException,
@@ -43,6 +52,7 @@ from maasservicelayer.exceptions.constants import (
     USER_ALREADY_IN_GROUP,
 )
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.openfga_tuples import EntitlementsBuilderFactory
 from maasservicelayer.services.usergroups import (
     UserAlreadyInGroup,
     UserGroupNotFound,
@@ -331,4 +341,83 @@ class UserGroupsHandler(Handler):
             raise NotFoundException()
 
         await services.usergroups.remove_user_from_group(group_id, user_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    # Entitlement endpoints
+
+    @handler(
+        path="/groups/{group_id}/entitlements",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": EntitlementResponse,
+            },
+            400: {"model": BadRequestBodyResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def add_group_entitlement(
+        self,
+        group_id: int,
+        entitlement_request: EntitlementRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> EntitlementResponse:
+        group = await services.usergroups.get_by_id(group_id)
+        if not group:
+            raise NotFoundException()
+
+        builder = await entitlement_request.to_builder(group_id, services)
+        openfga_tuple = await services.openfga_tuples.upsert(builder)
+        return EntitlementResponse.from_model(openfga_tuple)
+
+    @handler(
+        path="/groups/{group_id}/entitlements",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            400: {"model": BadRequestBodyResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def remove_group_entitlement(
+        self,
+        group_id: int,
+        resource_type: OpenFGAEntitlementResourceType = Query(),  # noqa: B008
+        resource_id: int = Query(),  # noqa: B008
+        entitlement: str = Query(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        group = await services.usergroups.get_by_id(group_id)
+        if not group:
+            raise NotFoundException()
+
+        is_valid, error_message = (
+            EntitlementsBuilderFactory.validate_entitlement(
+                entitlement, resource_type
+            )
+        )
+        if not is_valid:
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message=error_message,  # type: ignore[reportArgumentType]
+                    )
+                ]
+            )
+
+        await services.openfga_tuples.delete_entitlement(
+            group_id, entitlement, resource_type, resource_id
+        )
         return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -87,7 +87,7 @@ class TestUserGroupsService:
         await service.add_user_to_group(1, TEST_GROUP.name)
         usergroups_repository.get_one.assert_awaited_once()
         usergroup_members_repository.exists.assert_awaited_once()
-        openfga_tuples_service.create.assert_awaited_once_with(
+        openfga_tuples_service.upsert.assert_awaited_once_with(
             OpenFGATupleBuilder.build_user_member_group(1, TEST_GROUP.id)
         )
 
@@ -110,7 +110,7 @@ class TestUserGroupsService:
 
         usergroups_repository.get_one.assert_awaited_once()
         usergroup_members_repository.exists.assert_awaited_once()
-        openfga_tuples_service.create.assert_not_awaited()
+        openfga_tuples_service.upsert.assert_not_awaited()
 
     async def test_delete_by_id(self) -> None:
         usergroups_repository = Mock(UserGroupsRepository)
@@ -152,7 +152,7 @@ class TestUserGroupsService:
             id=TEST_GROUP.id
         )
         usergroup_members_repository.exists.assert_awaited_once()
-        openfga_tuples_service.create.assert_awaited_once_with(
+        openfga_tuples_service.upsert.assert_awaited_once_with(
             OpenFGATupleBuilder.build_user_member_group(1, TEST_GROUP.id)
         )
 
@@ -178,7 +178,7 @@ class TestUserGroupsService:
             id=TEST_GROUP.id
         )
         usergroup_members_repository.exists.assert_awaited_once()
-        openfga_tuples_service.create.assert_not_awaited()
+        openfga_tuples_service.upsert.assert_not_awaited()
 
     async def test_add_user_to_group_by_id_not_found(self) -> None:
         usergroups_repository = Mock(UserGroupsRepository)

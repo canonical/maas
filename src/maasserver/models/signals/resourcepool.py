@@ -15,7 +15,7 @@ signals = SignalsManager()
 
 def post_created_resourcepool(sender, instance, created, **kwargs):
     if created:
-        service_layer.services.openfga_tuples.create(
+        service_layer.services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_pool(str(instance.id))
         )
 

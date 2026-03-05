@@ -10,8 +10,14 @@ from django.conf import settings
 from django.urls import reverse
 
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.openfga_tuples import (
+    OpenFGATuplesClauseFactory,
+)
+from maasservicelayer.models.openfga_tuple import OpenFGATuple
 
 
 def _parse(response):
@@ -25,6 +31,27 @@ def _create_group(client, name, description=None):
         data["description"] = description
     resp = client.post(reverse("usergroups_handler"), data)
     return _parse(resp), resp
+
+
+def get_openfga_tuple(
+    user: str, relation: str, object_type: str, object_id: str
+) -> OpenFGATuple | None:
+    tuples = service_layer.services.openfga_tuples.get_many(
+        QuerySpec(
+            where=OpenFGATuplesClauseFactory.and_clauses(
+                [
+                    OpenFGATuplesClauseFactory.with_user(user),
+                    OpenFGATuplesClauseFactory.with_relation(relation),
+                    OpenFGATuplesClauseFactory.with_object_type(object_type),
+                    OpenFGATuplesClauseFactory.with_object_id(object_id),
+                ]
+            )
+        )
+    )
+    assert len(tuples) <= 1, "Expected at most one matching OpenFGA tuple"
+    if tuples:
+        return tuples[0]
+    return None
 
 
 class TestUserGroupsAPI(APITestCase.ForUser):
@@ -345,6 +372,14 @@ class TestUserGroupAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
+        self.assertIsNotNone(
+            get_openfga_tuple(
+                f"user:{member.id}",
+                "member",
+                "group",
+                str(group.id),
+            )
+        )
 
     def test_add_member_requires_username(self):
         self.become_admin()
@@ -398,6 +433,14 @@ class TestUserGroupAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.CONFLICT, response.status_code, response.content
         )
+        self.assertIsNotNone(
+            get_openfga_tuple(
+                f"user:{member.id}",
+                "member",
+                "group",
+                str(group.id),
+            )
+        )
 
     def test_remove_member_requires_admin(self):
         group = factory.make_Usergroup()
@@ -425,6 +468,14 @@ class TestUserGroupAPI(APITestCase.ForUser):
         )
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content
+        )
+        self.assertIsNone(
+            get_openfga_tuple(
+                f"user:{member.id}",
+                "member",
+                "group",
+                str(group.id),
+            )
         )
 
     def test_remove_member_requires_username(self):
@@ -487,6 +538,257 @@ class TestUserGroupAPI(APITestCase.ForUser):
         parsed = _parse(response)
         usernames = {m["username"] for m in parsed}
         self.assertNotIn(member.username, usernames)
+
+    # Entitlement endpoints
+    def test_add_entitlement_requires_admin(self):
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "add_entitlement",
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+        self.assertIsNone(
+            get_openfga_tuple(
+                f"group:{group.id}#member", "can_edit_machines", "maas", "0"
+            )
+        )
+
+    def test_add_entitlement_maas(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "add_entitlement",
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.assertIsNotNone(
+            get_openfga_tuple(
+                f"group:{group.id}#member",
+                "can_edit_machines",
+                "maas",
+                "0",
+            )
+        )
+
+    def test_add_entitlement_pool(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+        pool = factory.make_ResourcePool()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "add_entitlement",
+                "resource_type": "pool",
+                "resource_id": pool.id,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.assertIsNotNone(
+            get_openfga_tuple(
+                f"group:{group.id}#member",
+                "can_edit_machines",
+                "pool",
+                str(pool.id),
+            )
+        )
+
+    def test_add_entitlement_group_not_found(self):
+        self.become_admin()
+        response = self.client.post(
+            reverse("usergroup_handler", args=[99999]),
+            {
+                "op": "add_entitlement",
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+    def test_add_entitlement_invalid_resource_type(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "add_entitlement",
+                "resource_type": "invalid",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST,
+            response.status_code,
+            response.content,
+        )
+
+    def test_add_entitlement_pool_not_found(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "add_entitlement",
+                "resource_type": "pool",
+                "resource_id": 99999,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+    def test_add_entitlement_maas_invalid(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "add_entitlement",
+                "resource_type": "maas",
+                "resource_id": -1,  # must be 0 for maas
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+
+    def test_add_entitlement_invalid_entitlement_name(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "add_entitlement",
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "nonexistent",
+            },
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+
+    def test_remove_entitlement_requires_admin(self):
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "remove_entitlement",
+                "resource_type": "maas",
+                "resource_id": "0",
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_remove_entitlement(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+        entitlement = factory.make_Entitlement(group=group)
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "remove_entitlement",
+                "resource_type": entitlement.object_type,
+                "resource_id": entitlement.object_id,
+                "entitlement": entitlement.relation,
+            },
+        )
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
+        self.assertIsNone(
+            get_openfga_tuple(
+                f"group:{group.id}#member",
+                entitlement.relation,
+                entitlement.object_type,
+                entitlement.object_id,
+            )
+        )
+
+    def test_remove_entitlement_group_not_found(self):
+        self.become_admin()
+        response = self.client.post(
+            reverse("usergroup_handler", args=[99999]),
+            {
+                "op": "remove_entitlement",
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+    def test_remove_entitlement_invalid_entitlement(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "remove_entitlement",
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "invalid",
+            },
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+
+    def test_remove_entitlement_invalid_resource_type(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "remove_entitlement",
+                "resource_type": "invalid",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST,
+            response.status_code,
+            response.content,
+        )
 
 
 class TestUserGroupsOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
@@ -685,6 +987,72 @@ class TestUserGroupsOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
         response = self.client.post(
             reverse("usergroup_handler", args=[group.id]),
             {"op": "remove_member", "username": "someone"},
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_add_entitlement_requires_can_edit_identities(self):
+        group = factory.make_Usergroup()
+        self.openfga_client.can_edit_identities.return_value = True
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "add_entitlement",
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+
+    def test_add_entitlement_denied_without_can_edit_permission(self):
+        group = factory.make_Usergroup()
+        self.openfga_client.can_edit_identities.return_value = False
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "add_entitlement",
+                "resource_type": "maas",
+                "resource_id": 0,
+                "entitlement": "can_edit_machines",
+            },
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_remove_entitlement_requires_can_edit_identities(self):
+        group = factory.make_Usergroup()
+        entitlement = factory.make_Entitlement(group=group)
+        self.openfga_client.can_edit_identities.return_value = True
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "remove_entitlement",
+                "resource_type": entitlement.object_type,
+                "resource_id": entitlement.object_id,
+                "entitlement": entitlement.relation,
+            },
+        )
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
+
+    def test_remove_entitlement_denied_without_can_edit_permission(self):
+        group = factory.make_Usergroup()
+        entitlement = factory.make_Entitlement(group=group)
+        self.openfga_client.can_edit_identities.return_value = False
+        response = self.client.post(
+            reverse("usergroup_handler", args=[group.id]),
+            {
+                "op": "remove_entitlement",
+                "resource_type": entitlement.object_type,
+                "resource_id": entitlement.object_id,
+                "entitlement": entitlement.relation,
+            },
         )
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content

@@ -154,7 +154,7 @@ class TestResourcePoolsService:
         )
         resource_pool = ResourcePool(id=1, name="test", description="")
         await resource_pools_service.post_create_hook(resource_pool)
-        openfga_tuples_service.create.assert_called_once()
+        openfga_tuples_service.upsert.assert_called_once()
 
     async def test_delete_calls_post_delete_hook(self) -> None:
         resource_pools_repository = Mock(ResourcePoolRepository)
@@ -181,9 +181,9 @@ class TestResourcePoolsService:
         await resource_pools_service.post_create_many_hook(
             [resource_pool_1, resource_pool_2]
         )
-        openfga_tuples_service.create.assert_any_call(
+        openfga_tuples_service.upsert.assert_any_call(
             OpenFGATupleBuilder.build_pool(str(resource_pool_1.id))
         )
-        openfga_tuples_service.create.assert_any_call(
+        openfga_tuples_service.upsert.assert_any_call(
             OpenFGATupleBuilder.build_pool(str(resource_pool_2.id))
         )

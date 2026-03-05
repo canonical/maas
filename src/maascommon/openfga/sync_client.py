@@ -7,7 +7,10 @@ from maascommon.enums.openfga import (
     OPENFGA_AUTHORIZATION_MODEL_ID,
     OPENFGA_STORE_ID,
 )
-from maascommon.openfga.base import BaseOpenFGAClient
+from maascommon.openfga.base import (
+    BaseOpenFGAClient,
+    OpenFGAEntitlementResourceType,
+)
 
 
 class SyncOpenFGAClient(BaseOpenFGAClient):
@@ -147,15 +150,25 @@ class SyncOpenFGAClient(BaseOpenFGAClient):
 
     # List Methods
     def list_pools_with_view_machines_access(self, user) -> list[int]:
-        return self._list_objects(user, "can_view_machines", "pool")
+        return self._list_objects(
+            user, "can_view_machines", OpenFGAEntitlementResourceType.POOL
+        )
 
     def list_pools_with_view_available_machines_access(
         self, user
     ) -> list[int]:
-        return self._list_objects(user, "can_view_available_machines", "pool")
+        return self._list_objects(
+            user,
+            "can_view_available_machines",
+            OpenFGAEntitlementResourceType.POOL,
+        )
 
     def list_pool_with_deploy_machines_access(self, user) -> list[int]:
-        return self._list_objects(user, "can_deploy_machines", "pool")
+        return self._list_objects(
+            user, "can_deploy_machines", OpenFGAEntitlementResourceType.POOL
+        )
 
     def list_pools_with_edit_machines_access(self, user) -> list[int]:
-        return self._list_objects(user, "can_edit_machines", "pool")
+        return self._list_objects(
+            user, "can_edit_machines", OpenFGAEntitlementResourceType.POOL
+        )

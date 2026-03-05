@@ -15,8 +15,13 @@ from maasserver.exceptions import (
     MAASAPINotFound,
     UserAlreadyGroupMemberConflict,
 )
+from maasserver.models import ResourcePool
 from maasserver.sqlalchemy import service_layer
 from maasservicelayer.builders.usergroups import UserGroupBuilder
+from maasservicelayer.services.openfga_tuples import (
+    EntitlementsBuilderFactory,
+    UndefinedEntitlementError,
+)
 from maasservicelayer.services.usergroups import (
     UserAlreadyInGroup,
     UserGroupNotFound,
@@ -204,6 +209,110 @@ class UserGroupHandler(OperationsHandler):
 
         service_layer.services.usergroups.remove_user_from_group(
             int(id), user.id
+        )
+        return rc.DELETED
+
+    def _parse_entitlement_request(self, request, id):
+        """Parses and validates the entitlement-related parameters from the request."""
+        group = service_layer.services.usergroups.get_by_id(int(id))
+        if group is None:
+            raise MAASAPINotFound(f"UserGroup with id {id} not found.")
+
+        resource_type = request.data.get("resource_type")
+        if not resource_type:
+            raise MAASAPIBadRequest("resource_type is required.")
+
+        resource_id_str = request.data.get("resource_id")
+        if resource_id_str is None:
+            raise MAASAPIBadRequest("resource_id is required.")
+        try:
+            resource_id = int(resource_id_str)
+        except (ValueError, TypeError) as err:
+            raise MAASAPIBadRequest("resource_id must be an integer.") from err
+
+        entitlement = request.data.get("entitlement")
+        if not entitlement:
+            raise MAASAPIBadRequest("entitlement is required.")
+
+        return resource_type, resource_id, entitlement
+
+    @operation(idempotent=False)
+    @check_permission("can_edit_identities")
+    def add_entitlement(self, request, id):
+        """@description Adds an entitlement to a user group.
+        @param (url-string) "{id}" [required=true] A group ID.
+        @param (string) "resource_type" [required=true] The resource type
+            ('maas' or 'pool').
+        @param (int) "resource_id" [required=true] The resource ID. Must
+            be 0 for 'maas' type.
+        @param (string) "entitlement" [required=true] The entitlement name.
+
+        @success (http-status-code) "server_success" 200
+
+        @error (http-status-code) "400" 400
+        @error (content) "badrequest" Invalid request parameters.
+        @error (http-status-code) "404" 404
+        @error (content) "notfound" The group or resource is not found.
+        """
+        resource_type, resource_id, entitlement = (
+            self._parse_entitlement_request(request, id)
+        )
+
+        try:
+            factory = EntitlementsBuilderFactory.get_factory(
+                entitlement, resource_type
+            )
+        except UndefinedEntitlementError as err:
+            raise MAASAPIBadRequest(str(err)) from err
+
+        if resource_type == "pool":
+            pool_exists = ResourcePool.objects.filter(id=resource_id).exists()
+            if pool_exists is False:
+                raise MAASAPINotFound(
+                    f"ResourcePool with id {resource_id} not found."
+                )
+        elif resource_type == "maas":
+            if resource_id != 0:
+                raise MAASAPIBadRequest(
+                    "resource_id must be 0 for 'maas' type."
+                )
+
+        service_layer.services.openfga_tuples.upsert(
+            factory.build_tuple(int(id), resource_id)
+        )
+        return rc.ALL_OK
+
+    @operation(idempotent=False)
+    @check_permission("can_edit_identities")
+    def remove_entitlement(self, request, id):
+        """@description Removes an entitlement from a user group.
+        @param (url-string) "{id}" [required=true] A group ID.
+        @param (string) "resource_type" [required=true] The resource type
+            ('maas' or 'pool').
+        @param (int) "resource_id" [required=true] The resource ID.
+        @param (string) "entitlement" [required=true] The entitlement name.
+
+        @success (http-status-code) "server_success" 204
+
+        @error (http-status-code) "400" 400
+        @error (content) "badrequest" Invalid request parameters.
+        @error (http-status-code) "404" 404
+        @error (content) "notfound" The group is not found.
+        """
+        resource_type, resource_id, entitlement = (
+            self._parse_entitlement_request(request, id)
+        )
+
+        is_valid, error_message = (
+            EntitlementsBuilderFactory.validate_entitlement(
+                entitlement, resource_type
+            )
+        )
+        if not is_valid:
+            raise MAASAPIBadRequest(error_message)
+
+        service_layer.services.openfga_tuples.delete_entitlement(
+            int(id), entitlement, resource_type, resource_id
         )
         return rc.DELETED
 

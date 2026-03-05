@@ -932,7 +932,7 @@ class TestTagsOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
             {
                 "name": name,
                 "comment": factory.make_string(),
-                "definition": factory.make_string(),
+                "definition": "//node/child",
             },
         )
         self.assertEqual(
