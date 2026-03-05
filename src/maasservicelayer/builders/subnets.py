@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -19,23 +18,17 @@ class SubnetBuilder(ResourceBuilder):
     the generated code.
     """
 
-    active_discovery: Union[bool, Unset] = Field(default=UNSET, required=False)
-    allow_dns: Union[bool, Unset] = Field(default=UNSET, required=False)
-    allow_proxy: Union[bool, Unset] = Field(default=UNSET, required=False)
-    cidr: Union[IPv4v6Network, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    disabled_boot_architectures: Union[list[str], Unset] = Field(
-        default=UNSET, required=False
-    )
-    dns_servers: Union[list[str], None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    gateway_ip: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    managed: Union[bool, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    rdns_mode: Union[RdnsMode, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    vlan_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    active_discovery: bool | Unset = Field(default=UNSET)
+    allow_dns: bool | Unset = Field(default=UNSET)
+    allow_proxy: bool | Unset = Field(default=UNSET)
+    cidr: IPv4v6Network | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | None | Unset = Field(default=UNSET)
+    disabled_boot_architectures: list[str] | Unset = Field(default=UNSET)
+    dns_servers: list[str] | None | Unset = Field(default=UNSET)
+    gateway_ip: IPvAnyAddress | None | Unset = Field(default=UNSET)
+    managed: bool | Unset = Field(default=UNSET)
+    name: str | None | Unset = Field(default=UNSET)
+    rdns_mode: RdnsMode | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    vlan_id: int | Unset = Field(default=UNSET)

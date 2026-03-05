@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -17,11 +16,9 @@ class ServiceStatusBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    name: Union[ServiceName, Unset] = Field(default=UNSET, required=False)
-    node_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    status: Union[ServiceStatusEnum, Unset] = Field(
-        default=UNSET, required=False
-    )
-    status_info: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    name: ServiceName | Unset = Field(default=UNSET)
+    node_id: int | Unset = Field(default=UNSET)
+    status: ServiceStatusEnum | Unset = Field(default=UNSET)
+    status_info: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
