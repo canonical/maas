@@ -226,7 +226,8 @@ class CurtinStorageGenerator:
         """Save which devices should have grub installed."""
         for raid in self.operations["raid"]:
             partition_ids, block_devices_ids = zip(
-                *raid.filesystems.values_list("partition", "block_device")
+                *raid.filesystems.values_list("partition", "block_device"),
+                strict=False,
             )
             partition_ids = set(partition_ids)
             partition_ids.discard(None)

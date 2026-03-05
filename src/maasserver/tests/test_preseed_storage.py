@@ -1637,7 +1637,7 @@ class TestMountOrdering(MAASServerTestCase):
                 partition=partition, mount_point=mount_point
             )
             for mount_point, partition in zip(
-                shuffled(mount_points), shuffled(partitions)
+                shuffled(mount_points), shuffled(partitions), strict=False
             )
         ]
         node._create_acquired_filesystems()
