@@ -18,7 +18,9 @@ def assert_unordered_items_equal(actual: list, expected: list):
         f"Expected: {expected}\nActual: {actual}"
     )
 
-    for i, (a, b) in enumerate(zip(sorted(actual), sorted(expected))):
+    for i, (a, b) in enumerate(
+        zip(sorted(actual), sorted(expected), strict=False)
+    ):
         assert a == b, (
             f"Mismatch at index {i}: expected {b}, but got {a}.\n"
             f"Expected: {expected}\nActual: {actual}"

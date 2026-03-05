@@ -357,7 +357,9 @@ class TestPermissionsFunctions:
             )
             endpoint += "?p=" + "&p=".join([perm for perm in perms])
             endpoint += "&u=test"
-            payload = {k: v for (k, v) in zip(perms, response_ids)}
+            payload = {
+                k: v for (k, v) in zip(perms, response_ids, strict=False)
+            }
             mock_aioresponse.get(endpoint, payload=payload)
 
         user_response = await auth_client_rbac.post(

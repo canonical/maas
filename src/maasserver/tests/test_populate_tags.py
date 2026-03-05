@@ -62,7 +62,7 @@ class TestDoPopulateTags(MAASServerTestCase):
         clients = [
             create_autospec(Client, instance=True) for _ in rack_controllers
         ]
-        for rack, client in zip(rack_controllers, clients):
+        for rack, client in zip(rack_controllers, clients, strict=False):
             client.side_effect = always_succeed_with(None)
             client.ident = rack.system_id
 

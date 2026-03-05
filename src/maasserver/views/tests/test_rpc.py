@@ -75,8 +75,10 @@ class TestRPCView(MAASTransactionServerTestCase):
         eventloops = info["eventloops"]
         self.assertEqual(eventloops.keys(), {eventloop.loop.name})
         endpoints = eventloops[eventloop.loop.name]
-        ips, ports = zip(*endpoints)
-        expected_ips, _ = zip(*ipcMaster._getListenAddresses(5240))
+        ips, ports = zip(*endpoints, strict=False)
+        expected_ips, _ = zip(
+            *ipcMaster._getListenAddresses(5240), strict=False
+        )
         # Each entry in the endpoints dict is a mapping from an event
         # loop to a list of (host, port) tuples. Each tuple is a
         # potential endpoint for connecting into that event loop.

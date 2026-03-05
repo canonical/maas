@@ -360,6 +360,7 @@ class TestIntegrationImageManifestsService:
         for path, product in zip(
             product_paths,
             [bootloader_products, ubuntu_products, centos_products],
+            strict=False,
         ):
             mock_aioresponse.get(
                 f"{test_boot_source.url}/{path}", payload=product

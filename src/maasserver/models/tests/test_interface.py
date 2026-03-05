@@ -2576,7 +2576,7 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             interface.update_ip_addresses(cidr_list)
 
         self.assertEqual(num_connections, interface.ip_addresses.count())
-        for cidr, subnet in zip(cidr_list, subnet_list):
+        for cidr, subnet in zip(cidr_list, subnet_list, strict=False):
             ip = interface.ip_addresses.get(ip=cidr.split("/")[0])
             self.assertEqual(ip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
             self.assertEqual(ip.subnet, subnet)
@@ -2686,7 +2686,7 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             "Discovered IP address should have been deleted.",
         )
         self.assertEqual(num_connections, interface.ip_addresses.count())
-        for cidr, subnet in zip(cidr_list, subnet_list):
+        for cidr, subnet in zip(cidr_list, subnet_list, strict=False):
             ip = interface.ip_addresses.get(ip=cidr.split("/")[0])
             self.assertEqual(ip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
             self.assertEqual(ip.subnet, subnet)
@@ -2740,7 +2740,7 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             "Unknown interfaces should have been deleted.",
         )
         self.assertEqual(num_connections, interface.ip_addresses.count())
-        for cidr, subnet in zip(cidr_list, subnet_list):
+        for cidr, subnet in zip(cidr_list, subnet_list, strict=False):
             ip = interface.ip_addresses.get(ip=cidr.split("/")[0])
             self.assertEqual(ip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
             self.assertEqual(ip.subnet, subnet)
@@ -2779,7 +2779,7 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             "Sticky IP address should have been deleted.",
         )
         self.assertEqual(num_connections, interface.ip_addresses.count())
-        for cidr, subnet in zip(cidr_list, subnet_list):
+        for cidr, subnet in zip(cidr_list, subnet_list, strict=False):
             ip = interface.ip_addresses.get(ip=cidr.split("/")[0])
             self.assertEqual(ip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
             self.assertEqual(ip.subnet, subnet)

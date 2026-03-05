@@ -609,7 +609,9 @@ class Cluster(SecuredRPCProtocol):
         )
 
         def map_results(results):
-            for request, (success, mac_address) in zip(ip_addresses, results):
+            for request, (success, mac_address) in zip(
+                ip_addresses, results, strict=False
+            ):
                 request["used"] = success
                 if success and mac_address:
                     request["mac_address"] = mac_address
