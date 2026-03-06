@@ -212,6 +212,34 @@ class UserGroupHandler(OperationsHandler):
         )
         return rc.DELETED
 
+    @operation(idempotent=True)
+    @check_permission("can_view_identities")
+    def list_entitlements(self, request, id):
+        """@description Lists entitlements of a user group.
+        @param (url-string) "{id}" [required=true] A group ID.
+
+        @success (http-status-code) "server_success" 200
+        @success (json) "content_success" A JSON list of entitlements.
+
+        @error (http-status-code) "404" 404
+        @error (content) "notfound" The group is not found.
+        """
+        group = service_layer.services.usergroups.get_by_id(int(id))
+        if group is None:
+            raise MAASAPINotFound(f"UserGroup with id {id} not found.")
+
+        entitlements = service_layer.services.openfga_tuples.list_entitlements(
+            int(id)
+        )
+        return [
+            {
+                "resource_type": t.object_type,
+                "resource_id": int(t.object_id),
+                "entitlement": t.relation,
+            }
+            for t in entitlements
+        ]
+
     def _parse_entitlement_request(self, request, id):
         """Parses and validates the entitlement-related parameters from the request."""
         group = service_layer.services.usergroups.get_by_id(int(id))

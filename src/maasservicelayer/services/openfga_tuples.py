@@ -228,6 +228,21 @@ class OpenFGATupleService(Service):
         )
         await self.delete_many(query)
 
+    async def list_entitlements(
+        self,
+        group_id: int,
+    ) -> list[OpenFGATuple]:
+        query = QuerySpec(
+            where=OpenFGATuplesClauseFactory.and_clauses(
+                [
+                    OpenFGATuplesClauseFactory.with_user(
+                        f"group:{group_id}#member"
+                    )
+                ]
+            )
+        )
+        return await self.get_many(query)
+
     async def delete_entitlement(
         self,
         group_id: int,

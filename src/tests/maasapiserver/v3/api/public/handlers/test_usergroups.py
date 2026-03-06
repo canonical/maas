@@ -19,6 +19,7 @@ from maasapiserver.v3.api.public.models.requests.usergroups import (
 )
 from maasapiserver.v3.api.public.models.responses.entitlements import (
     EntitlementResponse,
+    EntitlementsListResponse,
 )
 from maasapiserver.v3.api.public.models.responses.usergroup_members import (
     UserGroupMembersListResponse,
@@ -88,6 +89,7 @@ class TestUserGroupsApi(ApiCommonTests):
             Endpoint(method="GET", path=f"{self.BASE_PATH}"),
             Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="GET", path=f"{self.BASE_PATH}/1/members"),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1/entitlements"),
         ]
 
     @pytest.fixture
@@ -442,6 +444,78 @@ class TestUserGroupsApi(ApiCommonTests):
 
         response = await mocked_api_client_admin.delete(
             f"{self.BASE_PATH}/999/members/10"
+        )
+        assert response.status_code == 404
+
+    # GET /groups/{group_id}/entitlements
+    async def test_list_entitlements(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.list_entitlements = AsyncMock(
+            return_value=[
+                OpenFGATuple(
+                    object_type="maas",
+                    object_id="0",
+                    relation="can_edit_machines",
+                    user="group:1#member",
+                    user_type="userset",
+                ),
+                OpenFGATuple(
+                    object_type="pool",
+                    object_id="5",
+                    relation="can_deploy_machines",
+                    user="group:1#member",
+                    user_type="userset",
+                ),
+            ]
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements"
+        )
+        assert response.status_code == 200
+        result = EntitlementsListResponse(**response.json())
+        assert len(result.items) == 2
+        assert result.items[0].resource_type == "maas"
+        assert result.items[0].entitlement == "can_edit_machines"
+        assert result.items[1].resource_type == "pool"
+        assert result.items[1].resource_id == 5
+        assert result.items[1].entitlement == "can_deploy_machines"
+
+    async def test_list_entitlements_empty(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.list_entitlements = AsyncMock(
+            return_value=[]
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements"
+        )
+        assert response.status_code == 200
+        result = EntitlementsListResponse(**response.json())
+        assert len(result.items) == 0
+
+    async def test_list_entitlements_group_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = None
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/999/entitlements"
         )
         assert response.status_code == 404
 

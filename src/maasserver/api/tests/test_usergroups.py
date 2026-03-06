@@ -540,6 +540,71 @@ class TestUserGroupAPI(APITestCase.ForUser):
         self.assertNotIn(member.username, usernames)
 
     # Entitlement endpoints
+    def test_list_entitlements_requires_admin(self):
+        group = factory.make_Usergroup()
+
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_entitlements"},
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_list_entitlements_empty(self):
+        self.become_admin()
+        group = factory.make_Usergroup()
+
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_entitlements"},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.assertEqual([], _parse(response))
+
+    def test_list_entitlements_404(self):
+        self.become_admin()
+        response = self.client.get(
+            reverse("usergroup_handler", args=[99999]),
+            {"op": "list_entitlements"},
+        )
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+    def test_list_entitlements_returns_added_entitlements(self):
+        self.become_admin()
+
+        group = factory.make_Usergroup()
+        entitlement = factory.make_Entitlement(
+            group=group,
+            resource_type="maas",
+            entitlement="can_edit_machines",
+        )
+
+        another_group = factory.make_Usergroup()
+        factory.make_Entitlement(
+            group=another_group,
+            resource_type="maas",
+            entitlement="can_view_machines",
+        )
+
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_entitlements"},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        parsed = _parse(response)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0]["resource_type"], entitlement.object_type)
+        self.assertEqual(parsed[0]["resource_id"], int(entitlement.object_id))
+        self.assertEqual(parsed[0]["entitlement"], entitlement.relation)
+
+    # add_entitlement
     def test_add_entitlement_requires_admin(self):
         group = factory.make_Usergroup()
 
@@ -1053,6 +1118,28 @@ class TestUserGroupsOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
                 "resource_id": entitlement.object_id,
                 "entitlement": entitlement.relation,
             },
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_list_entitlements_requires_can_view_identities(self):
+        group = factory.make_Usergroup()
+        self.openfga_client.can_view_identities.return_value = True
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_entitlements"},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+
+    def test_list_entitlements_denied_without_view_permission(self):
+        group = factory.make_Usergroup()
+        self.openfga_client.can_view_identities.return_value = False
+        response = self.client.get(
+            reverse("usergroup_handler", args=[group.id]),
+            {"op": "list_entitlements"},
         )
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content

@@ -21,3 +21,8 @@ class EntitlementResponse(BaseModel):
             resource_id=int(tuple_.object_id),
             entitlement=tuple_.relation,
         )
+
+
+class EntitlementsListResponse(BaseModel):
+    kind = "EntitlementsList"
+    items: list[EntitlementResponse]

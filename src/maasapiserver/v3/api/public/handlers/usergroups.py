@@ -28,6 +28,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
 )
 from maasapiserver.v3.api.public.models.responses.entitlements import (
     EntitlementResponse,
+    EntitlementsListResponse,
 )
 from maasapiserver.v3.api.public.models.responses.usergroup_members import (
     UserGroupMemberResponse,
@@ -344,6 +345,38 @@ class UserGroupsHandler(Handler):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     # Entitlement endpoints
+
+    @handler(
+        path="/groups/{group_id}/entitlements",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": EntitlementsListResponse,
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_group_entitlements(
+        self,
+        group_id: int,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> EntitlementsListResponse:
+        group = await services.usergroups.get_by_id(group_id)
+        if not group:
+            raise NotFoundException()
+
+        entitlements = await services.openfga_tuples.list_entitlements(
+            group_id
+        )
+        return EntitlementsListResponse(
+            items=[EntitlementResponse.from_model(t) for t in entitlements],
+        )
 
     @handler(
         path="/groups/{group_id}/entitlements",

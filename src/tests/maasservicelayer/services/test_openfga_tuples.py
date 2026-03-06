@@ -28,6 +28,34 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 @pytest.mark.asyncio
 class TestIntegrationOpenFGAService:
+    async def test_list_entitlements(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ):
+        await create_openfga_tuple(
+            fixture,
+            "group:999#member",
+            "userset",
+            "can_view_machines",
+            "pool",
+            "0",
+        )
+        await create_openfga_tuple(
+            fixture,
+            "group:1000#member",
+            "userset",
+            "can_view_machines",
+            "pool",
+            "0",
+        )
+
+        tuples = await services.openfga_tuples.list_entitlements(999)
+
+        assert len(tuples) == 1
+        assert tuples[0].relation == "can_view_machines"
+        assert tuples[0].object_type == "pool"
+        assert tuples[0].object_id == "0"
+        assert tuples[0].user == "group:999#member"
+
     async def test_upsert(
         self,
         fixture: Fixture,
