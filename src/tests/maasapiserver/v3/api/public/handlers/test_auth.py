@@ -1,4 +1,4 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
@@ -1007,7 +1007,7 @@ class TestAuthApi:
     @patch(
         "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.set_unsafe_cookie"
     )
-    @patch("maasapiserver.v3.api.public.handlers.auth.secrets.token_urlsafe")
+    @patch("maasapiserver.v3.api.public.handlers.auth.secrets.token_hex")
     async def test_post_create_session_204(
         self,
         token_urlsafe_mock: MagicMock,
@@ -1023,6 +1023,10 @@ class TestAuthApi:
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.django_session = Mock(DjangoSessionService)
         services_mock.django_session.create_session.return_value = test_session
+        services_mock.users = Mock(UsersService)
+        mock_user = Mock()
+        mock_user.password = "hashed_password"
+        services_mock.users.get_by_id = AsyncMock(return_value=mock_user)
         token_urlsafe_mock.return_value = "randomcsrftoken"
         response = await mocked_api_client_user.post(
             f"{self.BASE_PATH}/sessions",

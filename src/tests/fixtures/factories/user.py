@@ -11,6 +11,7 @@ from maasservicelayer.models.django_session import DjangoSession
 from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.models.users import User, UserProfile
 from maasservicelayer.utils.date import utcnow
+from maasservicelayer.utils.session_hash import get_session_auth_hash
 from maastesting.factory import factory
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -41,9 +42,11 @@ async def create_test_user(fixture: Fixture, **extra_details: Any) -> User:
 async def create_test_session(
     fixture: Fixture,
     user_id: int,
+    password: str = "hashed_password",
     session_id: str = "a-b-c",
     expire_date: datetime = utcnow() + timedelta(days=1),  # noqa: B008
 ) -> DjangoSession:
+    session_auth_hash = get_session_auth_hash(password)
     signer = signing.TimestampSigner(
         key="<UNUSED>",
         salt="django.contrib.sessions.SessionStore",
@@ -52,6 +55,8 @@ async def create_test_session(
     session_data = signer.sign_object(
         {
             "_auth_user_id": str(user_id),
+            "_auth_user_backend": "maasserver.auth.MAASAuthorizationBackend",
+            "_auth_user_hash": session_auth_hash,
         },
         serializer=signing.JSONSerializer,
     )

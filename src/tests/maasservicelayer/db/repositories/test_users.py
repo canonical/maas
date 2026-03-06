@@ -48,7 +48,7 @@ class TestUsersRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         user = await create_test_user(fixture)
-        await create_test_session(fixture, user.id, "test_session")
+        await create_test_session(fixture, user.id, "abc123", "test_session")
 
         users_repository = UsersRepository(Context(connection=db_connection))
         assert (await users_repository.find_by_sessionid("unexisting")) is None
@@ -63,6 +63,7 @@ class TestUsersRepository:
         await create_test_session(
             fixture,
             user.id,
+            "abc123",
             "test_session",
             expire_date=datetime.datetime.now(datetime.timezone.utc)
             - datetime.timedelta(seconds=1),
@@ -112,8 +113,8 @@ class TestUsersRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         user = await create_test_user(fixture)
-        await create_test_session(fixture, user.id, "test_session")
-        await create_test_session(fixture, user.id, "test_session2")
+        await create_test_session(fixture, user.id, "abc123", "test_session")
+        await create_test_session(fixture, user.id, "abc123", "test_session2")
 
         users_repository = UsersRepository(Context(connection=db_connection))
         await users_repository.clear_all_sessions()

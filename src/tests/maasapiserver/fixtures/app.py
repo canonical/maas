@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
@@ -38,6 +38,7 @@ from maasservicelayer.models.users import User
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.utils.date import utcnow
+from maasservicelayer.utils.session_hash import get_session_auth_hash
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -297,9 +298,15 @@ async def _create_user_session(
     key = "<UNUSED>"
     salt = "django.contrib.sessions.SessionStore"
     algorithm = "sha256"
+    session_auth_hash = get_session_auth_hash(user.password)
     signer = signing.TimestampSigner(key=key, salt=salt, algorithm=algorithm)
     session_data = signer.sign_object(
-        {"_auth_user_id": str(user.id)}, serializer=signing.JSONSerializer
+        {
+            "_auth_user_id": str(user.id),
+            "_auth_user_backend": "maasserver.auth.MAASAuthorizationBackend",
+            "_auth_user_hash": session_auth_hash,
+        },
+        serializer=signing.JSONSerializer,
     )
     await fixture.create(
         "django_session",

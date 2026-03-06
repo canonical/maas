@@ -16,6 +16,7 @@ from maasservicelayer.services.base import Context
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.django_session import DjangoSessionService
 from maasservicelayer.utils.date import utcnow
+from maasservicelayer.utils.session_hash import get_session_auth_hash
 
 TEST_SESSION = DjangoSession(
     session_key="testsessionkey",
@@ -47,8 +48,11 @@ class TestDjangoSessionService:
         utcnow_mock.return_value = now
         self.configurations_service.get = AsyncMock(return_value=3600)
         user_id = 1
+        password = "hashed_password"
         get_random_string_mock.return_value = TEST_SESSION.session_key
         self.repository.create = AsyncMock(return_value=TEST_SESSION)
+
+        session_auth_hash = get_session_auth_hash(password)
         signer = signing.TimestampSigner(
             key="<UNUSED>",
             salt="django.contrib.sessions.SessionStore",
@@ -57,7 +61,8 @@ class TestDjangoSessionService:
         session_data = signer.sign_object(  # type: ignore
             {
                 "_auth_user_id": str(user_id),
-                "_auth_user_backend": "django.contrib.auth.backends.ModelBackend",
+                "_auth_user_backend": "maasserver.auth.MAASAuthorizationBackend",
+                "_auth_user_hash": session_auth_hash,
             },
             serializer=signing.JSONSerializer,
         )
@@ -68,7 +73,7 @@ class TestDjangoSessionService:
             expire_date=now + timedelta(seconds=3600),
         )
 
-        result = await self.service.create_session(user_id)
+        result = await self.service.create_session(user_id, password)
 
         self.repository.create.assert_awaited_once_with(builder)
         assert result == TEST_SESSION

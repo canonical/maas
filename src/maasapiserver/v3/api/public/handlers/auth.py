@@ -446,10 +446,13 @@ class AuthHandler(Handler):
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
     ) -> None:
         assert authenticated_user is not None
+        user = await services.users.get_by_id(authenticated_user.id)
+        assert user is not None
         session = await services.django_session.create_session(
-            user_id=authenticated_user.id
+            user_id=authenticated_user.id,
+            password=user.password,
         )
-        csrf_token = secrets.token_urlsafe(32)
+        csrf_token = secrets.token_hex(32)
         cookie_manager.set_unsafe_cookie("csrftoken", csrf_token)
         cookie_manager.set_unsafe_cookie(
             "sessionid",

@@ -15,6 +15,7 @@ from maasservicelayer.models.django_session import DjangoSession
 from maasservicelayer.services.base import Context, Service
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.utils.date import utcnow
+from maasservicelayer.utils.session_hash import get_session_auth_hash
 
 
 class DjangoSessionService(Service):
@@ -28,8 +29,10 @@ class DjangoSessionService(Service):
         self.repository = repository
         self.config_service = config_service
 
-    async def create_session(self, user_id: int) -> DjangoSession:
-        """Function for manually creating a session, when login is done from API V3."""
+    async def create_session(
+        self, user_id: int, password: str
+    ) -> DjangoSession:
+        session_auth_hash = get_session_auth_hash(password)
 
         signer = signing.TimestampSigner(
             key="<UNUSED>",
@@ -39,7 +42,8 @@ class DjangoSessionService(Service):
         session_data = signer.sign_object(  # type: ignore
             {
                 "_auth_user_id": str(user_id),
-                "_auth_user_backend": "django.contrib.auth.backends.ModelBackend",
+                "_auth_user_backend": "maasserver.auth.MAASAuthorizationBackend",
+                "_auth_user_hash": session_auth_hash,
             },
             serializer=signing.JSONSerializer,
         )
