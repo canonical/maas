@@ -184,6 +184,29 @@ class TestServiceLayerAdapter:
         adapter.close()
         close_all_connections()
 
+    def test_ensure_connection_reopens_connection_if_dbapi_connection_is_none(
+        self, ensuremaasdjangodb
+    ):
+        """https://bugs.launchpad.net/maas/+bug/2142861"""
+        enable_all_database_connections()
+        # Start a transaction.
+        transaction.set_autocommit(False)
+
+        adapter = ServiceLayerAdapter()
+        adapter.init()
+        adapter.ensure_connection()
+
+        first_connection = adapter.context.get_connection()
+        first_connection.connection.dbapi_connection = None
+
+        adapter.ensure_connection()
+        assert (
+            adapter.context.get_connection().connection.dbapi_connection.closed
+            == 0
+        )
+        adapter.close()
+        close_all_connections()
+
     def test_service_layer_from_module(self, maasdb):
         machine = factory.make_Machine()
         fetched_machine = service_layer.services.machines.get_by_id(machine.id)
