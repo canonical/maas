@@ -55,7 +55,130 @@ def test_v3_services_creation(maasdb):
         ServiceCollectionV3.produce(
             Context(connection=conn), CacheForServices()
         )
-    )
-    fetched_machine = exec_async(services.machines.get_by_id(machine.id))
-    assert fetched_machine is not None
-    assert fetched_machine.id == machine.id
+        wrapped_stub_service = adapter.stub_service
+
+        assert hasattr(wrapped_stub_service, "async_method")
+        assert not asyncio.iscoroutine(wrapped_stub_service.async_method)
+        assert wrapped_stub_service.async_method() == "async"
+
+        assert hasattr(wrapped_stub_service, "sync_method")
+        assert not asyncio.iscoroutine(wrapped_stub_service.sync_method)
+        assert wrapped_stub_service.sync_method() == "sync"
+
+        assert hasattr(wrapped_stub_service, "my_property")
+        assert wrapped_stub_service.my_property == "my_property"
+
+        event_loop.close()
+
+    def test_adapter_does_not_wrap_other_classes(self):
+        mock_event_loop = Mock()
+        mock_service_collection = Mock(ServiceCollectionV3)
+        mock_service_collection.property = "property"
+
+        adapter = SyncServiceCollectionV3Adapter(
+            mock_event_loop, mock_service_collection
+        )
+        assert adapter.property == "property"
+
+
+class TestServiceLayerAdapter:
+    def test_ensure_initialized(self):
+        adapter = ServiceLayerAdapter()
+        with pytest.raises(ServiceLayerNotInitialized):
+            adapter.ensure_connection()
+
+        with pytest.raises(ServiceLayerNotInitialized):
+
+            async def coro():
+                pass
+
+            adapter.exec_async(coro())
+
+        with pytest.raises(ServiceLayerNotInitialized):
+            adapter.services  # noqa: B018
+
+    def test_exec_async(self, maasdb):
+        adapter = ServiceLayerAdapter()
+        adapter.init()
+
+        async def coro():
+            return "coro"
+
+        assert adapter.exec_async(coro()) == "coro"
+        adapter.close()
+
+    def test_services(self, maasdb):
+        adapter = ServiceLayerAdapter()
+        adapter.init()
+        assert adapter.services.machines.list(1, 1).total == 0
+        adapter.close()
+
+    def test_close(self, maasdb):
+        adapter = ServiceLayerAdapter()
+        adapter.init()
+        adapter.close()
+        assert adapter.event_loop.is_closed()
+
+    def test_close_doesn_not_raise_when_not_initialized(self, maasdb):
+        adapter = ServiceLayerAdapter()
+        adapter.close()
+
+    def test_ensure_connection(self, ensuremaasdjangodb):
+        enable_all_database_connections()
+        # Start a transaction.
+        transaction.set_autocommit(False)
+
+        adapter = ServiceLayerAdapter()
+        adapter.init()
+        adapter.ensure_connection()
+
+        first_connection = adapter.context.get_connection()
+
+        # Close and reopen connections
+        close_all_connections()
+        enable_all_database_connections()
+        transaction.set_autocommit(False)
+
+        # The adapter should detect that the first connection was dropped and it should pick the new one.
+        assert (
+            adapter.context.get_connection().connection.dbapi_connection.closed
+            == 1
+        )
+        adapter.ensure_connection()
+        assert (
+            adapter.context.get_connection().connection.dbapi_connection.closed
+            == 0
+        )
+        assert first_connection is not adapter.context.get_connection()
+
+        adapter.close()
+        close_all_connections()
+
+    def test_ensure_connection_reopens_connection_if_dbapi_connection_is_none(
+        self, ensuremaasdjangodb
+    ):
+        """https://bugs.launchpad.net/maas/+bug/2142861"""
+        enable_all_database_connections()
+        # Start a transaction.
+        transaction.set_autocommit(False)
+
+        adapter = ServiceLayerAdapter()
+        adapter.init()
+        adapter.ensure_connection()
+
+        first_connection = adapter.context.get_connection()
+        first_connection.connection.dbapi_connection = None
+
+        adapter.ensure_connection()
+        assert (
+            adapter.context.get_connection().connection.dbapi_connection.closed
+            == 0
+        )
+        adapter.close()
+        close_all_connections()
+
+    def test_service_layer_from_module(self, maasdb):
+        machine = factory.make_Machine()
+        fetched_machine = service_layer.services.machines.get_by_id(machine.id)
+        assert fetched_machine is not None
+        assert fetched_machine.id == machine.id
