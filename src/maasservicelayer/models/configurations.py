@@ -55,7 +55,8 @@ class DatabaseConfiguration(MaasBaseModel):
 
 class Config(BaseModel, Generic[T]):
     model_config: ClassVar[ConfigDict] = ConfigDict(
-        arbitrary_types_allowed=True
+        arbitrary_types_allowed=True,
+        url_preserve_empty_path=True
     )
 
     name: ClassVar[str]
