@@ -838,8 +838,12 @@ class NTPServersConfig(Config[Optional[str]]):
 
     # Regular expressions to sniff out things that look like IP addresses;
     # additional and more robust validation ought to be done to make sure.
-    _pt_ipv4: ClassVar[str] = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
-    _pt_ipv6: ClassVar[str] = r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % _pt_ipv4
+    _pt_ipv4: ClassVar[str] = (
+        r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
+    )
+    _pt_ipv6: ClassVar[str] = (
+        r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % _pt_ipv4
+    )
     _pt_ip: ClassVar[re.Pattern[str]] = re.compile(
         rf"^ (?: {_pt_ipv4} | {_pt_ipv6} ) $",
         re.VERBOSE,
