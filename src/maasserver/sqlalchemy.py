@@ -268,7 +268,9 @@ class SharedDBAPIConnection(PoolProxiedConnection):
 
     @property
     def is_valid(self) -> bool:
-        return not self.dbapi_connection.closed
+        if self.dbapi_connection and not self.dbapi_connection.closed:
+            return True
+        return False
 
 
 class SharedDjangoPool(Pool):
