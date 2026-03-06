@@ -20,6 +20,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"maas.io/core/src/maasagent/internal/daemon"
+	"maas.io/core/src/maasagent/internal/pathutil"
 )
 
 func startCmd(ctx context.Context) *cobra.Command {
@@ -34,7 +36,12 @@ func startCmd(ctx context.Context) *cobra.Command {
 		Example:      "maas-agent start",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
+			d := daemon.New()
+
+			return d.Start(ctx, daemon.DaemonArgs{
+				ConfigFile: pathutil.ConfigPath("agent.yaml"),
+				Supervised: supervised,
+			})
 		},
 	}
 

@@ -23,6 +23,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"maas.io/core/src/maasagent/internal/daemon"
+	"maas.io/core/src/maasagent/internal/pathutil"
 )
 
 func initCmd(ctx context.Context) *cobra.Command {
@@ -34,6 +36,8 @@ func initCmd(ctx context.Context) *cobra.Command {
 		Example:      "maas-agent init --token <token>",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			d := daemon.New()
+
 			if token == "-" {
 				input, err := io.ReadAll(os.Stdin)
 				if err != nil {
@@ -47,7 +51,12 @@ func initCmd(ctx context.Context) *cobra.Command {
 				return fmt.Errorf("--token (-t) must be specified")
 			}
 
-			return nil
+			return d.Bootstrap(ctx, daemon.BootstrapOptions{
+				Token:      token,
+				ConfigFile: pathutil.ConfigPath("agent.yaml"),
+				CacheDir:   pathutil.CacheDir(),
+				CertDir:    pathutil.DataPath("certificates"),
+			})
 		},
 	}
 
