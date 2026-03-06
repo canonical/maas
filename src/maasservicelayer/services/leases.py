@@ -247,6 +247,7 @@ class LeasesService(Service):
                     )
                 )
         else:
+            sip.ip = None
             await self.staticipaddress_service.update_by_id(
                 sip.id,
                 StaticIPAddressBuilder(

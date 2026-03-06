@@ -459,6 +459,70 @@ class TestIntegrationLeasesService:
         assert linked_ip_address[0]["interface_id"] == boot_iface["id"]
         assert linked_ip_address[0]["staticipaddress_id"] == sips[0].id
 
+    async def test_expiry_wipes_ip_and_dnsresource_is_not_removed(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        await create_test_ip_range_entry(
+            fixture,
+            subnet,
+            type=IPRangeType.DYNAMIC,
+            start_ip="10.0.0.100",
+            end_ip="10.0.0.200",
+        )
+        mac_address = "00:11:22:33:44:55"
+
+        machine = await create_test_machine_entry(
+            fixture, hostname="gaming-device"
+        )
+        await create_test_interface_dict(
+            fixture, node=machine, mac_address=mac_address, boot_iface=True
+        )
+
+        hostname = "ubuntu"
+        ip = "10.0.0.150"
+
+        await services.leases.store_lease_info(
+            Lease(
+                action=LeaseAction.COMMIT,
+                ip_family=IpAddressFamily.IPV4,
+                hostname=hostname,
+                mac=mac_address,
+                ip=IPv4Address(ip),
+                timestamp_epoch=0,
+                lease_time_seconds=30,
+            )
+        )
+        dnsresource = await services.dnsresources.get_one(
+            query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
+        )
+        assert dnsresource is not None
+
+        # Lease expired
+        await services.leases.store_lease_info(
+            Lease(
+                action=LeaseAction.EXPIRY,
+                ip_family=IpAddressFamily.IPV4,
+                hostname=hostname,
+                mac=mac_address,
+                ip=IPv4Address(ip),
+                timestamp_epoch=0,
+                lease_time_seconds=0,
+            )
+        )
+
+        sip = await services.staticipaddress.get_one(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(ip))
+            )
+        )
+        assert sip is None
+
+        dnsresource = await services.dnsresources.get_one(
+            query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
+        )
+        assert dnsresource is not None
+
 
 @pytest.mark.asyncio
 class TestLeasesService:
