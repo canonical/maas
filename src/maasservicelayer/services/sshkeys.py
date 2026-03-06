@@ -199,7 +199,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
           protocol version 1; the comment field is not used for anything (but may
           be convenient for the user to identify the key). For protocol version 2
           the keytype is “ecdsa-sha2-nistp256”, “ecdsa-sha2-nistp384”,
-          “ecdsa-sha2-nistp521”, “ssh-ed25519”, “ssh-dss” or “ssh-rsa”.
+          “ecdsa-sha2-nistp521”, “ssh-ed25519” or “ssh-rsa”.
 
         ssh-keygen(1) explicitly recommends appending public key files to
         ~/.ssh/authorized_keys:
@@ -230,7 +230,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
         1. Checks there are 2 or more fields: keytype base64-encoded-key [comment]
         (the comment can contain whitespace).
 
-        2. Checks that keytype is one of “ssh-dss”, “ssh-rsa”, “ssh-ed25519”,
+        2. Checks that keytype is one of “ssh-rsa”, “ssh-ed25519”,
         “ecdsa-sha2-nistp256”, “ecdsa-sha2-nistp384”, or “ecdsa-sha2-nistp521”,
 
         2. Run through `ssh-keygen -e -f $keyfile > $intermediate <&-`.

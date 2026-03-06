@@ -300,6 +300,7 @@ RackControllerRule = Rule(
     #     https://cryptography.io/en/latest/fernet/#using-passwords-with-fernet
     Allow("cryptography.fernet.**"),
     Allow("cryptography.hazmat.backends.default_backend"),
+    Allow("cryptography.hazmat.primitives.asymmetric.padding"),
     Allow("cryptography.hazmat.primitives.hashes"),
     Allow("cryptography.hazmat.primitives.kdf.pbkdf2.PBKDF2HMAC"),
     Allow("cryptography.hazmat.primitives.asymmetric.padding"),

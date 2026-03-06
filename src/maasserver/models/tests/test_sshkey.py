@@ -19,11 +19,6 @@ class TestSSHKeyValidator(MAASServerTestCase):
         validate_ssh_public_key(key_string)
         # No ValidationError.
 
-    def test_validates_dsa_public_key(self):
-        key_string = get_data("data/test_dsa.pub")
-        validate_ssh_public_key(key_string)
-        # No ValidationError.
-
     def test_validates_ecdsa_curve256_public_key(self):
         key_string = get_data("data/test_ecdsa256.pub")
         validate_ssh_public_key(key_string)
@@ -49,7 +44,7 @@ class TestSSHKeyValidator(MAASServerTestCase):
         self.assertRaises(ValidationError, validate_ssh_public_key, key_string)
 
     def test_does_not_validate_wrongly_padded_data(self):
-        key_string = "ssh-dss {} {}@{}".format(
+        key_string = "ssh-rsa {} {}@{}".format(
             factory.make_string(),
             factory.make_string(),
             factory.make_string(),

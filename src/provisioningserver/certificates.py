@@ -298,9 +298,7 @@ class Certificate(NamedTuple):
     def _check_key_match(key: crypto.PKey, cert: crypto.X509):
         data = secrets.token_bytes()
         crypto_key = key.to_cryptography_key()
-        signature = crypto_key.sign(
-            data, padding.PKCS1v15(), hashes.SHA512()
-        )
+        signature = crypto_key.sign(data, padding.PKCS1v15(), hashes.SHA512())
         try:
             cert_crypto = cert.to_cryptography()
             cert_crypto.public_key().verify(
