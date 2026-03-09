@@ -219,6 +219,38 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             addr["id"] for addr in v4_discovered_addrs
         }
 
+    async def test_get_discovered_ips_no_duplicates_for_shared_mac(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ) -> None:
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        discovered_ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+
+        interfaces = []
+        mac = "aa:bb:cc:dd:ee:ff"
+        interfaces.append(
+            await create_test_interface_entry(
+                fixture, ips=[discovered_ip], mac_address=mac
+            )
+        )
+        interfaces.append(
+            await create_test_interface_entry(
+                fixture, ips=[discovered_ip], mac_address=mac, type="bridge"
+            )
+        )
+
+        result = await repository_instance.get_discovered_ips_in_family_for_interfaces(
+            interfaces, family=IpAddressFamily.IPV4
+        )
+
+        assert len(result) == 1
+        assert result[0].id == discovered_ip["id"]
+
     async def test_get_for_nodes_not_found(
         self, repository_instance: StaticIPAddressRepository, fixture: Fixture
     ):

@@ -149,6 +149,7 @@ class StaticIPAddressRepository(BaseRepository):
                     ),
                 ),
             )
+            .distinct()  # multiple interfaces might be linked to the same discovered IP (for example in case of bridged interfaces).
         )
 
         result = (
