@@ -395,6 +395,76 @@ class TestIntegrationLeasesService:
         )
         assert len(sips) == 2
 
+    async def test_commit_with_shared_mac_interfaces_deletes_old_ip_once(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        await create_test_ip_range_entry(
+            fixture,
+            subnet,
+            type=IPRangeType.DYNAMIC,
+            start_ip="10.0.0.100",
+            end_ip="10.0.0.200",
+        )
+        mac_address = "00:11:22:33:44:55"
+        machine = await create_test_machine_entry(
+            fixture, hostname="test-machine"
+        )
+
+        # create 2 interfaces with the same MAC.
+        await create_test_interface_dict(
+            fixture, node=machine, mac_address=mac_address
+        )
+        await create_test_interface_dict(
+            fixture, node=machine, mac_address=mac_address, type="bridge"
+        )
+
+        old_ip = "10.0.0.150"
+        # First commit: assigns old_ip to both interfaces.
+        await services.leases.store_lease_info(
+            Lease(
+                action=LeaseAction.COMMIT,
+                ip_family=IpAddressFamily.IPV4,
+                hostname="host",
+                mac=mac_address,
+                ip=IPv4Address(old_ip),
+                timestamp_epoch=0,
+                lease_time_seconds=30,
+            )
+        )
+
+        # Second commit with a new IP must not fail when deleting the old
+        new_ip = "10.0.0.160"
+        await services.leases.store_lease_info(
+            Lease(
+                action=LeaseAction.COMMIT,
+                ip_family=IpAddressFamily.IPV4,
+                hostname="host",
+                mac=mac_address,
+                ip=IPv4Address(new_ip),
+                timestamp_epoch=1,
+                lease_time_seconds=30,
+            )
+        )
+
+        # The old IP should have been deleted.
+        old_sip_after = await services.staticipaddress.get_one(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(old_ip))
+            )
+        )
+        assert old_sip_after is None
+
+        # The new IP should exist.
+        new_sip = await services.staticipaddress.get_one(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(new_ip))
+            )
+        )
+        assert new_sip is not None
+        assert new_sip.alloc_type == IpAddressType.DISCOVERED
+        assert new_sip.lease_time == 30
+
     async def test_creates_lease_for_bond_interface(
         self, fixture: Fixture, services: ServiceCollectionV3
     ):
