@@ -241,6 +241,7 @@ builtin_architectures = [
     Architecture(
         name="armhf/keystone", description="armhf/keystone", pxealiases=["arm"]
     ),
+    Architecture(name="riscv64/generic", description="riscv64"),
     # PPC64EL needs a rootdelay for PowerNV. The disk controller
     # in the hardware, takes a little bit longer to come up then
     # the initrd wants to wait. Set this to 60 seconds, just to

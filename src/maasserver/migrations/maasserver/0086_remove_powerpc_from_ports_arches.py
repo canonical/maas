@@ -2,7 +2,7 @@ from django.db import migrations
 
 
 def remove_powerpc_from_ports_arches(apps, schema_editor):
-    PORTS_ARCHES = ["armhf", "arm64", "ppc64el"]
+    PORTS_ARCHES = ["armhf", "arm64", "ppc64el", "riscv64"]
     PackageRepository = apps.get_model("maasserver", "PackageRepository")
     ports_archive = PackageRepository.objects.filter(
         name="ports_archive", default=True
