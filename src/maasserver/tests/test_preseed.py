@@ -10,7 +10,6 @@ import os
 import random
 from shlex import quote
 from textwrap import dedent
-from typing import Optional
 from unittest.mock import ANY, sentinel
 from urllib.parse import urlparse
 
@@ -1463,9 +1462,7 @@ class TestCurtinUtilities(BootImageHelperMixin, MAASServerTestCase):
         super().setUp()
         self.patch(dnspublications_module, "post_commit_do")
 
-    def assertAptConfig(
-        self, config, archive=None, node: Optional[Node] = None
-    ):
+    def assertAptConfig(self, config, archive=None, node: Node | None = None):
         if archive is None:
             archive = PackageRepository.objects.get_default_archive("amd64")
 

@@ -3,7 +3,6 @@
 
 from ipaddress import ip_address
 import random
-from typing import Optional
 
 from django.urls import reverse
 from packaging.version import parse
@@ -394,7 +393,7 @@ class TestComposePreseed(MAASServerTestCase):
             expected_package_mirrors,
         )
 
-    def assertAptConfig(self, config, apt_proxy, node: Optional[Node] = None):
+    def assertAptConfig(self, config, apt_proxy, node: Node | None = None):
         archive = PackageRepository.objects.get_default_archive("amd64")
 
         if (
