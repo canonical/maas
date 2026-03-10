@@ -167,11 +167,12 @@ def generate_urls_for_sources_list(archive: PackageRepository) -> str:
     # having it enabled.
     urls = ""
     components = set(archive.KNOWN_COMPONENTS)
-
     if archive.disabled_components:
-        for comp in archive.COMPONENTS_TO_DISABLE:
-            if comp in archive.disabled_components:
-                components.remove(comp)
+        components.difference_update(
+            set(archive.disabled_components).intersection(
+                archive.COMPONENTS_TO_DISABLE
+            )
+        )
 
     urls += "deb {} $RELEASE {}\n".format(archive.url, " ".join(components))
     if archive.disable_sources:
@@ -204,9 +205,11 @@ def generate_urls_for_sources_list(archive: PackageRepository) -> str:
 def generate_deb822_for_sources(archive: PackageRepository) -> str:
     components = set(archive.KNOWN_COMPONENTS)
     if archive.disabled_components:
-        for comp in archive.COMPONENTS_TO_DISABLE:
-            if comp in archive.disabled_components:
-                components.remove(comp)
+        components.difference_update(
+            set(archive.disabled_components).intersection(
+                archive.COMPONENTS_TO_DISABLE
+            )
+        )
 
     types = "deb" if archive.disable_sources else "deb deb-src"
 
