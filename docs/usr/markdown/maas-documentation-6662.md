@@ -62,6 +62,7 @@ Considering MAAS for your next project? [Get in touch](/t/how-to-contact-us/5448
 |2 | how-to-script-maas-with-python | [Script MAAS with Python](/t/-/5404)|
 |2 | how-to-deploy-vms-on-ibm-z | [Deploy VMs on IBM Z](/t/-/7885)|
 |2 | how-to-deploy-dpus-in-maas | [Deploy DPUs in MAAS](/t/-/15418)|
+|2 | how-to-configure-sso-in-maas | [Configure Single Sign-On in MAAS](/t/-/15746)|
 |1 | reference | [Reference](/t/-/6143)|
 |2 | release-notes-and-upgrade-instructions | [Release notes](/t/-/5292)|
 |2 | supported-maas-versions | [Supported MAAS versions](/t/-/11980)|
