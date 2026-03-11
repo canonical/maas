@@ -62,6 +62,10 @@ from maasserver.api.notification import (
     NotificationHandler,
     NotificationsHandler,
 )
+from maasserver.api.oidc_providers import (
+    OidcProviderHandler,
+    OidcProvidersHandler,
+)
 from maasserver.api.packagerepositories import (
     PackageRepositoriesHandler,
     PackageRepositoryHandler,
@@ -181,6 +185,12 @@ virtual_machine_handler = RestrictedResource(
 )
 virtual_machines_handler = RestrictedResource(
     VirtualMachinesHandler, authentication=api_auth
+)
+oidc_provider_handler = RestrictedResource(
+    OidcProviderHandler, authentication=api_auth
+)
+oidc_providers_handler = RestrictedResource(
+    OidcProvidersHandler, authentication=api_auth
 )
 dhcp_snippet_handler = RestrictedResource(
     DHCPSnippetHandler, authentication=api_auth
@@ -789,6 +799,16 @@ patterns += [
         r"^boot-sources/(?P<boot_source_id>[^/]+)/selections/(?P<id>[^/]+)/$",
         boot_source_selection_handler,
         name="boot_source_selection_handler",
+    ),
+    re_path(
+        r"^oidc-providers/$",
+        oidc_providers_handler,
+        name="oidc_providers_handler",
+    ),
+    re_path(
+        r"^oidc-providers/(?P<id>[^/]+)/$",
+        oidc_provider_handler,
+        name="oidc_provider_handler",
     ),
 ]
 

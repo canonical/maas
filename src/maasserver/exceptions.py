@@ -253,6 +253,22 @@ class NetworkingResetProblem(MAASException):
     """Raised when an issue occurs that prevents resetting networking configuration."""
 
 
+class OIDCProviderConflict(MAASAPIException):
+    """Raised when there's a conflict with an OIDC provider, such as a duplicate name or client ID."""
+
+    api_error = int(http.client.CONFLICT)
+
+
+class OIDCProviderBadGateway(MAASAPIException):
+    """Raised when there's a problem communicating with the OIDC provider."""
+
+    api_error = int(http.client.BAD_GATEWAY)
+
+
+class OIDCProviderNotFound(MAASAPINotFound):
+    """Raised when an OIDC provider is not found."""
+
+
 class MAASBadDeprecation(MAASException):
     """Raised when an API endpoint or operation has it's deprecation incorrectly assigned."""
 

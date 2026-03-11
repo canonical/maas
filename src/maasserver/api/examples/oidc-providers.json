@@ -1,0 +1,59 @@
+{
+    "oidc-provider-read-by-id": {
+        "id": 1,
+        "name": "Example OIDC Provider",
+        "issuer_url": "https://example.com/oidc",
+        "client_id": "example-client-id",
+        "client_secret": "example-client-secret",
+        "enabled": true,
+        "token_type": "JWT",
+        "redirect_uri": "https://maas.example.com/MAAS/r/login/oidc/callback",
+        "scopes": "openid profile email offline_access"
+    },
+    "oidc-provider-read-by-active": {
+        "id": 1,
+        "name": "Example OIDC Provider",
+        "issuer_url": "https://example.com/oidc",
+        "client_id": "example-client-id",
+        "client_secret": "example-client-secret",
+        "enabled": true,
+        "token_type": "JWT",
+        "redirect_uri": "https://maas.example.com/MAAS/r/login/oidc/callback",
+        "scopes": "openid profile email offline_access"
+    },
+    "oidc-provider-create": {
+        "id": 2,
+        "name": "An OIDC Provider",
+        "issuer_url": "https://provider.com/oidc",
+        "client_id": "some-client-id",
+        "client_secret": "some-client-secret",
+        "enabled": false,
+        "token_type": "Opaque",
+        "redirect_uri": "https://maas.example.com/MAAS/r/login/oidc/callback",
+        "scopes": "openid profile email offline_access"
+    },
+    "oidc-provider-read": [
+        {
+            "id": 1,
+            "name": "Example OIDC Provider",
+            "issuer_url": "https://example.com/oidc",
+            "client_id": "example-client-id",
+            "client_secret": "example-client-secret",
+            "enabled": true,
+            "token_type": "JWT",
+            "redirect_uri": "https://maas.example.com/MAAS/r/login/oidc/callback",
+            "scopes": "openid profile email offline_access"
+        },
+        {
+            "id": 2,
+            "name": "Second OIDC Provider",
+            "issuer_url": "https://second-provider.com/oidc",
+            "client_id": "second-client-id",
+            "client_secret": "second-client-secret",
+            "enabled": false,
+            "token_type": "Opaque",
+            "redirect_uri": "https://maas.example.com/MAAS/r/login/oidc/callback",
+            "scopes": "openid profile email"
+        }
+    ]
+}

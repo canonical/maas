@@ -128,6 +128,11 @@ from maasserver.utils.orm import get_one, post_commit_hooks, reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
 from maasserver.worker_user import get_worker_user
 from maasservicelayer.builders.usergroups import UserGroupBuilder
+from maasservicelayer.models.external_auth import (
+    AccessTokenType,
+    OAuthProvider,
+    ProviderMetadata,
+)
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroups import UserGroup
 from maasservicelayer.services.openfga_tuples import (
@@ -3857,6 +3862,53 @@ class Factory(maastesting.factory.Factory):
         BMCRoutableRackControllerRelationship(
             bmc=bmc, rack_controller=rack, routable=True
         ).save()
+
+    def make_OidcProvider(
+        self,
+        id=None,
+        name=None,
+        issuer=None,
+        client_id=None,
+        client_secret=None,
+        scopes=None,
+        redirect_uri=None,
+        token_type=None,
+        enabled=None,
+    ):
+        if name is None:
+            name = self.make_name("oidc_provider")
+        if issuer is None:
+            issuer = self.make_url(scheme="https")
+        if client_id is None:
+            client_id = self.make_name("client_id")
+        if client_secret is None:
+            client_secret = self.make_name("client_secret")
+        if scopes is None:
+            scopes = " ".join([self.make_name("scope") for _ in range(3)])
+        if redirect_uri is None:
+            redirect_uri = self.make_url(scheme="https")
+        if token_type is None:
+            token_type = self.pick_choice([(0, "JWT"), (1, "Opaque")])
+        if enabled is None:
+            enabled = self.pick_bool()
+        metadata = ProviderMetadata(
+            authorization_endpoint=self.make_url(scheme="https"),
+            token_endpoint=self.make_url(scheme="https"),
+            userinfo_endpoint=self.make_url(scheme="https"),
+            jwks_uri=self.make_url(scheme="https"),
+        )
+        return OAuthProvider(
+            id=id or 1,
+            name=name,
+            issuer_url=issuer,
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=scopes,
+            redirect_uri=redirect_uri,
+            token_type=AccessTokenType(token_type),
+            metadata=metadata,
+            enabled=enabled,
+        )
 
 
 # Create factory singleton.
