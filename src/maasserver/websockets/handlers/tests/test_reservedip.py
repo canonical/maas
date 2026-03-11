@@ -8,6 +8,7 @@ from twisted.internet import defer
 
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.dhcp import configure_dhcp_on_agents
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.reservedip import ReservedIP
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -312,6 +313,43 @@ class TestReservedIPHandler(MAASServerTestCase):
                 }
             ],
             reserved_ips,
+        )
+
+    def test_list_ignores_interface_without_node(self):
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        mac_address = factory.make_mac_address()
+        reservedip = factory.make_ReservedIP(
+            ip="10.0.0.1",
+            mac_address=mac_address,
+            subnet=subnet,
+        )
+        factory.make_Interface(
+            iftype=INTERFACE_TYPE.UNKNOWN,
+            mac_address=mac_address,
+            vlan=subnet.vlan,
+        )
+        user = factory.make_User()
+        handler = ReservedIPHandler(user, {}, None)
+
+        reserved_ips = handler.list({})
+
+        self.assertEqual(len(reserved_ips), 1)
+        self.assertEqual(
+            {
+                "id": reservedip.id,
+                "created": reservedip.created.strftime(
+                    "%a, %d %b. %Y %H:%M:%S"
+                ),
+                "updated": reservedip.updated.strftime(
+                    "%a, %d %b. %Y %H:%M:%S"
+                ),
+                "subnet": subnet.id,
+                "ip": reservedip.ip,
+                "mac_address": mac_address,
+                "comment": None,
+                "node_summary": None,
+            },
+            reserved_ips[0],
         )
 
 
