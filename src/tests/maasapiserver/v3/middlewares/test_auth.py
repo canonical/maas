@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, Callable, Iterator
 from unittest.mock import AsyncMock, Mock
 
 from fastapi import FastAPI, Request
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from macaroonbakery import bakery, checkers
 from macaroonbakery.bakery import (
     DischargeRequiredError,
@@ -178,7 +178,9 @@ def auth_app(
 
 @pytest.fixture
 async def auth_client(auth_app: FastAPI) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(app=auth_app, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app), base_url="http://test"
+    ) as client:
         yield client
 
 
