@@ -71,6 +71,38 @@ class {model_name}(ResourceBuilder):
 
 EXCLUDED_FIELDS = ["id"]
 
+# Methods to exclude from extraction when preserving custom builder methods.
+# Includes standard Python magic methods, Pydantic/BaseModel methods,
+# Python 3.14+ annotation methods, and builder-specific methods.
+EXCLUDED_METHODS = {
+    "__init__",
+    "__new__",
+    "__del__",
+    "__repr__",
+    "__str__",
+    "__bytes__",
+    "__format__",
+    "__lt__",
+    "__le__",
+    "__eq__",
+    "__ne__",
+    "__gt__",
+    "__ge__",
+    "__bool__",
+    "__getattr__",
+    "__getattribute__",
+    "__setattr__",
+    "__delattr__",
+    "__dir__",
+    "__class_getitem__",
+    "__mro_entries__",
+    "__set_name__",
+    "__annotate__",  # Python 3.14+ PEP 649
+    "__annotate_func__",  # Python 3.14+ PEP 649
+    "to_file",
+    "update_methods",
+}
+
 MODELS_BASE = "maasservicelayer.models.base"
 sys.path.insert(0, "./src")
 try:
@@ -375,18 +407,20 @@ class BuilderModule(GenericModule[BuilderModel]):
         try:
             model_classes = inspect.getmembers(
                 module,
-                lambda x: inspect.isclass(x)
-                and inspect.getmodule(x) == module,
+                lambda x: (
+                    inspect.isclass(x) and inspect.getmodule(x) == module
+                ),
             )
             for name, class_ in model_classes:
                 if name.endswith("Builder") and name != "ResourceBuilder":
                     builder_methods = inspect.getmembers(
                         class_,
                         lambda x: (
-                            inspect.isfunction(x) or inspect.ismethod(x)
-                        )
-                        and not getattr(ResourceBuilder, x.__name__, False)
-                        and not getattr(BaseModel, x.__name__, False),
+                            (inspect.isfunction(x) or inspect.ismethod(x))
+                            and not getattr(ResourceBuilder, x.__name__, False)
+                            and not getattr(BaseModel, x.__name__, False)
+                            and x.__name__ not in EXCLUDED_METHODS
+                        ),
                     )
                     fields = {
                         k: v
@@ -556,34 +590,6 @@ def extract_source_methods_and_imports(
     methods_by_class = {}
     imports = set()
 
-    # Standard methods to exclude from extraction
-    EXCLUDED_METHODS = {
-        "__init__",
-        "__new__",
-        "__del__",
-        "__repr__",
-        "__str__",
-        "__bytes__",
-        "__format__",
-        "__lt__",
-        "__le__",
-        "__eq__",
-        "__ne__",
-        "__gt__",
-        "__ge__",
-        "__bool__",
-        "__getattr__",
-        "__getattribute__",
-        "__setattr__",
-        "__delattr__",
-        "__dir__",
-        "__class_getitem__",
-        "__mro_entries__",
-        "__set_name__",
-        "to_file",
-        "update_methods",
-    }
-
     try:
         with open(filepath, "r") as f:
             content = f.read()
@@ -697,8 +703,10 @@ class DomainModule(GenericModule[DomainModel]):
     def from_file(cls, module: ModuleType, filename: str):
         model_classes = inspect.getmembers(
             module,
-            lambda x: getattr(x, "__generate_builder__", False)
-            and inspect.getmodule(x) == module,
+            lambda x: (
+                getattr(x, "__generate_builder__", False)
+                and inspect.getmodule(x) == module
+            ),
         )
         models = []
         for name, class_ in model_classes:

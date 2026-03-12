@@ -105,13 +105,13 @@ endif
 
 $(VENV):
 	python3 -m venv --system-site-packages --clear $@
-	$(VENV)/bin/pip install --no-build-isolation -e .[testing]
+	$(VENV)/bin/pip install --upgrade --no-build-isolation --force-reinstall -e .[testing]
 
 $(BIN_DIR):
 	mkdir $@
 
 $(BIN_SCRIPTS): $(VENV) $(BIN_DIR)
-	ln -sf ../$(VENV)/$@ $@
+	ln -sf ../$(VENV)/bin/$(notdir $@) $@
 
 bin/py: $(VENV) $(BIN_DIR)
 	ln -sf ../$(VENV)/bin/ipython3 $@

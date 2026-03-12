@@ -7,7 +7,7 @@ from unittest.mock import Mock
 
 from fastapi import Depends, FastAPI
 from fastapi.encoders import jsonable_encoder
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -221,7 +221,9 @@ def auth_app_no_permissions(
 
 @pytest.fixture
 async def auth_client(auth_app: FastAPI) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(app=auth_app, base_url="http://test/") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app), base_url="http://test/"
+    ) as client:
         yield client
 
 
@@ -230,7 +232,8 @@ async def auth_client_no_permissions(
     auth_app_no_permissions: FastAPI,
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
-        app=auth_app_no_permissions, base_url="http://test/"
+        transport=ASGITransport(app=auth_app_no_permissions),
+        base_url="http://test/",
     ) as client:
         yield client
 
@@ -239,7 +242,9 @@ async def auth_client_no_permissions(
 async def auth_client_candid(
     auth_app: FastAPI, enable_candid
 ) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(app=auth_app, base_url="http://test/") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app), base_url="http://test/"
+    ) as client:
         yield client
 
 
@@ -247,7 +252,9 @@ async def auth_client_candid(
 async def auth_client_rbac(
     auth_app: FastAPI, enable_rbac
 ) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(app=auth_app, base_url="http://test/") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app), base_url="http://test/"
+    ) as client:
         yield client
 
 

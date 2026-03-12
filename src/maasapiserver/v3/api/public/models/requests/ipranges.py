@@ -86,7 +86,7 @@ class IPRangeCreateRequest(BaseModel):
         if (
             self.start_ip.version == 6
             and self.type == IPRangeType.DYNAMIC
-            and (self.start_ip + 255) > cast(IPv6Address, self.end_ip)
+            and (self.start_ip + 255) > cast(IPv6Address, self.end_ip)  # pyright: ignore[reportOperatorIssue]
         ):
             raise ValidationException.build_for_field(
                 "start_ip",
