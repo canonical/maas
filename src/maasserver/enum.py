@@ -482,6 +482,9 @@ class BOOT_RESOURCE_FILE_TYPE:
     # For backwards compatibility, DDTGZ files are named root-dd
     ROOT_DDTGZ = BootResourceFileType.ROOT_DDTGZ.value
 
+    # Self-extracting installer (used by ONIE)
+    SELF_EXTRACTING = BootResourceFileType.SELF_EXTRACTING.value
+
     # Following are not allowed on user upload. Only used for syncing
     # from another simplestreams source. (Most likely images.maas.io)
 

@@ -64,11 +64,35 @@ class TestImageResponse:
         assert response.id == boot_resource.id
         assert response.os == "custom"
         assert response.release == "release"
-        assert response.title == "Custom Release"
+        assert response.title == "release"
         assert response.architecture == "amd64"
         assert response.boot_source_id is None
         assert (
             response.hal_links.self.href == f"{V3_API_PREFIX}/boot_resources/1"
+        )
+
+    def test_from_model__boot_resource_with_title(self) -> None:
+        boot_resource = BootResource(
+            id=2,
+            name="custom/myrelease",
+            architecture="amd64/generic",
+            rtype=BootResourceType.UPLOADED,
+            extra={"title": "My Custom Image Title"},
+            rolling=False,
+            base_image="",
+        )
+        response = ImageResponse.from_boot_resource(
+            boot_resource,
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_resources",
+        )
+        assert response.id == boot_resource.id
+        assert response.os == "custom"
+        assert response.release == "myrelease"
+        assert response.title == "My Custom Image Title"
+        assert response.architecture == "amd64"
+        assert response.boot_source_id is None
+        assert (
+            response.hal_links.self.href == f"{V3_API_PREFIX}/boot_resources/2"
         )
 
 

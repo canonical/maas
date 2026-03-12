@@ -203,6 +203,7 @@ from maascommon.osystem.centos import CentOS  # noqa:E402 isort:skip
 from maascommon.osystem.custom import CustomOS  # noqa:E402 isort:skip
 from maascommon.osystem.esxi import ESXi  # noqa:E402 isort:skip
 from maascommon.osystem.ol import OL  # noqa:E402 isort:skip
+from maascommon.osystem.onie import ONIEOS  # noqa:E402 isort:skip
 from maascommon.osystem.rhel import RHELOS  # noqa:E402 isort:skip
 from maascommon.osystem.suse import SUSEOS  # noqa:E402 isort:skip
 from maascommon.osystem.ubuntu import UbuntuOS  # noqa:E402 isort:skip
@@ -234,6 +235,7 @@ builtin_osystems = [
     SUSEOS(),
     ESXi(),
     OL(),
+    ONIEOS(),
 ]
 for osystem in builtin_osystems:
     OperatingSystemRegistry.register_item(osystem.name, osystem)

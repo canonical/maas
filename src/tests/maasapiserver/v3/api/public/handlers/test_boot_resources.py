@@ -27,6 +27,8 @@ from maascommon.enums.boot_resources import (
     BootResourceType,
     ImageStatus,
 )
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
+from maascommon.enums.power import PowerState
 from maascommon.workflows.bootresource import (
     ResourceDownloadParam,
     short_sha,
@@ -41,6 +43,7 @@ from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
     PreconditionFailedException,
+    ValidationException,
 )
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
@@ -1035,3 +1038,314 @@ class TestBootloadersApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 404
+
+
+class TestONIEImageUpload(ApiCommonTests):
+    BASE_PATH = f"{V3_API_PREFIX}/custom_images"
+
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
+        return []
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="POST", path=self.BASE_PATH),
+        ]
+
+    @staticmethod
+    def create_onie_installer_binary(size_in_bytes: int = 1024) -> bytes:
+        return b"ONIE_INSTALLER_MOCK_DATA" * (size_in_bytes // 24)
+
+    @patch(
+        "maasservicelayer.utils.image_local_files.AsyncLocalBootResourceFile"
+    )
+    @patch("maasapiserver.v3.api.public.handlers.boot_resources.MAAS_ID")
+    @patch(
+        "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
+    )
+    async def test_upload_onie_image_success(
+        self,
+        to_builder_mock: MagicMock,
+        maas_id_mock: MagicMock,
+        async_file_mock: MagicMock,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        from maasservicelayer.builders.bootresources import BootResourceBuilder
+        from maasservicelayer.models.nodes import Node
+        from maasservicelayer.services.bootresourcefiles import (
+            BootResourceFilesService,
+        )
+        from maasservicelayer.services.bootresourcefilesync import (
+            BootResourceFileSyncService,
+        )
+        from maasservicelayer.services.bootresourcesets import (
+            BootResourceSetsService,
+        )
+        from maasservicelayer.services.nodes import NodesService
+        from maasservicelayer.services.temporal import TemporalService
+        from maasservicelayer.utils.date import utcnow
+        from tests.fixtures import AsyncContextManagerMock
+
+        file_data = self.create_onie_installer_binary(size_in_bytes=102400)
+        sha256_hash = hashlib.sha256(file_data).hexdigest()
+
+        onie_boot_resource = BootResource(
+            id=1,
+            rtype=BootResourceType.UPLOADED,
+            name="onie/mellanox-3.8.0",
+            architecture="amd64/generic",
+            extra={"title": "Mellanox ONIE 3.8.0", "subarches": "generic"},
+            rolling=False,
+            base_image="",
+        )
+
+        to_builder_mock.return_value = BootResourceBuilder(
+            name="onie/mellanox-3.8.0",
+            architecture="amd64/generic",
+            base_image="",
+            rtype=BootResourceType.UPLOADED,
+            extra={"title": "Mellanox ONIE 3.8.0", "subarches": "generic"},
+            alias="",
+            bootloader_type=None,
+            kflavor=None,
+            rolling=False,
+            last_deployed=None,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.create.return_value = onie_boot_resource
+        services_mock.boot_resources.get_next_version_name.return_value = "1"
+
+        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
+        services_mock.boot_resource_sets.create.return_value = Mock(
+            id=1, version="1"
+        )
+
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+        services_mock.boot_resource_files.calculate_filename_on_disk.return_value = "test.bin"
+        services_mock.boot_resource_files.create.return_value = Mock(
+            id=1, sha256=sha256_hash
+        )
+
+        services_mock.boot_resource_file_sync = Mock(
+            BootResourceFileSyncService
+        )
+        services_mock.boot_resource_file_sync.get_or_create.return_value = (
+            Mock()
+        )
+
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.register_or_update_workflow_call.return_value = None
+
+        services_mock.nodes = Mock(NodesService)
+        services_mock.nodes.get_one.return_value = Node(
+            id=1,
+            system_id="test-region",
+            hostname="test-region",
+            status=NodeStatus.NEW,
+            node_type=NodeTypeEnum.REGION_CONTROLLER,
+            power_state=PowerState.UNKNOWN,
+            power_state_updated=None,
+        )
+
+        async_file_mock.return_value = AsyncContextManagerMock(
+            MockTemporaryFile()
+        )
+        maas_id_mock.get.return_value = "test-region"
+
+        headers = {
+            "name": "onie/mellanox-3.8.0",
+            "sha256": sha256_hash,
+            "architecture": "amd64/generic",
+            "file_type": "tgz",
+            "title": "Mellanox ONIE 3.8.0",
+            "Content-Type": "application/octet-stream",
+        }
+
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH,
+            headers=headers,
+            content=file_data,
+        )
+
+        assert response.status_code == 201
+        image = ImageResponse(**response.json())
+        assert image.os == "onie"
+        assert image.release == "mellanox-3.8.0"
+        assert image.title == "Mellanox ONIE 3.8.0"
+        assert image.architecture == "amd64"
+
+    @patch(
+        "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
+    )
+    async def test_upload_onie_image_invalid_name(
+        self,
+        to_builder_mock: MagicMock,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        from maasservicelayer.services.bootsourcecache import (
+            BootSourceCacheService,
+        )
+
+        file_data = self.create_onie_installer_binary(size_in_bytes=1024)
+        sha256_hash = hashlib.sha256(file_data).hexdigest()
+
+        services_mock.boot_source_cache = Mock(BootSourceCacheService)
+        services_mock.boot_source_cache.get_unique_os_releases.return_value = []
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_usable_architectures.return_value = [
+            "amd64/generic"
+        ]
+
+        to_builder_mock.side_effect = ValidationException.build_for_field(
+            field="name",
+            message="Invalid ONIE image name format",
+            location="header",
+        )
+
+        headers = {
+            "name": "onie/invalid_format",
+            "sha256": sha256_hash,
+            "architecture": "amd64/generic",
+            "Content-Type": "application/octet-stream",
+        }
+
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH,
+            headers=headers,
+            content=file_data,
+        )
+
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert "name" in str(error_response.details[0].field)
+
+    @patch(
+        "maasservicelayer.utils.image_local_files.AsyncLocalBootResourceFile"
+    )
+    @patch("maasapiserver.v3.api.public.handlers.boot_resources.MAAS_ID")
+    @patch(
+        "maasapiserver.v3.api.public.handlers.boot_resources.BootResourceCreateRequest.to_builder"
+    )
+    async def test_upload_onie_image_with_self_extracting_type(
+        self,
+        to_builder_mock: MagicMock,
+        maas_id_mock: MagicMock,
+        async_file_mock: MagicMock,
+        mocked_api_client_admin: AsyncClient,
+        services_mock: ServiceCollectionV3,
+    ) -> None:
+        """Test uploading an ONIE image with self-extracting file type."""
+        from maasservicelayer.builders.bootresources import BootResourceBuilder
+        from maasservicelayer.models.nodes import Node
+        from maasservicelayer.services.bootresourcefiles import (
+            BootResourceFilesService,
+        )
+        from maasservicelayer.services.bootresourcefilesync import (
+            BootResourceFileSyncService,
+        )
+        from maasservicelayer.services.bootresourcesets import (
+            BootResourceSetsService,
+        )
+        from maasservicelayer.services.nodes import NodesService
+        from maasservicelayer.services.temporal import TemporalService
+        from maasservicelayer.utils.date import utcnow
+        from tests.fixtures import AsyncContextManagerMock
+
+        file_data = self.create_onie_installer_binary(size_in_bytes=102400)
+        sha256_hash = hashlib.sha256(file_data).hexdigest()
+
+        onie_boot_resource = BootResource(
+            id=1,
+            rtype=BootResourceType.UPLOADED,
+            name="onie/mellanox-3.8.0",
+            architecture="amd64/generic",
+            extra={"title": "Mellanox ONIE 3.8.0", "subarches": "generic"},
+            rolling=False,
+            base_image="",
+        )
+
+        to_builder_mock.return_value = BootResourceBuilder(
+            name="onie/mellanox-3.8.0",
+            architecture="amd64/generic",
+            base_image="",
+            rtype=BootResourceType.UPLOADED,
+            extra={"title": "Mellanox ONIE 3.8.0", "subarches": "generic"},
+            alias="",
+            bootloader_type=None,
+            kflavor=None,
+            rolling=False,
+            last_deployed=None,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.create.return_value = onie_boot_resource
+        services_mock.boot_resources.get_next_version_name.return_value = "1"
+
+        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
+        services_mock.boot_resource_sets.create.return_value = Mock(
+            id=1, version="1"
+        )
+
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+        services_mock.boot_resource_files.calculate_filename_on_disk.return_value = "test.bin"
+        services_mock.boot_resource_files.create.return_value = Mock(
+            id=1, sha256=sha256_hash
+        )
+
+        services_mock.boot_resource_file_sync = Mock(
+            BootResourceFileSyncService
+        )
+        services_mock.boot_resource_file_sync.get_or_create.return_value = (
+            Mock()
+        )
+
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.register_or_update_workflow_call.return_value = None
+
+        services_mock.nodes = Mock(NodesService)
+        services_mock.nodes.get_one.return_value = Node(
+            id=1,
+            system_id="test-region",
+            hostname="test-region",
+            status=NodeStatus.NEW,
+            node_type=NodeTypeEnum.REGION_CONTROLLER,
+            power_state=PowerState.UNKNOWN,
+            power_state_updated=None,
+        )
+
+        async_file_mock.return_value = AsyncContextManagerMock(
+            MockTemporaryFile()
+        )
+        maas_id_mock.get.return_value = "test-region"
+
+        headers = {
+            "name": "onie/mellanox-3.8.0",
+            "sha256": sha256_hash,
+            "architecture": "amd64/generic",
+            "file-type": "self-extracting",
+            "Content-Type": "application/octet-stream",
+        }
+
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH,
+            headers=headers,
+            content=file_data,
+        )
+
+        assert response.status_code == 201
+        created_resource_file = (
+            services_mock.boot_resource_files.create.call_args[0][0]
+        )
+        assert (
+            created_resource_file.filetype
+            == BootResourceFileType.SELF_EXTRACTING
+        )
+        assert created_resource_file.filename == "installer.bin"

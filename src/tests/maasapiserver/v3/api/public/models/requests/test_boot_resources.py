@@ -24,6 +24,15 @@ from maasservicelayer.services.configurations import ConfigurationsService
 from maastesting.factory import factory
 
 
+@pytest.fixture
+def mock_services():
+    services_mock = Mock(ServiceCollectionV3)
+    services_mock.boot_source_cache = Mock(BootSourceCacheService)
+    services_mock.boot_resources = Mock(BootResourceService)
+    services_mock.configurations = Mock(ConfigurationsService)
+    return services_mock
+
+
 class TestBootResourceCreateRequest:
     @patch(
         "maasapiserver.v3.api.public.models.requests.boot_resources.BootResourceCreateRequest._validate_architecture"
@@ -39,9 +48,8 @@ class TestBootResourceCreateRequest:
         validate_name_mock: MagicMock,
         validate_base_image_mock: MagicMock,
         validate_architecture_mock: MagicMock,
-    ) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
+        mock_services,
+    ):
         request = BootResourceCreateRequest(
             name="test-name",
             sha256="test-sha256",
@@ -56,7 +64,7 @@ class TestBootResourceCreateRequest:
         validate_architecture_mock.return_value = request.architecture
 
         resource_builder: BootResourceBuilder = await request.to_builder(
-            services=services_mock
+            services=mock_services
         )
 
         assert resource_builder.name == request.name
@@ -64,65 +72,74 @@ class TestBootResourceCreateRequest:
         assert resource_builder.architecture == request.architecture
         assert resource_builder.rtype == BootResourceType.UPLOADED
 
-    async def test_validate_name_custom(self) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
-        services_mock.boot_source_cache.get_unique_os_releases.return_value = []
-
-        name = "custom/my_custom_image"
-
-        request = BootResourceCreateRequest(
-            name=name,
-            sha256="test-sha256",
-            architecture="amd64/generic",
-            file_type=BootResourceFileTypeChoice.TGZ,
-            title=None,
-            base_image=None,
-        )
-
-        validated_name = await request._validate_name(name, services_mock)
-
-        assert validated_name == "custom/my_custom_image"
-
     @pytest.mark.parametrize(
-        "os",
+        "name",
         [
-            "ubuntu-core",
-            "centos",
-            "rhel",
-            "ol",
-            "custom",
-            "windows",
-            "suse",
-            "esxi",
+            "custom/my_custom_image",
+            "ubuntu-core/my-release",
+            "centos/my-release",
+            "rhel/my-release",
+            "ol/my-release",
+            "windows/my-release",
+            "suse/my-release",
+            "esxi/my-release",
+            "onie/mellanox-3.8.0",
+            "onie/dell-2023.05",
+            "onie/accton-2022.11",
         ],
     )
-    async def test_validate_name_supported(self, os: str) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
-        services_mock.boot_source_cache.get_unique_os_releases.return_value = []
-
-        name = f"{os}/my-release"
+    async def test_validate_name_supported(self, name, mock_services):
+        mock_services.boot_source_cache.get_unique_os_releases.return_value = []
 
         request = BootResourceCreateRequest(
             name=name,
-            sha256="test-sha256",
+            sha256="a" * 64,
             architecture="amd64/generic",
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
             base_image=None,
         )
-        validated_name = await request._validate_name(name, services_mock)
+        validated_name = await request._validate_name(name, mock_services)
 
         assert validated_name == name
 
-    async def test_validate_name_fails_when_not_supported(self) -> None:
-        services_mock = Mock(ServiceCollectionV3)
+    @pytest.mark.parametrize(
+        "name,reserved_releases",
+        [
+            ("centos/8", [BootSourceCacheOSRelease(os="centos", release="8")]),
+            (
+                "onie/mellanox-3.8.0",
+                [
+                    BootSourceCacheOSRelease(
+                        os="onie", release="mellanox-3.8.0"
+                    )
+                ],
+            ),
+        ],
+    )
+    async def test_validate_name_fails_when_reserved(
+        self, name, reserved_releases, mock_services
+    ):
+        mock_services.boot_source_cache.get_unique_os_releases.return_value = (
+            reserved_releases
+        )
 
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
-        services_mock.boot_source_cache.get_unique_os_releases.return_value = []
+        request = BootResourceCreateRequest(
+            name=name,
+            sha256="a" * 64,
+            architecture="amd64/generic",
+            file_type=BootResourceFileTypeChoice.TGZ,
+            title=None,
+            base_image=None,
+        )
+        with pytest.raises(ValidationException) as exc:
+            await request._validate_name(name, mock_services)
+
+        assert exc.value.details[0].field == "name"
+        assert "reserved" in exc.value.details[0].message.lower()
+
+    async def test_validate_name_fails_when_not_supported(self, mock_services):
+        mock_services.boot_source_cache.get_unique_os_releases.return_value = []
 
         name = "unsupported/os"
 
@@ -135,15 +152,12 @@ class TestBootResourceCreateRequest:
             base_image=None,
         )
         with pytest.raises(ValidationException) as validation_exception:
-            await request._validate_name(name, services_mock)
+            await request._validate_name(name, mock_services)
 
         assert validation_exception.value.details[0].field == "name"
 
-    async def test_validate_name_fails_when_centos_name(self) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
-        services_mock.boot_source_cache.get_unique_os_releases.return_value = []
+    async def test_validate_name_fails_when_centos_name(self, mock_services):
+        mock_services.boot_source_cache.get_unique_os_releases.return_value = []
 
         name = "centos7"
 
@@ -156,38 +170,14 @@ class TestBootResourceCreateRequest:
             base_image=None,
         )
         with pytest.raises(ValidationException) as validation_exception:
-            await request._validate_name(name, services_mock)
+            await request._validate_name(name, mock_services)
 
         assert validation_exception.value.details[0].field == "name"
 
-    async def test_validate_name_fails_when_reserved_name(self) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
-        services_mock.boot_source_cache.get_unique_os_releases.return_value = [
-            BootSourceCacheOSRelease(os="centos", release="8"),
-        ]
-
-        name = "centos/8"
-
-        request = BootResourceCreateRequest(
-            name=name,
-            sha256="test-sha256",
-            architecture="amd64/generic",
-            file_type=BootResourceFileTypeChoice.TGZ,
-            title=None,
-            base_image=None,
-        )
-        with pytest.raises(ValidationException) as validation_exception:
-            await request._validate_name(name, services_mock)
-
-        assert validation_exception.value.details[0].field == "name"
-
-    async def test_validate_name_fails_when_reserved_osystem(self) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
-        services_mock.boot_source_cache.get_unique_os_releases.return_value = [
+    async def test_validate_name_fails_when_reserved_osystem(
+        self, mock_services
+    ):
+        mock_services.boot_source_cache.get_unique_os_releases.return_value = [
             BootSourceCacheOSRelease(os="ubuntu", release="noble"),
             BootSourceCacheOSRelease(os="ubuntu", release="focal"),
             BootSourceCacheOSRelease(os="ubuntu", release="jammy"),
@@ -205,14 +195,12 @@ class TestBootResourceCreateRequest:
             base_image=None,
         )
         with pytest.raises(ValidationException) as validation_exception:
-            await request._validate_name(name, services_mock)
+            await request._validate_name(name, mock_services)
 
         assert validation_exception.value.details[0].field == "name"
 
-    async def test_validate_name_fails_if_os_is_ubuntu(self) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
-        services_mock.boot_source_cache.get_unique_os_releases.return_value = [
+    async def test_validate_name_fails_if_os_is_ubuntu(self, mock_services):
+        mock_services.boot_source_cache.get_unique_os_releases.return_value = [
             BootSourceCacheOSRelease(os="ubuntu", release="noble"),
             BootSourceCacheOSRelease(os="ubuntu", release="focal"),
             BootSourceCacheOSRelease(os="ubuntu", release="jammy"),
@@ -229,7 +217,7 @@ class TestBootResourceCreateRequest:
             base_image=None,
         )
         with pytest.raises(ValidationException) as validation_exception:
-            await request._validate_name(name, services_mock)
+            await request._validate_name(name, mock_services)
 
         assert validation_exception.value.details[0].field == "name"
         assert (
@@ -237,11 +225,10 @@ class TestBootResourceCreateRequest:
             == "To upload an Ubuntu custom image you have to specify 'custom' as the OS"
         )
 
-    async def test_validate_name_fails_when_reserved_release(self) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
-        services_mock.boot_source_cache.get_unique_os_releases.return_value = [
+    async def test_validate_name_fails_when_reserved_release(
+        self, mock_services
+    ):
+        mock_services.boot_source_cache.get_unique_os_releases.return_value = [
             BootSourceCacheOSRelease(os="ubuntu", release="noble"),
             BootSourceCacheOSRelease(os="ubuntu", release="focal"),
             BootSourceCacheOSRelease(os="ubuntu", release="jammy"),
@@ -259,25 +246,19 @@ class TestBootResourceCreateRequest:
             base_image=None,
         )
         with pytest.raises(ValidationException) as validation_exception:
-            await request._validate_name(name, services_mock)
+            await request._validate_name(name, mock_services)
 
         assert validation_exception.value.details[0].field == "name"
 
     async def test_validate_base_image_defaults_to_commissioning_release(
-        self,
-    ) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
+        self, mock_services
+    ):
         test_base_image = None
-
         name = "custom/my_custom_image"
         architecture = "amd64/generic"
 
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_one.return_value = None
-
-        services_mock.configurations = Mock(ConfigurationsService)
-        services_mock.configurations.get_many.return_value = {
+        mock_services.boot_resources.get_one.return_value = None
+        mock_services.configurations.get_many.return_value = {
             "commissioning_osystem": "ubuntu",
             "commissioning_distro_series": "noble",
         }
@@ -292,30 +273,27 @@ class TestBootResourceCreateRequest:
         )
 
         validated_base_image = await request._validate_base_image(
-            test_base_image, name, architecture, services_mock
+            test_base_image, name, architecture, mock_services
         )
 
         assert validated_base_image == "ubuntu/noble"
 
-    async def test_validate_base_image_windows_does_not_require_base_image(
-        self,
-    ) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_one.return_value = []
-
-        services_mock.configurations = Mock(ConfigurationsService)
-        services_mock.configurations.get_many.return_value = []
+    @pytest.mark.parametrize(
+        "os_name",
+        ["windows", "esxi", "rhel", "onie"],
+    )
+    async def test_validate_base_image_not_required_for_os(
+        self, os_name, mock_services
+    ):
+        mock_services.boot_resources.get_one.return_value = None
 
         test_base_image = None
-
-        name = f"windows/{factory.make_name()}"
+        name = f"{os_name}/{factory.make_name()}"
         architecture = "amd64/generic"
 
         request = BootResourceCreateRequest(
             name=name,
-            sha256="test-sha256",
+            sha256="a" * 64,
             architecture=architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
@@ -323,80 +301,37 @@ class TestBootResourceCreateRequest:
         )
 
         validated_base_image = await request._validate_base_image(
-            test_base_image, name, architecture, services_mock
+            test_base_image, name, architecture, mock_services
         )
 
         assert validated_base_image == ""
 
-    async def test_validate_base_image_esxi_does_not_require_base_image(
-        self,
-    ) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_one.return_value = []
-
-        services_mock.configurations = Mock(ConfigurationsService)
-        services_mock.configurations.get_many.return_value = []
-
-        test_base_image = None
-
-        name = f"esxi/{factory.make_name()}"
-        architecture = "amd64/generic"
+    async def test_validate_base_image_onie_ignores_provided(
+        self, mock_services
+    ):
+        mock_services.boot_resources.get_one.return_value = None
 
         request = BootResourceCreateRequest(
-            name=name,
-            sha256="test-sha256",
-            architecture=architecture,
+            name="onie/mellanox-3.8.0",
+            sha256="a" * 64,
+            architecture="amd64/generic",
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
-            base_image=test_base_image,
+            base_image="ubuntu/focal",
         )
 
-        validated_base_image = await request._validate_base_image(
-            test_base_image, name, architecture, services_mock
+        validated = await request._validate_base_image(
+            "ubuntu/focal",
+            "onie/mellanox-3.8.0",
+            "amd64/generic",
+            mock_services,
         )
-
-        assert validated_base_image == ""
-
-    async def test_validate_base_image_rhel_does_not_require_base_image(
-        self,
-    ) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_one.return_value = []
-
-        services_mock.configurations = Mock(ConfigurationsService)
-        services_mock.configurations.get_many.return_value = []
-
-        test_base_image = None
-
-        name = f"rhel/{factory.make_name()}"
-        architecture = "amd64/generic"
-
-        request = BootResourceCreateRequest(
-            name=name,
-            sha256="test-sha256",
-            architecture=architecture,
-            file_type=BootResourceFileTypeChoice.TGZ,
-            title=None,
-            base_image=test_base_image,
-        )
-
-        validated_base_image = await request._validate_base_image(
-            test_base_image, name, architecture, services_mock
-        )
-
-        assert validated_base_image == ""
+        assert validated == ""
 
     async def test_validate_base_image_custom_image_name_no_prefix(
-        self,
-    ) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
+        self, mock_services
+    ):
         test_base_image = "ubuntu/noble"
-
         base_image = "ubuntu/noble"
         name = "my_custom_image"
         architecture = "amd64/generic"
@@ -411,11 +346,7 @@ class TestBootResourceCreateRequest:
             base_image=base_image,
         )
 
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_one.return_value = existing_resource
-
-        services_mock.configurations = Mock(ConfigurationsService)
-        services_mock.configurations.get_many.return_value = []
+        mock_services.boot_resources.get_one.return_value = existing_resource
 
         request = BootResourceCreateRequest(
             name=name,
@@ -427,26 +358,19 @@ class TestBootResourceCreateRequest:
         )
 
         validated_base_image = await request._validate_base_image(
-            test_base_image, name, architecture, services_mock
+            test_base_image, name, architecture, mock_services
         )
 
         assert validated_base_image == base_image
 
     async def test_validate_base_image_fails_when_non_existent_custom_image_no_prefix(
-        self,
-    ) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
+        self, mock_services
+    ):
         test_base_image = "invalid"
-
         name = "my_custom_image"
         architecture = "amd64/generic"
 
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_one.return_value = None
-
-        services_mock.configurations = Mock(ConfigurationsService)
-        services_mock.configurations.get_many.return_value = []
+        mock_services.boot_resources.get_one.return_value = None
 
         request = BootResourceCreateRequest(
             name=name,
@@ -459,25 +383,19 @@ class TestBootResourceCreateRequest:
 
         with pytest.raises(ValidationException) as validation_exception:
             await request._validate_base_image(
-                test_base_image, name, architecture, services_mock
+                test_base_image, name, architecture, mock_services
             )
 
         assert validation_exception.value.details[0].field == "base_image"
 
     async def test_validate_base_image_fails_if_release_unsupported(
-        self,
-    ) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
+        self, mock_services
+    ):
         test_base_image = "ubuntu/asdf"
-
         name = "custom/my_custom_image"
         architecture = "amd64/generic"
 
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_one.return_value = None
-
-        services_mock.configurations = Mock(ConfigurationsService)
+        mock_services.boot_resources.get_one.return_value = None
 
         request = BootResourceCreateRequest(
             name=name,
@@ -490,7 +408,7 @@ class TestBootResourceCreateRequest:
 
         with pytest.raises(ValidationException) as validation_exception:
             await request._validate_base_image(
-                test_base_image, name, architecture, services_mock
+                test_base_image, name, architecture, mock_services
             )
 
         assert validation_exception.value.details[0].field == "base_image"
@@ -499,45 +417,48 @@ class TestBootResourceCreateRequest:
             == f"Unsupported base image {test_base_image}"
         )
 
-        services_mock.configurations.get_many.assert_not_called()
+        mock_services.configurations.get_many.assert_not_called()
 
-    async def test_validate_architecture_usable(self) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_usable_architectures.return_value = [
+    @pytest.mark.parametrize(
+        "architecture",
+        [
             "amd64/generic",
+            "arm64/generic",
+            "armhf/generic",
+        ],
+    )
+    async def test_validate_architecture_usable(
+        self, architecture, mock_services
+    ):
+        mock_services.boot_resources.get_usable_architectures.return_value = [
+            "amd64/generic",
+            "arm64/generic",
+            "armhf/generic",
         ]
-
-        test_architecture = "amd64/generic"
 
         name = f"custom/{factory.make_name()}"
 
         request = BootResourceCreateRequest(
             name=name,
-            sha256="test-sha256",
-            architecture=test_architecture,
+            sha256="a" * 64,
+            architecture=architecture,
             file_type=BootResourceFileTypeChoice.TGZ,
             title=None,
             base_image=None,
         )
 
-        validated_base_architecture = await request._validate_architecture(
-            test_architecture, services_mock
+        validated_architecture = await request._validate_architecture(
+            architecture, mock_services
         )
 
-        assert validated_base_architecture == test_architecture
+        assert validated_architecture == architecture
 
-    async def test_validate_architecture_not_usable(self) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_usable_architectures.return_value = [
+    async def test_validate_architecture_not_usable(self, mock_services):
+        mock_services.boot_resources.get_usable_architectures.return_value = [
             "amd64/generic",
         ]
 
         test_architecture = "arm64/generic"
-
         name = f"custom/{factory.make_name()}"
 
         request = BootResourceCreateRequest(
@@ -551,16 +472,13 @@ class TestBootResourceCreateRequest:
 
         with pytest.raises(ValidationException) as validation_exception:
             await request._validate_architecture(
-                test_architecture, services_mock
+                test_architecture, mock_services
             )
 
         assert validation_exception.value.details[0].field == "architecture"
 
-    async def test_validate_architecture_invalid_format(self) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
+    async def test_validate_architecture_invalid_format(self, mock_services):
         test_architecture = "asdfghjkl;./"
-
         name = f"custom/{factory.make_name()}"
 
         request = BootResourceCreateRequest(
@@ -574,21 +492,17 @@ class TestBootResourceCreateRequest:
 
         with pytest.raises(ValidationException) as validation_exception:
             await request._validate_architecture(
-                test_architecture, services_mock
+                test_architecture, mock_services
             )
 
         assert validation_exception.value.details[0].field == "architecture"
 
     async def test_validate_architecture_fails_if_no_usable_architectures(
-        self,
-    ) -> None:
-        services_mock = Mock(ServiceCollectionV3)
-
-        services_mock.boot_resources = Mock(BootResourceService)
-        services_mock.boot_resources.get_usable_architectures.return_value = []
+        self, mock_services
+    ):
+        mock_services.boot_resources.get_usable_architectures.return_value = []
 
         test_architecture = "amd64/generic"
-
         name = f"custom/{factory.make_name()}"
 
         request = BootResourceCreateRequest(
@@ -602,10 +516,37 @@ class TestBootResourceCreateRequest:
 
         with pytest.raises(ValidationException) as validation_exception:
             await request._validate_architecture(
-                test_architecture, services_mock
+                test_architecture, mock_services
             )
 
         assert validation_exception.value.details[0].field == "architecture"
+
+    @pytest.mark.parametrize(
+        "file_type",
+        [
+            BootResourceFileTypeChoice.SELF_EXTRACTING,
+        ],
+    )
+    async def test_onie_file_types_supported(self, file_type, mock_services):
+        mock_services.boot_source_cache.get_unique_os_releases.return_value = []
+        mock_services.boot_resources.get_usable_architectures.return_value = [
+            "amd64/generic"
+        ]
+        mock_services.boot_resources.get_one.return_value = None
+
+        request = BootResourceCreateRequest(
+            name="onie/mellanox-3.8.0",
+            sha256="a" * 64,
+            architecture="amd64/generic",
+            file_type=file_type,
+            title="Mellanox ONIE 3.8.0",
+            base_image=None,
+        )
+
+        builder = await request.to_builder(services=mock_services)
+        assert builder.name == "onie/mellanox-3.8.0"
+        assert builder.base_image == ""
+        assert builder.rtype == BootResourceType.UPLOADED
 
 
 class TestCustomImageFilterParams:

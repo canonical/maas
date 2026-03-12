@@ -38,6 +38,7 @@ class BootResourceFileTypeChoice(StrEnum):
     DDGZ = "ddgz"
     DDXZ = "ddxz"
     DDRAW = "ddraw"
+    SELF_EXTRACTING = "self-extracting"
 
     @staticmethod
     def get_resource_filetype(
@@ -56,6 +57,7 @@ class BootResourceFileTypeChoice(StrEnum):
             BootResourceFileTypeChoice.DDBZ2: BootResourceFileType.ROOT_DDBZ2,
             BootResourceFileTypeChoice.DDGZ: BootResourceFileType.ROOT_DDGZ,
             BootResourceFileTypeChoice.DDXZ: BootResourceFileType.ROOT_DDXZ,
+            BootResourceFileTypeChoice.SELF_EXTRACTING: BootResourceFileType.SELF_EXTRACTING,
         }
         return filetypes.get(value, BootResourceFileType.ROOT_TGZ)
 

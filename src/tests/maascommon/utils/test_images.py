@@ -44,7 +44,7 @@ def test_format_ubuntu_distro_series(series: str, expected: str) -> None:
         ("ubuntu", "noble", None, "24.04 LTS"),
         ("foo", "bar", "My custom title", "My custom title"),
         ("foo", "bar", None, "Foo Bar"),
-        ("windows", "2016", None, "Windows 2016"),
+        ("windows", "win2016", None, 'Windows "Server 2016"'),
     ],
 )
 def test_format_image_title(

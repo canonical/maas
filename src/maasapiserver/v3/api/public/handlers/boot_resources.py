@@ -112,6 +112,7 @@ class CustomImagesHandler(Handler):
             BootResourceFileType.ROOT_TGZ: "root.tgz",
             BootResourceFileType.ROOT_TBZ: "root.tbz",
             BootResourceFileType.ROOT_TXZ: "root.txz",
+            BootResourceFileType.SELF_EXTRACTING: "installer.bin",
         }
         return filetype_filename.get(filetype, filetype)
 

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from distro_info import UbuntuDistroInfo
 
+from maascommon.osystem import OperatingSystemRegistry
 from maascommon.path import get_maas_data_path
 
 
@@ -40,4 +41,7 @@ def format_image_title(osystem: str, release: str, title: str | None = None):
     if osystem == "ubuntu":
         return format_ubuntu_distro_series(release)
 
-    return f"{osystem.capitalize()} {release.capitalize()}"
+    if os := OperatingSystemRegistry.get_item(osystem):
+        title = os.get_release_title(release)
+
+    return title or f"{osystem.capitalize()} {release.capitalize()}"

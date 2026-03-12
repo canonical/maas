@@ -46,6 +46,9 @@ class BootResourceFileType(StrEnum):
     # For backwards compatibility, DDTGZ files are named root-dd
     ROOT_DDTGZ = "root-dd"
 
+    # Self-extracting installer (used by ONIE)
+    SELF_EXTRACTING = "self-extracting"
+
     # Following are not allowed on user upload. Only used for syncing
     # from another simplestreams source. (Most likely images.maas.io)
 
