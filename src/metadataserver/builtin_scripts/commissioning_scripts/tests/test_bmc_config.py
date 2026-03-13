@@ -1539,6 +1539,105 @@ class TestRedfish(MAASTestCase):
 
         self.assertEqual("127.0.0.1", self.redfish.get_bmc_ip())
 
+    def test_get_no_bmc_ip(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+        self.patch(self.redfish, "get_manager_id").return_value = "1"
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        token_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            X-Auth-Token: token
+            Connection: close"""
+        ).encode()
+
+        interfaces_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close
+
+            {"Members":[{"@odata.id":"/redfish/v1/Managers/1/EthernetInterfaces/1"},{"@odata.id":"/redfish/v1/Managers/1/EthernetInterfaces/2"},{"@odata.id":"/redfish/v1/Managers/1/EthernetInterfaces/3"}]}"""
+        ).encode()
+
+        address_data_1 = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close
+
+            {"IPv4Addresses":[{"Address":"16.1.15.1"}]}"""
+        ).encode()
+
+        address_data_2 = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close
+
+            {"IPv4Addresses":[{"Address":"0.0.0.0"}]}"""
+        ).encode()
+
+        address_data_3 = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close
+
+            {"IPv4Addresses":[{"Address":"169.254.95.118"}]}"""
+        ).encode()
+
+        sock_response_token = self.FakeSocket(token_data)
+        response_token = urllib.request.http.client.HTTPResponse(
+            sock_response_token
+        )
+        response_token.begin()
+
+        sock_response_interfaces = self.FakeSocket(interfaces_data)
+        response_interfaces = urllib.request.http.client.HTTPResponse(
+            sock_response_interfaces
+        )
+        response_interfaces.begin()
+
+        sock_response_address_1 = self.FakeSocket(address_data_1)
+        sock_response_address_2 = self.FakeSocket(address_data_2)
+        sock_response_address_3 = self.FakeSocket(address_data_3)
+        response_address_1 = urllib.request.http.client.HTTPResponse(
+            sock_response_address_1
+        )
+        response_address_2 = urllib.request.http.client.HTTPResponse(
+            sock_response_address_2
+        )
+        response_address_3 = urllib.request.http.client.HTTPResponse(
+            sock_response_address_3
+        )
+        response_address_1.begin()
+        response_address_2.begin()
+        response_address_3.begin()
+
+        mock_urlopen.side_effect = (
+            response_token,
+            response_interfaces,
+            response_address_1,
+            response_address_2,
+            response_address_3,
+        )
+
+        self.assertIsNone(self.redfish.get_bmc_ip())
+        self.mock_print.assert_called_once_with(
+            "WARNING: No valid Redfish IPv4 address found."
+        )
+
     def test_configure_network(self):
         data = textwrap.dedent(
             """\
