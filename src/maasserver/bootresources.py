@@ -20,7 +20,7 @@ from textwrap import dedent
 import threading
 
 from django.db import connection, transaction
-from django.db.models import F
+from django.db.models import Count, F, Q
 from pkg_resources import parse_version
 from simplestreams import util as sutil
 from simplestreams.log import LOG, WARNING
@@ -614,6 +614,44 @@ class BootResourceStore(ObjectStore):
             start=100 * 2**20,  # space to uncompress the bootloaders
         )
 
+    def get_pending_uploaded_resources(self) -> list[ResourceDownloadParam]:
+        """Return ResourceDownloadParam for UPLOADED resources that have at
+        least one complete copy but are not yet synced to all region controllers.
+
+        These are included in each sync run so that a failed workflow or a
+        newly added region controller can pick them up.
+        """
+        n_regions = RegionController.objects.count()
+        if n_regions <= 1:
+            return []
+
+        files = (
+            BootResourceFile.objects.filter(
+                resource_set__resource__rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            )
+            .annotate(
+                complete_syncs=Count(
+                    "bootresourcefilesync",
+                    filter=Q(bootresourcefilesync__size=F("size")),
+                )
+            )
+            .filter(
+                complete_syncs__gt=0,  # has at least one complete copy
+                complete_syncs__lt=n_regions,  # not yet synced to all regions
+            )
+            .only("id", "sha256", "filename_on_disk", "size")
+        )
+        return [
+            ResourceDownloadParam(
+                rfile_ids=[f.id],
+                source_list=[],
+                sha256=f.sha256,
+                filename_on_disk=f.filename_on_disk,
+                total_size=f.size,
+            )
+            for f in files
+        ]
+
     def finalize(self, notify: Deferred | None = None):
         """Perform the finalization of data into the filesystem.
 
@@ -665,9 +703,14 @@ class BootResourceStore(ObjectStore):
                 reactor.callFromThread(notify.callback, None)
 
             try:
-                if len(self._content_to_finalize) > 0:
+                pending_uploaded = self.get_pending_uploaded_resources()
+                resources = [
+                    *self._content_to_finalize.values(),
+                    *pending_uploaded,
+                ]
+                if resources:
                     sync_req = SyncRequestParam(
-                        resources=[*self._content_to_finalize.values()],
+                        resources=resources,
                         requirement=SpaceRequirementParam(
                             total_resources_size=self.calc_storage_size()
                         ),
