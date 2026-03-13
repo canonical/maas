@@ -83,10 +83,11 @@ class StaticIPAddressService(
     async def pre_delete_hook(
         self, resource_to_be_deleted: StaticIPAddress
     ) -> None:
-        # Capture DNS resources BEFORE unlinking them
+        # Remove this StaticIPAddress from the many to many relations first.
+        # Capture DNS resources before unlinking them
         # This mimics Django signal behavior from:
         # src/maasserver/models/signals/staticipaddress.py:pre_delete_record_relations_on_delete
-        self._dnsresources_to_cleanup = (
+        dnsresources_to_cleanup = (
             await self.dnsresource_repository.get_dnsresources_for_ip(
                 resource_to_be_deleted
             )
@@ -100,28 +101,10 @@ class StaticIPAddressService(
             staticipaddress_id=resource_to_be_deleted.id
         )
 
-    async def post_delete_hook(self, resource: StaticIPAddress) -> None:
-        # Clean up DNS resources that no longer have any IP addresses
-        # This mimics Django signal behavior from:
-        # src/maasserver/models/signals/staticipaddress.py:post_delete_clean_up_dns
-
-        if not self._dnsresources_to_cleanup:
-            self._dnsresources_to_cleanup = []
-            # Early return with DHCP workflow trigger
-            if (
-                resource.alloc_type != IpAddressType.DISCOVERED
-                and resource.subnet_id is not None
-            ):
-                self.temporal_service.register_or_update_workflow_call(
-                    CONFIGURE_DHCP_WORKFLOW_NAME,
-                    ConfigureDHCPParam(subnet_ids=[resource.subnet_id]),
-                    parameter_merge_func=merge_configure_dhcp_param,
-                    wait=False,
-                )
+        if not dnsresources_to_cleanup:
             return
-
         # Batch query to get remaining IP counts for all DNS resources
-        dnsresource_ids = [dnsrr.id for dnsrr in self._dnsresources_to_cleanup]
+        dnsresource_ids = [dnsrr.id for dnsrr in dnsresources_to_cleanup]
         remaining_ip_counts = (
             await self.dnsresource_repository.get_ip_counts_for_dnsresources(
                 dnsresource_ids
@@ -154,16 +137,16 @@ class StaticIPAddressService(
                     to_delete_ids
                 )
 
-        # Clear the list after processing
-        self._dnsresources_to_cleanup = []
-
+    async def post_delete_hook(self, resource: StaticIPAddress) -> None:
         if (
             resource.alloc_type != IpAddressType.DISCOVERED
             and resource.subnet_id is not None
         ):
             self.temporal_service.register_or_update_workflow_call(
                 CONFIGURE_DHCP_WORKFLOW_NAME,
-                ConfigureDHCPParam(subnet_ids=[resource.subnet_id]),
+                ConfigureDHCPParam(
+                    subnet_ids=[resource.subnet_id]
+                ),  # use parent id on delete
                 parameter_merge_func=merge_configure_dhcp_param,
                 wait=False,
             )
