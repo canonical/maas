@@ -3,7 +3,7 @@
 
 from typing import List, Optional, Type
 
-from sqlalchemy import delete, insert, select, Table
+from sqlalchemy import delete, func, insert, select, Table
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressType
