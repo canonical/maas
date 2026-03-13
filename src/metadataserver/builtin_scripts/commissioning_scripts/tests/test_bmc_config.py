@@ -1143,6 +1143,7 @@ class TestRedfish(MAASTestCase):
         super().setUp()
         self.redfish = bmc_config.Redfish()
         self.mock_check_output = self.patch(bmc_config, "check_output")
+        self.mock_print = self.patch(bmc_config, "print")
 
     def test_str(self):
         self.assertEqual("Redfish", str(self.redfish))
