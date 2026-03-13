@@ -171,6 +171,7 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
                 for _ in range(3)
             ]
         ]
+
         dnsresource = await create_test_dnsresource_entry(fixture, domain)
 
         for sip in sips:
@@ -210,7 +211,6 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
             (await create_test_dnsdata_entry(fixture, dnsresource))
             for _ in range(3)
         ]
-
         result = await repository_instance.get_dnsdata_for_dnsresource(
             dnsresource.id
         )
