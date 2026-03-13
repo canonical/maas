@@ -12,6 +12,7 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
@@ -31,10 +32,12 @@ class StaticIPAddressService(
         self,
         context: Context,
         temporal_service: TemporalService,
+        dnsresource_repository: DNSResourceRepository,
         staticipaddress_repository: StaticIPAddressRepository,
     ):
         super().__init__(context, staticipaddress_repository)
         self.temporal_service = temporal_service
+        self.dnsresource_repository = dnsresource_repository
 
     async def post_create_hook(self, resource: StaticIPAddress) -> None:
         if resource.alloc_type != IpAddressType.DISCOVERED:
@@ -79,12 +82,38 @@ class StaticIPAddressService(
     async def pre_delete_hook(
         self, resource_to_be_deleted: StaticIPAddress
     ) -> None:
-        # Remove this StaticIPAddress from the many to many relations first.
+        # Remove this StaticIPAddress from all many-to-many relations first.
         await self.repository.unlink_from_interfaces(
+            staticipaddress_id=resource_to_be_deleted.id
+        )
+        await self.dnsresource_repository.unlink_ip_from_all_dnsresources(
             staticipaddress_id=resource_to_be_deleted.id
         )
 
     async def post_delete_hook(self, resource: StaticIPAddress) -> None:
+        # Clean up DNS resources that no longer have any IP addresses
+        # This mimics Django signal behavior from:
+        # src/maasserver/models/signals/staticipaddress.py:post_delete_clean_up_dns
+        dnsresources = (
+            await self.dnsresource_repository.get_dnsresources_for_ip(resource)
+        )
+
+        for dnsrr in dnsresources:
+            # Check if this DNS resource has any remaining IP addresses
+            remaining_ips = (
+                await self.dnsresource_repository.get_ips_for_dnsresource(
+                    dnsrr.id
+                )
+            )
+            if not remaining_ips:
+                # No more IPs linked to this DNS resource, check for DNS data
+                dnsdata = await self.dnsresource_repository.get_dnsdata_for_dnsresource(
+                    dnsrr.id
+                )
+                # Only delete if there's no DNS data either
+                if not dnsdata:
+                    await self.dnsresource_repository.delete_by_id(dnsrr.id)
+
         if (
             resource.alloc_type != IpAddressType.DISCOVERED
             and resource.subnet_id is not None
