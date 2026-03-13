@@ -514,6 +514,7 @@ class ServiceCollectionV3:
         services.staticipaddress = StaticIPAddressService(
             context=context,
             temporal_service=services.temporal,
+            dnsresource_repository=DNSResourceRepository(context),
             staticipaddress_repository=StaticIPAddressRepository(context),
         )
         services.dhcpsnippets = DhcpSnippetsService(
