@@ -1,7 +1,6 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-import logging
 from typing import List
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
@@ -22,8 +21,6 @@ from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.temporal import TemporalService
-
-logger = logging.getLogger(__name__)
 
 
 class StaticIPAddressService(
@@ -107,27 +104,55 @@ class StaticIPAddressService(
         # Clean up DNS resources that no longer have any IP addresses
         # This mimics Django signal behavior from:
         # src/maasserver/models/signals/staticipaddress.py:post_delete_clean_up_dns
-        for dnsrr in self._dnsresources_to_cleanup:
-            # Check if this DNS resource has any remaining IP addresses
-            remaining_ips = (
-                await self.dnsresource_repository.get_ips_for_dnsresource(
-                    dnsrr.id
+
+        if not self._dnsresources_to_cleanup:
+            self._dnsresources_to_cleanup = []
+            # Early return with DHCP workflow trigger
+            if (
+                resource.alloc_type != IpAddressType.DISCOVERED
+                and resource.subnet_id is not None
+            ):
+                self.temporal_service.register_or_update_workflow_call(
+                    CONFIGURE_DHCP_WORKFLOW_NAME,
+                    ConfigureDHCPParam(subnet_ids=[resource.subnet_id]),
+                    parameter_merge_func=merge_configure_dhcp_param,
+                    wait=False,
                 )
+            return
+
+        # Batch query to get remaining IP counts for all DNS resources
+        dnsresource_ids = [dnsrr.id for dnsrr in self._dnsresources_to_cleanup]
+        remaining_ip_counts = (
+            await self.dnsresource_repository.get_ip_counts_for_dnsresources(
+                dnsresource_ids
             )
-            if not remaining_ips:
-                # No more IPs linked to this DNS resource, check for DNS data
-                dnsdata = await self.dnsresource_repository.get_dnsdata_for_dnsresource(
-                    dnsrr.id
+        )
+
+        # Find DNS resources with no remaining IPs
+        orphaned_ids = [
+            dnsrr_id
+            for dnsrr_id in dnsresource_ids
+            if remaining_ip_counts.get(dnsrr_id, 0) == 0
+        ]
+
+        if orphaned_ids:
+            # Batch query to get DNS data counts for orphaned resources
+            dnsdata_counts = await self.dnsresource_repository.get_dnsdata_counts_for_dnsresources(
+                orphaned_ids
+            )
+
+            # Determine which DNS resources to delete (no IPs and no DNS data)
+            to_delete_ids = [
+                dnsrr_id
+                for dnsrr_id in orphaned_ids
+                if dnsdata_counts.get(dnsrr_id, 0) == 0
+            ]
+
+            if to_delete_ids:
+                # Bulk delete all orphaned DNS resources in a single query
+                await self.dnsresource_repository.delete_many_by_ids(
+                    to_delete_ids
                 )
-                # Only delete if there's no DNS data either
-                if not dnsdata:
-                    await self.dnsresource_repository.delete_by_id(dnsrr.id)
-                    logger.info(
-                        "Removed orphan DNS resource '%s' (id=%s) for deleted IP address '%s'",
-                        dnsrr.name,
-                        dnsrr.id,
-                        resource.ip,
-                    )
 
         # Clear the list after processing
         self._dnsresources_to_cleanup = []
@@ -138,9 +163,7 @@ class StaticIPAddressService(
         ):
             self.temporal_service.register_or_update_workflow_call(
                 CONFIGURE_DHCP_WORKFLOW_NAME,
-                ConfigureDHCPParam(
-                    subnet_ids=[resource.subnet_id]
-                ),  # use parent id on delete
+                ConfigureDHCPParam(subnet_ids=[resource.subnet_id]),
                 parameter_merge_func=merge_configure_dhcp_param,
                 wait=False,
             )

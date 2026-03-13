@@ -20,7 +20,6 @@ from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
 from maasservicelayer.models.base import MaasBaseModel
-from maasservicelayer.models.dnsdata import DNSData
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -475,10 +474,18 @@ class TestStaticIPAddressService:
         mock_dnsresource_repository.get_dnsresources_for_ip.return_value = [
             dnsresource
         ]
-        # After unlinking, the DNS resource has no remaining IPs
-        mock_dnsresource_repository.get_ips_for_dnsresource.return_value = []
-        # And no DNS data either
-        mock_dnsresource_repository.get_dnsdata_for_dnsresource.return_value = []
+        # Batch query: DNS resource has no remaining IPs
+        mock_dnsresource_repository.get_ip_counts_for_dnsresources.return_value = {
+            dnsresource.id: 0
+        }
+        # Batch query: DNS resource has no DNS data
+        mock_dnsresource_repository.get_dnsdata_counts_for_dnsresources.return_value = {
+            dnsresource.id: 0
+        }
+        # Batch delete
+        mock_dnsresource_repository.delete_many_by_ids.return_value = [
+            dnsresource
+        ]
 
         mock_temporal = Mock(TemporalService)
 
@@ -491,18 +498,18 @@ class TestStaticIPAddressService:
 
         await staticipaddress_service.delete_by_id(id=sip.id)
 
-        # Verify DNS resource was deleted
+        # Verify DNS resource was deleted using batch operations
         mock_dnsresource_repository.get_dnsresources_for_ip.assert_called_once_with(
             sip
         )
-        mock_dnsresource_repository.get_ips_for_dnsresource.assert_called_once_with(
-            dnsresource.id
+        mock_dnsresource_repository.get_ip_counts_for_dnsresources.assert_called_once_with(
+            [dnsresource.id]
         )
-        mock_dnsresource_repository.get_dnsdata_for_dnsresource.assert_called_once_with(
-            dnsresource.id
+        mock_dnsresource_repository.get_dnsdata_counts_for_dnsresources.assert_called_once_with(
+            [dnsresource.id]
         )
-        mock_dnsresource_repository.delete_by_id.assert_called_once_with(
-            dnsresource.id
+        mock_dnsresource_repository.delete_many_by_ids.assert_called_once_with(
+            [dnsresource.id]
         )
 
     async def test_delete_keeps_dns_resource_with_remaining_ips(self) -> None:
@@ -527,16 +534,6 @@ class TestStaticIPAddressService:
             updated=now,
         )
 
-        other_ip = StaticIPAddress(
-            id=3,
-            ip="10.0.0.3",
-            lease_time=30,
-            subnet_id=1,
-            alloc_type=IpAddressType.AUTO,
-            created=now,
-            updated=now,
-        )
-
         mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
         mock_staticipaddress_repository.get_by_id.return_value = sip
         mock_staticipaddress_repository.delete_by_id.return_value = sip
@@ -545,10 +542,10 @@ class TestStaticIPAddressService:
         mock_dnsresource_repository.get_dnsresources_for_ip.return_value = [
             dnsresource
         ]
-        # After unlinking, the DNS resource still has other IPs
-        mock_dnsresource_repository.get_ips_for_dnsresource.return_value = [
-            other_ip
-        ]
+        # Batch query: DNS resource still has 1 IP remaining
+        mock_dnsresource_repository.get_ip_counts_for_dnsresources.return_value = {
+            dnsresource.id: 1
+        }
 
         mock_temporal = Mock(TemporalService)
 
@@ -561,8 +558,9 @@ class TestStaticIPAddressService:
 
         await staticipaddress_service.delete_by_id(id=sip.id)
 
-        # Verify DNS resource was NOT deleted
-        mock_dnsresource_repository.delete_by_id.assert_not_called()
+        # Verify DNS resource was NOT deleted (has remaining IPs)
+        mock_dnsresource_repository.get_dnsdata_counts_for_dnsresources.assert_not_called()
+        mock_dnsresource_repository.delete_many_by_ids.assert_not_called()
 
     async def test_delete_keeps_dns_resource_with_dnsdata(self) -> None:
         """Test that DNS resources with DNS data are kept even without IPs."""
@@ -585,15 +583,6 @@ class TestStaticIPAddressService:
             updated=now,
         )
 
-        dnsdata = DNSData(
-            id=1,
-            dnsresource_id=1,
-            rrtype="CNAME",
-            rrdata="other-host.example.com",
-            created=now,
-            updated=now,
-        )
-
         mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
         mock_staticipaddress_repository.get_by_id.return_value = sip
         mock_staticipaddress_repository.delete_by_id.return_value = sip
@@ -602,12 +591,14 @@ class TestStaticIPAddressService:
         mock_dnsresource_repository.get_dnsresources_for_ip.return_value = [
             dnsresource
         ]
-        # No remaining IPs
-        mock_dnsresource_repository.get_ips_for_dnsresource.return_value = []
-        # But has DNS data (like a CNAME record)
-        mock_dnsresource_repository.get_dnsdata_for_dnsresource.return_value = [
-            dnsdata
-        ]
+        # Batch query: no remaining IPs
+        mock_dnsresource_repository.get_ip_counts_for_dnsresources.return_value = {
+            dnsresource.id: 0
+        }
+        # Batch query: has DNS data (like a CNAME record)
+        mock_dnsresource_repository.get_dnsdata_counts_for_dnsresources.return_value = {
+            dnsresource.id: 1
+        }
 
         mock_temporal = Mock(TemporalService)
 
@@ -621,10 +612,10 @@ class TestStaticIPAddressService:
         await staticipaddress_service.delete_by_id(id=sip.id)
 
         # Verify DNS resource was NOT deleted because it has DNS data
-        mock_dnsresource_repository.get_dnsdata_for_dnsresource.assert_called_once_with(
-            dnsresource.id
+        mock_dnsresource_repository.get_dnsdata_counts_for_dnsresources.assert_called_once_with(
+            [dnsresource.id]
         )
-        mock_dnsresource_repository.delete_by_id.assert_not_called()
+        mock_dnsresource_repository.delete_many_by_ids.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -740,8 +731,10 @@ class TestStaticIPAddressServiceIntegration:
         )
 
         # Verify DNS data exists
-        dnsdata_before = await services.dnsresources.get_dnsdata_for_dnsresource(
-            dnsresource.id
+        dnsdata_before = (
+            await services.dnsresources.get_dnsdata_for_dnsresource(
+                dnsresource.id
+            )
         )
         assert len(dnsdata_before) == 1
 
@@ -759,8 +752,10 @@ class TestStaticIPAddressServiceIntegration:
         assert len(ips_after) == 0
 
         # But DNS data still exists
-        dnsdata_after = await services.dnsresources.get_dnsdata_for_dnsresource(
-            dnsresource.id
+        dnsdata_after = (
+            await services.dnsresources.get_dnsdata_for_dnsresource(
+                dnsresource.id
+            )
         )
         assert len(dnsdata_after) == 1
 
