@@ -133,6 +133,8 @@ Use one of these scopes where applicable:
 - Always reference related bugs: `Resolves LP:2066936` (Launchpad) or `Resolves GH:123` (GitHub)
 - Keep commit titles concise; put detailed reasoning in the body
 - Explain *why* a change was made, not just *what* changed
+- **Description (title)**: Provide a high-level overview only. Do not enumerate individual changes or list implementation details. Focus on the problem being solved or the feature being added.
+- **Body**: Use the body to explain the reasoning, context, and any non-obvious implementation details. Keep it concise and focused on the "why" rather than exhaustively documenting the "what".
 
 ### Examples
 
