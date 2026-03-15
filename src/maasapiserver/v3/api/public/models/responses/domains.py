@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv6Address
-from typing import Optional, Self
+from typing import Self
 
 from pydantic import Field
 
@@ -30,7 +30,7 @@ from maasservicelayer.models.domains import Domain
 class DomainResponse(HalResponse[BaseHal]):
     kind: str = Field(default="Domain")
     authoritative: bool
-    ttl: Optional[int]
+    ttl: int | None = None
     id: int
     name: str
     # TODO: add is_default
@@ -146,8 +146,8 @@ class TXTRecordResponse(HalResponse[BaseHal]):
 class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
     kind: str = Field(default="DomainResourceRecordSet")
     name: str
-    node_id: Optional[int] = None
-    ttl: Optional[int] = None
+    node_id: int | None = None
+    ttl: int | None = None
     rrtype: DNSResourceTypeEnum
     a_records: list[ARecordResponse] | None = None
     aaaa_records: list[AAAARecordResponse] | None = None

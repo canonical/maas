@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Network, IPv6Address, IPv6Network
-from typing import Optional
 
 from pydantic import Field, field_validator, IPvAnyAddress, ValidationInfo
 
@@ -23,7 +22,7 @@ from maasservicelayer.models.fields import IPv4v6Network
 
 
 class SubnetRequest(OptionalNamedBaseModel):
-    description: Optional[str] = Field(
+    description: str | None = Field(
         description="The description of the subnet.", default=""
     )
     cidr: IPv4v6Network = Field(
@@ -38,7 +37,7 @@ class SubnetRequest(OptionalNamedBaseModel):
         " network is small enough to require the support described in RFC2317.",
         default=RdnsMode.DEFAULT,
     )
-    gateway_ip: Optional[IPvAnyAddress] = Field(
+    gateway_ip: IPvAnyAddress | None = Field(
         description="The gateway IP for this subnet.", default=None
     )
     dns_servers: list[IPvAnyAddress] = Field(
@@ -68,8 +67,8 @@ class SubnetRequest(OptionalNamedBaseModel):
     @field_validator("gateway_ip", mode="after")
     @classmethod
     def ensure_gatweway_ip_in_cidr(
-        cls, v: Optional[IPvAnyAddress], info: ValidationInfo
-    ) -> Optional[IPvAnyAddress]:
+        cls, v: IPvAnyAddress | None, info: ValidationInfo
+    ) -> IPvAnyAddress | None:
         if v is None:
             return v
         gateway_ip: IPvAnyAddress = v

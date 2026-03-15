@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, IPvAnyAddress
 
@@ -18,7 +18,7 @@ from maasservicelayer.models.interfaces import Interface, InterfaceType, Link
 class LinkResponse(BaseModel):
     id: int
     mode: InterfaceLinkType
-    ip_address: Optional[IPvAnyAddress]
+    ip_address: IPvAnyAddress | None = None
 
     @classmethod
     def from_model(cls, link: Link) -> Self:
@@ -32,7 +32,7 @@ class InterfaceResponse(HalResponse[BaseHal]):
     id: int
     name: str
     type: InterfaceType
-    mac_address: Optional[str]
+    mac_address: str | None = None
     # TODO
     # effective_mtu: int = 0
     link_connected: bool = True

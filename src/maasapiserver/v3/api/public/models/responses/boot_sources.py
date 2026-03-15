@@ -1,7 +1,7 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
 from pydantic import BaseModel, Field
 
@@ -22,8 +22,8 @@ class BootSourceResponse(HalResponse[BaseHal]):
     kind: str = Field(default="BootSource")
     id: int
     url: str
-    keyring_filename: Optional[str]
-    keyring_data: Optional[str]
+    keyring_filename: str | None = None
+    keyring_data: str | None = None
     priority: int
     skip_keyring_verification: bool
 

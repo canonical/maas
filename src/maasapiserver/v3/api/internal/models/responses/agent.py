@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd. This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import ClassVar, Optional, Self
+from typing import ClassVar, Self
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -15,7 +15,7 @@ class AgentResponse(HalResponse[BaseHal]):
     kind: ClassVar[str] = "Agent"
     id: int
     rack_id: int
-    rackcontroller_id: Optional[int]
+    rackcontroller_id: int | None = None
 
     @classmethod
     def from_model(cls, agent: Agent, self_base_hyperlink: str) -> Self:

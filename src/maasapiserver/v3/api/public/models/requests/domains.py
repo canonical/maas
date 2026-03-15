@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import re
-from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -31,7 +30,7 @@ class DomainRequest(NamedBaseModel):
     authoritative: bool = Field(
         description="Class type of the domain", default=True
     )
-    ttl: Optional[int] = Field(
+    ttl: int | None = Field(
         description="TTL for the domain.", default=None, ge=1, le=604800
     )
 
@@ -43,7 +42,7 @@ class DomainRequest(NamedBaseModel):
 
 class DNSResourceRecordSetRequest(BaseModel):
     name: str
-    ttl: Optional[int] = None
+    ttl: int | None = None
     rrtype: DNSResourceTypeEnum
     a_records: list[ARecord] | None = None
     aaaa_records: list[AAAARecord] | None = None

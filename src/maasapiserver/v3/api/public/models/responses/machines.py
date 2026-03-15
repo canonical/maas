@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
 from pydantic import Field
 
@@ -27,18 +27,18 @@ class MachineResponse(HalResponse[BaseHal]):
     id: int
     system_id: str
     description: str
-    owner: Optional[str]
+    owner: str | None = None
     cpu_speed_MHz: int
     memory_MiB: int
     osystem: str
-    architecture: Optional[str]
+    architecture: str | None = None
     distro_series: str
-    hwe_kernel: Optional[str]
+    hwe_kernel: str | None = None
     locked: bool
     cpu_count: int
     # TODO: we don't want to return integers here. To be replaced with proper literal representation of the status
     status: NodeStatus
-    power_type: Optional[PowerTypeEnum]
+    power_type: PowerTypeEnum | None = None
     fqdn: str
 
     @classmethod

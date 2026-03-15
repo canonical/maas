@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
 from pydantic import Field, IPvAnyAddress
 
@@ -21,7 +21,7 @@ class IPRangeResponse(HalResponse[BaseHal]):
     type: IPRangeType
     start_ip: IPvAnyAddress
     end_ip: IPvAnyAddress
-    comment: Optional[str]
+    comment: str | None = None
     owner_id: int
 
     @classmethod
