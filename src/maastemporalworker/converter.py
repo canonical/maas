@@ -4,7 +4,7 @@
 import json
 from typing import Any, Optional
 
-from pydantic.json import pydantic_encoder
+from pydantic_core import to_jsonable_python
 from temporalio.api.common.v1 import Payload
 from temporalio.converter import (
     CompositePayloadConverter,
@@ -35,10 +35,9 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         return Payload(
             metadata={"encoding": self.encoding.encode()},
             data=json.dumps(
-                value,
+                to_jsonable_python(value),
                 separators=(",", ":"),
                 sort_keys=True,
-                default=pydantic_encoder,
             ).encode(),
         )
 
