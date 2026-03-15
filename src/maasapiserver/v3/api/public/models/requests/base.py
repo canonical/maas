@@ -1,10 +1,10 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from re import compile
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from fastapi import Query
 from pydantic import BaseModel, Field, field_validator
@@ -32,7 +32,7 @@ class NamedBaseModel(BaseModel):
 
 
 class OptionalNamedBaseModel(BaseModel):
-    name: Optional[str] = Field(
+    name: str | None = Field(
         description="The unique name of the entity.", default=None
     )
 
@@ -46,7 +46,7 @@ class OptionalNamedBaseModel(BaseModel):
 
 
 class OrderByQueryFilter(BaseModel):
-    order_by: Optional[list[str]] = Field(
+    order_by: list[str] | None = Field(
         Query(
             default=None,
             title="Properties to order by. You can wrap the property with `asc()` or `desc()` to modify the ordering",
@@ -63,9 +63,7 @@ class OrderByQueryFilter(BaseModel):
 
     @field_validator("order_by", mode="after")
     @classmethod
-    def check_order_by_fields(
-        cls, v: Optional[list[str]]
-    ) -> Optional[list[str]]:
+    def check_order_by_fields(cls, v: list[str] | None) -> list[str] | None:
         seen_fields = set()
         if not v:
             return None
@@ -113,7 +111,7 @@ class OrderByQueryFilter(BaseModel):
 
 
 class FreeTextSearchQueryParam(BaseModel, ABC):
-    q: str | None
+    q: str | None = None
 
     @abstractmethod
     def to_clause(self) -> Clause | None:

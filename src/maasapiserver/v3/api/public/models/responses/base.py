@@ -1,7 +1,7 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any, Dict, Generic, Optional, Sequence, TypeVar
+from typing import Any, Dict, Generic, Sequence, TypeVar
 
 from fastapi.openapi.models import Header as OpenApiHeader
 from fastapi.openapi.models import Schema
@@ -9,12 +9,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class BaseHref(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     href: str
 
 
 class BaseHrefWithId(BaseHref):
-    id: Optional[str] = None
-    name: Optional[str] = None
+    id: str | None = None
+    name: str | None = None
 
 
 class BaseHal(BaseModel):
@@ -35,12 +37,12 @@ class HalResponse(BaseModel, Generic[HAL]):
     }
     """
 
-    hal_links: Optional[HAL] = Field(default=None, alias="_links")
-    hal_embedded: Optional[Dict[str, Any]] = Field(
+    model_config = ConfigDict(populate_by_name=True)
+
+    hal_links: HAL | None = Field(default=None, alias="_links")
+    hal_embedded: Dict[str, Any] | None = Field(
         default=None, alias="_embedded"
     )
-
-    model_config = ConfigDict(populate_by_name=True)
 
 
 T = TypeVar("T")
@@ -52,9 +54,11 @@ class PaginatedResponse(BaseModel, Generic[T]):
     Derived classes should overwrite the items property
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     items: Sequence[T]
     total: int
-    next: Optional[str] = Field(default=None)
+    next: str | None = Field(default=None)
 
 
 OPENAPI_ETAG_HEADER = OpenApiHeader(

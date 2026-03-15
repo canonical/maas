@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv6Address
-from typing import cast, Optional
+from typing import cast
 
 from netaddr import IPAddress
 from pydantic import BaseModel, Field, IPvAnyAddress, model_validator
@@ -33,10 +33,10 @@ class IPRangeCreateRequest(BaseModel):
     end_ip: IPvAnyAddress = Field(
         description="Last IP address of this range (inclusive)."
     )
-    comment: Optional[str] = Field(
+    comment: str | None = Field(
         description="A description of this range.", default=None
     )
-    owner_id: Optional[int] = Field(
+    owner_id: int | None = Field(
         description="The owner of this range.", default=None
     )
 

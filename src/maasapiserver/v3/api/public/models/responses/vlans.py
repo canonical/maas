@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
 from pydantic import Field, IPvAnyAddress
 
@@ -19,15 +19,15 @@ class VlanResponse(HalResponse[BaseHal]):
     kind: str = Field(default="Vlan")
     id: int
     vid: int
-    name: Optional[str]
+    name: str | None = None
     description: str
     mtu: int
     dhcp_on: bool
-    external_dhcp: Optional[IPvAnyAddress]
-    primary_rack: Optional[int]
-    secondary_rack: Optional[int]
-    relay_vlan_id: Optional[int]
-    space: Optional[BaseHref]
+    external_dhcp: IPvAnyAddress | None = None
+    primary_rack: int | None = None
+    secondary_rack: int | None = None
+    relay_vlan_id: int | None = None
+    space: BaseHref | None = None
 
     @classmethod
     def from_model(cls, vlan: Vlan, self_base_hyperlink: str) -> Self:
