@@ -22,13 +22,15 @@ FAKE_CLIENT_CERT="fake_client.pem"
 # CA private key
 openssl genrsa -out "$CA_KEY" 2048
 
-# Self signed certificate
+# Self signed certificate with v3 extensions
 openssl req -x509 -new -nodes \
     -key "$CA_KEY" \
     -sha256 \
     -days 365000 \
     -subj "/CN=Test APP" \
-    -out "$CA_CERT"
+    -out "$CA_CERT" \
+    -addext "basicConstraints=critical,CA:TRUE" \
+    -addext "keyUsage=critical,keyCertSign,cRLSign"
 
 # Server private key
 openssl genrsa -out "$SERVER_KEY" 2048
@@ -47,17 +49,20 @@ openssl req -new -key "$CLIENT_KEY" -out "$CLIENT_CSR" -subj "/CN=$REAL_CN"
 # Sign the client CSR with the CA
 openssl x509 -req -in "$CLIENT_CSR" \
     -CA "$CA_CERT" -CAkey "$CA_KEY" -CAcreateserial \
-    -out "$CLIENT_CERT" -days 365000 -sha256
+    -out "$CLIENT_CERT" -days 365000 -sha256 \
+    -extfile <(printf "extendedKeyUsage=clientAuth")
 
 # Malicious CA private key
 openssl genrsa -out "$FAKE_CA_KEY" 2048
-# Malicious self signed certificate
+# Malicious self signed certificate with v3 extensions
 openssl req -x509 -new -nodes \
     -key "$FAKE_CA_KEY" \
     -sha256 \
     -days 365000 \
     -subj "/CN=Fake Test APP" \
-    -out "$FAKE_CA_CERT"
+    -out "$FAKE_CA_CERT" \
+    -addext "basicConstraints=critical,CA:TRUE" \
+    -addext "keyUsage=critical,keyCertSign,cRLSign"
 
 # Malicious client private key
 openssl genrsa -out "$FAKE_CLIENT_KEY" 2048
@@ -66,7 +71,8 @@ openssl req -new -key "$FAKE_CLIENT_KEY" -out "$FAKE_CLIENT_CSR" -subj "/CN=$FAK
 # Sign the malicious client CSR with the malicious CA
 openssl x509 -req -in "$FAKE_CLIENT_CSR" \
     -CA "$FAKE_CA_CERT" -CAkey "$FAKE_CA_KEY" -CAcreateserial \
-    -out "$FAKE_CLIENT_CERT" -days 365000 -sha256
+    -out "$FAKE_CLIENT_CERT" -days 365000 -sha256 \
+    -extfile <(printf "extendedKeyUsage=clientAuth")
 
 # Cleanup
 rm -f "$SERVER_CSR" "$CLIENT_CSR" "$FAKE_CLIENT_CSR" "$CA_KEY" ca.srl fake_ca.srl
