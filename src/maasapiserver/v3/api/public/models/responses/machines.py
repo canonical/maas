@@ -1,7 +1,9 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import ClassVar, Optional, Self
+from typing import Optional, Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -21,7 +23,7 @@ from maasservicelayer.models.machines import (
 
 
 class MachineResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "Machine"
+    kind: str = Field(default="Machine")
     id: int
     system_id: str
     description: str
@@ -66,11 +68,11 @@ class MachineResponse(HalResponse[BaseHal]):
 
 
 class MachinesListResponse(PaginatedResponse[MachineResponse]):
-    kind: ClassVar[str] = "MachinesList"
+    kind: str = Field(default="MachinesList")
 
 
 class UsbDeviceResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "MachineHardwareDevice"
+    kind: str = Field(default="MachineHardwareDevice")
     id: int
     type: HardwareDeviceTypeEnum
     vendor_id: str
@@ -104,11 +106,11 @@ class UsbDeviceResponse(HalResponse[BaseHal]):
 
 
 class UsbDevicesListResponse(PaginatedResponse[UsbDeviceResponse]):
-    kind: ClassVar[str] = "MachineHardwareDevicesList"
+    kind: str = Field(default="MachineHardwareDevicesList")
 
 
 class PciDeviceResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "MachinePciDevice"
+    kind: str = Field(default="MachinePciDevice")
     id: int
     type: HardwareDeviceTypeEnum
     vendor_id: str
@@ -144,11 +146,11 @@ class PciDeviceResponse(HalResponse[BaseHal]):
 
 
 class PciDevicesListResponse(PaginatedResponse[PciDeviceResponse]):
-    kind: ClassVar[str] = "MachinePciDevicesList"
+    kind: str = Field(default="MachinePciDevicesList")
 
 
 class PowerDriverResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "MachinePowerParameters"
+    kind: str = Field(default="MachinePowerParameters")
     power_type: PowerTypeEnum
     power_parameters: dict
 

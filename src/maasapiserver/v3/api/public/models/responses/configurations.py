@@ -1,7 +1,9 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any, ClassVar, List
+from typing import Any, List
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -10,11 +12,11 @@ from maasapiserver.v3.api.public.models.responses.base import (
 
 
 class ConfigurationResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "Configuration"
+    kind: str = Field(default="Configuration")
     name: str
-    value: Any
+    value: Any | None = None
 
 
 class ConfigurationsListResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "ConfigurationsList"
+    kind: str = Field(default="ConfigurationsList")
     items: List[ConfigurationResponse]

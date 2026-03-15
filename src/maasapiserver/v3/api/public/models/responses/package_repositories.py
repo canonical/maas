@@ -1,7 +1,9 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import ClassVar, Self
+from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -14,7 +16,7 @@ from maasservicelayer.models.package_repositories import PackageRepository
 
 
 class PackageRepositoryResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "PackageRepository"
+    kind: str = Field(default="PackageRepository")
     id: int
     name: str
     key: str
@@ -55,4 +57,4 @@ class PackageRepositoryResponse(HalResponse[BaseHal]):
 class PackageRepositoryListResponse(
     PaginatedResponse[PackageRepositoryResponse]
 ):
-    kind: ClassVar[str] = "PackageRepositoryList"
+    kind: str = Field(default="PackageRepositoryList")

@@ -263,7 +263,7 @@ class TestBootSourcesApi(ApiCommonTests):
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.exists.return_value = False
         services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
-        updated = TEST_BOOTSOURCE_1.copy()
+        updated = TEST_BOOTSOURCE_1.model_copy()
         updated.url = "http://example.com/v2/"
         updated.priority = 15
         services_mock.boot_sources.update_by_id.return_value = updated
@@ -951,7 +951,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             TEST_BOOTSOURCESELECTION
         )
 
-        updated = TEST_BOOTSOURCESELECTION.copy()
+        updated = TEST_BOOTSOURCESELECTION.model_copy()
         updated.arch = "arm64"
         services_mock.boot_source_selections.update_by_id.return_value = (
             updated

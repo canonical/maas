@@ -1,9 +1,9 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import ClassVar, Optional, Self
+from typing import Optional, Self
 
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -16,7 +16,7 @@ from maasservicelayer.models.ipranges import IPRange
 
 
 class IPRangeResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "IPRange"
+    kind: str = Field(default="IPRange")
     id: int
     type: IPRangeType
     start_ip: IPvAnyAddress
@@ -42,4 +42,4 @@ class IPRangeResponse(HalResponse[BaseHal]):
 
 
 class IPRangeListResponse(PaginatedResponse[IPRangeResponse]):
-    kind: ClassVar[str] = "IPRangesList"
+    kind: str = Field(default="IPRangesList")

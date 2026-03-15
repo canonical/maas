@@ -167,7 +167,7 @@ class TestRbacAsyncClient:
         mock_aioresponse.assert_called_once_with(
             method="POST",
             url=f"{RBAC_BASE_URL}/resources/resource-pool",
-            json=req.json(),
+            json=req.model_dump(),
             headers={"Bakery-Protocol-Version": "3"},
         )
 
@@ -198,7 +198,7 @@ class TestRbacAsyncClient:
         mock_aioresponse.assert_called_once_with(
             method="POST",
             url=f"{RBAC_BASE_URL}/resources/resource-pool",
-            json=req.json(),
+            json=req.model_dump(),
             headers={"Bakery-Protocol-Version": "3"},
         )
 
@@ -228,7 +228,7 @@ class TestRbacAsyncClient:
         mock_aioresponse.assert_called_once_with(
             method="POST",
             url=f"{RBAC_BASE_URL}/resources/resource-pool",
-            json=req.json(),
+            json=req.model_dump(),
             headers={"Bakery-Protocol-Version": "3"},
         )
 

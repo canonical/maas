@@ -488,7 +488,7 @@ class TestAuthApi:
         )
         response = await client.put(
             f"{self.BASE_PATH}/oauth/providers/1",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
 
         assert response.status_code == 200
@@ -527,7 +527,7 @@ class TestAuthApi:
         services_mock.external_oauth.update_provider.return_value = None
         response = await client.put(
             f"{self.BASE_PATH}/oauth/providers/1",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
 
         assert response.status_code == 404
@@ -589,7 +589,7 @@ class TestAuthApi:
 
         response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
         assert response.status_code == 200
         provider_response = OAuthProviderResponse(**response.json())
@@ -627,7 +627,7 @@ class TestAuthApi:
 
         response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
         assert response.status_code == 409
         error_response = ErrorBodyResponse(**response.json())
@@ -664,7 +664,7 @@ class TestAuthApi:
 
         response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
         assert response.status_code == 409
         error_response = ErrorBodyResponse(**response.json())
@@ -701,7 +701,7 @@ class TestAuthApi:
 
         response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
         assert response.status_code == 502
         error_response = ErrorBodyResponse(**response.json())
@@ -816,7 +816,7 @@ class TestAuthApi:
             "scopes": created_provider.scopes,
             "enabled": created_provider.enabled,
             "id": created_provider.id,
-            "metadata": created_provider.metadata,
+            "metadata": created_provider.metadata.model_dump(),
             "token_type": "JWT",
             "user_count": 5,
         }

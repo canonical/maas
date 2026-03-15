@@ -3,9 +3,9 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import ClassVar, Optional, Self
+from typing import Optional, Self
 
-from pydantic import BaseModel, IPvAnyAddress
+from pydantic import BaseModel, Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -53,7 +53,7 @@ class EventTypeResponse(BaseModel):
 
 
 class EventResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "Event"
+    kind: str = Field(default="Event")
     id: int
     created: datetime
     updated: datetime
@@ -91,4 +91,4 @@ class EventResponse(HalResponse[BaseHal]):
 
 
 class EventsListResponse(PaginatedResponse[EventResponse]):
-    kind: ClassVar[str] = "EventsList"
+    kind: str = Field(default="EventsList")

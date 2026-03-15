@@ -172,7 +172,7 @@ class TestTagsApi(ApiCommonTests):
         )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.get_by_id.return_value = MANUAL_TAG
-        updated = MANUAL_TAG.copy()
+        updated = MANUAL_TAG.model_copy()
         updated.name = "new_name"
         services_mock.tags.update_by_id.return_value = updated
 
