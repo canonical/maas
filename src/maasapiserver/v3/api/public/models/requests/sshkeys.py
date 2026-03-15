@@ -19,6 +19,8 @@ class SshKeyManualUploadRequest(BaseModel):
 
 class SshKeyImportFromSourceRequest(BaseModel):
     protocol: SshKeysProtocolType = Field(
-        description="The source from where to fetch the key."
+        description="The source from where to fetch the key.",
     )
-    auth_id: str = Field(description="The username related to the source.")
+    auth_id: str = Field(
+        description="The username related to the source.",
+    )

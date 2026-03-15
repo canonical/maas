@@ -187,12 +187,12 @@ class TestSshKeyApi(ApiCommonTests):
     @pytest.mark.parametrize(
         "protocol, auth_id, message",
         [
-            ("lp", None, "none is not an allowed value"),
-            (None, "foo", "none is not an allowed value"),
+            ("lp", None, "Input should be a valid string"),
+            (None, "foo", "Input should be 'lp' or 'gh'"),
             (
                 "wrong",
                 "foo",
-                "value is not a valid enumeration member; permitted: 'lp', 'gh'",
+                "Input should be 'lp' or 'gh'",
             ),
         ],
     )
