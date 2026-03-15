@@ -1,10 +1,10 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import ClassVar, Self
+from typing import Self
 
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -18,7 +18,7 @@ from maasservicelayer.models.fields import IPv4v6Network, MacAddress
 
 
 class DiscoveryResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "Discovery"
+    kind: str = Field(default="Discovery")
     id: int
     discovery_id: str | None
     neighbour_id: int | None
@@ -78,4 +78,4 @@ class DiscoveryResponse(HalResponse[BaseHal]):
 
 
 class DiscoveriesListResponse(PaginatedResponse[DiscoveryResponse]):
-    kind: ClassVar[str] = "DiscoveriesList"
+    kind: str = Field(default="DiscoveriesList")

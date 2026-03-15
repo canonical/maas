@@ -123,7 +123,7 @@ class RbacAsyncClient(MacaroonAsyncClient):
             result = await self._request(
                 method="POST",
                 url=self._get_resource_type_url(resource_type),
-                json=request.json(),
+                json=request.model_dump(),
             )
         except MacaroonApiException as exc:
             if exc.status == HTTPStatus.CONFLICT and request.last_sync_id:

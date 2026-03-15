@@ -1,7 +1,9 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import ClassVar, Optional, Self
+from typing import Optional, Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -14,7 +16,7 @@ from maasservicelayer.models.sshkeys import SshKey
 
 
 class SshKeyResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "SshKey"
+    kind: str = Field(default="SshKey")
     id: int
     key: str
     protocol: Optional[SshKeysProtocolType] = None
@@ -36,4 +38,4 @@ class SshKeyResponse(HalResponse[BaseHal]):
 
 
 class SshKeysListResponse(PaginatedResponse[SshKeyResponse]):
-    kind: ClassVar[str] = "SshKeysList"
+    kind: str = Field(default="SshKeysList")

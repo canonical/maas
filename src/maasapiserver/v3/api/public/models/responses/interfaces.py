@@ -1,7 +1,7 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import ClassVar, Optional, Self
+from typing import Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field, IPvAnyAddress
 
@@ -28,7 +28,7 @@ class LinkResponse(BaseModel):
 class InterfaceResponse(HalResponse[BaseHal]):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    kind: ClassVar[str] = "Interface"
+    kind: str = Field(default="Interface")
     id: int
     name: str
     type: InterfaceType
@@ -68,4 +68,4 @@ class InterfaceResponse(HalResponse[BaseHal]):
 
 
 class InterfaceListResponse(PaginatedResponse[InterfaceResponse]):
-    kind: ClassVar[str] = "InterfaceList"
+    kind: str = Field(default="InterfaceList")

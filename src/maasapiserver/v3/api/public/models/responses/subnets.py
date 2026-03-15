@@ -1,9 +1,9 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import ClassVar, Optional, Self
+from typing import Optional, Self
 
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -17,7 +17,7 @@ from maasservicelayer.models.subnets import Subnet
 
 
 class SubnetResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "Subnet"
+    kind: str = Field(default="Subnet")
     id: int
     name: Optional[str]
     description: Optional[str]
@@ -55,4 +55,4 @@ class SubnetResponse(HalResponse[BaseHal]):
 
 
 class SubnetsListResponse(PaginatedResponse[SubnetResponse]):
-    kind: ClassVar[str] = "SubnetsList"
+    kind: str = Field(default="SubnetsList")

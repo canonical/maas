@@ -1,7 +1,9 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import ClassVar, Self
+from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -13,7 +15,7 @@ from maasservicelayer.models.zones import Zone, ZoneWithSummary
 
 
 class ZoneResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "Zone"
+    kind: str = Field(default="Zone")
     id: int
     name: str
     description: str
@@ -33,11 +35,11 @@ class ZoneResponse(HalResponse[BaseHal]):
 
 
 class ZonesListResponse(PaginatedResponse[ZoneResponse]):
-    kind: ClassVar[str] = "ZonesList"
+    kind: str = Field(default="ZonesList")
 
 
 class ZoneWithSummaryResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "ZoneWithSummary"
+    kind: str = Field(default="ZoneWithSummary")
     id: int
     name: str
     description: str
@@ -65,4 +67,4 @@ class ZoneWithSummaryResponse(HalResponse[BaseHal]):
 
 
 class ZonesWithSummaryListResponse(PaginatedResponse[ZoneWithSummaryResponse]):
-    kind: ClassVar[str] = "ZonesWithSummaryList"
+    kind: str = Field(default="ZonesWithSummaryList")

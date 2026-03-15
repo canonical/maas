@@ -1,7 +1,9 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import ClassVar, Optional, Self
+from typing import Optional, Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -14,7 +16,7 @@ from maasservicelayer.models.fabrics import Fabric
 
 
 class FabricResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "Fabric"
+    kind: str = Field(default="Fabric")
     id: int
     name: Optional[str]
     description: Optional[str]
@@ -38,4 +40,4 @@ class FabricResponse(HalResponse[BaseHal]):
 
 
 class FabricsListResponse(PaginatedResponse[FabricResponse]):
-    kind: ClassVar[str] = "FabricsList"
+    kind: str = Field(default="FabricsList")

@@ -1,12 +1,11 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Common responses for boot resources and selections."""
 
 from datetime import datetime
-from typing import ClassVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -26,13 +25,13 @@ from maasservicelayer.models.bootsourceselections import (
 
 
 class ImageResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "Image"
+    kind: str = Field(default="Image")
     id: int
     os: str
     release: str
     title: str
     architecture: str
-    boot_source_id: int | None
+    boot_source_id: int | None = None
 
     @classmethod
     def from_selection(
@@ -76,11 +75,11 @@ class ImageResponse(HalResponse[BaseHal]):
 
 
 class ImageListResponse(PaginatedResponse[ImageResponse]):
-    kind: ClassVar[str] = "ImageList"
+    kind: str = Field(default="ImageList")
 
 
 class ImageStatusResponse(BaseModel):
-    kind: ClassVar[str] = "ImageStatus"
+    kind: str = Field(default="ImageStatus")
     id: int
     status: ImageStatus
     update_status: ImageUpdateStatus
@@ -99,11 +98,11 @@ class ImageStatusResponse(BaseModel):
 
 
 class ImageStatusListResponse(PaginatedResponse[ImageStatusResponse]):
-    kind: ClassVar[str] = "ImageStatusList"
+    kind: str = Field(default="ImageStatusList")
 
 
 class ImageStatisticResponse(BaseModel):
-    kind: ClassVar[str] = "ImageStatistic"
+    kind: str = Field(default="ImageStatistic")
     id: int
     last_updated: datetime | None = None
     last_deployed: datetime | None = None
@@ -124,4 +123,4 @@ class ImageStatisticResponse(BaseModel):
 
 
 class ImageStatisticListResponse(PaginatedResponse[ImageStatisticResponse]):
-    kind: ClassVar[str] = "ImageStatisticList"
+    kind: str = Field(default="ImageStatisticList")

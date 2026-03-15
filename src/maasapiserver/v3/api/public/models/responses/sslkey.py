@@ -1,7 +1,9 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import ClassVar, Self
+from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -13,7 +15,7 @@ from maasservicelayer.models.sslkeys import SSLKey
 
 
 class SSLKeyResponse(HalResponse[BaseHal]):
-    kind: ClassVar[str] = "SSLKey"
+    kind: str = Field(default="SSLKey")
     id: int
     key: str
 
@@ -26,11 +28,11 @@ class SSLKeyResponse(HalResponse[BaseHal]):
 
 
 class SSLKeyListResponse(PaginatedResponse[SSLKeyResponse]):
-    kind: ClassVar[str] = "SSLKeys"
+    kind: str = Field(default="SSLKeys")
 
 
 class SSLKeyWithSummaryResponse(SSLKeyResponse):
-    kind: ClassVar[str] = "SSLKeyWithSummary"
+    kind: str = Field(default="SSLKeyWithSummary")
     display: str
 
     @classmethod
@@ -45,4 +47,4 @@ class SSLKeyWithSummaryResponse(SSLKeyResponse):
 class SSLKeysWithSummaryListResponse(
     PaginatedResponse[SSLKeyWithSummaryResponse]
 ):
-    kind: ClassVar[str] = "SSLKeysWithSummary"
+    kind: str = Field(default="SSLKeysWithSummary")
