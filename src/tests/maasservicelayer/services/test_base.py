@@ -38,7 +38,7 @@ class DummyMaasBaseModel(MaasBaseModel):
 
 
 class DummyMaasBaseModelBuilder(ResourceBuilder):
-    id: int | Unset = Field(default=UNSET, required=False)
+    id: int | Unset = Field(default=UNSET)
 
 
 class DummyRepository(BaseRepository[DummyMaasBaseModel]):
