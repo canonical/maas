@@ -229,6 +229,7 @@ class TestBootMethod(MAASTestCase):
         self.assertEqual(
             [
                 ("ipxe", None),
+                ("onie", None),
                 ("pxe", "00:00"),
                 ("uefi_amd64_tftp", "00:07"),
                 ("uefi_amd64_http", "00:10"),

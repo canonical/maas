@@ -67,6 +67,15 @@ CONDITIONAL_BOOTLOADER = tempita.Template(
 {{endif}}
 {{else}}
 {{if user_class}}
+{{if user_class=="onie_dhcp_user_class"}}
+  {{behaviour}} option user-class = \"{{user_class}}\" {
+    # {{name}}
+    # This along with the option space vivso defined above is a workaround to a known issue in ISC DHCP server.
+    # See https://opencomputeproject.github.io/onie/user-guide/index.html#advanced-dhcp-2-vivso
+    option vivso.iana 01:01:01;
+    option onie.installer_url = \"{{bootloader}}\";
+  }
+{{else}}
 {{if user_class=="iPXE"}}
   {{behaviour}} option user-class = \"{{user_class}}\" or (exists ipxe.http and ( exists ipxe.bzimage or exists ipxe.efi )) {
 {{else}}
@@ -88,6 +97,7 @@ CONDITIONAL_BOOTLOADER = tempita.Template(
     option vendor-class-identifier "HTTPClient";
     {{endif}}
 }
+{{endif}}
 {{else}}
 {{behaviour}} option arch = {{arch_octet}} {
     # {{name}}

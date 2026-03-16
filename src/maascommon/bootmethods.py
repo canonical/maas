@@ -108,6 +108,43 @@ class IPXEBootMetadata(BootMethodMetadata):
         return "iPXE"
 
 
+class ONIEBootMetadata(BootMethodMetadata):
+    path_prefix_http = True
+    absolute_url_as_filename = True
+
+    @property
+    def name(self) -> str:
+        return "onie"
+
+    @property
+    def bios_boot_method(self) -> str:
+        return "onie"
+
+    @property
+    def template_subdir(self) -> str:
+        return "onie"
+
+    @property
+    def bootloader_arches(self) -> list:
+        return []
+
+    @property
+    def bootloader_path(self) -> str:
+        # Unlike other boot methods that return static bootloader files, ONIE requires
+        # a v3 API endpoint to dynamically determine the NOS installer image based on
+        # the switch's configuration stored in the database.
+        # This path is returned to ONIE in the DHCP response as the onie.installer_url.
+        return "MAAS/a/v3/nos-installer"
+
+    @property
+    def arch_octet(self) -> None:
+        return None
+
+    @property
+    def user_class(self) -> str:
+        return "onie_dhcp_user_class"
+
+
 class PXEBootMetadata(BootMethodMetadata):
     path_prefix_http = True
     path_prefix_force = True
@@ -404,6 +441,7 @@ class WindowsPXEBootMetadata(BootMethodMetadata):
 
 BOOT_METHODS_METADATA: list[BootMethodMetadata] = [
     IPXEBootMetadata(),
+    ONIEBootMetadata(),
     PXEBootMetadata(),
     UefiAmd64BootMetadata(),
     UefiAmd64HttpBootMetadata(),

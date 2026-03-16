@@ -861,6 +861,42 @@ class TestComposeConditionalBootloader(MAASTestCase):
             else:
                 self.assertNotIn(disabled_arch.user_class, output)
 
+    def test_onie_generates_vivso_options_v4(self):
+        """Test that ONIE generates correct VIVSO options in IPv4 DHCP config."""
+        ip = factory.make_ipv4_address()
+        output = config.compose_conditional_bootloader(False, ip)
+
+        self.assertIn('option user-class = "onie_dhcp_user_class"', output)
+
+        self.assertIn("option vivso.iana 01:01:01", output)
+        self.assertIn("option onie.installer_url", output)
+
+        expected_url = f"http://{ip}:5248/MAAS/a/v3/nos-installer"
+        self.assertIn(expected_url, output)
+
+    def test_onie_does_not_include_generic_options(self):
+        """Test that ONIE config doesn't include generic filename/path-prefix options."""
+        ip = factory.make_ipv4_address()
+        output = config.compose_conditional_bootloader(False, ip)
+
+        lines = output.split("\n")
+        onie_section = []
+        in_onie = False
+        for line in lines:
+            if 'option user-class = "onie_dhcp_user_class"' in line:
+                in_onie = True
+            if in_onie:
+                onie_section.append(line)
+                if line.strip() == "}":
+                    break
+
+        onie_text = "\n".join(onie_section)
+
+        self.assertNotIn('filename "', onie_text.split("}")[0])
+        self.assertNotIn("option path-prefix", onie_text.split("}")[0])
+        self.assertIn("option vivso.iana", onie_text)
+        self.assertIn("option onie.installer_url", onie_text)
+
 
 class TestGetAddresses(MAASTestCase):
     """Tests for `_get_addresses`."""
