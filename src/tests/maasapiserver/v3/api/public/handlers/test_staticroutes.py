@@ -1,7 +1,8 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv4Network
+from typing import Callable
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -19,6 +20,7 @@ from maasapiserver.v3.api.public.models.responses.staticroutes import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.subnet import RdnsMode
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.builders.staticroutes import StaticRouteBuilder
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticroutes import (
@@ -85,30 +87,48 @@ class TestStaticRoutesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/fabrics/1/vlans/1/subnets/1/staticroutes"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
-        ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="POST", path=self.BASE_PATH),
-            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="PUT",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
         ]
 
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.list.return_value = ListResult[StaticRoute](
             items=[TEST_STATICROUTE], total=1
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         staticroutes_response = StaticRoutesListResponse(**response.json())
         assert len(staticroutes_response.items) == 1
@@ -131,13 +151,16 @@ class TestStaticRoutesApi(ApiCommonTests):
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.list.return_value = ListResult[StaticRoute](
             items=[TEST_STATICROUTE], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         staticroutes_response = StaticRoutesListResponse(**response.json())
         assert len(staticroutes_response.items) == 1
@@ -160,13 +183,14 @@ class TestStaticRoutesApi(ApiCommonTests):
     async def test_get_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.get_one.return_value = TEST_STATICROUTE
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}/{TEST_STATICROUTE.id}"
-        )
+        response = await client.get(f"{self.BASE_PATH}/{TEST_STATICROUTE.id}")
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         assert response.json() == {
@@ -195,11 +219,14 @@ class TestStaticRoutesApi(ApiCommonTests):
     async def test_get_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.get_one.return_value = None
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
+        response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -210,13 +237,16 @@ class TestStaticRoutesApi(ApiCommonTests):
     async def test_get_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.get_one.return_value = (
             RequestValidationError(errors=[])
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
+        response = await client.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422
         assert "ETag" not in response.headers
 
@@ -227,8 +257,11 @@ class TestStaticRoutesApi(ApiCommonTests):
     async def test_post_201(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.create.return_value = TEST_STATICROUTE
         services_mock.subnets = Mock(SubnetsService)
@@ -241,7 +274,7 @@ class TestStaticRoutesApi(ApiCommonTests):
             metric=TEST_STATICROUTE.metric,
             destination_id=TEST_STATICROUTE.destination_id,
         )
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{self.BASE_PATH}", json=jsonable_encoder(staticroute_request)
         )
         assert response.status_code == 201
@@ -267,8 +300,11 @@ class TestStaticRoutesApi(ApiCommonTests):
     async def test_post_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.create.return_value = TEST_STATICROUTE
         services_mock.subnets = Mock(SubnetsService)
@@ -278,7 +314,7 @@ class TestStaticRoutesApi(ApiCommonTests):
             metric=TEST_STATICROUTE.metric,
             destination_id=TEST_STATICROUTE.destination_id,
         )
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{self.BASE_PATH}", json=jsonable_encoder(staticroute_request)
         )
         assert response.status_code == 404
@@ -286,8 +322,11 @@ class TestStaticRoutesApi(ApiCommonTests):
     async def test_put_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         updated_staticroute = TEST_STATICROUTE
         updated_staticroute.gateway_ip = IPv4Address("10.0.0.2")
         services_mock.subnets = Mock(SubnetsService)
@@ -304,7 +343,7 @@ class TestStaticRoutesApi(ApiCommonTests):
             metric=TEST_STATICROUTE.metric,
             destination_id=TEST_STATICROUTE.destination_id,
         )
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/{TEST_STATICROUTE.id}",
             json=jsonable_encoder(staticroute_request),
         )
@@ -335,8 +374,11 @@ class TestStaticRoutesApi(ApiCommonTests):
     async def test_put_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.subnets = Mock(ReservedIPsService)
         services_mock.subnets.get_one.return_value = None
         staticroute_request = StaticRouteRequest(
@@ -344,7 +386,7 @@ class TestStaticRoutesApi(ApiCommonTests):
             metric=TEST_STATICROUTE.metric,
             destination_id=TEST_STATICROUTE.destination_id,
         )
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/{TEST_STATICROUTE.id}",
             json=jsonable_encoder(staticroute_request),
         )
@@ -353,12 +395,15 @@ class TestStaticRoutesApi(ApiCommonTests):
     async def test_delete(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.get_one.return_value = TEST_STATICROUTE
         services_mock.staticroutes.delete_one.return_value = TEST_STATICROUTE
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/{TEST_STATICROUTE.id}"
         )
         assert response.status_code == 204
@@ -382,8 +427,11 @@ class TestStaticRoutesApi(ApiCommonTests):
     async def test_delete_with_etag(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.get_one.return_value = TEST_STATICROUTE
         services_mock.staticroutes.delete_by_id.side_effect = PreconditionFailedException(
@@ -395,7 +443,7 @@ class TestStaticRoutesApi(ApiCommonTests):
             ]
         )
 
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/{TEST_STATICROUTE.id}",
             headers={"if-match": "wrong_etag"},
         )

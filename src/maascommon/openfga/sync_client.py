@@ -9,7 +9,9 @@ from maascommon.enums.openfga import (
 )
 from maascommon.openfga.base import (
     BaseOpenFGAClient,
+    MAASResourceEntitlement,
     OpenFGAEntitlementResourceType,
+    PoolResourceEntitlements,
 )
 
 
@@ -61,97 +63,159 @@ class SyncOpenFGAClient(BaseOpenFGAClient):
 
     # Machine & Pool Permissions
     def can_edit_machines(self, user) -> bool:
-        return self._check(user, "can_edit_machines", self.MAAS_GLOBAL_OBJ)
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+            self.MAAS_GLOBAL_OBJ,
+        )
 
     def can_edit_machines_in_pool(self, user, pool_id: int) -> bool:
         return self._check(
-            user, "can_edit_machines", self._format_pool(pool_id)
+            user,
+            PoolResourceEntitlements.CAN_EDIT_MACHINES,
+            self._format_pool(pool_id),
         )
 
     def can_deploy_machines_in_pool(self, user, pool_id: int) -> bool:
         return self._check(
-            user, "can_deploy_machines", self._format_pool(pool_id)
+            user,
+            PoolResourceEntitlements.CAN_DEPLOY_MACHINES,
+            self._format_pool(pool_id),
         )
 
     def can_view_machines_in_pool(self, user, pool_id: int) -> bool:
         return self._check(
-            user, "can_view_machines", self._format_pool(pool_id)
+            user,
+            PoolResourceEntitlements.CAN_VIEW_MACHINES,
+            self._format_pool(pool_id),
         )
 
     def can_view_available_machines_in_pool(self, user, pool_id: int) -> bool:
         return self._check(
-            user, "can_view_available_machines", self._format_pool(pool_id)
+            user,
+            PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES,
+            self._format_pool(pool_id),
         )
 
     # Global Permissions
     def can_edit_global_entities(self, user) -> bool:
         return self._check(
-            user, "can_edit_global_entities", self.MAAS_GLOBAL_OBJ
+            user,
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            self.MAAS_GLOBAL_OBJ,
         )
 
     def can_view_global_entities(self, user) -> bool:
         return self._check(
-            user, "can_view_global_entities", self.MAAS_GLOBAL_OBJ
+            user,
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            self.MAAS_GLOBAL_OBJ,
         )
 
     def can_edit_controllers(self, user) -> bool:
-        return self._check(user, "can_edit_controllers", self.MAAS_GLOBAL_OBJ)
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+            self.MAAS_GLOBAL_OBJ,
+        )
 
     def can_view_controllers(self, user) -> bool:
-        return self._check(user, "can_view_controllers", self.MAAS_GLOBAL_OBJ)
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+            self.MAAS_GLOBAL_OBJ,
+        )
 
     def can_edit_identities(self, user) -> bool:
-        return self._check(user, "can_edit_identities", self.MAAS_GLOBAL_OBJ)
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+            self.MAAS_GLOBAL_OBJ,
+        )
 
     def can_view_identities(self, user) -> bool:
-        return self._check(user, "can_view_identities", self.MAAS_GLOBAL_OBJ)
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+            self.MAAS_GLOBAL_OBJ,
+        )
 
     def can_edit_configurations(self, user) -> bool:
         return self._check(
-            user, "can_edit_configurations", self.MAAS_GLOBAL_OBJ
+            user,
+            MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+            self.MAAS_GLOBAL_OBJ,
         )
 
     def can_view_configurations(self, user) -> bool:
         return self._check(
-            user, "can_view_configurations", self.MAAS_GLOBAL_OBJ
+            user,
+            MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
+            self.MAAS_GLOBAL_OBJ,
         )
 
     def can_edit_notifications(self, user) -> bool:
         return self._check(
-            user, "can_edit_notifications", self.MAAS_GLOBAL_OBJ
+            user,
+            MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS,
+            self.MAAS_GLOBAL_OBJ,
         )
 
     def can_view_notifications(self, user) -> bool:
         return self._check(
-            user, "can_view_notifications", self.MAAS_GLOBAL_OBJ
+            user,
+            MAASResourceEntitlement.CAN_VIEW_NOTIFICATIONS,
+            self.MAAS_GLOBAL_OBJ,
         )
 
     def can_edit_boot_entities(self, user) -> bool:
         return self._check(
-            user, "can_edit_boot_entities", self.MAAS_GLOBAL_OBJ
+            user,
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+            self.MAAS_GLOBAL_OBJ,
         )
 
     def can_view_boot_entities(self, user) -> bool:
         return self._check(
-            user, "can_view_boot_entities", self.MAAS_GLOBAL_OBJ
+            user,
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            self.MAAS_GLOBAL_OBJ,
         )
 
     def can_edit_license_keys(self, user) -> bool:
-        return self._check(user, "can_edit_license_keys", self.MAAS_GLOBAL_OBJ)
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_EDIT_LICENSE_KEYS,
+            self.MAAS_GLOBAL_OBJ,
+        )
 
     def can_view_license_keys(self, user) -> bool:
-        return self._check(user, "can_view_license_keys", self.MAAS_GLOBAL_OBJ)
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_VIEW_LICENCE_KEYS,
+            self.MAAS_GLOBAL_OBJ,
+        )
 
     def can_view_devices(self, user) -> bool:
-        return self._check(user, "can_view_devices", self.MAAS_GLOBAL_OBJ)
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_VIEW_DEVICES,
+            self.MAAS_GLOBAL_OBJ,
+        )
 
     def can_view_ipaddresses(self, user) -> bool:
-        return self._check(user, "can_view_ipaddresses", self.MAAS_GLOBAL_OBJ)
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_VIEW_IPADDRESSES,
+            self.MAAS_GLOBAL_OBJ,
+        )
 
     # List Methods
     def list_pools_with_view_machines_access(self, user) -> list[int]:
         return self._list_objects(
-            user, "can_view_machines", OpenFGAEntitlementResourceType.POOL
+            user,
+            PoolResourceEntitlements.CAN_VIEW_MACHINES,
+            OpenFGAEntitlementResourceType.POOL,
         )
 
     def list_pools_with_view_available_machines_access(
@@ -159,16 +223,20 @@ class SyncOpenFGAClient(BaseOpenFGAClient):
     ) -> list[int]:
         return self._list_objects(
             user,
-            "can_view_available_machines",
+            PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES,
             OpenFGAEntitlementResourceType.POOL,
         )
 
     def list_pool_with_deploy_machines_access(self, user) -> list[int]:
         return self._list_objects(
-            user, "can_deploy_machines", OpenFGAEntitlementResourceType.POOL
+            user,
+            PoolResourceEntitlements.CAN_DEPLOY_MACHINES,
+            OpenFGAEntitlementResourceType.POOL,
         )
 
     def list_pools_with_edit_machines_access(self, user) -> list[int]:
         return self._list_objects(
-            user, "can_edit_machines", OpenFGAEntitlementResourceType.POOL
+            user,
+            PoolResourceEntitlements.CAN_EDIT_MACHINES,
+            OpenFGAEntitlementResourceType.POOL,
         )

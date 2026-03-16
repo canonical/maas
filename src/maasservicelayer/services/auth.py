@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass
@@ -12,7 +12,7 @@ from maascommon.logging.security import (
     AUTHN_LOGIN_UNSUCCESSFUL,
     SECURITY,
 )
-from maasservicelayer.auth.jwt import JWT, UserRole
+from maasservicelayer.auth.jwt import JWT
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.users import UserClauseFactory
@@ -80,13 +80,8 @@ class AuthService(Service):
             type=SECURITY,
         )
 
-        roles = (
-            [UserRole.USER, UserRole.ADMIN]
-            if user.is_superuser
-            else [UserRole.USER]
-        )
         jwt_key = await self._get_or_create_cached_jwt_key()
-        access_token = JWT.create(jwt_key, user.username, user.id, roles)
+        access_token = JWT.create(jwt_key, user.username, user.id)
         refresh_token = token_hex(32)
         await self.refresh_tokens_service.create_refresh_token(
             token=refresh_token, user_id=user.id
@@ -99,7 +94,6 @@ class AuthService(Service):
             jwt_key,
             authenticated_user.username,
             authenticated_user.id,
-            list(authenticated_user.roles),
         )
 
     async def decode_and_verify_token(self, token: str) -> JWT:

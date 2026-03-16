@@ -5,6 +5,7 @@
 from piston3.utils import rc
 
 from maascommon.logging.security import CREATED, DELETED
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -69,7 +70,7 @@ class PackageRepositoryHandler(OperationsHandler):
         """
         return PackageRepository.objects.get_object_or_404(id)
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def update(self, request, id):
         """@description-title Update a package repository
         @description Update the package repository with the given id.
@@ -128,7 +129,7 @@ class PackageRepositoryHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def delete(self, request, id):
         """@description-title Delete a package repository
         @description Delete a package repository with the given id.

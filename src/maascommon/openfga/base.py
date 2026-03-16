@@ -16,6 +16,40 @@ class OpenFGAEntitlementResourceType(StrEnum):
     MAAS = "maas"
 
 
+class MAASResourceEntitlement(StrEnum):
+    """Entitlements for MAAS resources."""
+
+    CAN_EDIT_MACHINES = "can_edit_machines"
+    CAN_DEPLOY_MACHINES = "can_deploy_machines"
+    CAN_VIEW_MACHINES = "can_view_machines"
+    CAN_VIEW_AVAILABLE_MACHINES = "can_view_available_machines"
+    CAN_EDIT_GLOBAL_ENTITIES = "can_edit_global_entities"
+    CAN_VIEW_GLOBAL_ENTITIES = "can_view_global_entities"
+    CAN_EDIT_CONTROLLERS = "can_edit_controllers"
+    CAN_VIEW_CONTROLLERS = "can_view_controllers"
+    CAN_EDIT_IDENTITIES = "can_edit_identities"
+    CAN_VIEW_IDENTITIES = "can_view_identities"
+    CAN_EDIT_CONFIGURATIONS = "can_edit_configurations"
+    CAN_VIEW_CONFIGURATIONS = "can_view_configurations"
+    CAN_EDIT_NOTIFICATIONS = "can_edit_notifications"
+    CAN_VIEW_NOTIFICATIONS = "can_view_notifications"
+    CAN_EDIT_BOOT_ENTITIES = "can_edit_boot_entities"
+    CAN_VIEW_BOOT_ENTITIES = "can_view_boot_entities"
+    CAN_EDIT_LICENSE_KEYS = "can_edit_license_keys"
+    CAN_VIEW_LICENCE_KEYS = "can_view_license_keys"
+    CAN_VIEW_DEVICES = "can_view_devices"
+    CAN_VIEW_IPADDRESSES = "can_view_ipaddresses"
+
+
+class PoolResourceEntitlements(StrEnum):
+    """Entitlements for pool resources."""
+
+    CAN_EDIT_MACHINES = "can_edit_machines"
+    CAN_DEPLOY_MACHINES = "can_deploy_machines"
+    CAN_VIEW_MACHINES = "can_view_machines"
+    CAN_VIEW_AVAILABLE_MACHINES = "can_view_available_machines"
+
+
 class BaseOpenFGAClient:
     """Abstract base for sync/async OpenFGA clients."""
 

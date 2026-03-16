@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Optional
@@ -93,7 +93,11 @@ class IPRangeCreateRequest(BaseModel):
     ) -> IPRangeBuilder:
         self._validate_addresses_in_subnet(subnet)
         if self.type == IPRangeType.DYNAMIC:
-            if not authenticated_user.is_admin():
+            if not (
+                await services.openfga_tuples.get_client().can_edit_global_entities(
+                    authenticated_user.id
+                )
+            ):
                 raise ForbiddenException(
                     details=[
                         BaseExceptionDetail(

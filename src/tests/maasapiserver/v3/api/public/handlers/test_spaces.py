@@ -1,6 +1,7 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Callable
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -15,6 +16,7 @@ from maasapiserver.v3.api.public.models.responses.spaces import (
     SpacesListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -57,30 +59,48 @@ class TestSpaceApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/spaces"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
-        ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="POST", path=self.BASE_PATH),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="PUT",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
         ]
 
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.list.return_value = ListResult[Space](
             items=[TEST_SPACE], total=1
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         spaces_response = SpacesListResponse(**response.json())
         assert len(spaces_response.items) == 1
@@ -90,13 +110,16 @@ class TestSpaceApi(ApiCommonTests):
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.list.return_value = ListResult[Space](
             items=[TEST_SPACE_2], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         spaces_response = SpacesListResponse(**response.json())
         assert len(spaces_response.items) == 1
@@ -107,13 +130,14 @@ class TestSpaceApi(ApiCommonTests):
     async def test_get_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.get_by_id.return_value = TEST_SPACE
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}/{TEST_SPACE.id}"
-        )
+        response = await client.get(f"{self.BASE_PATH}/{TEST_SPACE.id}")
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         assert response.json() == {
@@ -133,13 +157,14 @@ class TestSpaceApi(ApiCommonTests):
     async def test_get_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.get_by_id.return_value = None
-        response = await mocked_api_client_user.get(
-            f"{V3_API_PREFIX}/spaces/100"
-        )
+        response = await client.get(f"{V3_API_PREFIX}/spaces/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -150,13 +175,16 @@ class TestSpaceApi(ApiCommonTests):
     async def test_get_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.get_by_id.return_value = RequestValidationError(
             errors=[]
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
+        response = await client.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422
         assert "ETag" not in response.headers
 
@@ -168,8 +196,11 @@ class TestSpaceApi(ApiCommonTests):
     async def test_post_201(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         create_space_request = SpaceRequest(
             name=TEST_SPACE.name,
             description=TEST_SPACE.description,
@@ -177,7 +208,7 @@ class TestSpaceApi(ApiCommonTests):
 
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.create.return_value = TEST_SPACE
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{self.BASE_PATH}",
             json=jsonable_encoder(create_space_request),
         )
@@ -205,8 +236,11 @@ class TestSpaceApi(ApiCommonTests):
     async def test_post_409(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         create_space_request = SpaceRequest(
             name=TEST_SPACE.name,
             description=TEST_SPACE.description,
@@ -225,13 +259,13 @@ class TestSpaceApi(ApiCommonTests):
             ),
         ]
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{self.BASE_PATH}",
             json=jsonable_encoder(create_space_request),
         )
         assert response.status_code == 201
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{self.BASE_PATH}",
             json=jsonable_encoder(create_space_request),
         )
@@ -247,8 +281,11 @@ class TestSpaceApi(ApiCommonTests):
     async def test_post_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         create_space_request = {"name": ""}
 
         services_mock.spaces = Mock(SpacesService)
@@ -256,7 +293,7 @@ class TestSpaceApi(ApiCommonTests):
             "Invalid entity name."
         )
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{self.BASE_PATH}",
             json=jsonable_encoder(create_space_request),
         )
@@ -270,8 +307,11 @@ class TestSpaceApi(ApiCommonTests):
     async def test_put_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         updated_space = TEST_SPACE
         updated_space.name = "updated_space"
         updated_space.description = "updated_description"
@@ -284,7 +324,7 @@ class TestSpaceApi(ApiCommonTests):
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.update_by_id.return_value = updated_space
 
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             url=f"{self.BASE_PATH}/1",
             json=jsonable_encoder(update_space_request),
         )
@@ -301,8 +341,11 @@ class TestSpaceApi(ApiCommonTests):
     async def test_put_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         update_space_request = SpaceRequest(
             name="updated_space",
             description="updated_description",
@@ -318,7 +361,7 @@ class TestSpaceApi(ApiCommonTests):
             ]
         )
 
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             url=f"{self.BASE_PATH}/99",
             json=jsonable_encoder(update_space_request),
         )
@@ -334,8 +377,11 @@ class TestSpaceApi(ApiCommonTests):
     async def test_put_422_request_path(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         update_space_request = SpaceRequest(
             name="updated_space",
             description="updated_description",
@@ -346,7 +392,7 @@ class TestSpaceApi(ApiCommonTests):
             errors=[]
         )
 
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             url=f"{self.BASE_PATH}/xyz",
             json=jsonable_encoder(update_space_request),
         )
@@ -363,15 +409,18 @@ class TestSpaceApi(ApiCommonTests):
     async def test_put_422_request_body(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         update_space_request: dict[str, str],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.update_by_id.side_effect = RequestValidationError(
             errors=[]
         )
 
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             url=f"{self.BASE_PATH}/1",
             json=jsonable_encoder(update_space_request),
         )
@@ -388,20 +437,26 @@ class TestSpaceApi(ApiCommonTests):
     async def test_delete_204(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.delete_by_id.side_effect = None
 
-        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        response = await client.delete(f"{self.BASE_PATH}/1")
 
         assert response.status_code == 204
 
     async def test_delete_with_etag(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.delete_by_id.side_effect = [
             PreconditionFailedException(
@@ -415,7 +470,7 @@ class TestSpaceApi(ApiCommonTests):
             None,
         ]
 
-        failed_response = await mocked_api_client_admin.delete(
+        failed_response = await client.delete(
             f"{self.BASE_PATH}/1",
             headers={"if-match": "wrong-etag"},
         )
@@ -427,7 +482,7 @@ class TestSpaceApi(ApiCommonTests):
             error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
         )
 
-        success_response = await mocked_api_client_admin.delete(
+        success_response = await client.delete(
             f"{self.BASE_PATH}/1",
             headers={"if-match": "correct-etag"},
         )

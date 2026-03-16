@@ -1,5 +1,5 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Sequence, Union
 
@@ -26,11 +26,10 @@ from maasapiserver.v3.api.public.models.responses.sslkey import (
     SSLKeyWithSummaryResponse,
 )
 from maasapiserver.v3.auth.base import (
-    check_permissions,
+    check_authentication,
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
 from maasservicelayer.exceptions.catalog import NotFoundException
@@ -56,9 +55,7 @@ class SSLKeysHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_user_sslkeys(
         self,
@@ -111,9 +108,7 @@ class SSLKeysHandler(Handler):
         "without notice.",
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_user_sslkeys_with_summary(
         self,
@@ -170,9 +165,7 @@ class SSLKeysHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_user_sslkey(
         self,
@@ -218,9 +211,7 @@ class SSLKeysHandler(Handler):
         },
         status_code=201,
         response_model_exclude_none=True,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def create_user_sslkey(
         self,
@@ -249,9 +240,7 @@ class SSLKeysHandler(Handler):
             404: {"model": NotFoundBodyResponse},
         },
         status_code=204,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def delete_user_sslkey(
         self,

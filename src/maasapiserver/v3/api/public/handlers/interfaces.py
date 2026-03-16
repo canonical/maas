@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends
@@ -12,7 +12,7 @@ from maasapiserver.v3.api.public.models.responses.interfaces import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -33,7 +33,11 @@ class InterfacesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_MACHINES
+                )
+            )
         ],
     )
     async def list_interfaces(

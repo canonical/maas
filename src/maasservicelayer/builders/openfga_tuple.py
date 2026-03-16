@@ -5,7 +5,11 @@ from typing import Union
 
 from pydantic import Field
 
-from maascommon.openfga.base import OpenFGAEntitlementResourceType
+from maascommon.openfga.base import (
+    MAASResourceEntitlement,
+    OpenFGAEntitlementResourceType,
+    PoolResourceEntitlements,
+)
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
 
 
@@ -41,7 +45,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_edit_machines",
+            relation=PoolResourceEntitlements.CAN_EDIT_MACHINES,
             object_id=pool_id,
             object_type=OpenFGAEntitlementResourceType.POOL,
         )
@@ -53,7 +57,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_machines",
+            relation=PoolResourceEntitlements.CAN_VIEW_MACHINES,
             object_id=pool_id,
             object_type=OpenFGAEntitlementResourceType.POOL,
         )
@@ -65,7 +69,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_available_machines",
+            relation=PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES,
             object_id=pool_id,
             object_type=OpenFGAEntitlementResourceType.POOL,
         )
@@ -77,7 +81,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_deploy_machines",
+            relation=PoolResourceEntitlements.CAN_DEPLOY_MACHINES,
             object_id=pool_id,
             object_type=OpenFGAEntitlementResourceType.POOL,
         )
@@ -89,7 +93,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_edit_machines",
+            relation=MAASResourceEntitlement.CAN_EDIT_MACHINES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -101,7 +105,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_machines",
+            relation=MAASResourceEntitlement.CAN_VIEW_MACHINES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -113,7 +117,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_available_machines",
+            relation=MAASResourceEntitlement.CAN_VIEW_AVAILABLE_MACHINES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -125,7 +129,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_deploy_machines",
+            relation=MAASResourceEntitlement.CAN_DEPLOY_MACHINES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -137,7 +141,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_global_entities",
+            relation=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -149,7 +153,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_edit_global_entities",
+            relation=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -161,7 +165,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_edit_controllers",
+            relation=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -173,7 +177,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_controllers",
+            relation=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -185,7 +189,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_identities",
+            relation=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -197,7 +201,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_edit_identities",
+            relation=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -209,7 +213,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_boot_entities",
+            relation=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -221,7 +225,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_edit_boot_entities",
+            relation=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -233,7 +237,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_configurations",
+            relation=MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -245,7 +249,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_edit_configurations",
+            relation=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -257,7 +261,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_edit_notifications",
+            relation=MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -269,7 +273,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_notifications",
+            relation=MAASResourceEntitlement.CAN_VIEW_NOTIFICATIONS,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -281,7 +285,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_edit_license_keys",
+            relation=MAASResourceEntitlement.CAN_EDIT_LICENSE_KEYS,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -293,7 +297,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_license_keys",
+            relation=MAASResourceEntitlement.CAN_VIEW_LICENCE_KEYS,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -305,7 +309,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_devices",
+            relation=MAASResourceEntitlement.CAN_VIEW_DEVICES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )
@@ -317,7 +321,7 @@ class OpenFGATupleBuilder(ResourceBuilder):
         return OpenFGATupleBuilder(
             user=f"group:{group_id}#member",
             user_type="userset",
-            relation="can_view_ipaddresses",
+            relation=MAASResourceEntitlement.CAN_VIEW_IPADDRESSES,
             object_id="0",
             object_type=OpenFGAEntitlementResourceType.MAAS,
         )

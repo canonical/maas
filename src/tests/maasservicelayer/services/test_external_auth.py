@@ -1155,7 +1155,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         mock_client.get = AsyncMock(
             return_value=Response(status_code=200, json=metadata_raw)
         )
-        service_instance.get_httpx_client = AsyncMock(return_value=mock_client)
+        service_instance.get_httpx_client = Mock(return_value=mock_client)
 
         expected_metadata = ProviderMetadata(**metadata_raw)
         builder = OAuthProviderBuilder(
@@ -1173,7 +1173,7 @@ class TestExternalOAuthService(ServiceCommonTests):
             builder
         )
         assert received_metadata == expected_metadata
-        service_instance.get_httpx_client.assert_awaited_once()
+        service_instance.get_httpx_client.assert_called_once()
 
     async def test_get_provider_metadata_failure(
         self,
@@ -1193,7 +1193,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         )
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(return_value=mock_response)
-        service_instance.get_httpx_client = AsyncMock(return_value=mock_client)
+        service_instance.get_httpx_client = Mock(return_value=mock_client)
 
         expected_metadata = ProviderMetadata(**metadata_raw)
         builder = OAuthProviderBuilder(
@@ -1219,7 +1219,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         )
 
         mock_client.get = AsyncMock(side_effect=HTTPError("Connection error"))
-        service_instance.get_httpx_client = AsyncMock(return_value=mock_client)
+        service_instance.get_httpx_client = Mock(return_value=mock_client)
 
         with pytest.raises(BadGatewayException) as exc_info:
             await service_instance.get_provider_metadata(builder)
@@ -1236,15 +1236,15 @@ class TestExternalOAuthService(ServiceCommonTests):
         self, service_instance: ExternalOAuthService
     ) -> None:
         service_instance.cache = service_instance.build_cache_object()
-        client = await service_instance.get_httpx_client()
+        client = service_instance.get_httpx_client()
         assert isinstance(client, AsyncClient)
 
     async def test_get_httpx_client_cached(
         self, service_instance: ExternalOAuthService
     ) -> None:
         service_instance.cache = service_instance.build_cache_object()
-        client1 = await service_instance.get_httpx_client()
-        client2 = await service_instance.get_httpx_client()
+        client1 = service_instance.get_httpx_client()
+        client2 = service_instance.get_httpx_client()
         assert client1 is client2
 
     @patch("maasservicelayer.services.external_auth.logger")

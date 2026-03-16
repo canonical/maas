@@ -1,8 +1,9 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import json
 from json import dumps as _dumps
+from typing import Callable
 from unittest.mock import Mock, patch
 
 from fastapi.encoders import jsonable_encoder
@@ -24,6 +25,7 @@ from maasapiserver.v3.api.public.models.responses.users import (
     UserWithSummaryResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
@@ -85,36 +87,65 @@ class TestUsersApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/users"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/me"),
             Endpoint(
-                method="POST", path=f"{self.BASE_PATH}/me:complete_intro"
+                method="GET",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
             ),
             Endpoint(
-                method="POST", path=f"{self.BASE_PATH}/me:change_password"
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{V3_API_PREFIX}/users_with_summary",
+                permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+            ),
+            Endpoint(
+                method="PUT",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}/1:change_password",
+                permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
             ),
         ]
 
     @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authentication_only(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}"),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="GET", path=f"{V3_API_PREFIX}/users_with_summary"),
-            Endpoint(method="POST", path=f"{self.BASE_PATH}"),
-            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
             Endpoint(
-                method="POST", path=f"{self.BASE_PATH}/1:change_password"
+                method="GET",
+                path=f"{self.BASE_PATH}/me",
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}/me:complete_intro",
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}/me:change_password",
             ),
         ]
 
     # GET /users/me
     async def test_get_user_info(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.users = Mock(UsersService)
         services_mock.users.get_one.return_value = User(
@@ -139,35 +170,6 @@ class TestUsersApi(ApiCommonTests):
         assert user_info.id == 1
         assert user_info.username == "username"
         assert user_info.is_superuser is False
-
-    async def test_get_user_info_admin(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
-    ) -> None:
-        services_mock.users = Mock(UsersService)
-        services_mock.users.get_one.return_value = User(
-            id=1,
-            username="admin",
-            password="pass",
-            is_superuser=True,
-            first_name="",
-            last_name="",
-            is_staff=True,
-            is_active=True,
-            date_joined=utcnow(),
-            email=None,
-            last_login=None,
-        )
-        response = await mocked_api_client_admin.get(
-            f"{self.BASE_PATH}/me",
-        )
-        assert response.status_code == 200
-
-        user_info = UserInfoResponse(**response.json())
-        assert user_info.id == 1
-        assert user_info.username == "admin"
-        assert user_info.is_superuser is True
 
     async def test_get_user_info_unauthorized(
         self, mocked_api_client: AsyncClient
@@ -207,13 +209,16 @@ class TestUsersApi(ApiCommonTests):
     async def test_list_users_has_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1], total=2
         )
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}?size=1",
         )
 
@@ -226,13 +231,16 @@ class TestUsersApi(ApiCommonTests):
     async def test_list_users_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1, USER_2], total=2
         )
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}?size=2",
         )
 
@@ -246,11 +254,14 @@ class TestUsersApi(ApiCommonTests):
     async def test_get_user(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}/1",
         )
         assert response.status_code == 200
@@ -262,11 +273,14 @@ class TestUsersApi(ApiCommonTests):
     async def test_get_user_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = None
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}/99",
         )
         assert response.status_code == 404
@@ -279,13 +293,16 @@ class TestUsersApi(ApiCommonTests):
     async def test_get_user_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.get_one.side_effect = RequestValidationError(
             errors=[]
         )
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}/1a",
         )
         assert response.status_code == 422
@@ -299,8 +316,11 @@ class TestUsersApi(ApiCommonTests):
     async def test_post_user(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         create_user_request = UserCreateRequest(
             username="new_username",
             password="new_password",
@@ -325,7 +345,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users = Mock(UsersService)
         services_mock.users.create.return_value = new_user
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_user_request)
         )
 
@@ -345,8 +365,11 @@ class TestUsersApi(ApiCommonTests):
     async def test_post_user_409(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         create_user_request = UserCreateRequest(
             username="new_username",
             password="new_password",
@@ -381,12 +404,12 @@ class TestUsersApi(ApiCommonTests):
             ),
         ]
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_user_request)
         )
         assert response.status_code == 201
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_user_request)
         )
         assert response.status_code == 409
@@ -402,13 +425,16 @@ class TestUsersApi(ApiCommonTests):
     async def test_post_user_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         user_request: dict[str, str],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.create.return_value = None
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(user_request)
         )
 
@@ -424,8 +450,11 @@ class TestUsersApi(ApiCommonTests):
     async def test_put_user(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         updated_user = User(
             id=1,
             is_active=False,
@@ -449,7 +478,7 @@ class TestUsersApi(ApiCommonTests):
             email="new_email@example.com",
         )
 
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1",
             json=jsonable_encoder(user_request),
         )
@@ -468,8 +497,11 @@ class TestUsersApi(ApiCommonTests):
     async def test_put_user_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.side_effect = NotFoundException()
 
@@ -482,7 +514,7 @@ class TestUsersApi(ApiCommonTests):
             email="new_email@example.com",
         )
 
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/99",
             json=jsonable_encoder(user_request),
         )
@@ -498,8 +530,11 @@ class TestUsersApi(ApiCommonTests):
     async def test_put_user_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = None
 
@@ -512,7 +547,7 @@ class TestUsersApi(ApiCommonTests):
             email="new_email@example.com",
         )
 
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/A1",
             json=jsonable_encoder(user_request),
         )
@@ -528,31 +563,40 @@ class TestUsersApi(ApiCommonTests):
     async def test_delete_204(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.delete_by_id.return_value = USER_1
 
-        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        response = await client.delete(f"{self.BASE_PATH}/1")
         assert response.status_code == 204
 
     async def test_delete_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.exists.return_value = False
 
-        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        response = await client.delete(f"{self.BASE_PATH}/1")
         assert response.status_code == 404
 
     async def test_delete_with_etag(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.exists.return_value = True
         services_mock.users.delete_by_id.side_effect = PreconditionFailedException(
@@ -564,7 +608,7 @@ class TestUsersApi(ApiCommonTests):
             ]
         )
 
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/1", headers={"if-match": "wrong_etag"}
         )
         assert response.status_code == 412
@@ -579,22 +623,28 @@ class TestUsersApi(ApiCommonTests):
     async def test_delete_self(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         user = USER_1.copy()
         # the api client we use has an authenticated user with id=0
         user.id = 0
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = user
 
-        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/0")
+        response = await client.delete(f"{self.BASE_PATH}/0")
         assert response.status_code == 400
 
     async def test_delete_with_resources_allocated(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.delete_by_id.side_effect = PreconditionFailedException(
@@ -605,20 +655,23 @@ class TestUsersApi(ApiCommonTests):
                 )
             ]
         )
-        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        response = await client.delete(f"{self.BASE_PATH}/1")
         assert response.status_code == 412
 
     async def test_delete_with_transfer_resources(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.transfer_resources.return_value = None
         services_mock.users.delete_by_id.return_value = USER_1
 
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/1", params={"transfer_resources_to": 2}
         )
         assert response.status_code == 204
@@ -627,8 +680,11 @@ class TestUsersApi(ApiCommonTests):
     async def test_delete_with_transfer_resources_nonexistent_user(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.transfer_resources.side_effect = BadRequestException(
@@ -640,7 +696,7 @@ class TestUsersApi(ApiCommonTests):
             ]
         )
 
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/1", params={"transfer_resources_to": 2}
         )
         assert response.status_code == 400
@@ -649,8 +705,11 @@ class TestUsersApi(ApiCommonTests):
     async def test_list_with_summary(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.list_with_summary.return_value = ListResult[
             UserWithSummary
@@ -671,7 +730,7 @@ class TestUsersApi(ApiCommonTests):
             total=1,
         )
 
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{V3_API_PREFIX}/users_with_summary?size=1",
         )
         assert response.status_code == 200
@@ -695,8 +754,11 @@ class TestUsersApi(ApiCommonTests):
     async def test_list_with_summary_filters(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.list_with_summary.return_value = ListResult[
             UserWithSummary
@@ -717,7 +779,7 @@ class TestUsersApi(ApiCommonTests):
             total=2,
         )
 
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{V3_API_PREFIX}/users_with_summary?size=1&username_or_email=example",
         )
         assert response.status_code == 200
@@ -737,9 +799,7 @@ class TestUsersApi(ApiCommonTests):
         )
 
     async def test_complete_intro(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.users = Mock(UsersService)
         services_mock.users.complete_intro.return_value = Mock(UserProfile)
@@ -753,9 +813,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.complete_intro.assert_called_once_with(0)
 
     async def test_change_password_user(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.users = Mock(UsersService)
         services_mock.users.change_password.return_value = None
@@ -775,14 +833,17 @@ class TestUsersApi(ApiCommonTests):
     async def test_change_password_admin(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.change_password.return_value = None
 
         json = {"password": "foo"}
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{V3_API_PREFIX}/users/1:change_password", json=json
         )
         assert response.status_code == 204
@@ -792,9 +853,7 @@ class TestUsersApi(ApiCommonTests):
         )
 
     async def test_user_with_summary(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id_with_summary.return_value = (

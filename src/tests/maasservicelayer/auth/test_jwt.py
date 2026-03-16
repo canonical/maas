@@ -1,47 +1,30 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
-from typing import Sequence
 
 import pytest
 
-from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
+from maasservicelayer.auth.jwt import InvalidToken, JWT
 from maasservicelayer.utils.date import utcnow
 
 
 class TestJWT:
     @pytest.mark.parametrize(
-        "key, subject, user_id, roles",
+        "key, subject, user_id",
         [
-            ("123", "aa", 0, []),
-            (
-                "mykey",
-                "myusername",
-                0,
-                [UserRole.USER],
-            ),
-            (
-                "abcdfig",
-                "test",
-                1,
-                [UserRole.USER, UserRole.ADMIN],
-            ),
-            (
-                "",
-                "",
-                3,
-                [UserRole.USER, UserRole.ADMIN],
-            ),
+            ("123", "aa", 0),
+            ("mykey", "myusername", 0),
+            ("abcdfig", "test", 1),
+            ("", "", 3),
         ],
     )
     def test_create_and_decode(
-        self, key: str, subject: str, user_id: int, roles: Sequence[UserRole]
+        self, key: str, subject: str, user_id: int
     ) -> None:
         now = utcnow()
-        token = JWT.create(key, subject, user_id, roles)
+        token = JWT.create(key, subject, user_id)
         assert token.subject == subject
-        assert token.roles == roles
         assert token.user_id == user_id
         assert token.issued >= now
         assert token.expiration == token.issued + timedelta(minutes=10)

@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import datetime
 from typing import Any
@@ -12,7 +12,7 @@ from maascommon.logging.security import (
     AUTHN_LOGIN_UNSUCCESSFUL,
     SECURITY,
 )
-from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
+from maasservicelayer.auth.jwt import InvalidToken, JWT
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.users import UserClauseFactory
@@ -70,7 +70,6 @@ class TestAuthService:
         tokens = await auth_service.login(user.username, "test")
         assert len(tokens.access_token.encoded) > 0
         assert tokens.access_token.subject == user.username
-        assert tokens.access_token.roles == [UserRole.USER]
         assert tokens.refresh_token == "refresh_token_hash_abc123"
         users_service_mock.get_one.assert_awaited_once_with(
             QuerySpec(UserClauseFactory.with_username(user.username))
@@ -123,10 +122,6 @@ class TestAuthService:
         assert len(tokens.access_token.encoded) > 0
         assert tokens.access_token.subject == admin.username
         assert tokens.refresh_token == "refresh_token_hash_abc123"
-        assert set(tokens.access_token.roles) == {
-            UserRole.USER,
-            UserRole.ADMIN,
-        }
         users_service_mock.get_one.assert_awaited_once_with(
             QuerySpec(UserClauseFactory.with_username(admin.username))
         )
@@ -252,12 +247,11 @@ class TestAuthService:
             users_service=users_service_mock,
             refresh_tokens_service=refresh_tokens_service_mock,
         )
-        jwt = JWT.create("123", "sub", 0, [UserRole.ADMIN])
+        jwt = JWT.create("123", "sub", 0)
         decoded_jwt = await auth_service.decode_and_verify_token(jwt.encoded)
         assert jwt.issuer == decoded_jwt.issuer
         assert decoded_jwt.subject == "sub"
         assert decoded_jwt.user_id == 0
-        assert decoded_jwt.roles == [UserRole.ADMIN]
 
     @pytest.mark.parametrize(
         "key, invalid_token",
@@ -304,7 +298,7 @@ class TestAuthService:
             users_service=users_service_mock,
             refresh_tokens_service=refresh_tokens_service_mock,
         )
-        token = JWT.create("not_the_same_key", "test", 0, []).encoded
+        token = JWT.create("not_the_same_key", "test", 0).encoded
         with pytest.raises(InvalidToken):
             await auth_service.decode_and_verify_token(token)
 
@@ -322,12 +316,11 @@ class TestAuthService:
             refresh_tokens_service=refresh_tokens_service_mock,
         )
         authenticated_user = AuthenticatedUser(
-            id=user.id, username=user.username, roles={UserRole.USER}
+            id=user.id, username=user.username
         )
         token = await auth_service.access_token(authenticated_user)
         assert len(token.encoded) > 0
         assert token.subject == user.username
-        assert token.roles == [UserRole.USER]
 
     async def test_access_token_admin(self) -> None:
         admin = self._build_test_user(is_superuser=True)
@@ -345,9 +338,7 @@ class TestAuthService:
         authenticated_user = AuthenticatedUser(
             id=admin.id,
             username=admin.username,
-            roles={UserRole.USER, UserRole.ADMIN},
         )
         token = await auth_service.access_token(authenticated_user)
         assert len(token.encoded) > 0
         assert token.subject == admin.username
-        assert set(token.roles) == {UserRole.USER, UserRole.ADMIN}

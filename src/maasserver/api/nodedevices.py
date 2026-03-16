@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
@@ -227,7 +228,7 @@ class NodeDeviceHandler(OperationsHandler):
         """
         return self._get_node_device(request, system_id, id)
 
-    @check_permission("can_edit_machines")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_MACHINES)
     def delete(self, request, system_id, id):
         """@description-title Delete a node device
         @description Delete a node device with the given system_id and id.

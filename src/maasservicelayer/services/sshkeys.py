@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
@@ -102,7 +102,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
         return SshKeysServiceCache()
 
     @Service.from_cache_or_execute("session")
-    async def _get_session(self) -> ClientSession:
+    def _get_session(self) -> ClientSession:
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
         return ClientSession(trust_env=True, connector=tcp_conn)
@@ -154,7 +154,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
 
     async def _get_ssh_key_from_launchpad(self, auth_id: str) -> list[str]:
         url = f"https://launchpad.net/~{auth_id}/+sshkeys"
-        session = await self._get_session()
+        session = self._get_session()
         response = await session.get(url)
         # Check for 404 error which happens for an unknown user or 410 for page gone.
         if response.status in (404, 410):
@@ -168,7 +168,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
 
     async def _get_ssh_key_from_github(self, auth_id: str) -> list[str]:
         url = f"https://api.github.com/users/{auth_id}/keys"
-        session = await self._get_session()
+        session = self._get_session()
         response = await session.get(url)
         # Check for 404 error which happens for an unknown user or 410 for page gone.
         if response.status in (404, 410):

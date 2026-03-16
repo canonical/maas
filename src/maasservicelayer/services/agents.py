@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass
@@ -41,7 +41,7 @@ class AgentsService(BaseService[Agent, AgentsRepository, AgentBuilder]):
     def build_cache_object() -> AgentsServiceCache:
         return AgentsServiceCache()
 
-    @Service.from_cache_or_execute(attr="api_client")
+    @Service.from_cache_or_execute_async(attr="api_client")
     async def _get_apiclient(self) -> APIClient:
         if self._apiclient:
             return self._apiclient

@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404
 from formencode.validators import Bool, String, StringBool
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import (
     check_permission,
     operation,
@@ -330,7 +331,7 @@ class NodeScriptResultHandler(OperationsHandler):
         script_set.hardware_type = hardware_type
         return script_set
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def delete(self, request, system_id, id):
         """@description-title Delete script results
         @description Delete script results from the given system_id with the
@@ -513,7 +514,7 @@ class NodeScriptResultHandler(OperationsHandler):
                 'Unknown filetype "%s" must be txt or tar.xz' % filetype
             )
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def update(self, request, system_id, id):
         """@description-title Update specific script result
         @description Update a set of test results for a given system_id and

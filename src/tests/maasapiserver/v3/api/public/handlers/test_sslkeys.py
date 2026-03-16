@@ -1,10 +1,9 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
-from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
@@ -56,27 +55,37 @@ class TestSSLKeysApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/users/me/sslkeys"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
+        return []
+
+    @pytest.fixture
+    def endpoints_with_authentication_only(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}"),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}",
+            ),
             Endpoint(
                 method="GET",
                 path=f"{V3_API_PREFIX}/users/me/sslkeys_with_summary",
             ),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="POST", path=f"{self.BASE_PATH}"),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}",
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1",
+            ),
         ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
 
     # GET /users/me/sslkeys
     async def test_list_user_sslkeys_has_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sslkeys = Mock(SSLKeysService)
         services_mock.sslkeys.list.return_value = ListResult[SSLKey](
@@ -93,9 +102,7 @@ class TestSSLKeysApi(ApiCommonTests):
         assert sslkeys_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_user_sslkeys_no_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sslkeys = Mock(SSLKeysService)
         services_mock.sslkeys.list.return_value = ListResult[SSLKey](
@@ -113,9 +120,7 @@ class TestSSLKeysApi(ApiCommonTests):
 
     # GET /users/me/sslkeys_with_summary
     async def test_list_with_summary_no_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sslkeys = Mock(SSLKeysService)
         services_mock.sslkeys.list.return_value = ListResult[SSLKey](
@@ -154,9 +159,7 @@ class TestSSLKeysApi(ApiCommonTests):
         )
 
     async def test_list_with_summary_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sslkeys = Mock(SSLKeysService)
         services_mock.sslkeys.list.return_value = ListResult[SSLKey](
@@ -178,9 +181,7 @@ class TestSSLKeysApi(ApiCommonTests):
 
     # GET /users/me/sslkeys/{id}
     async def test_get_user_sslkey(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sslkeys = Mock(SSLKeysService)
         services_mock.sslkeys.get_one.return_value = SSLKEY_1
@@ -198,9 +199,7 @@ class TestSSLKeysApi(ApiCommonTests):
         assert sslkey_response.key == SSLKEY_1.key
 
     async def test_get_user_sslkey_404(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         invalid_sslkey_id = 99
 
@@ -220,9 +219,7 @@ class TestSSLKeysApi(ApiCommonTests):
 
     # POST /users/me/sslkeys
     async def test_create_user_sslkey_201(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         now = utcnow()
         test_ssl_key = get_test_data_file("test_x509_0.pem")
@@ -256,9 +253,7 @@ class TestSSLKeysApi(ApiCommonTests):
         assert sslkey_response.key == new_sslkey.key
 
     async def test_create_user_sslkey_409(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         now = utcnow()
         test_ssl_key = get_test_data_file("test_x509_0.pem")
@@ -308,9 +303,7 @@ class TestSSLKeysApi(ApiCommonTests):
         assert error_response.code == 409
 
     async def test_create_user_sslkey_422(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         new_sslkey_request = {"key": None}
 
@@ -331,9 +324,7 @@ class TestSSLKeysApi(ApiCommonTests):
 
     # DELETE /users/me/sslkeys/{sslkey_id}
     async def test_delete_user_sslkey_204(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sslkeys = Mock(SSLKeysService)
         services_mock.sslkeys.delete_one.side_effect = None
@@ -357,9 +348,7 @@ class TestSSLKeysApi(ApiCommonTests):
         )
 
     async def test_delete_user_sslkey_with_etag(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         sslkey_id_to_delete = 1
         wrong_etag = "wrong_tag"
@@ -394,9 +383,7 @@ class TestSSLKeysApi(ApiCommonTests):
         )
 
     async def test_delete_user_sslkey_404(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         sslkey_id_to_delete = 99
 

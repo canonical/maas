@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -33,11 +33,12 @@ from maasapiserver.v3.api.public.models.responses.users import (
     UserWithSummaryResponse,
 )
 from maasapiserver.v3.auth.base import (
+    check_authentication,
     check_permissions,
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
@@ -92,9 +93,7 @@ class UsersHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_user_info(
         self,
@@ -132,9 +131,7 @@ class UsersHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def complete_intro(
         self,
@@ -157,9 +154,7 @@ class UsersHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def change_password_user(
         self,
@@ -188,7 +183,11 @@ class UsersHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                )
+            )
         ],
     )
     async def list_users(
@@ -233,7 +232,11 @@ class UsersHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                )
+            )
         ],
     )
     async def get_user(
@@ -266,7 +269,11 @@ class UsersHandler(Handler):
         status_code=201,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def create_user(
@@ -299,7 +306,11 @@ class UsersHandler(Handler):
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def update_user(
@@ -332,7 +343,11 @@ class UsersHandler(Handler):
         status_code=204,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def delete_user(
@@ -385,7 +400,11 @@ class UsersHandler(Handler):
         response_model_exclude_none=True,
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def change_password_admin(
@@ -413,7 +432,7 @@ class UsersHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    required_roles={UserRole.ADMIN},
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
                 )
             )
         ],
@@ -458,13 +477,7 @@ class UsersHandler(Handler):
         description="Get user with a summary. This endpoint is only for internal usage and might be changed or removed without notice.",
         status_code=200,
         response_model_exclude_none=True,
-        dependencies=[
-            Depends(
-                check_permissions(
-                    required_roles={UserRole.USER},
-                )
-            )
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_me_with_summary(
         self,

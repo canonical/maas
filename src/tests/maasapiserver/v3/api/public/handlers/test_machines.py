@@ -1,7 +1,8 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import Mock
+from typing import Callable
+from unittest.mock import AsyncMock, Mock
 
 from httpx import AsyncClient
 import pytest
@@ -17,6 +18,8 @@ from maasapiserver.v3.api.public.models.responses.machines import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
+from maascommon.openfga.async_client import OpenFGAClient
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.auth.macaroons.macaroon_client import RbacAsyncClient
 from maasservicelayer.auth.macaroons.models.responses import (
     PermissionResourcesMapping,
@@ -28,7 +31,7 @@ from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
-from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.utils.date import utcnow
@@ -155,26 +158,48 @@ class TestMachinesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/machines"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1/usb_devices"),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1/pci_devices"),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1/usb_devices",
+                permission=MAASResourceEntitlement.CAN_VIEW_MACHINES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1/pci_devices",
+                permission=MAASResourceEntitlement.CAN_VIEW_MACHINES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/abcdef/power_parameters",
+                permission=MAASResourceEntitlement.CAN_EDIT_MACHINES,
+            ),
         ]
 
     @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authentication_only(self) -> list[Endpoint]:
         return [
             Endpoint(
-                method="GET", path=f"{self.BASE_PATH}/abcdef/power_parameters"
+                method="GET",
+                path=self.BASE_PATH,
             ),
         ]
 
     async def test_list_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
+        openfga_client_mock = AsyncMock(OpenFGAClient)
+        openfga_client_mock.list_pools_with_view_machines_access.return_value = []
+        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
+            TEST_MACHINE_2.id,
+        ]
+
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            openfga_client_mock
+        )
+
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
             items=[TEST_MACHINE_2], total=2
@@ -187,10 +212,20 @@ class TestMachinesApi(ApiCommonTests):
         assert machines_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_no_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
+        openfga_client_mock = AsyncMock(OpenFGAClient)
+        openfga_client_mock.list_pools_with_view_machines_access.return_value = []
+        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
+            TEST_MACHINE_2.id,
+            TEST_MACHINE.id,
+        ]
+
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            openfga_client_mock
+        )
+
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
             items=[TEST_MACHINE_2, TEST_MACHINE], total=2
@@ -203,10 +238,21 @@ class TestMachinesApi(ApiCommonTests):
         assert machines_response.next is None
 
     async def test_list_user_perms(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
+        openfga_client_mock = AsyncMock(OpenFGAClient)
+        openfga_client_mock.list_pools_with_view_machines_access.return_value = [
+            100
+        ]
+        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
+            TEST_MACHINE.id
+        ]
+
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            openfga_client_mock
+        )
+
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
             items=[TEST_MACHINE], total=1
@@ -223,32 +269,25 @@ class TestMachinesApi(ApiCommonTests):
             query=QuerySpec(
                 where=MachineClauseFactory.or_clauses(
                     [
-                        MachineClauseFactory.with_owner(None),
-                        MachineClauseFactory.with_owner("username"),
+                        MachineClauseFactory.with_resource_pool_ids({100}),
+                        MachineClauseFactory.and_clauses(
+                            [
+                                MachineClauseFactory.or_clauses(
+                                    [
+                                        MachineClauseFactory.with_owner(None),
+                                        MachineClauseFactory.with_owner(
+                                            "username"
+                                        ),
+                                    ]
+                                ),
+                                MachineClauseFactory.with_resource_pool_ids(
+                                    {TEST_MACHINE.id}
+                                ),
+                            ]
+                        ),
                     ]
                 )
             ),
-        )
-
-    async def test_list_admin_perms(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
-    ) -> None:
-        services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list.return_value = ListResult[Machine](
-            items=[TEST_MACHINE_2], total=1
-        )
-        response = await mocked_api_client_admin.get(
-            f"{self.BASE_PATH}?size=2"
-        )
-        assert response.status_code == 200
-        machines_response = MachinesListResponse(**response.json())
-        assert len(machines_response.items) == 1
-        assert machines_response.total == 1
-        assert machines_response.next is None
-        services_mock.machines.list.assert_called_once_with(
-            page=1, size=2, query=QuerySpec(where=None)
         )
 
     async def test_list_rbac(
@@ -328,13 +367,14 @@ class TestMachinesApi(ApiCommonTests):
     async def test_get_machine_power_parameters(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+        )
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.get_bmc.return_value = TEST_BMC
-        response = await mocked_api_client_admin.get(
-            f"{self.BASE_PATH}/1/power_parameters"
-        )
+        response = await client.get(f"{self.BASE_PATH}/1/power_parameters")
         assert response.status_code == 200
         power_driver_response = PowerDriverResponse(**response.json())
         assert power_driver_response.power_type == TEST_BMC.power_type
@@ -345,13 +385,14 @@ class TestMachinesApi(ApiCommonTests):
     async def test_get_machine_power_parameters_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+        )
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.get_bmc.return_value = None
-        response = await mocked_api_client_admin.get(
-            f"{self.BASE_PATH}/1/power_parameters"
-        )
+        response = await client.get(f"{self.BASE_PATH}/1/power_parameters")
         assert response.status_code == 404
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
@@ -362,20 +403,23 @@ class TestUsbDevicesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/machines/1/usb_devices"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}"),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_VIEW_MACHINES,
+            ),
         ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
 
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_MACHINES,
+        )
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_usb_devices.return_value = (
             ListResult[UsbDevice](
@@ -383,7 +427,7 @@ class TestUsbDevicesApi(ApiCommonTests):
                 total=2,
             )
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         devices_response = UsbDevicesListResponse(**response.json())
         assert len(devices_response.items) == 1
@@ -393,15 +437,18 @@ class TestUsbDevicesApi(ApiCommonTests):
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_MACHINES,
+        )
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_usb_devices.return_value = (
             ListResult[UsbDevice](
                 items=[TEST_USB_DEVICE_2, TEST_USB_DEVICE], total=2
             )
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
+        response = await client.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         devices_response = UsbDevicesListResponse(**response.json())
         assert len(devices_response.items) == 2
@@ -413,25 +460,28 @@ class TestPciDevicesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/machines/1/pci_devices"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}"),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_VIEW_MACHINES,
+            ),
         ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
 
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_MACHINES,
+        )
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_pci_devices.return_value = (
             ListResult[PciDevice](items=[TEST_PCI_DEVICE_2], total=2)
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         devices_response = PciDevicesListResponse(**response.json())
         assert len(devices_response.items) == 1
@@ -441,15 +491,18 @@ class TestPciDevicesApi(ApiCommonTests):
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_MACHINES,
+        )
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_pci_devices.return_value = (
             ListResult[PciDevice](
                 items=[TEST_PCI_DEVICE_2, TEST_PCI_DEVICE], total=2
             )
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
+        response = await client.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         devices_response = PciDevicesListResponse(**response.json())
         assert len(devices_response.items) == 2

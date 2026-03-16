@@ -17,6 +17,7 @@ from formencode.validators import Int, StringBool
 from piston3.utils import rc
 
 from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import (
     AnonymousOperationsHandler,
     check_permission,
@@ -1280,7 +1281,7 @@ class PowerMixin:
 class PowersMixin:
     """Mixin which adds power commands to a nodes type."""
 
-    @check_permission("can_edit_machines")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_MACHINES)
     @operation(idempotent=True)
     def power_parameters(self, request):
         """@description-title Get power parameters

@@ -6,6 +6,7 @@
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import LicenseKeyForm
@@ -20,7 +21,7 @@ class LicenseKeysHandler(OperationsHandler):
 
     update = delete = None
 
-    @check_permission("can_view_license_keys")
+    @check_permission(MAASResourceEntitlement.CAN_VIEW_LICENCE_KEYS)
     def read(self, request):
         """@description-title List license keys
         @description List all available license keys.
@@ -33,7 +34,7 @@ class LicenseKeysHandler(OperationsHandler):
         """
         return LicenseKey.objects.all().order_by("osystem", "distro_series")
 
-    @check_permission("can_edit_license_keys")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_LICENSE_KEYS)
     def create(self, request):
         """@description-title Define a license key
         @description Define a license key.
@@ -97,7 +98,7 @@ class LicenseKeyHandler(OperationsHandler):
     # Creation happens on the LicenseKeysHandler.
     create = None
 
-    @check_permission("can_view_license_keys")
+    @check_permission(MAASResourceEntitlement.CAN_VIEW_LICENCE_KEYS)
     def read(self, request, osystem, distro_series):
         """@description-title Read license key
         @description Read a license key for the given operating sytem and
@@ -125,7 +126,7 @@ class LicenseKeyHandler(OperationsHandler):
             LicenseKey, osystem=osystem, distro_series=distro_series
         )
 
-    @check_permission("can_edit_license_keys")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_LICENSE_KEYS)
     def update(self, request, osystem, distro_series):
         """@description-title Update license key
         @description Update a license key for the given operating system and
@@ -163,7 +164,7 @@ class LicenseKeyHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
         return form.save()
 
-    @check_permission("can_edit_license_keys")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_LICENSE_KEYS)
     def delete(self, request, osystem, distro_series):
         """@description-title Delete license key
         @description Delete license key for the given operation system and

@@ -5,6 +5,7 @@
 
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.staticroute import StaticRouteForm
@@ -44,7 +45,7 @@ class StaticRoutesHandler(OperationsHandler):
         """
         return StaticRoute.objects.all()
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request):
         """@description-title Create a static route
         @description Creates a static route.

@@ -1,8 +1,9 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64decode
 import json
+from typing import Callable
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -21,6 +22,7 @@ from maasapiserver.v3.api.public.models.responses.racks import (
     RackWithSummaryListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.agents import AgentsClauseFactory
 from maasservicelayer.exceptions.catalog import (
@@ -79,33 +81,53 @@ class TestRacksApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/racks"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
-        ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="POST", path=f"{self.BASE_PATH}"),
-            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
             Endpoint(
-                method="POST", path=f"{self.BASE_PATH}/1/tokens:generate"
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+            ),
+            Endpoint(
+                method="PUT",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}/1/tokens:generate",
+                permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
             ),
         ]
 
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.list.return_value = ListResult[Rack](
             items=[TEST_RACK_1], total=1
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         racks_response = RackListResponse(**response.json())
         assert len(racks_response.items) == 1
@@ -115,13 +137,16 @@ class TestRacksApi(ApiCommonTests):
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.list.return_value = ListResult[Rack](
             items=[TEST_RACK_1, TEST_RACK_2], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         racks_response = RackListResponse(**response.json())
         assert len(racks_response.items) == 2
@@ -131,8 +156,11 @@ class TestRacksApi(ApiCommonTests):
     async def test_list_with_summary_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.list_with_summary.return_value = ListResult(
             items=[
@@ -145,7 +173,7 @@ class TestRacksApi(ApiCommonTests):
             total=1,
         )
 
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}_with_summary?page=1&size=20"
         )
 
@@ -159,8 +187,11 @@ class TestRacksApi(ApiCommonTests):
     async def test_list_with_summary_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.list_with_summary.return_value = ListResult(
             items=[
@@ -178,7 +209,7 @@ class TestRacksApi(ApiCommonTests):
             total=2,
         )
 
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}_with_summary?page=1&size=1"
         )
 
@@ -195,13 +226,15 @@ class TestRacksApi(ApiCommonTests):
     async def test_get_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.get_by_id.return_value = TEST_RACK_1
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}/{TEST_RACK_1.id}"
-        )
+        services_mock.racks.get_by_id.return_value = TEST_RACK_1
+        response = await client.get(f"{self.BASE_PATH}/{TEST_RACK_1.id}")
         assert response.status_code == 200
         assert response.headers["ETag"]
         rack_response = RackResponse(**response.json())
@@ -210,11 +243,14 @@ class TestRacksApi(ApiCommonTests):
     async def test_get_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.get_by_id.return_value = None
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/101")
+        response = await client.get(f"{self.BASE_PATH}/101")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -225,8 +261,11 @@ class TestRacksApi(ApiCommonTests):
     async def test_put_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.get_by_id.return_value = TEST_RACK_1
         updated = TEST_RACK_1.copy()
@@ -234,7 +273,7 @@ class TestRacksApi(ApiCommonTests):
         services_mock.racks.update_by_id.return_value = updated
 
         update_request = {"name": "rack-1"}
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1",
             json=jsonable_encoder(update_request),
         )
@@ -248,8 +287,11 @@ class TestRacksApi(ApiCommonTests):
     async def test_put_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.update_by_id.side_effect = NotFoundException(
             details=[
@@ -261,7 +303,7 @@ class TestRacksApi(ApiCommonTests):
         )
 
         update_request = {"name": "rack-1"}
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1",
             json=jsonable_encoder(update_request),
         )
@@ -275,15 +317,18 @@ class TestRacksApi(ApiCommonTests):
     async def test_post_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.create.return_value = TEST_RACK_1
 
         create_request = {
             "name": TEST_RACK_1.name,
         }
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_request)
         )
         assert response.status_code == 201
@@ -299,8 +344,11 @@ class TestRacksApi(ApiCommonTests):
     async def test_post_409(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.create.side_effect = AlreadyExistsException(
             details=[
@@ -313,7 +361,7 @@ class TestRacksApi(ApiCommonTests):
         create_request = {
             "name": TEST_RACK_1.name,
         }
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_request)
         )
         assert response.status_code == 409
@@ -325,20 +373,24 @@ class TestRacksApi(ApiCommonTests):
     async def test_delete_resource(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.delete_by_id.side_effect = None
-        response = await mocked_api_client_admin.delete(
-            f"{self.BASE_PATH}/100"
-        )
+        response = await client.delete(f"{self.BASE_PATH}/100")
         assert response.status_code == 204
 
     async def test_generate_bootstrap_token(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+        )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.get_by_id.return_value = TEST_RACK_1
         token = {
@@ -348,9 +400,7 @@ class TestRacksApi(ApiCommonTests):
             ],
         }
         services_mock.racks.generate_bootstrap_token.side_effect = [token]
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}/100/tokens:generate"
-        )
+        response = await client.post(f"{self.BASE_PATH}/100/tokens:generate")
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
 
@@ -364,28 +414,38 @@ class TestRackAgentApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/racks"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1/agents"),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1/agents/10"),
-        ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1/agents/10"),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1/agents",
+                permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1/agents/10",
+                permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1/agents/10",
+                permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+            ),
         ]
 
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+        )
         services_mock.agents = Mock(AgentsService)
         services_mock.agents.list.return_value = ListResult[Agent](
             items=[TEST_AGENT_1], total=1
         )
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents?page=1&size=1"
         )
         assert response.status_code == 200
@@ -397,8 +457,11 @@ class TestRackAgentApi(ApiCommonTests):
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+        )
         services_mock.agents = Mock(AgentsService)
         services_mock.agents.list.return_value = ListResult[Agent](
             items=[TEST_AGENT_1, TEST_AGENT_2], total=2
@@ -408,7 +471,7 @@ class TestRackAgentApi(ApiCommonTests):
         services_mock.racks.list.return_value = ListResult[Rack](
             items=[TEST_RACK_1, TEST_RACK_2], total=2
         )
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents?page=1&size=1"
         )
         assert response.status_code == 200
@@ -423,12 +486,15 @@ class TestRackAgentApi(ApiCommonTests):
     async def test_get_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+        )
         services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = TEST_AGENT_1
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents/{TEST_AGENT_1.id}"
         )
         assert response.status_code == 200
@@ -441,12 +507,15 @@ class TestRackAgentApi(ApiCommonTests):
     async def test_get_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+        )
         services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = None
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents/{TEST_AGENT_1.id}"
         )
         assert response.status_code == 404
@@ -459,12 +528,15 @@ class TestRackAgentApi(ApiCommonTests):
     async def test_delete_204(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+        )
         services_mock.agents = Mock(AgentsService)
         services_mock.agents.delete_one.return_value = TEST_AGENT_1
 
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents/{TEST_AGENT_1.id}",
         )
         assert response.status_code == 204
@@ -472,15 +544,18 @@ class TestRackAgentApi(ApiCommonTests):
     async def test_delete_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+        )
         rack_id = 196
         agent_id = 10
 
         services_mock.agents = Mock(AgentsService)
         services_mock.agents.delete_one.side_effect = NotFoundException()
 
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/{rack_id}/agents/{agent_id}",
         )
         assert response.status_code == 404

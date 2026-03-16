@@ -1,6 +1,7 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Callable
 from unittest.mock import Mock
 
 from httpx import AsyncClient
@@ -13,6 +14,7 @@ from maasapiserver.v3.api.public.models.responses.interfaces import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.ipaddress import IpAddressType
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface, Link
 from maasservicelayer.services import ServiceCollectionV3
@@ -63,25 +65,28 @@ class TestInterfaceApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/machines/1/interfaces"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}"),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_VIEW_MACHINES,
+            ),
         ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
 
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_MACHINES,
+        )
         services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.list_for_node.return_value = ListResult[
             Interface
         ](items=[TEST_INTERFACE_2], total=2)
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         interfaces_response = InterfaceListResponse(**response.json())
         assert len(interfaces_response.items) == 1
@@ -91,13 +96,16 @@ class TestInterfaceApi(ApiCommonTests):
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_MACHINES,
+        )
         services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.list_for_node.return_value = ListResult[
             Interface
         ](items=[TEST_INTERFACE_2, TEST_INTERFACE], total=2)
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
+        response = await client.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         interfaces_response = InterfaceListResponse(**response.json())
         assert len(interfaces_response.items) == 2

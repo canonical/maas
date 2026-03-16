@@ -10,6 +10,7 @@ from django.conf import settings
 from django.urls import reverse
 
 from maasserver.api import auth
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import ResourcePool
 from maasserver.rbac import ALL_RESOURCES
 from maasserver.testing.api import APITestCase
@@ -221,3 +222,43 @@ class TestResourcePoolAPIWithRBAC(APITestCase.ForUser):
             reverse("resourcepool_handler", args=[pool.name]), {}
         )
         self.assertEqual(response.status_code, http.client.FORBIDDEN)
+
+
+class TestResourcePoolAPIOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_read_requires_can_view_available_machines_in_pool(self):
+        self.openfga_client.can_view_available_machines_in_pool.return_value = True
+        pool = factory.make_ResourcePool()
+        response = self.client.get(
+            reverse("resourcepool_handler", args=[pool.id]), {}
+        )
+        self.assertEqual(response.status_code, http.client.OK)
+        self.openfga_client.can_view_available_machines_in_pool.assert_called_once_with(
+            self.user, pool.id
+        )
+
+    def test_update_requires_can_edit_machines_in_pool(self):
+        self.openfga_client.can_edit_machines_in_pool.return_value = True
+        pool = factory.make_ResourcePool()
+        new_name = factory.make_name("name")
+        new_description = factory.make_name("description")
+        response = self.client.put(
+            reverse("resourcepool_handler", args=[pool.id]),
+            {"name": new_name, "description": new_description},
+        )
+        self.assertEqual(response.status_code, http.client.OK)
+        self.openfga_client.can_edit_machines_in_pool.assert_called_once_with(
+            self.user, pool.id
+        )
+
+    def test_delete_requires_can_edit_machines(self):
+        self.openfga_client.can_edit_machines.return_value = True
+        pool = factory.make_ResourcePool()
+        response = self.client.delete(
+            reverse("resourcepool_handler", args=[pool.id]), {}
+        )
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
+        self.openfga_client.can_edit_machines.assert_called_once_with(
+            self.user
+        )

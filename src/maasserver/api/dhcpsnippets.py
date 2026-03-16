@@ -8,6 +8,7 @@ from email.utils import format_datetime
 from piston3.utils import rc
 
 from maascommon.logging.security import DELETED
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.reservedip import ReservedIpHandler, ReservedIpsHandler
 from maasserver.api.support import (
     check_permission,
@@ -95,7 +96,7 @@ class DHCPSnippetHandler(OperationsHandler):
         """
         return DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def update(self, request, id):
         """@description-title Update a DHCP snippet
         @description Update a DHCP snippet with the given id.
@@ -141,7 +142,7 @@ class DHCPSnippetHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def delete(self, request, id):
         """@description-title Delete a DHCP snippet
         @description Delete a DHCP snippet with the given id.
@@ -168,7 +169,7 @@ class DHCPSnippetHandler(OperationsHandler):
         )
         return rc.DELETED
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     @operation(idempotent=False)
     def revert(self, request, id):
         """@description-title Revert DHCP snippet to earlier version
@@ -252,7 +253,7 @@ class DHCPSnippetsHandler(OperationsHandler):
             "value", "subnet", "node"
         )
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request):
         """@description-title Create a DHCP snippet
         @description Creates a DHCP snippet.

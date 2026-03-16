@@ -1,6 +1,7 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Callable
 from unittest.mock import call, Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -16,6 +17,7 @@ from maasapiserver.v3.api.public.models.responses.boot_images_common import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
+from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.workflows.bootresource import (
     SYNC_SELECTION_WORKFLOW_NAME,
     SyncSelectionParam,
@@ -64,24 +66,38 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/selections"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
-        ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="POST", path=self.BASE_PATH),
-            Endpoint(method="DELETE", path=self.BASE_PATH),
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+            ),
         ]
 
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
@@ -89,9 +105,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             BootSourceSelection
         ](items=[TEST_BOOTSOURCESELECTION], total=1)
 
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}?page=1&size=1"
-        )
+        response = await client.get(f"{self.BASE_PATH}?page=1&size=1")
         assert response.status_code == 200
         boot_source_selections_response = ImageListResponse(**response.json())
         assert len(boot_source_selections_response.items) == 1
@@ -101,8 +115,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         selection_2 = TEST_BOOTSOURCESELECTION.copy()
         selection_2.id = 2
 
@@ -113,9 +130,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             BootSourceSelection
         ](items=[TEST_BOOTSOURCESELECTION, selection_2], total=2)
 
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}?page=1&size=1"
-        )
+        response = await client.get(f"{self.BASE_PATH}?page=1&size=1")
         assert response.status_code == 200
         boot_source_selections_response = ImageListResponse(**response.json())
         assert len(boot_source_selections_response.items) == 2
@@ -133,8 +148,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     async def test_list_empty(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
@@ -142,9 +160,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             BootSourceSelection
         ](items=[], total=0)
 
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}?size=10"
-        )
+        response = await client.get(f"{self.BASE_PATH}?size=10")
         assert response.status_code == 200
         boot_source_selections_response = ImageListResponse(**response.json())
         assert len(boot_source_selections_response.items) == 0
@@ -154,8 +170,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     async def test_bulk_create_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
@@ -174,7 +193,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             }
         ]
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(bulk_create_request)
         )
         boot_source_selections_response = ImageListResponse(**response.json())
@@ -195,8 +214,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     async def test_bulk_create_409(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
@@ -213,7 +235,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             }
         ]
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(bulk_create_request)
         )
         assert response.status_code == 409
@@ -242,12 +264,15 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         self,
         bulk_create_request: list,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(bulk_create_request)
         )
         assert response.status_code == 422
@@ -258,8 +283,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         self,
         auto_sync_enabled: bool,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         s1 = TEST_BOOTSOURCESELECTION.copy()
         s2 = TEST_BOOTSOURCESELECTION.copy()
         s2.id = 2
@@ -283,7 +311,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
                 "boot_source_id": TEST_BOOTSOURCESELECTION.boot_source_id,
             }
         ]
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(bulk_create_request)
         )
         assert response.status_code == 200
@@ -310,8 +338,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     async def test_bulk_delete(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         s1 = TEST_BOOTSOURCESELECTION.copy()
         s2 = TEST_BOOTSOURCESELECTION.copy()
         s2.id = 2
@@ -325,9 +356,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.terminate_workflow.return_value = None
 
-        response = await mocked_api_client_admin.delete(
-            f"{self.BASE_PATH}?id=1&id=2"
-        )
+        response = await client.delete(f"{self.BASE_PATH}?id=1&id=2")
         assert response.status_code == 204
         services_mock.boot_source_selections.delete_many.assert_awaited_once_with(
             query=QuerySpec(
@@ -343,21 +372,28 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/selections/statuses"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
         ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
 
     async def test_get_selection_status_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -371,7 +407,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             )
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 200
         selection_status_response = ImageStatusResponse(**response.json())
         assert selection_status_response.id == TEST_BOOTSOURCESELECTION.id
@@ -385,8 +421,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
     async def test_get_selection_status_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -394,14 +433,17 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             None
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 404
 
     async def test_list_selection_status_one_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -420,7 +462,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             )
         )
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?page=1&size=1&id={TEST_BOOTSOURCESELECTION.id}"
         )
         assert response.status_code == 200
@@ -436,8 +478,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
     async def test_list_selection_status_another_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -456,7 +501,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             )
         )
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?page=1&size=1&id={TEST_BOOTSOURCESELECTION.id}&id=2"
         )
         assert response.status_code == 200
@@ -471,8 +516,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
     async def test_list_selection_status_empty(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -483,9 +531,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             )
         )
 
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}?page=1&size=1"
-        )
+        response = await client.get(f"{self.BASE_PATH}?page=1&size=1")
         assert response.status_code == 200
         list_response = ImageStatusListResponse(**response.json())
 
@@ -495,8 +541,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
     async def test_list_selection_status_filter_by_ids(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -515,7 +564,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             )
         )
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?page=1&size=1&id=1&id=2"
         )
         assert response.status_code == 200
@@ -531,8 +580,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
     async def test_list_selection_status_only_selected(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -551,7 +603,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             )
         )
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?page=1&size=1&selected=true"
         )
         assert response.status_code == 200
@@ -569,8 +621,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
     async def test_list_selection_status_filter_selected_only_and_id(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -589,7 +644,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
             )
         )
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?page=1&size=1&selected=true&id=1"
         )
         assert response.status_code == 200
@@ -614,21 +669,28 @@ class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/selections/statistics"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
         ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
 
     async def test_get_selection_statistic_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
@@ -641,7 +703,7 @@ class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
             deploy_to_memory=True,
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 200
         selection_statistics_response = ImageStatisticResponse(
             **response.json()
@@ -654,21 +716,27 @@ class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
     async def test_get_selection_statistic_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
         services_mock.boot_source_selections.get_selection_statistic_by_id.return_value = None
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 404
 
     async def test_list_selection_statistics_one_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
@@ -688,7 +756,7 @@ class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
             total=1,
         )
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?page=1&size=1&id={TEST_BOOTSOURCESELECTION.id}"
         )
         assert response.status_code == 200
@@ -700,8 +768,11 @@ class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
     async def test_list_selection_statistics_another_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
@@ -721,7 +792,7 @@ class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
             total=2,
         )
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?page=1&size=1&id={TEST_BOOTSOURCESELECTION.id}&id=2"
         )
         assert response.status_code == 200

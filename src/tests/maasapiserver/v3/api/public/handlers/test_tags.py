@@ -1,6 +1,7 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Callable
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -13,6 +14,7 @@ from maasapiserver.v3.api.public.models.responses.tags import (
     TagsListResponse,
 )
 from maasapiserver.v3.auth.base import V3_API_PREFIX
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -54,31 +56,53 @@ class TestTagsApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/tags"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}"),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/2"),
-        ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="POST", path=f"{self.BASE_PATH}"),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/2"),
-            Endpoint(method="POST", path=f"{self.BASE_PATH}/1:evaluate"),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/2",
+                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="PUT",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/2",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}/1:evaluate",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
         ]
 
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.list.return_value = ListResult[Tag](
             items=[AUTOMATIC_TAG], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         tags_response = TagsListResponse(**response.json())
         assert len(tags_response.items) == 1
@@ -88,13 +112,16 @@ class TestTagsApi(ApiCommonTests):
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.list.return_value = ListResult[Tag](
             items=[AUTOMATIC_TAG, MANUAL_TAG], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
+        response = await client.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         tags_response = TagsListResponse(**response.json())
         assert len(tags_response.items) == 2
@@ -104,11 +131,14 @@ class TestTagsApi(ApiCommonTests):
     async def test_get_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.get_by_id.return_value = AUTOMATIC_TAG
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         tag_response = TagResponse(**response.json())
@@ -117,11 +147,14 @@ class TestTagsApi(ApiCommonTests):
     async def test_get_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.get_by_id.return_value = None
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -132,8 +165,11 @@ class TestTagsApi(ApiCommonTests):
     async def test_put_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.get_by_id.return_value = MANUAL_TAG
         updated = MANUAL_TAG.copy()
@@ -146,7 +182,7 @@ class TestTagsApi(ApiCommonTests):
             "definition": "",
             "kernel_opts": "console=tty0",
         }
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1",
             json=jsonable_encoder(update_request),
         )
@@ -161,8 +197,11 @@ class TestTagsApi(ApiCommonTests):
     async def test_put_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.update_by_id.side_effect = NotFoundException(
             details=[
@@ -179,7 +218,7 @@ class TestTagsApi(ApiCommonTests):
             "definition": "",
             "kernel_opts": "console=tty0",
         }
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1",
             json=jsonable_encoder(update_request),
         )
@@ -193,8 +232,11 @@ class TestTagsApi(ApiCommonTests):
     async def test_post_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.create.return_value = MANUAL_TAG
 
@@ -204,7 +246,7 @@ class TestTagsApi(ApiCommonTests):
             "definition": "",
             "kernel_opts": "console=tty0",
         }
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_request)
         )
         assert response.status_code == 201
@@ -220,8 +262,11 @@ class TestTagsApi(ApiCommonTests):
     async def test_post_409(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.create.side_effect = AlreadyExistsException(
             details=[
@@ -237,7 +282,7 @@ class TestTagsApi(ApiCommonTests):
             "definition": "",
             "kernel_opts": "console=tty0",
         }
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_request)
         )
         assert response.status_code == 409
@@ -249,20 +294,24 @@ class TestTagsApi(ApiCommonTests):
     async def test_delete_resource(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.delete_by_id.side_effect = None
-        response = await mocked_api_client_admin.delete(
-            f"{self.BASE_PATH}/100"
-        )
+        response = await client.delete(f"{self.BASE_PATH}/100")
         assert response.status_code == 204
 
     async def test_delete_with_etag(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.tags = Mock(TagsService)
         services_mock.tags.delete_by_id.side_effect = [
             PreconditionFailedException(
@@ -276,7 +325,7 @@ class TestTagsApi(ApiCommonTests):
             None,
         ]
 
-        failed_response = await mocked_api_client_admin.delete(
+        failed_response = await client.delete(
             f"{self.BASE_PATH}/100",
             headers={"if-match": "wrong_etag"},
         )
@@ -288,7 +337,7 @@ class TestTagsApi(ApiCommonTests):
             error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
         )
 
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/100",
             headers={"if-match": "my_etag"},
         )
@@ -297,14 +346,17 @@ class TestTagsApi(ApiCommonTests):
     async def test_tag_evaluate(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         tag_id_to_evaluate = 1
 
         services_mock.tags = Mock(TagsService)
         services_mock.tags.get_by_id.return_value = AUTOMATIC_TAG
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             url=f"{self.BASE_PATH}/{tag_id_to_evaluate}:evaluate",
         )
 
@@ -320,14 +372,17 @@ class TestTagsApi(ApiCommonTests):
     async def test_tag_evaluate_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         tag_id_to_evaluate = 1
 
         services_mock.tags = Mock(TagsService)
         services_mock.tags.get_by_id.return_value = None
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             url=f"{self.BASE_PATH}/{tag_id_to_evaluate}:evaluate",
         )
 

@@ -7,6 +7,7 @@ from django.db.models.query import QuerySet
 from formencode.validators import StringBool
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
@@ -176,7 +177,7 @@ class DNSResourcesHandler(OperationsHandler):
         user = request.user
         return get_dnsresource_queryset(_all, domainname, name, rrtype, user)
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request):
         """@description-title Create a DNS resource
         @description Create a DNS resource.

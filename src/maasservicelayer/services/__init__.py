@@ -370,8 +370,18 @@ class ServiceCollectionV3:
             config_service=services.configurations,
             secrets_service=services.secrets,
         )
+        services.openfga_tuples = OpenFGATupleService(
+            context=context,
+            openfga_tuple_repository=OpenFGATuplesRepository(context),
+            cache=cache.get(
+                OpenFGATupleService.__name__,
+                OpenFGATupleService.build_cache_object,
+            ),  # type: ignore
+        )
         services.notifications = NotificationsService(
-            context=context, repository=NotificationsRepository(context)
+            context=context,
+            openfga_tuples_service=services.openfga_tuples,
+            repository=NotificationsRepository(context),
         )
         services.tags = TagsService(
             context=context,
@@ -479,14 +489,6 @@ class ServiceCollectionV3:
             zones_repository=ZonesRepository(context),
             cache=cache.get(
                 ZonesService.__name__, ZonesService.build_cache_object
-            ),  # type: ignore
-        )
-        services.openfga_tuples = OpenFGATupleService(
-            context=context,
-            openfga_tuple_repository=OpenFGATuplesRepository(context),
-            cache=cache.get(
-                OpenFGATupleService.__name__,
-                OpenFGATupleService.build_cache_object,
             ),  # type: ignore
         )
         services.resource_pools = ResourcePoolsService(

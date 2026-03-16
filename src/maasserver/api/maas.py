@@ -9,6 +9,7 @@ from django.http import HttpResponse
 from formencode import validators
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import (
     check_permission,
     operation,
@@ -71,7 +72,7 @@ class MaasHandler(OperationsHandler):
     api_doc_section_name = "MAAS server"
     create = read = update = delete = None
 
-    @check_permission("can_edit_configurations")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS)
     @operation(idempotent=False)
     def set_config(self, request):
         """@description-title Set a configuration value

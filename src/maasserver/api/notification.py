@@ -5,6 +5,7 @@
 from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import (
     check_permission,
     operation,
@@ -55,7 +56,7 @@ class NotificationsHandler(OperationsHandler):
         """
         return Notification.objects.find_for_user(request.user).order_by("id")
 
-    @check_permission("can_edit_notifications")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS)
     def create(self, request):
         """@description-title Create a notification
         @description Create a new notification.
@@ -136,7 +137,7 @@ class NotificationHandler(OperationsHandler):
         else:
             raise MAASAPIForbidden()
 
-    @check_permission("can_edit_notifications")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS)
     def update(self, request, id):
         """@description-title Update a notification
         @description Update a notification with a given id.
@@ -193,7 +194,7 @@ class NotificationHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @check_permission("can_edit_notifications")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS)
     def delete(self, request, id):
         """@description-title Delete a notification
         @description Delete a notification with a given id.

@@ -5,6 +5,7 @@
 
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import (
     AnonymousOperationsHandler,
     check_permission,
@@ -52,7 +53,7 @@ class DomainsHandler(OperationsHandler):
         """
         return Domain.objects.get_all_with_resource_record_count()
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request):
         """@description-title Create a domain
         @description Create a domain.
@@ -76,7 +77,7 @@ class DomainsHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     @operation(idempotent=False)
     def set_serial(self, request):
         """@description-title Set the SOA serial number

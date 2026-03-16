@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
 from maascommon.logging.security import CREATED, DELETED, UPDATED
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.nodes import NODES_PREFETCH, NODES_SELECT_RELATED
 from maasserver.api.support import (
     check_permission,
@@ -97,7 +98,7 @@ class TagHandler(OperationsHandler):
         """
         return get_object_or_404(Tag, name=name)
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def update(self, request, name):
         """@description-title Update a tag
         @description Update elements of a given tag.
@@ -152,7 +153,7 @@ class TagHandler(OperationsHandler):
         )
         return new_tag
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def delete(self, request, name):
         """@description-title Delete a tag
         @description Deletes a tag by name.
@@ -311,7 +312,7 @@ class TagHandler(OperationsHandler):
             nodes = Node.objects.none()
         return nodes
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     @operation(idempotent=False)
     def rebuild(self, request, name):
         """@description-title Trigger a tag-node mapping rebuild
@@ -336,7 +337,7 @@ class TagHandler(OperationsHandler):
         tag.populate_nodes()
         return {"rebuilding": tag.name}
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     @operation(idempotent=False)
     def update_nodes(self, request, name):
         """@description-title Update nodes associated with this tag
@@ -422,7 +423,7 @@ class TagsHandler(OperationsHandler):
     api_doc_section_name = "Tags"
     update = delete = None
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request):
         """@description-title Create a new tag
         @description Create a new tag.

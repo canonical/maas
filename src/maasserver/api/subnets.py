@@ -6,6 +6,7 @@
 from formencode.validators import StringBool
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.utils.network import IPRangeStatistics
 from maasserver.api.support import (
     check_permission,
@@ -59,7 +60,7 @@ class SubnetsHandler(OperationsHandler):
         """
         return Subnet.objects.all()
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request):
         """@description-title Create a subnet
         @description Creates a new subnet.

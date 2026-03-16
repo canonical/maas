@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -32,7 +32,7 @@ from maasapiserver.v3.auth.base import (
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolClauseFactory,
@@ -54,6 +54,26 @@ class ResourcePoolHandler(Handler):
 
     TAGS = ["ResourcePool"]
 
+    async def _get_visible_pools_query(
+        self, authenticated_user, services
+    ) -> QuerySpec:
+        if authenticated_user.rbac_permissions:
+            return QuerySpec(
+                where=ResourcePoolClauseFactory.with_ids(
+                    ids=(
+                        authenticated_user.rbac_permissions.visible_pools
+                        | authenticated_user.rbac_permissions.view_all_pools
+                    )
+                )
+            )
+        else:
+            visible_pools = await services.openfga_tuples.get_client().list_pools_with_view_available_machines_access(
+                authenticated_user.id
+            )
+            return QuerySpec(
+                where=ResourcePoolClauseFactory.with_ids(ids=visible_pools)
+            )
+
     @handler(
         path="/resource_pools",
         methods=["GET"],
@@ -68,7 +88,7 @@ class ResourcePoolHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    required_roles={UserRole.USER},
+                    openfga_permission=None,  # Specific logic in the handler itself.
                     rbac_permissions={
                         RbacPermission.VIEW,
                         RbacPermission.VIEW_ALL,
@@ -83,16 +103,10 @@ class ResourcePoolHandler(Handler):
         authenticated_user=Depends(get_authenticated_user),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ResourcePoolsListResponse:
-        query = None
-        if authenticated_user.rbac_permissions:
-            query = QuerySpec(
-                where=ResourcePoolClauseFactory.with_ids(
-                    ids=(
-                        authenticated_user.rbac_permissions.visible_pools
-                        | authenticated_user.rbac_permissions.view_all_pools
-                    )
-                )
-            )
+        query = await self._get_visible_pools_query(
+            authenticated_user, services
+        )
+
         resource_pools = await services.resource_pools.list(
             page=pagination_params.page,
             size=pagination_params.size,
@@ -133,7 +147,7 @@ class ResourcePoolHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    required_roles={UserRole.USER},
+                    openfga_permission=None,  # Specific logic in the handler itself.
                     rbac_permissions={
                         RbacPermission.VIEW,
                         RbacPermission.VIEW_ALL,
@@ -149,16 +163,10 @@ class ResourcePoolHandler(Handler):
         authenticated_user=Depends(get_authenticated_user),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ResourcePoolsWithSummaryListResponse:
-        query = None
-        if authenticated_user.rbac_permissions:
-            query = QuerySpec(
-                where=ResourcePoolClauseFactory.with_ids(
-                    ids=(
-                        authenticated_user.rbac_permissions.visible_pools
-                        | authenticated_user.rbac_permissions.view_all_pools
-                    )
-                )
-            )
+        query = await self._get_visible_pools_query(
+            authenticated_user, services
+        )
+
         resource_pools = await services.resource_pools.list_with_summary(
             page=pagination_params.page,
             size=pagination_params.size,
@@ -180,7 +188,9 @@ class ResourcePoolHandler(Handler):
                 ):
                     permissions = {ResourcePoolPermission.EDIT}
             else:
-                if authenticated_user.is_admin():
+                if await services.openfga_tuples.get_client().can_edit_machines(
+                    authenticated_user.id
+                ):
                     permissions = {
                         ResourcePoolPermission.DELETE,
                         ResourcePoolPermission.EDIT,
@@ -223,7 +233,7 @@ class ResourcePoolHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    required_roles={UserRole.ADMIN},
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_MACHINES,
                     rbac_permissions={
                         RbacPermission.EDIT,
                     },
@@ -275,7 +285,7 @@ class ResourcePoolHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    required_roles={UserRole.USER},
+                    openfga_permission=None,  # Specific logic in the handler itself.
                     rbac_permissions={
                         RbacPermission.VIEW,
                     },
@@ -290,28 +300,43 @@ class ResourcePoolHandler(Handler):
         authenticated_user=Depends(get_authenticated_user),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ResourcePoolResponse:
-        if (
-            authenticated_user.rbac_permissions
-            and resource_pool_id
-            not in authenticated_user.rbac_permissions.visible_pools
-        ):
-            raise ForbiddenException(
-                details=[
-                    BaseExceptionDetail(
-                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
-                        message="The user does not have the permissions to view this resource pool.",
-                    )
-                ]
-            )
-        if resource_pool := await services.resource_pools.get_by_id(
+        resource_pool = await services.resource_pools.get_by_id(
             resource_pool_id
-        ):
-            response.headers["ETag"] = resource_pool.etag()
-            return ResourcePoolResponse.from_model(
-                resource_pool=resource_pool,
-                self_base_hyperlink=f"{V3_API_PREFIX}/resource_pools",
-            )
-        raise NotFoundException()
+        )
+        if not resource_pool:
+            raise NotFoundException()
+
+        if authenticated_user.rbac_permissions:
+            if (
+                resource_pool_id
+                not in authenticated_user.rbac_permissions.visible_pools
+            ):
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message="The user does not have the permissions to view this resource pool.",
+                        )
+                    ]
+                )
+        else:
+            if not await services.openfga_tuples.get_client().can_view_available_machines_in_pool(
+                authenticated_user.id, resource_pool_id
+            ):
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message="The user does not have the permissions to view this resource pool.",
+                        )
+                    ]
+                )
+
+        response.headers["ETag"] = resource_pool.etag()
+        return ResourcePoolResponse.from_model(
+            resource_pool=resource_pool,
+            self_base_hyperlink=f"{V3_API_PREFIX}/resource_pools",
+        )
 
     @handler(
         path="/resource_pools/{resource_pool_id}",
@@ -329,7 +354,7 @@ class ResourcePoolHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    required_roles={UserRole.ADMIN},
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_MACHINES,
                     rbac_permissions={
                         RbacPermission.EDIT,
                     },
@@ -380,7 +405,7 @@ class ResourcePoolHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    required_roles={UserRole.ADMIN},
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_MACHINES,
                     rbac_permissions={RbacPermission.EDIT},
                 )
             )

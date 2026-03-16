@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -24,7 +24,7 @@ from maasapiserver.v3.api.public.models.responses.spaces import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -44,7 +44,11 @@ class SpacesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                )
+            )
         ],
     )
     async def list_spaces(
@@ -88,7 +92,11 @@ class SpacesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                )
+            )
         ],
     )
     async def get_space(
@@ -120,7 +128,11 @@ class SpacesHandler(Handler):
         response_model_exclude_none=True,
         status_code=201,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                )
+            )
         ],
     )
     async def create_space(
@@ -151,7 +163,11 @@ class SpacesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                )
+            )
         ],
     )
     async def update_space(
@@ -182,7 +198,11 @@ class SpacesHandler(Handler):
         },
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                )
+            )
         ],
     )
     async def delete_space(

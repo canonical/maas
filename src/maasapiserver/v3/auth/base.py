@@ -1,3 +1,6 @@
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import Callable, Optional
 
 from fastapi import Depends
@@ -7,8 +10,8 @@ from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.api import services
 from maasapiserver.v3.auth.openapi import OpenapiOAuth2PasswordBearer
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.auth.external_auth import ExternalAuthType
-from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -41,20 +44,58 @@ def get_authenticated_user(request: Request) -> AuthenticatedUser | None:
     return request.state.authenticated_user
 
 
+def check_authentication() -> Callable:
+    """
+    Decorator to check if the request is authenticated.
+
+    Returns:
+        Callable: Decorator function that checks if the user is authenticated.
+    """
+
+    async def wrapper(request: Request) -> None:
+        authenticated_user = get_authenticated_user(request)
+        if not authenticated_user:
+            svc: ServiceCollectionV3 = request.state.services
+            external_auth_info = await svc.external_auth.get_external_auth()
+            if external_auth_info:
+                await svc.external_auth.raise_discharge_required_exception(
+                    external_auth_info,
+                    extract_absolute_uri(request),
+                    request.headers,
+                )
+
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=NOT_AUTHENTICATED_VIOLATION_TYPE,
+                        message="The endpoint requires authentication.",
+                    )
+                ]
+            )
+
+    return wrapper
+
+
 def check_permissions(
-    required_roles: set[UserRole],
+    openfga_permission: MAASResourceEntitlement | None = None,
     rbac_permissions: Optional[set[RbacPermission]] = None,
 ) -> Callable:
     """
-    Decorator to check if the authenticated user has the required roles to access an endpoint.
+    Decorator to check if the authenticated user has the required permission to access an endpoint.
 
     Args:
-        required_roles (Set[UserRole]): The set of roles required to access the endpoint.
+        openfga_permission (MAASResourceEntitlement): The required entitlement on the MAAS global object to perform the operation.
+
         rbac_parmissions: (set[RbacPermission], optional): The set of RBAC permissions to query for the request.
 
     Returns:
         Callable: Decorator function that checks permissions and raises exceptions if necessary.
     """
+
+    if not openfga_permission and not rbac_permissions:
+        raise ValueError(
+            "At least one of openfga_permission or rbac_permissions must be provided."
+        )
 
     async def wrapper(
         request: Request,
@@ -100,16 +141,24 @@ def check_permissions(
                     )
                 ]
             )
-        for role in required_roles:
-            if role not in authenticated_user.roles:
+        if openfga_permission and (
+            not external_auth_info
+            or external_auth_info.type != ExternalAuthType.RBAC
+        ):
+            # Check with openfga if the user has access to the resource. This is to avoid unnecessary role checks if the user doesn't have access to the resource.
+            authorized = await services.openfga_tuples.get_client().has_permission_on_maas(
+                openfga_permission, authenticated_user.id
+            )
+            if not authorized:
                 raise ForbiddenException(
                     details=[
                         BaseExceptionDetail(
                             type=MISSING_PERMISSIONS_VIOLATION_TYPE,
-                            message=f"The user does not have the role '{role}' to access this endpoint.",
+                            message=f"The permission '{openfga_permission}' is required.",
                         )
                     ]
                 )
+
         if (
             external_auth_info
             and external_auth_info.type == ExternalAuthType.RBAC

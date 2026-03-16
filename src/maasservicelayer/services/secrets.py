@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
@@ -137,18 +137,18 @@ class VaultSecretsService(SecretsService):
         super().__init__(context, cache)
 
     @Service.from_cache_or_execute(attr="vault_manager")
-    async def _get_vault_manager(self) -> AsyncVaultManager:
+    def _get_vault_manager(self) -> AsyncVaultManager:
         # We know we are using Vault, so the manager can't be None
         return get_region_vault_manager()  # type: ignore
 
     async def set_composite_secret(
         self, model: SecretModel, value: dict[str, Any]
     ) -> None:
-        vault_manager = await self._get_vault_manager()
+        vault_manager = self._get_vault_manager()
         await vault_manager.set(model.get_secret_path(), value)
 
     async def delete(self, model: SecretModel) -> None:
-        vault_manager = await self._get_vault_manager()
+        vault_manager = self._get_vault_manager()
         await vault_manager.delete(model.get_secret_path())
 
     async def get_composite_secret(
@@ -156,7 +156,7 @@ class VaultSecretsService(SecretsService):
     ) -> Any:
         path = model.get_secret_path()
         try:
-            vault_manager = await self._get_vault_manager()
+            vault_manager = self._get_vault_manager()
             secret = await vault_manager.get(path)
         except VaultNotFoundException:
             if default is UNSET:

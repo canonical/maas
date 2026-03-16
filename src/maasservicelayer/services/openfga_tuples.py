@@ -155,7 +155,7 @@ class OpenFGATupleService(Service):
         return OpenFGAServiceCache()
 
     @Service.from_cache_or_execute(attr="client")
-    async def get_client(self) -> OpenFGAClient:
+    def get_client(self) -> OpenFGAClient:
         return OpenFGAClient()
 
     async def get_many(self, query: QuerySpec) -> list[OpenFGATuple]:

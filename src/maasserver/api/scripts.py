@@ -13,6 +13,7 @@ from formencode.validators import Bool, Int, String
 from piston3.utils import rc
 
 from maascommon.logging.security import DELETED, UPDATED
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import (
     check_permission,
     operation,
@@ -46,7 +47,7 @@ class NodeScriptsHandler(OperationsHandler):
     def resource_uri(cls):
         return ("scripts_handler", [])
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request):
         """@description-title Create a new script
         @description Create a new script.
@@ -282,7 +283,7 @@ class NodeScriptHandler(OperationsHandler):
         )
         return script
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def delete(self, request, name):
         """@description-title Delete a script
         @description Deletes a script with the given name.
@@ -316,7 +317,7 @@ class NodeScriptHandler(OperationsHandler):
         )
         return rc.DELETED
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def update(self, request, name):
         """@description-title Update a script
         @description Update a script with the given name.
@@ -444,7 +445,7 @@ class NodeScriptHandler(OperationsHandler):
                 script.script.data, content_type="application/binary"
             )
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     @operation(idempotent=False)
     def revert(self, request, name):
         """@description-title Revert a script version
@@ -497,7 +498,7 @@ class NodeScriptHandler(OperationsHandler):
         except ValueError as e:
             raise MAASAPIValidationError(e.args[0])  # noqa: B904
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     @operation(idempotent=False)
     def add_tag(self, request, name):
         """@description-title Add a tag
@@ -541,7 +542,7 @@ class NodeScriptHandler(OperationsHandler):
         )
         return script
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     @operation(idempotent=False)
     def remove_tag(self, request, name):
         """@description-title Remove a tag

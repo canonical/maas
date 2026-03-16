@@ -1,11 +1,9 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Optional
 
 from pydantic import BaseModel, Field
-
-from maasservicelayer.auth.jwt import UserRole
 
 
 class RBACPermissionsPools(BaseModel):
@@ -40,15 +38,10 @@ class AuthenticatedUser(BaseModel):
     Attributes:
         id (int): the user ID
         username (str): the username of the user
-        roles (UserRole): local roles that the user has, i.e. user or admin
         rbac_permissions (Optional[RBACPermissionsPools]): Contains the RBAC permissions for the user if RBAC
             is enabled. If RBAC is disabled, this attribute is set to `None`.
     """
 
     id: int
     username: str
-    roles: set[UserRole]
     rbac_permissions: Optional[RBACPermissionsPools] = Field(default=None)
-
-    def is_admin(self) -> bool:
-        return UserRole.ADMIN in self.roles

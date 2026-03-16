@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
@@ -43,13 +43,13 @@ from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
 )
+from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.workflows.bootresource import (
     ResourceDownloadParam,
     short_sha,
     SYNC_BOOTRESOURCES_WORKFLOW_NAME,
     SyncRequestParam,
 )
-from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.builders.bootresourcefiles import BootResourceFileBuilder
 from maasservicelayer.builders.bootresourcefilesync import (
     BootResourceFileSyncBuilder,
@@ -130,7 +130,11 @@ class CustomImagesHandler(Handler):
         response_model_exclude_none=True,
         status_code=201,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
         openapi_extra={
             "requestBody": {
@@ -300,7 +304,11 @@ class CustomImagesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def list_custom_images(
@@ -350,7 +358,11 @@ class CustomImagesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def get_custom_image_by_id(
@@ -391,7 +403,11 @@ class CustomImagesHandler(Handler):
         response_model_exclude_none=True,
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def delete_custom_image_by_id(
@@ -427,7 +443,11 @@ class CustomImagesHandler(Handler):
         response_model_exclude_none=True,
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def bulk_delete_custom_images(
@@ -463,7 +483,11 @@ class CustomImagesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def list_custom_images_status(
@@ -508,7 +532,11 @@ class CustomImagesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def get_custom_image_status(
@@ -536,7 +564,11 @@ class CustomImagesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def list_custom_images_statistic(
@@ -583,7 +615,11 @@ class CustomImagesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def get_custom_image_statistic(
@@ -617,7 +653,11 @@ class BootloadersHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def list_bootloaders(
@@ -667,7 +707,11 @@ class BootloadersHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def get_bootloader(

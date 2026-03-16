@@ -3,6 +3,7 @@
 
 """API handlers: `Zone`."""
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import (
     AnonymousOperationsHandler,
     check_permission,
@@ -66,6 +67,7 @@ class ZoneHandler(ModelOperationsHandler):
         """
         return super().read(request, name=name)
 
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def update(self, request, name):
         """@description Updates a zone's name or description.
 
@@ -98,6 +100,7 @@ class ZoneHandler(ModelOperationsHandler):
         """
         return super().update(request, name=name)
 
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def delete(self, request, name):
         """@description Deletes a zone.
 
@@ -126,7 +129,7 @@ class ZonesHandler(ModelCollectionOperationsHandler):
     handler_url_name = "zones_handler"
     api_doc_section_name = "Zones"
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request):
         """@description Creates a new zone.
         @param (string) "name" [required=true] The new zone's name.

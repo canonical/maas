@@ -28,6 +28,7 @@ from piston3.utils import rc
 import yaml
 
 from maascommon.fields import MAC_FIELD_RE
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver import locks
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
@@ -2698,7 +2699,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
         return chassis_type
 
-    @check_permission("can_edit_machines")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_MACHINES)
     @operation(idempotent=False)
     def add_chassis(self, request):
         """@description-title Add special hardware

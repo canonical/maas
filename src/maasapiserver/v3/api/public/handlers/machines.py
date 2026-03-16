@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends
@@ -23,7 +23,7 @@ from maasapiserver.v3.auth.base import (
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
 from maasservicelayer.enums.rbac import RbacPermission
@@ -51,7 +51,7 @@ class MachinesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    required_roles={UserRole.USER},
+                    openfga_permission=None,  # Permissions are handled in the handler.
                     rbac_permissions={
                         RbacPermission.VIEW,
                         RbacPermission.VIEW_ALL,
@@ -96,17 +96,39 @@ class MachinesHandler(Handler):
                 ]
             )
         else:
-            if UserRole.ADMIN in authenticated_user.roles:
-                where_clause = None
-            else:
-                where_clause = MachineClauseFactory.or_clauses(
-                    [
-                        MachineClauseFactory.with_owner(None),
-                        MachineClauseFactory.with_owner(
-                            authenticated_user.username
-                        ),
-                    ]
+            # The user can view all the machines in the visible pools and all the machines owned by them or unassigned in the view_available pools. For the way the OpenFGA model is designed, list_pools_with_view_available_machines_access will return all the pools with edit/deploy/view-all/view access.
+            fga_client = services.openfga_tuples.get_client()
+            view_access_pools = (
+                await fga_client.list_pools_with_view_machines_access(
+                    authenticated_user.id
                 )
+            )
+            available_access_pools = await fga_client.list_pools_with_view_available_machines_access(
+                authenticated_user.id
+            )
+            where_clause = MachineClauseFactory.or_clauses(
+                [
+                    MachineClauseFactory.with_resource_pool_ids(
+                        set(view_access_pools)
+                    ),
+                    MachineClauseFactory.and_clauses(
+                        [
+                            MachineClauseFactory.or_clauses(
+                                [
+                                    MachineClauseFactory.with_owner(None),
+                                    MachineClauseFactory.with_owner(
+                                        authenticated_user.username
+                                    ),
+                                ]
+                            ),
+                            MachineClauseFactory.with_resource_pool_ids(
+                                set(available_access_pools)
+                            ),
+                        ]
+                    ),
+                ]
+            )
+
         query = QuerySpec(where=where_clause)
 
         machines = await services.machines.list(
@@ -145,7 +167,11 @@ class MachinesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_MACHINES
+                )
+            )
         ],
     )
     async def list_machine_usb_devices(
@@ -190,7 +216,11 @@ class MachinesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_MACHINES
+                )
+            )
         ],
     )
     async def list_machine_pci_devices(
@@ -236,7 +266,11 @@ class MachinesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_MACHINES
+                )
+            )
         ],
     )
     async def get_machine_power_parameters(

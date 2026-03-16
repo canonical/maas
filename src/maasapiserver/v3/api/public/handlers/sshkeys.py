@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -22,11 +22,10 @@ from maasapiserver.v3.api.public.models.responses.sshkeys import (
     SshKeysListResponse,
 )
 from maasapiserver.v3.auth.base import (
-    check_permissions,
+    check_authentication,
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.sshkeys import SshKeyClauseFactory
 from maasservicelayer.exceptions.catalog import NotFoundException
@@ -49,9 +48,7 @@ class SshKeysHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def list_user_sshkeys(
         self,
@@ -99,9 +96,7 @@ class SshKeysHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_user_sshkey(
         self,
@@ -146,9 +141,7 @@ class SshKeysHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=201,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def create_user_sshkeys(
         self,
@@ -178,9 +171,7 @@ class SshKeysHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=201,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def import_user_sshkeys(
         self,
@@ -218,9 +209,7 @@ class SshKeysHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=204,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def delete_user_sshkey(
         self,

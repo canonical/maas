@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -23,11 +23,10 @@ from maasapiserver.v3.api.public.models.responses.ipranges import (
     IPRangeResponse,
 )
 from maasapiserver.v3.auth.base import (
-    check_permissions,
+    check_authentication,
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
@@ -61,9 +60,7 @@ class IPRangesHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def list_fabric_vlan_subnet_iprange(
         self,
@@ -119,8 +116,8 @@ class IPRangesHandler(Handler):
         response_model_exclude_none=True,
         status_code=201,
         dependencies=[
-            # Additional permission checks are performed in the builder.
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            # Additional permission checks are performed in the handler and in the builder.
+            Depends(check_authentication())
         ],
     )
     async def create_fabric_vlan_subnet_iprange(
@@ -136,9 +133,13 @@ class IPRangesHandler(Handler):
         ),
     ) -> IPRangeResponse:
         if (
-            not authenticated_user.is_admin()
-            and iprange_request.owner_id is not None
+            iprange_request.owner_id is not None
             and iprange_request.owner_id != authenticated_user.id
+            and not (
+                await services.openfga_tuples.get_client().can_edit_global_entities(
+                    authenticated_user.id
+                )
+            )
         ):
             raise ForbiddenException(
                 details=[
@@ -193,9 +194,7 @@ class IPRangesHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_fabric_vlan_subnet_iprange(
         self,
@@ -237,9 +236,8 @@ class IPRangesHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=204,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        # Additional permission checks are performed in the handler and in the builder.
+        dependencies=[Depends(check_authentication())],
     )
     async def delete_fabric_vlan_subnet_iprange(
         self,
@@ -268,9 +266,10 @@ class IPRangesHandler(Handler):
             )
         )
         if iprange:
-            if (
-                iprange.user_id != authenticated_user.id
-                and not authenticated_user.is_admin()
+            if iprange.user_id != authenticated_user.id and not (
+                await services.openfga_tuples.get_client().can_edit_global_entities(
+                    authenticated_user.id
+                )
             ):
                 raise ForbiddenException(
                     details=[
@@ -300,8 +299,8 @@ class IPRangesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            # Additional permission checks are performed in the builder.
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            # Additional permission checks are performed in the handler and in the builder.
+            Depends(check_authentication())
         ],
     )
     async def update_fabric_vlan_subnet_iprange(
@@ -317,9 +316,12 @@ class IPRangesHandler(Handler):
             get_authenticated_user
         ),
     ) -> IPRangeResponse:
+        can_edit_global_entities = await services.openfga_tuples.get_client().can_edit_global_entities(
+            authenticated_user.id
+        )
         if (
-            not authenticated_user.is_admin()
-            and iprange_request.owner_id != authenticated_user.id
+            iprange_request.owner_id != authenticated_user.id
+            and not can_edit_global_entities
         ):
             raise ForbiddenException(
                 details=[
@@ -371,8 +373,8 @@ class IPRangesHandler(Handler):
 
         # the user is trying to modify an iprange that doesn't belong to him.
         if (
-            not authenticated_user.is_admin()
-            and iprange.user_id != authenticated_user.id
+            iprange.user_id != authenticated_user.id
+            and not can_edit_global_entities
         ):
             raise ForbiddenException(
                 details=[

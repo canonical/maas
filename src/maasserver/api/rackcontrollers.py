@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from formencode.validators import StringBool
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
@@ -78,7 +79,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
     model = RackController
     fields = DISPLAYED_RACK_CONTROLLER_FIELDS
 
-    @check_permission("can_edit_controllers")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_CONTROLLERS)
     def delete(self, request, system_id):
         """@description-title Delete a rack controller
         @description Deletes a rack controller with the given system_id. A
@@ -120,7 +121,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         )
         return rc.DELETED
 
-    @check_permission("can_edit_controllers")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_CONTROLLERS)
     def update(self, request, system_id):
         """@description-title Update a rack controller
         @description Updates a rack controller with the given system_id.
@@ -173,7 +174,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @check_permission("can_edit_controllers")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_CONTROLLERS)
     @operation(idempotent=False)
     def import_boot_images(self, request, system_id):
         """@description-title Import boot images
@@ -195,7 +196,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         get_object_or_404(self.model, system_id=system_id)
         return rc.ACCEPTED
 
-    @check_permission("can_view_controllers")
+    @check_permission(MAASResourceEntitlement.CAN_VIEW_CONTROLLERS)
     @operation(idempotent=True)
     def list_boot_images(self, request, system_id):
         """@description-title List available boot images
@@ -251,7 +252,7 @@ class RackControllersHandler(NodesHandler, PowersMixin):
     api_doc_section_name = "RackControllers"
     base_model = RackController
 
-    @check_permission("can_edit_controllers")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_CONTROLLERS)
     @operation(idempotent=False)
     def import_boot_images(self, request):
         """@description-title Import boot images on all rack controllers
@@ -262,7 +263,7 @@ class RackControllersHandler(NodesHandler, PowersMixin):
         """
         return rc.ACCEPTED
 
-    @check_permission("can_view_controllers")
+    @check_permission(MAASResourceEntitlement.CAN_VIEW_CONTROLLERS)
     @operation(idempotent=True)
     def describe_power_types(self, request):
         """@description-title Get power information from rack controllers

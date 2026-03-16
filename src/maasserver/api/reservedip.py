@@ -4,6 +4,7 @@
 from django.core.handlers.wsgi import WSGIRequest
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.exceptions import MAASAPIValidationError
@@ -42,7 +43,7 @@ class ReservedIpsHandler(OperationsHandler):
         """
         return ReservedIP.objects.all()
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request: WSGIRequest):
         """@description-title Create a Reserved IP
         @description Create a new Reserved IP.
@@ -115,7 +116,7 @@ class ReservedIpHandler(OperationsHandler):
         reserved_ip = ReservedIP.objects.get_reserved_ip_or_404(id)
         return reserved_ip
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def update(self, request: WSGIRequest, id: int):
         """@description-title Update a reserved IP
         @description Update a reserved IP given its ID.
@@ -149,7 +150,7 @@ class ReservedIpHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def delete(self, request: WSGIRequest, id: int):
         """@description-title Delete a reserved IP
         @description Delete a reserved IP given its ID.

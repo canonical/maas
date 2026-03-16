@@ -1,7 +1,8 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import Mock
+from typing import Callable
+from unittest.mock import AsyncMock, Mock
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -19,6 +20,8 @@ from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolsWithSummaryListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.openfga.async_client import OpenFGAClient
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.auth.macaroons.macaroon_client import RbacAsyncClient
 from maasservicelayer.auth.macaroons.models.responses import (
     PermissionResourcesMapping,
@@ -42,7 +45,11 @@ from maasservicelayer.models.resource_pools import (
     ResourcePool,
     ResourcePoolWithSummary,
 )
-from maasservicelayer.services import ExternalAuthService, ServiceCollectionV3
+from maasservicelayer.services import (
+    ExternalAuthService,
+    OpenFGATupleService,
+    ServiceCollectionV3,
+)
 from maasservicelayer.services.resource_pools import ResourcePoolsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -70,29 +77,53 @@ class TestResourcePoolApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/resource_pools"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="POST",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_EDIT_MACHINES,
+            ),
+            Endpoint(
+                method="PUT",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_MACHINES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_MACHINES,
+            ),
+        ]
+
+    @pytest.fixture
+    def endpoints_with_authentication_only(self) -> list[Endpoint]:
+        return [
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+            ),
             Endpoint(
                 method="GET",
                 path=f"{V3_API_PREFIX}/resource_pools_with_summary",
             ),
         ]
 
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="POST", path=self.BASE_PATH),
-            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
-        ]
-
     async def test_list_no_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
+        openfga_client_mock = AsyncMock(OpenFGAClient)
+        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
+            TEST_RESOURCE_POOL.id
+        ]
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            openfga_client_mock
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.list.return_value = ListResult[
             ResourcePool
@@ -105,10 +136,16 @@ class TestResourcePoolApi(ApiCommonTests):
         assert resource_pools_response.next is None
 
     async def test_list_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
+        openfga_client_mock = AsyncMock(OpenFGAClient)
+        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
+            TEST_RESOURCE_POOL_2.id
+        ]
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            openfga_client_mock
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.list.return_value = ListResult[
             ResourcePool
@@ -169,10 +206,14 @@ class TestResourcePoolApi(ApiCommonTests):
         )
 
     async def test_get_200(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
+        openfga_client_mock = AsyncMock(OpenFGAClient)
+        openfga_client_mock.can_view_available_machines_in_pool.return_value = True
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            openfga_client_mock
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.get_by_id.return_value = (
             TEST_RESOURCE_POOL
@@ -191,11 +232,12 @@ class TestResourcePoolApi(ApiCommonTests):
                 "self": {"href": f"{self.BASE_PATH}/{TEST_RESOURCE_POOL.id}"}
             },
         }
+        openfga_client_mock.can_view_available_machines_in_pool.assert_called_once_with(
+            0, TEST_RESOURCE_POOL.id
+        )
 
     async def test_get_404(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.get_by_id.return_value = None
@@ -210,13 +252,14 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_get_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(None)
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.get_by_id.side_effect = (
             RequestValidationError(errors=[])
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
+        response = await client.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422
         assert "ETag" not in response.headers
 
@@ -266,15 +309,18 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_post_201(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+        )
         resource_pool_request = ResourcePoolRequest(
             name=TEST_RESOURCE_POOL.name,
             description=TEST_RESOURCE_POOL.description,
         )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.create.return_value = TEST_RESOURCE_POOL
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(resource_pool_request)
         )
         assert response.status_code == 201
@@ -304,14 +350,17 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_post_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         resource_pool_request: dict[str, str],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.create.side_effect = ValueError(
             "Invalid entity name."
         )
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=resource_pool_request
         )
         assert response.status_code == 422
@@ -323,7 +372,7 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_post_with_rbac(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin_rbac: AsyncClient,
+        mocked_api_client_user_rbac: AsyncClient,
     ) -> None:
         services_mock.external_auth = Mock(ExternalAuthService)
 
@@ -345,7 +394,7 @@ class TestResourcePoolApi(ApiCommonTests):
             name=TEST_RESOURCE_POOL.name,
             description=TEST_RESOURCE_POOL.description,
         )
-        response = await mocked_api_client_admin_rbac.post(
+        response = await mocked_api_client_user_rbac.post(
             self.BASE_PATH, json=jsonable_encoder(resource_pool_request)
         )
         assert response.status_code == 201
@@ -358,7 +407,7 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_post_with_rbac_forbidden(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin_rbac: AsyncClient,
+        mocked_api_client_user_rbac: AsyncClient,
     ) -> None:
         services_mock.external_auth = Mock(ExternalAuthService)
 
@@ -382,7 +431,7 @@ class TestResourcePoolApi(ApiCommonTests):
             name=TEST_RESOURCE_POOL.name,
             description=TEST_RESOURCE_POOL.description,
         )
-        response = await mocked_api_client_admin_rbac.post(
+        response = await mocked_api_client_user_rbac.post(
             self.BASE_PATH, json=jsonable_encoder(resource_pool_request)
         )
         assert response.status_code == 403
@@ -395,8 +444,11 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_put_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+        )
         updated_rp = TEST_RESOURCE_POOL
         updated_rp.name = "newname"
         updated_rp.description = "new description"
@@ -405,7 +457,7 @@ class TestResourcePoolApi(ApiCommonTests):
         update_resource_pool_request = ResourcePoolRequest(
             name="newname", description="new description"
         )
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/{str(TEST_RESOURCE_POOL.id)}",
             json=jsonable_encoder(update_resource_pool_request),
         )
@@ -422,8 +474,11 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_put_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.update_by_id.side_effect = (
             NotFoundException(
@@ -438,7 +493,7 @@ class TestResourcePoolApi(ApiCommonTests):
         update_resource_pool_request = ResourcePoolRequest(
             name="newname", description="new description"
         )
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1000",
             json=jsonable_encoder(update_resource_pool_request),
         )
@@ -461,14 +516,17 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_put_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         resource_pool_request: dict[str, str],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.update_by_id.side_effect = (
             RequestValidationError(errors=[])
         )
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1", json=resource_pool_request
         )
         assert response.status_code == 422
@@ -476,7 +534,7 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_put_with_rbac(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin_rbac: AsyncClient,
+        mocked_api_client_user_rbac: AsyncClient,
     ) -> None:
         services_mock.external_auth = Mock(ExternalAuthService)
 
@@ -501,7 +559,7 @@ class TestResourcePoolApi(ApiCommonTests):
         update_resource_pool_request = ResourcePoolRequest(
             name="newname", description="new description"
         )
-        response = await mocked_api_client_admin_rbac.put(
+        response = await mocked_api_client_user_rbac.put(
             f"{self.BASE_PATH}/{str(TEST_RESOURCE_POOL.id)}",
             json=jsonable_encoder(update_resource_pool_request),
         )
@@ -514,7 +572,7 @@ class TestResourcePoolApi(ApiCommonTests):
         )
 
         # The user can't access the resource pool 2
-        response = await mocked_api_client_admin_rbac.put(
+        response = await mocked_api_client_user_rbac.put(
             f"{self.BASE_PATH}/2",
             json=jsonable_encoder(update_resource_pool_request),
         )
@@ -523,21 +581,27 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_delete_resourcepool_with_id(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.delete_by_id.side_effect = None
-        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/10")
+        response = await client.delete(f"{self.BASE_PATH}/10")
         assert response.status_code == 204
 
     async def test_delete_resourcepool_with_etag(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.delete_by_id.side_effect = None
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/10", headers={"if-match": "my_etag"}
         )
         assert response.status_code == 204
@@ -545,8 +609,11 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_delete_resourcepool_wrong_etag_error(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.delete_by_id.side_effect = [
             PreconditionFailedException(
@@ -559,7 +626,7 @@ class TestResourcePoolApi(ApiCommonTests):
             ),
             None,
         ]
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/10",
             headers={"if-match": "wrong_etag"},
         )
@@ -574,7 +641,7 @@ class TestResourcePoolApi(ApiCommonTests):
     async def test_delete_resourcepool_with_rbac(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin_rbac: AsyncClient,
+        mocked_api_client_user_rbac: AsyncClient,
     ) -> None:
         services_mock.external_auth = Mock(ExternalAuthService)
 
@@ -591,7 +658,7 @@ class TestResourcePoolApi(ApiCommonTests):
 
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.delete_by_id.side_effect = None
-        response = await mocked_api_client_admin_rbac.delete(
+        response = await mocked_api_client_user_rbac.delete(
             f"{self.BASE_PATH}/1",
         )
         assert response.status_code == 204
@@ -599,7 +666,7 @@ class TestResourcePoolApi(ApiCommonTests):
             user="username",
             permissions={RbacPermission.EDIT},
         )
-        forbidden_response = await mocked_api_client_admin_rbac.delete(
+        forbidden_response = await mocked_api_client_user_rbac.delete(
             f"{self.BASE_PATH}/2",
         )
         assert forbidden_response.status_code == 403
@@ -625,10 +692,17 @@ class TestResourcePoolsWithSummary:
     )
 
     async def test_list_with_summary_no_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
+        openfga_client_mock = AsyncMock(OpenFGAClient)
+        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
+            self.RESOURCE_POOL_WITH_SUMMARY_0.id
+        ]
+        openfga_client_mock.can_edit_machines.return_value = False
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            openfga_client_mock
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.list_with_summary.return_value = (
             ListResult[ResourcePoolWithSummary](
@@ -671,14 +745,26 @@ class TestResourcePoolsWithSummary:
         assert resource_pool_with_summary_response.is_default is True
         assert resource_pool_with_summary_response.permissions == set()
         services_mock.resource_pools.list_with_summary.assert_called_with(
-            page=1, size=1, query=None
+            page=1,
+            size=1,
+            query=QuerySpec(
+                where=ResourcePoolClauseFactory.with_ids(
+                    [self.RESOURCE_POOL_WITH_SUMMARY_0.id]
+                )
+            ),
         )
 
     async def test_list_with_summary_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
+        openfga_client_mock = AsyncMock(OpenFGAClient)
+        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
+            self.RESOURCE_POOL_WITH_SUMMARY_0.id
+        ]
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            openfga_client_mock
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.list_with_summary.return_value = (
             ListResult[ResourcePoolWithSummary](
@@ -700,17 +786,24 @@ class TestResourcePoolsWithSummary:
         )
 
     async def test_list_with_summary_admin_can_edit_and_delete(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
+        openfga_client_mock = AsyncMock(OpenFGAClient)
+        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
+            self.RESOURCE_POOL_WITH_SUMMARY_0.id
+        ]
+        openfga_client_mock.can_edit_machines.return_value = True
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            openfga_client_mock
+        )
         services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.list_with_summary.return_value = (
             ListResult[ResourcePoolWithSummary](
                 items=[self.RESOURCE_POOL_WITH_SUMMARY_0], total=1
             )
         )
-        response = await mocked_api_client_admin.get(
+        response = await mocked_api_client_user.get(
             f"{self.SUMMARY_ENDPOINT}?size=1"
         )
         assert response.status_code == 200

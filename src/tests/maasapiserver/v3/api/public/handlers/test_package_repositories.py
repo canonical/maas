@@ -1,6 +1,7 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Callable
 from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -17,6 +18,7 @@ from maascommon.enums.package_repositories import (
     PACKAGE_REPO_MAIN_ARCHES,
     PACKAGE_REPO_PORTS_ARCHES,
 )
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
@@ -98,30 +100,48 @@ class TestPackageRepositoriesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/package_repositories"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}"),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/2"),
-        ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="POST", path=f"{self.BASE_PATH}"),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/2"),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/2",
+                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="PUT",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/2",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
         ]
 
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.list.return_value = ListResult[
             PackageRepository
         ](items=[PORTS_PACKAGE_REPO], total=2)
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         package_repositories_response = PackageRepositoryListResponse(
             **response.json()
@@ -136,13 +156,16 @@ class TestPackageRepositoriesApi(ApiCommonTests):
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.list.return_value = ListResult[
             PackageRepository
         ](items=[MAIN_PACKAGE_REPO, PORTS_PACKAGE_REPO], total=2)
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
+        response = await client.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         package_repositories_response = PackageRepositoryListResponse(
             **response.json()
@@ -154,13 +177,16 @@ class TestPackageRepositoriesApi(ApiCommonTests):
     async def test_get_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.get_by_id.return_value = (
             MAIN_PACKAGE_REPO
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         pr_response = PackageRepositoryResponse(**response.json())
@@ -169,11 +195,14 @@ class TestPackageRepositoriesApi(ApiCommonTests):
     async def test_get_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.get_by_id.return_value = None
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -184,8 +213,11 @@ class TestPackageRepositoriesApi(ApiCommonTests):
     async def test_put_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.get_by_id.return_value = (
             TEST_PACKAGE_REPO
@@ -206,7 +238,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
             "disable_sources": False,
             "enabled": True,
         }
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1",
             json=jsonable_encoder(update_request),
         )
@@ -221,8 +253,11 @@ class TestPackageRepositoriesApi(ApiCommonTests):
     async def test_put_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.get_by_id.return_value = None
         update_request = {
@@ -237,7 +272,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
             "disable_sources": False,
             "enabled": True,
         }
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1",
             json=jsonable_encoder(update_request),
         )
@@ -251,8 +286,11 @@ class TestPackageRepositoriesApi(ApiCommonTests):
     async def test_post_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.create.return_value = (
             TEST_PACKAGE_REPO
@@ -270,7 +308,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
             "disable_sources": False,
             "enabled": True,
         }
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_request)
         )
         assert response.status_code == 201
@@ -286,8 +324,11 @@ class TestPackageRepositoriesApi(ApiCommonTests):
     async def test_post_409(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.create.side_effect = AlreadyExistsException(
             details=[
@@ -309,7 +350,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
             "disable_sources": False,
             "enabled": True,
         }
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_request)
         )
         assert response.status_code == 409
@@ -329,8 +370,11 @@ class TestPackageRepositoriesApi(ApiCommonTests):
     async def test_delete_default_package_repository(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.delete_by_id.side_effect = BadRequestException(
             details=[
@@ -340,7 +384,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
                 )
             ]
         )
-        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        response = await client.delete(f"{self.BASE_PATH}/1")
 
         error_response = ErrorBodyResponse(**response.json())
         assert response.status_code == 400
@@ -354,20 +398,24 @@ class TestPackageRepositoriesApi(ApiCommonTests):
     async def test_delete_resource(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.delete_by_id.side_effect = None
-        response = await mocked_api_client_admin.delete(
-            f"{self.BASE_PATH}/100"
-        )
+        response = await client.delete(f"{self.BASE_PATH}/100")
         assert response.status_code == 204
 
     async def test_delete_with_etag(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.delete_by_id.side_effect = [
             PreconditionFailedException(
@@ -381,7 +429,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
             None,
         ]
 
-        failed_response = await mocked_api_client_admin.delete(
+        failed_response = await client.delete(
             f"{self.BASE_PATH}/100",
             headers={"if-match": "wrong_etag"},
         )
@@ -393,7 +441,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
             error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
         )
 
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/100",
             headers={"if-match": "my_etag"},
         )

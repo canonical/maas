@@ -1,10 +1,11 @@
+# Copyright 2023-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from ..fixtures import services_mock
 from .fixtures.app import (
     api_app,
     api_client,
     app_with_mocked_services,
-    app_with_mocked_services_admin,
-    app_with_mocked_services_admin_rbac,
     app_with_mocked_services_rbac,
     app_with_mocked_services_user,
     app_with_mocked_services_user_rbac,
@@ -17,12 +18,11 @@ from .fixtures.app import (
     internal_app_with_mocked_services,
     mock_aioresponse,
     mocked_api_client,
-    mocked_api_client_admin,
-    mocked_api_client_admin_rbac,
     mocked_api_client_rbac,
     mocked_api_client_session_id,
     mocked_api_client_user,
     mocked_api_client_user_rbac,
+    mocked_api_client_user_with_permissions,
     mocked_internal_api_client,
     user_session_id,
 )
@@ -51,19 +51,16 @@ __all__ = [
     "mock_aioresponse",
     "mocked_api_client",
     "mocked_api_client_user",
-    "mocked_api_client_admin",
     "mocked_api_client_session_id",
     "mocked_api_client_rbac",
     "mocked_api_client_user_rbac",
-    "mocked_api_client_admin_rbac",
     "internal_app_with_mocked_services",
     "mocked_internal_api_client",
     "app_with_mocked_services",
     "app_with_mocked_services_user",
-    "app_with_mocked_services_admin",
+    "mocked_api_client_user_with_permissions",
     "app_with_mocked_services_rbac",
     "app_with_mocked_services_user_rbac",
-    "app_with_mocked_services_admin_rbac",
     "transaction_middleware_class",
     "user_session_id",
 ]

@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64decode
@@ -52,12 +52,12 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.boot_resources import ImageStatus, ImageUpdateStatus
+from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     SYNC_SELECTION_WORKFLOW_NAME,
     SyncSelectionParam,
 )
-from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
@@ -101,7 +101,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def list_bootsources(
@@ -145,7 +149,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def get_bootsource(
@@ -176,7 +184,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=201,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def create_bootsource(
@@ -207,7 +219,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def update_bootsource(
@@ -238,7 +254,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def delete_bootsource(
@@ -262,7 +282,11 @@ class BootSourcesHandler(Handler):
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def fetch_bootsources_available_images(
@@ -314,7 +338,11 @@ class BootSourcesHandler(Handler):
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def list_bootsource_bootsourceselection(
@@ -368,7 +396,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def get_bootsource_bootsourceselection(
@@ -409,7 +441,11 @@ class BootSourcesHandler(Handler):
         },
         status_code=201,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def create_bootsource_bootsourceselection(
@@ -458,7 +494,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def update_bootsource_bootsourceselection(
@@ -495,7 +535,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def delete_bootsource_bootsourceselection(
@@ -539,7 +583,11 @@ class BootSourcesHandler(Handler):
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def list_bootsource_bootsourceselection_resources(
@@ -602,7 +650,11 @@ class BootSourcesHandler(Handler):
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def get_bootsource_bootsourceselection_resource(
@@ -661,7 +713,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=202,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def sync_bootsource_bootsourceselection(
@@ -745,7 +801,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=202,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def stop_sync_bootsource_bootsourceselection(
@@ -798,7 +858,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def get_all_available_images(
@@ -836,7 +900,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def get_bootsource_available_images(
@@ -883,7 +951,11 @@ class BootSourcesHandler(Handler):
         response_model_exclude_none=True,
         status_code=202,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
         ],
     )
     async def update_manifest_bootsources(

@@ -516,7 +516,6 @@ class ModelOperationsHandler(
                 raise PermissionDenied()
         return instance
 
-    @check_permission("can_edit_global_entities")
     def update(self, request, **kwargs):
         """PUT request.  Update a model instance.
 
@@ -531,7 +530,6 @@ class ModelOperationsHandler(
             raise MAASAPIValidationError(form.errors)
         return form.save()
 
-    @check_permission("can_edit_global_entities")
     def delete(self, request, **kwargs):
         """DELETE request.  Delete a model instance."""
         filters = {self.id_field: kwargs[self.id_field]}

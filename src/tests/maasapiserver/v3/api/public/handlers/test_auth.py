@@ -1,8 +1,9 @@
-#  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
 from json import dumps as _dumps
+from typing import Callable
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from fastapi.encoders import jsonable_encoder
@@ -26,13 +27,14 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
 )
 from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.auth.external_oauth import (
     OAuth2Client,
     OAuthIDToken,
     OAuthInitiateData,
     OAuthTokenData,
 )
-from maasservicelayer.auth.jwt import JWT, UserRole
+from maasservicelayer.auth.jwt import JWT
 from maasservicelayer.auth.oidc_jwt import OAuthAccessToken
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
@@ -116,11 +118,14 @@ class TestAuthApi:
     async def test_get(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.users = Mock(UsersService)
         services_mock.users.has_users.return_value = False
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/login")
+        response = await client.get(f"{self.BASE_PATH}/login")
         assert response.status_code == 200
         pre_login_info = PreLoginInfoResponse(**response.json())
         assert pre_login_info.is_authenticated is True
@@ -134,7 +139,7 @@ class TestAuthApi:
     ) -> None:
         services_mock.auth = Mock(AuthService)
         services_mock.auth.login.return_value = AuthTokens(
-            access_token=JWT.create("key", "username", 0, [UserRole.USER]),
+            access_token=JWT.create("key", "username", 0),
             refresh_token="abc123",
         )
         response = await mocked_api_client.post(
@@ -218,14 +223,17 @@ class TestAuthApi:
     async def test_get_access_token_with_jwt(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.auth = Mock(AuthService)
         services_mock.auth.access_token.return_value = JWT.create(
-            "key", "username", 0, [UserRole.USER]
+            "key", "username", 0
         )
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}/access_token",
         )
         assert response.status_code == 200
@@ -245,7 +253,7 @@ class TestAuthApi:
     ) -> None:
         services_mock.auth = Mock(AuthService)
         services_mock.auth.access_token.return_value = JWT.create(
-            "key", "username", 0, [UserRole.USER]
+            "key", "username", 0
         )
         response = await mocked_api_client_session_id.get(
             f"{self.BASE_PATH}/access_token",
@@ -360,14 +368,17 @@ class TestAuthApi:
     async def test_list_oauth_providers_200_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.list.return_value = ListResult[
             OAuthProvider
         ](items=[TEST_PROVIDER_1], total=1)
 
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}/oauth/providers?size=1",
         )
 
@@ -383,14 +394,17 @@ class TestAuthApi:
     async def test_list_oauth_providers_200_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.list.return_value = ListResult[
             OAuthProvider
         ](items=[TEST_PROVIDER_1, TEST_PROVIDER_2], total=2)
 
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}/oauth/providers?size=1",
         )
 
@@ -410,8 +424,11 @@ class TestAuthApi:
     async def test_update_oauth_provider_success(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         request_body = OAuthProviderRequest(
             name="test_provider",
@@ -444,7 +461,7 @@ class TestAuthApi:
         services_mock.external_oauth.update_provider.return_value = (
             updated_provider
         )
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/oauth/providers/1",
             json=jsonable_encoder(request_body.dict()),
         )
@@ -466,8 +483,11 @@ class TestAuthApi:
     async def test_update_oauth_provider_not_found(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         request_body = OAuthProviderRequest(
             name="test_provider",
@@ -480,7 +500,7 @@ class TestAuthApi:
             token_type=OAuthTokenTypeChoices.JWT,
         )
         services_mock.external_oauth.update_provider.return_value = None
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/oauth/providers/1",
             json=jsonable_encoder(request_body.dict()),
         )
@@ -493,8 +513,11 @@ class TestAuthApi:
     async def test_update_oauth_provider_invalid_body(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         request_body = {
             "name": "test_provider",
@@ -506,7 +529,7 @@ class TestAuthApi:
             "enabled": True,
         }
         services_mock.external_oauth.update_provider.return_value = None
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/oauth/providers/1",
             json=jsonable_encoder(request_body),
         )
@@ -520,8 +543,11 @@ class TestAuthApi:
     async def test_create_oauth_provider_success(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         request_body = OAuthProviderRequest(
             name="test_provider_1",
@@ -536,7 +562,7 @@ class TestAuthApi:
         created_provider = TEST_PROVIDER_1
         services_mock.external_oauth.create.return_value = created_provider
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
             json=jsonable_encoder(request_body.dict()),
         )
@@ -549,8 +575,11 @@ class TestAuthApi:
     async def test_create_oauth_provider_already_exists(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.create.side_effect = AlreadyExistsException(
             details=[
@@ -571,7 +600,7 @@ class TestAuthApi:
             token_type=OAuthTokenTypeChoices.JWT,
         )
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
             json=jsonable_encoder(request_body.dict()),
         )
@@ -583,8 +612,11 @@ class TestAuthApi:
     async def test_create_oauth_provider_conflict(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.create.side_effect = ConflictException(
             details=[
@@ -605,7 +637,7 @@ class TestAuthApi:
             token_type=OAuthTokenTypeChoices.JWT,
         )
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
             json=jsonable_encoder(request_body.dict()),
         )
@@ -617,8 +649,11 @@ class TestAuthApi:
     async def test_create_oauth_provider_bad_gateway(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.create.side_effect = BadGatewayException(
             details=[
@@ -639,7 +674,7 @@ class TestAuthApi:
             token_type=OAuthTokenTypeChoices.JWT,
         )
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
             json=jsonable_encoder(request_body.dict()),
         )
@@ -652,23 +687,27 @@ class TestAuthApi:
     async def test_delete_oauth_provider(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.delete_by_id.side_effect = None
-        response = await mocked_api_client_admin.delete(
-            f"{self.BASE_PATH}/oauth/providers/1"
-        )
+        response = await client.delete(f"{self.BASE_PATH}/oauth/providers/1")
         assert response.status_code == 204
 
     async def test_delete_oauth_provider_with_etag(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.delete_by_id.side_effect = None
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/oauth/providers/1",
             headers={"if-match": "my_etag"},
         )
@@ -677,8 +716,11 @@ class TestAuthApi:
     async def test_delete_oauth_provider_wrong_etag_error(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.delete_by_id.side_effect = [
             PreconditionFailedException(
@@ -691,7 +733,7 @@ class TestAuthApi:
             ),
             None,
         ]
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/oauth/providers/1",
             headers={"if-match": "wrong_etag"},
         )
@@ -706,8 +748,11 @@ class TestAuthApi:
     async def test_get_active_oauth_provider_success(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         created_provider = OAuthProvider(
             id=1,
             created=utcnow(),
@@ -733,9 +778,7 @@ class TestAuthApi:
         )
         services_mock.users.count_by_provider.return_value = 5
 
-        response = await mocked_api_client_admin.get(
-            f"{self.BASE_PATH}/oauth:is_active"
-        )
+        response = await client.get(f"{self.BASE_PATH}/oauth:is_active")
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         assert response.json() == {
@@ -756,13 +799,14 @@ class TestAuthApi:
     async def test_get_active_oauth_provider_not_found(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.get_provider.return_value = None
-        response = await mocked_api_client_admin.get(
-            f"{self.BASE_PATH}/oauth:is_active"
-        )
+        response = await client.get(f"{self.BASE_PATH}/oauth:is_active")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -773,14 +817,17 @@ class TestAuthApi:
     async def test_get_oauth_provider_by_id_success(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.users = Mock(UsersService)
         services_mock.external_oauth.get_by_id.return_value = TEST_PROVIDER_1
         services_mock.users.count_by_provider.return_value = 3
 
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}/oauth/providers/1",
         )
 
@@ -797,12 +844,15 @@ class TestAuthApi:
     async def test_get_oauth_provider_by_id_not_found(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.external_oauth.get_by_id.return_value = None
 
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}/oauth/providers/999",
         )
 
@@ -1013,8 +1063,11 @@ class TestAuthApi:
         token_urlsafe_mock: MagicMock,
         set_unsafe_cookie_mock: MagicMock,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         test_session = DjangoSession(
             session_key="sessionid123",
             expire_date=utcnow() + timedelta(hours=1),
@@ -1028,7 +1081,7 @@ class TestAuthApi:
         mock_user.password = "hashed_password"
         services_mock.users.get_by_id = AsyncMock(return_value=mock_user)
         token_urlsafe_mock.return_value = "randomcsrftoken"
-        response = await mocked_api_client_user.post(
+        response = await client.post(
             f"{self.BASE_PATH}/sessions",
         )
         assert response.status_code == 204
@@ -1048,13 +1101,16 @@ class TestAuthApi:
         self,
         get_unsafe_cookie_mock: MagicMock,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         get_unsafe_cookie_mock.return_value = "sessionid123"
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.django_session = Mock(DjangoSessionService)
         services_mock.django_session.extend_session.return_value = None
-        response = await mocked_api_client_user.post(
+        response = await client.post(
             f"{self.BASE_PATH}/sessions:extend",
         )
         assert response.status_code == 204
@@ -1069,13 +1125,16 @@ class TestAuthApi:
         self,
         get_unsafe_cookie_mock: MagicMock,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.django_session = Mock(DjangoSessionService)
         get_unsafe_cookie_mock.return_value = None
         services_mock.django_session.extend_session.return_value = None
-        response = await mocked_api_client_user.post(
+        response = await client.post(
             f"{self.BASE_PATH}/sessions:extend",
         )
         assert response.status_code == 400

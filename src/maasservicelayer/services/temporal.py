@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
@@ -41,7 +41,7 @@ class TemporalService(Service):
     def build_cache_object() -> ServiceCache:
         return TemporalServiceCache()
 
-    @Service.from_cache_or_execute(attr="temporal_client")
+    @Service.from_cache_or_execute_async(attr="temporal_client")
     async def get_temporal_client(self) -> Client:
         return await get_temporal_client_async()
 

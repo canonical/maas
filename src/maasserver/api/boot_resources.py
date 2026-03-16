@@ -20,6 +20,7 @@ from piston3.handler import typemapper
 from piston3.utils import rc
 from temporalio.common import WorkflowIDReusePolicy
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.workflows.bootresource import (
     short_sha,
     SYNC_BOOTRESOURCES_WORKFLOW_NAME,
@@ -201,7 +202,7 @@ class BootResourcesHandler(OperationsHandler):
             status=int(http.client.OK),
         )
 
-    @check_permission("can_edit_boot_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES)
     def create(self, request):
         """@description-title Create a new boot resource
         @description Creates a new boot resource. The file upload must be done
@@ -256,7 +257,7 @@ class BootResourcesHandler(OperationsHandler):
             status=int(http.client.CREATED),
         )
 
-    @check_permission("can_edit_boot_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES)
     @operation(idempotent=False, exported_as="import")
     def import_resources(self, request):
         """@description-title Import boot resources
@@ -272,7 +273,7 @@ class BootResourcesHandler(OperationsHandler):
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET),
         )
 
-    @check_permission("can_edit_boot_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES)
     @operation(idempotent=False)
     def stop_import(self, request):
         """@description-title Stop import boot resources
@@ -345,7 +346,7 @@ class BootResourceHandler(OperationsHandler):
             status=int(http.client.OK),
         )
 
-    @check_permission("can_edit_boot_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES)
     def delete(self, request, id):
         """@description-title Delete a boot resource
         @description Delete a boot resource by id.
@@ -380,7 +381,7 @@ class BootResourceFileUploadHandler(OperationsHandler):
     api_doc_section_name = "Boot resource file upload"
     read = create = delete = None
 
-    @check_permission("can_edit_boot_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES)
     def update(self, request, resource_id, id):
         """@description-title Upload chunk of boot resource file.
         @description Uploads a chunk of boot resource file

@@ -5,6 +5,7 @@
 
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.forms.dnsdata import DNSDataForm
@@ -83,7 +84,7 @@ class DNSResourceRecordsHandler(OperationsHandler):
             query = query.filter(rrtype=rrtype)
         return query
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request):
         """@description-title Create a DNS resource record
         @description Create a new DNS resource record.

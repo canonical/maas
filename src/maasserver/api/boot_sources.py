@@ -13,6 +13,7 @@ from piston3.handler import typemapper
 from piston3.utils import rc
 
 from maascommon.logging.security import CREATED, DELETED, UPDATED
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -40,7 +41,7 @@ class BootSourceHandler(OperationsHandler):
     model = BootSource
     fields = DISPLAYED_BOOTSOURCE_FIELDS
 
-    @check_permission("can_view_boot_entities")
+    @check_permission(MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES)
     def read(self, request, id):
         """@description-title Read a boot source
         @description Read a boot source with the given id.
@@ -60,7 +61,7 @@ class BootSourceHandler(OperationsHandler):
         """
         return get_object_or_404(BootSource, id=id)
 
-    @check_permission("can_edit_boot_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES)
     def update(self, request, id):
         """@description-title Update a boot source
         @description Update a boot source with the given id.
@@ -110,7 +111,7 @@ class BootSourceHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @check_permission("can_edit_boot_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES)
     def delete(self, request, id):
         """@description-title Delete a boot source
         @description Delete a boot source with the given id.
@@ -160,7 +161,7 @@ class BootSourcesHandler(OperationsHandler):
     def resource_uri(cls):
         return ("boot_sources_handler", [])
 
-    @check_permission("can_view_boot_entities")
+    @check_permission(MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES)
     def read(self, request):
         """@description-title List boot sources
         @description List all boot sources.
@@ -173,7 +174,7 @@ class BootSourcesHandler(OperationsHandler):
         """
         return BootSource.objects.all()
 
-    @check_permission("can_edit_boot_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES)
     def create(self, request):
         """@description-title Create a boot source
         @description Create a new boot source. Note that in addition to

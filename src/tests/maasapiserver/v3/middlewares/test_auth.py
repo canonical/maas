@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
 from typing import Any, AsyncIterator, Callable, Iterator
@@ -39,18 +39,16 @@ from maasapiserver.v3.middlewares.auth import (
 from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maascommon.logging.security import (
-    ADMIN,
     AUTHN_AUTH_FAILED,
     AUTHN_AUTH_SUCCESSFUL,
     SECURITY,
-    USER,
 )
 from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
 from maasservicelayer.auth.external_oauth import OAuthRefreshData
-from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
+from maasservicelayer.auth.jwt import InvalidToken, JWT
 from maasservicelayer.auth.macaroons.macaroon_client import (
     CandidAsyncClient,
     RbacAsyncClient,
@@ -151,9 +149,7 @@ def auth_app(
         )
         return TokenResponse(
             token_type="bearer",
-            access_token=JWT.create(
-                jwt_key, username, 0, [UserRole.USER]
-            ).encoded,
+            access_token=JWT.create(jwt_key, username, 0).encoded,
         )
 
     @app.get("/MAAS/a/v3/users/{username}/invalid_token")
@@ -163,7 +159,7 @@ def auth_app(
         return TokenResponse(
             token_type="bearer",
             access_token=JWT.create(
-                "definitely_not_the_key", username, 0, [UserRole.USER]
+                "definitely_not_the_key", username, 0
             ).encoded,
         )
 
@@ -174,7 +170,6 @@ def auth_app(
             return AuthenticatedUser(
                 id=request.state.authenticated_user.id,
                 username=request.state.authenticated_user.username,
-                roles=request.state.authenticated_user.roles,
             )
         return Response(content="authenticated_user is None", status_code=401)
 
@@ -230,7 +225,6 @@ class TestV3AuthenticationMiddleware:
             **authenticated_v3_response.json()
         )
         assert authenticated_user.username == "test"
-        assert authenticated_user.roles == {UserRole.USER}
 
     async def test_authentication_creates_logging_context(
         self,
@@ -243,12 +237,8 @@ class TestV3AuthenticationMiddleware:
         request_mock.state.services.external_oauth.get_encryptor = AsyncMock(
             return_value=None
         )
-        authenticated_user = AuthenticatedUser(
-            id=0, username="myuser", roles={UserRole.USER}
-        )
-        authenticated_admin = AuthenticatedUser(
-            id=1, username="admin", roles={UserRole.USER, UserRole.ADMIN}
-        )
+        authenticated_user = AuthenticatedUser(id=0, username="myuser")
+        authenticated_admin = AuthenticatedUser(id=1, username="admin")
         local_auth_provider_mock = Mock(LocalAuthenticationProvider)
         authentication_providers_cache = AuthenticationProvidersCache(
             jwt_authentication_providers=[local_auth_provider_mock],
@@ -277,30 +267,26 @@ class TestV3AuthenticationMiddleware:
         user = await create_test_user(
             fixture, username="myuser", is_superuser=False
         )
-        valid_token = JWT.create(
-            "123", user.username, user.id, [UserRole.USER]
-        )
+        valid_token = JWT.create("123", user.username, user.id)
         request_mock.headers = {
             "Authorization": "bearer " + valid_token.encoded
         }
         await auth_middleware.dispatch(request_mock, AsyncMock(Callable))
         mock_logger.info.assert_called_with(
-            AUTHN_AUTH_SUCCESSFUL, type=SECURITY, userID="myuser", role=USER
+            AUTHN_AUTH_SUCCESSFUL, type=SECURITY, userID="myuser"
         )
 
         # valid admin JWT Token
         admin = await create_test_user(
             fixture, username="admin", is_superuser=True
         )
-        valid_admin_token = JWT.create(
-            "123", admin.username, admin.id, [UserRole.ADMIN]
-        )
+        valid_admin_token = JWT.create("123", admin.username, admin.id)
         request_mock.headers = {
             "Authorization": "bearer " + valid_admin_token.encoded
         }
         await auth_middleware.dispatch(request_mock, AsyncMock(Callable))
         mock_logger.info.assert_called_with(
-            AUTHN_AUTH_SUCCESSFUL, type=SECURITY, userID="admin", role=ADMIN
+            AUTHN_AUTH_SUCCESSFUL, type=SECURITY, userID="admin"
         )
 
     async def test_authentication_with_macaroons(self) -> None:
@@ -309,9 +295,7 @@ class TestV3AuthenticationMiddleware:
         macaroon_auth_provider_mock.extract_macaroons.return_value = (
             macaroons_mock
         )
-        authenticated_user = AuthenticatedUser(
-            id=0, username="admin", roles={UserRole.USER, UserRole.ADMIN}
-        )
+        authenticated_user = AuthenticatedUser(id=0, username="admin")
         macaroon_auth_provider_mock.authenticate.return_value = (
             authenticated_user
         )
@@ -354,7 +338,6 @@ class TestV3AuthenticationMiddleware:
         authenticated_user = AuthenticatedUser(
             id=oidc_user.id,
             username=oidc_user.username,
-            roles={UserRole.USER},
         )
         oidc_auth_provider_mock.authenticate.return_value = authenticated_user
         authentication_providers_cache = AuthenticationProvidersCache(
@@ -430,7 +413,7 @@ class TestAuthenticationProvidersCache:
 
 class TestLocalAuthenticationProvider:
     async def test_dispatch(self) -> None:
-        jwt = JWT.create("123", "test", 0, [UserRole.USER])
+        jwt = JWT.create("123", "test", 0)
         request = Mock(Request)
         request.state.services.auth = Mock(AuthService)
         request.state.services.auth.decode_and_verify_token.return_value = jwt
@@ -439,7 +422,6 @@ class TestLocalAuthenticationProvider:
         user = await provider.authenticate(request, jwt.encoded)
 
         assert user.username == "test"
-        assert user.roles == {UserRole.USER}
         assert user.id == 0
 
     async def test_dispatch_unauthenticated_with_no_refresh_token(
@@ -467,7 +449,7 @@ class TestLocalAuthenticationProvider:
     async def test_dispatch_refreshes_token(self) -> None:
         request = Mock(Request)
         user = _make_user()
-        token = JWT.create("123", user.username, user.id, [UserRole.USER])
+        token = JWT.create("123", user.username, user.id)
         request.state.services.auth = Mock(AuthService)
         request.state.services.Users = Mock(UsersService)
         request.state.cookie_manager = Mock(EncryptedCookieManager)
@@ -544,7 +526,6 @@ class TestMacaroonAuthenticationProvider:
         user = await provider.authenticate(request, macaroons)
 
         assert user.username == "test"
-        assert user.roles == {UserRole.USER}
         request.state.services.external_auth.login.assert_called_once_with(
             macaroons=macaroons, request_absolute_uri="http://localhost:5240/"
         )
@@ -562,7 +543,6 @@ class TestMacaroonAuthenticationProvider:
         user = await provider.authenticate(request, macaroons)
 
         assert user.username == "test"
-        assert user.roles == {UserRole.USER}
         request.state.services.external_auth.login.assert_called_once_with(
             macaroons=macaroons, request_absolute_uri="http://test:5240/"
         )
@@ -1046,7 +1026,6 @@ class TestOIDCAuthenticationProvider:
         )
         provider._refresh_access_token.assert_not_awaited()
         assert authenticated_user.username == "user@example.com"
-        assert authenticated_user.roles == {UserRole.USER}
         request.state.cookie_manager.set_auth_cookie.assert_not_called()
 
     async def test_dispatch_refreshes_token_with_new_refresh_token(
@@ -1067,7 +1046,6 @@ class TestOIDCAuthenticationProvider:
         )
 
         assert authenticated_user.username == "user@example.com"
-        assert authenticated_user.roles == {UserRole.USER}
         provider._is_token_valid.assert_awaited_once_with(
             request, "accesstoken"
         )
@@ -1099,7 +1077,6 @@ class TestOIDCAuthenticationProvider:
         )
 
         assert authenticated_user.username == "user@example.com"
-        assert authenticated_user.roles == {UserRole.USER}
         provider._is_token_valid.assert_awaited_once_with(
             request, "accesstoken"
         )

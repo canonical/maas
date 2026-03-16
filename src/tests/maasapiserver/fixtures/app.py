@@ -28,14 +28,14 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.client_certificate import (
     RequireClientCertMiddleware,
 )
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
-from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db import Database
 from maasservicelayer.models.users import User
-from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.session_hash import get_session_auth_hash
@@ -47,7 +47,7 @@ RBAC_URL = "http://rbac.example.com"
 
 def create_app_with_mocks(
     mocked_services: ServiceCollectionV3,
-    roles: set[UserRole] | None = None,
+    with_user: bool = False,
     external_auth: bool = False,
 ):
     class InjectServicesMocks(BaseHTTPMiddleware):
@@ -77,9 +77,9 @@ def create_app_with_mocks(
             request: Request,
             call_next: Callable[[Request], Awaitable[Response]],
         ) -> Response:
-            if roles:
+            if with_user:
                 request.state.authenticated_user = AuthenticatedUser(
-                    id=0, username="username", roles=roles
+                    id=0, username="username"
                 )
             else:
                 request.state.authenticated_user = None
@@ -131,13 +131,8 @@ def app_with_mocked_services(services_mock: ServiceCollectionV3):
 
 
 @pytest.fixture
-def app_with_mocked_services_admin(services_mock: ServiceCollectionV3):
-    yield create_app_with_mocks(services_mock, {UserRole.USER, UserRole.ADMIN})
-
-
-@pytest.fixture
 def app_with_mocked_services_user(services_mock: ServiceCollectionV3):
-    yield create_app_with_mocks(services_mock, {UserRole.USER})
+    yield create_app_with_mocks(services_mock, with_user=True)
 
 
 @pytest.fixture
@@ -148,14 +143,7 @@ def app_with_mocked_services_rbac(services_mock: ServiceCollectionV3):
 @pytest.fixture
 def app_with_mocked_services_user_rbac(services_mock: ServiceCollectionV3):
     yield create_app_with_mocks(
-        services_mock, {UserRole.USER}, external_auth=True
-    )
-
-
-@pytest.fixture
-def app_with_mocked_services_admin_rbac(services_mock: ServiceCollectionV3):
-    yield create_app_with_mocks(
-        services_mock, {UserRole.USER, UserRole.ADMIN}, external_auth=True
+        services_mock, with_user=True, external_auth=True
     )
 
 
@@ -194,14 +182,57 @@ async def mocked_api_client_user(
         yield client
 
 
+class AsyncOpenFGAClientMock:
+    def __init__(
+        self,
+        permissions: set[MAASResourceEntitlement] | None = None,
+    ):
+        self._permissions = permissions or set()
+
+    async def has_permission_on_maas(
+        self, permission: MAASResourceEntitlement, user_id: int
+    ) -> bool:
+        return permission in self._permissions
+
+    def __getattr__(self, item):
+        """Mock the OpenFGA client methods for checking permissions."""
+        if item == "has_permission_on_maas":
+            return self.has_permission_on_maas
+
+        async def _has_permission(*args, **kwargs) -> bool:
+            return item in self._permissions
+
+        return _has_permission
+
+
 @pytest.fixture
-async def mocked_api_client_admin(
-    app_with_mocked_services_admin: FastAPI,
-) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(
-        app=app_with_mocked_services_admin, base_url="http://test"
-    ) as client:
-        yield client
+def mocked_api_client_user_with_permissions(
+    mocked_api_client_user: AsyncClient,
+    services_mock: ServiceCollectionV3,
+) -> Callable[..., AsyncClient]:
+    """
+    Returns a factory that grants the given OpenFGA permissions to the
+    logged-in user and returns the same authenticated `AsyncClient`.
+
+    Example usage:
+
+        async def test_create(self, mocked_api_client_user_with_permissions, ...):
+            client = mocked_api_client_user_with_permissions(
+                MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            )
+            response = await client.post(...)
+    """
+
+    def _with_permissions(
+        *permissions: MAASResourceEntitlement,
+    ) -> AsyncClient:
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            AsyncOpenFGAClientMock(set(permissions))
+        )
+        return mocked_api_client_user
+
+    return _with_permissions
 
 
 @pytest.fixture
@@ -231,16 +262,6 @@ async def mocked_api_client_user_rbac(
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
         app=app_with_mocked_services_user_rbac, base_url="http://test"
-    ) as client:
-        yield client
-
-
-@pytest.fixture
-async def mocked_api_client_admin_rbac(
-    app_with_mocked_services_admin_rbac: FastAPI,
-) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(
-        app=app_with_mocked_services_admin_rbac, base_url="http://test"
     ) as client:
         yield client
 

@@ -1,7 +1,8 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address
+from typing import Callable
 from unittest.mock import Mock
 
 from httpx import AsyncClient
@@ -15,6 +16,7 @@ from maasapiserver.v3.api.public.models.responses.discoveries import (
     DiscoveryResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.discoveries import Discovery
 from maasservicelayer.models.fields import MacAddress
@@ -56,31 +58,43 @@ class TestDiscoveriesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/discoveries"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}"),
-        ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}"),
             Endpoint(
-                method="DELETE", path=f"{self.BASE_PATH}:clear_neighbours"
+                method="GET",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
             ),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}:clear_dns"),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}:clear_neighbours",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}:clear_dns",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
         ]
 
     async def test_list_discoveries_one_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.list.return_value = ListResult[Discovery](
             items=[TEST_DISCOVERY], total=1
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
+        response = await client.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         discoveries_response = DiscoveriesListResponse(**response.json())
         assert len(discoveries_response.items) == 1
@@ -90,13 +104,16 @@ class TestDiscoveriesApi(ApiCommonTests):
     async def test_list_discoveries_with_next_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.list.return_value = ListResult[Discovery](
             items=[TEST_DISCOVERY], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         discoveries_response = DiscoveriesListResponse(**response.json())
         assert len(discoveries_response.items) == 1
@@ -106,11 +123,14 @@ class TestDiscoveriesApi(ApiCommonTests):
     async def test_get_by_id(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.get_by_id.return_value = TEST_DISCOVERY
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         discovery_response = DiscoveryResponse(**response.json())
@@ -123,11 +143,14 @@ class TestDiscoveriesApi(ApiCommonTests):
     async def test_get_by_id_nonexist_id_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.get_by_id.return_value = None
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
+        response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -138,29 +161,33 @@ class TestDiscoveriesApi(ApiCommonTests):
     async def test_clear_all_discoveries(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.clear_all.return_value = None
 
-        response = await mocked_api_client_admin.delete(self.BASE_PATH)
+        response = await client.delete(self.BASE_PATH)
         assert response.status_code == 204
         services_mock.discoveries.clear_all.assert_called_once()
 
     async def test_clear_all_discoveries_matching_ip_and_mac(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.clear_by_ip_and_mac.return_value = None
 
         ip = "10.0.0.1"
         mac = "aa:bb:cc:dd:ee:ff"
 
-        response = await mocked_api_client_admin.delete(
-            f"{self.BASE_PATH}?ip={ip}&mac={mac}"
-        )
+        response = await client.delete(f"{self.BASE_PATH}?ip={ip}&mac={mac}")
         assert response.status_code == 204
         services_mock.discoveries.clear_by_ip_and_mac.assert_called_once_with(
             ip=IPv4Address(ip), mac=MacAddress(mac)
@@ -176,10 +203,13 @@ class TestDiscoveriesApi(ApiCommonTests):
     async def test_clear_all_discoveries_raises_with_missing_ip_or_mac(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         ip: str | None,
         mac: str | None,
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.clear_by_ip_and_mac.return_value = None
 
@@ -188,9 +218,7 @@ class TestDiscoveriesApi(ApiCommonTests):
             query = f"ip={ip}"
         if mac:
             query = f"mac={mac}"
-        response = await mocked_api_client_admin.delete(
-            f"{self.BASE_PATH}?{query}"
-        )
+        response = await client.delete(f"{self.BASE_PATH}?{query}")
         assert response.status_code == 422
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"

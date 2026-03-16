@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import base64
@@ -141,7 +141,7 @@ class ExternalAuthService(Service, RootKeyStore):
     def build_cache_object() -> ExternalAuthServiceCache:
         return ExternalAuthServiceCache()
 
-    @Service.from_cache_or_execute(attr="external_auth_config")
+    @Service.from_cache_or_execute_async(attr="external_auth_config")
     async def get_external_auth(self) -> ExternalAuthConfig | None:
         config = await self.secrets_service.get_composite_secret(
             model=self.EXTERNAL_AUTH_SECRET, default={}
@@ -277,7 +277,7 @@ class ExternalAuthService(Service, RootKeyStore):
         )
         return base_bakery
 
-    @Service.from_cache_or_execute(attr="bakery_key")
+    @Service.from_cache_or_execute_async(attr="bakery_key")
     async def get_or_create_bakery_key(self) -> bakery.PrivateKey:
         key = await self.secrets_service.get_simple_secret(
             model=self.BAKERY_KEY_SECRET, default=None
@@ -374,13 +374,13 @@ class ExternalAuthService(Service, RootKeyStore):
         )
         raise DischargeRequiredException(macaroon=macaroon)
 
-    @Service.from_cache_or_execute(attr="candid_client")
+    @Service.from_cache_or_execute_async(attr="candid_client")
     async def get_candid_client(self) -> CandidAsyncClient:
         auth_info = await self.get_auth_info()
         assert auth_info is not None
         return CandidAsyncClient(auth_info)
 
-    @Service.from_cache_or_execute(attr="rbac_client")
+    @Service.from_cache_or_execute_async(attr="rbac_client")
     async def get_rbac_client(self) -> RbacAsyncClient:
         auth_info = await self.get_auth_info()
         auth_config = await self.get_external_auth()
@@ -474,7 +474,7 @@ class ExternalOAuthService(
     async def get_provider_metadata(
         self, builder: OAuthProviderBuilder
     ) -> ProviderMetadata:
-        httpx_client = await self.get_httpx_client()
+        httpx_client = self.get_httpx_client()
         try:
             response = await httpx_client.get(
                 f"{builder.issuer_url}/.well-known/openid-configuration"
@@ -602,7 +602,7 @@ class ExternalOAuthService(
             ) from e
         return user
 
-    @Service.from_cache_or_execute(attr="oauth2_client")
+    @Service.from_cache_or_execute_async(attr="oauth2_client")
     async def get_client(self) -> OAuth2Client:
         provider = await self.get_provider()
         if not provider:
@@ -618,7 +618,7 @@ class ExternalOAuthService(
         return OAuth2Client(provider)
 
     @Service.from_cache_or_execute(attr="httpx_client")
-    async def get_httpx_client(self) -> AsyncClient:
+    def get_httpx_client(self) -> AsyncClient:
         return AsyncClient()
 
     async def update_provider(

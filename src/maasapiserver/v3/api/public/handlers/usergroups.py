@@ -40,8 +40,10 @@ from maasapiserver.v3.api.public.models.responses.usergroups import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maascommon.openfga.base import OpenFGAEntitlementResourceType
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import (
+    MAASResourceEntitlement,
+    OpenFGAEntitlementResourceType,
+)
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -77,7 +79,11 @@ class UserGroupsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                )
+            )
         ],
     )
     async def list_groups(
@@ -122,7 +128,11 @@ class UserGroupsHandler(Handler):
         response_model_exclude_none=True,
         status_code=201,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def create_group(
@@ -152,7 +162,11 @@ class UserGroupsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                )
+            )
         ],
     )
     async def get_group(
@@ -185,7 +199,11 @@ class UserGroupsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def update_group(
@@ -217,7 +235,11 @@ class UserGroupsHandler(Handler):
         },
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def delete_group(
@@ -246,7 +268,11 @@ class UserGroupsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                )
+            )
         ],
     )
     async def list_group_members(
@@ -278,7 +304,11 @@ class UserGroupsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def add_group_member(
@@ -328,7 +358,11 @@ class UserGroupsHandler(Handler):
         },
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def remove_group_member(
@@ -359,7 +393,11 @@ class UserGroupsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                )
+            )
         ],
     )
     async def list_group_entitlements(
@@ -392,7 +430,11 @@ class UserGroupsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def add_group_entitlement(
@@ -420,7 +462,11 @@ class UserGroupsHandler(Handler):
         },
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def remove_group_entitlement(

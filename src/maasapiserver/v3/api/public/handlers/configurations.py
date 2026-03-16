@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends
@@ -27,7 +27,7 @@ from maasapiserver.v3.auth.base import (
 )
 from maascommon.enums.events import EventTypeEnum
 from maascommon.events import EVENT_DETAILS_MAP
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.events import EndpointChoicesEnum
 from maasservicelayer.services import ServiceCollectionV3
@@ -49,7 +49,11 @@ class ConfigurationsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS
+                )
+            )
         ],
     )
     async def get_configurations(
@@ -80,7 +84,11 @@ class ConfigurationsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS
+                )
+            )
         ],
     )
     async def get_configuration(
@@ -101,7 +109,11 @@ class ConfigurationsHandler(Handler):
         response_model_exclude_none=True,
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS
+                )
+            )
         ],
     )
     async def set_configurations(
@@ -145,7 +157,11 @@ class ConfigurationsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS
+                )
+            )
         ],
     )
     async def set_configuration(

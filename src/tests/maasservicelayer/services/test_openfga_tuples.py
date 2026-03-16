@@ -179,23 +179,23 @@ class TestIntegrationOpenFGAService:
 class TestOpenFGAService:
     async def test_get_client_is_cached(self) -> None:
         cache = OpenFGAServiceCache()
-        agents_service = OpenFGATupleService(
+        openfga_service = OpenFGATupleService(
             context=Context(),
             openfga_tuple_repository=Mock(OpenFGATuplesRepository),
             cache=cache,
         )
 
-        agents_service2 = OpenFGATupleService(
+        openfga_service2 = OpenFGATupleService(
             context=Context(),
             openfga_tuple_repository=Mock(OpenFGATuplesRepository),
             cache=cache,
         )
 
-        apiclient = await agents_service.get_client()
-        apiclient_again = await agents_service.get_client()
+        apiclient = openfga_service.get_client()
+        apiclient_again = openfga_service.get_client()
 
-        apiclient2 = await agents_service2.get_client()
-        apiclient2_again = await agents_service2.get_client()
+        apiclient2 = openfga_service2.get_client()
+        apiclient2_again = openfga_service2.get_client()
 
         assert (
             id(apiclient)

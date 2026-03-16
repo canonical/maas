@@ -1,7 +1,8 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv4Network
+from typing import Callable
 from unittest.mock import Mock
 
 from fastapi.exceptions import RequestValidationError
@@ -16,6 +17,7 @@ from maasapiserver.v3.api.public.models.responses.ipranges import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.subnet import RdnsMode
+from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.utils.network import MAASIPRange, MAASIPSet
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
@@ -71,7 +73,12 @@ class TestIPRangesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/fabrics/1/vlans/1/subnets/1/ipranges"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
+        return []
+
+    @pytest.fixture
+    def endpoints_with_authentication_only(self) -> list[Endpoint]:
+        """The subclass should return a list of endpoints that need authentication only."""
         return [
             Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="POST", path=self.BASE_PATH),
@@ -79,20 +86,19 @@ class TestIPRangesApi(ApiCommonTests):
             Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
         ]
 
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
-
     async def test_list_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.list.return_value = ListResult[IPRange](
             items=[TEST_IPRANGE], total=1
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         ipranges_response = IPRangeListResponse(**response.json())
         assert len(ipranges_response.items) == 1
@@ -115,13 +121,16 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_list_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.list.return_value = ListResult[IPRange](
             items=[TEST_IPRANGE_2], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         ipranges_response = IPRangeListResponse(**response.json())
         assert len(ipranges_response.items) == 1
@@ -144,13 +153,14 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_get_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_one.return_value = TEST_IPRANGE
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}/{TEST_IPRANGE.id}"
-        )
+        response = await client.get(f"{self.BASE_PATH}/{TEST_IPRANGE.id}")
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         assert response.json() == {
@@ -180,11 +190,14 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_get_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_one.return_value = None
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
+        response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -195,13 +208,16 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_get_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_one.side_effect = RequestValidationError(
             errors=[]
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
+        response = await client.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422
         assert "ETag" not in response.headers
 
@@ -212,8 +228,11 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_post_201(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.exists_within_subnet_iprange.return_value = (
             False
@@ -245,9 +264,7 @@ class TestIPRangesApi(ApiCommonTests):
             "start_ip": "10.10.0.1",
             "end_ip": "10.10.0.3",
         }
-        response = await mocked_api_client_user.post(
-            f"{self.BASE_PATH}", json=iprange_request
-        )
+        response = await client.post(f"{self.BASE_PATH}", json=iprange_request)
         assert response.status_code == 201
         assert "ETag" in response.headers
         assert len(response.headers["ETag"]) > 0
@@ -264,8 +281,11 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_post_201_dynamic_iprange(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.exists_within_subnet_iprange.return_value = (
             False
@@ -299,9 +319,7 @@ class TestIPRangesApi(ApiCommonTests):
             "start_ip": "10.10.0.1",
             "end_ip": "10.10.0.3",
         }
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}", json=iprange_request
-        )
+        response = await client.post(f"{self.BASE_PATH}", json=iprange_request)
         assert response.status_code == 201
         assert "ETag" in response.headers
         assert len(response.headers["ETag"]) > 0
@@ -316,8 +334,9 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_post_403(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(None)
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = None
         iprange_request = {
@@ -326,9 +345,7 @@ class TestIPRangesApi(ApiCommonTests):
             "end_ip": "10.0.0.1",
             "owner_id": 99,
         }
-        response = await mocked_api_client_user.post(
-            f"{self.BASE_PATH}", json=iprange_request
-        )
+        response = await client.post(f"{self.BASE_PATH}", json=iprange_request)
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 403
@@ -341,8 +358,11 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_post_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = None
         iprange_request = {
@@ -350,9 +370,7 @@ class TestIPRangesApi(ApiCommonTests):
             "start_ip": "10.0.0.1",
             "end_ip": "10.0.0.1",
         }
-        response = await mocked_api_client_user.post(
-            f"{self.BASE_PATH}", json=iprange_request
-        )
+        response = await client.post(f"{self.BASE_PATH}", json=iprange_request)
         assert response.status_code == 404
 
     @pytest.mark.parametrize(
@@ -393,12 +411,15 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_post_422(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         start_ip: str,
         end_ip: str,
         matches_reserved_ips: bool,
         message: str,
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.exists_within_subnet_iprange.return_value = (
             matches_reserved_ips
@@ -426,9 +447,7 @@ class TestIPRangesApi(ApiCommonTests):
             "start_ip": start_ip,
             "end_ip": end_ip,
         }
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}", json=iprange_request
-        )
+        response = await client.post(f"{self.BASE_PATH}", json=iprange_request)
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
@@ -437,8 +456,11 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_post_422_no_free_ranges(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.exists_within_subnet_iprange.return_value = (
             False
@@ -466,9 +488,7 @@ class TestIPRangesApi(ApiCommonTests):
             "start_ip": "10.0.0.1",
             "end_ip": "10.0.0.3",
         }
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}", json=iprange_request
-        )
+        response = await client.post(f"{self.BASE_PATH}", json=iprange_request)
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
@@ -483,8 +503,11 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_post_422_conflict_ranges(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.exists_within_subnet_iprange.return_value = (
             False
@@ -512,9 +535,7 @@ class TestIPRangesApi(ApiCommonTests):
             "start_ip": "10.0.0.111",
             "end_ip": "10.0.0.112",
         }
-        response = await mocked_api_client_admin.post(
-            f"{self.BASE_PATH}", json=iprange_request
-        )
+        response = await client.post(f"{self.BASE_PATH}", json=iprange_request)
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 409
@@ -529,8 +550,9 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_post_403_dynamic_iprange(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(None)
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = Subnet(
             id=1,
@@ -548,9 +570,7 @@ class TestIPRangesApi(ApiCommonTests):
             "start_ip": "10.0.0.1",
             "end_ip": "10.0.0.1",
         }
-        response = await mocked_api_client_user.post(
-            f"{self.BASE_PATH}", json=iprange_request
-        )
+        response = await client.post(f"{self.BASE_PATH}", json=iprange_request)
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 403
@@ -563,8 +583,9 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_post_403_iprange_owned_by_another_user(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(None)
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = Subnet(
             id=1,
@@ -583,9 +604,7 @@ class TestIPRangesApi(ApiCommonTests):
             "end_ip": "10.0.0.1",
             "owner_id": 99,
         }
-        response = await mocked_api_client_user.post(
-            f"{self.BASE_PATH}", json=iprange_request
-        )
+        response = await client.post(f"{self.BASE_PATH}", json=iprange_request)
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 403
@@ -598,14 +617,15 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_delete(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_one.return_value = TEST_IPRANGE
         services_mock.ipranges.delete_by_id.return_value = TEST_IPRANGE
-        response = await mocked_api_client_user.delete(
-            f"{self.BASE_PATH}/{TEST_IPRANGE.id}"
-        )
+        response = await client.delete(f"{self.BASE_PATH}/{TEST_IPRANGE.id}")
 
         assert response.status_code == 204
 
@@ -628,16 +648,15 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_delete_not_owner(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(None)
         services_mock.ipranges = Mock(IPRangesService)
         iprange = TEST_IPRANGE.copy()
         iprange.user_id = 3
         services_mock.ipranges.get_one.return_value = iprange
         services_mock.ipranges.delete_by_id.return_value = iprange
-        response = await mocked_api_client_user.delete(
-            f"{self.BASE_PATH}/{iprange.id}"
-        )
+        response = await client.delete(f"{self.BASE_PATH}/{iprange.id}")
         assert response.status_code == 403
 
         services_mock.ipranges.get_one.assert_called_once_with(
@@ -657,8 +676,11 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_delete_with_etag(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_one.return_value = TEST_IPRANGE
         services_mock.ipranges.delete_by_id.side_effect = PreconditionFailedException(
@@ -670,7 +692,7 @@ class TestIPRangesApi(ApiCommonTests):
             ]
         )
 
-        response = await mocked_api_client_user.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/1", headers={"if-match": "wrong_etag"}
         )
         assert response.status_code == 412
@@ -694,8 +716,11 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_update_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_one.return_value = TEST_IPRANGE
 
@@ -727,7 +752,7 @@ class TestIPRangesApi(ApiCommonTests):
             "comment": "comment",
             "owner_id": 0,
         }
-        response = await mocked_api_client_user.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1", json=iprange_request
         )
         assert response.status_code == 200
@@ -738,8 +763,9 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_update_403(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(None)
         iprange = TEST_IPRANGE.copy()
         iprange.user_id = 99
         services_mock.ipranges = Mock(IPRangesService)
@@ -764,7 +790,7 @@ class TestIPRangesApi(ApiCommonTests):
             "comment": "comment",
             "owner_id": 0,
         }
-        response = await mocked_api_client_user.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1", json=iprange_request
         )
         error_response = ErrorBodyResponse(**response.json())
@@ -779,8 +805,9 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_update_403_dynamic_iprange(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(None)
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_one.return_value = TEST_IPRANGE
         services_mock.subnets = Mock(SubnetsService)
@@ -803,7 +830,7 @@ class TestIPRangesApi(ApiCommonTests):
             "comment": "comment",
             "owner_id": 0,
         }
-        response = await mocked_api_client_user.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1", json=iprange_request
         )
         error_response = ErrorBodyResponse(**response.json())
@@ -818,8 +845,11 @@ class TestIPRangesApi(ApiCommonTests):
     async def test_update_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_one.return_value = None
         services_mock.subnets = Mock(SubnetsService)
@@ -842,7 +872,7 @@ class TestIPRangesApi(ApiCommonTests):
             "comment": "comment",
             "owner_id": 0,
         }
-        response = await mocked_api_client_user.put(
+        response = await client.put(
             f"{self.BASE_PATH}/1", json=iprange_request
         )
         error_response = ErrorBodyResponse(**response.json())

@@ -1,11 +1,11 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from unittest.mock import Mock
 
 import pytest
 
 from maascommon.enums.notifications import NotificationCategoryEnum
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.notifications import (
@@ -17,7 +17,9 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.notifications import Notification
+from maasservicelayer.services import OpenFGATupleService
 from maasservicelayer.services.notifications import NotificationsService
+from tests.maasapiserver.fixtures.app import AsyncOpenFGAClientMock
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
 TEST_NOTIFICATION = Notification(
@@ -38,7 +40,9 @@ class TestCommonNotificationsService(ServiceCommonTests):
     @pytest.fixture
     def service_instance(self) -> NotificationsService:
         return NotificationsService(
-            context=Context(), repository=Mock(NotificationsRepository)
+            context=Context(),
+            openfga_tuples_service=Mock(OpenFGATupleService),
+            repository=Mock(NotificationsRepository),
         )
 
     @pytest.fixture
@@ -66,12 +70,14 @@ class TestNotificationsService:
         self, notifications_repo_mock: Mock
     ) -> NotificationsService:
         return NotificationsService(
-            context=Context(), repository=notifications_repo_mock
+            context=Context(),
+            openfga_tuples_service=Mock(OpenFGATupleService),
+            repository=notifications_repo_mock,
         )
 
     @pytest.fixture
     def auth_user(self) -> AuthenticatedUser:
-        return AuthenticatedUser(id=1, username="foo", roles={UserRole.USER})
+        return AuthenticatedUser(id=1, username="foo")
 
     async def test_list_all_for_user(
         self,
@@ -79,12 +85,15 @@ class TestNotificationsService:
         notifications_service: NotificationsService,
         auth_user: AuthenticatedUser,
     ) -> None:
+        notifications_service.openfga_tuples_service.get_client.return_value = AsyncOpenFGAClientMock(
+            {MAASResourceEntitlement.CAN_VIEW_NOTIFICATIONS}
+        )
         notifications_repo_mock.list_all_for_user.return_value = []
         await notifications_service.list_all_for_user(
             page=1, size=2, user=auth_user
         )
         notifications_repo_mock.list_all_for_user.assert_called_once_with(
-            page=1, size=2, user_id=auth_user.id, is_admin=auth_user.is_admin()
+            page=1, size=2, user_id=auth_user.id, is_admin=True
         )
 
     async def test_list_active_for_user(
@@ -93,12 +102,15 @@ class TestNotificationsService:
         notifications_service: NotificationsService,
         auth_user: AuthenticatedUser,
     ) -> None:
+        notifications_service.openfga_tuples_service.get_client.return_value = AsyncOpenFGAClientMock(
+            {MAASResourceEntitlement.CAN_VIEW_NOTIFICATIONS}
+        )
         notifications_repo_mock.list_active_for_user.return_value = []
         await notifications_service.list_active_for_user(
             page=1, size=2, user=auth_user
         )
         notifications_repo_mock.list_active_for_user.assert_called_once_with(
-            page=1, size=2, user_id=auth_user.id, is_admin=auth_user.is_admin()
+            page=1, size=2, user_id=auth_user.id, is_admin=True
         )
 
     async def test_get_by_id_for_user(
@@ -107,6 +119,9 @@ class TestNotificationsService:
         notifications_service: NotificationsService,
         auth_user: AuthenticatedUser,
     ) -> None:
+        notifications_service.openfga_tuples_service.get_client.return_value = AsyncOpenFGAClientMock(
+            None
+        )
         notifications_repo_mock.get_by_id_for_user.return_value = (
             TEST_NOTIFICATION
         )
@@ -114,9 +129,7 @@ class TestNotificationsService:
             notification_id=1, user=auth_user
         )
         notifications_repo_mock.get_by_id_for_user.assert_called_once_with(
-            notification_id=1,
-            user_id=auth_user.id,
-            is_admin=auth_user.is_admin(),
+            notification_id=1, user_id=auth_user.id, is_admin=False
         )
 
     async def test_dismiss(
@@ -125,6 +138,10 @@ class TestNotificationsService:
         notifications_service: NotificationsService,
         auth_user: AuthenticatedUser,
     ) -> None:
+        notifications_service.openfga_tuples_service.get_client.return_value = AsyncOpenFGAClientMock(
+            {MAASResourceEntitlement.CAN_VIEW_NOTIFICATIONS}
+        )
+
         notifications_repo_mock.get_by_id_for_user.return_value = (
             TEST_NOTIFICATION
         )
@@ -143,6 +160,10 @@ class TestNotificationsService:
         notifications_service: NotificationsService,
         auth_user: AuthenticatedUser,
     ) -> None:
+        notifications_service.openfga_tuples_service.get_client.return_value = AsyncOpenFGAClientMock(
+            None
+        )
+
         non_dismissable_notification = TEST_NOTIFICATION.copy()
         non_dismissable_notification.dismissable = False
         notifications_repo_mock.get_by_id_for_user.return_value = (
@@ -163,6 +184,10 @@ class TestNotificationsService:
         notifications_service: NotificationsService,
         auth_user: AuthenticatedUser,
     ) -> None:
+        notifications_service.openfga_tuples_service.get_client.return_value = AsyncOpenFGAClientMock(
+            None
+        )
+
         notifications_repo_mock.get_by_id_for_user.return_value = None
         with pytest.raises(NotFoundException):
             await notifications_service.dismiss(

@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends, Header, Response, status
@@ -26,7 +26,7 @@ from maasapiserver.v3.api.public.models.responses.racks import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.agents import AgentsClauseFactory
 from maasservicelayer.exceptions.catalog import NotFoundException
@@ -46,7 +46,11 @@ class RacksHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                )
+            )
         ],
     )
     async def list_racks(
@@ -85,7 +89,11 @@ class RacksHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                )
+            )
         ],
     )
     async def list_racks_with_summary(
@@ -130,7 +138,11 @@ class RacksHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                )
+            )
         ],
     )
     async def get_rack(
@@ -162,7 +174,11 @@ class RacksHandler(Handler):
         response_model_exclude_none=True,
         status_code=201,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS
+                )
+            )
         ],
     )
     async def create_rack(
@@ -193,7 +209,11 @@ class RacksHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS
+                )
+            )
         ],
     )
     async def update_rack(
@@ -222,7 +242,11 @@ class RacksHandler(Handler):
         response_model_exclude_none=True,
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS
+                )
+            )
         ],
     )
     async def delete_racks(
@@ -248,7 +272,11 @@ class RacksHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS
+                )
+            )
         ],
     )
     async def generate_rack_bootstrap_token(
@@ -282,7 +310,11 @@ class RacksHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                )
+            )
         ],
     )
     async def list_rack_agents(
@@ -332,7 +364,11 @@ class RacksHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                )
+            )
         ],
     )
     async def get_rack_agent(
@@ -372,7 +408,11 @@ class RacksHandler(Handler):
         response_model_exclude_none=True,
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS
+                )
+            )
         ],
     )
     async def delete_rack_agent(

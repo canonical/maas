@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends, Query, Response, status
@@ -22,11 +22,12 @@ from maasapiserver.v3.api.public.models.responses.notifications import (
     NotificationsListResponse,
 )
 from maasapiserver.v3.auth.base import (
+    check_authentication,
     check_permissions,
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
@@ -48,9 +49,7 @@ class NotificationsHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def list_notifications(
         self,
@@ -113,9 +112,7 @@ class NotificationsHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_notification(
         self,
@@ -127,8 +124,9 @@ class NotificationsHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> NotificationResponse:
         assert authenticated_user is not None
-        if authenticated_user.is_admin():
-            # admins can see all the notifications
+        if await services.openfga_tuples.get_client().can_view_notifications(
+            authenticated_user.id
+        ):
             notification = await services.notifications.get_by_id(
                 notification_id
             )
@@ -159,7 +157,11 @@ class NotificationsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS
+                )
+            )
         ],
     )
     async def create_notification(
@@ -193,7 +195,11 @@ class NotificationsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS
+                )
+            )
         ],
     )
     async def update_notification(
@@ -224,7 +230,11 @@ class NotificationsHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS
+                )
+            )
         ],
     )
     async def delete_notification(
@@ -245,9 +255,7 @@ class NotificationsHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def dismiss_notification(
         self,

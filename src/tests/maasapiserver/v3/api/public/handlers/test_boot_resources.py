@@ -1,8 +1,9 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import hashlib
 from io import BytesIO
+from typing import Callable
 from unittest.mock import MagicMock, Mock, patch
 
 from aiofiles.threadpool.binary import AsyncBufferedIOBase
@@ -29,12 +30,14 @@ from maascommon.enums.boot_resources import (
 )
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
+from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.workflows.bootresource import (
     ResourceDownloadParam,
     short_sha,
     SYNC_BOOTRESOURCES_WORKFLOW_NAME,
     SyncRequestParam,
 )
+from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
@@ -58,7 +61,10 @@ from maasservicelayer.models.bootresources import (
 )
 from maasservicelayer.models.bootresourcesets import BootResourceSet
 from maasservicelayer.models.nodes import Node
-from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services import (
+    BootSourceCacheService,
+    ServiceCollectionV3,
+)
 from maasservicelayer.services.bootresourcefiles import (
     BootResourceFilesService,
 )
@@ -155,18 +161,33 @@ class TestCustomImagesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/custom_images"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
-        ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="POST", path=self.BASE_PATH),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}?id=1"),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}?id=1",
+                permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+            ),
         ]
 
     def create_dummy_binary_upload_file(
@@ -194,8 +215,11 @@ class TestCustomImagesApi(ApiCommonTests):
         async_local_file_mock: MagicMock,
         maas_id_mock: MagicMock,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         file_name = "test.bin"
         file_size = 1024
         file_data = self.create_dummy_binary_upload_file(
@@ -261,7 +285,7 @@ class TestCustomImagesApi(ApiCommonTests):
         }
 
         raw_data = file_data.read()
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             url=f"{self.BASE_PATH}",
             headers=headers,
             content=raw_data,
@@ -312,8 +336,11 @@ class TestCustomImagesApi(ApiCommonTests):
         request_to_builder_mock: MagicMock,
         async_local_file_mock: MagicMock,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         file_name = "test.bin"
         file_size = 1024
         file_data = self.create_dummy_binary_upload_file(
@@ -348,7 +375,7 @@ class TestCustomImagesApi(ApiCommonTests):
         }
 
         raw_data = file_data.read()
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             url=f"{self.BASE_PATH}",
             headers=headers,
             content=raw_data,
@@ -374,8 +401,11 @@ class TestCustomImagesApi(ApiCommonTests):
         request_to_builder_mock: MagicMock,
         statvfs_mock: MagicMock,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         request_to_builder_mock.return_value = None
 
         services_mock.boot_resources = Mock(BootResourceService)
@@ -406,7 +436,7 @@ class TestCustomImagesApi(ApiCommonTests):
             "Content-Type": "application/octet-stream",
         }
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             url=f"{self.BASE_PATH}",
             headers=headers,
             content=content,
@@ -422,14 +452,17 @@ class TestCustomImagesApi(ApiCommonTests):
     async def test_list_custom_images_200_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list.return_value = ListResult[
             BootResource
         ](items=[TEST_BOOT_RESOURCE_1], total=1)
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
 
         assert response.status_code == 200
 
@@ -442,14 +475,17 @@ class TestCustomImagesApi(ApiCommonTests):
     async def test_list_custom_images_200_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list.return_value = ListResult[
             BootResource
         ](items=[TEST_BOOT_RESOURCE_1, TEST_BOOT_RESOURCE_2], total=2)
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
 
         assert response.status_code == 200
 
@@ -464,14 +500,17 @@ class TestCustomImagesApi(ApiCommonTests):
     async def test_get_custom_image_by_id_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = (
             TEST_BOOT_RESOURCE_1
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
 
         assert response.status_code == 200
         assert "ETag" in response.headers
@@ -483,12 +522,15 @@ class TestCustomImagesApi(ApiCommonTests):
     async def test_get_custom_image_by_id_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/3")
+        response = await client.get(f"{self.BASE_PATH}/3")
 
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -500,14 +542,17 @@ class TestCustomImagesApi(ApiCommonTests):
     async def test_delete_custom_images_204(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.delete_one.return_value = (
             TEST_BOOT_RESOURCE_2
         )
 
-        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
+        response = await client.delete(f"{self.BASE_PATH}/1")
 
         assert response.status_code == 204
 
@@ -528,8 +573,11 @@ class TestCustomImagesApi(ApiCommonTests):
     async def test_delete_custom_images_204_by_etag(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         correct_etag = "correct_etag"
 
         services_mock.boot_resources = Mock(BootResourceService)
@@ -537,7 +585,7 @@ class TestCustomImagesApi(ApiCommonTests):
             TEST_BOOT_RESOURCE_2
         )
 
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/1",
             headers={"if-match": correct_etag},
         )
@@ -561,14 +609,17 @@ class TestCustomImagesApi(ApiCommonTests):
     async def test_delete_custom_images_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.delete_one.side_effect = (
             NotFoundException()
         )
 
-        response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/2")
+        response = await client.delete(f"{self.BASE_PATH}/2")
 
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -595,8 +646,11 @@ class TestCustomImagesApi(ApiCommonTests):
     async def test_delete_custom_images_412_wrong_etag(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         wrong_etag = "wrong_etag"
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.delete_one.side_effect = PreconditionFailedException(
@@ -608,7 +662,7 @@ class TestCustomImagesApi(ApiCommonTests):
             ]
         )
 
-        response = await mocked_api_client_admin.delete(
+        response = await client.delete(
             f"{self.BASE_PATH}/2",
             headers={"if-match": wrong_etag},
         )
@@ -640,14 +694,15 @@ class TestCustomImagesApi(ApiCommonTests):
     async def test_bulk_delete_custom_images(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.delete_many.return_value = None
 
-        response = await mocked_api_client_admin.delete(
-            f"{self.BASE_PATH}?id=1&id=2"
-        )
+        response = await client.delete(f"{self.BASE_PATH}?id=1&id=2")
         assert response.status_code == 204
         services_mock.boot_resources.delete_many.assert_awaited_once_with(
             query=QuerySpec(
@@ -667,21 +722,28 @@ class TestCustomImageStatusApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/custom_images/statuses"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
         ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
 
     async def test_list_custom_images_status_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list_custom_images_status.return_value = (
             ListResult[CustomBootResourceStatus](
@@ -696,7 +758,7 @@ class TestCustomImageStatusApi(ApiCommonTests):
             )
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
 
         assert response.status_code == 200
 
@@ -714,8 +776,11 @@ class TestCustomImageStatusApi(ApiCommonTests):
     async def test_list_custom_images_status_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list_custom_images_status.return_value = (
             ListResult[CustomBootResourceStatus](
@@ -730,7 +795,7 @@ class TestCustomImageStatusApi(ApiCommonTests):
             )
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
 
         assert response.status_code == 200
 
@@ -747,21 +812,28 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/custom_images/statistics"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
         ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
 
     async def test_list_custom_images_statistics_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list_custom_images_statistics.return_value = ListResult[
             CustomBootResourceStatistic
@@ -779,7 +851,7 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
             total=2,
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
 
         assert response.status_code == 200
 
@@ -797,8 +869,11 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
     async def test_list_custom_images_statistics_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list_custom_images_statistics.return_value = ListResult[
             CustomBootResourceStatistic
@@ -816,7 +891,7 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
             total=1,
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
 
         assert response.status_code == 200
 
@@ -831,8 +906,11 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
     async def test_list_custom_images_statistics_filters(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list_custom_images_statistics.return_value = ListResult[
             CustomBootResourceStatistic
@@ -850,9 +928,7 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
             total=2,
         )
 
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}?size=1&id=1&id=2"
-        )
+        response = await client.get(f"{self.BASE_PATH}?size=1&id=1&id=2")
         assert response.status_code == 200
 
         custom_images_statistics_response = ImageStatisticListResponse(
@@ -870,8 +946,11 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
     async def test_get_custom_image_statistic_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_custom_image_statistic_by_id.return_value = CustomBootResourceStatistic(
             id=1,
@@ -882,7 +961,7 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
             node_count=2,
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
 
         assert response.status_code == 200
         stat_response = ImageStatisticResponse(**response.json())
@@ -891,12 +970,15 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
     async def test_get_custom_image_statistic_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_custom_image_statistic_by_id.return_value = None
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
 
         assert response.status_code == 404
         error_response = ErrorBodyResponse(**response.json())
@@ -908,15 +990,19 @@ class TestBootloadersApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/bootloaders"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+            ),
         ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
 
     @pytest.fixture
     def bootloader(self) -> BootResource:
@@ -940,9 +1026,12 @@ class TestBootloadersApi(ApiCommonTests):
     async def test_list_bootloaders_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         bootloader: BootResource,
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list.return_value = ListResult[
             BootResource
@@ -951,7 +1040,7 @@ class TestBootloadersApi(ApiCommonTests):
             total=2,
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
 
         assert response.status_code == 200
 
@@ -974,9 +1063,12 @@ class TestBootloadersApi(ApiCommonTests):
     async def test_list_bootloaders_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         bootloader: BootResource,
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list.return_value = ListResult[
             BootResource
@@ -985,7 +1077,7 @@ class TestBootloadersApi(ApiCommonTests):
             total=1,
         )
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
 
         assert response.status_code == 200
 
@@ -998,13 +1090,16 @@ class TestBootloadersApi(ApiCommonTests):
     async def test_get_bootloader_200(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         bootloader: BootResource,
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = bootloader
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
 
         assert response.status_code == 200
         stat_response = BootloaderResponse(**response.json())
@@ -1027,12 +1122,15 @@ class TestBootloadersApi(ApiCommonTests):
     async def test_get_bootloader_404(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None
 
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/1")
+        response = await client.get(f"{self.BASE_PATH}/1")
 
         assert response.status_code == 404
         error_response = ErrorBodyResponse(**response.json())
@@ -1044,13 +1142,13 @@ class TestONIEImageUpload(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/custom_images"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
-        return []
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="POST", path=self.BASE_PATH),
+            Endpoint(
+                method="POST",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+            ),
         ]
 
     @staticmethod
@@ -1070,24 +1168,11 @@ class TestONIEImageUpload(ApiCommonTests):
         maas_id_mock: MagicMock,
         async_file_mock: MagicMock,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
-    ):
-        from maasservicelayer.builders.bootresources import BootResourceBuilder
-        from maasservicelayer.models.nodes import Node
-        from maasservicelayer.services.bootresourcefiles import (
-            BootResourceFilesService,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
-        from maasservicelayer.services.bootresourcefilesync import (
-            BootResourceFileSyncService,
-        )
-        from maasservicelayer.services.bootresourcesets import (
-            BootResourceSetsService,
-        )
-        from maasservicelayer.services.nodes import NodesService
-        from maasservicelayer.services.temporal import TemporalService
-        from maasservicelayer.utils.date import utcnow
-        from tests.fixtures import AsyncContextManagerMock
-
         file_data = self.create_onie_installer_binary(size_in_bytes=102400)
         sha256_hash = hashlib.sha256(file_data).hexdigest()
 
@@ -1166,7 +1251,7 @@ class TestONIEImageUpload(ApiCommonTests):
             "Content-Type": "application/octet-stream",
         }
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH,
             headers=headers,
             content=file_data,
@@ -1186,12 +1271,11 @@ class TestONIEImageUpload(ApiCommonTests):
         self,
         to_builder_mock: MagicMock,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
-    ):
-        from maasservicelayer.services.bootsourcecache import (
-            BootSourceCacheService,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
-
         file_data = self.create_onie_installer_binary(size_in_bytes=1024)
         sha256_hash = hashlib.sha256(file_data).hexdigest()
 
@@ -1215,7 +1299,7 @@ class TestONIEImageUpload(ApiCommonTests):
             "Content-Type": "application/octet-stream",
         }
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH,
             headers=headers,
             content=file_data,
@@ -1237,25 +1321,13 @@ class TestONIEImageUpload(ApiCommonTests):
         to_builder_mock: MagicMock,
         maas_id_mock: MagicMock,
         async_file_mock: MagicMock,
-        mocked_api_client_admin: AsyncClient,
         services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         """Test uploading an ONIE image with self-extracting file type."""
-        from maasservicelayer.builders.bootresources import BootResourceBuilder
-        from maasservicelayer.models.nodes import Node
-        from maasservicelayer.services.bootresourcefiles import (
-            BootResourceFilesService,
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
-        from maasservicelayer.services.bootresourcefilesync import (
-            BootResourceFileSyncService,
-        )
-        from maasservicelayer.services.bootresourcesets import (
-            BootResourceSetsService,
-        )
-        from maasservicelayer.services.nodes import NodesService
-        from maasservicelayer.services.temporal import TemporalService
-        from maasservicelayer.utils.date import utcnow
-        from tests.fixtures import AsyncContextManagerMock
 
         file_data = self.create_onie_installer_binary(size_in_bytes=102400)
         sha256_hash = hashlib.sha256(file_data).hexdigest()
@@ -1334,7 +1406,7 @@ class TestONIEImageUpload(ApiCommonTests):
             "Content-Type": "application/octet-stream",
         }
 
-        response = await mocked_api_client_admin.post(
+        response = await client.post(
             self.BASE_PATH,
             headers=headers,
             content=file_data,

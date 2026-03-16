@@ -1,6 +1,7 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from ipaddress import IPv4Address
+from typing import Callable
 from unittest.mock import ANY, call, Mock
 
 from fastapi.encoders import jsonable_encoder
@@ -21,6 +22,7 @@ from maasapiserver.v3.api.public.models.responses.configurations import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.events import EventTypeEnum
 from maascommon.events import EVENT_DETAILS_MAP
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.models.configurations import (
     ConfigFactory,
     MAASNameConfig,
@@ -39,26 +41,35 @@ from maasservicelayer.services import (
 class TestConfigurationsApi:
     BASE_PATH = f"{V3_API_PREFIX}/configurations"
 
-    async def test_get_configurations_forbidden_for_users(
+    async def test_get_configurations_allowed_for_users(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}?name=theme"
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
         )
-        assert response.status_code == 403
-        config_response = ErrorBodyResponse(**response.json())
-        assert config_response.kind == "Error"
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get_many.return_value = {
+            ThemeConfig.name: ThemeConfig.default,
+        }
+        response = await client.get(f"{self.BASE_PATH}?name=theme")
+        assert response.status_code == 200
+        configs_response = ConfigurationsListResponse(**response.json())
+        assert configs_response.kind == "ConfigurationsList"
+        assert len(configs_response.items) == 1
 
     async def test_get_configurations_empty(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
+        )
         services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get_many.return_value = {}
-        response = await mocked_api_client_admin.get(f"{self.BASE_PATH}")
+        response = await client.get(f"{self.BASE_PATH}")
         assert response.status_code == 200
         configs_response = ConfigurationsListResponse(**response.json())
         assert configs_response.kind == "ConfigurationsList"
@@ -68,14 +79,17 @@ class TestConfigurationsApi:
     async def test_get_configurations(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
+        )
         services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get_many.return_value = {
             ThemeConfig.name: ThemeConfig.default,
             MAASNameConfig.name: MAASNameConfig.default,
         }
-        response = await mocked_api_client_admin.get(
+        response = await client.get(
             f"{self.BASE_PATH}?name={ThemeConfig.name}&name={MAASNameConfig.name}"
         )
         assert response.status_code == 200
@@ -105,34 +119,47 @@ class TestConfigurationsApi:
     async def test_get_private_configs(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         name: str,
     ):
-        response = await mocked_api_client_admin.get(
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
+        )
+        response = await client.get(
             f"{self.BASE_PATH}?name={ThemeConfig.name}&name={name}"
         )
         assert response.status_code == 422
         configs_response = ErrorBodyResponse(**response.json())
         assert configs_response.kind == "Error"
 
-    async def test_get_configuration_forbidden_for_users(
+    async def test_get_configuration_allowed_for_users(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/theme")
-        assert response.status_code == 403
-        config_response = ErrorBodyResponse(**response.json())
-        assert config_response.kind == "Error"
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
+        )
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get.return_value = "test"
+        response = await client.get(f"{self.BASE_PATH}/theme")
+        assert response.status_code == 200
+        config_response = ConfigurationResponse(**response.json())
+        assert config_response.kind == "Configuration"
+        assert config_response.name == "theme"
+        assert config_response.value == "test"
 
     async def test_get_configuration(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
+        )
         services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = "test"
-        response = await mocked_api_client_admin.get(f"{self.BASE_PATH}/theme")
+        response = await client.get(f"{self.BASE_PATH}/theme")
         assert response.status_code == 200
         config_response = ConfigurationResponse(**response.json())
         assert config_response.kind == "Configuration"
@@ -142,13 +169,14 @@ class TestConfigurationsApi:
     async def test_get_unexisting_config(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
+        )
         services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = None
-        response = await mocked_api_client_admin.get(
-            f"{self.BASE_PATH}/unexisting"
-        )
+        response = await client.get(f"{self.BASE_PATH}/unexisting")
         assert response.status_code == 422
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
@@ -165,14 +193,15 @@ class TestConfigurationsApi:
     async def test_get_private_config(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         name: str,
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
+        )
         services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = None
-        response = await mocked_api_client_admin.get(
-            f"{self.BASE_PATH}/{name}"
-        )
+        response = await client.get(f"{self.BASE_PATH}/{name}")
         assert response.status_code == 422
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
@@ -189,10 +218,13 @@ class TestConfigurationsApi:
     async def test_set_private_config(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         name: str,
     ):
-        response = await mocked_api_client_admin.put(
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+        )
+        response = await client.put(
             f"{self.BASE_PATH}/{name}", json={"name": name, "value": None}
         )
         assert response.status_code == 422
@@ -200,12 +232,13 @@ class TestConfigurationsApi:
         assert error_response.kind == "Error"
         assert error_response.code == 422
 
-    async def test_set_config_forbidden_for_users(
+    async def test_set_config_forbidden_for_users_without_permissions(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
-        response = await mocked_api_client_user.put(
+        client = mocked_api_client_user_with_permissions(None)
+        response = await client.put(
             f"{self.BASE_PATH}/theme",
             json=jsonable_encoder(UpdateConfigurationRequest(value=None)),
         )
@@ -217,11 +250,14 @@ class TestConfigurationsApi:
     async def test_set_config_for_admins(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+        )
         services_mock.hooked_configurations = Mock(HookedConfigurationsService)
         services_mock.events = Mock(EventsService)
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             f"{self.BASE_PATH}/theme",
             json=jsonable_encoder(UpdateConfigurationRequest(value=None)),
         )
@@ -246,9 +282,12 @@ class TestConfigurationsApi:
     async def test_set_config_type_mismatch(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
-        response = await mocked_api_client_admin.put(
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+        )
+        response = await client.put(
             f"{self.BASE_PATH}/theme",
             json=jsonable_encoder(UpdateConfigurationRequest(value={})),
         )
@@ -260,9 +299,10 @@ class TestConfigurationsApi:
     async def test_set_configs_forbidden_for_users(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
-        response = await mocked_api_client_user.put(
+        client = mocked_api_client_user_with_permissions(None)
+        response = await client.put(
             self.BASE_PATH,
             json=jsonable_encoder(
                 UpdateConfigurationsRequest(
@@ -282,11 +322,14 @@ class TestConfigurationsApi:
     async def test_set_configs_for_admins(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+        )
         services_mock.hooked_configurations = Mock(HookedConfigurationsService)
         services_mock.events = Mock(EventsService)
-        response = await mocked_api_client_admin.put(
+        response = await client.put(
             self.BASE_PATH,
             json=jsonable_encoder(
                 UpdateConfigurationsRequest(
@@ -338,9 +381,12 @@ class TestConfigurationsApi:
     async def test_set_configs_type_mismatch(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_admin: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
-        response = await mocked_api_client_admin.put(
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+        )
+        response = await client.put(
             self.BASE_PATH,
             json=jsonable_encoder(
                 UpdateConfigurationsRequest(

@@ -12,6 +12,7 @@ from django.conf import settings
 from django.urls import reverse
 
 from maasserver.api import auth
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import ResourcePool
 from maasserver.rbac import ALL_RESOURCES
 from maasserver.testing.api import APITestCase
@@ -136,3 +137,20 @@ class TestResourcePoolsAPIWithRBAC(APITestCase.ForUser):
             {"name": name, "description": description},
         )
         self.assertEqual(response.status_code, http.client.FORBIDDEN)
+
+
+class TestResourcePoolsAPIOpenFGAIntegration(
+    OpenFGAMockMixin, APITestCase.ForUser
+):
+    def test_create_requires_can_edit_machines(self):
+        self.openfga_client.can_edit_machines.return_value = True
+        name = factory.make_name("name")
+        description = factory.make_name("description")
+        response = self.client.post(
+            reverse("resourcepools_handler"),
+            {"name": name, "description": description},
+        )
+        self.assertEqual(response.status_code, http.client.OK)
+        self.openfga_client.can_edit_machines.assert_called_once_with(
+            self.user
+        )

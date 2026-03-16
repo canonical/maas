@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 from dataclasses import dataclass
 from typing import List
 
@@ -44,7 +44,7 @@ class ZonesService(BaseService[Zone, ZonesRepository, ZoneBuilder]):
     def build_cache_object() -> ZonesServiceCache:
         return ZonesServiceCache()
 
-    @Service.from_cache_or_execute(attr="default_zone")
+    @Service.from_cache_or_execute_async(attr="default_zone")
     async def get_default_zone(self) -> Zone:
         return await self.repository.get_default_zone()
 

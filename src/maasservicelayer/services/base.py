@@ -82,6 +82,23 @@ class Service(ABC):  # noqa: B024
         """
 
         def inner_decorator(fn):
+            def wrapped(self, *args, **kwargs):
+                if self.cache is None:
+                    return fn(self, *args, **kwargs)
+                if self.cache.__getattribute__(attr) is None:  # Cache miss
+                    value = fn(self, *args, **kwargs)
+                    self.cache.__setattr__(attr, value)
+                return self.cache.__getattribute__(attr)
+
+            return wrapped
+
+        return inner_decorator
+
+    @staticmethod
+    def from_cache_or_execute_async(attr: str):
+        """Async version of from_cache_or_execute. The decorated method must be async."""
+
+        def inner_decorator(fn):
             async def wrapped(self, *args, **kwargs):
                 if self.cache is None:
                     return await fn(self, *args, **kwargs)

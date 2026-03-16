@@ -1,4 +1,4 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
@@ -24,11 +24,9 @@ from maasapiserver.v3.auth.cookie_manager import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.logging.security import (
-    ADMIN,
     AUTHN_AUTH_FAILED,
     AUTHN_AUTH_SUCCESSFUL,
     SECURITY,
-    USER,
 )
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.external_auth import (
@@ -36,7 +34,7 @@ from maasservicelayer.auth.external_auth import (
     ExternalAuthType,
 )
 from maasservicelayer.auth.external_oauth import OAuthRefreshData
-from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
+from maasservicelayer.auth.jwt import InvalidToken, JWT
 from maasservicelayer.auth.macaroons.macaroon_client import (
     CandidAsyncClient,
     RbacAsyncClient,
@@ -108,7 +106,6 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
             return AuthenticatedUser(
                 id=jwt_token.user_id,
                 username=jwt_token.subject,
-                roles=set(jwt_token.roles),
             )
         except InvalidToken:
             # Use refresh token to get a new JWT if the JWT is expired.
@@ -133,11 +130,6 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
             return AuthenticatedUser(
                 id=user.id,
                 username=user.username,
-                roles=(
-                    {UserRole.ADMIN, UserRole.USER}
-                    if user.is_superuser
-                    else {UserRole.USER}
-                ),
             )
 
     async def _get_user_if_valid_token(
@@ -162,11 +154,6 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
             AuthenticatedUser(
                 id=user.id,
                 username=user.username,
-                roles=(
-                    {UserRole.ADMIN, UserRole.USER}
-                    if user.is_superuser
-                    else {UserRole.USER}
-                ),
             )
         )
 
@@ -223,11 +210,6 @@ class MacaroonAuthenticationProvider:
         return AuthenticatedUser(
             id=user.id,
             username=user.username,
-            roles=(
-                {UserRole.ADMIN, UserRole.USER}
-                if user.is_superuser
-                else {UserRole.USER}
-            ),
         )
 
     async def _raise_discharge_exception(self, request, caveats, ops):
@@ -440,11 +422,6 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
         return AuthenticatedUser(
             id=user.id,
             username=user.username,
-            roles=(
-                {UserRole.ADMIN, UserRole.USER}
-                if user.is_superuser
-                else {UserRole.USER}
-            ),
         )
 
     async def _is_token_valid(self, request: Request, token: str) -> bool:
@@ -583,7 +560,6 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
                 AUTHN_AUTH_SUCCESSFUL,
                 type=SECURITY,
                 userID=user.username,
-                role=ADMIN if user.is_admin() else USER,
             )
 
         response = await call_next(request)

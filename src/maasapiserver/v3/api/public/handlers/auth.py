@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -30,6 +30,7 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
     TokenResponse,
 )
 from maasapiserver.v3.auth.base import (
+    check_authentication,
     check_permissions,
     get_authenticated_user,
 )
@@ -38,7 +39,7 @@ from maasapiserver.v3.auth.cookie_manager import (
     MAASOAuth2Cookie,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -135,9 +136,7 @@ class AuthHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_access_token(
         self,
@@ -255,7 +254,11 @@ class AuthHandler(Handler):
         },
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                )
+            )
         ],
     )
     async def get_oauth_provider_by_id(
@@ -287,7 +290,11 @@ class AuthHandler(Handler):
         responses={200: {"model": OAuthProvidersListResponse}},
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                )
+            )
         ],
     )
     async def list_oauth_providers(
@@ -320,7 +327,11 @@ class AuthHandler(Handler):
         },
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def update_oauth_provider(
@@ -357,7 +368,7 @@ class AuthHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    required_roles={UserRole.ADMIN},
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
                 )
             )
         ],
@@ -396,7 +407,11 @@ class AuthHandler(Handler):
         },
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def create_oauth_provider(
@@ -418,7 +433,11 @@ class AuthHandler(Handler):
         },
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
         ],
     )
     async def delete_oauth_provider(
@@ -436,6 +455,7 @@ class AuthHandler(Handler):
         tags=TAGS,
         responses={204: {}},
         status_code=204,
+        dependencies=[Depends(check_authentication())],
     )
     async def create_session(
         self,
@@ -467,6 +487,7 @@ class AuthHandler(Handler):
         tags=TAGS,
         responses={204: {}, 400: {"model": BadRequestBodyResponse}},
         status_code=204,
+        dependencies=[Depends(check_authentication())],
     )
     async def extend_session(
         self,

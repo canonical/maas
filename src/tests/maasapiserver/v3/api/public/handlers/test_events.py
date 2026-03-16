@@ -1,6 +1,7 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Callable
 from unittest.mock import Mock
 from urllib.parse import parse_qs, urlparse
 
@@ -11,6 +12,7 @@ from maasapiserver.v3.api.public.models.responses.events import (
     EventsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.events import (
     EndpointChoicesEnum,
@@ -72,20 +74,23 @@ class TestEventsApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/events"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return [
-            Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(
+                method="GET",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            ),
         ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
-        return []
 
     async def test_list_filters(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
         services_mock.events = Mock(EventsService)
         services_mock.events.list.side_effect = [
             ListResult[Event](items=[TEST_EVENT], total=1),
@@ -94,7 +99,7 @@ class TestEventsApi(ApiCommonTests):
             ListResult[Event](items=[TEST_EVENT_2], total=2),
         ]
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?system_id={TEST_EVENT.node_system_id}"
         )
         events_response = EventsListResponse(**response.json())
@@ -104,7 +109,7 @@ class TestEventsApi(ApiCommonTests):
             == TEST_EVENT.node_system_id
         )
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?system_id={TEST_EVENT_2.node_system_id}"
         )
         events_response = EventsListResponse(**response.json())
@@ -114,7 +119,7 @@ class TestEventsApi(ApiCommonTests):
             == TEST_EVENT_2.node_system_id
         )
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?system_id={TEST_EVENT.node_system_id}&system_id={TEST_EVENT_2.node_system_id}"
         )
         events_response = EventsListResponse(**response.json())
@@ -124,7 +129,7 @@ class TestEventsApi(ApiCommonTests):
             TEST_EVENT_2.node_system_id,
         }
 
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}?system_id={TEST_EVENT.node_system_id}&system_id={TEST_EVENT_2.node_system_id}&size=1"
         )
         events_response = EventsListResponse(**response.json())

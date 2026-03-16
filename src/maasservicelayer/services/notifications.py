@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasservicelayer.builders.notifications import NotificationBuilder
@@ -20,6 +20,7 @@ from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.notifications import Notification
 from maasservicelayer.services.base import BaseService, ServiceCache
+from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 
 
 class NotificationsService(
@@ -31,22 +32,34 @@ class NotificationsService(
         self,
         context: Context,
         repository: NotificationsRepository,
+        openfga_tuples_service: OpenFGATupleService,
         cache: ServiceCache | None = None,
     ):
         super().__init__(context, repository, cache)
+        self.openfga_tuples_service = openfga_tuples_service
 
     async def list_all_for_user(
         self, page: int, size: int, user: AuthenticatedUser
     ) -> ListResult[Notification]:
         return await self.repository.list_all_for_user(
-            page=page, size=size, user_id=user.id, is_admin=user.is_admin()
+            page=page,
+            size=size,
+            user_id=user.id,
+            is_admin=await self.openfga_tuples_service.get_client().can_view_notifications(
+                user.id
+            ),
         )
 
     async def list_active_for_user(
         self, page: int, size: int, user: AuthenticatedUser
     ) -> ListResult[Notification]:
         return await self.repository.list_active_for_user(
-            page=page, size=size, user_id=user.id, is_admin=user.is_admin()
+            page=page,
+            size=size,
+            user_id=user.id,
+            is_admin=await self.openfga_tuples_service.get_client().can_view_notifications(
+                user.id
+            ),
         )
 
     async def get_by_id_for_user(
@@ -55,7 +68,9 @@ class NotificationsService(
         return await self.repository.get_by_id_for_user(
             notification_id=notification_id,
             user_id=user.id,
-            is_admin=user.is_admin(),
+            is_admin=await self.openfga_tuples_service.get_client().can_view_notifications(
+                user.id
+            ),
         )
 
     async def dismiss(

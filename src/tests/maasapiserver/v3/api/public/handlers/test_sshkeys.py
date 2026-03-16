@@ -1,5 +1,5 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
 
@@ -51,23 +51,36 @@ class TestSshKeyApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/users/me/sshkeys"
 
     @pytest.fixture
-    def user_endpoints(self) -> list[Endpoint]:
-        return [
-            Endpoint(method="GET", path=f"{self.BASE_PATH}"),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
-            Endpoint(method="POST", path=self.BASE_PATH),
-            Endpoint(method="POST", path=f"{self.BASE_PATH}:import"),
-            Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
-        ]
-
-    @pytest.fixture
-    def admin_endpoints(self) -> list[Endpoint]:
+    def endpoints_with_authorization(self) -> list[Endpoint]:
         return []
 
+    @pytest.fixture
+    def endpoints_with_authentication_only(self) -> list[Endpoint]:
+        return [
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}",
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+            ),
+            Endpoint(
+                method="POST",
+                path=self.BASE_PATH,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}:import",
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1",
+            ),
+        ]
+
     async def test_list_user_sshkeys_has_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
         services_mock.sshkeys.list.return_value = ListResult[SshKey](
@@ -83,9 +96,7 @@ class TestSshKeyApi(ApiCommonTests):
         assert sshkeys_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_user_sshkeys_no_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
         services_mock.sshkeys.list.return_value = ListResult[SshKey](
@@ -102,9 +113,7 @@ class TestSshKeyApi(ApiCommonTests):
         assert sshkeys_response.next is None
 
     async def test_get_200(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
         services_mock.sshkeys.get_one.return_value = SSHKEY_2
@@ -125,9 +134,7 @@ class TestSshKeyApi(ApiCommonTests):
         }
 
     async def test_get_404(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
         services_mock.sshkeys.get_one.return_value = None
@@ -140,9 +147,7 @@ class TestSshKeyApi(ApiCommonTests):
         assert "ETag" not in response.headers
 
     async def test_create_201(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
         services_mock.sshkeys.create.return_value = SSHKEY_1
@@ -162,9 +167,7 @@ class TestSshKeyApi(ApiCommonTests):
         assert sshkey_response.auth_id == SSHKEY_1.auth_id
 
     async def test_import_201(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
         services_mock.sshkeys.import_keys.return_value = [SSHKEY_2]
@@ -217,9 +220,7 @@ class TestSshKeyApi(ApiCommonTests):
         assert error_response.details[0].message == message
 
     async def test_delete_204(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
         services_mock.sshkeys.get_one.return_value = SSHKEY_1
@@ -229,9 +230,7 @@ class TestSshKeyApi(ApiCommonTests):
         assert response.status_code == 204
 
     async def test_delete_with_etag(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sshkeys = Mock(SshKeysService)
         services_mock.sshkeys.delete_one.side_effect = PreconditionFailedException(

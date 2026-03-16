@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Union
@@ -23,7 +23,7 @@ from maasapiserver.v3.api.public.models.responses.staticroutes import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.auth.jwt import UserRole
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesClauseFactory,
@@ -56,7 +56,11 @@ class StaticRoutesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                )
+            )
         ],
     )
     async def list_fabric_vlan_subnet_staticroutes(
@@ -113,7 +117,11 @@ class StaticRoutesHandler(Handler):
         response_model_exclude_none=True,
         status_code=201,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                )
+            )
         ],
     )
     async def create_fabric_vlan_subnet_staticroute(
@@ -169,7 +177,11 @@ class StaticRoutesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                )
+            )
         ],
     )
     async def get_fabric_vlan_subnet_staticroute(
@@ -216,7 +228,11 @@ class StaticRoutesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                )
+            )
         ],
     )
     async def update_fabric_vlan_subnet_staticroute(
@@ -281,7 +297,11 @@ class StaticRoutesHandler(Handler):
         response_model_exclude_none=True,
         status_code=204,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                )
+            )
         ],
     )
     async def delete_fabric_vlan_subnet_staticroute(

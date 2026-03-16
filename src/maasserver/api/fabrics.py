@@ -5,6 +5,7 @@
 
 from piston3.utils import rc
 
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.fabric import FabricForm
@@ -49,7 +50,7 @@ class FabricsHandler(OperationsHandler):
         """
         return prefetch_queryset(Fabric.objects.all(), FABRIC_PREFETCH)
 
-    @check_permission("can_edit_global_entities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES)
     def create(self, request):
         """@description-title Create a fabric
         @description Create a fabric.

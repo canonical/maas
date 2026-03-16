@@ -10,6 +10,7 @@ from piston3.models import Consumer
 from piston3.utils import rc
 
 from maascommon.logging.security import CREATED, DELETED
+from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.ssh_keys import SSHKeysHandler
 from maasserver.api.support import (
     check_permission,
@@ -63,7 +64,7 @@ class UsersHandler(OperationsHandler):
         """
         return request.user
 
-    @check_permission("can_edit_identities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_IDENTITIES)
     def create(self, request):
         """@description-title Create a MAAS user account
         @description Creates a MAAS user account.
@@ -156,7 +157,7 @@ class UserHandler(OperationsHandler):
         """
         return get_object_or_404(User, username=username)
 
-    @check_permission("can_edit_identities")
+    @check_permission(MAASResourceEntitlement.CAN_EDIT_IDENTITIES)
     def delete(self, request, username):
         """@description-title Delete a user
         @description Deletes a given username.
