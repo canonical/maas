@@ -470,19 +470,15 @@ class TestStaticIPAddressService:
         mock_staticipaddress_repository.delete_by_id.return_value = sip
 
         mock_dnsresource_repository = Mock(DNSResourceRepository)
-        # This IP is linked to one DNS resource
         mock_dnsresource_repository.get_dnsresources_for_ip.return_value = [
             dnsresource
         ]
-        # Batch query: DNS resource has no remaining IPs
         mock_dnsresource_repository.get_ip_counts_for_dnsresources.return_value = {
             dnsresource.id: 0
         }
-        # Batch query: DNS resource has no DNS data
         mock_dnsresource_repository.get_dnsdata_counts_for_dnsresources.return_value = {
             dnsresource.id: 0
         }
-        # Batch delete
         mock_dnsresource_repository.delete_many_by_ids.return_value = [
             dnsresource
         ]
@@ -542,7 +538,6 @@ class TestStaticIPAddressService:
         mock_dnsresource_repository.get_dnsresources_for_ip.return_value = [
             dnsresource
         ]
-        # Batch query: DNS resource still has 1 IP remaining
         mock_dnsresource_repository.get_ip_counts_for_dnsresources.return_value = {
             dnsresource.id: 1
         }
@@ -591,11 +586,9 @@ class TestStaticIPAddressService:
         mock_dnsresource_repository.get_dnsresources_for_ip.return_value = [
             dnsresource
         ]
-        # Batch query: no remaining IPs
         mock_dnsresource_repository.get_ip_counts_for_dnsresources.return_value = {
             dnsresource.id: 0
         }
-        # Batch query: has DNS data (like a CNAME record)
         mock_dnsresource_repository.get_dnsdata_counts_for_dnsresources.return_value = {
             dnsresource.id: 1
         }
@@ -620,13 +613,10 @@ class TestStaticIPAddressService:
 
 @pytest.mark.asyncio
 class TestStaticIPAddressServiceIntegration:
-    """Integration tests that use real database connections and repositories."""
-
     async def test_delete_ip_cleans_up_orphaned_dns_resource_integration(
         self, services, fixture
     ):
         """Test that deleting an IP address deletes orphaned DNS resources."""
-        # Create test data
         domain = await create_test_domain_entry(fixture, name="test.maas")
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
         sip = (
@@ -649,7 +639,6 @@ class TestStaticIPAddressServiceIntegration:
         assert len(ips_before) == 1
         assert ips_before[0].id == sip["id"]
 
-        # Delete the IP address
         await services.staticipaddress.delete_by_id(sip["id"])
 
         # Verify the DNS resource was deleted because it became orphaned
@@ -660,11 +649,9 @@ class TestStaticIPAddressServiceIntegration:
         self, services, fixture
     ):
         """Test that DNS resource with other IPs is not deleted."""
-        # Create test data
         domain = await create_test_domain_entry(fixture, name="test.maas")
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
 
-        # Create two IPs
         sip1 = (
             await create_test_staticipaddress_entry(
                 fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
@@ -684,20 +671,17 @@ class TestStaticIPAddressServiceIntegration:
         # Link second IP to the same DNS resource
         await services.dnsresources.link_ip(dnsresource.id, sip2["id"])
 
-        # Verify both IPs are linked
         ips_before = await services.dnsresources.get_ips_for_dnsresource(
             dnsresource.id
         )
         assert len(ips_before) == 2
 
-        # Delete the first IP address
         await services.staticipaddress.delete_by_id(sip1["id"])
 
         # Verify the DNS resource still exists (has other IP)
         dnsrr_after = await services.dnsresources.get_by_id(dnsresource.id)
         assert dnsrr_after is not None
 
-        # Verify only one IP remains
         ips_after = await services.dnsresources.get_ips_for_dnsresource(
             dnsresource.id
         )
@@ -708,7 +692,6 @@ class TestStaticIPAddressServiceIntegration:
         self, services, fixture
     ):
         """Test that DNS resource with DNS data records is not deleted."""
-        # Create test data
         domain = await create_test_domain_entry(fixture, name="test.maas")
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
         sip = (
@@ -730,7 +713,6 @@ class TestStaticIPAddressServiceIntegration:
             rrdata="other-host.test.maas.",
         )
 
-        # Verify DNS data exists
         dnsdata_before = (
             await services.dnsresources.get_dnsdata_for_dnsresource(
                 dnsresource.id
@@ -738,14 +720,12 @@ class TestStaticIPAddressServiceIntegration:
         )
         assert len(dnsdata_before) == 1
 
-        # Delete the IP address
         await services.staticipaddress.delete_by_id(sip["id"])
 
         # Verify the DNS resource was NOT deleted (has DNS data)
         dnsrr_after = await services.dnsresources.get_by_id(dnsresource.id)
         assert dnsrr_after is not None
 
-        # Verify no IPs remain linked to it
         ips_after = await services.dnsresources.get_ips_for_dnsresource(
             dnsresource.id
         )
@@ -763,7 +743,6 @@ class TestStaticIPAddressServiceIntegration:
         self, services, fixture
     ):
         """Test that deleting an IP cleans up multiple orphaned DNS resources."""
-        # Create test data
         domain1 = await create_test_domain_entry(fixture, name="domain1.maas")
         domain2 = await create_test_domain_entry(fixture, name="domain2.maas")
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
@@ -781,13 +760,11 @@ class TestStaticIPAddressServiceIntegration:
             fixture, domain2, sip, name="host2"
         )
 
-        # Verify both exist
         dnsrr1_before = await services.dnsresources.get_by_id(dnsresource1.id)
         dnsrr2_before = await services.dnsresources.get_by_id(dnsresource2.id)
         assert dnsrr1_before is not None
         assert dnsrr2_before is not None
 
-        # Delete the IP address
         await services.staticipaddress.delete_by_id(sip["id"])
 
         # Verify both DNS resources were deleted (both became orphaned)
@@ -800,11 +777,9 @@ class TestStaticIPAddressServiceIntegration:
         self, services, fixture
     ):
         """Test mixed scenario: one DNS resource is deleted, another is kept."""
-        # Create test data
         domain = await create_test_domain_entry(fixture, name="test.maas")
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
 
-        # Create two IPs
         sip1 = (
             await create_test_staticipaddress_entry(
                 fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
@@ -816,7 +791,6 @@ class TestStaticIPAddressServiceIntegration:
             )
         )[0]
 
-        # Create two DNS resources
         # Resource 1: linked to sip1 only (will be orphaned)
         dnsresource1 = await create_test_dnsresource_entry(
             fixture, domain, sip1, name="host1"
@@ -827,7 +801,6 @@ class TestStaticIPAddressServiceIntegration:
         )
         await services.dnsresources.link_ip(dnsresource2.id, sip2["id"])
 
-        # Delete sip1
         await services.staticipaddress.delete_by_id(sip1["id"])
 
         # Verify dnsresource1 was deleted (orphaned)
