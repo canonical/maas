@@ -38,7 +38,6 @@ class StaticIPAddressService(
         super().__init__(context, staticipaddress_repository)
         self.temporal_service = temporal_service
         self.dnsresource_repository = dnsresource_repository
-        self._dnsresources_to_cleanup = []
 
     async def post_create_hook(self, resource: StaticIPAddress) -> None:
         if resource.alloc_type != IpAddressType.DISCOVERED:
