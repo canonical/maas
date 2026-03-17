@@ -128,7 +128,7 @@ class BootloaderFile(DownloadableFile):
 
 
 class ImageFile(DownloadableFile):
-    kpackage: str | None = None
+    kpackage: str | None
 
 
 class Version(BaseModel, metaclass=ABCMeta):
@@ -166,8 +166,8 @@ class BootloaderVersion(Version):
         alias="grub2-signed",
     )
     shim_signed: BootloaderFile | None = Field(None, alias="shim-signed")
-    grub2: BootloaderFile | None = None
-    syslinux: BootloaderFile | None = None
+    grub2: BootloaderFile | None
+    syslinux: BootloaderFile | None
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
@@ -190,7 +190,7 @@ class MultiFileImageVersion(Version):
         None,
         alias="root-image.gz",
     )
-    squashfs: ImageFile | None = None
+    squashfs: ImageFile | None
 
     @field_validator("support_eol", "support_esm_eol", mode="before")
     @classmethod
