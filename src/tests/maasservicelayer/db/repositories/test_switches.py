@@ -59,14 +59,18 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
 
     @pytest.fixture
     async def _setup_test_list(
-        self, fixture: Fixture, num_objects: int, repository_instance: SwitchesRepository
+        self,
+        fixture: Fixture,
+        num_objects: int,
+        repository_instance: SwitchesRepository,
     ) -> list[Switch]:
         switch_ids = [
             await create_test_switch(fixture) for i in range(num_objects)
         ]
         # Fetch actual Switch objects from database
         created_switches = [
-            await repository_instance.get_by_id(switch_id) for switch_id in switch_ids
+            await repository_instance.get_by_id(switch_id)
+            for switch_id in switch_ids
         ]
         return [s for s in created_switches if s is not None]
 
