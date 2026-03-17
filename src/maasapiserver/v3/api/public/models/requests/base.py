@@ -111,7 +111,7 @@ class OrderByQueryFilter(BaseModel):
 
 
 class FreeTextSearchQueryParam(BaseModel, ABC):
-    q: str | None
+    q: str | None = Field(Query(default=None, title="Free text search query"))
 
     @abstractmethod
     def to_clause(self) -> Clause | None:
