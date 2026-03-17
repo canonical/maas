@@ -427,6 +427,7 @@ RegionControllerWorkerRule = Rule(
     Allow("netaddr|netaddr.**"),
     Allow("provisioningserver.**"),
     Allow("pydantic.**"),
+    Allow("pydantic_core.to_jsonable_python"),
     Allow("sqlalchemy|sqlalchemy.**"),
     Allow("structlog|structlog.**"),
     Allow("temporalio|temporalio.**"),
