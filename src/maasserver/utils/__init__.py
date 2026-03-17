@@ -127,6 +127,8 @@ def get_request_host(request):
 
 def is_valid_ip(ip):
     """Check the validity of an IP address."""
+    if not ip:
+        return False
     return valid_ipv4(ip) or valid_ipv6(ip)
 
 
