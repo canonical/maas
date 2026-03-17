@@ -236,3 +236,71 @@ class StaticIPAddressRepository(BaseRepository):
             )
         )
         await self.execute_stmt(stmt)
+
+    async def get_ip_addresses_for_interface(
+        self, interface_id: int
+    ) -> list[StaticIPAddress]:
+        """Get all IP addresses associated with a specific interface.
+
+        Args:
+            interface_id: The ID of the interface
+
+        Returns:
+            List of StaticIPAddress objects linked to this interface
+        """
+        stmt = (
+            select(StaticIPAddressTable)
+            .select_from(StaticIPAddressTable)
+            .join(
+                InterfaceIPAddressTable,
+                eq(
+                    StaticIPAddressTable.c.id,
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                ),
+            )
+            .where(eq(InterfaceIPAddressTable.c.interface_id, interface_id))
+        )
+        results = (await self.execute_stmt(stmt)).all()
+        return [StaticIPAddress(**row._asdict()) for row in results]
+
+    async def unlink_interface_from_ip(
+        self, interface_id: int, staticipaddress_id: int
+    ) -> None:
+        """Remove the link between an interface and an IP address.
+
+        Args:
+            interface_id: The ID of the interface to unlink
+            staticipaddress_id: The ID of the IP address to unlink from
+        """
+        stmt = delete(InterfaceIPAddressTable).where(
+            and_(
+                eq(InterfaceIPAddressTable.c.interface_id, interface_id),
+                eq(
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                    staticipaddress_id,
+                ),
+            )
+        )
+        await self.execute_stmt(stmt)
+
+    async def get_interface_count_for_ip(self, staticipaddress_id: int) -> int:
+        """Get the count of interfaces associated with an IP address.
+
+        Args:
+            staticipaddress_id: The ID of the IP address
+
+        Returns:
+            The number of interfaces still linked to this IP
+        """
+        stmt = (
+            select(func.count())
+            .select_from(InterfaceIPAddressTable)
+            .where(
+                eq(
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                    staticipaddress_id,
+                )
+            )
+        )
+        result = await self.execute_stmt(stmt)
+        return result.scalar_one()
