@@ -1027,6 +1027,16 @@ InterfaceTable = Table(
         ),
         nullable=True,
     ),
+    Column(
+        "switch_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_switch.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
+    ),
     UniqueConstraint("node_config_id", "name"),
     Index("maasserver_interface_vlan_id_5f39995d", "vlan_id"),
     Index("maasserver_interface_numa_node_id_6e790407", "numa_node_id"),
@@ -1038,6 +1048,7 @@ InterfaceTable = Table(
         unique=True,
         postgresql_where=text("(type)::text = 'physical'::text"),
     ),
+    Index("maasserver_interface_switch_id_idx", "switch_id"),
 )
 
 IPRangeTable = Table(
@@ -2216,6 +2227,25 @@ StaticRouteTable = Table(
     UniqueConstraint("source_id", "destination_id", "gateway_ip"),
     Index("maasserver_staticroute_source_id_3321277a", "source_id"),
     Index("maasserver_staticroute_destination_id_4d1b294b", "destination_id"),
+)
+
+SwitchTable = Table(
+    "maasserver_switch",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column(
+        "target_image_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_bootresource.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
+    ),
+    Index("maasserver_switch_target_image_id_idx", "target_image_id"),
 )
 
 SubnetTable = Table(
