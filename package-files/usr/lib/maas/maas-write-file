@@ -11,7 +11,7 @@ be used behind `sudo`.
 
 import argparse
 import os
-import pipes
+import shlex
 import sys
 
 from provisioningserver.utils.fs import atomic_write
@@ -59,8 +59,8 @@ def main(args, fin):
             "Given filename %s is not in the allowed list. "
             "Choose from: %s."
             % (
-                pipes.quote(args.filename),
-                ", ".join(map(pipes.quote, sorted(WRITABLE_FILES))),
+                shlex.quote(args.filename),
+                ", ".join(map(shlex.quote, sorted(WRITABLE_FILES))),
             )
         )
 
