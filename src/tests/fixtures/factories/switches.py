@@ -74,6 +74,7 @@ async def create_test_switch(
     switch_data = await create_test_switch_entry(fixture, **extra_details)
     return switch_data["id"]
 
+
 async def create_test_switch_interface(
     fixture: Fixture,
     **extra_details: Any,
