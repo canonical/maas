@@ -59,16 +59,25 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
 
     @pytest.fixture
     async def _setup_test_list(
-        self, fixture: Fixture, num_objects: int
+        self, fixture: Fixture, num_objects: int, repository_instance: SwitchesRepository
     ) -> list[Switch]:
-        created_switches = [
+        switch_ids = [
             await create_test_switch(fixture) for i in range(num_objects)
         ]
-        return created_switches
+        # Fetch actual Switch objects from database
+        created_switches = [
+            await repository_instance.get_by_id(switch_id) for switch_id in switch_ids
+        ]
+        return [s for s in created_switches if s is not None]
 
     @pytest.fixture
-    async def created_instance(self, fixture: Fixture) -> Switch:
-        return await create_test_switch(fixture)
+    async def created_instance(
+        self, fixture: Fixture, repository_instance: SwitchesRepository
+    ) -> Switch:
+        switch_id = await create_test_switch(fixture)
+        switch = await repository_instance.get_by_id(switch_id)
+        assert switch is not None
+        return switch
 
     @pytest.fixture
     async def instance_builder_model(self) -> type[SwitchBuilder]:
@@ -125,18 +134,18 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         """Test that creating switches with duplicate MAC addresses in interfaces fails."""
 
         # Create first switch with an interface
-        switch1 = await create_test_switch(fixture, hostname="switch-1")
+        switch1_id = await create_test_switch(fixture, hostname="switch-1")
         await create_test_switch_interface(
-            fixture, switch_id=switch1.id, mac_address="00:11:22:33:44:55"
+            fixture, switch_id=switch1_id, mac_address="00:11:22:33:44:55"
         )
 
         # Create second switch
-        switch2 = await create_test_switch(fixture, hostname="switch-2")
+        switch2_id = await create_test_switch(fixture, hostname="switch-2")
 
         # Try to create interface with duplicate MAC address through repository - should fail
         interface_repo = InterfaceRepository(Context(connection=db_connection))
         builder = InterfaceBuilder(
-            name="mgmt", mac_address="00:11:22:33:44:55", switch_id=switch2.id
+            name="mgmt", mac_address="00:11:22:33:44:55", switch_id=switch2_id
         )
         with pytest.raises(AlreadyExistsException):
             await interface_repo.create(builder)
@@ -148,13 +157,13 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
     ) -> None:
         """Test that creating multiple switches with duplicate MAC addresses in interfaces fails."""
         # Create first switch with an interface
-        switch1 = await create_test_switch(fixture, hostname="switch-1")
+        switch1_id = await create_test_switch(fixture, hostname="switch-1")
         await create_test_switch_interface(
-            fixture, switch_id=switch1.id, mac_address="00:11:22:33:44:55"
+            fixture, switch_id=switch1_id, mac_address="00:11:22:33:44:55"
         )
 
         # Create second switch
-        switch2 = await create_test_switch(fixture, hostname="switch-2")
+        switch2_id = await create_test_switch(fixture, hostname="switch-2")
 
         # Try to create multiple interfaces with duplicate MAC address - should fail
         interface_repo = InterfaceRepository(Context(connection=db_connection))
@@ -165,12 +174,12 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
                     InterfaceBuilder(
                         name="eth0",
                         mac_address="aa:bb:cc:dd:ee:ff",
-                        switch_id=switch1.id,
+                        switch_id=switch1_id,
                     ),
                     InterfaceBuilder(
                         name="eth0",
                         mac_address="aa:bb:cc:dd:ee:ff",  # Duplicate MAC
-                        switch_id=switch2.id,
+                        switch_id=switch2_id,
                     ),
                 ]
             )
