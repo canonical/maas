@@ -4,6 +4,7 @@
 from ipaddress import IPv4Address, IPv4Network
 
 import pytest
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.subnet import RdnsMode
@@ -54,11 +55,12 @@ class TestSubnetClauseFactory:
         clause = SubnetClauseFactory.with_cidr_overlap(
             cidr=IPv4Network("10.0.0.0/24")
         )
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == (
-            "(maasserver_subnet.cidr >> '10.0.0.0/24') OR (maasserver_subnet.cidr << '10.0.0.0/24')"
+        compiled = clause.condition.compile(dialect=postgresql.dialect())
+        assert str(compiled) == (
+            "(maasserver_subnet.cidr >> %(cidr_1)s) OR (maasserver_subnet.cidr << %(cidr_2)s)"
         )
+        assert compiled.params["cidr_1"] == IPv4Network("10.0.0.0/24")
+        assert compiled.params["cidr_2"] == IPv4Network("10.0.0.0/24")
 
 
 class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
