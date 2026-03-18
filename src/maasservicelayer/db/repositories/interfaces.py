@@ -45,6 +45,10 @@ class InterfaceClauseFactory(ClauseFactory):
     def with_node_config_id(cls, config_id: int) -> Clause:
         return Clause(condition=eq(InterfaceTable.c.node_config_id, config_id))
 
+    @classmethod
+    def with_switch_id(cls, switch_id: int) -> Clause:
+        return Clause(condition=eq(InterfaceTable.c.switch_id, switch_id))
+
 
 def build_interface_links(
     interface: dict[str, list[dict[str, Any]]], reverse=True
@@ -162,6 +166,34 @@ class InterfaceRepository(BaseRepository):
         )
 
         await self.execute_stmt(stmt)
+
+    async def create_switch_interface(
+        self, switch_id: int, mac: str, name: str = "mgmt0"
+    ) -> int:
+        now = utcnow()
+        stmt = (
+            insert(InterfaceTable)
+            .returning(InterfaceTable.c.id)
+            .values(
+                name=name,
+                mac_address=mac,
+                switch_id=switch_id,
+                type=InterfaceType.PHYSICAL,
+                params={},
+                enabled=True,
+                mdns_discovery_state=False,
+                neighbour_discovery_state=False,
+                acquired=False,
+                link_connected=True,
+                interface_speed=0,
+                link_speed=0,
+                sriov_max_vf=0,
+                created=now,
+                updated=now,
+            )
+        )
+        result = (await self.execute_stmt(stmt)).one()
+        return result[0]  # pyright: ignore [reportArgumentType]
 
     async def create_unknwown_interface(
         self, mac: str, vlan_id: int

@@ -4,6 +4,7 @@
 from typing import List
 
 from maascommon.enums.dns import DnsUpdateAction
+from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -92,6 +93,30 @@ class InterfacesService(
     ) -> Interface:
         return await self.interface_repository.create_unknwown_interface(
             mac, vlan_id
+        )
+
+    async def link_interface_to_switch(
+        self, interface_id: int, switch_id: int
+    ) -> Interface:
+        """Link an existing interface to a switch.
+
+        This claims an UNKNOWN interface and converts it to PHYSICAL
+        when associating it with a switch, consistent with how machines
+        and devices claim interfaces during enlistment/commissioning.
+
+        Args:
+            interface_id: ID of the interface to link
+            switch_id: ID of the switch to link to
+
+        Returns:
+            The updated Interface with switch_id and type=PHYSICAL
+        """
+
+        builder = InterfaceBuilder(
+            switch_id=switch_id, type=InterfaceType.PHYSICAL
+        )
+        return await self.interface_repository.update_by_id(
+            interface_id, builder
         )
 
     async def add_ip(self, interface: Interface, sip: StaticIPAddress) -> None:
