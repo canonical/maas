@@ -31,7 +31,8 @@ from zope.interface import implementer
 from apiclient.utils import ascii_url
 from provisioningserver.certificates import (
     Certificate,
-    get_maas_cluster_cert_paths,
+    get_maas_agent_cert_paths,
+    store_maas_agent_cert_tuple,
     store_maas_cluster_cert_tuple,
 )
 from provisioningserver.config import ClusterConfiguration, is_dev_environment
@@ -62,6 +63,7 @@ from provisioningserver.rpc.power import get_power_state
 from provisioningserver.security import calculate_digest, fernet_decrypt_psk
 from provisioningserver.utils import sudo
 from provisioningserver.utils.env import (
+    MAAS_AGENT_UUID,
     MAAS_ID,
     MAAS_SECRET,
     MAAS_SHARED_SECRET,
@@ -685,6 +687,7 @@ class ClusterClient(Cluster):
     def registerRackWithRegion(self):
         # Grab the set system_id if already set for this controller.
         system_id = MAAS_ID.get() or ""
+        agent_uuid = MAAS_AGENT_UUID.get() or None
 
         # Gather the required information for registration.
         interfaces = get_all_interfaces_definition()
@@ -704,6 +707,7 @@ class ClusterClient(Cluster):
                 url=parsed_url,
                 beacon_support=True,
                 version=version,
+                agent_uuid=agent_uuid,
             )
             self.localIdent = data["system_id"]
             MAAS_ID.set(self.localIdent)
@@ -736,7 +740,7 @@ class ClusterClient(Cluster):
                     "on such certificate are degraded."
                 )
             if (
-                not get_maas_cluster_cert_paths()
+                not get_maas_agent_cert_paths()
                 and encrypted_cluster_certificate
             ):
                 decoded_secret = json.loads(
@@ -748,6 +752,13 @@ class ClusterClient(Cluster):
                     ca_certs_material=decoded_secret["cacerts"],
                 )
                 store_maas_cluster_cert_tuple(
+                    private_key=certificate.private_key_pem().encode(),
+                    certificate=certificate.certificate_pem().encode(),
+                    cacerts=certificate.ca_certificates_pem().encode(),
+                )
+
+                # XXX: for the future distinction between server and client certificates.
+                store_maas_agent_cert_tuple(
                     private_key=certificate.private_key_pem().encode(),
                     certificate=certificate.certificate_pem().encode(),
                     cacerts=certificate.ca_certificates_pem().encode(),

@@ -142,12 +142,12 @@ func TestCachePath(t *testing.T) {
 		out   string
 	}{
 		"snap": {
-			setup: func(t *testing.T) { t.Setenv("SNAP_COMMON", "/var/snap/maas/common") },
+			setup: func(t *testing.T) { t.Setenv("SNAP_DATA", "/var/snap/maas/common") },
 			in:    "cachefile",
 			out:   "/var/snap/maas/common/var/cache/maas/cachefile",
 		},
 		"deb": {
-			setup: func(t *testing.T) { t.Setenv("SNAP_COMMON", "") },
+			setup: func(t *testing.T) { t.Setenv("SNAP_DATA", "") },
 			in:    "cachefile",
 			out:   "/var/cache/maas/cachefile",
 		},
@@ -163,12 +163,12 @@ func TestCachePath(t *testing.T) {
 
 func TestCacheDir(t *testing.T) {
 	t.Run("snap", func(t *testing.T) {
-		t.Setenv("SNAP_COMMON", "/var/snap/maas/common")
+		t.Setenv("SNAP_DATA", "/var/snap/maas/common")
 		assert.Equal(t, "/var/snap/maas/common/var/cache/maas", CacheDir())
 	})
 
 	t.Run("deb", func(t *testing.T) {
-		t.Setenv("SNAP_COMMON", "")
+		t.Setenv("SNAP_DATA", "")
 		assert.Equal(t, "/var/cache/maas", CacheDir())
 	})
 }

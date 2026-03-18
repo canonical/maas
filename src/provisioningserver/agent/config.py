@@ -19,24 +19,59 @@ def get_agent_config_path():
     return os.getenv("MAAS_AGENT_CONFIG", "/etc/maas/agent.yaml")
 
 
-@dataclass
-class HTTPProxyConfiguration:
-    cache_size: int
-    cache_dir: str
+@dataclass(frozen=True)
+class AgentHTTPProxyCacheConfig:
+    dir: str
+    size: int
 
 
-@dataclass
-class Configuration:
+@dataclass(frozen=True)
+class AgentHTTPProxyConfig:
+    cache: AgentHTTPProxyCacheConfig
+
+
+@dataclass(frozen=True)
+class AgentTemporalConfig:
+    host: str
+    port: int
+    encryption_key: str
+
+
+@dataclass(frozen=True)
+class AgentLogConfig:
+    level: str
+
+
+@dataclass(frozen=True)
+class AgentServicesConfig:
+    http_proxy: AgentHTTPProxyConfig
+
+
+@dataclass(frozen=True)
+class AgentObservabilityConfig:
+    logging: AgentLogConfig
+
+
+@dataclass(frozen=True)
+class AgentTLSConfig:
+    key_file: str
+    cert_file: str
+    ca_file: str
+
+
+@dataclass(frozen=True)
+class AgentConfig:
     maas_uuid: str
     system_id: str
-    secret: str
-    controllers: list[str]
-    httpproxy: HTTPProxyConfiguration
-    log_level: str
+    controller: str
+    temporal: AgentTemporalConfig
+    services: AgentServicesConfig
+    observability: AgentObservabilityConfig
+    tls: AgentTLSConfig
 
 
 @synchronous
-def write_config(config: Configuration):
+def write_config(config: AgentConfig):
     """Write MAAS Agent configuration."""
 
     header = b"# WARNING: MAAS will overwrite any changes made here.\n\n"

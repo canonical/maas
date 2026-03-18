@@ -9,7 +9,7 @@ ConditionPathExists=/etc/maas/agent.yaml
 [Service]
 User=maas
 Group=maas
-ExecStart=/usr/sbin/maas-agent
+ExecStart=/usr/sbin/maas-agent start --supervised
 
 [Install]
 WantedBy=multi-user.target

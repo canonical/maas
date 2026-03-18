@@ -202,7 +202,8 @@ class TestRegisterRackController(MAASServerTestCase):
         mock_agents_service = Mock(AgentsService)
         mock_agent = Mock(Agent)
         mock_agent.id = 12
-        mock_agents_service.get_one = mock_agent
+        mock_agent.rackcontroller_id = None
+        mock_agents_service.get_one = Mock(return_value=mock_agent)
         mock_agents_service.update_by_id = Mock()
         mock_service_layer.services.agents = mock_agents_service
 
@@ -233,7 +234,8 @@ class TestRegisterRackController(MAASServerTestCase):
         mock_agents_service = Mock(AgentsService)
         mock_agent = Mock(Agent)
         mock_agent.id = 12
-        mock_agents_service.get_one = mock_agent
+        mock_agent.rackcontroller_id = None
+        mock_agents_service.get_one = Mock(return_value=mock_agent)
         mock_agents_service.update_by_id = Mock()
         mock_service_layer.services.agents = mock_agents_service
         hostname = factory.make_name("hostname")

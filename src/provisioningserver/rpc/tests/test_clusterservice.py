@@ -37,6 +37,7 @@ from maastesting.twisted import (
 from provisioningserver.certificates import (
     Certificate,
     CertificateRequest,
+    get_maas_agent_cert_paths,
     get_maas_cluster_cert_paths,
 )
 from provisioningserver.drivers.pod import (
@@ -1293,6 +1294,47 @@ class TestClusterClientClusterCertificatesAreStored(TestClusterClientBase):
                 f"{certs_dir}/cluster.pem",
                 f"{certs_dir}/cluster.key",
                 f"{certs_dir}/cacerts.pem",
+            ),
+        )
+
+
+class TestClusterClientAgentCertificatesAreStored(TestClusterClientBase):
+    @inlineCallbacks
+    def test_agent_certificates_are_stored(self):
+        maas_data = os.getenv("MAAS_ROOT")
+        certs_dir = f"{maas_data}/certificates"
+        os.mkdir(certs_dir)
+
+        client = self.make_running_client()
+
+        maasca = Certificate.generate_ca_certificate("maas")
+        certificate_request = CertificateRequest.generate("request")
+        certificate = maasca.sign_certificate_request(certificate_request)
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = always_succeed_with(
+            {
+                "system_id": "...",
+                "encrypted_cluster_certificate": fernet_encrypt_psk(
+                    json.dumps(
+                        {
+                            "cert": certificate.certificate_pem(),
+                            "key": certificate.private_key_pem(),
+                            "cacerts": certificate.ca_certificates_pem(),
+                        }
+                    )
+                ),
+            }
+        )
+
+        result = yield client.registerRackWithRegion()
+        self.assertTrue(result)
+        self.assertEqual(
+            get_maas_agent_cert_paths(),
+            (
+                f"{certs_dir}/agent.crt",
+                f"{certs_dir}/agent.key",
+                f"{certs_dir}/ca.pem",
             ),
         )
 

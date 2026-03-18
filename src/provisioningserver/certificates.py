@@ -314,6 +314,11 @@ def get_cluster_certificates_path() -> Path:
     return Path(maas_root) / "certificates"
 
 
+def get_agent_certificates_path() -> Path:
+    maas_root = os.getenv("MAAS_ROOT", "/var/lib/maas")
+    return Path(maas_root) / "certificates"
+
+
 def get_maas_cluster_cert_paths() -> tuple[str, str, str] | None:
     """Return a 2-tuple with certificate and private key paths for the cluster certificates."""
 
@@ -321,6 +326,22 @@ def get_maas_cluster_cert_paths() -> tuple[str, str, str] | None:
     private_key = cert_dir / "cluster.key"
     certificate = cert_dir / "cluster.pem"
     cacerts = cert_dir / "cacerts.pem"
+    if (
+        not private_key.exists()
+        or not certificate.exists()
+        or not cacerts.exists()
+    ):
+        return None
+    return str(certificate), str(private_key), str(cacerts)
+
+
+def get_maas_agent_cert_paths() -> tuple[str, str, str] | None:
+    """Return a 2-tuple with certificate and private key paths for the client certificates."""
+
+    cert_dir = get_agent_certificates_path()
+    private_key = cert_dir / "agent.key"
+    certificate = cert_dir / "agent.crt"
+    cacerts = cert_dir / "ca.pem"
     if (
         not private_key.exists()
         or not certificate.exists()
@@ -355,6 +376,36 @@ def store_maas_cluster_cert_tuple(
     atomic_write(
         cacerts,
         cert_dir / "cacerts.pem",
+        overwrite=True,
+        mode=0o644,
+    )
+
+
+def store_maas_agent_cert_tuple(
+    private_key: bytes, certificate: bytes, cacerts: bytes
+) -> None:
+    """
+    Stores the private key and the certificate on the disk.
+    """
+
+    cert_dir = get_agent_certificates_path()
+    atomic_write(
+        private_key,
+        cert_dir / "agent.key",
+        overwrite=True,
+        mode=0o600,
+    )
+
+    atomic_write(
+        certificate,
+        cert_dir / "agent.crt",
+        overwrite=True,
+        mode=0o644,
+    )
+
+    atomic_write(
+        cacerts,
+        cert_dir / "ca.pem",
         overwrite=True,
         mode=0o644,
     )

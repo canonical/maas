@@ -95,37 +95,6 @@ def register(
             version_log,
             this_region.hostname,
         )
-        if agent_uuid:
-            try:
-                service_layer.ensure_connection()
-                agents_service = service_layer.services.agents
-                agent = agents_service.get_one(
-                    query=QuerySpec(
-                        where=AgentsClauseFactory.with_uuid(agent_uuid)
-                    )
-                )
-
-                if agent:
-                    agents_service.update_by_id(
-                        agent.id, AgentBuilder(rackcontroller_id=node.id)
-                    )
-                    maaslog.info(
-                        "Linked agent '%s' to rack controller '%s' (id: %s).",
-                        agent_uuid,
-                        node.hostname,
-                        node.id,
-                    )
-                else:
-                    maaslog.info(
-                        "Agent with UUID '%s' not found during registration.",
-                        agent_uuid,
-                    )
-            except Exception as e:
-                maaslog.error(
-                    "Failed to link agent '%s' to rack controller: %s",
-                    agent_uuid,
-                    str(e),
-                )
     elif node.is_rack_controller:
         # Only the master process logs to the maaslog.
         maaslog.info(
@@ -178,6 +147,37 @@ def register(
     # Update the version.
     if version is not None:
         ControllerInfo.objects.set_version(rackcontroller, version)
+
+    if agent_uuid:
+        try:
+            service_layer.ensure_connection()
+            agents_service = service_layer.services.agents
+            agent = agents_service.get_one(
+                query=QuerySpec(
+                    where=AgentsClauseFactory.with_uuid(agent_uuid)
+                )
+            )
+            if agent and agent.rackcontroller_id is None:
+                agents_service.update_by_id(
+                    agent.id, AgentBuilder(rackcontroller_id=node.id)
+                )
+                maaslog.info(
+                    "Linked agent '%s' to rack controller '%s' (id: %s).",
+                    agent_uuid,
+                    node.hostname,
+                    node.id,
+                )
+            else:
+                maaslog.info(
+                    "Agent with UUID '%s' not found during registration.",
+                    agent_uuid,
+                )
+        except Exception as e:
+            maaslog.error(
+                "Failed to link agent '%s' to rack controller: %s",
+                agent_uuid,
+                str(e),
+            )
     return rackcontroller
 
 

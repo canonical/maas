@@ -704,8 +704,8 @@ class TestRackAgent(MAASTestCase):
 
         self.assertEqual(observed.maas_uuid, maas_uuid)
         self.assertEqual(observed.system_id, system_id)
-        self.assertEqual(observed.controllers, ["127.0.0.1", "127.0.0.2"])
-        self.assertEqual(observed.log_level, "info")
+        self.assertEqual(observed.controller, "https://127.0.0.1:5242")
+        self.assertEqual(observed.observability.logging.level, "info")
 
     @inlineCallbacks
     def test_maybeApplyConfiguration_only_restarts_when_new_config(self):

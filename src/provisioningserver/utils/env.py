@@ -95,6 +95,7 @@ class FileBackedValue:
 MAAS_ID = FileBackedValue("maas_id")
 MAAS_UUID = FileBackedValue("maas_uuid")
 MAAS_SHARED_SECRET = FileBackedValue("secret")
+MAAS_AGENT_UUID = FileBackedValue("agent_uuid")
 
 
 class GlobalValue:

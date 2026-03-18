@@ -3,7 +3,6 @@
 # Copyright 2023 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-export MAAS_AGENT_CONFIG="$SNAP_DATA/agent.yaml"
 export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
 export MAAS_DATA="$SNAP_COMMON/maas"
@@ -15,4 +14,4 @@ PERLVER=$(perl -MConfig -e 'printf("%d.%d", $Config{"PERL_REVISION"}, $Config{PE
 PERL5LIB="$SNAP/usr/share/perl5:$SNAP/usr/share/perl/${PERLVER}:$SNAP/usr/lib/$(uname -m)-linux-gnu/perl/${PERLVER}"
 
 export DQLITE_SOCKET="@snap.$SNAP_INSTANCE_NAME.dqlite"
-exec "$SNAP/usr/sbin/maas-agent"
+exec "$SNAP/usr/sbin/maas-agent" start --supervised

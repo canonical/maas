@@ -22,6 +22,16 @@ mkdir -p \
     "$SNAP_COMMON/maas/image-storage" \
     "$SNAP_COMMON/maas/tftp_root"
 
+# According to the official Snapcraft documentation, SNAP_COMMON is
+# intended for data shared across all revisions of a snap and
+# persists through refresh and rollback, while SNAP_DATA is
+# revision‑specific and may change with updates.
+# Therefore certificates or similarly long‑lived state should be
+# stored under $SNAP_COMMON while cache can reside under $SNAP_DATA.
+mkdir -p "$SNAP_DATA/var/cache/maas/httpproxy"
+mkdir -p "$SNAP_COMMON/var/lib/maas/certificates"
+mkdir -p "$SNAP_COMMON/etc/maas"
+
 # Always overwrite sample preseeds to ensure samples are up-to-date in case we
 # make changes that need to be reflected.
 declare -a PRESEEDS=(

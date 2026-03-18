@@ -74,7 +74,7 @@ func CachePath(path string) string {
 	path = filepath.Clean(path)
 
 	base := defaultCacheDir
-	if dataDir := os.Getenv("SNAP_COMMON"); dataDir != "" {
+	if dataDir := os.Getenv("SNAP_DATA"); dataDir != "" {
 		base = filepath.Join(filepath.Clean(dataDir), defaultCacheDir)
 	}
 

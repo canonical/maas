@@ -26,6 +26,7 @@ from twisted.internet.defer import (
 from twisted.internet.threads import deferToThread
 
 from provisioningserver.agent import config as agent_config
+from provisioningserver.certificates import get_maas_agent_cert_paths
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.ntp.config import configure_rack
@@ -343,27 +344,51 @@ class RackAgent(RackOnlyExternalService):
         d.addCallback(self._maybeApplyConfiguration)
         return d
 
-    def _getConfiguration(self) -> agent_config.Configuration:
+    def _getConfiguration(self) -> agent_config.AgentConfig:
         controllers = []
         with ClusterConfiguration.open() as config:
-            controllers = [urlparse(url).hostname for url in config.maas_url]
+            controllers = [
+                f"https://{urlparse(url).hostname}:5242"
+                for url in config.maas_url
+            ]
             debug_enabled = config.debug
             httpproxy_cache_size = config.httpproxy_cache_size
 
-        return agent_config.Configuration(
+        cert_file, key_file, ca_file = ("", "", "")
+
+        paths = get_maas_agent_cert_paths()
+        if paths is not None:
+            cert_file, key_file, ca_file = paths
+
+        return agent_config.AgentConfig(
             maas_uuid=MAAS_UUID.get(),
             system_id=MAAS_ID.get(),
-            secret=MAAS_SHARED_SECRET.get(),
-            controllers=controllers,
-            log_level="debug" if debug_enabled else "info",
-            httpproxy=agent_config.HTTPProxyConfiguration(
-                cache_size=httpproxy_cache_size,
-                cache_dir=get_maas_cache_path("httpproxy"),
+            controller=controllers[0],
+            temporal=agent_config.AgentTemporalConfig(
+                host=urlparse(controllers[0]).hostname,
+                port=5271,
+                encryption_key=MAAS_SHARED_SECRET.get(),
+            ),
+            services=agent_config.AgentServicesConfig(
+                http_proxy=agent_config.AgentHTTPProxyConfig(
+                    cache=agent_config.AgentHTTPProxyCacheConfig(
+                        size=httpproxy_cache_size,
+                        dir=get_maas_cache_path("httpproxy"),
+                    ),
+                ),
+            ),
+            observability=agent_config.AgentObservabilityConfig(
+                logging=agent_config.AgentLogConfig(
+                    "debug" if debug_enabled else "info",
+                ),
+            ),
+            tls=agent_config.AgentTLSConfig(
+                key_file=key_file, cert_file=cert_file, ca_file=ca_file
             ),
         )
 
     def _applyConfiguration(
-        self, configuration: agent_config.Configuration
+        self, configuration: agent_config.AgentConfig
     ) -> Deferred:
         """Configure the maas agent"""
         d = deferToThread(self._configure, configuration)
@@ -372,7 +397,7 @@ class RackAgent(RackOnlyExternalService):
         )
         return d
 
-    def _configure(self, configuration: agent_config.Configuration) -> None:
+    def _configure(self, configuration: agent_config.AgentConfig) -> None:
         agent_config.write_config(configuration)
 
 

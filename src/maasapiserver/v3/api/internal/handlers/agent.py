@@ -3,7 +3,7 @@
 
 import asyncio
 
-from fastapi import Depends, Request, Response
+from fastapi import Depends, Response
 from OpenSSL import crypto
 
 from maasapiserver.common.api.base import Handler, handler
@@ -192,7 +192,6 @@ class AgentHandler(Handler):
     )
     async def enroll_agent(
         self,
-        request: Request,
         agent_enroll_request: AgentEnrollRequest,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
