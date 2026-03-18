@@ -15,6 +15,18 @@ class JWTDecodeError(Exception):
     """Exception raised when JWT decoding or validation fails."""
 
 
+class JWTExpiredError(JWTDecodeError):
+    """Exception raised when a JWT token has expired."""
+
+
+class JWTInvalidError(JWTDecodeError):
+    """Exception raised when a JWT token is invalid."""
+
+
+class JWTAudienceError(JWTDecodeError):
+    """Exception raised when JWT audience validation fails."""
+
+
 def decode_unverified_jwt(
     token: str,
     check_expiration: bool = True,
@@ -55,13 +67,13 @@ def decode_unverified_jwt(
         # Validate expiration if requested
         if check_expiration and "exp" in claims:
             if time.time() > claims["exp"]:
-                raise JWTDecodeError("token is expired")
+                raise JWTExpiredError("token is expired")
 
         # Validate audience if requested
         if expected_audience is not None:
             aud = claims.get("aud")
             if aud != expected_audience:
-                raise JWTDecodeError(
+                raise JWTAudienceError(
                     f"invalid audience: expected {expected_audience}, got {aud}"
                 )
 
@@ -74,4 +86,4 @@ def decode_unverified_jwt(
         KeyError,
         AttributeError,
     ) as ex:
-        raise JWTDecodeError(f"invalid JWT: {str(ex)}") from ex
+        raise JWTInvalidError(f"invalid JWT: {str(ex)}") from ex
