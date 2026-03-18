@@ -67,7 +67,6 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         switch_ids = [
             await create_test_switch(fixture) for i in range(num_objects)
         ]
-        # Fetch actual Switch objects from database
         created_switches = [
             await repository_instance.get_by_id(switch_id)
             for switch_id in switch_ids
@@ -98,7 +97,6 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         repository_instance: SwitchesRepository,
         instance_builder: SwitchBuilder,
     ):
-        """Test creating a switch."""
         resource = await repository_instance.create(instance_builder)
         assert resource.id > 0
         assert resource.target_image_id is None
@@ -108,7 +106,6 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         repository_instance: SwitchesRepository,
         created_instance: Switch,
     ) -> None:
-        """Test updating a switch."""
         builder = SwitchBuilder(
             target_image_id=1,
         )
@@ -123,10 +120,8 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         repository_instance: SwitchesRepository,
         created_instance: Switch,
     ) -> None:
-        """Test deleting a switch."""
         await repository_instance.delete_by_id(created_instance.id)
 
-        # Verify it's deleted
         result = await repository_instance.get_by_id(created_instance.id)
         assert result is None
 
