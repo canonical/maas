@@ -12,7 +12,10 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
+from maasservicelayer.db.repositories.dnsresources import (
+    DNSResourceClauseFactory,
+    DNSResourceRepository,
+)
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
@@ -115,8 +118,8 @@ class StaticIPAddressService(
                 orphaned_ids
             )
             if to_delete_ids:
-                await self.dnsresource_repository.delete_many_by_ids(
-                    to_delete_ids
+                await self.dnsresource_repository.delete_many(
+                    QuerySpec(where=DNSResourceClauseFactory.with_ids(to_delete_ids))
                 )
 
     async def post_delete_hook(self, resource: StaticIPAddress) -> None:
