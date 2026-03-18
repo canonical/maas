@@ -119,7 +119,9 @@ class StaticIPAddressService(
             )
             if to_delete_ids:
                 await self.dnsresource_repository.delete_many(
-                    QuerySpec(where=DNSResourceClauseFactory.with_ids(to_delete_ids))
+                    QuerySpec(
+                        where=DNSResourceClauseFactory.with_ids(to_delete_ids)
+                    )
                 )
 
     async def post_delete_hook(self, resource: StaticIPAddress) -> None:
