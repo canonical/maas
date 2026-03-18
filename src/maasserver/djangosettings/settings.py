@@ -6,6 +6,7 @@
 import logging
 import os
 import pathlib
+import subprocess
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -20,33 +21,32 @@ from maasserver.vault import (
 from provisioningserver.utils.env import MAAS_ID
 
 
-def _read_timezone(tzfilename="/etc/timezone"):
-    """Read a file whose contents is a timezone configuration, and return
-    its contents (disregarding whitespace).
-    """
-    if os.path.isfile(tzfilename):
-        try:
-            with open(tzfilename, "rb") as tzfile:
-                return tzfile.read().decode("ascii").strip()
-        except OSError:
-            pass
-    return None
-
-
-def _get_local_timezone(tzfilename="/etc/timezone"):
+def _get_local_timezone():
     """Try to determine the local timezone, in the format of a zoneinfo
     file which must exist in /usr/share/zoneinfo. If a local time zone cannot
     be found, returns 'UTC'.
     """
-    tz = _read_timezone(tzfilename=tzfilename)
-    zoneinfo = os.path.join("usr", "share", "zoneinfo")
-    # If we grabbed a string from /etc/timezone, ensure it exists in the
-    # zoneinfo database before trusting it.
+    tz = None
+
+    # Try to get timezone from systemd (timedatectl)
+    try:
+        result = subprocess.run(
+            ["timedatectl", "show", "--property=Timezone", "--value"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            tz = result.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+
+    # Validate timezone exists in zoneinfo database
+    zoneinfo = os.path.join("/", "usr", "share", "zoneinfo")
     if tz is not None and os.path.isfile(os.path.join(zoneinfo, tz)):
         return tz
-    else:
-        # If this fails, just use 'UTC', which should always exist.
-        return "UTC"
+
+    return "UTC"
 
 
 def _get_default_db_config(config: RegionConfiguration) -> dict:
