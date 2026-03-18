@@ -4148,7 +4148,7 @@ class Node(CleanSave, TimestampedModel):
         if not self.architecture:
             return ("", "")
 
-        arch, _, subarch = str(self.architecture).partition("/")
+        arch, _, subarch = self.architecture.partition("/")
         return arch, subarch
 
     def mark_failed(

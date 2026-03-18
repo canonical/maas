@@ -597,7 +597,7 @@ class BootResource(CleanSave, TimestampedModel):
         return None
 
     def split_arch(self) -> tuple[str, str]:
-        arch, _, subarch = str(self.architecture).partition("/")
+        arch, _, subarch = self.architecture.partition("/")
         return arch, subarch
 
     def split_base_image(self) -> tuple[str, str]:
@@ -611,7 +611,7 @@ class BootResource(CleanSave, TimestampedModel):
                 cfg["commissioning_distro_series"],
             )
 
-        osys, _, distro_series = str(self.base_image).partition("/")
+        osys, _, distro_series = self.base_image.partition("/")
         return osys, distro_series
 
     def get_next_version_name(self):
