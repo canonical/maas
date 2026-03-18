@@ -10,6 +10,7 @@ from maasserver.models import Event
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.sqlalchemy import service_layer
 from maasserver.utils.signals import SignalsManager
+from maasservicelayer.services.usergroups import UserGroupNotFound
 
 signals = SignalsManager()
 
@@ -30,10 +31,14 @@ def post_created_user(sender, instance, created, **kwargs):
             instance.username not in SYSTEM_USERS
         ):  # Do not add system users to groups.
             # Guarantee backwards compatibility and assign users to pre-defined groups (users/administrators)
-            service_layer.services.usergroups.add_user_to_group(
-                instance.id,
-                "Administrators" if instance.is_superuser else "Users",
-            )
+            try:
+                service_layer.services.usergroups.add_user_to_group(
+                    instance.id,
+                    "Administrators" if instance.is_superuser else "Users",
+                )
+            # The user has deleted the default group, so we just skip adding the user to it.
+            except UserGroupNotFound:
+                pass
 
 
 def post_delete_user(sender, instance, **kwargs):

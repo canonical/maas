@@ -58,6 +58,27 @@ class TestPostSaveUserSignal(MAASServerTestCase):
         )
         self.assertEqual("member", openfga_tuple[2])
 
+    def test_save_ignores_deleted_default_groups(self):
+        service_layer.services.usergroups.delete_one(
+            QuerySpec(
+                where=UserGroupsClauseFactory.with_name("Administrators")
+            )
+        )
+        service_layer.services.usergroups.delete_one(
+            QuerySpec(where=UserGroupsClauseFactory.with_name("Users"))
+        )
+
+        user = self.user_factory()
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT object_type, object_id, relation FROM openfga.tuple WHERE _user = 'user:%s'",
+                [user.id],
+            )
+            openfga_tuple = cursor.fetchone()
+
+        self.assertIsNone(openfga_tuple)
+
 
 class TestPostSaveUserSystemUsersIgnoredSignal(MAASServerTestCase):
     scenarios = (

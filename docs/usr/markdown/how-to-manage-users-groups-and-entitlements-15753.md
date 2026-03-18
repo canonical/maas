@@ -21,7 +21,7 @@ MAAS creates two built-in groups:
 | **Administrators** | Full access to all resources. |
 | **Users** | Can view available machines, deploy them, and view global entities. |
 
-When you create a user through the `users` endpoint or the `createadmin` command, MAAS automatically assigns them to the appropriate default group: admins are added to *Administrators* and regular users to *Users*. You can modify or delete these default groups.
+When you create a user through the `users` endpoint or the `createadmin` command, MAAS automatically assigns them to the appropriate default group: admins are added to *Administrators* and regular users to *Users*. You can modify or delete these default groups. If you delete and recreate the default groups with the same name, MAAS will still automatically assign users to them based on their admin status.
 
 ## Entitlements and permissions
 
