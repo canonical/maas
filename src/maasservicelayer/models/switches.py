@@ -1,8 +1,6 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
-
 from maasservicelayer.models.base import (
     generate_builder,
     MaasTimestampedBaseModel,
@@ -16,4 +14,10 @@ class Switch(MaasTimestampedBaseModel):
     A switch is a network device provisioned by MAAS.
     """
 
-    target_image_id: Optional[int]
+    target_image_id: int | None
+
+
+class SwitchWithTargetImage(Switch):
+    """Model representing a network switch, with it's target image name."""
+
+    target_image: str | None

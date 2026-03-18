@@ -15,7 +15,8 @@ from maasservicelayer.exceptions.catalog import (
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import CONFLICT_VIOLATION_TYPE
-from maasservicelayer.models.switches import Switch
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.switches import Switch, SwitchWithTargetImage
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.bootresourcefiles import (
     BootResourceFilesService,
@@ -49,6 +50,16 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         self.boot_resources_service = boot_resources_service
         self.boot_resource_sets_service = boot_resource_sets_service
         self.boot_resource_files_service = boot_resource_files_service
+
+    async def get_one_with_target_image(
+        self, id: int
+    ) -> SwitchWithTargetImage | None:
+        return await self.repository.get_one_with_target_image(id)
+
+    async def get_with_target_image(
+        self, page: int, size: int
+    ) -> ListResult[SwitchWithTargetImage]:
+        return await self.repository.get_with_target_image(page, size)
 
     async def create_new_switch_and_interface(
         self,
