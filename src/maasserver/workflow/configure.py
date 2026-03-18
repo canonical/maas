@@ -140,6 +140,7 @@ class ConfigureAgentActivity(ActivityBase):
                         NodeTable.c.node_type
                         == NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                     ),
+                    StaticIPAddressTable.c.ip.isnot(None),
                 )
             )
             endpoints = (await tx.execute(stmt)).all()

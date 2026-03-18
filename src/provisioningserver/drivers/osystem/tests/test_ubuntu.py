@@ -67,6 +67,7 @@ class TestUbuntuOS(MAASTestCase):
             "focal",
             "jammy",
             "noble",
+            "resolute",
         ]
         with patch.object(
             ubuntu,
@@ -77,7 +78,7 @@ class TestUbuntuOS(MAASTestCase):
             releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
         self.assertSequenceEqual(
-            ["bionic", "focal", "jammy", "noble"], releases
+            ["bionic", "focal", "jammy", "noble", "resolute"], releases
         )
 
     def test_get_supported_commissioning_releases_excludes_non_lts(self):

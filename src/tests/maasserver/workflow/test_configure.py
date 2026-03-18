@@ -214,3 +214,29 @@ class TestConfigureAgentActivity:
         assert result == GetRegionControllerEndpointsResult(
             [endpoint1, endpoint2]
         )
+
+    async def test_get_region_controller_endpoints_with_blank(
+        self, db: Database, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture)
+        region_controller1 = await create_test_region_controller_entry(fixture)
+        region_controller2 = await create_test_region_controller_entry(fixture)
+        ip1 = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+
+        await create_test_interface_entry(
+            fixture, node=region_controller1, ips=[ip1]
+        )
+        await create_test_interface_entry(
+            fixture, node=region_controller2, ips=[]
+        )
+        configure_activities = ConfigureAgentActivity(
+            db, connection=db_connection
+        )
+
+        result = await configure_activities.get_region_controller_endpoints()
+
+        endpoint = f"http://{ip1['ip']}:5240/MAAS/"
+        if ip1["ip"].version == 6:
+            endpoint = f"http://[{ip1['ip']}]:5240/MAAS/"
+
+        assert result == GetRegionControllerEndpointsResult([endpoint])
