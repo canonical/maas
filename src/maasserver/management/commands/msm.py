@@ -16,7 +16,12 @@ import yaml
 
 from maascli.init import prompt_yes_no
 from maascommon.enums.msm import MSMStatusEnum
-from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
+from maascommon.utils.jwt import (
+    decode_unverified_jwt,
+    JWTAudienceError,
+    JWTExpiredError,
+    JWTInvalidError,
+)
 from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.sqlalchemy import service_layer
 
@@ -92,7 +97,11 @@ class Command(BaseCommandWithConnection):
             decoded = decode_unverified_jwt(
                 enrolment_token, check_expiration=True
             )
-        except JWTDecodeError as e:
+        except JWTExpiredError as e:
+            raise CommandError("Enrolment token is expired") from e
+        except JWTInvalidError as e:
+            raise CommandError("Invalid enrolment token format") from e
+        except JWTAudienceError as e:
             raise CommandError(f"Invalid enrolment token: {e}") from e
         base_url = decoded.get("service-url")
         if not base_url:
