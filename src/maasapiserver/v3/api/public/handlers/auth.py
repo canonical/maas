@@ -82,9 +82,15 @@ class AuthHandler(Handler):
     ) -> PreLoginInfoResponse:
         is_authenticated = authenticated_user is not None
         users_exist = await services.users.has_users()
+        legacy_external_auth_config = (
+            await services.external_auth.get_external_auth()
+        )
         return PreLoginInfoResponse(
             is_authenticated=is_authenticated,
             no_users=not users_exist,
+            external_legacy_login_url=legacy_external_auth_config.url
+            if legacy_external_auth_config
+            else None,
         )
 
     @handler(

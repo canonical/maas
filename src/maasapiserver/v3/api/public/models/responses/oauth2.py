@@ -31,6 +31,8 @@ class PreLoginInfoResponse(BaseModel):
     kind = "PreLoginInfo"
     is_authenticated: bool
     no_users: bool
+    # TODO: Delete this once we drop support for rbac/candid.
+    external_legacy_login_url: str | None = None
 
 
 class AuthInfoResponse(BaseModel):

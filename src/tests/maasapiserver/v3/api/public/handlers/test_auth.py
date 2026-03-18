@@ -130,6 +130,24 @@ class TestAuthApi:
         pre_login_info = PreLoginInfoResponse(**response.json())
         assert pre_login_info.is_authenticated is True
         assert pre_login_info.no_users is True
+        assert pre_login_info.external_legacy_login_url is None
+
+    async def test_get_with_external_legacy_auth(
+        self,
+        authenticated_admin_api_client_v3: AsyncClient,
+        enable_candid,
+    ) -> None:
+        response = await authenticated_admin_api_client_v3.get(
+            f"{self.BASE_PATH}/login"
+        )
+        assert response.status_code == 200
+        pre_login_info = PreLoginInfoResponse(**response.json())
+        assert pre_login_info.is_authenticated is True
+        assert pre_login_info.no_users is False
+        assert (
+            pre_login_info.external_legacy_login_url
+            == "http://candid.example.com"
+        )
 
     # POST /auth/login
     async def test_post(
