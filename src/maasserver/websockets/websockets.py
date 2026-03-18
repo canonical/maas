@@ -24,6 +24,7 @@ __all__ = [
 
 
 import base64
+from enum import IntEnum
 from hashlib import sha1
 from itertools import cycle
 from struct import pack, unpack
@@ -31,7 +32,6 @@ from typing import List, Sequence
 
 from twisted.internet.protocol import Protocol
 from twisted.protocols.tls import TLSMemoryBIOProtocol
-from twisted.python.constants import ValueConstant, Values
 from twisted.web.resource import IResource
 from twisted.web.server import NOT_DONE_YET
 from zope.interface import directlyProvides, implementer, Interface, providedBy
@@ -47,40 +47,44 @@ class _WSException(Exception):
     """
 
 
-class CONTROLS(Values):
+class CONTROLS(IntEnum):
     """
     Control frame specifiers.
 
-    @since: 13.2
     """
 
-    CONTINUE = ValueConstant(0)
-    TEXT = ValueConstant(1)
-    BINARY = ValueConstant(2)
-    CLOSE = ValueConstant(8)
-    PING = ValueConstant(9)
-    PONG = ValueConstant(10)
+    CONTINUE = 0
+    TEXT = 1
+    BINARY = 2
+    CLOSE = 8
+    PING = 9
+    PONG = 10
+
+    def __repr__(self):
+        return f"<CONTROLS={self.name}>"
 
 
-class STATUSES(Values):
+class STATUSES(IntEnum):
     """
     Closing status codes.
 
-    @since: 13.2
     """
 
-    NORMAL = ValueConstant(1000)
-    GOING_AWAY = ValueConstant(1001)
-    PROTOCOL_ERROR = ValueConstant(1002)
-    UNSUPPORTED_DATA = ValueConstant(1003)
-    NONE = ValueConstant(1005)
-    ABNORMAL_CLOSE = ValueConstant(1006)
-    INVALID_PAYLOAD = ValueConstant(1007)
-    POLICY_VIOLATION = ValueConstant(1008)
-    MESSAGE_TOO_BIG = ValueConstant(1009)
-    MISSING_EXTENSIONS = ValueConstant(1010)
-    INTERNAL_ERROR = ValueConstant(1011)
-    TLS_HANDSHAKE_FAILED = ValueConstant(1056)
+    NORMAL = 1000
+    GOING_AWAY = 1001
+    PROTOCOL_ERROR = 1002
+    UNSUPPORTED_DATA = 1003
+    NONE = 1005
+    ABNORMAL_CLOSE = 1006
+    INVALID_PAYLOAD = 1007
+    POLICY_VIOLATION = 1008
+    MESSAGE_TOO_BIG = 1009
+    MISSING_EXTENSIONS = 1010
+    INTERNAL_ERROR = 1011
+    TLS_HANDSHAKE_FAILED = 1056
+
+    def __repr__(self):
+        return f"<STATUSES={self.name}>"
 
 
 # The GUID for WebSockets, from RFC 6455.
@@ -201,7 +205,7 @@ def _parseFrames(frameBuffer: List[bytes], needMask: bool = True):
         # care about.
         opcode = header & 0xF
         try:
-            opcode = CONTROLS.lookupByValue(opcode)
+            opcode = CONTROLS(opcode)
         except ValueError:
             raise _WSException("Unknown opcode %d in frame" % opcode)  # noqa: B904
 
@@ -258,7 +262,7 @@ def _parseFrames(frameBuffer: List[bytes], needMask: bool = True):
         if opcode == CONTROLS.CLOSE:
             if len(data) >= 2:
                 # Gotta unpack the opcode and return usable data here.
-                code = STATUSES.lookupByValue(unpack(">H", data[:2])[0])
+                code = STATUSES(unpack(">H", data[:2])[0])
                 data = code, data[2:]
             else:
                 # No reason given; use generic data.
