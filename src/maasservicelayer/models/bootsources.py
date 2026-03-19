@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import dataclasses
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -20,8 +19,8 @@ from maasservicelayer.simplestreams.models import (
 @generate_builder()
 class BootSource(MaasTimestampedBaseModel):
     url: str
-    keyring_filename: Optional[str] = None
-    keyring_data: Optional[bytes] = None
+    keyring_filename: str | None = None
+    keyring_data: bytes | None = None
     priority: int
     skip_keyring_verification: bool
 

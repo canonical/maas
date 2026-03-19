@@ -55,14 +55,12 @@ class PermissionResourcesMapping(BaseModel):
     """
 
     permission: RbacPermission
-    resources: Optional[list[int]] = None
+    resources: list[int] | None = None
     access_all: bool = False
 
     @field_validator("resources", mode="before")
     @classmethod
-    def preprocess_resources(
-        cls, data: Optional[list[str]]
-    ) -> Optional[list[int]]:
+    def preprocess_resources(cls, data: list[str] | None) -> list[int] | None:
         if data == [""] or data is None:
             return None
         return [int(id) for id in data]

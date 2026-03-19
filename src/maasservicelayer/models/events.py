@@ -3,7 +3,6 @@
 
 from enum import IntEnum
 import logging
-from typing import Optional
 
 from pydantic import IPvAnyAddress
 
@@ -38,12 +37,12 @@ class EventType(MaasTimestampedBaseModel):
 @generate_builder()
 class Event(MaasTimestampedBaseModel):
     type: EventType
-    node_id: Optional[int] = None
-    node_system_id: Optional[str] = None
+    node_id: int | None = None
+    node_system_id: str | None = None
     node_hostname: str
-    user_id: Optional[int] = None
+    user_id: int | None = None
     owner: str
-    ip_address: Optional[IPvAnyAddress] = None
+    ip_address: IPvAnyAddress | None = None
     endpoint: EndpointChoicesEnum
     user_agent: str
     description: str
