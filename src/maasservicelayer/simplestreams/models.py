@@ -47,6 +47,7 @@ from pydantic import (
 )
 
 VersionT = TypeVar("VersionT", bound="Version")
+ProductT = TypeVar("ProductT", bound="Product")
 
 
 def updated_validator(v: str | datetime) -> datetime:
@@ -128,7 +129,7 @@ class BootloaderFile(DownloadableFile):
 
 
 class ImageFile(DownloadableFile):
-    kpackage: str | None
+    kpackage: str | None = None
 
 
 class Version(BaseModel, metaclass=ABCMeta):
@@ -162,12 +163,29 @@ class Version(BaseModel, metaclass=ABCMeta):
 
 class BootloaderVersion(Version):
     grub2_signed: BootloaderFile | None = Field(
-        None,
-        alias="grub2-signed",
+        default=None, alias="grub2-signed"
     )
-    shim_signed: BootloaderFile | None = Field(None, alias="shim-signed")
-    grub2: BootloaderFile | None
-    syslinux: BootloaderFile | None
+    shim_signed: BootloaderFile | None = Field(
+        default=None, alias="shim-signed"
+    )
+    grub2: BootloaderFile | None = Field(default=None)
+    syslinux: BootloaderFile | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def at_least_one_file_present(self) -> "BootloaderVersion":
+        """Ensure at least one bootloader file is present."""
+        if not any(
+            [
+                self.grub2_signed,
+                self.shim_signed,
+                self.grub2,
+                self.syslinux,
+            ]
+        ):
+            raise ValueError(
+                "At least one of grub2_signed, shim_signed, grub2, or syslinux must be provided"
+            )
+        return self
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
@@ -186,10 +204,7 @@ class MultiFileImageVersion(Version):
     boot_initrd: ImageFile = Field(..., alias="boot-initrd")
     boot_kernel: ImageFile = Field(..., alias="boot-kernel")
     manifest: ImageFile
-    root_image_gz: ImageFile | None = Field(
-        None,
-        alias="root-image.gz",
-    )
+    root_image_gz: ImageFile | None = Field(None, alias="root-image.gz")
     squashfs: ImageFile | None
 
     @field_validator("support_eol", "support_esm_eol", mode="before")
@@ -275,10 +290,7 @@ class Product(BaseModel, Generic[VersionT], metaclass=ABCMeta):
 
 class BootloaderProduct(Product[BootloaderVersion]):
     arches: str
-    bootloader_type: str = Field(
-        ...,
-        alias="bootloader-type",
-    )
+    bootloader_type: str = Field(..., alias="bootloader-type")
 
     @override
     @staticmethod
@@ -324,14 +336,16 @@ class SingleFileProduct(ImageProduct[SingleFileImageVersion]):
         return SingleFileImageVersion
 
 
-class SimpleStreamsProductList(BaseModel, metaclass=ABCMeta):
+class SimpleStreamsProductList(
+    BaseModel, Generic[ProductT], metaclass=ABCMeta
+):
     model_config = ConfigDict(validate_by_alias=True, serialize_by_alias=True)
 
     content_id: str
     datatype: Datatype
     format: str = "products:1.0"
     updated: datetime
-    products: list[Product]
+    products: list[ProductT]
 
     @field_validator("updated", mode="before")
     @classmethod
@@ -368,21 +382,27 @@ class SimpleStreamsProductList(BaseModel, metaclass=ABCMeta):
         return v
 
 
-class SimpleStreamsBootloaderProductList(SimpleStreamsProductList):
+class SimpleStreamsBootloaderProductList(
+    SimpleStreamsProductList[BootloaderProduct]
+):
     @override
     @staticmethod
     def product_class() -> type[Product]:
         return BootloaderProduct
 
 
-class SimpleStreamsMultiFileProductList(SimpleStreamsProductList):
+class SimpleStreamsMultiFileProductList(
+    SimpleStreamsProductList[MultiFileProduct]
+):
     @override
     @staticmethod
     def product_class() -> type[Product]:
         return MultiFileProduct
 
 
-class SimpleStreamsSingleFileProductList(SimpleStreamsProductList):
+class SimpleStreamsSingleFileProductList(
+    SimpleStreamsProductList[SingleFileProduct]
+):
     @override
     @staticmethod
     def product_class() -> type[Product]:

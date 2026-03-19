@@ -256,7 +256,7 @@ class TestBootResourceService:
                 BootResourceSet(
                     id=i,
                     resource_id=i,
-                    version=random.randint(20200618, 20250827),
+                    version=str(random.randint(20200618, 20250827)),
                     label=factory.make_name(),
                 )
             )
@@ -322,7 +322,7 @@ class TestBootResourceService:
                 BootResourceSet(
                     id=i,
                     resource_id=i,
-                    version=random.randint(20200618, 20250827),
+                    version=str(random.randint(20200618, 20250827)),
                     label=factory.make_name(),
                 )
             )
@@ -375,7 +375,7 @@ class TestBootResourceService:
                     BootResourceSet(
                         id=i,
                         resource_id=i,
-                        version=random.randint(20200618, 20250827),
+                        version=str(random.randint(20200618, 20250827)),
                         label=factory.make_name(),
                     )
                 )

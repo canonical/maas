@@ -84,6 +84,39 @@ from provisioningserver.utils.env import MAAS_ID
 logger = structlog.get_logger()
 
 
+async def get_boot_resource_create_request(
+    name: Annotated[str, Header(description="Name of the boot resource.")],
+    sha256: Annotated[
+        str, Header(description="The `sha256` hash of the resource.")
+    ],
+    architecture: Annotated[
+        str, Header(description="Architecture the boot resource supports.")
+    ],
+    file_type: Annotated[
+        BootResourceFileTypeChoice,
+        Header(description="Filetype for uploaded content."),
+    ] = BootResourceFileTypeChoice.TGZ,
+    title: Annotated[
+        str | None, Header(description="Title for the boot resource.")
+    ] = None,
+    base_image: Annotated[
+        str | None,
+        Header(
+            description="The Base OS image a custom image is built on top of. Only required for images of type 'custom'."
+        ),
+    ] = None,
+) -> BootResourceCreateRequest:
+    """Extract headers and create BootResourceCreateRequest instance."""
+    return BootResourceCreateRequest(
+        name=name,
+        sha256=sha256,
+        architecture=architecture,
+        file_type=file_type,
+        title=title,
+        base_image=base_image,
+    )
+
+
 class CustomImagesHandler(Handler):
     """CustomImages API handler."""
 
@@ -152,7 +185,9 @@ class CustomImagesHandler(Handler):
     )
     async def upload_custom_image(
         self,
-        create_request: Annotated[BootResourceCreateRequest, Depends()],
+        create_request: Annotated[
+            BootResourceCreateRequest, Depends(get_boot_resource_create_request)
+        ],
         request: Request,
         response: Response,
         services: Annotated[ServiceCollectionV3, Depends(services)],
