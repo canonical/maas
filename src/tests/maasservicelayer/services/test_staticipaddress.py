@@ -15,7 +15,6 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
@@ -24,6 +23,7 @@ from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
@@ -45,7 +45,7 @@ class TestCommonStaticIPAddressService(ServiceCommonTests):
         return StaticIPAddressService(
             context=Context(),
             temporal_service=Mock(TemporalService),
-            dnsresource_repository=Mock(DNSResourceRepository),
+            dnsresources_service=Mock(DNSResourcesService),
             staticipaddress_repository=Mock(StaticIPAddressRepository),
         )
 
@@ -112,7 +112,7 @@ class TestStaticIPAddressService:
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
             temporal_service=mock_temporal,
-            dnsresource_repository=Mock(DNSResourceRepository),
+            dnsresources_service=Mock(DNSResourcesService),
             staticipaddress_repository=repository_mock,
         )
 
@@ -159,7 +159,7 @@ class TestStaticIPAddressService:
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
             temporal_service=mock_temporal,
-            dnsresource_repository=Mock(DNSResourceRepository),
+            dnsresources_service=Mock(DNSResourcesService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -201,7 +201,7 @@ class TestStaticIPAddressService:
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
             temporal_service=mock_temporal,
-            dnsresource_repository=Mock(DNSResourceRepository),
+            dnsresources_service=Mock(DNSResourcesService),
             staticipaddress_repository=repository_mock,
         )
 
@@ -245,7 +245,7 @@ class TestStaticIPAddressService:
 
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
-            dnsresource_repository=Mock(DNSResourceRepository),
+            dnsresources_service=Mock(DNSResourcesService),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
         )
@@ -302,7 +302,7 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
-            dnsresource_repository=Mock(DNSResourceRepository),
+            dnsresources_service=Mock(DNSResourcesService),
             context=Context(),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
@@ -362,7 +362,7 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
-            dnsresource_repository=Mock(DNSResourceRepository),
+            dnsresources_service=Mock(DNSResourcesService),
             context=Context(),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
@@ -408,15 +408,15 @@ class TestStaticIPAddressService:
         mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
         mock_staticipaddress_repository.get_by_id.return_value = sip
         mock_staticipaddress_repository.delete_by_id.return_value = sip
-        mock_dnsresource_repository = Mock(DNSResourceRepository)
-        mock_dnsresource_repository.get_dnsresources_for_ip.return_value = []
+        mock_dnsresources_service = Mock(DNSResourcesService)
+        mock_dnsresources_service.get_dnsresources_for_ip.return_value = []
 
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
             temporal_service=mock_temporal,
-            dnsresource_repository=mock_dnsresource_repository,
+            dnsresources_service=mock_dnsresources_service,
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -430,7 +430,7 @@ class TestStaticIPAddressService:
         mock_staticipaddress_repository.unlink_from_interfaces.assert_called_once_with(
             staticipaddress_id=sip.id
         )
-        mock_dnsresource_repository.unlink_ip_from_all_dnsresources.assert_called_once_with(
+        mock_dnsresources_service.unlink_ip_from_all_dnsresources.assert_called_once_with(
             staticipaddress_id=sip.id
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
