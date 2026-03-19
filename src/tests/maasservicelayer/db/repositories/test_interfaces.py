@@ -250,9 +250,8 @@ class TestInterfaceRepository:
         ) -> None:
             interface_response = next(
                 filter(
-                    lambda interface_response: (
-                        interface.id == interface_response.id
-                    ),
+                    lambda interface_response: interface.id
+                    == interface_response.id,
                     interfaces_response.items,
                 )
             )
