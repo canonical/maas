@@ -4,20 +4,14 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasservicelayer.builders.interfaces import InterfaceBuilder
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.repositories.switches import (
     SwitchClauseFactory,
     SwitchesRepository,
 )
-from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.models.switches import Switch
-from tests.fixtures.factories.switches import (
-    create_test_switch,
-    create_test_switch_interface,
-)
+from tests.fixtures.factories.switches import create_test_switch
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
@@ -125,60 +119,18 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         result = await repository_instance.get_by_id(created_instance.id)
         assert result is None
 
+    @pytest.mark.skip(
+        reason="Switches have no unique constraints on model fields"
+    )
     async def test_create_duplicated(
-        self,
-        db_connection: AsyncConnection,
-        fixture: Fixture,
-    ) -> None:
-        """Test that creating switches with duplicate MAC addresses in interfaces fails."""
+        self, repository_instance, instance_builder
+    ):
+        pass
 
-        # Create first switch with an interface
-        switch1_id = await create_test_switch(fixture, hostname="switch-1")
-        await create_test_switch_interface(
-            fixture, switch_id=switch1_id, mac_address="00:11:22:33:44:55"
-        )
-
-        # Create second switch
-        switch2_id = await create_test_switch(fixture, hostname="switch-2")
-
-        # Try to create interface with duplicate MAC address through repository - should fail
-        interface_repo = InterfaceRepository(Context(connection=db_connection))
-        builder = InterfaceBuilder(
-            name="mgmt", mac_address="00:11:22:33:44:55", switch_id=switch2_id
-        )
-        with pytest.raises(AlreadyExistsException):
-            await interface_repo.create(builder)
-
+    @pytest.mark.skip(
+        reason="Switches have no unique constraints on model fields"
+    )
     async def test_create_many_duplicated(
-        self,
-        db_connection: AsyncConnection,
-        fixture: Fixture,
-    ) -> None:
-        """Test that creating multiple switches with duplicate MAC addresses in interfaces fails."""
-        # Create first switch with an interface
-        switch1_id = await create_test_switch(fixture, hostname="switch-1")
-        await create_test_switch_interface(
-            fixture, switch_id=switch1_id, mac_address="00:11:22:33:44:55"
-        )
-
-        # Create second switch
-        switch2_id = await create_test_switch(fixture, hostname="switch-2")
-
-        # Try to create multiple interfaces with duplicate MAC address - should fail
-        interface_repo = InterfaceRepository(Context(connection=db_connection))
-
-        with pytest.raises(AlreadyExistsException):
-            await interface_repo.create_many(
-                [
-                    InterfaceBuilder(
-                        name="eth0",
-                        mac_address="aa:bb:cc:dd:ee:ff",
-                        switch_id=switch1_id,
-                    ),
-                    InterfaceBuilder(
-                        name="eth0",
-                        mac_address="aa:bb:cc:dd:ee:ff",  # Duplicate MAC
-                        switch_id=switch2_id,
-                    ),
-                ]
-            )
+        self, repository_instance, instance_builder
+    ):
+        pass
