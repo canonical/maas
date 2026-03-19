@@ -511,10 +511,22 @@ class ServiceCollectionV3:
             machines_repository=MachinesRepository(context),
         )
         services.machines_v2 = MachinesV2Service(context=context)
+        services.domains = DomainsService(
+            context=context,
+            configurations_service=services.configurations,
+            dnspublications_service=services.dnspublications,
+            domains_repository=DomainsRepository(context),
+        )
+        services.dnsresources = DNSResourcesService(
+            context=context,
+            domains_service=services.domains,
+            dnspublications_service=services.dnspublications,
+            dnsresource_repository=DNSResourceRepository(context),
+        )
         services.staticipaddress = StaticIPAddressService(
             context=context,
             temporal_service=services.temporal,
-            dnsresource_repository=DNSResourceRepository(context),
+            dnsresources_service=services.dnsresources,
             staticipaddress_repository=StaticIPAddressRepository(context),
         )
         services.dhcpsnippets = DhcpSnippetsService(
@@ -570,19 +582,6 @@ class ServiceCollectionV3:
             consumers_service=services.consumers,
             tokens_service=services.tokens,
             openfga_tuple_service=services.openfga_tuples,
-        )
-        services.domains = DomainsService(
-            context=context,
-            configurations_service=services.configurations,
-            dnspublications_service=services.dnspublications,
-            users_service=services.users,
-            domains_repository=DomainsRepository(context),
-        )
-        services.dnsresources = DNSResourcesService(
-            context=context,
-            domains_service=services.domains,
-            dnspublications_service=services.dnspublications,
-            dnsresource_repository=DNSResourceRepository(context),
         )
         services.interfaces = InterfacesService(
             context=context,

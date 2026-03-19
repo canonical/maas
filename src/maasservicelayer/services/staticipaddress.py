@@ -14,7 +14,6 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.dnsresources import (
     DNSResourceClauseFactory,
-    DNSResourceRepository,
 )
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
@@ -23,6 +22,7 @@ from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.temporal import TemporalService
 
 
@@ -35,12 +35,12 @@ class StaticIPAddressService(
         self,
         context: Context,
         temporal_service: TemporalService,
-        dnsresource_repository: DNSResourceRepository,
+        dnsresources_service: DNSResourcesService,
         staticipaddress_repository: StaticIPAddressRepository,
     ):
         super().__init__(context, staticipaddress_repository)
         self.temporal_service = temporal_service
-        self.dnsresource_repository = dnsresource_repository
+        self.dnsresources_service = dnsresources_service
 
     async def post_create_hook(self, resource: StaticIPAddress) -> None:
         if resource.alloc_type != IpAddressType.DISCOVERED:
@@ -90,7 +90,7 @@ class StaticIPAddressService(
         # This mimics Django signal behavior from:
         # src/maasserver/models/signals/staticipaddress.py:pre_delete_record_relations_on_delete
         dnsresources_to_cleanup = (
-            await self.dnsresource_repository.get_dnsresources_for_ip(
+            await self.dnsresources_service.get_dnsresources_for_ip(
                 resource_to_be_deleted
             )
         )
@@ -99,7 +99,7 @@ class StaticIPAddressService(
         await self.repository.unlink_from_interfaces(
             staticipaddress_id=resource_to_be_deleted.id
         )
-        await self.dnsresource_repository.unlink_ip_from_all_dnsresources(
+        await self.dnsresources_service.unlink_ip_from_all_dnsresources(
             staticipaddress_id=resource_to_be_deleted.id
         )
 
@@ -108,17 +108,17 @@ class StaticIPAddressService(
 
         dnsresource_ids = [dnsrr.id for dnsrr in dnsresources_to_cleanup]
         orphaned_ids = (
-            await self.dnsresource_repository.get_dnsresources_without_ips(
+            await self.dnsresources_service.get_dnsresources_without_ips(
                 dnsresource_ids
             )
         )
 
         if orphaned_ids:
-            to_delete_ids = await self.dnsresource_repository.get_dnsresources_without_dnsdata(
+            to_delete_ids = await self.dnsresources_service.get_dnsresources_without_dnsdata(
                 orphaned_ids
             )
             if to_delete_ids:
-                await self.dnsresource_repository.delete_many(
+                await self.dnsresources_service.delete_many(
                     QuerySpec(
                         where=DNSResourceClauseFactory.with_ids(to_delete_ids)
                     )
