@@ -11,8 +11,8 @@ from maasservicelayer.auth.macaroons.models.base import Resource
 
 
 class UpdateResourcesRequest(BaseModel):
-    updates: Optional[Sequence[Resource]]
-    removals: Optional[Sequence[int]]
-    last_sync_id: Optional[str] = Field(
+    updates: Sequence[Resource] | None
+    removals: Sequence[int] | None
+    last_sync_id: str | None = Field(
         serialization_alias="last-sync-id", default=None
     )

@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import re
-from typing import Optional
 
 from pydantic import field_validator
 
@@ -21,16 +20,16 @@ DEVICE_ID_REGEX = re.compile(r"^[\da-f]{4}$", re.I)
 @generate_builder()
 class Machine(Node):
     description: str
-    owner: Optional[str] = None
+    owner: str | None = None
     cpu_speed: int
     memory: int
     osystem: str
-    architecture: Optional[str] = None
+    architecture: str | None = None
     distro_series: str
-    hwe_kernel: Optional[str] = None
+    hwe_kernel: str | None = None
     locked: bool
     cpu_count: int
-    power_type: Optional[PowerTypeEnum] = None
+    power_type: PowerTypeEnum | None = None
     fqdn: str
 
 
@@ -44,8 +43,8 @@ class HardwareDevice(MaasTimestampedBaseModel):
     bus_number: int
     device_number: int
     # numa_node_id: int
-    # physical_interface_id: Optional[int]
-    # physical_blockdevice_id: Optional[int]
+    # physical_interface_id: int | None
+    # physical_blockdevice_id: int | None
     # node_config_id: int
 
     @field_validator("vendor_id", "product_id", mode="after")

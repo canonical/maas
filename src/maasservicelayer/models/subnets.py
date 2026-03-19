@@ -1,7 +1,6 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
 
 from pydantic import IPvAnyAddress
 
@@ -15,12 +14,12 @@ from maasservicelayer.models.fields import IPv4v6Network
 
 @generate_builder()
 class Subnet(MaasTimestampedBaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
     cidr: IPv4v6Network
     rdns_mode: RdnsMode
-    gateway_ip: Optional[IPvAnyAddress] = None
-    dns_servers: Optional[list[str]] = None
+    gateway_ip: IPvAnyAddress | None = None
+    dns_servers: list[str] | None = None
     allow_dns: bool
     allow_proxy: bool
     active_discovery: bool
