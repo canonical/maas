@@ -212,7 +212,7 @@ class Action(Command):
         that will return an open file handle when called. The file will
         be opened in binary mode for reading only.
         """
-        parts = re.split(r"(=|@=)", string, 1)  # noqa: B034
+        parts = re.split(r"(=|@=)", string, maxsplit=1)  # noqa: B034
         if len(parts) == 3:
             name, what, value = parts
             if what == "=":
