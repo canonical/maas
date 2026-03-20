@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -20,6 +20,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -27,21 +28,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"maas.io/core/src/maasagent/internal/logger"
+	"maas.io/core/src/maasagent/internal/urltracker"
 )
 
 type contextKey string
 
 const (
-	targetURLKey contextKey = "targetURL"
+	targetURLKey           contextKey = "targetURL"
+	maxConsecutiveFailures int        = 5
 )
 
 // Proxy is a caching reverse HTTP proxy that sends request to a target.
 type Proxy struct {
+	logger     *slog.Logger
 	revproxy   *httputil.ReverseProxy
 	rewriter   *Rewriter
 	cacher     *Cacher
-	urlTracker *URLTracker
+	urlTracker *urltracker.URLTracker
 	// Client for making requests in error handler retries
 	httpClient *http.Client
 	targets    []*url.URL
@@ -56,12 +60,15 @@ func NewProxy(targets []*url.URL, options ...ProxyOption) (*Proxy, error) {
 	// Initialize using single target, but then pick a random one in Rewrite.
 	revproxy := httputil.NewSingleHostReverseProxy(targets[0])
 
-	tracker, err := NewURLTracker(targets)
+	tracker, err := urltracker.New(targets,
+		urltracker.WithMaxConsecutiveFailures(maxConsecutiveFailures),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	p := Proxy{
+		logger:     logger.Noop(),
 		revproxy:   revproxy,
 		targets:    targets,
 		urlTracker: tracker,
@@ -94,6 +101,15 @@ func WithRewriter(r *Rewriter) ProxyOption {
 func WithCacher(c *Cacher) ProxyOption {
 	return func(p *Proxy) {
 		p.cacher = c
+	}
+}
+
+// WithLogger allows setting custom logger. By default logger is no-op.
+func WithLogger(l *slog.Logger) ProxyOption {
+	return func(p *Proxy) {
+		if l != nil {
+			p.logger = l
+		}
 	}
 }
 
@@ -151,7 +167,10 @@ func (p *Proxy) getFromCache(w http.ResponseWriter, r *http.Request) bool {
 
 		info, err = f.Stat()
 		if err != nil {
-			log.Err(err).Send()
+			p.logger.Error("Cannot stat cached file",
+				slog.Any("error", err),
+				slog.String("key", key))
+
 			return false
 		}
 
@@ -209,11 +228,13 @@ func (p *Proxy) modifyResponse() func(*http.Response) error {
 			// from the upstream.
 			err := p.cacher.cache.Set(key, pr, resp.ContentLength)
 			if err != nil {
-				log.Warn().Err(err).Msg("Failed to cache value")
+				p.logger.Warn("Failed to cache value",
+					slog.Any("error", err))
 				// XXX: can we do anything with this error?
 				_, err := io.Copy(io.Discard, pr)
 				if err != nil {
-					log.Warn().Err(err).Msg("Failed to discard io.Pipe")
+					p.logger.Warn("Failed to discard io.Pipe",
+						slog.Any("error", err))
 				}
 			}
 		}()
@@ -307,11 +328,13 @@ func (p *Proxy) errorHandler() func(http.ResponseWriter, *http.Request, error) {
 		w.WriteHeader(resp.StatusCode)
 
 		if _, err := io.Copy(w, resp.Body); err != nil {
-			log.Warn().Err(err).Msg("Error copying response body")
+			p.logger.Warn("Error copying response body",
+				slog.Any("error", err))
 		}
 
 		if err := resp.Body.Close(); err != nil {
-			log.Warn().Err(err).Msg("Error closing response body")
+			p.logger.Warn("Error closing response body",
+				slog.Any("error", err))
 		}
 	}
 
@@ -320,11 +343,10 @@ func (p *Proxy) errorHandler() func(http.ResponseWriter, *http.Request, error) {
 		failedTarget, ok := r.Context().Value(targetURLKey).(*url.URL)
 		if ok && failedTarget != nil {
 			p.urlTracker.RecordFailure(failedTarget)
-			log.Warn().
-				Err(err).
-				Str("target", failedTarget.String()).
-				Str("path", r.URL.Path).
-				Msg("Request to target failed")
+			p.logger.Warn("Request to target failed",
+				slog.Any("error", err),
+				slog.String("target", failedTarget.String()),
+				slog.String("path", r.URL.Path))
 		}
 
 		// Keep track of tried URLs
@@ -340,7 +362,7 @@ func (p *Proxy) errorHandler() func(http.ResponseWriter, *http.Request, error) {
 			// Select a new target URL that hasn't been tried yet
 			newTarget := p.urlTracker.SelectURL(triedURLs)
 			if newTarget == nil {
-				log.Warn().Msg("No more target URLs available for retry. Failing request.")
+				p.logger.Warn("No more target URLs available for retry. Failing request.")
 
 				http.Error(w, http.StatusText(http.StatusServiceUnavailable), lastStatusCode)
 
@@ -361,31 +383,28 @@ func (p *Proxy) errorHandler() func(http.ResponseWriter, *http.Request, error) {
 			ctx := context.WithValue(proxyReq.Context(), targetURLKey, newTarget)
 			proxyReq = proxyReq.WithContext(ctx)
 
-			log.Info().
-				Str("target", newTarget.String()).
-				Str("path", r.URL.Path).
-				Msg("Retrying request with alternative target")
+			p.logger.Info("Retrying request with alternative target",
+				slog.String("target", newTarget.String()),
+				slog.String("path", r.URL.Path))
 
 			resp, retryErr := p.httpClient.Do(proxyReq)
 			if retryErr == nil {
 				// Check if response is successful (2xx status code)
 				if isSuccess(resp.StatusCode) {
 					p.urlTracker.RecordSuccess(newTarget)
-					log.Info().
-						Str("target", newTarget.String()).
-						Str("path", r.URL.Path).
-						Int("status", resp.StatusCode).
-						Msg("Request succeeded with alternative target")
+					p.logger.Info("Request succeeded with alternative target",
+						slog.String("target", newTarget.String()),
+						slog.String("path", r.URL.Path),
+						slog.Int("status", resp.StatusCode))
 
 					writeResponse(w, resp)
 
 					return
 				} else if resp.StatusCode == http.StatusNotFound {
-					log.Debug().
-						Str("target", newTarget.String()).
-						Str("path", r.URL.Path).
-						Int("status", resp.StatusCode).
-						Msg("Received 404 from target, not retrying")
+					p.logger.Debug("Received 404 from target, not retrying",
+						slog.String("target", newTarget.String()),
+						slog.String("path", r.URL.Path),
+						slog.Int("status", resp.StatusCode))
 
 					writeResponse(w, resp)
 
@@ -396,11 +415,10 @@ func (p *Proxy) errorHandler() func(http.ResponseWriter, *http.Request, error) {
 			}
 			// Network error and non-2xx status codes are treated as failures. Will try with another target in the next iteration.
 			p.urlTracker.RecordFailure(newTarget)
-			log.Warn().
-				Err(retryErr).
-				Str("target", newTarget.String()).
-				Str("path", r.URL.Path).
-				Msg("Retry with alternative target failed")
+			p.logger.Warn("Retry with alternative target failed",
+				slog.Any("error", retryErr),
+				slog.String("target", newTarget.String()),
+				slog.String("path", r.URL.Path))
 		}
 	}
 }

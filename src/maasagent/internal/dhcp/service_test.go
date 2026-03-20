@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -37,19 +37,19 @@ import (
 	"github.com/canonical/microcluster/v2/microcluster"
 	"github.com/canonical/microcluster/v2/state"
 	"github.com/insomniacslk/dhcp/dhcpv4"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.temporal.io/sdk/activity"
+	tlog "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/testsuite"
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/apiclient"
 	"maas.io/core/src/maasagent/internal/cluster"
 	"maas.io/core/src/maasagent/internal/dhcpd"
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
+	"maas.io/core/src/maasagent/internal/logger"
 	"maas.io/core/src/maasagent/internal/servicecontroller"
-	"maas.io/core/src/maasagent/internal/workflow/log"
 )
 
 func MockConfigureDHCPForAgent(ctx tworkflow.Context, args map[string]any) error {
@@ -110,8 +110,7 @@ type DHCPServiceTestSuite struct {
 }
 
 func (s *DHCPServiceTestSuite) SetupTest() {
-	logger := log.NewZerologAdapter(zerolog.Nop())
-	s.SetLogger(logger)
+	s.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
 
 	s.workflowEnv = s.NewTestWorkflowEnvironment()
 	s.activityEnv = s.NewTestActivityEnvironment()
@@ -1271,6 +1270,8 @@ func TestConfigureDQLite(t *testing.T) {
 			require.NoError(t, err)
 
 			wfTestSuite := &testsuite.WorkflowTestSuite{}
+			wfTestSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 			env := wfTestSuite.NewTestActivityEnvironment()
 
 			_, err = env.ExecuteLocalActivity(dhcpService.configureDQLite, tc.in)

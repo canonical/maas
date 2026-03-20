@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,8 +17,6 @@ package resolver
 
 import (
 	"context"
-	"flag"
-	"io"
 	"net"
 	"net/netip"
 	"os"
@@ -27,8 +25,6 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -123,17 +119,6 @@ func (n noopCache) Get(_ string, _ uint16) (dns.RR, bool) {
 }
 
 func (n noopCache) Set(_ dns.RR) {}
-
-func TestMain(m *testing.M) {
-	flag.Parse()
-
-	if !testing.Verbose() {
-		zerolog.SetGlobalLevel(zerolog.Disabled)
-		log.Logger = zerolog.New(io.Discard)
-	}
-
-	os.Exit(m.Run())
-}
 
 func TestParseResolvConf(t *testing.T) {
 	testcases := map[string]struct {

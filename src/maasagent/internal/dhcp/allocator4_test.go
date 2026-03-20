@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -28,6 +28,7 @@ import (
 	"github.com/insomniacslk/dhcp/iana"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"maas.io/core/src/maasagent/internal/logger"
 	testdb "maas.io/core/src/maasagent/internal/testing/db"
 )
 
@@ -230,7 +231,7 @@ func TestAllocator4GetOfferFromDiscover(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			offer, err := allocator.GetOfferFromDiscover(ctx, tx, &tc.in, 1, testMAC)
@@ -337,7 +338,7 @@ func TestGetVLANForAllocation(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			vlan, err := allocator.getVLANForAllocation(ctx, tx, tc.in)
@@ -456,7 +457,7 @@ func TestGetLeaseIfExists(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			lease, err := allocator.getLeaseIfExists(ctx, tx, tc.in.vlanID, tc.in.mac)
@@ -569,7 +570,7 @@ func TestGetHostReservationIfExists(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			hr, err := allocator.getHostReservationIfExists(ctx, tx, tc.in.vlanID, tc.in.mac)
@@ -662,7 +663,7 @@ func TestGetIPRangeForAllocation(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			iprange, err := allocator.getIPRangeForAllocation(ctx, tx, tc.in, true)
@@ -773,7 +774,7 @@ func TestGetIPForAllocation(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			ip, err := allocator.getIPForAllocation(ctx, tx, &tc.in)
@@ -822,7 +823,7 @@ func TestSetIPRangeFull(t *testing.T) {
 	`)
 	require.NoError(t, err)
 
-	allocator, err := newDQLiteAllocator4()
+	allocator, err := newDQLiteAllocator4(logger.Noop())
 	require.NoError(t, err)
 
 	err = allocator.setIPRangeFull(ctx, tx, 3)
@@ -946,7 +947,7 @@ func TestCreateOfferedLease(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			lease, err := allocator.createOfferedLease(ctx, tx, &tc.in.offer, tc.in.mac, tc.in.iprangeID)
@@ -1050,7 +1051,7 @@ func TestAckLease(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			lease, err := allocator.ACKLease(ctx, tx, tc.in.ip, tc.in.mac)
@@ -1147,7 +1148,7 @@ func TestNACKRelease(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			err = allocator.NACKLease(ctx, tx, tc.in.ip, tc.in.mac)
@@ -1239,7 +1240,7 @@ func TestUpdateForRenewal(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			err = allocator.UpdateForRenewal(ctx, tx, tc.in.ip, tc.in.mac)
@@ -1344,7 +1345,7 @@ func TestRelease(t *testing.T) {
 			_, err = tx.ExecContext(ctx, tc.data)
 			require.NoError(t, err)
 
-			allocator, err := newDQLiteAllocator4()
+			allocator, err := newDQLiteAllocator4(logger.Noop())
 			require.NoError(t, err)
 
 			err = allocator.Release(ctx, tx, tc.in.ifaceIdx, tc.in.mac)

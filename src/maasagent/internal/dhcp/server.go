@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"runtime"
@@ -29,10 +30,10 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/insomniacslk/dhcp/dhcpv4"
 	"github.com/insomniacslk/dhcp/dhcpv6"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/semaphore"
 
 	"maas.io/core/src/maasagent/internal/dhcp/xdp"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 const (
@@ -68,6 +69,7 @@ type Message struct {
 }
 
 type Server struct {
+	logger   *slog.Logger
 	handler4 Handler4
 	handler6 Handler6
 	xdpProg  *xdp.Program
@@ -91,6 +93,7 @@ func NewServer(ifaces []string, xdpProg *xdp.Program, h4 Handler4, h6 Handler6) 
 
 	s := &Server{
 		xdpProg:  xdpProg,
+		logger:   logger.Noop(),
 		ifaces:   netIfaces,
 		inflight: semaphore.NewWeighted(1024), // TODO make this configurable
 		handler4: h4,
@@ -147,7 +150,7 @@ func (s *Server) listen6(iface *net.Interface) error {
 
 func (s *Server) Listen() error {
 	for _, iface := range s.ifaces {
-		log.Info().Msgf("listening on %s", iface.Name)
+		s.logger.Info("Listening for DHCP packets", slog.String("iface", iface.Name))
 
 		addrs, err := iface.Addrs()
 		if err != nil {
@@ -221,7 +224,7 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) Serve(ctx context.Context) error {
-	log.Info().Msg("serving DHCP")
+	s.logger.Info("Serving DHCP")
 
 	if os.Getenv("MAAS_DHCP_XDP_DISABLED") != "1" && s.xdpProg != nil && len(s.links) > 0 {
 		return s.serveXDP(ctx)
@@ -270,7 +273,7 @@ func (s *Server) serveXDP(ctx context.Context) error {
 					idx int
 				)
 
-				log.Debug().Msg("received DHCP packet via XDP")
+				s.logger.Debug("Received DHCP packet via XDP")
 
 				n, err := binary.Decode(pkt.RawSample[idx:idx+4], binary.LittleEndian, &msg.IfaceIdx)
 				if err != nil {
@@ -326,7 +329,7 @@ func (s *Server) serveXDP(ctx context.Context) error {
 				}
 
 				if err != nil {
-					log.Err(err).Msg("error handling DHCP packet")
+					s.logger.Error("Cannot handle DHCP packet", slog.Any("error", err))
 				}
 			}()
 		}
@@ -349,13 +352,13 @@ func (s *Server) serveSockets(ctx context.Context) error {
 	errChan := make(chan error)
 
 	for _, sock := range s.sockets {
-		go func(s Socket) {
+		go func(socket Socket) {
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
-					conn := s.Conn()
+					conn := socket.Conn()
 
 					buf, ok := bufPool.Get().([]byte)
 					if !ok {
@@ -367,14 +370,14 @@ func (s *Server) serveSockets(ctx context.Context) error {
 
 					n, addr, err := conn.ReadFrom(buf)
 					if err != nil {
-						log.Err(err).Msg("error reading DHCP packet")
+						s.logger.Error("Cannot read DHCP packet", slog.Any("error", err))
 						continue
 					}
 
-					log.Debug().Msg("received DHCP packet via raw socket")
+					s.logger.Debug("Received DHCP packet via raw socket")
 
 					msg := Message{
-						IfaceIdx: uint32(s.IfaceIdx()), //nolint:gosec // this interface indexes never overflow uint32
+						IfaceIdx: uint32(socket.IfaceIdx()), //nolint:gosec // this interface indexes never overflow uint32
 					}
 
 					switch a := addr.(type) {
@@ -385,14 +388,14 @@ func (s *Server) serveSockets(ctx context.Context) error {
 						msg.SrcPort = uint16(a.Port) //nolint:gosec // port number will not overflow uint16
 					}
 
-					if s.IPVersion() == IPv4 {
+					if socket.IPVersion() == IPv4 {
 						msg.Pkt4, err = dhcpv4.FromBytes(buf[:n])
 					} else {
 						msg.Pkt6, err = dhcpv6.FromBytes(buf[:n])
 					}
 
 					if err != nil {
-						log.Err(err).Msg("error parsing DHCP packet")
+						s.logger.Error("Cannot parse DHCP packet", slog.Any("error", err))
 						continue
 					}
 
@@ -422,7 +425,7 @@ func (s *Server) serveSockets(ctx context.Context) error {
 
 					err := s.handler4.ServeDHCPv4(ctx, msg)
 					if err != nil {
-						log.Err(err).Msg("error handling DHCPv4 packet")
+						s.logger.Error("Error handling DHCPv4 packet", slog.Any("error", err))
 					}
 				}()
 			} else {
@@ -431,7 +434,7 @@ func (s *Server) serveSockets(ctx context.Context) error {
 
 					err := s.handler6.ServeDHCPv6(ctx, msg)
 					if err != nil {
-						log.Err(err).Msg("error handling DHCPv6 packet")
+						s.logger.Error("Error handling DHCPv6 packet", slog.Any("error", err))
 					}
 				}()
 			}

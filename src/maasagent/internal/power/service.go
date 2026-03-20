@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2025 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -31,7 +31,6 @@ import (
 	tworker "go.temporal.io/sdk/worker"
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/workflow"
-	"maas.io/core/src/maasagent/internal/workflow/log/tag"
 	"maas.io/core/src/maasagent/internal/workflow/worker"
 )
 
@@ -321,7 +320,7 @@ func powerCommand(ctx context.Context, action string, isDPU bool, driver string,
 	maasPowerCLI, err := pathFactory(powerCLIExecutableName())
 	if err != nil {
 		log.Error("MAAS power CLI executable path lookup failure",
-			tag.Builder().Error(err).KeyVals...)
+			"error", err)
 
 		return "", err
 	}
@@ -357,7 +356,7 @@ func powerCommand(ctx context.Context, action string, isDPU bool, driver string,
 		args = append(args, "--order", "'"+strings.Join(bootOrderStr, ",")+"'")
 	}
 
-	log.Debug("Executing MAAS power CLI", tag.Builder().KV("args", args).KeyVals...)
+	log.Debug("Executing MAAS power CLI", "args", args)
 
 	var stdout, stderr bytes.Buffer
 
@@ -365,16 +364,16 @@ func powerCommand(ctx context.Context, action string, isDPU bool, driver string,
 
 	err = cmd.Run()
 	if err != nil {
-		t := tag.Builder().Error(err)
+		kv := []any{"error", err}
 		if stdout.String() != "" {
-			t = t.KV("stdout", stdout.String())
+			kv = append(kv, "stdout", stdout)
 		}
 
 		if stderr.String() != "" {
-			t = t.KV("stderr", stderr.String())
+			kv = append(kv, "stderr", stderr)
 		}
 
-		log.Error("Error executing power command", t.KeyVals...)
+		log.Error("Error executing power command", kv...)
 
 		return "", err
 	}

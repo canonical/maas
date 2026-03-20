@@ -18,6 +18,7 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -93,7 +94,8 @@ func newResolverService(cfg resolverSvcConfig) (*resolver.ResolverService, error
 }
 
 type httpProxySvcConfig struct {
-	meter metric.Meter
+	meter  metric.Meter
+	logger *slog.Logger
 	HTTPProxyConfig
 }
 
@@ -107,7 +109,7 @@ func newHTTPProxyService(cfg httpProxySvcConfig) (*httpproxy.HTTPProxyService, e
 		return nil, err
 	}
 
-	return httpproxy.NewHTTPProxyService(pathutil.RunDir(), httpProxyCache), nil
+	return httpproxy.NewHTTPProxyService(pathutil.RunDir(), httpProxyCache, cfg.logger), nil
 }
 
 type dhcpSvcConfig struct {
@@ -119,7 +121,7 @@ type dhcpSvcConfig struct {
 	systemID string
 }
 
-func newDHCPService(c dhcpSvcConfig) (*dhcp.DHCPService, error) {
+func newDHCPService(c dhcpSvcConfig, logger *slog.Logger) (*dhcp.DHCPService, error) {
 	return newExternalDHCPService(c)
 }
 
@@ -186,6 +188,7 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 	httpProxyService, err := newHTTPProxyService(httpProxySvcConfig{
 		HTTPProxyConfig: d.cfg.Services.HTTPProxy,
 		meter:           d.meterProvider.Meter("http_proxy"),
+		logger:          d.logger,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to initialize httpproxy service: %w", err)
@@ -226,7 +229,7 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 		clusterSvc: clusterService,
 		apiClient:  apiClient,
 		meter:      d.meterProvider.Meter("dhcp"),
-	})
+	}, d.logger)
 	if err != nil {
 		return fmt.Errorf("failed to initialize dhcp service: %w", err)
 	}

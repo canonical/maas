@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2025 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -29,6 +29,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"maas.io/core/src/maasagent/internal/cache"
+	"maas.io/core/src/maasagent/internal/urltracker"
 )
 
 func TestProxy(t *testing.T) {
@@ -290,7 +291,13 @@ func TestErrorHandler_RetriesUntilSuccess(t *testing.T) {
 	assert.Equal(t, 0, failCount)
 
 	// both URLs remain reliable
-	assert.Equal(t, 2, len(proxy.urlTracker.reliable))
+	reliable := 0
+
+	proxy.urlTracker.ForEachReliable(func(url string, stats *urltracker.URLStats) bool {
+		reliable++
+		return true
+	})
+	assert.Equal(t, 2, reliable)
 }
 
 func TestErrorHandler_RetriesUntilSuccessMovesToUnreliable(t *testing.T) {
@@ -336,8 +343,21 @@ func TestErrorHandler_RetriesUntilSuccessMovesToUnreliable(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "success", rr.Body.String())
 
-	assert.Equal(t, 1, len(proxy.urlTracker.reliable))
-	assert.Equal(t, 1, len(proxy.urlTracker.unreliable))
+	reliable := 0
+	unreliable := 0
+
+	proxy.urlTracker.ForEachReliable(func(url string, stats *urltracker.URLStats) bool {
+		reliable++
+		return true
+	})
+
+	proxy.urlTracker.ForEachUnreliable(func(url string, stats *urltracker.URLStats) bool {
+		unreliable++
+		return true
+	})
+
+	assert.Equal(t, 1, reliable)
+	assert.Equal(t, 1, unreliable)
 }
 
 func TestErrorHandler_SingleTargetFailsReturns503(t *testing.T) {

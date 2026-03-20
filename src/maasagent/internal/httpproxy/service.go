@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,19 +17,20 @@ package httpproxy
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"regexp"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/workflow"
-	"maas.io/core/src/maasagent/internal/workflow/log/tag"
 )
 
 const (
@@ -67,6 +68,7 @@ var (
 // HTTPProxyService is a service that is used to proxy HTTP requests to the Region.
 // Invocation of this service normally should happen via Temporal.
 type HTTPProxyService struct {
+	logger     *slog.Logger
 	listener   net.Listener
 	cache      Cache
 	proxy      *Proxy
@@ -76,10 +78,15 @@ type HTTPProxyService struct {
 
 // NewHTTPProxyService returns an instance of HTTPProxyService
 // TODO: consider switching to opts pattern
-func NewHTTPProxyService(socketDir string, cache Cache) *HTTPProxyService {
+func NewHTTPProxyService(socketDir string, cache Cache,
+	logger *slog.Logger) *HTTPProxyService {
 	socketPath := path.Join(socketDir, socketFileName)
 
-	return &HTTPProxyService{cache: cache, socketPath: socketPath}
+	return &HTTPProxyService{
+		logger:     logger,
+		cache:      cache,
+		socketPath: socketPath,
+	}
 }
 
 type getRegionEndpointsResult struct {
@@ -146,9 +153,7 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 				// Normally this error should not happen, as we should always receive
 				// valid endpoint from the Region Controller
 				if err != nil {
-					log.Warn("Invalid endpoint", tag.Builder().
-						KV("endpoint", endpoint).
-						KV("error", err))
+					log.Warn("Invalid endpoint", "endpoint", endpoint, "error", err)
 				}
 
 				// We might receive endpoints that we cannot reach, so before applying
@@ -165,7 +170,7 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 				if err := conn.Close(); err != nil {
 					// We cannot do anything here and this is not critical, but not good.
 					// So we just log it as a Warning.
-					log.Warn("Failed to close connection", tag.Builder().KV("error", err))
+					log.Warn("Failed to close connection", "error", err)
 				}
 			}(endpoint)
 		}
@@ -201,7 +206,14 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 		return err
 	}
 
-	log.Info("Started httpproxy-service", tag.Builder().KV("targets", targets).KeyVals...)
+	urls := make([]string, 0, len(targets))
+	for _, u := range targets {
+		if u != nil {
+			urls = append(urls, u.String())
+		}
+	}
+
+	log.Info("Started httpproxy-service", "targets", strings.Join(urls, ","))
 	// We consider this workflow to be successful without checking if the service
 	// is up & running after a call to http.Serve().
 	// If there will be any error, it should be captured via HTTPProxyService.Error()

@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -18,32 +18,22 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
+	"maas.io/core/src/maasagent/internal/logger"
 	"maas.io/core/src/maasagent/internal/netmon"
 )
 
 func Run() int {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
-	if envLogLevel, ok := os.LookupEnv("LOG_LEVEL"); ok {
-		if logLevel, err := zerolog.ParseLevel(envLogLevel); err != nil {
-			log.Warn().Str("LOG_LEVEL", envLogLevel).Msg("Unknown log level, defaulting to INFO")
-		} else {
-			zerolog.SetGlobalLevel(logLevel)
-		}
-	}
+	l := initLogger()
 
 	if len(os.Args) < 2 {
-		log.Error().Msg("Please provide an interface to monitor")
+		l.Error("Please provide an interface to monitor")
 		return 2
 	}
 
@@ -60,7 +50,7 @@ func Run() int {
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(2)
 
-	svc := netmon.NewService(iface)
+	svc := netmon.NewService(iface, netmon.WithLogger(l))
 
 	g.Go(func() error {
 		return svc.Start(ctx, resultC)
@@ -76,7 +66,7 @@ func Run() int {
 				return nil
 			case res, ok := <-resultC:
 				if !ok {
-					log.Debug().Msg("result channel has been closed")
+					l.Debug("Result channel has been closed")
 					return nil
 				}
 
@@ -88,10 +78,10 @@ func Run() int {
 		}
 	})
 
-	log.Info().Msg("Service netmon started")
+	l.Info("Service netmon started")
 
 	if err := g.Wait(); err != nil {
-		log.Error().Err(err).Send()
+		l.Error("Network minutor failure", slog.Any("error", err))
 		return 1
 	}
 
@@ -100,4 +90,20 @@ func Run() int {
 
 func main() {
 	os.Exit(Run())
+}
+
+func initLogger() *slog.Logger {
+	level := os.Getenv("LOG_LEVEL")
+
+	slevel := logger.ParseLevel(level)
+
+	opts := &slog.HandlerOptions{
+		Level: slevel,
+	}
+
+	handler := slog.NewTextHandler(os.Stderr, opts)
+
+	logger := slog.New(handler)
+
+	return logger
 }

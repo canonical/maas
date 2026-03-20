@@ -17,10 +17,12 @@ package cli
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/spf13/cobra"
 	"maas.io/core/src/maasagent/internal/daemon"
+	"maas.io/core/src/maasagent/internal/logger"
 	"maas.io/core/src/maasagent/internal/pathutil"
 )
 
@@ -30,18 +32,22 @@ func startCmd(ctx context.Context) *cobra.Command {
 	// started directly vs started by rackd.
 	var supervised bool
 
+	l := logger.New("error")
+
 	cmd := &cobra.Command{
-		Use:          "start",
-		Short:        "Start the MAAS agent daemon.",
-		Example:      "maas-agent start",
-		SilenceUsage: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Use:     "start",
+		Short:   "Start the MAAS agent daemon.",
+		Example: "maas-agent start",
+		Run: func(cmd *cobra.Command, args []string) {
 			d := daemon.New()
 
-			return d.Start(ctx, daemon.DaemonArgs{
+			if err := d.Start(ctx, daemon.DaemonArgs{
 				ConfigFile: pathutil.ConfigPath("agent.yaml"),
 				Supervised: supervised,
-			})
+			}); err != nil {
+				l.Error("Failed to start daemon", slog.Any("error", err))
+				os.Exit(1)
+			}
 		},
 	}
 
@@ -49,7 +55,8 @@ func startCmd(ctx context.Context) *cobra.Command {
 
 	err := cmd.Flags().MarkHidden("supervised")
 	if err != nil {
-		panic(fmt.Errorf("start initialization failed: %w", err))
+		l.Error("Initialization failed", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	return cmd

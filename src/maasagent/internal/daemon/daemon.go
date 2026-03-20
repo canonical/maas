@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -31,8 +32,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/afero"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
@@ -47,6 +46,7 @@ import (
 	"maas.io/core/src/maasagent/internal/atomicfile"
 	"maas.io/core/src/maasagent/internal/certutil"
 	"maas.io/core/src/maasagent/internal/client"
+	"maas.io/core/src/maasagent/internal/logger"
 	"maas.io/core/src/maasagent/internal/pathutil"
 	"maas.io/core/src/maasagent/internal/token"
 )
@@ -62,6 +62,8 @@ type configurator interface {
 
 type Daemon struct {
 	fs afero.Fs
+
+	logger *slog.Logger
 
 	enroller     func(*url.URL, *tls.Config) enroller
 	configurator func(*url.URL, *tls.Config) configurator
@@ -209,7 +211,8 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	d.setupLogger()
+	d.logger = logger.New(string(d.cfg.Observability.Logging.Level))
+	d.logger.Info("Starting daemon")
 
 	if err := d.setupObservability(ctx); err != nil {
 		return fmt.Errorf("configure observability: %w", err)
@@ -332,32 +335,6 @@ func (d *Daemon) startHTTPServer() error {
 	}
 
 	return d.server.Serve(listener)
-}
-
-// setupLogger sets the global logger with the provided logLevel.
-// If logLevel provided is unknown, then INFO will be used.
-func (d *Daemon) setupLogger() {
-	// Use custom ConsoleWriter without TimestampFieldName, because stdout
-	// is captured with systemd-cat
-	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout, NoColor: true}
-	consoleWriter.PartsOrder = []string{
-		zerolog.LevelFieldName,
-		zerolog.CallerFieldName,
-		zerolog.MessageFieldName,
-	}
-
-	log.Logger = zerolog.New(consoleWriter).With().Logger()
-
-	ll, err := zerolog.ParseLevel(string(d.cfg.Observability.Logging.Level))
-	if err != nil || ll == zerolog.NoLevel {
-		ll = zerolog.InfoLevel
-	}
-
-	zerolog.SetGlobalLevel(ll)
-
-	// TODO: switch to slog and return logger to inject as a dependency.
-
-	log.Info().Msg(fmt.Sprintf("Logger is configured with log level %q", ll.String()))
 }
 
 // setupObservability initializes metrics, tracing, and profiling based on cfg.

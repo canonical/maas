@@ -19,18 +19,19 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"go.temporal.io/sdk/client"
-	temporalotel "go.temporal.io/sdk/contrib/opentelemetry"
+	totel "go.temporal.io/sdk/contrib/opentelemetry"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/interceptor"
-	wflog "maas.io/core/src/maasagent/internal/workflow/log"
+	tlog "go.temporal.io/sdk/log"
+	"maas.io/core/src/maasagent/internal/logger"
 	"maas.io/core/src/maasagent/pkg/workflow/codec"
 )
 
@@ -41,6 +42,7 @@ type ClientConfig struct {
 	Meter     metric.Meter
 	Tracer    trace.Tracer
 	TLSConfig *tls.Config
+	Logger    *slog.Logger
 	SystemID  string
 	Secret    string
 	Endpoint  string
@@ -53,21 +55,25 @@ func NewClient(ctx context.Context,
 		return nil, fmt.Errorf("missing system ID")
 	}
 
+	if config.Logger == nil {
+		config.Logger = logger.Noop()
+	}
+
 	// Encryption Codec required for Temporal Workflow's payload encoding
 	encCodec, err := codec.NewEncryptionCodec([]byte(config.Secret))
 	if err != nil {
 		return nil, fmt.Errorf("failed setting up encryption codec: %w", err)
 	}
 
-	metricsHandler := temporalotel.NewMetricsHandler(
-		temporalotel.MetricsHandlerOptions{Meter: config.Meter},
+	metricsHandler := totel.NewMetricsHandler(
+		totel.MetricsHandlerOptions{Meter: config.Meter},
 	)
 
 	retry := backoff.NewExponentialBackOff()
 	retry.MaxElapsedTime = 60 * time.Second
 
-	tracingInterceptor, err := temporalotel.NewTracingInterceptor(
-		temporalotel.TracerOptions{Tracer: config.Tracer},
+	tracingInterceptor, err := totel.NewTracingInterceptor(
+		totel.TracerOptions{Tracer: config.Tracer},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed setting up tracing interceptor: %w", err)
@@ -77,7 +83,7 @@ func NewClient(ctx context.Context,
 		return client.DialContext(ctx, client.Options{
 			HostPort:     config.Endpoint,
 			Identity:     fmt.Sprintf("%s@agent:%d", config.SystemID, os.Getpid()),
-			Logger:       wflog.NewZerologAdapter(log.Logger),
+			Logger:       tlog.NewStructuredLogger(config.Logger),
 			Interceptors: []interceptor.ClientInterceptor{tracingInterceptor},
 			DataConverter: converter.NewCodecDataConverter(
 				converter.GetDefaultDataConverter(),

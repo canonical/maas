@@ -17,7 +17,6 @@ package main
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -43,8 +42,6 @@ func main() {
 	}
 
 	if err != nil {
-		// TODO: replace global logger with the custom one
-		slog.Error("command failed", "error", err)
 		stop()
 		os.Exit(1) //nolint:gocritic // exitAfterDefer: stop() is called here
 	}

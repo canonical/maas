@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -23,11 +23,11 @@ import (
 	"time"
 
 	"github.com/canonical/microcluster/v2/state"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	tlog "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/testsuite"
-	"maas.io/core/src/maasagent/internal/workflow/log"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 func TestConfigurationWorkflow(t *testing.T) {
@@ -53,9 +53,8 @@ func TestConfigurationWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	wfTestSuite := testsuite.WorkflowTestSuite{}
-	logger := log.NewZerologAdapter(zerolog.Nop())
+	wfTestSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
 
-	wfTestSuite.SetLogger(logger)
 	env := wfTestSuite.NewTestWorkflowEnvironment()
 
 	// Microcluster initialization takes time, and while it is running inside a

@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -21,12 +21,12 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/activity"
+	tlog "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/testsuite"
-	"maas.io/core/src/maasagent/internal/workflow/log"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 type mockHandler struct {
@@ -49,8 +49,8 @@ func TestConfigurationWorkflow(t *testing.T) {
 	for range 3 {
 		t.Run(t.Name(), func(t *testing.T) {
 			wfTestSuite := testsuite.WorkflowTestSuite{}
-			logger := log.NewZerologAdapter(zerolog.Nop())
-			wfTestSuite.SetLogger(logger)
+			wfTestSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 			env := wfTestSuite.NewTestWorkflowEnvironment()
 
 			env.RegisterActivityWithOptions(getResolverConfigActivity, activity.RegisterOptions{

@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -21,13 +21,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/canonical/microcluster/v2/state"
-	"github.com/rs/zerolog/log"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 const (
@@ -49,6 +50,7 @@ type Notification struct {
 }
 
 type NotificationListener struct {
+	logger       *slog.Logger
 	conn         net.Conn
 	clusterState state.State
 	queue        *NotificationQueue
@@ -71,11 +73,12 @@ func NewNotificationListener(conn net.Conn, fn func(context.Context, []*Notifica
 	}
 
 	l := &NotificationListener{
-		pool:  pool,
-		conn:  conn,
-		buf:   make(chan *Notification, 1024),
-		queue: NewNotificationQueue(),
-		fn:    fn,
+		logger: logger.Noop(),
+		pool:   pool,
+		conn:   conn,
+		buf:    make(chan *Notification, 1024),
+		queue:  NewNotificationQueue(),
+		fn:     fn,
 	}
 
 	for _, opt := range options {
@@ -91,13 +94,22 @@ func WithInterval(d time.Duration) NotificationListenerOption {
 	return func(l *NotificationListener) { l.interval = d }
 }
 
+// WithLogger allows setting custom logger. By default logger is no-op.
+func WithLogger(l *slog.Logger) NotificationListenerOption {
+	return func(nl *NotificationListener) {
+		if l != nil {
+			nl.logger = l
+		}
+	}
+}
+
 func (l *NotificationListener) Listen(ctx context.Context) {
 	internalDHCPEnabled := os.Getenv("MAAS_DHCP_INTERNAL") == "1"
 
 	if internalDHCPEnabled {
 		err := l.loadExisting(ctx)
 		if err != nil {
-			log.Err(err).Send()
+			l.logger.Error("Loading failed", slog.Any("error", err))
 		}
 	}
 
@@ -121,7 +133,7 @@ func (l *NotificationListener) Listen(ctx context.Context) {
 			if os.Getenv("MAAS_INTERNAL_DHCP") != "1" {
 				err := l.syncWithoutDB(ctx)
 				if err != nil {
-					log.Err(err).Send()
+					l.logger.Error("Sync failed", slog.Any("error", err))
 				}
 
 				continue
@@ -132,13 +144,13 @@ func (l *NotificationListener) Listen(ctx context.Context) {
 				defer l.stateLock.RUnlock()
 
 				if l.clusterState == nil {
-					log.Warn().Msg("cluster state not initialized for lease sync")
+					l.logger.Warn("Cluster state not initialized for lease sync")
 					return
 				}
 
 				err := l.clusterState.Database().Transaction(ctx, l.syncWithDB)
 				if err != nil {
-					log.Err(err).Send()
+					l.logger.Error("Transaction failed", slog.Any("error", err))
 				}
 			}()
 		}
@@ -400,7 +412,7 @@ func (l *NotificationListener) read(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			if err := l.conn.Close(); err != nil {
-				log.Warn().Err(err).Send()
+				l.logger.Warn("Cannot close connection", slog.Any("error", err))
 			}
 
 			return
@@ -409,7 +421,7 @@ func (l *NotificationListener) read(ctx context.Context) {
 
 			err := decoder.Decode(&notification)
 			if err != nil {
-				log.Warn().Err(err).Msg("Malformed DHCP notification")
+				l.logger.Warn("Malformed DHCP notification", slog.Any("error", err))
 				// reset the decoder
 				decoder = json.NewDecoder(l.conn)
 
