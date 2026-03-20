@@ -170,9 +170,9 @@ class DefaultDnsTtlConfig(Config[int | None]):
     value: int | None = Field(default=default, description=description)
 
 
-class UpstreamDnsConfig(Config[list[IPvAnyAddress | None]]):
+class UpstreamDnsConfig(Config[list[IPvAnyAddress] | None]):
     name: ClassVar[str] = "upstream_dns"
-    default: ClassVar[list[IPvAnyAddress | None]] = None
+    default: ClassVar[list[IPvAnyAddress] | None] = None
     description: ClassVar[str] = (
         "Upstream DNS used to resolve domains not managed by this MAAS (space-separated IP addresses)"
     )
@@ -795,10 +795,10 @@ class MAASAutoIPMICipherSuiteIDConfig(Config[IPMICipherSuiteID | None]):
 
 
 class MAASAutoIPMIWorkaroundFlagsConfig(
-    Config[list[IPMIWorkaroundFlags | None]]
+    Config[list[IPMIWorkaroundFlags] | None]
 ):
     name: ClassVar[str] = "maas_auto_ipmi_workaround_flags"
-    default: ClassVar[list[IPMIWorkaroundFlags | None]] = None
+    default: ClassVar[list[IPMIWorkaroundFlags] | None] = None
     description: ClassVar[str] = "IPMI Workaround Flags"
     help_text: ClassVar[str | None] = (
         "The default workaround flag (-W options) to use for ipmipower commands"
@@ -814,7 +814,7 @@ class NTPServersConfig(Config[str | None]):
     This field normalizes the list to a space-separated list.
     """
 
-    _separators: ClassVar[re.Pattern[str]] = re.compile(r"[,\\s]+")
+    _separators: ClassVar[re.Pattern[str]] = re.compile(r"[,\s]+")
 
     # Regular expressions to sniff out things that look like IP addresses;
     # additional and more robust validation ought to be done to make sure.
