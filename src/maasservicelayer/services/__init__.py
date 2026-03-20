@@ -583,18 +583,6 @@ class ServiceCollectionV3:
             tokens_service=services.tokens,
             openfga_tuple_service=services.openfga_tuples,
         )
-        services.domains = DomainsService(
-            context=context,
-            configurations_service=services.configurations,
-            dnspublications_service=services.dnspublications,
-            domains_repository=DomainsRepository(context),
-        )
-        services.dnsresources = DNSResourcesService(
-            context=context,
-            domains_service=services.domains,
-            dnspublications_service=services.dnspublications,
-            dnsresource_repository=DNSResourceRepository(context),
-        )
         services.interfaces = InterfacesService(
             context=context,
             temporal_service=services.temporal,
