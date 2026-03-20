@@ -27,7 +27,6 @@ from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.domains import DomainsService
-from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
@@ -40,7 +39,6 @@ class TestCommonDomainsService(ServiceCommonTests):
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=Mock(DNSPublicationsService),
-            users_service=Mock(UsersService),
             domains_repository=Mock(DomainsRepository),
         )
 
@@ -103,7 +101,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=dnspublications_service,
-            users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
 
@@ -137,7 +134,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=dnspublications_service,
-            users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
         if not valid:
@@ -155,7 +151,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=dnspublications_service,
-            users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
         name = "a" * 256
@@ -172,7 +167,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=configurations_service,
             dnspublications_service=dnspublications_service,
-            users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
         with pytest.raises(ValidationException):
@@ -209,7 +203,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=dnspublications_service,
-            users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
 
@@ -259,7 +252,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=dnspublications_service,
-            users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
 
@@ -309,7 +301,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=dnspublications_service,
-            users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
 
@@ -359,7 +350,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=dnspublications_service,
-            users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
 
@@ -401,7 +391,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=dnspublications_service,
-            users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
 
@@ -427,7 +416,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=Mock(DNSPublicationsService),
-            users_service=Mock(UsersService),
             domains_repository=domains_repository,
         )
         with pytest.raises(BadRequestException) as e:
@@ -443,7 +431,6 @@ class TestDomainsService:
             context=Context(),
             configurations_service=Mock(ConfigurationsService),
             dnspublications_service=Mock(DNSPublicationsService),
-            users_service=Mock(UsersService),
             domains_repository=Mock(DomainsRepository),
         )
         record = DomainDNSRecord(
@@ -492,13 +479,11 @@ class TestDomainsService:
         domains_repository.get_by_id.return_value = domain
         configurations_service = Mock(ConfigurationsService)
         dnspublications_service = Mock(DNSPublicationsService)
-        user_service = Mock(UsersService)
 
         service = DomainsService(
             context=Context(),
             configurations_service=configurations_service,
             dnspublications_service=dnspublications_service,
-            users_service=user_service,
             domains_repository=domains_repository,
         )
 
@@ -523,13 +508,11 @@ class TestDomainsService:
         domains_repository.get_default_domain.return_value = domain
         configurations_service = Mock(ConfigurationsService)
         dnspublications_service = Mock(DNSPublicationsService)
-        user_service = Mock(UsersService)
 
         service = DomainsService(
             context=Context(),
             configurations_service=configurations_service,
             dnspublications_service=dnspublications_service,
-            users_service=user_service,
             domains_repository=domains_repository,
         )
 
