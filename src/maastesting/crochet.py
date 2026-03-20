@@ -3,7 +3,6 @@
 
 """Support for testing with `crochet`."""
 
-
 from functools import wraps
 import inspect
 

@@ -186,7 +186,8 @@ class CustomImagesHandler(Handler):
     async def upload_custom_image(
         self,
         create_request: Annotated[
-            BootResourceCreateRequest, Depends(get_boot_resource_create_request)
+            BootResourceCreateRequest,
+            Depends(get_boot_resource_create_request),
         ],
         request: Request,
         response: Response,
