@@ -164,7 +164,7 @@ class TestNotificationsService:
             None
         )
 
-        non_dismissable_notification = TEST_NOTIFICATION.copy()
+        non_dismissable_notification = TEST_NOTIFICATION.model_copy()
         non_dismissable_notification.dismissable = False
         notifications_repo_mock.get_by_id_for_user.return_value = (
             non_dismissable_notification
