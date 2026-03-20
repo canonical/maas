@@ -137,7 +137,10 @@ class DNSResourcesService(
     async def post_delete_many_hook(
         self, resources: List[DNSResource]
     ) -> None:
-        raise NotImplementedError("Not implemented yet.")
+        await self.dnspublications_service.create_for_config_update(
+            source="zone removed multiple resources",
+            action=DnsUpdateAction.RELOAD,
+        )
 
     async def release_dynamic_hostname(
         self, ip: StaticIPAddress, but_not_for: Optional[DNSResource] = None
