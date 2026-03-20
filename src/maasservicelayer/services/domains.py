@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections import defaultdict, OrderedDict
+from dataclasses import dataclass
 import re
 from typing import List
 
@@ -40,6 +41,12 @@ from maasservicelayer.services.dnspublications import DNSPublicationsService
 # Labels are at most 63 octets long, and a name can be many of them
 LABEL = r"[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"
 NAMESPEC = rf"({LABEL}[.])*{LABEL}[.]?"
+
+
+@dataclass
+class V2User:
+    user_id: int | None
+    is_superuser: bool
 
 
 class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
@@ -172,8 +179,7 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
     async def v3_render_json_for_related_rrdata(
         self,
         domain_id: int,
-        user_id: int | None = None,
-        is_superuser: bool = False,
+        v2_user: V2User | None = None,
         include_dnsdata=True,
         as_dict=False,
         with_node_id=False,
@@ -190,12 +196,10 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
 
         Params:
             domain_id: The domain to calculate dns resources for
-            user_id: V2 Only: Restrict the data to what the user can see
-            is_superuser: V2 Only: Allows a user to see all data regardless of user_id on the data
+            v2_user: V2 Only: User context for filtering data visibility
             include_dnsdata: Whether to include dns data or not
             as_dict: Whether to return the data as a dict or as a list
         """
-
         domain = await self.get_by_id(domain_id)
         if domain is None:
             raise NotFoundException(
@@ -220,10 +224,11 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         )
         for hostname, info in ip_mapping.items():
             if (
-                user_id is not None
-                and not is_superuser
+                v2_user is not None
+                and v2_user.user_id is not None
+                and not v2_user.is_superuser
                 and info.user_id is not None
-                and info.user_id != user_id
+                and info.user_id != v2_user.user_id
             ):
                 continue
             entry = rr_mapping[hostname[: -len(domain.name) - 1]]
@@ -261,9 +266,12 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
                 for ttl, rrtype, rrdata, dnsdata_id in info.rrset
                 if (
                     info.user_id is None
-                    or user_id is None
-                    or is_superuser
-                    or (info.user_id is not None and info.user_id == user_id)
+                    or v2_user is None
+                    or v2_user.is_superuser
+                    or (
+                        info.user_id is not None
+                        and info.user_id == v2_user.user_id
+                    )
                 )
             ]
             if isinstance(result, OrderedDict):
@@ -282,8 +290,13 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         include_dnsdata=True,
         as_dict=False,
     ) -> OrderedDict[str, list[dict]] | list[dict]:
+        v2_user = (
+            V2User(user_id=user_id, is_superuser=is_superuser)
+            if user_id is not None or is_superuser
+            else None
+        )
         result = await self.v3_render_json_for_related_rrdata(
-            domain_id, user_id, is_superuser, include_dnsdata, as_dict
+            domain_id, v2_user, include_dnsdata, as_dict
         )
         if isinstance(result, dict):
             return OrderedDict(
