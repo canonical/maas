@@ -82,11 +82,9 @@ class NOSInstallerHandler(Handler):
         This endpoint:
         - Receives ONIE headers from the switch
         - Checks if an installer is assigned to the switch
-        - #TODO Verifies the installer arch matches the switch arch
         - If assigned, streams the installer binary to the switch
 
         """
-        # Get MAC address from query parameter
         onie_headers = OnieHeaders.from_request(request)
 
         mac_address = onie_headers.eth_address if onie_headers else None
@@ -96,11 +94,9 @@ class NOSInstallerHandler(Handler):
                 status_code=400,
             )
 
-        # Normalize MAC address to ensure consistent lookups
         mac_address = normalise_macaddress(mac_address)
 
         try:
-            # Check if switch has an assigned installer
             boot_resource_id = (
                 await services_collection.switches.check_installer_for_switch(
                     mac_address=mac_address
@@ -111,51 +107,44 @@ class NOSInstallerHandler(Handler):
             # about which switches are registered
             return PlainTextResponse(
                 content="",
-                status_code=404,  # Not Found
+                status_code=404,
             )
 
         if not boot_resource_id:
             # No installer assigned yet or switch not in correct state
             return PlainTextResponse(
                 content="",
-                status_code=404,  # Not Found
+                status_code=404,
             )
 
-        # Get the boot resource
         try:
             boot_resource = await services_collection.boot_resources.get_by_id(
                 id=boot_resource_id
             )
             if not boot_resource:
-                # Boot resource not found - return 404
                 return PlainTextResponse(
                     content="",
                     status_code=404,
                 )
 
-            # Get the latest complete resource set for this boot resource
             resource_set = await services_collection.boot_resource_sets.get_latest_complete_set_for_boot_resource(
                 boot_resource.id
             )
             if not resource_set:
-                # No complete resource set - return 404
                 return PlainTextResponse(
                     content="",
                     status_code=404,
                 )
 
-            # Get the files in the resource set
             files = await services_collection.boot_resource_files.get_files_in_resource_set(
                 resource_set.id
             )
             if not files:
-                # No files in resource set - return 404
                 return PlainTextResponse(
                     content="",
                     status_code=404,
                 )
         except NotFoundException:
-            # Any boot resource related lookup failed - return 404
             return PlainTextResponse(
                 content="",
                 status_code=404,
@@ -164,10 +153,8 @@ class NOSInstallerHandler(Handler):
         # Use the first file (uploaded boot resources typically have one file)
         boot_file = files[0]
 
-        # Get the actual file path on disk
         file_path = get_bootresource_store_path() / boot_file.filename_on_disk
 
-        # Stream the file content using standard library
         def file_stream() -> Iterator[bytes]:
             with open(file_path, "rb") as f:
                 while chunk := f.read(_FIVE_MB):
