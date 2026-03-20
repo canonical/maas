@@ -1,7 +1,7 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import AsyncIterator, Iterator, Optional
+from typing import AsyncIterator, Iterator
 from unittest.mock import Mock
 
 from fastapi import FastAPI
