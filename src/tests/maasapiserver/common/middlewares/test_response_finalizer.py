@@ -56,10 +56,10 @@ class TestResponseFinalizerMiddleware:
     async def test_response_finalizer_middleware(
         self, app: FastAPI, client: AsyncClient
     ) -> None:
+        client.cookies.set("test_cookie", "cookie_value")
         response = await client.post(
             "/validate",
             json={"required_property": "value"},
-            cookies={"test_cookie": "cookie_value"},
         )
         assert response.status_code == 200
         assert response.cookies.get("test_cookie") is None
