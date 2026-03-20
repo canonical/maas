@@ -13,7 +13,9 @@ from provisioningserver import logger
 
 
 def init_asyncio_reactor():
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    # Use uvloop as the event loop for improved performance
+    loop = uvloop.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
         asyncioreactor.install()
     except error.ReactorAlreadyInstalledError:
