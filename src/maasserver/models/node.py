@@ -6880,7 +6880,7 @@ class Node(CleanSave, TimestampedModel):
     class Meta:
         constraints = [
             CheckConstraint(
-                check=(
+                condition=(
                     Q(is_dpu=False)
                     | Q(is_dpu=True, node_type=NODE_TYPE.MACHINE)
                 ),
