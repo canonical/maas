@@ -48,9 +48,15 @@ class DNSResourcesQuerySet(QuerySet):
 
     def _generate_synthetic_rrdata(self, domain):
         user_id = None if self._user_filter is None else self._user_filter.id
+        is_superuser = (
+            None
+            if self._user_filter is None
+            else self._user_filter.is_superuser
+        )
         rrdata = service_layer.services.domains.render_json_for_related_rrdata(
             domain_id=domain.id,
             user_id=user_id,
+            is_superuser=is_superuser,
             include_dnsdata=False,
             as_dict=True,
         )
@@ -116,6 +122,9 @@ def get_dnsresource_queryset(
         # Note: the _user_filter should be set to None we want to display
         # all records, even for non-superusers.
         query._user_filter = user
+        query._is_superuser_filter = (
+            None if user is None else user.is_superuser
+        )
     return query
 
 

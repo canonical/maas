@@ -212,7 +212,7 @@ class DomainsHandler(Handler):
     ) -> DomainResourceRecordSetListResponse:
         assert authenticated_user is not None
         dns_records = await services.v3dnsrrsets.get_dns_records_for_domain(
-            domain_id, authenticated_user.id
+            domain_id
         )
         return DomainResourceRecordSetListResponse(
             items=[
