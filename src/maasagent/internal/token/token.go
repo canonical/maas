@@ -40,6 +40,7 @@ func ParseBootstrapToken(s string) (BootstrapToken, error) {
 
 // MarshalText encodes BootstrapToken into Base64 encoded JSON
 func (t *BootstrapToken) MarshalText() (string, error) {
+	//nolint:gosec // G117: marshaling token for internal use
 	jsonBytes, err := json.Marshal(t)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal JSON: %w", err)
@@ -71,6 +72,7 @@ func (t *BootstrapToken) MarshalJSON() ([]byte, error) {
 		url = t.URL.String()
 	}
 
+	//nolint:gosec // G117: marshaling token for internal use
 	return json.Marshal(
 		struct {
 			Secret      string `json:"secret"`

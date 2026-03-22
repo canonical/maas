@@ -161,6 +161,7 @@ func (s *ClusterService) configure(ctx tworkflow.Context, config ClusterServiceC
 			})
 			if err != nil {
 				log.Error("Failed to start Microcluster", "err", err)
+
 				s.fatal <- err
 			}
 		}()

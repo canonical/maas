@@ -167,9 +167,6 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 			return filepath.Join(dataPath, path)
 		}),
 	)
-	if err != nil {
-		s.T().Fatal(err)
-	}
 
 	s.workflowEnv.RegisterWorkflowWithOptions(MockConfigureDHCPForAgent,
 		tworkflow.RegisterOptions{
@@ -490,6 +487,7 @@ func (s *DHCPServiceTestSuite) TestRestartDHCPServiceV4() {
 
 	// DHCP V4 controller not expected to restart
 	controllerV4.restarted = false
+
 	s.svc.runningV4.Store(false)
 
 	_, err = s.activityEnv.ExecuteActivity(
@@ -513,6 +511,7 @@ func (s *DHCPServiceTestSuite) TestRestartDHCPServiceV6() {
 
 	// DHCP V4 controller not expected to restart
 	controllerV6.restarted = false
+
 	s.svc.runningV6.Store(false)
 
 	_, err = s.activityEnv.ExecuteActivity(

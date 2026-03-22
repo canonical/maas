@@ -92,7 +92,8 @@ func TestRewriteHandler(t *testing.T) {
 			target, err := url.Parse(tc.out)
 			assert.NoError(t, err)
 
-			r := httptest.NewRequest(http.MethodGet, tc.in.url, nil)
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+				tc.in.url, nil)
 
 			rewriter := NewRewriter(tc.in.rules)
 

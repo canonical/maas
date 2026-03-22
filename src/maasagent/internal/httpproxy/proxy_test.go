@@ -99,6 +99,7 @@ func TestProxy(t *testing.T) {
 						cache := cache.NewFakeFileCache()
 						body := bytes.NewReader([]byte("hello world"))
 						cache.Set("file", body, int64(body.Len()))
+
 						return cache
 					}()),
 			},
@@ -123,6 +124,7 @@ func TestProxy(t *testing.T) {
 						cache := cache.NewFakeFileCache()
 						body := bytes.NewReader([]byte("hello world"))
 						cache.Set("3c025ab", body, int64(body.Len()))
+
 						return cache
 					}()),
 			},
@@ -172,6 +174,7 @@ func TestProxy(t *testing.T) {
 						cache := cache.NewFakeFileCache()
 						body := bytes.NewReader([]byte("hello world"))
 						cache.Set("file", body, int64(body.Len()))
+
 						return cache
 					}()),
 				headers: map[string]string{"Range": "bytes=0-4"},
@@ -229,7 +232,8 @@ func TestProxy(t *testing.T) {
 			assert.NoError(t, err)
 
 			for _, out := range tc.out {
-				req := httptest.NewRequest(http.MethodGet, tc.in.uri, nil)
+				req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+					tc.in.uri, nil)
 				for hk, hv := range tc.in.headers {
 					req.Header.Set(hk, hv)
 				}
@@ -276,7 +280,8 @@ func TestErrorHandler_RetriesUntilSuccess(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
 
 	rr := httptest.NewRecorder()
@@ -332,7 +337,8 @@ func TestErrorHandler_RetriesUntilSuccessMovesToUnreliable(t *testing.T) {
 		proxy.urlTracker.RecordFailure(failURL)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
 
 	rr := httptest.NewRecorder()
@@ -374,7 +380,8 @@ func TestErrorHandler_SingleTargetFailsReturns503(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
 
 	rr := httptest.NewRecorder()
@@ -421,7 +428,8 @@ func TestErrorHandler_AllTargetsTried_ReturnsLastStatusCode(t *testing.T) {
 	proxy, err := NewProxy(failURLs, WithRewriter(NewRewriter(nil)))
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, firstFailURL))
 
 	rr := httptest.NewRecorder()
@@ -457,7 +465,8 @@ func TestErrorHandler_Non2xxResponseIsRetried(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/test", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, badURL))
 
 	rr := httptest.NewRecorder()
@@ -483,7 +492,8 @@ func TestErrorHandler_RecordsFailureOnRetryError(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
 
 	rr := httptest.NewRecorder()
@@ -516,7 +526,8 @@ func TestErrorHandler_404IsNotRetried(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, firstFailURL))
 
 	rr := httptest.NewRecorder()

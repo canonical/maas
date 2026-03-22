@@ -120,6 +120,7 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 	}
 
 	procFactory = func(ctx context.Context, stdout, stderr *bytes.Buffer, name string, arg ...string) powerProc {
+		//nolint: gosec // G204: variable comes from power driver config (regiond)
 		cmd := exec.CommandContext(ctx, name, arg...)
 		cmd.Stdout = stdout
 		cmd.Stderr = stderr

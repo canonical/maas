@@ -245,6 +245,7 @@ func (s *Server) serveXDP(ctx context.Context) error {
 
 	go func() {
 		runtime.LockOSThread()
+
 		defer runtime.UnlockOSThread()
 
 		for {

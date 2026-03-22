@@ -33,17 +33,19 @@ func NewTLSConfigWithFingerprintPinning(fingerprint string) *tls.Config {
 	return &tls.Config{
 		MinVersion:         tls.VersionTLS12,
 		InsecureSkipVerify: true, //nolint:gosec // G402: we verify fingerprint manually
-		VerifyPeerCertificate: func(rawCerts [][]byte,
-			_ [][]*x509.Certificate) error {
-			if len(rawCerts) == 0 {
+		VerifyConnection: func(cs tls.ConnectionState) error {
+			if len(cs.PeerCertificates) == 0 {
 				return errors.New("no server certificate provided")
 			}
 
-			// We are interested in a leaf certificate only
-			leafCert := rawCerts[0]
-			hash := sha256.Sum256(leafCert)
+			leafCert := cs.PeerCertificates[0]
+			if leafCert == nil {
+				return errors.New("no leaf certificate found")
+			}
 
+			hash := sha256.Sum256(leafCert.Raw)
 			got := hex.EncodeToString(hash[:])
+
 			if got == want {
 				return nil
 			}
@@ -63,15 +65,14 @@ func NewTLSConfigWithCAValidationOnly(cert tls.Certificate, ca *x509.CertPool) *
 		MinVersion:         tls.VersionTLS12,
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true, //nolint:gosec // G402: verify manually using CA
-		VerifyPeerCertificate: func(rawCerts [][]byte,
-			_ [][]*x509.Certificate) error {
-			if len(rawCerts) == 0 {
+		VerifyConnection: func(cs tls.ConnectionState) error {
+			if len(cs.PeerCertificates) == 0 {
 				return errors.New("no server certificate provided")
 			}
 
-			leafCert, err := x509.ParseCertificate(rawCerts[0])
-			if err != nil {
-				return fmt.Errorf("failed to parse certificate: %w", err)
+			leafCert := cs.PeerCertificates[0]
+			if leafCert == nil {
+				return errors.New("no leaf certificate found")
 			}
 
 			// DNSName is intentionally omitted to skip hostname/SAN verification.
@@ -80,12 +81,13 @@ func NewTLSConfigWithCAValidationOnly(cert tls.Certificate, ca *x509.CertPool) *
 				Intermediates: x509.NewCertPool(),
 			}
 
-			if len(rawCerts) > 1 {
-				for _, rawCert := range rawCerts[1:] {
-					c, err := x509.ParseCertificate(rawCert)
+			if len(cs.PeerCertificates) > 1 {
+				for _, cert := range cs.PeerCertificates[1:] {
+					c, err := x509.ParseCertificate(cert.Raw)
 					if err != nil {
 						return fmt.Errorf("failed to parse intermediate certificate: %w", err)
 					}
+
 					opts.Intermediates.AddCert(c)
 				}
 			}

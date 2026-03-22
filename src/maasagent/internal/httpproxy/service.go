@@ -119,6 +119,7 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 				return err
 			}
 		}
+
 		return nil
 	}); err != nil {
 		return err
@@ -140,8 +141,10 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 	var targets []*url.URL
 
 	if err := workflow.RunAsLocalActivity(ctx, func(_ context.Context) error {
-		var wg sync.WaitGroup
-		var mu sync.Mutex
+		var (
+			wg sync.WaitGroup
+			mu sync.Mutex
+		)
 
 		for _, endpoint := range endpointsResult.Endpoints {
 			wg.Add(1)
@@ -158,12 +161,14 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 
 				// We might receive endpoints that we cannot reach, so before applying
 				// proxy settings we need to check which are actually reachable.
+				//nolint:noctx // TODO: (*net.Dialer).DialContext with (*net.Dialer).Timeout
 				conn, err := net.DialTimeout("tcp", u.Host, 500*time.Millisecond)
 				if err != nil {
 					return
 				}
 
 				mu.Lock()
+
 				targets = append(targets, u)
 				mu.Unlock()
 
@@ -178,6 +183,7 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 		wg.Wait()
 
 		var err error
+
 		s.proxy, err = NewProxy(targets,
 			WithRewriter(NewRewriter(rewriteRules)),
 			WithCacher(NewCacher(cacheRules, s.cache)),
@@ -186,6 +192,7 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 			return err
 		}
 
+		//nolint:noctx // TODO: switch to (*net.ListenConfig).Listen
 		s.listener, err = net.Listen("unix", s.socketPath)
 		if err != nil {
 			return err

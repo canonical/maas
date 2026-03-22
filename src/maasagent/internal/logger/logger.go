@@ -32,6 +32,7 @@ func New(level string) *slog.Logger {
 			if attr.Key == slog.TimeKey {
 				return slog.Attr{}
 			}
+
 			return attr
 		},
 	})

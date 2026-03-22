@@ -61,6 +61,7 @@ func newDHCPConn(iface *net.Interface, af int, sockaddr unix.Sockaddr,
 		return nil, fmt.Errorf("failed opening DHCP socket: %w", err)
 	}
 
+	//nolint:gosec // G115: fd comes from from unix.Socket
 	f := os.NewFile(uintptr(fd), "")
 
 	// newDHCPConn returns net.FilePacketConn which duplicates the file:

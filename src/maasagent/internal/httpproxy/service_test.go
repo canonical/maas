@@ -79,10 +79,12 @@ func TestConfigurationWorkflow(t *testing.T) {
 
 			assert.NoError(t, env.GetWorkflowError())
 
+			d := net.Dialer{}
+
 			httpc := http.Client{
 				Transport: &http.Transport{
 					DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-						return net.Dial("unix", svc.socketPath)
+						return d.DialContext(t.Context(), "unix", svc.socketPath)
 					},
 				},
 			}

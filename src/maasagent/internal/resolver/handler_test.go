@@ -364,6 +364,7 @@ func TestServeDNS(t *testing.T) {
 				h.SetUpstreams(systemConfig{
 					Nameservers: []netip.Addr{netip.MustParseAddr("127.0.0.1")},
 				}, nil)
+
 				cache, _ := NewCache(WithMaxSize(int64(20 * maxRecordSize)))
 				h.recordCache = cache
 			},

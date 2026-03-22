@@ -32,8 +32,11 @@ type dhcpTestClient struct {
 	conn      net.PacketConn
 }
 
-func newDHCPTestClient(network string, addr string) (*dhcpTestClient, error) {
-	conn, err := net.ListenPacket(network, addr)
+func newDHCPTestClient(ctx context.Context, network string,
+	addr string) (*dhcpTestClient, error) {
+	lc := net.ListenConfig{}
+
+	conn, err := lc.ListenPacket(ctx, network, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +141,7 @@ func BenchmarkXdpDhcpServer(b *testing.B) {
 		pkt    []byte
 	)
 
-	client, err = newDHCPTestClient("udp4", "127.0.0.1:68")
+	client, err = newDHCPTestClient(b.Context(), "udp4", "127.0.0.1:68")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -189,7 +192,7 @@ func BenchmarkRawSocketDhcpServer(b *testing.B) {
 		pkt    []byte
 	)
 
-	client, err = newDHCPTestClient("udp4", "127.0.0.1:68")
+	client, err = newDHCPTestClient(b.Context(), "udp4", "127.0.0.1:68")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -248,7 +251,7 @@ func BenchmarkXdpDhcpServerThroughput(b *testing.B) {
 	clients := make([]*dhcpTestClient, numClients)
 
 	for i := 0; i < numClients; i++ {
-		clients[i], err = newDHCPTestClient("udp4", "127.0.0.1:0")
+		clients[i], err = newDHCPTestClient(b.Context(), "udp4", "127.0.0.1:0")
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -314,7 +317,7 @@ func BenchmarkRawSocketDhcpServerThroughput(b *testing.B) {
 	clients := make([]*dhcpTestClient, numClients)
 
 	for i := 0; i < numClients; i++ {
-		clients[i], err = newDHCPTestClient("udp4", "127.0.0.1:0")
+		clients[i], err = newDHCPTestClient(b.Context(), "udp4", "127.0.0.1:0")
 		if err != nil {
 			b.Fatal(err)
 		}

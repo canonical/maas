@@ -131,6 +131,7 @@ func (h *RecursiveHandler) SetUpstreams(systemConfig systemConfig, authServers [
 		}
 
 		factory := func() (net.Conn, error) {
+			//nolint: noctx // TODO: rethink to include cancellation context
 			return net.Dial(network, net.JoinHostPort(server.String(), "53"))
 		}
 
@@ -875,7 +876,6 @@ func prepareQueryMessage(id uint16, name string, qtype uint16) *dns.Msg {
 func generateTransactionID() (uint16, error) {
 	var b [2]byte
 
-	//nolint:errcheck,gosec // rand.Read() never returns an error
 	rand.Read(b[:])
 
 	return uint16(b[0])<<8 | uint16(b[1]), nil
@@ -886,7 +886,6 @@ func generateTransactionID() (uint16, error) {
 func generateEDNS0Cookie() (string, error) {
 	clientBytes := make([]byte, 8)
 
-	//nolint:errcheck,gosec // rand.Read() never returns an error
 	rand.Read(clientBytes)
 
 	return hex.EncodeToString(clientBytes)[:16], nil

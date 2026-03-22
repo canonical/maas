@@ -387,6 +387,7 @@ func (p *Proxy) errorHandler() func(http.ResponseWriter, *http.Request, error) {
 				slog.String("target", newTarget.String()),
 				slog.String("path", r.URL.Path))
 
+			//nolint:gosec // G704: URL comes from a trusted internal source (regiond)
 			resp, retryErr := p.httpClient.Do(proxyReq)
 			if retryErr == nil {
 				// Check if response is successful (2xx status code)

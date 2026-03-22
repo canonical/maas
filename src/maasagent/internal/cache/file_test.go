@@ -81,6 +81,7 @@ func TestNewFileCache(t *testing.T) {
 				maxSize: 1,
 				path: func() string {
 					dir := t.TempDir()
+
 					file, err := os.Create(path.Join(dir, "item"))
 					if err != nil {
 						t.Fatal(err)
@@ -103,6 +104,7 @@ func TestNewFileCache(t *testing.T) {
 				maxSize: 2,
 				path: func() string {
 					dir := t.TempDir()
+
 					file, err := os.Create(path.Join(dir, "item"))
 					if err != nil {
 						t.Fatal(err)
@@ -154,6 +156,7 @@ func TestFileCacheAdd(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+
 					return cache
 				}(),
 				items: []*strings.Reader{
@@ -170,6 +173,7 @@ func TestFileCacheAdd(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+
 					return cache
 				}(),
 				items: []*strings.Reader{
@@ -186,6 +190,7 @@ func TestFileCacheAdd(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+
 					return cache
 				}(),
 				items: []*strings.Reader{
@@ -205,6 +210,7 @@ func TestFileCacheAdd(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+
 					return cache
 				}(),
 				items: []*strings.Reader{
@@ -224,6 +230,7 @@ func TestFileCacheAdd(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+
 					return cache
 				}(),
 				items: []*strings.Reader{
@@ -246,7 +253,9 @@ func TestFileCacheAdd(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+
 					cache.Set("0", strings.NewReader("x"), 1)
+
 					return cache
 				}(),
 				items: []*strings.Reader{
@@ -294,6 +303,7 @@ func TestFileCacheGet(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+
 					return cache
 				}(),
 			},
@@ -309,6 +319,7 @@ func TestFileCacheGet(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+
 					return cache
 				}(),
 				items: map[string][]byte{

@@ -33,6 +33,7 @@ type systemdClient struct{}
 
 func (s *systemdClient) OutputSystemctlCommand(ctx context.Context, args ...string) (string, error) {
 	args = append([]string{systemctlBin}, args...)
+	//nolint: gosec // G204: args are constructed from trusted internal
 	cmd := exec.CommandContext(ctx, "sudo", args...)
 
 	out, err := cmd.Output()
@@ -42,6 +43,7 @@ func (s *systemdClient) OutputSystemctlCommand(ctx context.Context, args ...stri
 
 func (s *systemdClient) CombinedOutputSystemctlCommand(ctx context.Context, args ...string) (string, error) {
 	args = append([]string{systemctlBin}, args...)
+	//nolint: gosec // G204: args are constructed from trusted internal
 	cmd := exec.CommandContext(ctx, "sudo", args...)
 
 	out, err := cmd.CombinedOutput()

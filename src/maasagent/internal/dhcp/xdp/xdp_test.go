@@ -135,6 +135,7 @@ func TestDHCP_XDP_IPv4(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
+
 				return d.ToBytes(), nil
 			},
 			xdpAction: xdpDrop,

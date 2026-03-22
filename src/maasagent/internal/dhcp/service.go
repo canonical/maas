@@ -99,7 +99,9 @@ var writeConfigFileDeb = func(path string, data []byte, mode os.FileMode) error 
 				err = closeErr
 			}
 		}()
+
 		_, err = stdin.Write(data)
+
 		return err
 	}(); err != nil {
 		return err

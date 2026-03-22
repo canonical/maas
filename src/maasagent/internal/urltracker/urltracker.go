@@ -113,7 +113,7 @@ func (t *URLTracker) SelectURL(butNot []string) *url.URL {
 	}
 
 	// 95% chance to select from reliable, 5% from unreliable
-	// #nosec G404 -- non-cryptographic random selection
+	//nolint:gosec // G404 -- non-cryptographic random selection
 	if rand.Float64() < t.reliableSelectionProbability {
 		return t.selectFromReliable(butNot, true)
 	}

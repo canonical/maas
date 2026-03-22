@@ -104,12 +104,18 @@ func main() {
 		socketPath = "/var/lib/maas/openfga-http.sock"
 	}
 
+	//nolint:gosec // G703: we allow custom socket path being specified
 	err := os.Remove(socketPath)
 	if err != nil && !os.IsNotExist(err) {
 		log.Fatalf("failed to remove existing socket file: %v", err)
 	}
 
-	lis, err := net.Listen("unix", socketPath)
+	// TODO: implement proper graceful shutdown
+	ctx := context.Background()
+
+	lc := net.ListenConfig{}
+
+	lis, err := lc.Listen(ctx, "unix", socketPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -143,7 +149,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ctx := context.Background()
 	mux := runtime.NewServeMux()
 
 	if err = openfgav1.RegisterOpenFGAServiceHandlerServer(
@@ -171,13 +176,15 @@ func main() {
 			log.Printf("failed to shutdown HTTP server: %v", err)
 		}
 
+		//nolint:gosec // G703: we allow custom socket path being specified
 		err = os.Remove(socketPath)
 		if err != nil && !os.IsNotExist(err) {
 			log.Printf("failed to remove socket file: %v", err)
 		}
 	}()
 
-	log.Printf("OpenFGA HTTP listening on unix://%s", socketPath)
+	//nolint:gosec // G706 if socketPath was okay to init the listener, it's fine
+	log.Printf("OpenFGA HTTP listening on socket %q", socketPath)
 
 	if err := httpServer.Serve(lis); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
