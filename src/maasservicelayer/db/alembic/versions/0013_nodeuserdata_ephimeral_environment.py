@@ -26,7 +26,7 @@ def upgrade() -> None:
         sa.Column(
             "for_ephemeral_environment",
             sa.Boolean(),
-            nullable=False,
+            nullable=True,
         ),
     )
 
@@ -54,6 +54,10 @@ def upgrade() -> None:
     ALTER TABLE ONLY maasserver_nodeuserdata
     ADD CONSTRAINT metadataserver_nodeuserdata_node_id_for_ephemeral_environment_key UNIQUE (node_id, for_ephemeral_environment);
     """)
+
+    op.alter_column(
+        "maasserver_nodeuserdata", "for_ephemeral_environment", nullable=False
+    )
 
 
 def downgrade() -> None:
