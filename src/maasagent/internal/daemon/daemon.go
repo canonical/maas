@@ -234,6 +234,8 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 		return fmt.Errorf("loading ca: %w", err)
 	}
 
+	d.dynCfg = &DynamicConfig{}
+
 	if args.Supervised {
 		if err := d.readLegacyConfig(args.ConfigFile); err != nil {
 			return fmt.Errorf("cannot start supervised agent: %w", err)
