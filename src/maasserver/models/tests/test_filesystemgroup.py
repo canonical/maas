@@ -2638,8 +2638,10 @@ class TestBcache(MAASServerTestCase):
         # A ridiculously reliable backing store.
         backing_device = RAID.objects.create_raid(
             block_devices=[
-                factory.make_PhysicalBlockDevice(node=node, size=backing_size)
-                for _ in range(12)
+                factory.make_PhysicalBlockDevice(
+                    node=node, size=backing_size, name=f"backing_{i}"
+                )
+                for i in range(12)
             ],  # 10 data devices, 2 checksum devices.
             level=FILESYSTEM_GROUP_TYPE.RAID_6,
         ).virtual_device
