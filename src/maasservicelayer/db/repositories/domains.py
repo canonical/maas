@@ -79,6 +79,10 @@ class DomainsClauseFactory(ClauseFactory):
         return Clause(condition=eq(DomainTable.c.id, id))
 
     @classmethod
+    def with_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=DomainTable.c.id.in_(ids))
+
+    @classmethod
     def with_name(cls, name: str) -> Clause:
         return Clause(condition=eq(DomainTable.c.name, name))
 

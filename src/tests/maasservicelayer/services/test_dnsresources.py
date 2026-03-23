@@ -317,6 +317,11 @@ class TestDNSResourcesService:
             dnsresource1,
             dnsresource2,
         ]
+        mock_dnsresource_repository.delete_many.return_value = [
+            dnsresource1,
+            dnsresource2,
+        ]
+        mock_domains_service.get_many.return_value = [domain]
 
         service = DNSResourcesService(
             Context(),
@@ -331,7 +336,7 @@ class TestDNSResourcesService:
             query=[dnsresource1.id, dnsresource2.id]
         )
         mock_dnspublications_service.create_for_config_update.assert_called_once_with(
-            source="zone removed multiple resources",
+            source="zones: test_domain removed: example1, example2",
             action=DnsUpdateAction.RELOAD,
         )
 
