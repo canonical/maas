@@ -3272,8 +3272,6 @@ class Factory(maastesting.factory.Factory):
                 cache_mode = self.pick_enum(CACHE_MODE_TYPE)
             if cache_set is None:
                 cache_set = self.make_CacheSet(node=node)
-        if name is None:
-            name = self.make_name(group_type.lower())
         group = FilesystemGroup(
             uuid=uuid,
             group_type=group_type,
