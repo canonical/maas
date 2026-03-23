@@ -264,7 +264,7 @@ class DictCharWidget(forms.widgets.MultiWidget):
         self.initials = initials
         self.labels = labels
         self.skip_check = skip_check
-        self._named_widgets = dict(zip(names, widgets, strict=True))
+        self._named_widgets = dict(zip(names, widgets, strict=False))
         super().__init__(widgets, attrs)
 
     def render(self, name, value, attrs=None):
