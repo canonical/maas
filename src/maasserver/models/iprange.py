@@ -169,7 +169,7 @@ class IPRange(CleanSave, TimestampedModel):
             # had a much larger impact than I expected.
             start_ip = IPAddress(self.start_ip)
             end_ip = IPAddress(self.end_ip)
-        except AddrFormatError:
+        except (AddrFormatError, TypeError):
             # This validation will be called even if the start_ip or end_ip
             # field is missing. So we need to check them again here, before
             # proceeding with the validation (and potentially crashing).
