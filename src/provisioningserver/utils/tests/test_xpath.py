@@ -62,7 +62,7 @@ class TestTryMatchXPathScenarios(MAASTestCase):
             "/foo:bar",
             "<foo/>",
             False,
-            expected_log="Invalid expression '/foo:bar': Undefined namespace prefix",
+            expected_log="Invalid expression '/foo:bar': Undefined namespace prefix: foo",
         ),
     )
 
@@ -108,5 +108,5 @@ class TestTryMatchXPath(MAASTestCase):
         doc = etree.XML("<foo/>")
         try_match_xpath(xpath, doc)
         logger.warn.assert_called_once_with(
-            "Invalid expression '/foo:bar': Undefined namespace prefix"
+            "Invalid expression '/foo:bar': Undefined namespace prefix: foo"
         )
