@@ -257,6 +257,7 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 		Secret:    d.dynCfg.Temporal.EncryptionKey,
 		Endpoint:  net.JoinHostPort(d.cfg.ControllerURL.Hostname(), "5271"),
 		TLSConfig: client.NewTLSConfigWithCAValidationOnly(d.cert, caPool),
+		Logger:    d.logger,
 		Meter:     d.meterProvider.Meter("temporal"),
 		Tracer:    d.tracerProvider.Tracer("temporal"),
 	})
