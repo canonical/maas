@@ -21,6 +21,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
+from contextlib import closing
 import copy
 from datetime import timedelta
 import http.client
@@ -136,10 +137,11 @@ def get_maas_machines(md_endpoint, query="", post_data=None):
     url = url._replace(
         path="/MAAS/api/2.0/machines/", query=query, params=None, fragment=None
     )
-    response = geturl(url.geturl(), post_data=post_data).read()
-    if isinstance(response, bytes):
-        response = response.decode()
-    return json.loads(response)
+    with closing(geturl(url.geturl(), post_data=post_data)) as ret:
+        response = ret.read()
+        if isinstance(response, bytes):
+            response = response.decode()
+        return json.loads(response)
 
 
 def download_and_extract_tar(url, creds, scripts_dir):
@@ -154,15 +156,15 @@ def download_and_extract_tar(url, creds, scripts_dir):
         )
     )
     sys.stdout.flush()
-    ret = geturl(url, creds)
-    if ret.status == int(http.client.NO_CONTENT):
-        return False
-    binary = BytesIO(ret.read())
+    with closing(geturl(url, creds)) as ret:
+        if ret.status == int(http.client.NO_CONTENT):
+            return False
+        binary = BytesIO(ret.read())
 
-    with tarfile.open(mode="r|*", fileobj=binary) as tar:
-        tar.extractall(scripts_dir)
+        with tarfile.open(mode="r|*", fileobj=binary) as tar:
+            tar.extractall(scripts_dir)
 
-    return True
+        return True
 
 
 def run_and_check(
@@ -986,12 +988,13 @@ def enlist(config, power_type=None, power_parameters=None):
         params=None,
         fragment=None,
     )
-    preseed = geturl(preseed_url.geturl()).read()
-    # Overwrite the enlistment preseed as it doesn't contain
-    # credentials. This isn't neccessary but can help with debug.
-    if config.config_path.exists():
-        config.config_path.unlink()
-    config.config_path.write_bytes(preseed)
+    with closing(geturl(preseed_url.geturl())) as ret:
+        preseed = ret.read()
+        # Overwrite the enlistment preseed as it doesn't contain
+        # credentials. This isn't neccessary but can help with debug.
+        if config.config_path.exists():
+            config.config_path.unlink()
+        config.config_path.write_bytes(preseed)
     preseed_config = yaml.safe_load(preseed)
     if "datasource" in preseed_config:
         preseed_config = preseed_config["datasource"]["MAAS"]
