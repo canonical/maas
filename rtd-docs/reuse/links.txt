@@ -1,0 +1,46 @@
+.. _Canonical Documentation Style Guide: https://docs.ubuntu.com/styleguide/en
+.. _Canonical Reference Library: https://library.canonical.com/
+.. _Canonical Sphinx: https://github.com/canonical/canonical-sphinx
+.. _change log: https://github.com/canonical/sphinx-docs-starter-pack/wiki/Change-log
+.. _csv-table reference: https://docutils.sourceforge.io/docs/ref/rst/directives.html#csv-table
+.. _csv-table reference (MyST): https://mystmd.org/guide/directives#directive-csv-table
+.. _Diátaxis: https://diataxis.fr/
+.. _Example product documentation: https://canonical-example-product-documentation.readthedocs-hosted.com/
+.. _Example product documentation repository: https://github.com/canonical/example-product-documentation
+.. _`file-wide metadata`: https://www.sphinx-doc.org/en/master/usage/restructuredtext/field-lists.html
+.. _Five golden rules for compliant alt text: https://abilitynet.org.uk/resources/digital-accessibility/five-golden-rules-compliant-alt-text
+.. _`Furo documentation`: https://pradyunsg.me/furo/quickstart/
+.. _grid tables: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#grid-tables
+.. _`Hiding Contents sidebar`: https://pradyunsg.me/furo/customisation/toc/
+.. _How to connect your Read the Docs account to your Git provider: https://docs.readthedocs.com/platform/stable/guides/connecting-git-account.html
+.. _How to manually configure a Git repository integration: https://docs.readthedocs.com/platform/stable/guides/setup/git-repo-manual.html
+.. _How to publish documentation on Read the Docs: https://library.canonical.com/documentation/publish-on-read-the-docs
+.. _Level AA conformance: https://www.w3.org/WAI/WCAG2AA-Conformance
+.. _list tables: https://docutils.sourceforge.io/docs/ref/rst/directives.html#list-table
+.. _manual import: https://readthedocs.com/dashboard/import/manual/
+.. _Markdown: https://commonmark.org/
+.. _MyST: https://myst-parser.readthedocs.io/
+.. _Open Graph: https://ogp.me/
+.. _Pa11y: https://pa11y.org/
+.. _Pa11y readme: https://github.com/pa11y/pa11y#command-line-configuration
+.. _Pygments documentation: https://pygments.org/languages/
+.. _Read the Docs at Canonical: https://library.canonical.com/documentation/read-the-docs-at-canonical
+.. _reStructuredText: https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html
+.. _`Sphinx`: https://www.sphinx-doc.org/
+.. _`Sphinx configuration`: https://www.sphinx-doc.org/en/master/usage/configuration.html
+.. _Sphinx DataTables: https://sharm294.github.io/sphinx-datatables/
+.. _Sphinx design: https://sphinx-design.readthedocs.io/en/latest/
+.. _Sphinx documentation starter pack:
+.. _Sphinx documentation starter pack repository: https://github.com/canonical/sphinx-docs-starter-pack
+.. _Sphinx documentation starter pack documentation: https://canonical-starter-pack.readthedocs-hosted.com/
+.. _`Sphinx extensions`: https://www.sphinx-doc.org/en/master/usage/extensions/index.html
+.. _Sphinx tabs: https://sphinx-tabs.readthedocs.io/en/latest/
+.. _tables: https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#table-directives
+.. _toctree: https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-toctree
+.. _Vale: https://vale.sh/
+.. _Vale rules: https://github.com/canonical/documentation-style-guide
+.. _Web Content Accessibility Guidelines (WCAG) 2.2: https://www.w3.org/TR/WCAG22/
+
+
+.. SHORTCUTS
+.. |RST| replace:: :abbr:`reST (reStructuredText)`
