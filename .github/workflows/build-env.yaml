@@ -1,10 +1,11 @@
 name: Create and publish a Docker image
-on: workflow_dispatch
-inputs:
-  ubuntu_series:
-    description: 'Ubuntu series for the docker container'
-    required: true
-    default: 'noble'
+on:
+  workflow_dispatch:
+    inputs:
+      ubuntu_series:
+        description: 'Ubuntu series for the docker container'
+        required: true
+        default: 'noble'
 
 # Defines two custom environment variables for the workflow. These are used for the Container registry domain, and a name for the Docker image that this workflow builds.
 env:
