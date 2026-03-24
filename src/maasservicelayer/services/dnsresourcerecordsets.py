@@ -57,12 +57,19 @@ class V3DNSResourceRecordSetsService(Service):
         self.subnets_service = subnets_service
 
     async def get_dns_records_for_domain(
-        self, domain_id: int
+        self,
+        domain_id: int,
+        user_id: int | None = None,
+        is_admin: bool = False,
     ) -> list[GenericDNSRecord]:
         rrsets_for_domain = []
         rrsets_dict = (
             await self.domains_service.v3_render_json_for_related_rrdata(
-                domain_id, as_dict=True, with_node_id=True
+                domain_id,
+                user_id=user_id,
+                is_admin=is_admin,
+                as_dict=True,
+                with_node_id=True,
             )
         )
 

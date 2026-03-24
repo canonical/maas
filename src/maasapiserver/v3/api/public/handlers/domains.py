@@ -29,6 +29,7 @@ from maasapiserver.v3.api.public.models.responses.domains import (
     DomainsListResponse,
 )
 from maasapiserver.v3.auth.base import (
+    check_authentication,
     check_permissions,
     get_authenticated_user,
 )
@@ -194,13 +195,7 @@ class DomainsHandler(Handler):
             404: {"model": NotFoundBodyResponse},
         },
         status_code=200,
-        dependencies=[
-            Depends(
-                check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
-                )
-            )
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_domain_rrsets(
         self,
@@ -211,8 +206,13 @@ class DomainsHandler(Handler):
         ),
     ) -> DomainResourceRecordSetListResponse:
         assert authenticated_user is not None
+        is_admin = (
+            await services.openfga_tuples.get_client().can_view_dnsrecords(
+                authenticated_user.id
+            )
+        )
         dns_records = await services.v3dnsrrsets.get_dns_records_for_domain(
-            domain_id
+            domain_id, user_id=authenticated_user.id, is_admin=is_admin
         )
         return DomainResourceRecordSetListResponse(
             items=[
