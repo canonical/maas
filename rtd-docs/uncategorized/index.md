@@ -29,7 +29,6 @@ manage-vmfs-datastores
 postgresql-deprecation-notices
 report-a-bug
 request-a-feature
-test-page
 upgrade-to-postgresql-v14
 upgrade-to-postgresql-v16
 use-cases-private-cloud
