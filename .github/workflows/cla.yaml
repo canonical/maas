@@ -2,8 +2,6 @@ name: CLA check
 
 on:
   pull_request:
-    branches:
-      - master
 
 jobs:
   cla:
