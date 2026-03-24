@@ -16,6 +16,7 @@
 package httpproxy
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"

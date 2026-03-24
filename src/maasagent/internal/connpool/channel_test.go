@@ -37,6 +37,7 @@
 package connpool
 
 import (
+	"context"
 	"io"
 	"math/rand/v2"
 	"net"
