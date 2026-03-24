@@ -85,3 +85,11 @@ def can_view_ipaddresses(user: User):
     if rbac.is_enabled():
         return user.is_superuser
     return get_openfga_client().can_view_ipaddresses(user)
+
+
+def can_view_dnsrecords(user: User):
+    from maasserver.rbac import rbac
+
+    if rbac.is_enabled():
+        return user.is_superuser
+    return get_openfga_client().can_view_dnsrecords(user)

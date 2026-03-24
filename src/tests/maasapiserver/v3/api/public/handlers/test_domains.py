@@ -78,11 +78,6 @@ class TestDomainsApi(ApiCommonTests):
                 permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
             ),
             Endpoint(
-                method="GET",
-                path=f"{self.BASE_PATH}/1/rrsets",
-                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
-            ),
-            Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}",
                 permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
@@ -96,6 +91,15 @@ class TestDomainsApi(ApiCommonTests):
                 method="POST",
                 path=f"{self.BASE_PATH}/1/rrsets",
                 permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+        ]
+
+    @pytest.fixture
+    def endpoints_with_authentication_only(self) -> list[Endpoint]:
+        return [
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1/rrsets",
             ),
         ]
 

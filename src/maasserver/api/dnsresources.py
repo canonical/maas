@@ -10,6 +10,7 @@ from piston3.utils import rc
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
 from maasserver.api.utils import get_optional_param
+from maasserver.authorization import can_view_dnsrecords
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.models import DNSResource, Domain
@@ -48,15 +49,15 @@ class DNSResourcesQuerySet(QuerySet):
 
     def _generate_synthetic_rrdata(self, domain):
         user_id = None if self._user_filter is None else self._user_filter.id
-        is_superuser = (
-            None
+        is_admin = (
+            False
             if self._user_filter is None
-            else self._user_filter.is_superuser
+            else can_view_dnsrecords(self._user_filter)
         )
         rrdata = service_layer.services.domains.render_json_for_related_rrdata(
             domain_id=domain.id,
             user_id=user_id,
-            is_superuser=is_superuser,
+            is_admin=is_admin,
             include_dnsdata=False,
             as_dict=True,
         )
@@ -122,9 +123,6 @@ def get_dnsresource_queryset(
         # Note: the _user_filter should be set to None we want to display
         # all records, even for non-superusers.
         query._user_filter = user
-        query._is_superuser_filter = (
-            None if user is None else user.is_superuser
-        )
     return query
 
 
