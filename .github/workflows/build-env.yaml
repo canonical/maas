@@ -1,5 +1,10 @@
 name: Create and publish a Docker image
 on: workflow_dispatch
+inputs:
+  ubuntu_series:
+    description: 'Ubuntu series for the docker container'
+    required: true
+    default: 'noble'
 
 # Defines two custom environment variables for the workflow. These are used for the Container registry domain, and a name for the Docker image that this workflow builds.
 env:
@@ -33,7 +38,7 @@ jobs:
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      - name: Select Ubuntu series from branch
+      - name: Select Ubuntu series from branch or input
         id: series
         run: |
           case "${GITHUB_REF_NAME}" in
@@ -44,8 +49,8 @@ jobs:
               echo "value=jammy" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              # Default to noble for any other branches
-              echo "value=noble" >> "$GITHUB_OUTPUT"
+              # Default to the input series for any other branch
+              echo "value=${{ github.event.inputs.ubuntu_series }}" >> "$GITHUB_OUTPUT"
               ;;
           esac
       # This step uses the `docker/build-push-action` action to build the image, based on your repository's `Dockerfile`. If the build succeeds, it pushes the image to GitHub Packages.
