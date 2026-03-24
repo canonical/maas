@@ -283,7 +283,8 @@ func Up00002(ctx context.Context, tx *sql.Tx) error {
 	relations := []string{"can_edit_machines", "can_edit_global_entities", "can_edit_controllers", "can_edit_identities",
 		"can_edit_configurations", "can_edit_notifications", "can_edit_boot_entities", "can_edit_license_keys",
 		"can_view_devices",
-		"can_view_ipaddresses"}
+		"can_view_ipaddresses",
+		"can_view_dnsrecords"}
 	if err := createGroup(ctx, tx, administratorGroupID, &relations); err != nil {
 		return fmt.Errorf("failed to create administrators group: %w", err)
 	}
