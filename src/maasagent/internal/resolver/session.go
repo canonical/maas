@@ -156,6 +156,7 @@ func (s *session) compress(compressed *[]byte, label []byte) bool {
 	//nolint:gosec // G115 compression as in RFC1035
 	v := uint16(idx ^ labelPointerShift)
 	(*compressed)[compressedLen] = byte(v >> 8)
+	//nolint:gosec // G115 compression as in RFC1035
 	(*compressed)[compressedLen+1] = byte(v)
 
 	return true
@@ -185,6 +186,7 @@ func (s *session) format(nameStr string) (name, error) {
 				return name{}, ErrLabelTooLong
 			}
 
+			//nolint:gosec // G115 compression as in RFC1035
 			wire[0] = byte(labelLen)
 			copy(wire[1:], label)
 			uncompressed = append(uncompressed, wire[:1+labelLen]...)

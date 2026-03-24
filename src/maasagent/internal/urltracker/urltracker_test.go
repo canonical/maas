@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package httpproxy
+package urltracker
 
 import (
 	"net/url"
@@ -58,7 +58,7 @@ func TestURLTracker(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			tracker, err := NewURLTracker(tc.in.targets)
+			tracker, err := New(tc.in.targets)
 			if tc.out.errorExpected {
 				assert.NotNil(t, err)
 				return
@@ -75,10 +75,10 @@ func TestURLTracker_RecordFailure_MovesToUnreliable(t *testing.T) {
 	url1, _ := url.Parse("http://example1.com")
 	targets := []*url.URL{url1}
 
-	tracker, _ := NewURLTracker(targets)
+	tracker, _ := New(targets)
 
 	// Record 5 consecutive failures
-	for i := 0; i < maxConsecutiveFailures; i++ {
+	for i := 0; i < tracker.maxConsecutiveFailures; i++ {
 		tracker.RecordFailure(url1)
 	}
 
@@ -91,10 +91,10 @@ func TestURLTracker_RecordSuccess_MovesToReliable(t *testing.T) {
 	url1, _ := url.Parse("http://example1.com")
 	targets := []*url.URL{url1}
 
-	tracker, _ := NewURLTracker(targets)
+	tracker, _ := New(targets)
 
 	// Move to unreliable first
-	for i := 0; i < maxConsecutiveFailures; i++ {
+	for i := 0; i < tracker.maxConsecutiveFailures; i++ {
 		tracker.RecordFailure(url1)
 	}
 
@@ -111,7 +111,7 @@ func TestURLTracker_RecordSuccess_ResetsFailureCount(t *testing.T) {
 	url1, _ := url.Parse("http://example1.com")
 	targets := []*url.URL{url1}
 
-	tracker, _ := NewURLTracker(targets)
+	tracker, _ := New(targets)
 
 	// Record some failures
 	tracker.RecordFailure(url1)
@@ -127,10 +127,10 @@ func TestURLTracker_SelectURL_OnlyUnreliable(t *testing.T) {
 	url1, _ := url.Parse("http://example1.com")
 	targets := []*url.URL{url1}
 
-	tracker, _ := NewURLTracker(targets)
+	tracker, _ := New(targets)
 
 	// Move to unreliable
-	for i := 0; i < maxConsecutiveFailures; i++ {
+	for i := 0; i < tracker.maxConsecutiveFailures; i++ {
 		tracker.RecordFailure(url1)
 	}
 
@@ -146,10 +146,10 @@ func TestURLTracker_SelectURL_Distribution(t *testing.T) {
 	url2, _ := url.Parse("http://unreliable.com")
 	targets := []*url.URL{url1, url2}
 
-	tracker, _ := NewURLTracker(targets)
+	tracker, _ := New(targets)
 
 	// Move url2 to unreliable
-	for i := 0; i < maxConsecutiveFailures; i++ {
+	for i := 0; i < tracker.maxConsecutiveFailures; i++ {
 		tracker.RecordFailure(url2)
 	}
 
@@ -177,7 +177,7 @@ func TestURLTracker_SelectURL_Distribution(t *testing.T) {
 
 func TestURLTracker_RecordFailure_UntrackedURL(t *testing.T) {
 	u, _ := url.Parse("http://foo.com")
-	tracker, _ := NewURLTracker([]*url.URL{u})
+	tracker, _ := New([]*url.URL{u})
 
 	uknwown, _ := url.Parse("http://example.com")
 
@@ -188,7 +188,7 @@ func TestURLTracker_RecordFailure_UntrackedURL(t *testing.T) {
 
 func TestURLTracker_RecordSuccess_UntrackedURL(t *testing.T) {
 	u, _ := url.Parse("http://foo.com")
-	tracker, _ := NewURLTracker([]*url.URL{u})
+	tracker, _ := New([]*url.URL{u})
 
 	uknwown, _ := url.Parse("http://example.com")
 
@@ -264,7 +264,7 @@ func TestURLTrackerSelectURL(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			tracker, _ := NewURLTracker(tc.in.targets)
+			tracker, _ := New(tc.in.targets)
 
 			selected := tracker.SelectURL(tc.in.exclude)
 			if tc.out.acceptableUrls == nil {

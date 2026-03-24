@@ -23,10 +23,8 @@ import (
 
 func RootCmd(ctx context.Context) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "maas-agent",
-		Short: "MAAS agent - take control of your rack internals!",
-		// Silence because we want to use our logger instead
-		SilenceErrors:     true,
+		Use:               "maas-agent",
+		Short:             "MAAS agent - take control of your rack internals!",
 		SilenceUsage:      true,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 		// TODO: Extract version information

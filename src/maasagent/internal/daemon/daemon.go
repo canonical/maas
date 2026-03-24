@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -31,8 +32,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/afero"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
@@ -47,6 +46,7 @@ import (
 	"maas.io/core/src/maasagent/internal/atomicfile"
 	"maas.io/core/src/maasagent/internal/certutil"
 	"maas.io/core/src/maasagent/internal/client"
+	"maas.io/core/src/maasagent/internal/logger"
 	"maas.io/core/src/maasagent/internal/pathutil"
 	"maas.io/core/src/maasagent/internal/token"
 )
@@ -62,6 +62,8 @@ type configurator interface {
 
 type Daemon struct {
 	fs afero.Fs
+
+	logger *slog.Logger
 
 	enroller     func(*url.URL, *tls.Config) enroller
 	configurator func(*url.URL, *tls.Config) configurator
@@ -209,7 +211,8 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	d.setupLogger()
+	d.logger = logger.New(string(d.cfg.Observability.Logging.Level))
+	d.logger.Info("Starting daemon")
 
 	if err := d.setupObservability(ctx); err != nil {
 		return fmt.Errorf("configure observability: %w", err)
@@ -230,6 +233,8 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 	if err != nil {
 		return fmt.Errorf("loading ca: %w", err)
 	}
+
+	d.dynCfg = &DynamicConfig{}
 
 	if args.Supervised {
 		if err := d.readLegacyConfig(args.ConfigFile); err != nil {
@@ -267,7 +272,7 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 		//     it will start rackd, which would then start the agent
 		// TODO: Remove once Python based rackd is obsolete.
 		if !args.Supervised && dynCfg.SystemID == "" {
-			if err := startRackd(d.fs, rackdConfig{
+			if err := startRackd(ctx, d.fs, rackdConfig{
 				AgentUUID: id,
 				RPCSecret: dynCfg.RPCSecret,
 				MAASURL:   dynCfg.MAASURL,
@@ -286,7 +291,7 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 		return fmt.Errorf("starting services: %w", err)
 	}
 
-	g.Go(d.startHTTPServer)
+	g.Go(func() error { return d.startHTTPServer(ctx) })
 
 	// TODO: Implement graceful shutdown in case of an error
 	return g.Wait()
@@ -297,7 +302,7 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 // and sets file permissions to 0660 to restrict access to the owner
 // and the group. It will register all the handlers from daemon's mux.
 // This call is blocking.
-func (d *Daemon) startHTTPServer() error {
+func (d *Daemon) startHTTPServer(ctx context.Context) error {
 	socketPath := filepath.Join(pathutil.RunDir(), "agent-http.sock")
 
 	if err := d.fs.Remove(socketPath); err != nil {
@@ -306,9 +311,10 @@ func (d *Daemon) startHTTPServer() error {
 		}
 	}
 
+	lc := net.ListenConfig{}
 	// TODO: consider listening on a ip:port once Python rackd is gone,
 	// as it will be unlikely that nginx will be shipped as a dependency.
-	listener, err := net.Listen("unix", socketPath)
+	listener, err := lc.Listen(ctx, "unix", socketPath)
 	if err != nil {
 		return fmt.Errorf("listen on unix socket: %w", err)
 	}
@@ -332,32 +338,6 @@ func (d *Daemon) startHTTPServer() error {
 	}
 
 	return d.server.Serve(listener)
-}
-
-// setupLogger sets the global logger with the provided logLevel.
-// If logLevel provided is unknown, then INFO will be used.
-func (d *Daemon) setupLogger() {
-	// Use custom ConsoleWriter without TimestampFieldName, because stdout
-	// is captured with systemd-cat
-	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout, NoColor: true}
-	consoleWriter.PartsOrder = []string{
-		zerolog.LevelFieldName,
-		zerolog.CallerFieldName,
-		zerolog.MessageFieldName,
-	}
-
-	log.Logger = zerolog.New(consoleWriter).With().Logger()
-
-	ll, err := zerolog.ParseLevel(string(d.cfg.Observability.Logging.Level))
-	if err != nil || ll == zerolog.NoLevel {
-		ll = zerolog.InfoLevel
-	}
-
-	zerolog.SetGlobalLevel(ll)
-
-	// TODO: switch to slog and return logger to inject as a dependency.
-
-	log.Info().Msg(fmt.Sprintf("Logger is configured with log level %q", ll.String()))
 }
 
 // setupObservability initializes metrics, tracing, and profiling based on cfg.
@@ -497,12 +477,12 @@ type rackdConfig struct {
 // This function would be no longer required once twisted RPC is gone,
 // and rackd is no longer the supervisor of the agent.
 // TODO: Remove once Python based rackd is obsolete.
-func startRackd(fs afero.Fs, cfg rackdConfig) error {
+func startRackd(ctx context.Context, fs afero.Fs, cfg rackdConfig) error {
 	if err := writeRackdConfig(fs, cfg); err != nil {
 		return err
 	}
 
-	if err := restartRackd(); err != nil {
+	if err := restartRackd(ctx); err != nil {
 		return err
 	}
 
@@ -568,22 +548,22 @@ func writeRackdConfig(fs afero.Fs, cfg rackdConfig) error {
 // This method is intended for backward compatibility during the transition
 // from rackd-supervised agents to standalone operation.
 // TODO: Remove once Python based rackd is obsolete.
-func restartRackd() error {
+func restartRackd(ctx context.Context) error {
 	if snap := os.Getenv("SNAP"); snap != "" {
 		snap = filepath.Clean(snap)
 
 		return runAll(
-			exec.Command("snapctl", "stop", "maas.pebble"),
+			exec.CommandContext(ctx, "snapctl", "stop", "maas.pebble"),
 			//nolint:gosec // G204 previous .Clean and .Join should be enough
-			exec.Command(filepath.Join(snap, "bin/reconfigure-pebble")),
-			exec.Command("snapctl", "start", "maas.pebble"),
+			exec.CommandContext(ctx, filepath.Join(snap, "bin/reconfigure-pebble")),
+			exec.CommandContext(ctx, "snapctl", "start", "maas.pebble"),
 		)
 	}
 
 	return runAll(
-		exec.Command("systemctl", "stop", "maas-rackd"),
-		exec.Command("systemctl", "enable", "maas-rackd"),
-		exec.Command("systemctl", "start", "maas-rackd"),
+		exec.CommandContext(ctx, "systemctl", "stop", "maas-rackd"),
+		exec.CommandContext(ctx, "systemctl", "enable", "maas-rackd"),
+		exec.CommandContext(ctx, "systemctl", "start", "maas-rackd"),
 	)
 }
 

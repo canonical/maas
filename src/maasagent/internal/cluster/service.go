@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -23,7 +23,6 @@ import (
 
 	"github.com/canonical/microcluster/v2/microcluster"
 	"github.com/canonical/microcluster/v2/state"
-	"github.com/rs/zerolog"
 
 	lxdutil "github.com/canonical/lxd/lxd/util"
 	"go.opentelemetry.io/otel/attribute"
@@ -156,15 +155,13 @@ func (s *ClusterService) configure(ctx tworkflow.Context, config ClusterServiceC
 		go func() {
 			// TODO: propagate version during build
 			err := s.cluster.Start(cctx, microcluster.DaemonArgs{
-				Version: "UNKNOWN",
-				// Microcluster is using logrus and the format will be slightly different
-				// than zerolog of MAAS Agent.
-				Debug:            zerolog.GlobalLevel() == zerolog.DebugLevel,
+				Version:          "UNKNOWN",
 				ExtensionsSchema: schemaExtensions,
 				Hooks:            s.clusterHooks,
 			})
 			if err != nil {
 				log.Error("Failed to start Microcluster", "err", err)
+
 				s.fatal <- err
 			}
 		}()
@@ -184,7 +181,6 @@ func (s *ClusterService) configure(ctx tworkflow.Context, config ClusterServiceC
 func (s *ClusterService) ConfigureDirect(ctx context.Context) error {
 	return s.cluster.Start(ctx, microcluster.DaemonArgs{
 		Version:          "UNKNOWN",
-		Debug:            zerolog.GlobalLevel() == zerolog.DebugLevel,
 		ExtensionsSchema: schemaExtensions,
 		Hooks:            s.clusterHooks,
 	})

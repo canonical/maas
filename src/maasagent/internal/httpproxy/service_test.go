@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -24,13 +24,13 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/activity"
+	tlog "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/testsuite"
 	"maas.io/core/src/maasagent/internal/cache"
-	"maas.io/core/src/maasagent/internal/workflow/log"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 // We don't have definition of "get-region-endpoints" because this is a workflow
@@ -45,7 +45,8 @@ func TestConfigurationWorkflow(t *testing.T) {
 	// HTTPProxyService configuration workflow might be called multiple times,
 	// and we want to ensure that there is no state that we could depend on, or
 	// that would lead to errors if configuration workflow is invoked multiple times
-	svc := NewHTTPProxyService(t.TempDir(), cache.NewFakeFileCache())
+	svc := NewHTTPProxyService(t.TempDir(), cache.NewFakeFileCache(),
+		logger.Noop())
 
 	upstream := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, _ *http.Request) {
@@ -61,8 +62,8 @@ func TestConfigurationWorkflow(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		t.Run(t.Name(), func(t *testing.T) {
 			wfTestSuite := testsuite.WorkflowTestSuite{}
-			logger := log.NewZerologAdapter(zerolog.Nop())
-			wfTestSuite.SetLogger(logger)
+			wfTestSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 			env := wfTestSuite.NewTestWorkflowEnvironment()
 
 			env.RegisterActivityWithOptions(getRegionEndpointsActivity, activity.RegisterOptions{
@@ -78,10 +79,12 @@ func TestConfigurationWorkflow(t *testing.T) {
 
 			assert.NoError(t, env.GetWorkflowError())
 
+			d := net.Dialer{}
+
 			httpc := http.Client{
 				Transport: &http.Transport{
 					DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-						return net.Dial("unix", svc.socketPath)
+						return d.DialContext(t.Context(), "unix", svc.socketPath)
 					},
 				},
 			}
@@ -98,16 +101,14 @@ func TestConfigurationWorkflow(t *testing.T) {
 }
 
 func TestConfigurationWorkflowWithUnreachableEndpoint(t *testing.T) {
-	svc := NewHTTPProxyService(t.TempDir(), cache.NewFakeFileCache())
+	svc := NewHTTPProxyService(t.TempDir(), cache.NewFakeFileCache(),
+		logger.Noop())
 
 	nonExistingEndpoint, err := url.Parse("http://maas.invalid:5240")
 	assert.NoError(t, err)
 
 	wfTestSuite := testsuite.WorkflowTestSuite{}
-
-	logger := log.NewZerologAdapter(zerolog.Nop())
-
-	wfTestSuite.SetLogger(logger)
+	wfTestSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
 
 	env := wfTestSuite.NewTestWorkflowEnvironment()
 

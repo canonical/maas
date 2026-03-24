@@ -1,4 +1,4 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import List, Optional, Type
@@ -25,6 +25,10 @@ class DNSResourceClauseFactory(ClauseFactory):
     @classmethod
     def with_id(cls, id: int) -> Clause:
         return Clause(condition=eq(DNSResourceTable.c.id, id))
+
+    @classmethod
+    def with_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=DNSResourceTable.c.id.in_(ids))
 
     @classmethod
     def with_name(cls, name: str) -> Clause:
@@ -120,6 +124,20 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
 
         await self.execute_stmt(stmt)
 
+    async def unlink_ip_from_all_dnsresources(
+        self, staticipaddress_id: int
+    ) -> None:
+        """Remove all DNS resource associations for a specific IP address.
+
+        Args:
+            staticipaddress_id: The ID of the IP address to unlink
+        """
+        stmt = delete(DNSResourceIPAddressTable).where(
+            DNSResourceIPAddressTable.c.staticipaddress_id
+            == staticipaddress_id
+        )
+        await self.execute_stmt(stmt)
+
     async def get_dnsdata_for_dnsresource(
         self, dnsrr_id: int
     ) -> list[DNSData]:
@@ -132,3 +150,92 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
         result = (await self.execute_stmt(stmt)).all()
 
         return [DNSData(**r._asdict()) for r in result]
+
+    async def get_dnsresources_for_ip(
+        self, ip: StaticIPAddress
+    ) -> List[DNSResource]:
+        """Get all DNS resources linked to a specific IP address.
+
+        Args:
+            ip: The StaticIPAddress to find DNS resources for
+
+        Returns:
+            List of DNSResource objects linked to this IP
+        """
+        stmt = (
+            select(DNSResourceTable)
+            .select_from(DNSResourceTable)
+            .join(
+                DNSResourceIPAddressTable,
+                DNSResourceIPAddressTable.c.dnsresource_id
+                == DNSResourceTable.c.id,
+            )
+            .filter(
+                DNSResourceIPAddressTable.c.staticipaddress_id == ip.id,
+            )
+        )
+
+        result = (await self.execute_stmt(stmt)).all()
+        return [DNSResource(**row._asdict()) for row in result]
+
+    async def get_dnsresources_without_ips(
+        self, dnsresource_ids: List[int]
+    ) -> List[int]:
+        """Get DNS resources that have no associated IP addresses.
+
+        Args:
+            dnsresource_ids: List of DNS resource IDs to check
+
+        Returns:
+            List of dnsresource IDs that have no associated IPs
+        """
+        if not dnsresource_ids:
+            return []
+
+        stmt = (
+            select(
+                DNSResourceIPAddressTable.c.dnsresource_id,
+            )
+            .where(
+                DNSResourceIPAddressTable.c.dnsresource_id.in_(dnsresource_ids)
+            )
+            .distinct()
+        )
+
+        result = (await self.execute_stmt(stmt)).all()
+        dnsresources_with_ips = {row.dnsresource_id for row in result}
+        return [
+            dnsresource_id
+            for dnsresource_id in dnsresource_ids
+            if dnsresource_id not in dnsresources_with_ips
+        ]
+
+    async def get_dnsresources_without_dnsdata(
+        self, dnsresource_ids: List[int]
+    ) -> List[int]:
+        """Get DNS resources that have no DNS data records.
+
+        Args:
+            dnsresource_ids: List of DNS resource IDs to check
+
+        Returns:
+            List of dnsresource IDs that have no DNS data records
+        """
+        if not dnsresource_ids:
+            return []
+
+        stmt = (
+            select(
+                DNSDataTable.c.dnsresource_id,
+            )
+            .where(DNSDataTable.c.dnsresource_id.in_(dnsresource_ids))
+            .distinct()
+        )
+
+        result = (await self.execute_stmt(stmt)).all()
+        dnsresources_with_dnsdata = {row.dnsresource_id for row in result}
+        return [
+            dnsresource_id
+            for dnsresource_id in dnsresource_ids
+            if dnsresource_id not in dnsresources_with_dnsdata
+        ]

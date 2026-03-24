@@ -26,12 +26,12 @@ linters:
     - nolintlint
     - nonamedreturns
     - revive
+    - sloglint
     - staticcheck
     - tagliatelle
     - unused
     - whitespace
     - wsl_v5
-    - zerologlint
   settings:
     errcheck:
       check-type-assertions: true
@@ -79,6 +79,12 @@ linters:
         - name: datarace
           severity: warning
           disabled: false
+    slogLint:
+      no-global: "default"
+      attr-only: true
+      msg-style: capitalized
+      key-naming-case: snake
+      args-on-sep-lines: true
     staticcheck:
       checks:
         - all

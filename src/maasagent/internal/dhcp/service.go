@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -38,7 +39,6 @@ import (
 	"github.com/canonical/microcluster/v2/state"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/insomniacslk/dhcp/dhcpv4"
-	"github.com/rs/zerolog/log"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/activity"
 	tworkflow "go.temporal.io/sdk/workflow"
@@ -47,10 +47,10 @@ import (
 	"maas.io/core/src/maasagent/internal/dhcp/xdp"
 	"maas.io/core/src/maasagent/internal/dhcpd"
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
+	"maas.io/core/src/maasagent/internal/logger"
 	"maas.io/core/src/maasagent/internal/pathutil"
 	"maas.io/core/src/maasagent/internal/servicecontroller"
 	"maas.io/core/src/maasagent/internal/workflow"
-	"maas.io/core/src/maasagent/internal/workflow/log/tag"
 )
 
 const (
@@ -99,7 +99,9 @@ var writeConfigFileDeb = func(path string, data []byte, mode os.FileMode) error 
 				err = closeErr
 			}
 		}()
+
 		_, err = stdin.Write(data)
+
 		return err
 	}(); err != nil {
 		return err
@@ -115,6 +117,7 @@ var writeConfigFileDeb = func(path string, data []byte, mode os.FileMode) error 
 
 // DHCPService is a service that is responsible for setting up DHCP on MAAS Agent.
 type DHCPService struct {
+	logger             *slog.Logger
 	notificationSock   net.Conn
 	controllerV6       servicecontroller.Controller
 	controllerV4       servicecontroller.Controller
@@ -163,6 +166,7 @@ func NewDHCPService(
 	options ...DHCPServiceOption,
 ) *DHCPService {
 	s := &DHCPService{
+		logger:             logger.Noop(),
 		systemID:           systemID,
 		controllerV4:       controllerV4,
 		controllerV6:       controllerV6,
@@ -216,6 +220,15 @@ func WithDataPathFactory(factory dataPathFactory) DHCPServiceOption {
 func WithServerStart(fn func(context.Context, LeaseReporter) error) DHCPServiceOption {
 	return func(s *DHCPService) {
 		s.serverStart = fn
+	}
+}
+
+// WithLogger allows setting custom logger. By default logger is no-op.
+func WithLogger(l *slog.Logger) DHCPServiceOption {
+	return func(s *DHCPService) {
+		if l != nil {
+			s.logger = l
+		}
 	}
 }
 
@@ -283,7 +296,7 @@ func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigP
 
 	if err := workflow.RunAsLocalActivity(ctx, func(ctx context.Context) error {
 		if !config.Enabled {
-			log.Info("Stopping dhcp-service", tag.Builder().KV("enabled", config.Enabled))
+			s.logger.Info("Stopping dhcp-service")
 			return s.stop(ctx)
 		}
 
@@ -372,14 +385,14 @@ func (s *DHCPService) OnNewMember(ctx context.Context, st state.State) error {
 }
 
 func (s *DHCPService) startInternalServer(ctx context.Context, lr LeaseReporter) error {
-	log.Info().Msg("STARTING INTERNAL DHCP SERVER")
+	s.logger.Info("Starting DHCP server")
 
-	allocator4, err := newDQLiteAllocator4()
+	allocator4, err := newDQLiteAllocator4(s.logger)
 	if err != nil {
 		return fmt.Errorf("error initializing allocator: %w", err)
 	}
 
-	handler4 := NewDORAHandler(allocator4, lr)
+	handler4 := NewDORAHandler(allocator4, lr, logger.Noop())
 	if s.clusterState != nil {
 		handler4.SetClusterState(s.clusterState)
 	}
@@ -389,9 +402,15 @@ func (s *DHCPService) startInternalServer(ctx context.Context, lr LeaseReporter)
 
 	err = xdpProg.Load()
 	if err != nil {
-		log.Warn().Err(err).Msg("unable to initialize XDP reader, continuing with only AF_RAW socket")
+		if errors.Is(err, xdp.ErrRemoveMemlock) {
+			s.logger.Warn("Unable to set rlimit, continuing with default",
+				slog.Any("error", err))
+		} else {
+			s.logger.Warn("Unable to initialize XDP reader, continuing with only AF_RAW socket",
+				slog.Any("error", err))
 
-		xdpProg = nil
+			xdpProg = nil
+		}
 	}
 
 	s.server, err = NewServer(s.activeInterfaces, xdpProg, handler4, nil)
@@ -399,19 +418,19 @@ func (s *DHCPService) startInternalServer(ctx context.Context, lr LeaseReporter)
 		return fmt.Errorf("error initializing dhcp server: %w", err)
 	}
 
-	s.expirationHandler = newExpirationHandler(expirationInterval)
+	s.expirationHandler = newExpirationHandler(expirationInterval, logger.Noop())
 
 	go func() {
 		err := s.server.Serve(ctx)
 		if err != nil {
-			log.Err(err).Msg("error starting DHCP server")
+			s.logger.Error("Error starting DHCP server", slog.Any("error", err))
 		}
 	}()
 
 	go func() {
 		err := s.expirationHandler.Start(ctx)
 		if err != nil {
-			log.Err(err).Send()
+			s.logger.Error("Expiration handler failed", slog.Any("error", err))
 		}
 	}()
 

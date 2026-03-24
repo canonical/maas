@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -19,15 +19,16 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net"
 	"net/netip"
 	"strconv"
 	"time"
 
 	pcap "github.com/packetcap/go-pcap"
-	"github.com/rs/zerolog/log"
 
 	"maas.io/core/src/maasagent/internal/ethernet"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 const (
@@ -77,16 +78,35 @@ type Result struct {
 // Service is responsible for starting packet capture and
 // converting observed ARP packets into discovered Results
 type Service struct {
+	logger   *slog.Logger
 	bindings map[string]Binding
 	iface    string
 }
 
 // NewService returns a pointer to a Service. It
 // takes the desired interface to observe's name as an argument
-func NewService(iface string) *Service {
-	return &Service{
+func NewService(iface string, opts ...Option) *Service {
+	s := &Service{
+		logger:   logger.Noop(),
 		iface:    iface,
 		bindings: make(map[string]Binding),
+	}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
+}
+
+type Option func(*Service)
+
+// WithLogger allows setting custom logger. By default logger is no-op.
+func WithLogger(l *slog.Logger) Option {
+	return func(s *Service) {
+		if l != nil {
+			s.logger = l
+		}
 	}
 }
 
@@ -201,7 +221,7 @@ func (s *Service) handlePacket(pkt pcap.Packet) ([]Result, error) {
 	}
 
 	if eth.EthernetType != ethernet.EthernetTypeVLAN && eth.EthernetType != ethernet.EthernetTypeARP {
-		log.Debug().Msg("skipping non-ARP packet")
+		s.logger.Debug("Skipping non-ARP packet")
 		return nil, nil
 	}
 
@@ -224,7 +244,7 @@ func (s *Service) handlePacket(pkt pcap.Packet) ([]Result, error) {
 	}
 
 	if !isValidARPPacket(arpPkt) {
-		log.Debug().Msg("skipping non-ethernet+IPv4 ARP packet")
+		s.logger.Debug("Skipping non-ethernet+IPv4 ARP packet")
 		return nil, nil
 	}
 
@@ -261,14 +281,14 @@ func (s *Service) Start(ctx context.Context, resultC chan<- Result) error {
 			return nil
 		case pkt, ok := <-pkts:
 			if !ok {
-				log.Debug().Msg("packet capture has closed")
+				s.logger.Debug("Packet capture has closed")
 				return ErrPacketCaptureClosed
 			}
 
 			res, err := s.handlePacket(pkt)
 			if err != nil {
 				if isRecoverableError(err) {
-					log.Error().Err(err).Send()
+					s.logger.Error("Error handling packet", slog.Any("error", err))
 					continue
 				}
 

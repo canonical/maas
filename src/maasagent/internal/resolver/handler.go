@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/netip"
 	"os"
@@ -30,8 +31,8 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
-	"github.com/rs/zerolog/log"
 	"maas.io/core/src/maasagent/internal/connpool"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 const (
@@ -64,6 +65,7 @@ type systemConfig struct {
 type RecursiveHandlerOption func(*RecursiveHandler)
 
 type RecursiveHandler struct {
+	logger               *slog.Logger
 	recordCache          Cache
 	client               client
 	conns                conns
@@ -77,6 +79,7 @@ type RecursiveHandler struct {
 // NewRecursiveHandler provides a constructor for a new handler for recursive queries
 func NewRecursiveHandler(cache Cache, options ...RecursiveHandlerOption) *RecursiveHandler {
 	r := &RecursiveHandler{
+		logger:       logger.Noop(),
 		client:       &dns.Client{Timeout: exchangeTimeout},
 		systemConfig: systemConfig{},
 		sessions: sessions{
@@ -95,6 +98,15 @@ func NewRecursiveHandler(cache Cache, options ...RecursiveHandlerOption) *Recurs
 	}
 
 	return r
+}
+
+// WithLogger allows setting custom logger. By default logger is no-op.
+func WithLogger(l *slog.Logger) RecursiveHandlerOption {
+	return func(h *RecursiveHandler) {
+		if l != nil {
+			h.logger = l
+		}
+	}
 }
 
 // SetUpstreams sets upstream connections for both authoritative and non-authoritative servers
@@ -119,6 +131,7 @@ func (h *RecursiveHandler) SetUpstreams(systemConfig systemConfig, authServers [
 		}
 
 		factory := func() (net.Conn, error) {
+			//nolint: noctx // TODO: rethink to include cancellation context
 			return net.Dial(network, net.JoinHostPort(server.String(), "53"))
 		}
 
@@ -190,7 +203,9 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 
 		nameserver, err := h.findRecursiveNS(qstate)
 		if err != nil && !errors.Is(err, ErrNoAnswer) {
-			log.Error().Err(err).Msg("Failed to find recursive NS")
+			h.logger.Error("Failed to find recursive NS",
+				slog.Any("error", err),
+			)
 
 			h.srvFailResponse(w, r)
 
@@ -200,7 +215,7 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		if nameserver != nil {
 			msg, err = h.handleAuthoritative(q, remoteSession, nameserver)
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to handle authoritative query")
+				h.logger.Error("Failed to handle authoritative query", slog.Any("error", err))
 
 				h.srvFailResponse(w, r)
 
@@ -212,7 +227,7 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 
 				err = w.WriteMsg(r)
 				if err != nil {
-					log.Error().Err(err).Msg("Failed to send reply")
+					h.logger.Error("Failed to send reply", slog.Any("error", err))
 				}
 
 				return
@@ -237,7 +252,7 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		if qstate.UseSearch() {
 			msg, err = h.handleSearch(q)
 			if err != nil {
-				log.Error().Err(err).Msg("Failed querying search domain")
+				h.logger.Error("Failed querying search domain", slog.Any("error", err))
 
 				h.srvFailResponse(w, r)
 
@@ -259,7 +274,7 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 
 		msg, err = h.handleNonAuthoritative(q)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed non-authoritative querying")
+			h.logger.Error("Failed non-authoritative querying", slog.Any("error", err))
 
 			h.srvFailResponse(w, r)
 
@@ -271,7 +286,7 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 
 			err = w.WriteMsg(r)
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to send reply")
+				h.logger.Error("Failed to send reply", slog.Any("error", err))
 			}
 
 			return
@@ -287,7 +302,7 @@ func (h *RecursiveHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 
 	err := w.WriteMsg(r)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to send reply")
+		h.logger.Error("Failed to send reply", slog.Any("error", err))
 	}
 }
 
@@ -402,7 +417,7 @@ func (h *RecursiveHandler) findRecursiveNS(qstate *queryState) (*dns.NS, error) 
 
 		if err != nil || nameserver == nil { // if failed to find NS record's address or we haven't found one yet
 			if err != nil {
-				log.Debug().Err(err).Msgf("Retryable error")
+				h.logger.Debug("Retryable error", slog.Any("error", err))
 			}
 
 			if authServerIdx == len(h.authoritativeServers) {
@@ -415,7 +430,7 @@ func (h *RecursiveHandler) findRecursiveNS(qstate *queryState) (*dns.NS, error) 
 
 		ns, err := h.getNS(label, nsAddr)
 		if err != nil {
-			log.Debug().Err(err).Msgf("Retryable error")
+			h.logger.Debug("Retryable error", slog.Any("error", err))
 
 			continue
 		}
@@ -470,7 +485,7 @@ func (h *RecursiveHandler) getNS(name string, nameserver netip.Addr) (*dns.NS, e
 	for _, server := range h.authoritativeServers {
 		msg, err := query(server)
 		if err != nil {
-			log.Debug().Err(err).Msgf("Retryable error")
+			h.logger.Debug("Retryable error", slog.Any("error", err))
 
 			continue
 		}
@@ -493,7 +508,7 @@ func (h *RecursiveHandler) queryAliasType(query *dns.Msg, nameserver *dns.NS, re
 			alreadyQueried := remoteSession.contains(name)
 
 			if alreadyQueried {
-				log.Warn().Msgf("Detected a looping querying from %s", remoteSession.String())
+				h.logger.Warn("Detected a looping querying", slog.String("remote", remoteSession.String()))
 
 				query.Response = true
 				query.Rcode = dns.RcodeRefused
@@ -558,8 +573,7 @@ outerLoop:
 			for _, server := range h.authoritativeServers {
 				resp, err := h.authoritativeExchange(server, msg)
 				if err != nil {
-					log.Err(err).Send()
-
+					h.logger.Error("Authoritative exchange failed", slog.Any("error", err))
 					continue
 				}
 
@@ -617,14 +631,14 @@ func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool 
 	remoteAddr := w.RemoteAddr().String()
 
 	if r.Response || (r.Opcode != dns.OpcodeQuery && r.Opcode != dns.OpcodeIQuery) {
-		log.Warn().Msgf("Received a non-query from: %s", remoteAddr)
+		h.logger.Warn("Received a non-query", slog.String("remote", remoteAddr))
 
 		r.Response = true
 		r.Rcode = dns.RcodeRefused
 
 		err := w.WriteMsg(r)
 		if err != nil {
-			log.Err(err).Send()
+			h.logger.Error("Cannot write response", slog.Any("error", err))
 		}
 
 		return false
@@ -634,7 +648,10 @@ func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool 
 	// or functionality reasons
 	for _, q := range r.Question {
 		if q.Qclass == dns.ClassCHAOS || q.Qclass == dns.ClassNONE || q.Qclass == dns.ClassANY {
-			log.Warn().Msgf("Received a %s class query from: %s", dns.ClassToString[q.Qclass], remoteAddr)
+			h.logger.Warn("Received unsupported query",
+				slog.String("class", dns.ClassToString[q.Qclass]),
+				slog.String("remote", remoteAddr),
+			)
 
 			r.Response = true
 			r.Rcode = dns.RcodeRefused
@@ -643,7 +660,10 @@ func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool 
 		}
 
 		if q.Qtype == dns.TypeAXFR || q.Qtype == dns.TypeIXFR {
-			log.Warn().Msgf("Received a %s from: %s", dns.TypeToString[q.Qtype], remoteAddr)
+			h.logger.Warn("Received unsupported query",
+				slog.String("type", dns.TypeToString[q.Qtype]),
+				slog.String("remote", remoteAddr),
+			)
 
 			r.Response = true
 			r.Rcode = dns.RcodeRefused
@@ -652,7 +672,10 @@ func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool 
 		}
 
 		if q.Qtype == dns.TypeANY {
-			log.Warn().Msgf("Received a %s from: %s", dns.TypeToString[q.Qtype], remoteAddr)
+			h.logger.Warn("Received unsupported query",
+				slog.String("type", dns.TypeToString[q.Qtype]),
+				slog.String("remote", remoteAddr),
+			)
 
 			r.Response = true
 			// not implemented instead of refused,
@@ -664,7 +687,7 @@ func (h *RecursiveHandler) validateQuery(w dns.ResponseWriter, r *dns.Msg) bool 
 	if r.Response { // only set true if there's a response to be written
 		err := w.WriteMsg(r)
 		if err != nil {
-			log.Err(err).Send()
+			h.logger.Error("Cannot write response", slog.Any("error", err))
 		}
 
 		return false
@@ -682,7 +705,7 @@ func (h *RecursiveHandler) srvFailResponse(w dns.ResponseWriter, r *dns.Msg) {
 
 	err := w.WriteMsg(r)
 	if err != nil {
-		log.Err(err).Send()
+		h.logger.Error("Cannot write response", slog.Any("error", err))
 	}
 }
 
@@ -744,7 +767,10 @@ func (h *RecursiveHandler) fetchAnswer(server netip.Addr, r *dns.Msg) (*dns.Msg,
 			continue
 		}
 
-		log.Debug().Msgf("Using cached answer for %q %q", q.Name, dns.TypeToString[q.Qtype])
+		h.logger.Debug("Using cached answer",
+			slog.String("name", q.Name),
+			slog.String("type", dns.TypeToString[q.Qtype]),
+		)
 
 		cachedAnswers = append(cachedAnswers, rr)
 
@@ -786,12 +812,12 @@ func (h *RecursiveHandler) fetchAnswer(server netip.Addr, r *dns.Msg) (*dns.Msg,
 			// information is being lost
 			r, _, err = h.client.ExchangeWithConn(cachedMsg, &dns.Conn{Conn: wconn.Conn})
 			if err != nil {
-				log.Debug().Msgf("Connection %s removed from pool", server.String())
+				h.logger.Debug("Connection removed from pool", slog.String("server", server.String()))
 				wconn.MarkUnusable()
 			}
 
 			if err := conn.Close(); err != nil {
-				log.Warn().Err(err).Msgf("Cannot return connection back to the pool")
+				h.logger.Warn("Cannot return connection back to the pool", slog.Any("error", err))
 			}
 		} else { // MAAS authoritative server returned a NS for a non-authoritative zone
 			r, _, err = h.client.Exchange(cachedMsg, net.JoinHostPort(server.String(), "53"))
@@ -850,7 +876,6 @@ func prepareQueryMessage(id uint16, name string, qtype uint16) *dns.Msg {
 func generateTransactionID() (uint16, error) {
 	var b [2]byte
 
-	//nolint:errcheck,gosec // rand.Read() never returns an error
 	rand.Read(b[:])
 
 	return uint16(b[0])<<8 | uint16(b[1]), nil
@@ -861,7 +886,6 @@ func generateTransactionID() (uint16, error) {
 func generateEDNS0Cookie() (string, error) {
 	clientBytes := make([]byte, 8)
 
-	//nolint:errcheck,gosec // rand.Read() never returns an error
 	rand.Read(clientBytes)
 
 	return hex.EncodeToString(clientBytes)[:16], nil
@@ -889,7 +913,7 @@ func (h *RecursiveHandler) nonAuthoritativeQuery(r *dns.Msg) (*dns.Msg, error) {
 	for _, resolver := range h.systemConfig.Nameservers {
 		msg, err := h.nonAuthoritativeExchange(resolver, r)
 		if err != nil {
-			log.Err(err).Send()
+			h.logger.Error("Non-authoritative exchange failed", slog.Any("error", err))
 		} else {
 			return msg, nil
 		}

@@ -31,17 +31,16 @@ func initCmd(ctx context.Context) *cobra.Command {
 	var token string
 
 	cmd := &cobra.Command{
-		Use:          "init",
-		Short:        "Connect with MAAS region controller.",
-		Example:      "maas-agent init --token <token>",
-		SilenceUsage: true,
+		Use:     "init",
+		Short:   "Connect with MAAS region controller.",
+		Example: "maas-agent init --token <token>",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			d := daemon.New()
 
 			if token == "-" {
 				input, err := io.ReadAll(os.Stdin)
 				if err != nil {
-					return fmt.Errorf("failed to read token from stdin: %w", err)
+					return err
 				}
 
 				token = strings.TrimSpace(string(input))

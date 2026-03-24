@@ -104,8 +104,10 @@ systemctl restart isc-dhcp-server
 	retry := backoff.NewExponentialBackOff()
 	retry.MaxElapsedTime = 10 * time.Second
 
+	d := net.Dialer{}
+
 	conn, err := backoff.RetryWithData(func() (net.Conn, error) {
-		return net.Dial("tcp", fmt.Sprintf("%s:7911", address))
+		return d.DialContext(s.T().Context(), "tcp", fmt.Sprintf("%s:7911", address))
 	}, retry)
 	assert.NoError(s.T(), err)
 

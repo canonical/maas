@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net"
 	"strconv"
@@ -35,7 +36,6 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/insomniacslk/dhcp/dhcpv4"
-	"github.com/rs/zerolog/log"
 	"maas.io/core/src/maasagent/internal/dhcpd"
 )
 
@@ -236,6 +236,7 @@ type LeaseReporter interface {
 }
 
 type DORAHandler struct {
+	logger                *slog.Logger
 	allocator             Allocator4
 	leaseReporter         LeaseReporter
 	clusterState          state.State
@@ -246,8 +247,9 @@ type DORAHandler struct {
 	stateLock             sync.RWMutex
 }
 
-func NewDORAHandler(a Allocator4, l LeaseReporter) *DORAHandler {
+func NewDORAHandler(a Allocator4, l LeaseReporter, logger *slog.Logger) *DORAHandler {
 	return &DORAHandler{
+		logger:        logger,
 		allocator:     a,
 		leaseReporter: l,
 	}
@@ -435,7 +437,7 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 		err   error
 	)
 
-	log.Debug().Msg("handling discover")
+	d.logger.Debug("Handling DISCOVER")
 
 	err = d.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		offer, err = d.allocator.GetOfferFromDiscover(ctx, tx, msg.Pkt4, int(msg.IfaceIdx), msg.SrcMAC)
@@ -484,7 +486,7 @@ func (d *DORAHandler) handleDiscover(ctx context.Context, msg Message) error {
 		return d.discoverReplyOverride(ctx, int(msg.IfaceIdx), reply)
 	}
 
-	log.Debug().Msg("sending offer")
+	d.logger.Debug("Sending OFFER")
 
 	return d.replyEth(ctx, int(msg.IfaceIdx), reply.ClientHWAddr, reply)
 }
@@ -521,7 +523,7 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 		}
 	}()
 
-	log.Debug().Msg("handling request")
+	d.logger.Debug("Handling REQUEST")
 
 	requestedIPBytes, ok := msg.Pkt4.Options[uint8(dhcpv4.OptionRequestedIPAddress)]
 	if !ok || (len(requestedIPBytes) != 4 && len(requestedIPBytes) != 16) {
@@ -591,7 +593,7 @@ func (d *DORAHandler) handleRequest(ctx context.Context, msg Message) error {
 		}
 	}
 
-	log.Debug().Msg("sending ack")
+	d.logger.Debug("Sending ACK")
 
 	if d.requestReplyOverride != nil {
 		return d.requestReplyOverride(ctx, reply)

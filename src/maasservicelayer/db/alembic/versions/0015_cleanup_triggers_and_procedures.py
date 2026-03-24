@@ -58,8 +58,6 @@ def upgrade() -> None:
         "sys_dhcp_snippet_delete",
         "sys_dhcp_snippet_insert",
         "sys_dhcp_snippet_update",
-        "sys_dhcp_snippet_update_node",
-        "sys_dhcp_snippet_update_subnet",
         "sys_dhcp_snippet_update_value",
         "sys_dhcp_staticipaddress_delete",
         "sys_dhcp_staticipaddress_insert",
@@ -128,6 +126,18 @@ def upgrade() -> None:
 
     for function in old_functions:
         op.execute(f"DROP FUNCTION IF EXISTS {function};")
+
+    op.execute(
+        "DROP FUNCTION IF EXISTS sys_dhcp_snippet_update_node(integer);"
+    )
+    op.execute("DROP FUNCTION IF EXISTS sys_dhcp_snippet_update_node(bigint);")
+
+    op.execute(
+        "DROP FUNCTION IF EXISTS sys_dhcp_snippet_update_subnet(integer);"
+    )
+    op.execute(
+        "DROP FUNCTION IF EXISTS sys_dhcp_snippet_update_subnet(bigint);"
+    )
 
 
 def downgrade() -> None:

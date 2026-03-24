@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -16,12 +16,18 @@
 package xdp
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
-	"github.com/rs/zerolog/log"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -makebase "$MAKEDIR" -tags linux bpf xdp.c -- -I../../ebpf/include
+
+var (
+	ErrRemoveMemlock = errors.New("failed to set rlimit")
+)
 
 type BpfDHCPData struct {
 	bpfDhcpData
@@ -40,7 +46,7 @@ func New() *Program {
 func (p *Program) Load() error {
 	err := rlimit.RemoveMemlock()
 	if err != nil {
-		log.Warn().Err(err).Msg("unable to set rlimit, continuing with default")
+		return fmt.Errorf("removing memory lock: %w: %w", ErrRemoveMemlock, err)
 	}
 
 	return loadBpfObjects(&p.objs, nil)

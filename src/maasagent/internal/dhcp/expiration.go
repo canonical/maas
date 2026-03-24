@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -20,12 +20,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/canonical/microcluster/v2/state"
-	"github.com/rs/zerolog/log"
 
 	"maas.io/core/src/maasagent/internal/dhcpd"
 )
@@ -38,15 +38,17 @@ const (
 )
 
 type ExpirationHandler struct {
+	logger        *slog.Logger
 	clusterState  state.State
 	leaseReporter LeaseReporter
 	tick          *time.Ticker
 	stateLock     sync.RWMutex
 }
 
-func newExpirationHandler(sweepInterval time.Duration) *ExpirationHandler {
+func newExpirationHandler(sweepInterval time.Duration, l *slog.Logger) *ExpirationHandler {
 	return &ExpirationHandler{
-		tick: time.NewTicker(sweepInterval),
+		logger: l,
+		tick:   time.NewTicker(sweepInterval),
 	}
 }
 
@@ -63,7 +65,7 @@ func (e *ExpirationHandler) Start(ctx context.Context) error {
 				defer e.stateLock.RUnlock()
 
 				if e.clusterState == nil {
-					log.Warn().Msg("expiration handler's cluster state not set")
+					e.logger.Warn("Expiration handler's cluster state not set")
 					return nil
 				}
 

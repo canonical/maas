@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -13,58 +13,86 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package httpproxy
+package urltracker
 
 import (
 	"fmt"
+	"log/slog"
 	"math/rand/v2"
 	"net/url"
 	"slices"
 	"sync"
 
-	"github.com/rs/zerolog/log"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 const (
 	// Maximum consecutive failures before marking a URL as unreliable
-	maxConsecutiveFailures = 5
+	defaultMaxConsecutiveFailures = 5
 	// Probability of selecting from reliable set (95%)
-	reliableSelectionProbability = 0.95
+	defaultReliableSelectionProbability = 0.95
 )
 
-// urlStats tracks statistics for a single URL
-type urlStats struct {
+// URLStats tracks statistics for a single URL
+type URLStats struct {
 	url                 *url.URL
 	consecutiveFailures int
 }
 
 // URLTracker manages reliable and unreliable URLs for the proxy
 type URLTracker struct {
-	reliable   map[string]*urlStats
-	unreliable map[string]*urlStats
-	mu         sync.RWMutex
+	logger                       *slog.Logger
+	reliable                     map[string]*URLStats
+	unreliable                   map[string]*URLStats
+	maxConsecutiveFailures       int
+	reliableSelectionProbability float64
+	mu                           sync.RWMutex
 }
 
-// NewURLTracker creates a new URL tracker with all URLs initially marked as reliable
-func NewURLTracker(targets []*url.URL) (*URLTracker, error) {
+// New creates a new URL tracker with all URLs initially marked as reliable
+func New(targets []*url.URL, opts ...Option) (*URLTracker, error) {
 	if len(targets) == 0 {
 		return nil, fmt.Errorf("cannot create Tracker: no targets provided")
 	}
 
 	tracker := &URLTracker{
-		reliable:   make(map[string]*urlStats),
-		unreliable: make(map[string]*urlStats),
+		logger:                       logger.Noop(),
+		maxConsecutiveFailures:       defaultMaxConsecutiveFailures,
+		reliableSelectionProbability: defaultReliableSelectionProbability,
+		reliable:                     make(map[string]*URLStats),
+		unreliable:                   make(map[string]*URLStats),
 	}
 
 	for _, target := range targets {
 		key := target.String()
-		tracker.reliable[key] = &urlStats{
+		tracker.reliable[key] = &URLStats{
 			url:                 target,
 			consecutiveFailures: 0,
 		}
 	}
 
+	for _, opt := range opts {
+		opt(tracker)
+	}
+
 	return tracker, nil
+}
+
+type Option func(*URLTracker)
+
+// WithLogger allows setting custom logger. By default logger is no-op.
+func WithLogger(l *slog.Logger) Option {
+	return func(t *URLTracker) {
+		if l != nil {
+			t.logger = l
+		}
+	}
+}
+
+func WithMaxConsecutiveFailures(i int) Option {
+	return func(t *URLTracker) {
+		t.maxConsecutiveFailures = i
+	}
 }
 
 // SelectURL picks a URL based on reliability: 95% from reliable set, 5% from unreliable,
@@ -75,7 +103,7 @@ func (t *URLTracker) SelectURL(butNot []string) *url.URL {
 
 	// If no reliable URLs, must use unreliable.
 	if len(t.reliable) == 0 {
-		log.Warn().Msg("No reliable URLs available, selecting from unreliable set.")
+		t.logger.Warn("No reliable URLs available, selecting from unreliable set.")
 
 		return t.selectFromUnreliable(butNot, false)
 	}
@@ -85,8 +113,8 @@ func (t *URLTracker) SelectURL(butNot []string) *url.URL {
 	}
 
 	// 95% chance to select from reliable, 5% from unreliable
-	// #nosec G404 -- non-cryptographic random selection
-	if rand.Float64() < reliableSelectionProbability {
+	//nolint:gosec // G404 -- non-cryptographic random selection
+	if rand.Float64() < t.reliableSelectionProbability {
 		return t.selectFromReliable(butNot, true)
 	}
 
@@ -138,9 +166,8 @@ func (t *URLTracker) RecordSuccess(target *url.URL) {
 		stats.consecutiveFailures = 0
 		t.reliable[key] = stats
 		delete(t.unreliable, key)
-		log.Info().
-			Str("url", key).
-			Msg("URL moved to reliable set after successful request")
+		t.logger.Info("URL moved to reliable set after successful request",
+			slog.String("url", key))
 
 		return
 	}
@@ -163,15 +190,38 @@ func (t *URLTracker) RecordFailure(target *url.URL) {
 
 	if inReliable {
 		stats.consecutiveFailures++
-		if stats.consecutiveFailures >= maxConsecutiveFailures {
+		if stats.consecutiveFailures >= t.maxConsecutiveFailures {
 			t.unreliable[key] = stats
 			delete(t.reliable, key)
-			log.Warn().
-				Str("url", key).
-				Int("consecutive_failures", stats.consecutiveFailures).
-				Msg("URL moved to unreliable set after consecutive failures")
+			t.logger.Warn("URL moved to unreliable set after consecutive failures",
+				slog.String("url", key),
+				slog.Int("consecutive_failures", stats.consecutiveFailures))
 		}
 	}
 
 	// If an unreliable URL failed, no actions.
+}
+
+// ForEachReliable allows the user to iterate over reliable targets
+func (t *URLTracker) ForEachReliable(yield func(string, *URLStats) bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	for k, v := range t.reliable {
+		if !yield(k, v) {
+			return
+		}
+	}
+}
+
+// ForEachUnreliable allows the user to iterate over reliable targets
+func (t *URLTracker) ForEachUnreliable(yield func(string, *URLStats) bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	for k, v := range t.unreliable {
+		if !yield(k, v) {
+			return
+		}
+	}
 }

@@ -3,7 +3,7 @@
 
 """Test the maas package."""
 
-import os
+import subprocess
 import types
 from unittest.mock import MagicMock
 
@@ -17,7 +17,6 @@ from maasserver.djangosettings import find_settings, import_settings, settings
 from maasserver.djangosettings.settings import (
     _get_default_db_config,
     _get_local_timezone,
-    _read_timezone,
 )
 from maasserver.vault import UnknownSecretPath, VaultError
 from maastesting.factory import factory
@@ -64,22 +63,81 @@ class TestDatabaseConfiguration:
 
 
 class TestTimezoneSettings:
-    def test_etc_timezone_exists(self):
-        assert os.path.isfile("/etc/timezone"), (
-            "If this assert fails, that means /etc/timezone was removed from "
-            "Ubuntu, and we need to use systemd APIs to get it instead."
+    def test_get_local_timezone_uses_timedatectl(self, mocker):
+        # Mock subprocess.run to simulate timedatectl output
+        mock_result = mocker.MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "America/New_York\n"
+        mock_run = mocker.patch(
+            "maasserver.djangosettings.settings.subprocess.run",
+            return_value=mock_result,
         )
 
-    def test_read_timezone(self):
-        timezone = _read_timezone()
-        assert timezone is not None
-        assert os.path.isfile(
-            os.path.join("/", "usr", "share", "zoneinfo", timezone)
+        # Mock os.path.isfile to validate zoneinfo path exists
+        def mock_isfile(path):
+            return path == "/usr/share/zoneinfo/America/New_York"
+
+        mocker.patch("os.path.isfile", side_effect=mock_isfile)
+
+        timezone = _get_local_timezone()
+
+        mock_run.assert_called_once_with(
+            ["timedatectl", "show", "--property=Timezone", "--value"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert timezone == "America/New_York"
+
+    def test_get_local_timezone_falls_back_to_utc_on_command_failure(
+        self, mocker
+    ):
+        # Mock subprocess.run to simulate command failure
+        mock_result = mocker.MagicMock()
+        mock_result.returncode = 1
+        mock_result.stdout = ""
+        mocker.patch(
+            "maasserver.djangosettings.settings.subprocess.run",
+            return_value=mock_result,
         )
 
-    def get_local_timezone_falls_back_to_utc(self):
-        # Force the file open to fail by passing an empty filename.
-        timezone = _get_local_timezone(tzfilename="")
+        timezone = _get_local_timezone()
+        assert timezone == "UTC"
+
+    def test_get_local_timezone_falls_back_to_utc_on_timeout(self, mocker):
+        # Mock subprocess.run to raise TimeoutExpired
+        mocker.patch(
+            "maasserver.djangosettings.settings.subprocess.run",
+            side_effect=subprocess.TimeoutExpired("timedatectl", 5),
+        )
+
+        timezone = _get_local_timezone()
+        assert timezone == "UTC"
+
+    def test_get_local_timezone_falls_back_to_utc_when_command_not_found(
+        self, mocker
+    ):
+        # Mock subprocess.run to raise FileNotFoundError
+        mocker.patch(
+            "maasserver.djangosettings.settings.subprocess.run",
+            side_effect=FileNotFoundError(),
+        )
+
+        timezone = _get_local_timezone()
+        assert timezone == "UTC"
+
+    def test_get_local_timezone_validates_zoneinfo_exists(self, mocker):
+        # Mock subprocess.run to return invalid timezone
+        mock_result = mocker.MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "Invalid/Timezone\n"
+        mocker.patch(
+            "maasserver.djangosettings.settings.subprocess.run",
+            return_value=mock_result,
+        )
+
+        timezone = _get_local_timezone()
+        # Validates that invalid timezones are rejected in favor of UTC
         assert timezone == "UTC"
 
 

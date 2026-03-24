@@ -742,6 +742,7 @@ func TestSyncWithoutDB(t *testing.T) {
 					if tc.in.returnError {
 						return assert.AnError
 					}
+
 					return nil
 				},
 			}

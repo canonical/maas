@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"maas.io/core/src/maasagent/internal/cluster"
 	"maas.io/core/src/maasagent/internal/dhcpd"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 type MockLeaseReporter struct {
@@ -318,7 +319,7 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 							return nil
 						}
 
-						allocator, err := newDQLiteAllocator4()
+						allocator, err := newDQLiteAllocator4(logger.Noop())
 						if err != nil {
 							errChan <- err
 							return nil
@@ -326,7 +327,7 @@ func TestDORAHandlerServeDHCP4(t *testing.T) {
 
 						leaseReporter := &MockLeaseReporter{}
 
-						handler := NewDORAHandler(allocator, leaseReporter)
+						handler := NewDORAHandler(allocator, leaseReporter, logger.Noop())
 						handler.SetClusterState(s)
 
 						handler.discoverReplyOverride = func(ctx context.Context, ifaceIdx int, resp *dhcpv4.DHCPv4) error {

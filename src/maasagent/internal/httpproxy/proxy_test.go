@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2025 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -29,6 +29,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"maas.io/core/src/maasagent/internal/cache"
+	"maas.io/core/src/maasagent/internal/urltracker"
 )
 
 func TestProxy(t *testing.T) {
@@ -98,6 +99,7 @@ func TestProxy(t *testing.T) {
 						cache := cache.NewFakeFileCache()
 						body := bytes.NewReader([]byte("hello world"))
 						cache.Set("file", body, int64(body.Len()))
+
 						return cache
 					}()),
 			},
@@ -122,6 +124,7 @@ func TestProxy(t *testing.T) {
 						cache := cache.NewFakeFileCache()
 						body := bytes.NewReader([]byte("hello world"))
 						cache.Set("3c025ab", body, int64(body.Len()))
+
 						return cache
 					}()),
 			},
@@ -171,6 +174,7 @@ func TestProxy(t *testing.T) {
 						cache := cache.NewFakeFileCache()
 						body := bytes.NewReader([]byte("hello world"))
 						cache.Set("file", body, int64(body.Len()))
+
 						return cache
 					}()),
 				headers: map[string]string{"Range": "bytes=0-4"},
@@ -228,7 +232,8 @@ func TestProxy(t *testing.T) {
 			assert.NoError(t, err)
 
 			for _, out := range tc.out {
-				req := httptest.NewRequest(http.MethodGet, tc.in.uri, nil)
+				req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+					tc.in.uri, nil)
 				for hk, hv := range tc.in.headers {
 					req.Header.Set(hk, hv)
 				}
@@ -275,7 +280,8 @@ func TestErrorHandler_RetriesUntilSuccess(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
 
 	rr := httptest.NewRecorder()
@@ -290,7 +296,13 @@ func TestErrorHandler_RetriesUntilSuccess(t *testing.T) {
 	assert.Equal(t, 0, failCount)
 
 	// both URLs remain reliable
-	assert.Equal(t, 2, len(proxy.urlTracker.reliable))
+	reliable := 0
+
+	proxy.urlTracker.ForEachReliable(func(url string, stats *urltracker.URLStats) bool {
+		reliable++
+		return true
+	})
+	assert.Equal(t, 2, reliable)
 }
 
 func TestErrorHandler_RetriesUntilSuccessMovesToUnreliable(t *testing.T) {
@@ -325,7 +337,8 @@ func TestErrorHandler_RetriesUntilSuccessMovesToUnreliable(t *testing.T) {
 		proxy.urlTracker.RecordFailure(failURL)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
 
 	rr := httptest.NewRecorder()
@@ -336,8 +349,21 @@ func TestErrorHandler_RetriesUntilSuccessMovesToUnreliable(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "success", rr.Body.String())
 
-	assert.Equal(t, 1, len(proxy.urlTracker.reliable))
-	assert.Equal(t, 1, len(proxy.urlTracker.unreliable))
+	reliable := 0
+	unreliable := 0
+
+	proxy.urlTracker.ForEachReliable(func(url string, stats *urltracker.URLStats) bool {
+		reliable++
+		return true
+	})
+
+	proxy.urlTracker.ForEachUnreliable(func(url string, stats *urltracker.URLStats) bool {
+		unreliable++
+		return true
+	})
+
+	assert.Equal(t, 1, reliable)
+	assert.Equal(t, 1, unreliable)
 }
 
 func TestErrorHandler_SingleTargetFailsReturns503(t *testing.T) {
@@ -354,7 +380,8 @@ func TestErrorHandler_SingleTargetFailsReturns503(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
 
 	rr := httptest.NewRecorder()
@@ -401,7 +428,8 @@ func TestErrorHandler_AllTargetsTried_ReturnsLastStatusCode(t *testing.T) {
 	proxy, err := NewProxy(failURLs, WithRewriter(NewRewriter(nil)))
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, firstFailURL))
 
 	rr := httptest.NewRecorder()
@@ -437,7 +465,8 @@ func TestErrorHandler_Non2xxResponseIsRetried(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/test", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, badURL))
 
 	rr := httptest.NewRecorder()
@@ -463,7 +492,8 @@ func TestErrorHandler_RecordsFailureOnRetryError(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, failURL))
 
 	rr := httptest.NewRecorder()
@@ -496,7 +526,8 @@ func TestErrorHandler_404IsNotRetried(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/file", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://example.com/file", nil)
 	req = req.WithContext(context.WithValue(req.Context(), targetURLKey, firstFailURL))
 
 	rr := httptest.NewRecorder()

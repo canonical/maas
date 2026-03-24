@@ -55,7 +55,8 @@ var (
 )
 
 func startTestTCPServer(t *testing.T) (string, func()) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0") // :0 picks an available port
+	lc := net.ListenConfig{}
+	ln, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0") // :0 picks an available port
 	require.NoError(t, err)
 
 	go func() {

@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Canonical Ltd
+// Copyright (c) 2025-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -25,6 +25,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"strconv"
@@ -32,7 +33,7 @@ import (
 	"time"
 
 	"github.com/insomniacslk/dhcp/dhcpv4"
-	"github.com/rs/zerolog/log"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 const (
@@ -44,7 +45,7 @@ SELECT hr.* FROM vlan AS v
 	WHERE v.id = $1 AND hr.mac_address = $3;
 `
 	getIPRangeForAllocationStmt = `
-SELECT ir.* FROM vlan AS v 
+SELECT ir.* FROM vlan AS v
 	JOIN subnet AS s ON s.vlan_id = v.id
 	JOIN ip_range as ir ON ir.subnet_id = s.id
 	WHERE v.id = $1 AND ir.dynamic = $2 AND ir.fully_allocated = false
@@ -71,7 +72,7 @@ SELECT v.* FROM interface AS i
 `
 	updateIPRangeAsFullStmt = "UPDATE ip_range SET fully_allocated = true WHERE id = $1;"
 	createOfferedLeaseStmt  = `
-INSERT INTO lease(ip, mac_address, state, created_at, updated_at, lifetime, needs_sync, range_id) 
+INSERT INTO lease(ip, mac_address, state, created_at, updated_at, lifetime, needs_sync, range_id)
 	VALUES ($1, $2, $3, $4, $5, $6, true, $7);
 `
 	updateLeaseStateByIDStmt    = "UPDATE lease SET state = $1, updated_at = $2 WHERE id = $3;"
@@ -117,16 +118,19 @@ type Allocator4 interface {
 }
 
 type dqliteAllocator4 struct {
+	logger   *slog.Logger
 	hostname string // attached to the allocator to avoid calling os.Hostname() on every DISCOVER
 }
 
-func newDQLiteAllocator4() (*dqliteAllocator4, error) {
+// TODO: Refactor DHCP allocator and accept options
+func newDQLiteAllocator4(_ *slog.Logger) (*dqliteAllocator4, error) {
 	hn, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
 
 	return &dqliteAllocator4{
+		logger:   logger.Noop(),
 		hostname: hn,
 	}, nil
 }
@@ -270,7 +274,7 @@ func (d *dqliteAllocator4) getIPRangeForAllocation(ctx context.Context, tx *sql.
 	defer func() {
 		cErr := rows.Close()
 		if cErr != nil {
-			log.Err(err).Send()
+			d.logger.Error("Failed to close rows", slog.Any("error", err))
 		}
 	}()
 

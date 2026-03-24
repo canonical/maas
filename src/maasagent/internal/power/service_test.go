@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2025 Canonical Ltd
+// Copyright (c) 2023-2026 Canonical Ltd
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -21,7 +21,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	tlog "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/testsuite"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 const expectedMAASCLIName = "maas.power"
@@ -124,6 +126,8 @@ func TestPowerOn(t *testing.T) {
 
 	// Setup the environment to test a temporal activity with
 	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 	env := testSuite.NewTestActivityEnvironment()
 	env.RegisterActivity(ps.PowerOn)
 
@@ -185,6 +189,8 @@ func TestPowerOff(t *testing.T) {
 
 	// Setup the environment to test a temporal activity with
 	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 	env := testSuite.NewTestActivityEnvironment()
 	env.RegisterActivity(ps.PowerOff)
 
@@ -246,6 +252,8 @@ func TestPowerCycle(t *testing.T) {
 
 	// Setup the environment to test a temporal activity with
 	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 	env := testSuite.NewTestActivityEnvironment()
 	env.RegisterActivity(ps.PowerCycle)
 
@@ -307,6 +315,8 @@ func TestPowerQuery(t *testing.T) {
 
 	// Setup the environment to test a temporal activity with
 	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 	env := testSuite.NewTestActivityEnvironment()
 	env.RegisterActivity(ps.PowerQuery)
 
@@ -369,6 +379,8 @@ func TestPowerReset(t *testing.T) {
 
 	// Setup the environment to test a temporal activity with
 	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 	env := testSuite.NewTestActivityEnvironment()
 	env.RegisterActivity(ps.PowerReset)
 
@@ -431,6 +443,8 @@ func TestPowerOnDPU(t *testing.T) {
 
 	// Setup the environment to test a temporal activity with
 	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 	env := testSuite.NewTestActivityEnvironment()
 	env.RegisterActivity(ps.PowerOn)
 
@@ -493,6 +507,8 @@ func TestPowerCycleDPU(t *testing.T) {
 
 	// Setup the environment to test a temporal activity with
 	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 	env := testSuite.NewTestActivityEnvironment()
 	env.RegisterActivity(ps.PowerCycle)
 
@@ -556,6 +572,8 @@ func TestPowerResetDPU(t *testing.T) {
 
 	// Setup the environment to test a temporal activity with
 	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(tlog.NewStructuredLogger(logger.Noop()))
+
 	env := testSuite.NewTestActivityEnvironment()
 	env.RegisterActivity(ps.PowerReset)
 

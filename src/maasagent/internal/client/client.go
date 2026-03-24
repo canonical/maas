@@ -74,6 +74,7 @@ func (c *Client) request(ctx context.Context, method, path string,
 // It uses TLS fingerprint pinning for secure communication.
 func (c *Client) Enroll(ctx context.Context,
 	req EnrollRequest) (*EnrollResponse, error) {
+	//nolint:gosec // G117: marshaling for internal use (sending to regiond)
 	data, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal enrollment request: %w", err)
