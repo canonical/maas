@@ -17,7 +17,6 @@ RUN set -ex                                                                     
     apt-get -q -y install \
         git \
         make \
-        python3-launchpadlib \
         python3-yaml \
         snap \
         socat \
