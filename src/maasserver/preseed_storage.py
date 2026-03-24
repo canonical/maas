@@ -13,7 +13,7 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.exceptions import MAASAPINotFound
+from maasserver.exceptions import PreseedError
 from maasserver.models import FilesystemGroup, Partition, PhysicalBlockDevice
 from maasserver.models.partitiontable import (
     BIOS_GRUB_PARTITION_SIZE,
@@ -235,7 +235,7 @@ class CurtinStorageGenerator:
                 # the code used to assume that the above was always unpackable,
                 # so making it a loud but clearer exception seems to be safer
                 # for debugging when this happens.
-                raise MAASAPINotFound(
+                raise PreseedError(
                     f"could not find partition ids and block device ids for RAID {raid.uuid}: {e}"
                 ) from e
             partition_ids = set(partition_ids)
