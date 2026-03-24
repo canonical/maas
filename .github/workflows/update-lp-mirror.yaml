@@ -1,0 +1,17 @@
+name: Launchpad mirror
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Everyday at midnight
+
+jobs:
+  push_to_lp:
+    runs-on: ubuntu-latest
+    env:
+      GIT_SSH_COMMAND: ssh -i ${{ secrets.LANDER_SSHKEY }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+    steps:
+      - name: Push to Launchpad mirror
+      - run: |
+        git clone --bare https://github.com/canonical/maas .
+        git push --mirror "git+ssh://maas-lander@git.launchpad.net/maas" --dry-run
+        
