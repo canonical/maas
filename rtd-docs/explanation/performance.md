@@ -39,7 +39,7 @@ These efforts are part of a broader programme of optimisation across the product
 
 Your metrics and feedback are essential. Here’s how you can contribute:
 
-- [Track your MAAS metrics](how-to-guides/monitor-maas.md) using Prometheus and Grafana.
+- [Track your MAAS metrics](/how-to-guides/monitor-maas.md) using Prometheus and Grafana.
 - Share results like machine counts, network sizes, and API response times.
 - Join the conversation on the [MAAS performance forum](https://discourse.maas.io/c/maas-performance/26).
 
@@ -57,6 +57,6 @@ Your feedback helps prioritise where we focus next.
 
 ## Next steps for you
 
-- Learn [how to monitor MAAS](how-to-guides/monitor-maas.md)
-- Peruse the [MAAS metrics reference](reference/configuration-guides/metrics.md)
+- Learn [how to monitor MAAS](/how-to-guides/monitor-maas.md)
+- Peruse the [MAAS metrics reference](/reference/configuration-guides/metrics.md)
 - Join the [performance forum](https://discourse.maas.io/c/maas-performance/26)

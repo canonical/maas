@@ -34,7 +34,7 @@ MAAS allows you to mirror images locally by following these steps:
 3. Specify image storage locations.
 4. Add a new boot source pointing to the local mirror.
 
-Check the [local image mirror guide](how-to-guides/manage-images.md#use-a-local-mirror) for comprehensive details.
+Check the [local image mirror guide](/how-to-guides/manage-images.md#use-a-local-mirror) for comprehensive details.
 
 ## Non-Ubuntu images
 

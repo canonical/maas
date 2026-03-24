@@ -50,7 +50,7 @@ Too few database connections tend do produce errors:
 
 ## MAAS, NTP, and chrony
 
-Conflicts can arise between Ubuntu's default `systemd-timesyncd` and MAAS `chrony`. Consult the MAAS [installation guide](how-to-guides/get-maas-up-and-running.md) for solutions.
+Conflicts can arise between Ubuntu's default `systemd-timesyncd` and MAAS `chrony`. Consult the MAAS [installation guide](/how-to-guides/get-maas-up-and-running.md) for solutions.
 
 ## Test environment
 
@@ -58,9 +58,9 @@ Requirements for a single-host test setup include the latest two Ubuntu LTS rele
 
 | Component | Memory (MB) | CPU (GHz) | Disk (GB) |
 |:---|----:|----:|----:|
-| [Region controller](reference/cli-reference/region-controller.md) | 512 | 0.5 | 5 |
+| [Region controller](/reference/cli-reference/region-controller.md) | 512 | 0.5 | 5 |
 | PostgreSQL | 512 | 0.5 | 5 |
-| [Rack controller](reference/cli-reference/rack-controller.md) | 512 | 0.5 | 5 |
+| [Rack controller](/reference/cli-reference/rack-controller.md) | 512 | 0.5 | 5 |
 | Ubuntu Server | 512 | 0.5 | 5 |
 
 Total: 2 GB RAM, 2 GHz CPU, 20 GB disk.
@@ -71,9 +71,9 @@ For large-scale, continuous client handling, plan as follows:
 
 | Component | Memory (MB) | CPU (GHz) | Disk (GB) |
 |:---|----:|----:|----:|
-| [Region controller](reference/cli-reference/region-controller.md) | 2048 | 2.0 | 5 |
+| [Region controller](/reference/cli-reference/region-controller.md) | 2048 | 2.0 | 5 |
 | PostgreSQL | 2048 | 2.0 | 20 |
-| [Rack controller](reference/cli-reference/rack-controller.md) | 2048 | 2.0 | 20 |
+| [Rack controller](/reference/cli-reference/rack-controller.md) | 2048 | 2.0 | 20 |
 | Ubuntu Server | 512 | 0.5 | 5 |
 
 Plan for 4.5 GB RAM, 4.5 GHz CPU, and 45 GB disk per host for region controllers, and slightly less for rack controllers.
@@ -87,7 +87,7 @@ Factors affecting these numbers:
 
 - Client activity
 - Service distribution
-- Use of [high availability/load balancing](how-to-guides/manage-high-availability.md#enable-ha-for-rack-controllers).
+- Use of [high availability/load balancing](/how-to-guides/manage-high-availability.md#enable-ha-for-rack-controllers).
 - Number and type of stored images
 - A local image mirror will increase disk requirements.
 - Rack controllers have a 1000-machine cap per subnet

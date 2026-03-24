@@ -197,4 +197,4 @@ MAAS also supports many bonding modes:
   any special switch support. The receive load balancing is achieved by
   ARP negotiation.
   
-> *See [Bond two interfaces](how-to-guides/manage-networks.md#p-9070-bond-two-interfaces) for how-to instructions.*
+> *See [Bond two interfaces](/how-to-guides/manage-networks.md#p-9070-bond-two-interfaces) for how-to instructions.*

@@ -89,4 +89,4 @@ Once submitted:
 
 ## Next steps
 
-* [Troubleshooting MAAS](reference/configuration-guides/troubleshooting.md)
+* [Troubleshooting MAAS](/reference/configuration-guides/troubleshooting.md)

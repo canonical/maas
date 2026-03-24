@@ -15,7 +15,7 @@ Currently, the library provides eight endpoints:
 - version
 - zones
 
-See the [API documentation](reference/api-reference/index.md) for more info.
+See the [API documentation](/reference/api-reference/index.md) for more info.
 
 ## Using python-libmaas
 

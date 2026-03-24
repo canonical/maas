@@ -77,5 +77,5 @@ By combining curtin’s fast, image-based installation with cloud-init’s flexi
 
 ## Next steps
 
-- Learn how to [customize machines](explanation/machine-customization.md) to deliver precisely-tailored configurations.
-- Discover some of the [pre-packaged configurations](reference/configuration-guides/cloud-init.md) you can deploy using cloud-init.
+- Learn how to [customize machines](/explanation/machine-customization.md) to deliver precisely-tailored configurations.
+- Discover some of the [pre-packaged configurations](/reference/configuration-guides/cloud-init.md) you can deploy using cloud-init.

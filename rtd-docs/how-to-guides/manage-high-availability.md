@@ -227,4 +227,4 @@ Use port 80 instead of 5240 for API/UI access.
 
 ## Next steps
 
-- [About controllers](explanation/controllers.md)
+- [About controllers](/explanation/controllers.md)

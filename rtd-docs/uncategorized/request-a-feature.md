@@ -33,8 +33,8 @@ A strong feature request:
 
 ## Next steps
 
-- [Report a bug](uncategorized/report-a-bug.md)
-- [Troubleshooting MAAS](reference/configuration-guides/troubleshooting.md)
+- [Report a bug](/uncategorized/report-a-bug.md)
+- [Troubleshooting MAAS](/reference/configuration-guides/troubleshooting.md)
 
 If you're certain about your request, go ahead and create a new Features post on [Discourse](https://discourse.maas.io/c/features/15). If you have an idea but are not sure how to present it, make sure that your feature idea:
 

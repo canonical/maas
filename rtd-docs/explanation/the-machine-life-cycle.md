@@ -82,5 +82,5 @@ Understanding the transitions — what MAAS is doing, what the admin can do, and
 
 ## Next steps
 
-- Dig into [the commissioning process](explanation/commissioning-machines.md) to understand the kinds of hardware knowledge MAAS needs to deploy a machine successfully.
-- Take a deep dive into [machine deployment](explanation/deploying-machines.md); this is how MAAS provisions machines to run workloads.
+- Dig into [the commissioning process](/explanation/commissioning-machines.md) to understand the kinds of hardware knowledge MAAS needs to deploy a machine successfully.
+- Take a deep dive into [machine deployment](/explanation/deploying-machines.md); this is how MAAS provisions machines to run workloads.

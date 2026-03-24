@@ -135,5 +135,5 @@ Filters can be combined for precise queries.
 
 ## Next steps
 
-- Discover [how to use logging](how-to-guides/use-logging.md)
-- Scan the [MAAS logging reference](reference/configuration-guides/logging.md) to discover the various types of logs available in MAAS
+- Discover [how to use logging](/how-to-guides/use-logging.md)
+- Scan the [MAAS logging reference](/reference/configuration-guides/logging.md) to discover the various types of logs available in MAAS

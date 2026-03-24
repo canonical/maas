@@ -183,7 +183,7 @@ Commissioning scripts have been reordered and some are now set to run in paralle
 
 9. 99-maas-01-capture-lldp -> maas-capture-lldp(now runs in parallel)
 
-See the [How to read commissioning logs](how-to-read-commissioning-logs/5248) for more details on these changes.
+See the [How to read commissioning logs](/how-to-read-commissioning-logs/5248) for more details on these changes.
 
 ### Commissioning is faster now
 
@@ -198,7 +198,7 @@ Four improvements have been made to speed up the commissioning process, mostly b
 
 ### Bugs fixed in 2.9.2 release
 
-- In the MAAS UI, ARM servers based on the [Hi1620 ARM SoC appear as an "Unknown model"](https://bugs.launchpad.net/maas/+bug/1897946). A fix was added to [lxd-4.11]( https://discuss.linuxcontainers.org/t/lxd-4-11-has-been-released/10135), released 2021-02-05.
+- In the MAAS UI, ARM servers based on the [Hi1620 ARM SoC appear as an "Unknown model"](https://bugs.launchpad.net/maas/+bug/1897946). A fix was added to [lxd-4.11](/ <https://discuss.linuxcontainers.org/t/lxd-4-11-has-been-released/10135>), released 2021-02-05.
 
 - Debian package installs of MAAS [reached an "impossible situation"](https://bugs.launchpad.net/maas/+bug/1910910) trying to install the MAAS region controller. This is caused because of an unsupported move from the transitional MAAS PPA to the latest PPA. The workaround is to purge the MAAS packages (and the snap, if installed), and install clean with the latest PPA enabled, which will install the correct versions.
 
