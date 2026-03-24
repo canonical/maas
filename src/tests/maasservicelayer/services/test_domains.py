@@ -1,11 +1,17 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from collections import defaultdict
+from ipaddress import IPv4Address
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from maascommon.dns import DomainDNSRecord
+from maascommon.dns import (
+    DomainDNSRecord,
+    HostnameIPMapping,
+    HostnameRRsetMapping,
+)
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
@@ -462,6 +468,126 @@ class TestDomainsService:
         assert dict_result == {
             "example.com": [record.to_dict(with_node_id=False)]
         }
+
+    async def test_v3_render_json_admin_sees_all_records(self) -> None:
+        domain = Domain(
+            id=1,
+            name="example.com",
+            authoritative=True,
+            ttl=30,
+        )
+        domains_repository = Mock(DomainsRepository)
+        domains_repository.get_by_id.return_value = domain
+        domains_repository.get_hostname_ip_mapping.return_value = {
+            "host1.example.com": HostnameIPMapping(
+                system_id=None,
+                ttl=30,
+                ips={IPv4Address("10.0.0.1")},
+                node_type=None,
+                dnsresource_id=1,
+                user_id=100,
+            ),
+            "host2.example.com": HostnameIPMapping(
+                system_id=None,
+                ttl=30,
+                ips={IPv4Address("10.0.0.2")},
+                node_type=None,
+                dnsresource_id=2,
+                user_id=200,
+            ),
+            "host3.example.com": HostnameIPMapping(
+                system_id=None,
+                ttl=30,
+                ips={IPv4Address("10.0.0.3")},
+                node_type=None,
+                dnsresource_id=3,
+                user_id=None,
+            ),
+        }
+        domains_repository.get_hostname_dnsdata_mapping.return_value = (
+            defaultdict(HostnameRRsetMapping)
+        )
+
+        configurations_service = Mock(ConfigurationsService)
+        configurations_service.get.return_value = 30
+
+        domains_service = DomainsService(
+            context=Context(),
+            configurations_service=configurations_service,
+            dnspublications_service=Mock(DNSPublicationsService),
+            domains_repository=domains_repository,
+        )
+
+        result = await domains_service.v3_render_json_for_related_rrdata(
+            domain_id=1, user_id=100, is_admin=True, as_dict=False
+        )
+
+        assert isinstance(result, list)
+        assert len(result) == 3
+        hostnames = {record.name for record in result}
+        assert hostnames == {"host1", "host2", "host3"}
+
+    async def test_v3_render_json_non_admin_sees_only_owned_and_public(
+        self,
+    ) -> None:
+        domain = Domain(
+            id=1,
+            name="example.com",
+            authoritative=True,
+            ttl=30,
+        )
+        domains_repository = Mock(DomainsRepository)
+        domains_repository.get_by_id.return_value = domain
+        domains_repository.get_hostname_ip_mapping.return_value = {
+            "host1.example.com": HostnameIPMapping(
+                system_id=None,
+                ttl=30,
+                ips={IPv4Address("10.0.0.1")},
+                node_type=None,
+                dnsresource_id=1,
+                user_id=100,
+            ),
+            "host2.example.com": HostnameIPMapping(
+                system_id=None,
+                ttl=30,
+                ips={IPv4Address("10.0.0.2")},
+                node_type=None,
+                dnsresource_id=2,
+                user_id=200,
+            ),
+            "host3.example.com": HostnameIPMapping(
+                system_id=None,
+                ttl=30,
+                ips={IPv4Address("10.0.0.3")},
+                node_type=None,
+                dnsresource_id=3,
+                user_id=None,
+            ),
+        }
+        domains_repository.get_hostname_dnsdata_mapping.return_value = (
+            defaultdict(HostnameRRsetMapping)
+        )
+
+        configurations_service = Mock(ConfigurationsService)
+        configurations_service.get.return_value = 30
+
+        domains_service = DomainsService(
+            context=Context(),
+            configurations_service=configurations_service,
+            dnspublications_service=Mock(DNSPublicationsService),
+            domains_repository=domains_repository,
+        )
+
+        result = await domains_service.v3_render_json_for_related_rrdata(
+            domain_id=1, user_id=100, is_admin=False, as_dict=False
+        )
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        hostnames = {record.name for record in result}
+        assert hostnames == {"host1", "host3"}
+        for record in result:
+            assert record.user_id is None or record.user_id == 100
 
     async def test_get_domain_for_node_domain_set(self):
         domain = Domain(id=1, name="test-domain", authoritative=True, ttl=30)
