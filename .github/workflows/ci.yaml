@@ -1,0 +1,49 @@
+name: run CI
+on:
+  pull_request:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}:${{ github.base_ref }}
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare container, lint and test
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/work \
+            -w /work \
+            ghcr.io/${{ env.IMAGE_NAME }} \
+            sh -c "
+              git config --global --add safe.directory /work
+              useradd ubuntu || true
+              chown -R ubuntu:ubuntu /work
+              sudo -H -u ubuntu make install-dependencies
+              sudo -H -u ubuntu make build
+              sudo -H -u ubuntu make lint
+              sudo -H -u ubuntu make test
+            "
+      - name: Archive logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            /work/junit*.xml
+
