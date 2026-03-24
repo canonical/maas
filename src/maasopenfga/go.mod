@@ -1,6 +1,6 @@
 module maas.io/core/src/maasopenfga
 
-go 1.24.4
+go 1.26
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
