@@ -4,6 +4,7 @@
 from datetime import datetime, timezone
 from typing import Any
 
+from maasservicelayer.models.interfaces import Interface
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -72,3 +73,14 @@ async def create_test_switch(
     """Create a test Switch model instance and return its ID."""
     switch_data = await create_test_switch_entry(fixture, **extra_details)
     return switch_data["id"]
+
+
+async def create_test_switch_interface(
+    fixture: Fixture,
+    **extra_details: Any,
+) -> Interface:
+    """Create a test SwitchInterface model instance."""
+    interface_data = await create_test_switch_interface_entry(
+        fixture, **extra_details
+    )
+    return Interface(**interface_data)
