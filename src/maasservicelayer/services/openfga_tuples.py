@@ -69,6 +69,7 @@ class MAASTupleBuilderFactory(BaseEntitlementResourceBuilderFactory):
         "can_view_license_keys": OpenFGATupleBuilder.build_group_can_view_license_keys,
         "can_view_devices": OpenFGATupleBuilder.build_group_can_view_devices,
         "can_view_ipaddresses": OpenFGATupleBuilder.build_group_can_view_ipaddresses,
+        "can_view_dnsrecords": OpenFGATupleBuilder.build_group_can_view_dnsrecords,
     }
 
     def build_tuple(
