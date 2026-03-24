@@ -33,6 +33,21 @@ jobs:
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Select Ubuntu series from branch
+        id: series
+        run: |
+          case "${GITHUB_REF_NAME}" in
+            master|3.7|3.6)
+              echo "value=noble" >> "$GITHUB_OUTPUT"
+              ;;
+            3.5|3.4)
+              echo "value=jammy" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              # Default to noble for any other branches
+              echo "value=noble" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
       # This step uses the `docker/build-push-action` action to build the image, based on your repository's `Dockerfile`. If the build succeeds, it pushes the image to GitHub Packages.
       # It uses the `context` parameter to define the build's context as the set of files located in the specified path. For more information, see [Usage](https://github.com/docker/build-push-action#usage) in the README of the `docker/build-push-action` repository.
       # It uses the `tags` and `labels` parameters to tag and label the image with the output from the "meta" step.
@@ -42,6 +57,8 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            SERIES=${{ steps.series.outputs.value }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
       
