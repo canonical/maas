@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install make
+      run: sudo apt-get update && sudo apt-get install make
+    - name: Cache APT packages
+      uses: actions/cache@v4
+      with:
+        path: /var/cache/apt/archives
+        key: ${{ runner.os }}-apt-${{ hashFiles('**/required-packages/base', '**/required-packages/dev') }}
+        restore-keys: |
+          ${{ runner.os }}-apt-
+    - name: Build
+      run: make install-dependencies
+    - name: Run Tests
+      run: make test
+
