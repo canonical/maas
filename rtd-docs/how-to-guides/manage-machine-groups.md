@@ -1,6 +1,6 @@
 # Manage machine groups
 
-At scale, a MAAS deployment can quickly turn into a forest of machines that are hard to track. Grouping helps make sense of that sprawl. The goal isn’t just tidiness; groups give you practical handles for filtering, access control, and high-availability strategies.  For more information about these labels, refer to [About machine groups](explanation/machine-groups.md).
+At scale, a MAAS deployment can quickly turn into a forest of machines that are hard to track. Grouping helps make sense of that sprawl. The goal isn’t just tidiness; groups give you practical handles for filtering, access control, and high-availability strategies.  For more information about these labels, refer to [About machine groups](/explanation/machine-groups.md).
 
 ## Manage availability zones
 

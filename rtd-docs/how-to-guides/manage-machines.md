@@ -453,7 +453,7 @@ Periodically check your machine list.
 
 ## Next steps
 
-- Understand [machine basics](explanation/machine-basics.md)
-- Learn about the [machine life-cycle](explanation/the-machine-life-cycle.md)
-- Learn more about [commissioning machines](explanation/commissioning-machines.md)
-- Discover more about [deploying machines](explanation/deploying-machines.md)
+- Understand [machine basics](/explanation/machine-basics.md)
+- Learn about the [machine life-cycle](/explanation/the-machine-life-cycle.md)
+- Learn more about [commissioning machines](/explanation/commissioning-machines.md)
+- Discover more about [deploying machines](/explanation/deploying-machines.md)

@@ -151,4 +151,4 @@ A machine with Blank layout cannot deploy until storage is manually configured.
 
 ## Next steps
 
-- Peruse the [storage reference catalog](reference/configuration-guides/storage.md)
+- Peruse the [storage reference catalog](/reference/configuration-guides/storage.md)

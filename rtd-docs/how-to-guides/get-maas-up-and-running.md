@@ -207,6 +207,6 @@ sudo maas status # Verify services running
 
 ## Related documentation
 
-- [About controllers](explanation/controllers.md)
-- [Back up MAAS](how-to-guides/back-up-maas.md)
-- [Networking in MAAS](explanation/networking.md)
+- [About controllers](/explanation/controllers.md)
+- [Back up MAAS](/how-to-guides/back-up-maas.md)
+- [Networking in MAAS](/explanation/networking.md)

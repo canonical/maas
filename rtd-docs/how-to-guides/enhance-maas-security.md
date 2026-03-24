@@ -261,7 +261,7 @@ sudo ufw allow 5250:5270/udp
 
 Your specifics may vary, so refer to the relevant firewall documentation and the required MAAS controller port settings.
 
-See [MAAS network port reference table](reference/configuration-guides/configuration-tables.md#controller-port-settings) for a complete active port listing.
+See [MAAS network port reference table](/reference/configuration-guides/configuration-tables.md#controller-port-settings) for a complete active port listing.
 
 ## Deploy HAProxy
 
@@ -320,7 +320,7 @@ Enable [HAProxy logging](https://www.digitalocean.com/community/tutorials/how-to
 
 Use MAAS log files to find potential security issues.
 
-See the [MAAS logging reference](reference/configuration-guides/logging.md) for detailed examples & log file locations.
+See the [MAAS logging reference](/reference/configuration-guides/logging.md) for detailed examples & log file locations.
 
 ## Manage users
 
@@ -364,11 +364,11 @@ Check the appropriate box to grant administrative rights.
 
 *Settings* > *Users* > *[User]* > *Pencil* > [Follow instructions]
 
-> *Note that administrators can change any user's password.  Learn more about [strong passwords]().*
+> *Note that administrators can change any user's password.  Learn more about [strong passwords](/).*
 
 ## Manage Vault
 
-Learn more about [MAAS and Hashicorp Vault](explanation/security.md).
+Learn more about [MAAS and Hashicorp Vault](/explanation/security.md).
 
 To ensure seamless integration between MAAS and Vault, you'll first need to obtain a `role_id` and `wrapped_token` through Vault's CLI. For detailed guidance, check [Hashicorp Vault's tutorial](https://learn.hashicorp.com/tutorials/vault/approle-best-practices?in=vault/auth-methods#approle-response-wrapping).
 

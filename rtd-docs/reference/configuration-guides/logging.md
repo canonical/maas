@@ -9,7 +9,7 @@ Pinpoint issues with four types of log files:
 
 You can also account for user activities with audit logs.
 
-> *See [How to use logging](how-to-guides/use-logging.md) for usage instructions.*
+> *See [How to use logging](/how-to-guides/use-logging.md) for usage instructions.*
 
 ## Firewall logs
 

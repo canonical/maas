@@ -12,7 +12,7 @@ This page describes the MAAS documentation style in a concise table.
 | **Text Styles**                                                                                                           | Use HTML or markdown for bold (`<strong>`, `**bold**`) and italics (`<em>`, `*italic*`); use sparingly |
 | **Code Formatting**                                                                                                       | For blocks, use four-space indentation or triple-backtick. For inline, use `<code>` or backticks       |
 | **Highlights and Comments**                                                                                               | Use `` for important info; HTML comments are visible in browser inspections                |           |
-| | **Linking and Embedding**     | Format hyperlinks as `[text](URL)`; embed images with appropriate context and cropping |                                                                                                         |
+| | **Linking and Embedding**     | Format hyperlinks as `[text](/URL)`; embed images with appropriate context and cropping |                                                                                                         |
 | **Interactive Content**                                                                                                   | Use `<details>` and `<summary>` for collapsible sections                                               |
 | **Paragraph Writing**                                                                                                     | Keep paragraphs concise; use active voice; use relatable comparisons; vary sentence structure          |
 
