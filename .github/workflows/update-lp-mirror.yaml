@@ -11,7 +11,10 @@ jobs:
     steps:
       - name: Push to Launchpad mirror
         run: |
-          echo ${{ secrets.LANDER_SSHKEY }} > .sshkey
-          export GIT_SSH_COMMAND="ssh -i .sshkey -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          KEYFILE="$(mktemp -p "${RUNNER_TEMP:-/tmp}" sshkey-XXXXXX)"
+          chmod 600 "$KEYFILE"
+          printf '%s' '${{ secrets.LANDER_SSHKEY }}' > "$KEYFILE"
+          export GIT_SSH_COMMAND="ssh -i $KEYFILE -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
           git clone --bare "https://github.com/canonical/maas" .
           git push --mirror "git+ssh://maas-lander@git.launchpad.net/maas" --dry-run
+          rm -f "$KEYFILE"
