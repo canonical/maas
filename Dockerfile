@@ -1,5 +1,5 @@
 # This file is used by the build-env github action
-ARG SERIES=bionic
+ARG SERIES=noble
 FROM ubuntu:${SERIES}
 
 ARG MAKE_TARGET="install-dependencies"
