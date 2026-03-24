@@ -62,7 +62,9 @@ class TestRunBadBlocks(MAASTestCase):
         mock_open = self.patch(badblocks, "open")
         mock_open.side_effect = open_side_effect
         # Mock lsblk output with 1 storage device
-        self.mock_check_output.return_value = b"NAME=sda MODEL=TestDisk SERIAL=12345\n"
+        self.mock_check_output.return_value = (
+            b"NAME=sda MODEL=TestDisk SERIAL=12345\n"
+        )
 
         self.assertEqual(50000, badblocks.get_parallel_blocks(1))
 
@@ -84,7 +86,9 @@ class TestRunBadBlocks(MAASTestCase):
         mock_open = self.patch(badblocks, "open")
         mock_open.side_effect = open_side_effect
         # Mock lsblk output with 1000 storage devices (many devices)
-        self.mock_check_output.return_value = b"NAME=sda MODEL=TestDisk SERIAL=12345\n" * 1000
+        self.mock_check_output.return_value = (
+            b"NAME=sda MODEL=TestDisk SERIAL=12345\n" * 1000
+        )
 
         self.assertGreaterEqual(50000, badblocks.get_parallel_blocks(1000))
 
