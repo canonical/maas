@@ -66,7 +66,7 @@ class TestCallAndCheck(MAASTestCase):
             env={"LC_ALL": "C"},
         )
         self.assertEqual(
-            b"/bin/cat: %s: No such file or directory"
+            b"cat: %s: No such file or directory"
             % nonfile.encode("ascii"),
             error.output,
         )
