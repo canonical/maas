@@ -188,7 +188,6 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         modifies the result type. In order to not change the API contract in v2,
         use `render_json_for_related_rrdata` below.
 
-
         Params:
             domain_id: The domain to calculate dns resources for
             user_id: Restrict the data to what the user can see
