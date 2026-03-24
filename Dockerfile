@@ -21,7 +21,8 @@ RUN set -ex                                                                     
         snap \
         socat \
         sudo \
-        wget
+        wget                                                                                           ;\
+    apt-get -q clean
 
 RUN set -ex                                                                                            ;\
     make -C /work/checkout ${MAKE_TARGET}                                                              ;\
