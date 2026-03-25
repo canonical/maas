@@ -33,18 +33,6 @@ TEST_RSA_KEY = (
     "tdMouh2FZpxaoh4Uey5bRp3tM3JgnWcX6fyUOp2gxJRPIlD9rrZhX5IkEkZM8MQbdPTQL"
     "gIf98oFph5RG6w1t02BvI9nJKM7KkKEfBHt ubuntu@test_rsa0"
 )
-
-TEST_DSA_KEY = (
-    "ssh-dss AAAAB3NzaC1kc3MAAACBALl8PCMaSa3pCCGJaJr4kH0QPlrgyG3Lka+/y4xx1"
-    "dOuJhpsLe2V9+CKX7Sz1yphCs26KqMFe/ebYGAUDhTdVlE4/TgpAP4GiTjdO1FGXTYdgQ"
-    "yJpfp50bTUW0zKIP/dwHs5dCLn4XYAxXzSsvORGVQGbM6P6vh3lieTkeVETGZDAAAAFQC"
-    "AaBKUmPvRqI37VRj1PE9B2rnkfQAAAIEApWYMF0IU+BYUtFuwRRUE9wEGxDEjTtuoWYCW"
-    "ML7Zn+cFOvK+C0x8YItQ3xIiI3a/0DCoDPIZPvImXDMrs0zUunegndS9g7J0gCHFY9dd+"
-    "rgYShUHwCI+hy/D9Dp1ukNnGD0bb3x5vEoSK6whrJWBM6is7TW4R5fvz/xDhrtIcxgAAA"
-    "CBAJbZsmuuWN2kb7lD27IzKcOgd07esoHPWZnv4qg7xhS1GdVr485v73OW1rfpWU6Pdoh"
-    "ckXLg9ZaoWtVTwNKTfHxS3iug9/pseBWTHdpmxCM5ClsZJii6T4frR5NTOCGKLxOamTs/"
-    "//OXopZr5u3vT20NFlzFE95J86tGtxYPPivx ubuntu@server-7476"
-)
 TEST_ECDSA521_KEY = (
     "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAA"
     "ACFBAFid8WJ6720Z8xJ/Fnsz9eZmUxdbcVNzBeML380gMeBMP9zPXWz629cahQT0HncnK"
@@ -468,7 +456,6 @@ class TestSshKeysService:
         "key",
         [
             TEST_RSA_KEY,
-            TEST_DSA_KEY,
             TEST_ED25519_KEY,
             TEST_ECDSA256_KEY,
             TEST_ECDSA384_KEY,
@@ -488,7 +475,6 @@ class TestSshKeysService:
         "key",
         [
             TEST_RSA_KEY,
-            TEST_DSA_KEY,
             TEST_ED25519_KEY,
             TEST_ECDSA256_KEY,
             TEST_ECDSA384_KEY,

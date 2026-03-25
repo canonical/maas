@@ -298,8 +298,10 @@ RackControllerRule = Rule(
     # appear in the official examples from the documentation on how to use the
     # cipher with a password as a pre-shared key. See:
     #     https://cryptography.io/en/latest/fernet/#using-passwords-with-fernet
+    Allow("cryptography.exceptions"),
     Allow("cryptography.fernet.**"),
     Allow("cryptography.hazmat.backends.default_backend"),
+    Allow("cryptography.hazmat.primitives.asymmetric.padding"),
     Allow("cryptography.hazmat.primitives.hashes"),
     Allow("cryptography.hazmat.primitives.kdf.pbkdf2.PBKDF2HMAC"),
     Allow("curtin|curtin.**"),
