@@ -16,7 +16,6 @@
 package omapi
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"os"

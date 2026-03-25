@@ -344,10 +344,11 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
             # transactional block to ensure stable connection state throughout
             # the lock lifecycle.
             with service_layer:
+
                 @transactional
                 def allocate():
                     return StaticIPAddress.objects.allocate_new(subnet)
-                
+
                 try:
                     with concurrency:
                         sip = allocate()

@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,8 +15,6 @@ class SwitchBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    target_image_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    target_image_id: int | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
