@@ -110,11 +110,6 @@ jobs:
 
           git submodule update --init --remote src/maasui/src
 
-          if git diff --quiet -- src/maasui/src; then
-            echo "No submodule changes to commit"
-            exit 0
-          fi
-
           git add src/maasui/src
           git commit -m "chore: update maas-ui to ${{ needs.check-last-commit.outputs.latest_commit }}"
           # use $GITHUB_REF_NAME to allow updating the maas-ui for other branches
