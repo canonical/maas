@@ -30,7 +30,6 @@ jobs:
 
       - name: Update and Commit
         run: |
-          set -euo pipefail
           cd "$GITHUB_WORKSPACE"
           docker run --rm \
             -v "$GITHUB_WORKSPACE":/work \
