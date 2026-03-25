@@ -245,8 +245,8 @@ class TestStaticIPAddressService:
 
         staticipaddress_service = StaticIPAddressService(
             context=Context(),
-            dnsresources_service=Mock(DNSResourcesService),
             temporal_service=mock_temporal,
+            dnsresources_service=Mock(DNSResourcesService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -302,9 +302,9 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
-            dnsresources_service=Mock(DNSResourcesService),
             context=Context(),
             temporal_service=mock_temporal,
+            dnsresources_service=Mock(DNSResourcesService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -362,9 +362,9 @@ class TestStaticIPAddressService:
         mock_temporal = Mock(TemporalService)
 
         staticipaddress_service = StaticIPAddressService(
-            dnsresources_service=Mock(DNSResourcesService),
             context=Context(),
             temporal_service=mock_temporal,
+            dnsresources_service=Mock(DNSResourcesService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
