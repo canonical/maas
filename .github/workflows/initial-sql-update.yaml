@@ -46,7 +46,7 @@ jobs:
             "
           git config user.name "${{ vars.LANDER_USERNAME }}"
           git config user.email "${{ vars.LANDER_EMAIL }}"
-          git add -A
+          git add src/maasserver/testing/initial.maas_test.sql
           git status
           if git diff --cached --quiet; then
             echo "No changes to commit"
