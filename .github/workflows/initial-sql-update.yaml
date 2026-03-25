@@ -45,6 +45,9 @@ jobs:
               sudo -H -u ubuntu make build
               sudo -H -u ubuntu make update-initial-sql
             "
+          
+          # Restore ownership of git repository
+          sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
           git config user.name "${{ vars.LANDER_USERNAME }}"
           git config user.email "${{ vars.LANDER_EMAIL }}"
           git add src/maasserver/testing/initial.maas_test.sql
