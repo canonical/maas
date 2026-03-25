@@ -39,6 +39,7 @@ class MAASResourceEntitlement(StrEnum):
     CAN_VIEW_LICENCE_KEYS = "can_view_license_keys"
     CAN_VIEW_DEVICES = "can_view_devices"
     CAN_VIEW_IPADDRESSES = "can_view_ipaddresses"
+    CAN_VIEW_DNSRECORDS = "can_view_dnsrecords"
 
 
 class PoolResourceEntitlements(StrEnum):

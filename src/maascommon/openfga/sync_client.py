@@ -210,6 +210,13 @@ class SyncOpenFGAClient(BaseOpenFGAClient):
             self.MAAS_GLOBAL_OBJ,
         )
 
+    def can_view_dnsrecords(self, user) -> bool:
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_VIEW_DNSRECORDS,
+            self.MAAS_GLOBAL_OBJ,
+        )
+
     # List Methods
     def list_pools_with_view_machines_access(self, user) -> list[int]:
         return self._list_objects(

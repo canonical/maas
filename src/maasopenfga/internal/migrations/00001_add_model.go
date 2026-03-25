@@ -96,6 +96,8 @@ type maas
 
     define can_view_ipaddresses: [group#member]
 
+    define can_view_dnsrecords: [group#member]
+
 type pool
   relations
     define parent: [maas]

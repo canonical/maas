@@ -5,6 +5,7 @@
 
 from django.core.exceptions import ValidationError
 
+from maasserver.authorization import can_view_dnsrecords
 from maasserver.forms.dnsdata import DNSDataForm
 from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.forms.domain import DomainForm
@@ -51,7 +52,9 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
 
     def dehydrate(self, domain, data, for_list=False):
         rrsets = service_layer.services.domains.render_json_for_related_rrdata(
-            domain_id=domain.id, user_id=self.user.id
+            domain_id=domain.id,
+            user_id=self.user.id,
+            can_view_all_records=can_view_dnsrecords(self.user),
         )
         if not for_list:
             data["rrsets"] = rrsets

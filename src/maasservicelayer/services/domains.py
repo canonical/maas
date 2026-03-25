@@ -36,7 +36,6 @@ from maasservicelayer.models.nodes import Node
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
-from maasservicelayer.services.users import UsersService
 
 # Labels are at most 63 octets long, and a name can be many of them
 LABEL = r"[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"
@@ -51,13 +50,11 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         context: Context,
         configurations_service: ConfigurationsService,
         dnspublications_service: DNSPublicationsService,
-        users_service: UsersService,
         domains_repository: DomainsRepository,
     ):
         super().__init__(context, domains_repository)
         self.dnspublications_service = dnspublications_service
         self.configurations_service = configurations_service
-        self.users_service = users_service
 
     async def validate_domain_name(self, name):
         # Same name validation as maasserver.models.domain.validate_domain_name
@@ -176,6 +173,7 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         self,
         domain_id: int,
         user_id: int | None = None,
+        can_view_all_records: bool = False,
         include_dnsdata=True,
         as_dict=False,
         with_node_id=False,
@@ -193,10 +191,11 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         Params:
             domain_id: The domain to calculate dns resources for
             user_id: Restrict the data to what the user can see
+            can_view_all_records: Whether the user can see all DNS records (bypassing ownership filters).
+                      This comes from the can_view_dnsrecords permission check.
             include_dnsdata: Whether to include dns data or not
             as_dict: Whether to return the data as a dict or as a list
         """
-
         domain = await self.get_by_id(domain_id)
         if domain is None:
             raise NotFoundException(
@@ -207,20 +206,6 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
                     )
                 ]
             )
-
-        if user_id is not None:
-            user = await self.users_service.get_by_id(user_id)
-            if user is None:
-                raise NotFoundException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                            message=f"User with id {user_id} does not exist.",
-                        )
-                    ]
-                )
-        else:
-            user = None
 
         if include_dnsdata is True:
             rr_mapping = await self.get_hostname_dnsdata_mapping(
@@ -235,10 +220,10 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         )
         for hostname, info in ip_mapping.items():
             if (
-                user is not None
-                and not user.is_superuser
+                user_id is not None
+                and not can_view_all_records
                 and info.user_id is not None
-                and info.user_id != user.id
+                and info.user_id != user_id
             ):
                 continue
             entry = rr_mapping[hostname[: -len(domain.name) - 1]]
@@ -276,9 +261,9 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
                 for ttl, rrtype, rrdata, dnsdata_id in info.rrset
                 if (
                     info.user_id is None
-                    or user is None
-                    or user.is_superuser
-                    or (info.user_id is not None and info.user_id == user.id)
+                    or user_id is None
+                    or can_view_all_records
+                    or info.user_id == user_id
                 )
             ]
             if isinstance(result, OrderedDict):
@@ -293,11 +278,17 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         self,
         domain_id: int,
         user_id: int | None = None,
+        can_view_all_records: bool = False,
         include_dnsdata=True,
         as_dict=False,
     ) -> OrderedDict[str, list[dict]] | list[dict]:
         result = await self.v3_render_json_for_related_rrdata(
-            domain_id, user_id, include_dnsdata, as_dict
+            domain_id,
+            user_id,
+            can_view_all_records,
+            include_dnsdata,
+            as_dict,
+            with_node_id=False,
         )
         if isinstance(result, dict):
             return OrderedDict(
