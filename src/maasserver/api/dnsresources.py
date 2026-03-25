@@ -49,7 +49,7 @@ class DNSResourcesQuerySet(QuerySet):
 
     def _generate_synthetic_rrdata(self, domain):
         user_id = None if self._user_filter is None else self._user_filter.id
-        is_admin = (
+        can_view_all_records = (
             False
             if self._user_filter is None
             else can_view_dnsrecords(self._user_filter)
@@ -57,7 +57,7 @@ class DNSResourcesQuerySet(QuerySet):
         rrdata = service_layer.services.domains.render_json_for_related_rrdata(
             domain_id=domain.id,
             user_id=user_id,
-            is_admin=is_admin,
+            can_view_all_records=can_view_all_records,
             include_dnsdata=False,
             as_dict=True,
         )
