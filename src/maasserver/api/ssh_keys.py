@@ -61,7 +61,7 @@ class SSHKeysHandler(OperationsHandler):
         ``key: "key-type public-key-data"``
 
         - ``key-type``: ecdsa-sha2-nistp256, ecdsa-sha2-nistp384,
-          ecdsa-sha2-nistp521, ssh-dss, ssh-ed25519, ssh-rsa
+          ecdsa-sha2-nistp521, ssh-ed25519, ssh-rsa
         - ``public key data``: Base64-encoded key data.
 
         @success (http-status-code) "201" 201
