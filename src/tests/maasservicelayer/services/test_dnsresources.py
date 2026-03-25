@@ -331,7 +331,7 @@ class TestDNSResourcesService:
             query=[dnsresource1.id, dnsresource2.id]
         )
         mock_dnspublications_service.create_for_config_update.assert_called_once_with(
-            source="zone removed multiple resources",
+            source="zone(s) removed resource(s)",
             action=DnsUpdateAction.RELOAD,
         )
 

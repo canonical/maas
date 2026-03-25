@@ -138,7 +138,7 @@ class DNSResourcesService(
         self, resources: List[DNSResource]
     ) -> None:
         await self.dnspublications_service.create_for_config_update(
-            source="zone removed multiple resources",
+            source="zone(s) removed resource(s)",
             action=DnsUpdateAction.RELOAD,
         )
 
