@@ -155,7 +155,6 @@ parts:
       - python3-macaroonbakery
       - python3-markupsafe
       - python3-mimeparse
-      - python3-multipart
       - python3-nacl # for macaroonbakery
       - python3-netaddr
       - python3-netifaces
@@ -174,6 +173,7 @@ parts:
       - python3-pymacaroons # for macaroonbakery
       - python3-pyparsing
       - python3-pyrsistent # for jsonschema
+      - python3-python-multipart
       - python3-pythonjsonlogger
       - python3-pyvmomi
       - python3-referencing
@@ -230,6 +230,7 @@ parts:
       - -lib/python3/dist-packages/maastesting
       - usr/bin
       - -usr/bin/xdg-*
+      - -usr/bin/maas-sampledata
       - usr/lib
       - usr/sbin
       - usr/share/dns
