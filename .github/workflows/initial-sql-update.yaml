@@ -1,0 +1,60 @@
+name: Update Initial SQL File
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-build-env:master
+
+permissions:
+  contents: write
+  packages: read
+
+
+jobs:
+  update-sql:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.LANDER_GH_TOKEN }}
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update and Commit
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE":/work \
+            -w /work \
+            ghcr.io/${{ env.IMAGE_NAME }} \
+            sh -c "
+              git config --global --add safe.directory /work
+              useradd ubuntu || true
+              chown -R ubuntu:ubuntu /work
+              sudo -H -u ubuntu make install-dependencies
+              sudo -H -u ubuntu make build
+              sudo -H -u ubuntu make update-initial-sql
+            "
+          
+          # Restore ownership of git repository
+          sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
+          git config user.name "${{ vars.LANDER_USERNAME }}"
+          git config user.email "${{ vars.LANDER_EMAIL }}"
+          git add src/maasserver/testing/initial.maas_test.sql
+          git status
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Update initial SQL"
+          git push origin HEAD:master
