@@ -80,7 +80,7 @@ maas $PROFILE sshkeys create [--help] [-d] [-k] [data ...]
 Add a new SSH key to the requesting or supplied user's<br>account.
 
 ##### Keyword "key"
-Optional String. A public SSH key<br>should be provided in the request payload as form data with the name<br>'key':<br><br>``key: "key-type public-key-data"``<br><br>- ``key-type``: ecdsa-sha2-nistp256, ecdsa-sha2-nistp384,<br>ecdsa-sha2-nistp521, ssh-dss, ssh-ed25519, ssh-rsa<br>- ``public key data``: Base64-encoded key data.
+Optional String. A public SSH key<br>should be provided in the request payload as form data with the name<br>'key':<br><br>``key: "key-type public-key-data"``<br><br>- ``key-type``: ecdsa-sha2-nistp256, ecdsa-sha2-nistp384,<br>ecdsa-sha2-nistp521, ssh-ed25519, ssh-rsa<br>- ``public key data``: Base64-encoded key data.
 
 
 Note: This command accepts JSON.
