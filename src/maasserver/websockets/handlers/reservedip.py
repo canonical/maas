@@ -46,14 +46,14 @@ class ReservedIPHandler(TimestampedModelHandler):
             ).filter(mac_address__in=[x.mac_address for x in objs])
             self._node_summary_cache = {}
             for interface in interfaces:
-                node = interface.get_node()
-                self._node_summary_cache[interface.mac_address] = {
-                    "fqdn": node.fqdn,
-                    "hostname": node.hostname,
-                    "node_type": node.node_type,
-                    "system_id": node.system_id,
-                    "via": interface.name,
-                }
+                if node := interface.get_node():
+                    self._node_summary_cache[interface.mac_address] = {
+                        "fqdn": node.fqdn,
+                        "hostname": node.hostname,
+                        "node_type": node.node_type,
+                        "system_id": node.system_id,
+                        "via": interface.name,
+                    }
 
     def dehydrate(self, obj, data: dict, for_list: bool = False) -> dict:
         if for_list:
