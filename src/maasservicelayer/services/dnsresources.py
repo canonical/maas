@@ -137,27 +137,8 @@ class DNSResourcesService(
     async def post_delete_many_hook(
         self, resources: List[DNSResource]
     ) -> None:
-        if not resources:
-            return
-
-        domain_ids = list(set(resource.domain_id for resource in resources))
-        domains = await self.domains_service.get_many(
-            query=QuerySpec(where=DomainsClauseFactory.with_ids(domain_ids))
-        )
-        domain_names = [d.name for d in domains if d is not None]
-
-        zone_count = len(domain_names)
-        zone_message = ", ".join(domain_names[:2]) + (
-            f" (+{zone_count - 2} more)" if zone_count > 2 else ""
-        )
-
-        resource_count = len(resources)
-        resource_message = ", ".join(r.name for r in resources[:3]) + (
-            f" (+{resource_count - 3} more)" if resource_count > 3 else ""
-        )
-
         await self.dnspublications_service.create_for_config_update(
-            source=f"zones: {zone_message} removed: {resource_message}",
+            source="zone removed multiple resources",
             action=DnsUpdateAction.RELOAD,
         )
 
