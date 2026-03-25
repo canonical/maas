@@ -52,6 +52,7 @@ jobs:
 
       - name: Build MAAS snap
         run: |
+          sudo snap install snapcraft --classic
           cd "$GITHUB_WORKSPACE"
           make snap
           make snap-clean
