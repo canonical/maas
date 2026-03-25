@@ -1,0 +1,120 @@
+name: Update maas-ui sync git submodule
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  check-last-commit:
+    runs-on: ubuntu-latest
+    outputs:
+      has_update: ${{ steps.compare.outputs.has_update }}
+      latest_commit: ${{ steps.compare.outputs.latest_commit }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Compare submodule and upstream commits
+        id: compare
+        run: |
+          latest_commit=$(git ls-remote https://github.com/canonical/maas-ui HEAD | awk '{print $1}')
+          current_commit=$(git rev-parse HEAD:src/maasui/src)
+
+          if [[ "$latest_commit" == "$current_commit" ]]; then
+            echo "has_update=false" >> "$GITHUB_OUTPUT"
+            echo "No update needed. Submodule already points to $current_commit"
+          else
+            echo "has_update=true" >> "$GITHUB_OUTPUT"
+            echo "latest_commit=$latest_commit" >> "$GITHUB_OUTPUT"
+            echo "Update needed: $current_commit -> $latest_commit"
+          fi
+
+  run-tests-in-container-and-commit:
+    needs: check-last-commit
+    # only run if the maas-ui commit changed
+    if: needs.check-last-commit.outputs.has_update == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          token: ${{ secrets.LANDER_GH_TOKEN }}
+
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v1
+        with:
+          channel: 5.21/stable
+
+      - name: Build MAAS snap
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          make snap
+          make snap-clean
+
+      - name: Setup LXD container
+        id: setup-lxd
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          lxc launch ubuntu:24.04 maas-ui-tester-backend
+          sleep 30
+          lxc file push *.snap maas-ui-tester-backend/maas-snap
+          lxc file push utilities/connect-snap-interfaces maas-ui-tester-backend/connect-snap-interfaces
+          lxc exec maas-ui-tester-backend -- cloud-init status --wait
+          lxc exec maas-ui-tester-backend -- snap install maas-test-db --channel=latest/edge
+          lxc exec maas-ui-tester-backend -- snap install /maas-snap --dangerous
+          lxc exec maas-ui-tester-backend -- /connect-snap-interfaces
+          export MAAS_IP=$(lxc query /1.0/containers/maas-ui-tester-backend/state | jq -r '.network.eth0.addresses[0].address')
+          echo "maas_ip=$MAAS_IP" >> "$GITHUB_OUTPUT"
+
+      - name: Initialize MAAS
+        run: |
+          export MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
+          lxc exec maas-ui-tester-backend -- maas init region+rack --maas-url="http://${MAAS_IP}:5240/MAAS" --database-uri maas-test-db:///
+          sleep 30
+          status_code=$(curl --noproxy ${MAAS_IP} -L http://${MAAS_IP}:5240/MAAS/api/2.0/version/ -o /dev/null -w "%{http_code}\\n" -s)
+          if [[ "$status_code" -ne 200 ]]; then
+            echo "MAAS API is not ready, $status_code returned"
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Test
+        run: |
+          export MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
+          export URL="http://${MAAS_IP}:5240/MAAS/r/"
+
+          mkdir /tmp/playwright-test
+          cd /tmp/playwright-test
+          npm install --global yarn
+          yarn init -y
+          yarn add @playwright/test
+          echo 'import { test, expect } from "@playwright/test"; test("check status", async ({ page }) => { await page.goto(process.env.URL); await page.waitForSelector("#maas-ui"); await expect(page.getByText("Loading")).toBeHidden(); await expect(page.getByText("No admin user has been created yet")).toBeVisible({ timeout: 30000 }); });' > test.spec.js
+          npx playwright install
+          npx playwright install-deps
+          npx playwright test test.spec.js
+
+      - name: Commit submodule update
+        run: |
+          git config user.name ${{ vars.LANDER_NAME }}
+          git config user.email ${{ vars.LANDER_EMAIL }}
+
+          git submodule update --init --remote src/maasui/src
+
+          if git diff --quiet -- src/maasui/src; then
+            echo "No submodule changes to commit"
+            exit 0
+          fi
+
+          git add src/maasui/src
+          git commit -m "chore: update maas-ui to ${{ needs.check-last-commit.outputs.latest_commit }}"
+          # use $GITHUB_REF_NAME to allow updating the maas-ui for other branches
+          git push origin "HEAD:${GITHUB_REF_NAME:-master}"
