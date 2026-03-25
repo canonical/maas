@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.LANDER_GH_TOKEN }}
 
       - name: Log in to the Container registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
@@ -52,5 +54,4 @@ jobs:
             exit 0
           fi
           git commit -m "Update initial SQL"
-          git remote add lander "https://${{ vars.LANDER_USERNAME }}:${{ secrets.LANDER_GH_TOKEN }}@github.com/canonical/maas.git"
-          git push lander HEAD:master
+          git push origin HEAD:master
