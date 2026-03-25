@@ -87,9 +87,11 @@ parts:
     source: .
     build-packages:
       - build-essential
+      - cargo
       - git
       - libffi-dev
       - libpq-dev
+      - libssl-dev
       - libxml2-dev
       - libxslt1-dev
       - python3-setuptools
@@ -172,6 +174,7 @@ parts:
       - python3-pyrsistent # for jsonschema
       - python3-pythonjsonlogger
       - python3-pyvmomi
+      - python3-referencing
       - python3-requests
       - python3-requests-toolbelt  # for pylxd
       - python3-requests-unixsocket
