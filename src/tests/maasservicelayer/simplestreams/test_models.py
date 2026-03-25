@@ -94,6 +94,30 @@ class TestMultiFileProductList:
 
         SimpleStreamsMultiFileProductList(**json_version)
 
+    def test_requires_at_least_one_root_image(self):
+        image_file = ImageFile(
+            ftype="test",
+            path="/test/path",
+            sha256="a" * 64,
+            size=1024,
+            kpackage=None,
+        )
+
+        with pytest.raises(ValueError) as e:
+            MultiFileImageVersion(
+                version_name="20250301",
+                boot_initrd=image_file,
+                boot_kernel=image_file,
+                manifest=image_file,
+                squashfs=None,
+                root_image_gz=None,
+            )
+
+        assert (
+            "At least one of squashfs or root_image_gz must be provided"
+            in str(e.value)
+        )
+
 
 class TestSingleFileProductList:
     def test_from_json(self):

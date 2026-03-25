@@ -205,12 +205,21 @@ class MultiFileImageVersion(Version):
     boot_kernel: ImageFile = Field(..., alias="boot-kernel")
     manifest: ImageFile
     root_image_gz: ImageFile | None = Field(None, alias="root-image.gz")
-    squashfs: ImageFile | None
+    squashfs: ImageFile | None = None
 
     @field_validator("support_eol", "support_esm_eol", mode="before")
     @classmethod
     def validate_support_eol(cls, v: str | None) -> date | None:
         return support_eol_validator(v)
+
+    @model_validator(mode="after")
+    def at_least_one_root_image(self) -> "MultiFileImageVersion":
+        """Ensure at least one of squashfs or root_image_gz is present."""
+        if not any([self.squashfs, self.root_image_gz]):
+            raise ValueError(
+                "At least one of squashfs or root_image_gz must be provided"
+            )
+        return self
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
