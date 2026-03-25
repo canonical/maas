@@ -43,7 +43,7 @@ slots:
 apps:
   pebble:
     daemon: simple
-    command: bin/run-pebble-daemon
+    command: usr/bin/run-pebble-daemon
     plugs:
       - avahi-observe
       - hardware-observe
@@ -59,7 +59,7 @@ apps:
       - time-control
 
   maas:
-    command: bin/maas
+    command: usr/bin/maas
     plugs:
       - home
       - mount-observe  # to read /proc/*/mounts
@@ -67,7 +67,7 @@ apps:
       - network-observe # to get default URL
 
   power:
-    command: bin/maas-power
+    command: usr/bin/maas-power
     environment:
       MAAS_PATH: $SNAP
     plugs:
@@ -81,6 +81,8 @@ parts:
     source-type: git
     source: https://github.com/canonical/pebble
     source-tag: v1.10.2
+    organize:
+      bin: usr/sbin
 
   maas:
     plugin: python
@@ -210,11 +212,10 @@ parts:
       lib/python3.*/site-packages/usr/share/*: usr/share/
       usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers/
       usr/lib/*-linux-gnu/blas/*: usr/lib/
+      usr/local/bin/*: usr/bin/
+      usr/local/lib/python3.14/*: usr/lib/python3.14/
     stage:
       - bin
-      - -bin/activate*
-      - -bin/Activate*
-      - -bin/maas-sampledata
       - etc/bind
       - etc/chrony
       - etc/freeipmi
@@ -227,7 +228,6 @@ parts:
       - -lib/python3.*/site-packages/etc
       - -lib/python3.*/site-packages/usr
       - -lib/python3/dist-packages/maastesting
-      - pyvenv.cfg
       - usr/bin
       - -usr/bin/xdg-*
       - usr/lib
@@ -243,10 +243,9 @@ parts:
       - var/lib/ieee-data
       - var/lib/temporal
     override-build: |
-      # Do not `craftctl default`: the python plugin would create an isolated venv and would need to install setuptools from pip.
-      python3 -m venv --system-site-packages $CRAFT_PART_INSTALL
-      VENV_PYTHON=$CRAFT_PART_INSTALL/bin/python3
-      $VENV_PYTHON -m pip install --no-build-isolation .
+      # Install MAAS package directly without venv to avoid symlink conflicts
+      # with staged packages on systems where /bin is a symlink to /usr/bin
+      /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
       find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#\!.*python3.*$|#!/usr/bin/env python3|' {} +
 
       cp -a package-files/* $CRAFT_PART_INSTALL
@@ -284,18 +283,8 @@ parts:
     source: src/host-info
     build-packages:
       - golang-go
-
-  maas-netmon:
-    plugin: make
-    source: src/maasagent
-    build-packages:
-      - golang-go
-    build-environment:
-      - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
-    organize:
-      bin/maas-netmon: usr/sbin/maas-netmon
     prime:
-      - usr/sbin/maas-netmon
+      - usr/share/maas/machine-resources
 
   maas-agent:
     plugin: make
@@ -308,10 +297,8 @@ parts:
       - llvm
     build-environment:
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
-    organize:
-      bin/maas-agent: usr/sbin/maas-agent
     prime:
-      - usr/sbin/maas-agent
+      - usr/sbin/
 
   maas-openfga:
     plugin: make
@@ -320,14 +307,8 @@ parts:
       - golang-go
     build-environment:
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
-    organize:
-      bin/maas-openfga: usr/sbin/maas-openfga
-      bin/maas-openfga-migrator: usr/sbin/maas-openfga-migrator
-      bin/maas-openfga-app-migrator: usr/sbin/maas-openfga-app-migrator
     prime:
-      - usr/sbin/maas-openfga
-      - usr/sbin/maas-openfga-migrator
-      - usr/sbin/maas-openfga-app-migrator
+      - usr/sbin/
 
   tree:
     plugin: dump
