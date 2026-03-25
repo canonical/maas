@@ -60,14 +60,14 @@ class V3DNSResourceRecordSetsService(Service):
         self,
         domain_id: int,
         user_id: int | None = None,
-        is_admin: bool = False,
+        can_view_all_records: bool = False,
     ) -> list[GenericDNSRecord]:
         rrsets_for_domain = []
         rrsets_dict = (
             await self.domains_service.v3_render_json_for_related_rrdata(
                 domain_id,
                 user_id=user_id,
-                is_admin=is_admin,
+                can_view_all_records=can_view_all_records,
                 as_dict=True,
                 with_node_id=True,
             )

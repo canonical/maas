@@ -54,7 +54,7 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
         rrsets = service_layer.services.domains.render_json_for_related_rrdata(
             domain_id=domain.id,
             user_id=self.user.id,
-            is_admin=can_view_dnsrecords(self.user),
+            can_view_all_records=can_view_dnsrecords(self.user),
         )
         if not for_list:
             data["rrsets"] = rrsets

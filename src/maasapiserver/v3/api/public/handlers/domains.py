@@ -206,13 +206,13 @@ class DomainsHandler(Handler):
         ),
     ) -> DomainResourceRecordSetListResponse:
         assert authenticated_user is not None
-        is_admin = (
+        can_view_all_records = (
             await services.openfga_tuples.get_client().can_view_dnsrecords(
                 authenticated_user.id
             )
         )
         dns_records = await services.v3dnsrrsets.get_dns_records_for_domain(
-            domain_id, user_id=authenticated_user.id, is_admin=is_admin
+            domain_id, user_id=authenticated_user.id, can_view_all_records=can_view_all_records
         )
         return DomainResourceRecordSetListResponse(
             items=[

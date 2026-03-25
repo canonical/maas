@@ -173,7 +173,7 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         self,
         domain_id: int,
         user_id: int | None = None,
-        is_admin: bool = False,
+        can_view_all_records: bool = False,
         include_dnsdata=True,
         as_dict=False,
         with_node_id=False,
@@ -191,7 +191,7 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         Params:
             domain_id: The domain to calculate dns resources for
             user_id: Restrict the data to what the user can see
-            is_admin: Whether the user can see all DNS records (bypassing ownership filters).
+            can_view_all_records: Whether the user can see all DNS records (bypassing ownership filters).
                       This comes from the can_view_dnsrecords permission check.
             include_dnsdata: Whether to include dns data or not
             as_dict: Whether to return the data as a dict or as a list
@@ -221,7 +221,7 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         for hostname, info in ip_mapping.items():
             if (
                 user_id is not None
-                and not is_admin
+                and not can_view_all_records
                 and info.user_id is not None
                 and info.user_id != user_id
             ):
@@ -262,7 +262,7 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
                 if (
                     info.user_id is None
                     or user_id is None
-                    or is_admin
+                    or can_view_all_records
                     or info.user_id == user_id
                 )
             ]
@@ -278,14 +278,14 @@ class DomainsService(BaseService[Domain, DomainsRepository, DomainBuilder]):
         self,
         domain_id: int,
         user_id: int | None = None,
-        is_admin: bool = False,
+        can_view_all_records: bool = False,
         include_dnsdata=True,
         as_dict=False,
     ) -> OrderedDict[str, list[dict]] | list[dict]:
         result = await self.v3_render_json_for_related_rrdata(
             domain_id,
             user_id,
-            is_admin,
+            can_view_all_records,
             include_dnsdata,
             as_dict,
             with_node_id=False,

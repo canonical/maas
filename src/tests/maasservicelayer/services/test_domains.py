@@ -519,7 +519,7 @@ class TestDomainsService:
         )
 
         result = await domains_service.v3_render_json_for_related_rrdata(
-            domain_id=1, user_id=100, is_admin=True, as_dict=False
+            domain_id=1, user_id=100, can_view_all_records=True, as_dict=False
         )
 
         assert isinstance(result, list)
@@ -579,7 +579,7 @@ class TestDomainsService:
         )
 
         result = await domains_service.v3_render_json_for_related_rrdata(
-            domain_id=1, user_id=100, is_admin=False, as_dict=False
+            domain_id=1, user_id=100, can_view_all_records=False, as_dict=False
         )
 
         assert isinstance(result, list)
