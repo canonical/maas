@@ -226,3 +226,11 @@ class InterfacesService(
 
     async def get_for_ip(self, sip: StaticIPAddress) -> list[Interface] | None:
         return await self.repository.get_for_ip(ip_id=sip.id)
+
+    async def create_switch_interface(
+        self, switch_id: int, mac: str, name: str = "mgmt0"
+    ) -> int:
+        """Create a new switch interface and return its ID"""
+        return await self.interface_repository.create_switch_interface(
+            switch_id, mac, name=name
+        )

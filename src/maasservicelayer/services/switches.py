@@ -6,10 +6,7 @@ from datetime import datetime, timezone
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.interfaces import (
-    InterfaceClauseFactory,
-    InterfaceRepository,
-)
+from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
@@ -25,21 +22,18 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
     """Service for managing network switches.
 
     This service provides business logic for creating, reading, updating,
-    and deleting network switches in MAAS. Switches represent network
-    devices that can be monitored and managed.
+    and deleting network switches in MAAS.
     """
 
     def __init__(
         self,
         context: Context,
         switches_repository: SwitchesRepository,
-        interfaces_repository: InterfaceRepository,
         staticipaddress_repository: StaticIPAddressRepository,
         staticipaddress_service: StaticIPAddressService,
         interfaces_service: InterfacesService,
     ):
         super().__init__(context, switches_repository)
-        self.interfaces_repository = interfaces_repository
         self.staticipaddress_repository = staticipaddress_repository
         self.staticipaddress_service = staticipaddress_service
         self.interfaces_service = interfaces_service
@@ -58,7 +52,7 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
             The created Switch
         """
         switch = await self.create(builder)
-        await self.interfaces_repository.create_switch_interface(
+        await self.interfaces_service.create_switch_interface(
             switch_id=switch.id, mac=mac_address
         )
         return switch
@@ -98,25 +92,21 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
             The Switch if found, None otherwise
         """
         # Find the interface with this MAC address
-        interface = await self.interfaces_repository.get_one(
+        interface = await self.interfaces_service.get_one(
             query=QuerySpec(
                 where=InterfaceClauseFactory.with_mac_address(mac_address)
             )
         )
 
-        if not interface:
+        if not interface or not interface.switch_id:
             return None
 
         # Get the switch
         return await self.get_by_id(id=interface.switch_id)
 
     async def check_installer_for_switch(self, mac_address: str) -> int | None:
-        """Check if a switch has an assigned NOS installer.
-
-        This method handles the logic for GET /onie/nos-installer:
-        - Returns the assigned target_image_id if present
-        - Updates heartbeat timestamp
-        - Returns None if no installer is assigned
+        """Check if a switch has an assigned NOS installer, and
+        return its image ID if it exists.
 
         Args:
             mac_address: MAC address of the management interface
@@ -158,7 +148,7 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         Args:
             resource: The switch that was deleted
         """
-        interfaces = await self.interfaces_repository.get_many(
+        interfaces = await self.interfaces_service.get_many(
             query=QuerySpec(
                 where=InterfaceClauseFactory.with_switch_id(resource.id)
             )
