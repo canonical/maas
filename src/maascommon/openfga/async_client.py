@@ -225,6 +225,13 @@ class OpenFGAClient(BaseOpenFGAClient):
             self.MAAS_GLOBAL_OBJ,
         )
 
+    async def can_view_dnsrecords(self, user_id: int) -> bool:
+        return await self._check(
+            user_id,
+            MAASResourceEntitlement.CAN_VIEW_DNSRECORDS,
+            self.MAAS_GLOBAL_OBJ,
+        )
+
     # List Methods
     async def list_pools_with_view_machines_access(
         self, user_id: int

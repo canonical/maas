@@ -53,6 +53,7 @@ PERMISSION_METHODS = [
     ("can_view_license_keys", ("u1",), "can_view_license_keys", "maas:0"),
     ("can_view_devices", ("u1",), "can_view_devices", "maas:0"),
     ("can_view_ipaddresses", ("u1",), "can_view_ipaddresses", "maas:0"),
+    ("can_view_dnsrecords", ("u1",), "can_view_dnsrecords", "maas:0"),
 ]
 
 LIST_METHODS = [

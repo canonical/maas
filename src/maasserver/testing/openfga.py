@@ -27,6 +27,7 @@ class OpenFGAClientMock(SyncOpenFGAClient):
         "can_edit_license_keys",
         "can_view_devices",
         "can_view_ipaddresses",
+        "can_view_dnsrecords",
     ]
 
     # Methods allowing access to EVERYONE

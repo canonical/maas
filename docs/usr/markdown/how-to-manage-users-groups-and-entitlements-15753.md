@@ -78,6 +78,7 @@ Permissions follow two inheritance rules:
 | `can_view_license_keys` | View license keys. |
 | `can_view_devices` | View all devices. |
 | `can_view_ipaddresses` | View all IP addresses. |
+| `can_view_dnsrecords` | View all DNS resource record sets. |
 
 #### Per-pool (`pool`) entitlements
 

@@ -574,7 +574,6 @@ class ServiceCollectionV3:
             context=context,
             configurations_service=services.configurations,
             dnspublications_service=services.dnspublications,
-            users_service=services.users,
             domains_repository=DomainsRepository(context),
         )
         services.dnsresources = DNSResourcesService(

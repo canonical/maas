@@ -327,6 +327,18 @@ class OpenFGATupleBuilder(ResourceBuilder):
         )
 
     @classmethod
+    def build_group_can_view_dnsrecords(
+        cls, group_id: int
+    ) -> "OpenFGATupleBuilder":
+        return OpenFGATupleBuilder(
+            user=f"group:{group_id}#member",
+            user_type="userset",
+            relation=MAASResourceEntitlement.CAN_VIEW_DNSRECORDS,
+            object_id="0",
+            object_type=OpenFGAEntitlementResourceType.MAAS,
+        )
+
+    @classmethod
     def build_pool(cls, pool_id: str) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user="maas:0",
