@@ -1,4 +1,4 @@
-# Configuration-Guides
+# Configuration guides
 
 ```{toctree}
 :titlesonly:
