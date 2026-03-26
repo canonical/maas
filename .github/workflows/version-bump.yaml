@@ -7,7 +7,7 @@ on:
         description: 'MAAS version to bump'
         required: true
       ubuntu_distro:
-        description: 'Ubuntu distro associated with this MAAS version'
+        description: 'Ubuntu distro codename associated with this MAAS version'
         type: choice
         options:
         - focal
@@ -15,17 +15,19 @@ on:
         - noble
         - resolute
         required: true
-      debfullname:
-        description: ''
-        required: True
-      debemail:
-        description: ''
-        required: True
+      full_name:
+        description: 'Full name of the releaser (used for git commit and debian changelog)'
+        type: string
+        required: true
+      email:
+        description: 'Email of the releaser (used for git commit and debian changelog)'
+        type: string
+        required: true
 
 
 env:
-  DEBFULLNAME: ${{ github.event.inputs.debfullname }}
-  DEBEMAIL: ${{ github.event.inputs.debemail }}
+  DEBFULLNAME: ${{ github.event.inputs.full_name }}
+  DEBEMAIL: ${{ github.event.inputs.email }}
 
 permissions:
   contents: write
@@ -42,7 +44,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
-        run: sudo apt-get install -y devscripts
+        run: |
+          sudo apt update
+          sudo apt install -y devscripts
 
       - name: Bump Version and Push
         run: |

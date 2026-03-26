@@ -66,7 +66,7 @@ replace_setup_version() {
     major_version=$(echo "$version" | cut --delimiter="." --fields=1)
     minor_version=$(echo "$version" | cut --delimiter="." --fields=2)
 
-    if [[ "$major_version" -ge 3 && "$minor_version" -ge 6 ]]
+    if [[ "$major_version" -gt 3 || ( "$major_version" -eq 3 && "$minor_version" -ge 6 ) ]]
     then
         sed -i 's/\bversion = .*$/version = "'"$version"'"/' pyproject.toml
     else
