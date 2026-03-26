@@ -14,7 +14,6 @@ from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
@@ -56,7 +55,6 @@ class TestCommonSwitchesService(ServiceCommonTests):
         return SwitchesService(
             context=Context(),
             switches_repository=Mock(SwitchesRepository),
-            interfaces_repository=Mock(InterfaceRepository),
             staticipaddress_repository=Mock(StaticIPAddressRepository),
             staticipaddress_service=Mock(StaticIPAddressService),
             interfaces_service=Mock(InterfacesService),
@@ -76,14 +74,12 @@ class TestSwitchesService:
 
     async def test_service_initialization(self) -> None:
         switches_repository = Mock(SwitchesRepository)
-        interfaces_repository = Mock(InterfaceRepository)
         staticipaddress_repository = Mock(StaticIPAddressRepository)
         staticipaddress_service = Mock(StaticIPAddressService)
         interfaces_service = Mock(InterfacesService)
         service = SwitchesService(
             context=Context(),
             switches_repository=switches_repository,
-            interfaces_repository=interfaces_repository,
             staticipaddress_repository=staticipaddress_repository,
             staticipaddress_service=staticipaddress_service,
             interfaces_service=interfaces_service,
@@ -94,7 +90,7 @@ class TestSwitchesService:
         assert service.repository == switches_repository
 
     async def test_get_switch_by_mac_address(self) -> None:
-        interfaces_repository = Mock(InterfaceRepository)
+        """Test getting a switch by its management interface MAC address."""
         switches_repository = Mock(SwitchesRepository)
         staticipaddress_repository = Mock(StaticIPAddressRepository)
         staticipaddress_service = Mock(StaticIPAddressService)
@@ -108,13 +104,12 @@ class TestSwitchesService:
         test_interface = Mock()
         test_interface.switch_id = test_switch.id
 
-        interfaces_repository.get_one.return_value = test_interface
+        interfaces_service.get_one.return_value = test_interface
         switches_repository.get_by_id.return_value = test_switch
 
         service = SwitchesService(
             context=Context(),
             switches_repository=switches_repository,
-            interfaces_repository=interfaces_repository,
             staticipaddress_repository=staticipaddress_repository,
             staticipaddress_service=staticipaddress_service,
             interfaces_service=interfaces_service,
@@ -126,13 +121,13 @@ class TestSwitchesService:
         result = await service.get_switch_by_mac_address("00:11:22:33:44:55")
 
         assert result == test_switch
-        interfaces_repository.get_one.assert_called_once()
+        interfaces_service.get_one.assert_called_once()
         switches_repository.get_by_id.assert_called_once_with(
             id=test_switch.id
         )
 
-    async def test_check_installer_for_switch(self) -> None:
-        interfaces_repository = Mock(InterfaceRepository)
+    async def test_get_installer_for_switch(self) -> None:
+        """Test checking for an assigned NOS installer for a switch."""
         switches_repository = Mock(SwitchesRepository)
         staticipaddress_repository = Mock(StaticIPAddressRepository)
         staticipaddress_service = Mock(StaticIPAddressService)
@@ -146,13 +141,12 @@ class TestSwitchesService:
         test_interface = Mock()
         test_interface.switch_id = test_switch.id
 
-        interfaces_repository.get_one.return_value = test_interface
+        interfaces_service.get_one.return_value = test_interface
         switches_repository.get_by_id.return_value = test_switch
 
         service = SwitchesService(
             context=Context(),
             switches_repository=switches_repository,
-            interfaces_repository=interfaces_repository,
             staticipaddress_repository=staticipaddress_repository,
             staticipaddress_service=staticipaddress_service,
             interfaces_service=interfaces_service,
@@ -164,7 +158,7 @@ class TestSwitchesService:
         result = await service.check_installer_for_switch("00:11:22:33:44:55")
 
         assert result == 42
-        interfaces_repository.get_one.assert_called_once()
+        interfaces_service.get_one.assert_called_once()
         switches_repository.get_by_id.assert_called_with(id=test_switch.id)
         switches_repository.update_by_id.assert_called_once()
 
@@ -497,7 +491,10 @@ class TestSwitchesService:
                 )
 
     async def test_create_switch_and_link_interface(self) -> None:
-        interfaces_repository = Mock(InterfaceRepository)
+        """Test creating a switch and linking an existing interface.
+
+        This should claim an UNKNOWN interface and convert it to PHYSICAL.
+        """
         switches_repository = Mock(SwitchesRepository)
         staticipaddress_service = Mock(StaticIPAddressService)
         interfaces_service = Mock(InterfacesService)
@@ -523,7 +520,6 @@ class TestSwitchesService:
         service = SwitchesService(
             context=Context(),
             switches_repository=switches_repository,
-            interfaces_repository=interfaces_repository,
             staticipaddress_repository=Mock(StaticIPAddressRepository),
             staticipaddress_service=staticipaddress_service,
             interfaces_service=interfaces_service,
@@ -544,18 +540,18 @@ class TestSwitchesService:
         )
 
     async def test_post_delete_hook_with_no_interfaces(self) -> None:
-        interfaces_repository = Mock(InterfaceRepository)
+        """Test post_delete_hook when switch has no interfaces."""
         switches_repository = Mock(SwitchesRepository)
         staticipaddress_repository = Mock(StaticIPAddressRepository)
         staticipaddress_service = Mock(StaticIPAddressService)
         interfaces_service = Mock(InterfacesService)
 
-        interfaces_repository.get_many.return_value = []
+        # No interfaces for this switch
+        interfaces_service.get_many.return_value = []
 
         service = SwitchesService(
             context=Context(),
             switches_repository=switches_repository,
-            interfaces_repository=interfaces_repository,
             staticipaddress_repository=staticipaddress_repository,
             staticipaddress_service=staticipaddress_service,
             interfaces_service=interfaces_service,
@@ -566,13 +562,14 @@ class TestSwitchesService:
 
         await service.post_delete_hook(TEST_SWITCH)
 
-        interfaces_repository.get_many.assert_called_once()
+        interfaces_service.get_many.assert_called_once()
+        # No IP operations should be called
         staticipaddress_repository.get_ip_addresses_for_interface.assert_not_called()
         staticipaddress_repository.unlink_interface_from_ip.assert_not_called()
         staticipaddress_service.delete_by_id.assert_not_called()
 
     async def test_post_delete_hook_with_interface_own_ip(self) -> None:
-        interfaces_repository = Mock(InterfaceRepository)
+        """Test post_delete_hook with interface having its own IP (not shared)."""
         switches_repository = Mock(SwitchesRepository)
         staticipaddress_repository = Mock(StaticIPAddressRepository)
         staticipaddress_service = Mock(StaticIPAddressService)
@@ -595,7 +592,7 @@ class TestSwitchesService:
             lease_time=0,
         )
 
-        interfaces_repository.get_many.return_value = [test_interface]
+        interfaces_service.get_many.return_value = [test_interface]
         staticipaddress_repository.get_ip_addresses_for_interface.return_value = [
             test_ip
         ]
@@ -604,7 +601,6 @@ class TestSwitchesService:
         service = SwitchesService(
             context=Context(),
             switches_repository=switches_repository,
-            interfaces_repository=interfaces_repository,
             staticipaddress_repository=staticipaddress_repository,
             staticipaddress_service=staticipaddress_service,
             interfaces_service=interfaces_service,
@@ -615,7 +611,8 @@ class TestSwitchesService:
 
         await service.post_delete_hook(TEST_SWITCH)
 
-        interfaces_repository.get_many.assert_called_once()
+        # Verify the flow: get interfaces → get IPs → unlink → check count → delete
+        interfaces_service.get_many.assert_called_once()
         staticipaddress_repository.get_ip_addresses_for_interface.assert_called_once_with(
             test_interface.id
         )
@@ -631,7 +628,7 @@ class TestSwitchesService:
         )
 
     async def test_post_delete_hook_with_shared_ip(self) -> None:
-        interfaces_repository = Mock(InterfaceRepository)
+        """Test post_delete_hook with interface having a shared IP (not deleted)."""
         switches_repository = Mock(SwitchesRepository)
         staticipaddress_repository = Mock(StaticIPAddressRepository)
         staticipaddress_service = Mock(StaticIPAddressService)
@@ -653,7 +650,7 @@ class TestSwitchesService:
             lease_time=0,
         )
 
-        interfaces_repository.get_many.return_value = [test_interface]
+        interfaces_service.get_many.return_value = [test_interface]
         staticipaddress_repository.get_ip_addresses_for_interface.return_value = [
             test_ip
         ]
@@ -662,7 +659,6 @@ class TestSwitchesService:
         service = SwitchesService(
             context=Context(),
             switches_repository=switches_repository,
-            interfaces_repository=interfaces_repository,
             staticipaddress_repository=staticipaddress_repository,
             staticipaddress_service=staticipaddress_service,
             interfaces_service=interfaces_service,
@@ -686,8 +682,6 @@ class TestSwitchesService:
         self,
     ) -> None:
         """Test post_delete_hook with multiple interfaces and various IP scenarios."""
-
-        interfaces_repository = Mock(InterfaceRepository)
         switches_repository = Mock(SwitchesRepository)
         staticipaddress_repository = Mock(StaticIPAddressRepository)
         staticipaddress_service = Mock(StaticIPAddressService)
@@ -733,7 +727,7 @@ class TestSwitchesService:
             lease_time=0,
         )  # Only on interface2
 
-        interfaces_repository.get_many.return_value = [interface1, interface2]
+        interfaces_service.get_many.return_value = [interface1, interface2]
 
         # Setup IP associations
         def get_ips_for_interface(interface_id):
@@ -762,7 +756,6 @@ class TestSwitchesService:
         service = SwitchesService(
             context=Context(),
             switches_repository=switches_repository,
-            interfaces_repository=interfaces_repository,
             staticipaddress_repository=staticipaddress_repository,
             staticipaddress_service=staticipaddress_service,
             interfaces_service=interfaces_service,
