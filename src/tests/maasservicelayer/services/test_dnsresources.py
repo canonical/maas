@@ -61,12 +61,6 @@ class TestCommonDNSResourcesService(ServiceCommonTests):
                 service_instance, test_instance, builder_model
             )
 
-    async def test_delete_many(
-        self, service_instance, test_instance: MaasBaseModel
-    ):
-        with pytest.raises(NotImplementedError):
-            await super().test_delete_many(service_instance, test_instance)
-
 
 @pytest.mark.asyncio
 class TestDNSResourcesService:
@@ -290,6 +284,55 @@ class TestDNSResourcesService:
             label=dnsresource.name,
             rtype="A",
             zone=domain.name,
+        )
+
+    async def test_delete_many(self) -> None:
+        mock_domains_service = Mock(DomainsService)
+        mock_dnspublications_service = Mock(DNSPublicationsService)
+        mock_dnsresource_repository = Mock(DNSResourceRepository)
+
+        domain = Domain(
+            id=0,
+            name="test_domain",
+            authoritative=True,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+        dnsresource1 = DNSResource(
+            id=1,
+            name="example1",
+            domain_id=domain.id,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+        dnsresource2 = DNSResource(
+            id=2,
+            name="example2",
+            domain_id=domain.id,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+
+        mock_dnsresource_repository.get_many.return_value = [
+            dnsresource1,
+            dnsresource2,
+        ]
+
+        service = DNSResourcesService(
+            Context(),
+            domains_service=mock_domains_service,
+            dnspublications_service=mock_dnspublications_service,
+            dnsresource_repository=mock_dnsresource_repository,
+        )
+
+        await service.delete_many([dnsresource1.id, dnsresource2.id])
+
+        mock_dnsresource_repository.delete_many.assert_called_once_with(
+            query=[dnsresource1.id, dnsresource2.id]
+        )
+        mock_dnspublications_service.create_for_config_update.assert_called_once_with(
+            source="zone(s) removed resource(s)",
+            action=DnsUpdateAction.RELOAD,
         )
 
     async def test_release_dynamic_hostname_no_remaining_ips(self) -> None:
