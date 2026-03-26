@@ -383,3 +383,131 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
 
         links = await fixture.get("maasserver_interface_ip_addresses")
         assert len(links) == 0
+
+    async def test_get_ip_addresses_for_interface(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip1 = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        ip2 = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        other_ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        interface = await create_test_interface_entry(fixture, ips=[ip1, ip2])
+        await create_test_interface_entry(fixture, ips=[other_ip])
+
+        result = await repository_instance.get_ip_addresses_for_interface(
+            interface.id
+        )
+
+        assert {r.id for r in result} == {ip1["id"], ip2["id"]}
+
+    async def test_get_ip_addresses_for_interface_none(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        interface = await create_test_interface_entry(fixture, ips=[])
+
+        result = await repository_instance.get_ip_addresses_for_interface(
+            interface.id
+        )
+
+        assert result == []
+
+    async def test_unlink_interface_from_ip(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        interface1 = await create_test_interface_entry(fixture, ips=[ip])
+        interface2 = await create_test_interface_entry(fixture, ips=[ip])
+
+        links = await fixture.get("maasserver_interface_ip_addresses")
+        assert len(links) == 2
+
+        await repository_instance.unlink_interface_from_ip(
+            interface1.id, ip["id"]
+        )
+
+        links = await fixture.get("maasserver_interface_ip_addresses")
+        assert len(links) == 1
+        assert links[0]["interface_id"] == interface2.id
+
+    async def test_unlink_interface_from_ip_noop_when_not_linked(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        interface = await create_test_interface_entry(fixture, ips=[ip])
+        unrelated_interface = await create_test_interface_entry(
+            fixture, ips=[]
+        )
+
+        await repository_instance.unlink_interface_from_ip(
+            unrelated_interface.id, ip["id"]
+        )
+
+        links = await fixture.get("maasserver_interface_ip_addresses")
+        assert len(links) == 1
+        assert links[0]["interface_id"] == interface.id
+
+    async def test_get_interface_count_for_ip(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        await create_test_interface_entry(fixture, ips=[ip])
+        await create_test_interface_entry(fixture, ips=[ip])
+
+        count = await repository_instance.get_interface_count_for_ip(ip["id"])
+
+        assert count == 2
+
+    async def test_get_interface_count_for_ip_zero(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+
+        count = await repository_instance.get_interface_count_for_ip(ip["id"])
+
+        assert count == 0
