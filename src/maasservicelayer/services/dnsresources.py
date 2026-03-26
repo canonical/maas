@@ -137,7 +137,10 @@ class DNSResourcesService(
     async def post_delete_many_hook(
         self, resources: List[DNSResource]
     ) -> None:
-        raise NotImplementedError("Not implemented yet.")
+        await self.dnspublications_service.create_for_config_update(
+            source="zone(s) removed resource(s)",
+            action=DnsUpdateAction.RELOAD,
+        )
 
     async def release_dynamic_hostname(
         self, ip: StaticIPAddress, but_not_for: Optional[DNSResource] = None
@@ -260,6 +263,32 @@ class DNSResourcesService(
         self, dnsrr_id: int
     ) -> list[DNSData]:
         return await self.repository.get_dnsdata_for_dnsresource(dnsrr_id)
+
+    async def get_dnsresources_without_ips(
+        self, dnsresource_ids: List[int]
+    ) -> List[int]:
+        return await self.repository.get_dnsresources_without_ips(
+            dnsresource_ids
+        )
+
+    async def get_dnsresources_without_dnsdata(
+        self, dnsresource_ids: List[int]
+    ) -> List[int]:
+        return await self.repository.get_dnsresources_without_dnsdata(
+            dnsresource_ids
+        )
+
+    async def get_dnsresources_for_ip(
+        self, ip: StaticIPAddress
+    ) -> List[DNSResource]:
+        return await self.repository.get_dnsresources_for_ip(ip)
+
+    async def unlink_ip_from_all_dnsresources(
+        self, staticipaddress_id: int
+    ) -> None:
+        await self.repository.unlink_ip_from_all_dnsresources(
+            staticipaddress_id
+        )
 
     async def add_ip(
         self, sip: StaticIPAddress, label: str, domain: Domain
