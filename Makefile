@@ -493,7 +493,7 @@ snap-tree-sync: $(UI_BUILD) clean-agent clean-openfga go-bins $(SNAP_UNPACKED_DI
 		--exclude 'host-info' --exclude 'maas-offline-docs' \
 		--exclude '*.pyc' --exclude '__pycache__' \
 		src/ \
-		$(SNAP_UNPACKED_DIR)/lib/python3.*/site-packages/
+		$(SNAP_UNPACKED_DIR)/usr/lib/python3.*/dist-packages/
 	$(RSYNC) \
 		$(UI_BUILD)/ \
 		$(SNAP_UNPACKED_DIR)/usr/share/maas/web/static/
