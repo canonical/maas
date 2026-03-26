@@ -62,10 +62,9 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE"
           lxc launch ubuntu:24.04 maas-ui-tester-backend
-          sleep 30
+          lxc exec maas-ui-tester-backend -- cloud-init status --wait
           lxc file push *.snap maas-ui-tester-backend/maas-snap
           lxc file push utilities/connect-snap-interfaces maas-ui-tester-backend/connect-snap-interfaces
-          lxc exec maas-ui-tester-backend -- cloud-init status --wait
           lxc exec maas-ui-tester-backend -- snap install maas-test-db --channel=latest/edge
           lxc exec maas-ui-tester-backend -- snap install /maas-snap --dangerous
           lxc exec maas-ui-tester-backend -- /connect-snap-interfaces
