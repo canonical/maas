@@ -166,7 +166,7 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
 
         # Oldest records first
         expected_zone_order = (["default"] + zone_names)[::-1]
-        for zone, name in zip(all_zones, expected_zone_order):
+        for zone, name in zip(all_zones, expected_zone_order, strict=False):
             assert zone.name == name
             assert zone.machines_count == 0
             assert zone.devices_count == 0

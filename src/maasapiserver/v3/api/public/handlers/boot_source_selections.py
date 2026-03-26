@@ -3,10 +3,11 @@
 
 
 from contextlib import suppress
+from typing import Annotated
 
 from fastapi import Depends, Query, Response
 from fastapi.exceptions import RequestValidationError
-from pydantic import conlist, ValidationError
+from pydantic import ValidationError
 from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
@@ -218,9 +219,15 @@ class BootSourceSelectionsHandler(Handler):
     )
     async def bulk_delete_selections(
         self,
-        ids: conlist(int, min_items=1, unique_items=True) = Query(  # pyright: ignore[reportInvalidTypeForm] # noqa: B008
-            description="ids of selections to delete", alias="id"
-        ),
+        ids: Annotated[
+            list[int],
+            Query(
+                min_length=1,
+                unique_items=True,
+                description="ids of selections to delete",
+                alias="id",
+            ),
+        ],
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         deleted = await services.boot_source_selections.delete_many(

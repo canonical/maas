@@ -1,7 +1,9 @@
 # Copyright 2025 Canonical Ltd. This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -12,10 +14,10 @@ from maasservicelayer.models.agents import Agent
 
 
 class AgentResponse(HalResponse[BaseHal]):
-    kind = "Agent"
+    kind: str = Field(default="Agent")
     id: int
     rack_id: int
-    rackcontroller_id: Optional[int]
+    rackcontroller_id: int | None
 
     @classmethod
     def from_model(cls, agent: Agent, self_base_hyperlink: str) -> Self:
@@ -32,7 +34,7 @@ class AgentResponse(HalResponse[BaseHal]):
 
 
 class AgentConfigResponse(HalResponse[BaseHal]):
-    kind = "AgentSignedCertificate"
+    kind: str = Field(default="AgentSignedCertificate")
     maas_url: str
     rpc_secret: str
     system_id: str
@@ -59,7 +61,7 @@ class AgentConfigResponse(HalResponse[BaseHal]):
 
 
 class AgentSignedCertificateResponse(HalResponse[BaseHal]):
-    kind = "AgentSignedCertificate"
+    kind: str = Field(default="AgentSignedCertificate")
     certificate: str
     ca: str
 

@@ -6,7 +6,9 @@ from datetime import datetime, timedelta
 from functools import cached_property
 from typing import Any, cast, Self
 
-from jose import jwt, JWTError
+from joserfc import jwt
+from joserfc.errors import JoseError
+from joserfc.jwk import OctKey
 
 from maasservicelayer.auth.time import utc_from_timestamp
 from maasservicelayer.utils.date import utcnow
@@ -69,7 +71,8 @@ class JWT:
             # private claims
             "user_id": user_id,
         }
-        encoded = jwt.encode(payload, key, algorithm=cls.TOKEN_ALGORITHM)
+        key_obj = OctKey.import_key(key)
+        encoded = jwt.encode({"alg": cls.TOKEN_ALGORITHM}, payload, key_obj)
         return cls(
             payload=payload,
             encoded=encoded,
@@ -79,14 +82,28 @@ class JWT:
     def decode(cls, key: str, encoded: str) -> Self:
         """Decode a token string."""
         try:
-            payload = jwt.decode(
-                encoded,
-                key,
-                algorithms=[cls.TOKEN_ALGORITHM],
-                issuer=cls.ISSUER,
-                audience=cls.AUDIENCE,
-            )
-        except JWTError:
+            key_obj = OctKey.import_key(key)
+            claims = jwt.decode(encoded, key_obj)
+            payload = claims.claims
+
+            # Validate algorithm
+            if claims.header.get("alg") != cls.TOKEN_ALGORITHM:
+                raise InvalidToken()
+
+            # Validate issuer
+            if payload.get("iss") != cls.ISSUER:
+                raise InvalidToken()
+
+            # Validate audience
+            if payload.get("aud") != cls.AUDIENCE:
+                raise InvalidToken()
+
+            # Validate expiration
+            exp = payload.get("exp")
+            if exp is None or utcnow().timestamp() >= exp:
+                raise InvalidToken()
+
+        except (JoseError, KeyError, ValueError):
             raise InvalidToken()  # noqa: B904
 
         # check that all required fields are there

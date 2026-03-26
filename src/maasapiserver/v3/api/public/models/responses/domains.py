@@ -1,8 +1,10 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv4Address, IPv6Address
-from typing import Optional, Self
+from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.dnsresourcerecordsets import (
     AAAARecord,
@@ -26,9 +28,9 @@ from maasservicelayer.models.domains import Domain
 
 
 class DomainResponse(HalResponse[BaseHal]):
-    kind = "Domain"
+    kind: str = Field(default="Domain")
     authoritative: bool
-    ttl: Optional[int]
+    ttl: int | None = None
     id: int
     name: str
     # TODO: add is_default
@@ -49,11 +51,11 @@ class DomainResponse(HalResponse[BaseHal]):
 
 
 class DomainsListResponse(PaginatedResponse[DomainResponse]):
-    kind = "DomainsList"
+    kind: str = Field(default="DomainsList")
 
 
 class ARecordResponse(HalResponse[BaseHal]):
-    kind = "ARecord"
+    kind: str = Field(default="ARecord")
     ipv4address: IPv4Address
 
     @classmethod
@@ -62,7 +64,7 @@ class ARecordResponse(HalResponse[BaseHal]):
 
 
 class AAAARecordResponse(HalResponse[BaseHal]):
-    kind = "AAAARecord"
+    kind: str = Field(default="AAAARecord")
     ipv6address: IPv6Address
 
     @classmethod
@@ -71,7 +73,7 @@ class AAAARecordResponse(HalResponse[BaseHal]):
 
 
 class CNAMERecordResponse(HalResponse[BaseHal]):
-    kind = "CNAMERecord"
+    kind: str = Field(default="CNAMERecord")
     cname: str
 
     @classmethod
@@ -80,7 +82,7 @@ class CNAMERecordResponse(HalResponse[BaseHal]):
 
 
 class MXRecordResponse(HalResponse[BaseHal]):
-    kind = "MXRecord"
+    kind: str = Field(default="MXRecord")
     exchange: str
     preference: int
 
@@ -92,7 +94,7 @@ class MXRecordResponse(HalResponse[BaseHal]):
 
 
 class NSRecordResponse(HalResponse[BaseHal]):
-    kind = "NSRecord"
+    kind: str = Field(default="NSRecord")
     nsdname: str
 
     @classmethod
@@ -101,7 +103,7 @@ class NSRecordResponse(HalResponse[BaseHal]):
 
 
 class SSHFPRecordResponse(HalResponse[BaseHal]):
-    kind = "SSHFPRecord"
+    kind: str = Field(default="SSHFPRecord")
     algorithm: int
     fingerprint_type: int
     fingerprint: str
@@ -116,7 +118,7 @@ class SSHFPRecordResponse(HalResponse[BaseHal]):
 
 
 class SRVRecordResponse(HalResponse[BaseHal]):
-    kind = "SRVRecord"
+    kind: str = Field(default="SRVRecord")
     port: int
     priority: int
     target: str
@@ -133,7 +135,7 @@ class SRVRecordResponse(HalResponse[BaseHal]):
 
 
 class TXTRecordResponse(HalResponse[BaseHal]):
-    kind = "TXTRecord"
+    kind: str = Field(default="TXTRecord")
     data: str
 
     @classmethod
@@ -142,19 +144,19 @@ class TXTRecordResponse(HalResponse[BaseHal]):
 
 
 class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
-    kind = "DomainResourceRecordSet"
+    kind: str = Field(default="DomainResourceRecordSet")
     name: str
-    node_id: Optional[int]
-    ttl: Optional[int]
+    node_id: int | None = None
+    ttl: int | None = None
     rrtype: DNSResourceTypeEnum
-    a_records: list[ARecordResponse] | None
-    aaaa_records: list[AAAARecordResponse] | None
-    cname_record: CNAMERecordResponse | None
-    mx_records: list[MXRecordResponse] | None
-    ns_records: list[NSRecordResponse] | None
-    sshfp_records: list[SSHFPRecordResponse] | None
-    srv_records: list[SRVRecordResponse] | None
-    txt_records: list[TXTRecordResponse] | None
+    a_records: list[ARecordResponse] | None = None
+    aaaa_records: list[AAAARecordResponse] | None = None
+    cname_record: CNAMERecordResponse | None = None
+    mx_records: list[MXRecordResponse] | None = None
+    ns_records: list[NSRecordResponse] | None = None
+    sshfp_records: list[SSHFPRecordResponse] | None = None
+    srv_records: list[SRVRecordResponse] | None = None
+    txt_records: list[TXTRecordResponse] | None = None
 
     @classmethod
     def from_model(
@@ -287,4 +289,4 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
 class DomainResourceRecordSetListResponse(
     PaginatedResponse[DomainResourceRecordSetResponse]
 ):
-    kind = "DomainResourceRecordSetList"
+    kind: str = Field(default="DomainResourceRecordSetList")

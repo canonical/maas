@@ -1,7 +1,9 @@
-# Copyright 2025 Canonical Ltd. This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd. This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -13,12 +15,12 @@ from maasservicelayer.models.agents import Agent
 
 
 class AgentResponse(HalResponse[BaseHal]):
-    kind = "Agent"
+    kind: str = Field(default="Agent")
     id: int
     rack_id: int
-    rackcontroller_id: Optional[
-        int
-    ]  # WIP: remove Optional once MAE is complete
+    rackcontroller_id: int | None = (
+        None  # WIP: remove Optional once MAE is complete
+    )
 
     @classmethod
     def from_model(cls, agent: Agent, self_base_hyperlink: str) -> Self:
@@ -35,4 +37,4 @@ class AgentResponse(HalResponse[BaseHal]):
 
 
 class AgentListResponse(PaginatedResponse[AgentResponse]):
-    kind = "AgentList"
+    kind: str = Field(default="AgentList")

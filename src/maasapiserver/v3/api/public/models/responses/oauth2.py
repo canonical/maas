@@ -1,9 +1,9 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 import base64
 import typing
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthTokenTypeChoices,
@@ -19,7 +19,7 @@ from maasservicelayer.models.external_auth import (
 class TokenResponse(BaseModel):
     """Content for a response returning a JWT and a refresh token."""
 
-    kind = "Tokens"
+    kind: str = Field(default="Tokens")
     token_type: str
     access_token: str
     refresh_token: str | None = None
@@ -28,7 +28,7 @@ class TokenResponse(BaseModel):
 class PreLoginInfoResponse(BaseModel):
     """Content for a response returning pre-login information."""
 
-    kind = "PreLoginInfo"
+    kind: str = Field(default="PreLoginInfo")
     is_authenticated: bool
     no_users: bool
     # TODO: Delete this once we drop support for rbac/candid.
@@ -38,7 +38,7 @@ class PreLoginInfoResponse(BaseModel):
 class AuthInfoResponse(BaseModel):
     """Content for a response returning authentication flow information."""
 
-    kind = "AuthInfo"
+    kind: str = Field(default="AuthInfo")
     auth_url: str | None = None
     provider_name: str | None = None
     is_oidc: bool
@@ -47,7 +47,7 @@ class AuthInfoResponse(BaseModel):
 class CallbackTargetResponse(BaseModel):
     """Content for a response returning the callback target URL."""
 
-    kind = "CallbackTarget"
+    kind: str = Field(default="CallbackTarget")
     redirect_target: str
 
     @classmethod
@@ -61,7 +61,7 @@ class CallbackTargetResponse(BaseModel):
 
 
 class OAuthProviderResponse(BaseModel):
-    kind = "AuthProvider"
+    kind: str = Field(default="AuthProvider")
     issuer_url: str
     name: str
     client_id: str
@@ -96,4 +96,4 @@ class OAuthProviderResponse(BaseModel):
 
 
 class OAuthProvidersListResponse(PaginatedResponse[OAuthProviderResponse]):
-    kind = "AuthProvidersList"
+    kind: str = Field(default="AuthProvidersList")

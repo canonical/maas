@@ -2349,7 +2349,7 @@ class BootSourceSelectionForm(MAASModelForm):
             return cleaned_data
 
         values = cache.values_list("arch", "subarch", "label")
-        arches, subarches, labels = zip(*values)
+        arches, subarches, labels = zip(*values, strict=False)
 
         # Validate architectures.
         required_arches_set = {arch for arch in cleaned_data["arches"]}

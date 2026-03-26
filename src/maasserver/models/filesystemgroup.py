@@ -139,10 +139,22 @@ class BaseFilesystemGroupManager(Manager):
         prefix = filesystem_group.get_name_prefix()
         node = filesystem_group.get_node()
         idx = -1
-        for filesystem_group in self.filter_by_node(node).filter(
-            name__startswith=prefix
-        ):
-            name = filesystem_group.name.replace(prefix, "")
+        # Get filesystem groups with matching prefix
+        # If node is None (no filesystems yet), check all groups globally
+        if node is not None:
+            queryset = self.filter_by_node(node)
+        else:
+            # No node yet, use global search to avoid conflicts
+            # For RAID types, check all RAID types together since they share prefixes
+            if filesystem_group.group_type in FILESYSTEM_GROUP_RAID_TYPES:
+                queryset = self.filter(
+                    group_type__in=FILESYSTEM_GROUP_RAID_TYPES
+                )
+            else:
+                queryset = self.filter(group_type=filesystem_group.group_type)
+        queryset = queryset.filter(name__startswith=prefix)
+        for fg in queryset:
+            name = fg.name.replace(prefix, "")
             try:
                 name_idx = int(name)
             except ValueError:
@@ -449,6 +461,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         from maasserver.models import Filesystem
 
         # don't use filesystem_set as the object might not be saved yet
+        if self.pk is None:
+            return None
         fs = Filesystem.objects.filter(filesystem_group=self).first()
         if fs is None:
             return None
@@ -785,7 +799,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             )
 
         # Set the name correctly based on the type and generate a new UUID
-        # if needed.
+        # if needed. Only generate name if we have filesystems (to determine node)
+        # or if this is an update to an existing object.
         if self.group_type is not None and self.name is None:
             self.name = FilesystemGroup.objects.get_available_name_for(self)
         # XXX this is needed because tests pass uuid=None by default

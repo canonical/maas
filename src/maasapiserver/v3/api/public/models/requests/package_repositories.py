@@ -1,9 +1,8 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, model_validator
 
 from maascommon.enums.package_repositories import (
     ComponentsToDisableEnum,
@@ -56,14 +55,14 @@ class PackageRepositoryCreateRequest(BaseModel):
         description="Whether or not the repository is enabled.", default=True
     )
 
-    @root_validator
-    def populate_arches_if_empty(cls, values: dict[str, Any]):
-        if len(values["arches"]) == 0:
-            if values["name"] == "ports_archive":
-                values["arches"] = PACKAGE_REPO_PORTS_ARCHES
+    @model_validator(mode="after")
+    def populate_arches_if_empty(self) -> "PackageRepositoryCreateRequest":
+        if len(self.arches) == 0:
+            if self.name == "ports_archive":
+                self.arches = PACKAGE_REPO_PORTS_ARCHES
             else:
-                values["arches"] = PACKAGE_REPO_MAIN_ARCHES
-        return values
+                self.arches = PACKAGE_REPO_MAIN_ARCHES
+        return self
 
     def to_builder(self, is_default: bool = False) -> PackageRepositoryBuilder:
         return PackageRepositoryBuilder(

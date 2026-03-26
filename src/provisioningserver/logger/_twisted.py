@@ -76,7 +76,7 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
     # Customise warnings behaviour. Ensure that nothing else — neither the
     # standard library's `logging` module nor Django — clobbers this later.
     warn_unless(
-        warnings.showwarning.__module__ == warnings.__name__,
+        warnings.showwarning.__module__ in ("warnings", "_py_warnings"),
         "The warnings module has already been modified; please investigate!",
     )
     if mode == LoggingMode.TWISTD:

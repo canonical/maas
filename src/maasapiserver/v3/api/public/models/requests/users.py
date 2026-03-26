@@ -2,10 +2,9 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import re
-from typing import Optional
 
 from fastapi import Query
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from maasservicelayer.builders.users import UserBuilder
 from maasservicelayer.db.filters import Clause
@@ -14,11 +13,11 @@ from maasservicelayer.models.base import UNSET
 
 
 class UsersFiltersParams(BaseModel):
-    username_or_email: Optional[str] = Field(
+    username_or_email: str | None = Field(
         Query(default=None, title="Filter by username or email")
     )
 
-    def to_clause(self) -> Optional[Clause]:
+    def to_clause(self) -> Clause | None:
         if self.username_or_email:
             return UserClauseFactory.with_username_or_email_like(
                 self.username_or_email
@@ -38,9 +37,10 @@ class BaseUserRequest(BaseModel):
     is_superuser: bool
     first_name: str
     last_name: str
-    email: Optional[str]
+    email: str | None = None
 
-    @validator("email")
+    @field_validator("email", mode="after")
+    @classmethod
     def check_email(cls, v: str) -> str:
         match = re.fullmatch(r"^(?!\.)[\w\.\+\-]+@([\w-]+\.)+[\w-]{2,4}$", v)
         if not match:

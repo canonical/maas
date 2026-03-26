@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -17,9 +16,7 @@ class ForwardDNSServerBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    ip_address: Union[IPvAnyAddress, Unset] = Field(
-        default=UNSET, required=False
-    )
-    port: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    ip_address: IPvAnyAddress | Unset = Field(default=UNSET)
+    port: int | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

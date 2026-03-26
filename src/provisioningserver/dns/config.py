@@ -54,14 +54,14 @@ class DynamicDNSUpdate:
         rectype = kwargs.pop("rectype")
         if answer:
             del kwargs["answer"]
-        # the DB trigger is unable to figure out if an IP is v6, so we do it here instead
-        try:
-            ip = IPAddress(answer)
-        except AddrFormatError:
-            pass
-        else:
-            if ip.version == 6:
-                rectype = "AAAA"
+            # the DB trigger is unable to figure out if an IP is v6, so we do it here instead
+            try:
+                ip = IPAddress(answer)
+            except AddrFormatError:
+                pass
+            else:
+                if ip.version == 6:
+                    rectype = "AAAA"
         if kwargs.get("ttl") == 0:  # default ttl
             kwargs["ttl"] = 30
         return cls(answer=answer, rectype=rectype, **kwargs)

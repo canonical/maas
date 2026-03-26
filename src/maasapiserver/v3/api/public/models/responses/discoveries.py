@@ -1,10 +1,10 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
 from typing import Self
 
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -18,29 +18,29 @@ from maasservicelayer.models.fields import IPv4v6Network, MacAddress
 
 
 class DiscoveryResponse(HalResponse[BaseHal]):
-    kind = "Discovery"
+    kind: str = Field(default="Discovery")
     id: int
-    discovery_id: str | None
-    neighbour_id: int | None
-    ip: IPvAnyAddress | None
-    mac_address: MacAddress | None
-    mac_organization: str | None
-    vid: int | None
-    first_seen: datetime | None
-    last_seen: datetime | None
-    mdns_id: int | None
-    hostname: str | None
-    observer_id: int | None
-    observer_system_id: str | None
-    observer_hostname: str | None
-    observer_interface_id: int | None
-    observer_interface_name: str | None
-    fabric_id: int | None
-    fabric_name: str | None
-    vlan_id: int | None
-    is_external_dhcp: bool | None
-    subnet_id: int | None
-    subnet_cidr: IPv4v6Network | None
+    discovery_id: str | None = None
+    neighbour_id: int | None = None
+    ip: IPvAnyAddress | None = None
+    mac_address: MacAddress | None = None
+    mac_organization: str | None = None
+    vid: int | None = None
+    first_seen: datetime | None = None
+    last_seen: datetime | None = None
+    mdns_id: int | None = None
+    hostname: str | None = None
+    observer_id: int | None = None
+    observer_system_id: str | None = None
+    observer_hostname: str | None = None
+    observer_interface_id: int | None = None
+    observer_interface_name: str | None = None
+    fabric_id: int | None = None
+    fabric_name: str | None = None
+    vlan_id: int | None = None
+    is_external_dhcp: bool | None = None
+    subnet_id: int | None = None
+    subnet_cidr: IPv4v6Network | None = None
 
     @classmethod
     def from_model(
@@ -78,4 +78,4 @@ class DiscoveryResponse(HalResponse[BaseHal]):
 
 
 class DiscoveriesListResponse(PaginatedResponse[DiscoveryResponse]):
-    kind = "DiscoveriesList"
+    kind: str = Field(default="DiscoveriesList")

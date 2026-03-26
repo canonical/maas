@@ -1,4 +1,5 @@
-from ssl import SSLSocket
+import socket
+import ssl as ssl_module
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -115,13 +116,35 @@ class TestGetSLLCertificate(MAASServerTestCase):
     def test_get_certificate(self):
         # fingerprint will eventually change due to certs changing
         launchpad_crt = get_binary_data("data/launchpad.crt")
-        mock_getpeercert = self.patch(SSLSocket, "getpeercert")
-        mock_getpeercert.return_value = launchpad_crt
-        (cert, _) = get_ssl_certificate("https://launchpad.net")
+
+        # Mock socket and SSL to avoid internet access
+        mock_conn = Mock()
+        mock_sock = Mock()
+        mock_sock.getpeercert.return_value = launchpad_crt
+
+        mock_context = Mock()
+        mock_context.wrap_socket.return_value = mock_sock
+
+        self.patch(socket, "create_connection").return_value = mock_conn
+        self.patch(
+            ssl_module, "create_default_context"
+        ).return_value = mock_context
+
+        (cert, fingerprint) = get_ssl_certificate("https://launchpad.net")
+
+        # Verify certificate parsing
         self.assertEqual("launchpad.net", cert.get_subject().CN)
         self.assertEqual(
             "R11",
             cert.get_issuer().CN,
         )
         self.assertEqual("Let's Encrypt", cert.get_issuer().O)
-        mock_getpeercert.assert_called_once_with(True)
+
+        # Verify fingerprint calculation (SHA1 of DER cert)
+        import hashlib
+
+        expected_fingerprint = hashlib.sha1(launchpad_crt).hexdigest()
+        self.assertEqual(expected_fingerprint, fingerprint)
+
+        # Verify the socket was properly closed
+        mock_sock.close.assert_called_once()

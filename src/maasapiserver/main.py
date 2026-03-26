@@ -5,6 +5,7 @@ import asyncio
 from functools import partial
 import logging
 import ssl
+from typing import cast
 
 from django.conf import settings as django_settings
 from fastapi.exceptions import RequestValidationError
@@ -62,6 +63,13 @@ from provisioningserver.certificates import get_maas_cluster_cert_paths
 logger = structlog.getLogger()
 
 
+async def request_validation_exception_handler(request, exc: Exception):
+    return await ExceptionHandlers.validation_exception_handler(
+        request,
+        cast(RequestValidationError, exc),
+    )
+
+
 def config_uvicorn_logging(level=logging.INFO) -> None:
     logging.getLogger("uvicorn.error").setLevel(level)
     logging.getLogger("uvicorn.asgi").setLevel(level)
@@ -101,7 +109,7 @@ def craft_public_app(
         exception_handlers=[
             ExceptionHandler(
                 RequestValidationError,
-                ExceptionHandlers.validation_exception_handler,
+                request_validation_exception_handler,
             )
         ],
         event_listeners=[
@@ -154,7 +162,7 @@ def craft_internal_app(
         exception_handlers=[
             ExceptionHandler(
                 RequestValidationError,
-                ExceptionHandlers.validation_exception_handler,
+                request_validation_exception_handler,
             )
         ],
         event_listeners=[EventListener("shutdown", internal_cache.close)],

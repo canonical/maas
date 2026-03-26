@@ -1,10 +1,9 @@
 import json
-from typing import Optional
 
 from fastapi.encoders import jsonable_encoder
 from macaroonbakery import httpbakery
 from macaroonbakery.bakery import Macaroon
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
 
@@ -12,10 +11,10 @@ from maasservicelayer.exceptions.catalog import BaseExceptionDetail
 
 
 class ErrorBodyResponse(BaseModel):
-    kind = "Error"
+    kind: str = Field(default="Error")
     code: int
     message: str
-    details: Optional[list[BaseExceptionDetail]] = None
+    details: list[BaseExceptionDetail] | None = None
 
 
 class BadRequestBodyResponse(ErrorBodyResponse):
@@ -24,7 +23,7 @@ class BadRequestBodyResponse(ErrorBodyResponse):
 
 
 class BadRequestResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(self, details: list[BaseExceptionDetail] | None):
         super().__init__(
             content=jsonable_encoder(BadRequestBodyResponse(details=details)),
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -37,7 +36,7 @@ class UnauthorizedBodyResponse(ErrorBodyResponse):
 
 
 class UnauthorizedResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(self, details: list[BaseExceptionDetail] | None):
         super().__init__(
             content=jsonable_encoder(
                 UnauthorizedBodyResponse(details=details)
@@ -52,7 +51,7 @@ class ForbiddenBodyResponse(ErrorBodyResponse):
 
 
 class ForbiddenResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(self, details: list[BaseExceptionDetail] | None):
         super().__init__(
             content=jsonable_encoder(ForbiddenBodyResponse(details=details)),
             status_code=status.HTTP_403_FORBIDDEN,
@@ -65,7 +64,7 @@ class NotFoundBodyResponse(ErrorBodyResponse):
 
 
 class NotFoundResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]], **kwargs):
+    def __init__(self, details: list[BaseExceptionDetail] | None, **kwargs):
         super().__init__(
             content=jsonable_encoder(NotFoundBodyResponse(details=details)),
             status_code=status.HTTP_404_NOT_FOUND,
@@ -79,7 +78,7 @@ class ConflictBodyResponse(ErrorBodyResponse):
 
 
 class ConflictResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(self, details: list[BaseExceptionDetail] | None):
         super().__init__(
             content=jsonable_encoder(ConflictBodyResponse(details=details)),
             status_code=status.HTTP_409_CONFLICT,
@@ -92,7 +91,7 @@ class PreconditionFailedBodyResponse(ErrorBodyResponse):
 
 
 class PreconditionFailedResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(self, details: list[BaseExceptionDetail] | None):
         super().__init__(
             content=jsonable_encoder(
                 PreconditionFailedBodyResponse(details=details)
@@ -102,17 +101,17 @@ class PreconditionFailedResponse(JSONResponse):
 
 
 class ValidationErrorBodyResponse(ErrorBodyResponse):
-    code: int = status.HTTP_422_UNPROCESSABLE_ENTITY
+    code: int = status.HTTP_422_UNPROCESSABLE_CONTENT
     message: str = "Failed to validate the request."
 
 
 class ValidationErrorResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(self, details: list[BaseExceptionDetail] | None):
         super().__init__(
             content=jsonable_encoder(
                 ValidationErrorBodyResponse(details=details)
             ),
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         )
 
 
@@ -135,7 +134,7 @@ class ServiceUnavailableErrorBodyResponse(ErrorBodyResponse):
 
 
 class ServiceUnavailableErrorResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(self, details: list[BaseExceptionDetail] | None):
         super().__init__(
             content=jsonable_encoder(
                 ServiceUnavailableErrorBodyResponse(details=details)
@@ -150,7 +149,7 @@ class InsufficientStorageErrorBodyResponse(ErrorBodyResponse):
 
 
 class InsufficientStorageErrorResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(self, details: list[BaseExceptionDetail] | None):
         super().__init__(
             content=jsonable_encoder(
                 InsufficientStorageErrorBodyResponse(details=details)
@@ -165,7 +164,7 @@ class BadGatewayErrorBodyResponse(ErrorBodyResponse):
 
 
 class BadGatewayErrorResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(self, details: list[BaseExceptionDetail] | None):
         super().__init__(
             content=jsonable_encoder(
                 BadGatewayErrorBodyResponse(details=details)

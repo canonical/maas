@@ -42,6 +42,9 @@ class FakeResponse:
     def read(self):
         return self.response
 
+    def close(self):
+        pass
+
 
 class FakeServer:
     def __init__(self, id):

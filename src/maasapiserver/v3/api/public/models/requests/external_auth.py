@@ -4,7 +4,7 @@
 from enum import StrEnum
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.exceptions.catalog import ValidationException
@@ -42,13 +42,15 @@ class OAuthProviderRequest(BaseModel):
         description="Specifies whether this provider should be enabled for user authentication.",
     )
 
-    @validator("issuer_url", "redirect_uri")
-    def validate_http_urls(cls, value: str, field):
+    @field_validator("issuer_url", "redirect_uri", mode="after")
+    @classmethod
+    def validate_http_urls(cls, value: str, info: ValidationInfo) -> str:
         parsed = urlparse(value)
+        field_name = info.field_name or "url"
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValidationException.build_for_field(
-                field=field.name,
-                message=f"{field.name.replace('_', ' ').capitalize()} must be a valid HTTP or HTTPS address.",
+                field=field_name,
+                message=f"{field_name.replace('_', ' ').capitalize()} must be a valid HTTP or HTTPS address.",
             )
         return value
 

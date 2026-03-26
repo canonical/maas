@@ -1,7 +1,6 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
 
 from pydantic import BaseModel, IPvAnyAddress
 
@@ -24,12 +23,12 @@ class UISubnetStatistics(BaseModel):
 
 
 class UISubnet(MaasTimestampedBaseModel):
-    name: Optional[str]
-    description: Optional[str]
+    name: str | None = None
+    description: str | None = None
     cidr: IPv4v6Network
     rdns_mode: RdnsMode
-    gateway_ip: Optional[IPvAnyAddress]
-    dns_servers: Optional[list[str]]
+    gateway_ip: IPvAnyAddress | None = None
+    dns_servers: list[str] | None = None
     allow_dns: bool
     allow_proxy: bool
     active_discovery: bool
@@ -37,12 +36,12 @@ class UISubnet(MaasTimestampedBaseModel):
     disabled_boot_architectures: list[str]
     vlan_id: int
     vlan_vid: int
-    vlan_name: Optional[str]
+    vlan_name: str | None = None
     vlan_dhcp_on: bool
-    vlan_external_dhcp: Optional[IPvAnyAddress]
-    vlan_relay_vlan_id: Optional[int]
+    vlan_external_dhcp: IPvAnyAddress | None = None
+    vlan_relay_vlan_id: int | None = None
     fabric_id: int
-    fabric_name: Optional[str]
-    space_id: Optional[int]
-    space_name: Optional[str]
-    statistics: Optional[UISubnetStatistics] = None
+    fabric_name: str | None = None
+    space_id: int | None = None
+    space_name: str | None = None
+    statistics: UISubnetStatistics | None = None

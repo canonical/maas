@@ -1,7 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
 
 from pydantic import BaseModel, Field, IPvAnyAddress
 
@@ -16,8 +15,8 @@ from maasservicelayer.models.base import (
 class Link(BaseModel):
     id: int
     ip_type: IpAddressType
-    ip_address: Optional[IPvAnyAddress]
-    ip_subnet: Optional[int]
+    ip_address: IPvAnyAddress | None = None
+    ip_subnet: int | None = None
 
     # derived from StaticIPAddress.get_interface_link_type
     @property
@@ -44,12 +43,12 @@ class Link(BaseModel):
 class Interface(MaasTimestampedBaseModel):
     name: str
     type: InterfaceType
-    mac_address: Optional[str]
-    vlan_id: Optional[int] = None
+    mac_address: str | None = None
+    vlan_id: int | None = None
     # TODO
     # effective_mtu: int = 0
-    node_config_id: Optional[int] = None
-    switch_id: Optional[int] = None
+    node_config_id: int | None = None
+    switch_id: int | None = None
     link_connected: bool = True
     interface_speed: int = 0
     enabled: bool = True

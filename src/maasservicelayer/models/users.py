@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Optional
 
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from pydantic import BaseModel, Field
@@ -17,12 +16,12 @@ class User(MaasBaseModel):
     password: str
     is_superuser: bool
     first_name: str
-    last_name: Optional[str] = None
+    last_name: str | None = None
     is_staff: bool
     is_active: bool
     date_joined: datetime = Field(default_factory=utcnow)
-    email: Optional[str] = None
-    last_login: Optional[datetime] = None
+    email: str | None = None
+    last_login: datetime | None = None
 
     def check_password(self, password) -> bool:
         return PBKDF2PasswordHasher().verify(password, self.password)
@@ -31,20 +30,20 @@ class User(MaasBaseModel):
 @generate_builder()
 class UserProfile(MaasBaseModel):
     completed_intro: bool
-    auth_last_check: Optional[datetime]
+    auth_last_check: datetime | None = None
     is_local: bool
     user_id: int
-    provider_id: Optional[int] = None
+    provider_id: int | None = None
 
 
 class UserWithSummary(BaseModel):
     id: int
     completed_intro: bool
-    email: Optional[str] = None  # it's a string in the UI
+    email: str | None = None  # it's a string in the UI
     is_local: bool
     is_superuser: bool
-    last_name: Optional[str] = None  # it's a string in the UI
-    last_login: Optional[datetime] = None
+    last_name: str | None = None  # it's a string in the UI
+    last_login: datetime | None = None
     machines_count: int
     sshkeys_count: int
     username: str

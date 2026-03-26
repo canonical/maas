@@ -1,9 +1,9 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -17,14 +17,14 @@ from maasservicelayer.models.subnets import Subnet
 
 
 class SubnetResponse(HalResponse[BaseHal]):
-    kind = "Subnet"
+    kind: str = Field(default="Subnet")
     id: int
-    name: Optional[str]
-    description: Optional[str]
+    name: str | None = None
+    description: str | None = None
     cidr: IPv4v6Network
     rdns_mode: RdnsMode
-    gateway_ip: Optional[IPvAnyAddress]
-    dns_servers: Optional[list[str]]
+    gateway_ip: IPvAnyAddress | None = None
+    dns_servers: list[str] | None = None
     allow_dns: bool
     allow_proxy: bool
     active_discovery: bool
@@ -55,4 +55,4 @@ class SubnetResponse(HalResponse[BaseHal]):
 
 
 class SubnetsListResponse(PaginatedResponse[SubnetResponse]):
-    kind = "SubnetsList"
+    kind: str = Field(default="SubnetsList")

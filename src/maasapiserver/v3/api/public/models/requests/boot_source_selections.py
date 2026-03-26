@@ -3,7 +3,7 @@
 
 
 from fastapi import Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
@@ -57,9 +57,26 @@ class SelectionRequest(BaseSelectionRequest):
 class BulkSelectionRequest(BaseModel):
     selections: list[SelectionRequest] = Field(
         description="Boot source selections to create",
-        min_items=1,
-        unique_items=True,
+        min_length=1,
     )
+
+    @model_validator(mode="after")
+    def check_unique_selections(self) -> "BulkSelectionRequest":
+        seen = set()
+        for selection in self.selections:
+            key = (
+                selection.os,
+                selection.release,
+                selection.arch,
+                selection.boot_source_id,
+            )
+            if key in seen:
+                raise ValueError(
+                    "All selections must be unique (os, release, arch, "
+                    "boot_source_id)"
+                )
+            seen.add(key)
+        return self
 
     def get_builders(self) -> list[BootSourceSelectionBuilder]:
         return [s.to_builder() for s in self.selections]

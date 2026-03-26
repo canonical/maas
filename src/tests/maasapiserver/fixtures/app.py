@@ -9,7 +9,7 @@ from aioresponses import aioresponses
 from django.core import signing
 from fastapi import FastAPI, Response
 from fastapi.exceptions import RequestValidationError
-from httpx import AsyncClient, Headers
+from httpx import ASGITransport, AsyncClient, Headers
 from macaroonbakery import bakery
 import pytest
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -157,7 +157,8 @@ async def mocked_api_client(
     app_with_mocked_services: FastAPI,
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
-        app=app_with_mocked_services, base_url="http://test"
+        transport=ASGITransport(app=app_with_mocked_services),
+        base_url="http://test",
     ) as client:
         yield client
 
@@ -167,7 +168,8 @@ async def mocked_internal_api_client(
     internal_app_with_mocked_services: FastAPI,
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
-        app=internal_app_with_mocked_services, base_url="http://test"
+        transport=ASGITransport(app=internal_app_with_mocked_services),
+        base_url="http://test",
     ) as client:
         yield client
 
@@ -177,7 +179,8 @@ async def mocked_api_client_user(
     app_with_mocked_services_user: FastAPI,
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
-        app=app_with_mocked_services_user, base_url="http://test"
+        transport=ASGITransport(app=app_with_mocked_services_user),
+        base_url="http://test",
     ) as client:
         yield client
 
@@ -235,12 +238,23 @@ def mocked_api_client_user_with_permissions(
     return _with_permissions
 
 
+async def mocked_api_client_admin(
+    app_with_mocked_services_admin: FastAPI,
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(
+        transport=ASGITransport(app=app_with_mocked_services_admin),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+
 @pytest.fixture
 async def mocked_api_client_session_id(
     app_with_mocked_services_user: FastAPI,
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
-        app=app_with_mocked_services_user, base_url="http://test"
+        transport=ASGITransport(app=app_with_mocked_services_user),
+        base_url="http://test",
     ) as client:
         client.cookies.set("sessionid", "fakesessionid")
         yield client
@@ -251,7 +265,8 @@ async def mocked_api_client_rbac(
     app_with_mocked_services_rbac: FastAPI,
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
-        app=app_with_mocked_services_rbac, base_url="http://test"
+        transport=ASGITransport(app=app_with_mocked_services_rbac),
+        base_url="http://test",
     ) as client:
         yield client
 
@@ -261,7 +276,8 @@ async def mocked_api_client_user_rbac(
     app_with_mocked_services_user_rbac: FastAPI,
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
-        app=app_with_mocked_services_user_rbac, base_url="http://test"
+        transport=ASGITransport(app=app_with_mocked_services_user_rbac),
+        base_url="http://test",
     ) as client:
         yield client
 
@@ -281,7 +297,9 @@ async def api_app(
 @pytest.fixture
 async def api_client(api_app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Client for the API."""
-    async with AsyncClient(app=api_app, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=api_app), base_url="http://test"
+    ) as client:
         yield client
 
 
@@ -344,7 +362,9 @@ async def authenticated_api_client(
     api_app: FastAPI, authenticated_user: User, user_session_id: str
 ) -> AsyncIterator[AsyncClient]:
     """Authenticated client for the API."""
-    async with AsyncClient(app=api_app, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=api_app), base_url="http://test"
+    ) as client:
         client.cookies.set("sessionid", user_session_id)
         yield client
 
@@ -356,7 +376,9 @@ async def authenticated_admin_api_client_v3(
     """Authenticated admin client for the V3 API."""
     params = {"is_superuser": True, "username": "admin"}
     created_user = await create_test_user(fixture, **params)
-    async with AsyncClient(app=api_app, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=api_app), base_url="http://test"
+    ) as client:
         response = await client.post(
             f"{V3_API_PREFIX}/auth/login",
             data={"username": created_user.username, "password": "test"},
@@ -375,7 +397,9 @@ async def authenticated_user_api_client_v3(
     """Authenticated user client for the V3 API."""
     params = {"is_superuser": False, "username": "user"}
     created_user = await create_test_user(fixture, **params)
-    async with AsyncClient(app=api_app, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=api_app), base_url="http://test"
+    ) as client:
         response = await client.post(
             f"{V3_API_PREFIX}/auth/login",
             data={"username": created_user.username, "password": "test"},

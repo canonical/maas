@@ -1,10 +1,9 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv6Address
-from typing import Any, Optional
+from ipaddress import IPv4Network, IPv6Address, IPv6Network
 
-from pydantic import Field, IPvAnyAddress, validator
+from pydantic import Field, field_validator, IPvAnyAddress, ValidationInfo
 
 from maasapiserver.v3.api.public.models.requests.base import (
     OptionalNamedBaseModel,
@@ -23,7 +22,7 @@ from maasservicelayer.models.fields import IPv4v6Network
 
 
 class SubnetRequest(OptionalNamedBaseModel):
-    description: Optional[str] = Field(
+    description: str | None = Field(
         description="The description of the subnet.", default=""
     )
     cidr: IPv4v6Network = Field(
@@ -38,7 +37,7 @@ class SubnetRequest(OptionalNamedBaseModel):
         " network is small enough to require the support described in RFC2317.",
         default=RdnsMode.DEFAULT,
     )
-    gateway_ip: Optional[IPvAnyAddress] = Field(
+    gateway_ip: IPvAnyAddress | None = Field(
         description="The gateway IP for this subnet.", default=None
     )
     dns_servers: list[IPvAnyAddress] = Field(
@@ -65,14 +64,18 @@ class SubnetRequest(OptionalNamedBaseModel):
         default_factory=list,
     )
 
-    @validator("gateway_ip")
+    @field_validator("gateway_ip", mode="after")
+    @classmethod
     def ensure_gatweway_ip_in_cidr(
-        cls, v: Optional[IPvAnyAddress], values: dict[str, Any]
-    ):
+        cls, v: IPvAnyAddress | None, info: ValidationInfo
+    ) -> IPvAnyAddress | None:
         if v is None:
             return v
         gateway_ip: IPvAnyAddress = v
-        network: IPv4v6Network = values["cidr"]
+        network_data = info.data.get("cidr")
+        if not isinstance(network_data, (IPv4Network, IPv6Network)):
+            return gateway_ip
+        network: IPv4Network | IPv6Network = network_data
         if gateway_ip in network:
             return gateway_ip
         elif (

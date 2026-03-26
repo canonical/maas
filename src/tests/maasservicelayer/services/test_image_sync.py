@@ -626,9 +626,9 @@ class TestImageSyncService:
 
     def test_bootloader_matches_selection(self):
         good = BOOTLOADER_PRODUCT
-        bad_arch = BOOTLOADER_PRODUCT.copy()
+        bad_arch = BOOTLOADER_PRODUCT.model_copy()
         bad_arch.arch = "ppc64el"
-        bad_name = BOOTLOADER_PRODUCT.copy()
+        bad_name = BOOTLOADER_PRODUCT.model_copy()
         bad_name.product_name = (
             "com.ubuntu.maas.stable:9:grub-efi-signed:uefi:amd64"
         )
@@ -659,7 +659,7 @@ class TestImageSyncService:
             version="7.0",
             versions=[],
         )
-        bad_release = good.copy()
+        bad_release = good.model_copy()
         bad_release.release = "wrong-release"
         assert (
             self.service._single_file_image_matches_selection(good, selection)
@@ -676,11 +676,11 @@ class TestImageSyncService:
         selection = BOOT_SELECTION_ORACULAR_SOURCE_1
 
         good = MULTIFILE_PRODUCT_ORACULAR
-        bad_name = MULTIFILE_PRODUCT_ORACULAR.copy()
+        bad_name = MULTIFILE_PRODUCT_ORACULAR.model_copy()
         bad_name.product_name = (
             "com.ubuntu.maas.stable:v4:boot:24.10:amd64:ga-24.10"
         )
-        bad_release = MULTIFILE_PRODUCT_ORACULAR.copy()
+        bad_release = MULTIFILE_PRODUCT_ORACULAR.model_copy()
         bad_release.release = "noble"
 
         assert (
@@ -853,6 +853,7 @@ class TestImageSyncService:
                     "oracular/amd64/20250404/ga-24.10/generic/boot-kernel",
                     "oracular/amd64/20250404/squashfs",
                 ],
+                strict=False,
             )
         ]
 
@@ -945,6 +946,7 @@ class TestImageSyncService:
                     "bootloaders/uefi/amd64/20210819.0/grub2-signed.tar.xz",
                     "bootloaders/uefi/amd64/20210819.0/shim-signed.tar.xz",
                 ],
+                strict=False,
             )
         ]
 

@@ -1,10 +1,11 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
+from ipaddress import IPv6Address
+from typing import cast
 
 from netaddr import IPAddress
-from pydantic import BaseModel, Field, IPvAnyAddress
+from pydantic import BaseModel, Field, IPvAnyAddress, model_validator
 
 from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.builders.ipranges import IPRangeBuilder
@@ -32,25 +33,33 @@ class IPRangeCreateRequest(BaseModel):
     end_ip: IPvAnyAddress = Field(
         description="Last IP address of this range (inclusive)."
     )
-    comment: Optional[str] = Field(
+    comment: str | None = Field(
         description="A description of this range.", default=None
     )
-    owner_id: Optional[int] = Field(
+    owner_id: int | None = Field(
         description="The owner of this range.", default=None
     )
 
-    def _validate_addresses_in_subnet(self, subnet: Subnet):
+    @model_validator(mode="after")
+    def validate_ip_addresses(self):
+        """Validate that start_ip and end_ip are same version and properly ordered."""
         if self.start_ip.version != self.end_ip.version:
             raise ValidationException.build_for_field(
                 "start_ip",
                 "Start IP address and end IP address must be in the same address family.",
             )
-        if self.end_ip < self.start_ip:
+
+        # Both are now known to be the same version
+        if self.end_ip < self.start_ip:  # pyright: ignore[reportOperatorIssue]
             raise ValidationException.build_for_field(
                 "end_ip",
                 "End IP address must not be less than Start IP address.",
             )
 
+        return self
+
+    def _validate_addresses_in_subnet(self, subnet: Subnet):
+        # Version and ordering already validated in model_validator
         if self.start_ip not in subnet.cidr:
             raise ValidationException.build_for_field(
                 "start_ip",
@@ -77,7 +86,7 @@ class IPRangeCreateRequest(BaseModel):
         if (
             self.start_ip.version == 6
             and self.type == IPRangeType.DYNAMIC
-            and (self.start_ip + 255) > self.end_ip
+            and (self.start_ip + 255) > cast(IPv6Address, self.end_ip)  # pyright: ignore[reportOperatorIssue]
         ):
             raise ValidationException.build_for_field(
                 "start_ip",

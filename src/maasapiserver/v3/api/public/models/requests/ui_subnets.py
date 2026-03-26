@@ -1,7 +1,5 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
-
-from typing import Optional
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Query
 from pydantic import BaseModel, Field
@@ -18,7 +16,7 @@ from maasservicelayer.db.repositories.ui_subnets import (
 
 
 class UISubnetOrderByQueryFilter(OrderByQueryFilter):
-    _order_by_columns = {
+    order_by_columns = {
         "cidr": UISubnetsOrderByClauses.by_cidr(),
         "fabric": UISubnetsOrderByClauses.by_fabric_name(),
         "space": UISubnetsOrderByClauses.by_space_name(),
@@ -26,27 +24,27 @@ class UISubnetOrderByQueryFilter(OrderByQueryFilter):
 
 
 class UISubnetFiltersParams(BaseModel):
-    cidrs: Optional[list[str]] = Field(
+    cidrs: list[str] | None = Field(
         Query(default=None, title="Filter by subnet cidr", alias="cidr")
     )
 
-    vlan_ids: Optional[list[int]] = Field(
+    vlan_ids: list[int] | None = Field(
         Query(default=None, title="Filter by vlan id", alias="vlan_id")
     )
 
-    fabric_names: Optional[list[str]] = Field(
+    fabric_names: list[str] | None = Field(
         Query(default=None, title="Filter by fabric name", alias="fabric")
     )
 
-    space_names: Optional[list[str]] = Field(
+    space_names: list[str] | None = Field(
         Query(default=None, title="Filter by space name", alias="space")
     )
 
-    subnet_ids: Optional[list[int]] = Field(
+    subnet_ids: list[int] | None = Field(
         Query(default=None, title="Filter by subnet id", alias="subnet_id")
     )
 
-    def to_clause(self) -> Optional[Clause]:
+    def to_clause(self) -> Clause | None:
         clauses = []
         if self.cidrs:
             clauses.append(UISubnetsClauseFactory.with_cidrs(self.cidrs))

@@ -691,6 +691,7 @@ class TestLeasesService:
     async def test_store_lease_info_creates_unkwnown_interface(
         self, db_connection: AsyncConnection
     ) -> None:
+        self.setup()
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
@@ -713,8 +714,6 @@ class TestLeasesService:
             created=utcnow(),
             updated=utcnow(),
         )
-
-        self.setup()
         self.mock_static_ip_address_service.create_or_update.return_value = sip
         self.mock_subnets_service.find_best_subnet_for_ip.return_value = subnet
         # No known interfaces
@@ -749,6 +748,7 @@ class TestLeasesService:
     async def test_store_lease_info_commit_v4(
         self, db_connection: AsyncConnection
     ) -> None:
+        self.setup()
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
@@ -819,6 +819,7 @@ class TestLeasesService:
     async def test_store_lease_info_commit_v6(
         self, db_connection: AsyncConnection
     ) -> None:
+        self.setup()
         subnet = Subnet(
             id=1,
             cidr="fd42:be3f:b08a:3d6c::/64",
@@ -889,6 +890,7 @@ class TestLeasesService:
     async def test_store_lease_info_expiry(
         self, db_connection: AsyncConnection
     ):
+        self.setup()
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
@@ -963,6 +965,7 @@ class TestLeasesService:
     async def test_store_lease_info_release(
         self, db_connection: AsyncConnection
     ):
+        self.setup()
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",

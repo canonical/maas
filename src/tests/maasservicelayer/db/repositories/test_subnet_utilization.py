@@ -267,7 +267,7 @@ class TestSubnetUtilizationRepositoryManaged:
     ) -> None:
         iprange_to_exclude = await create_test_ip_range_entry(
             fixture,
-            subnet.dict(),
+            subnet.model_dump(),
             start_ip="10.0.0.100",
             end_ip="10.0.0.200",
             type=IPRangeType.RESERVED,
@@ -312,7 +312,7 @@ class TestSubnetUtilizationRepositoryManaged:
     ) -> None:
         iprange_to_exclude = await create_test_ip_range_entry(
             fixture,
-            subnet.dict(),
+            subnet.model_dump(),
             start_ip="10.0.0.100",
             end_ip="10.0.0.200",
             type=IPRangeType.RESERVED,
@@ -577,7 +577,7 @@ class TestSubnetUtilizationRepositoryUnmanaged:
     ) -> None:
         iprange_to_exclude = await create_test_ip_range_entry(
             fixture,
-            subnet.dict(),
+            subnet.model_dump(),
             start_ip="10.0.0.101",
             end_ip="10.0.0.200",
             type=IPRangeType.RESERVED,
@@ -618,7 +618,7 @@ class TestSubnetUtilizationRepositoryUnmanaged:
     ) -> None:
         iprange_to_exclude = await create_test_ip_range_entry(
             fixture,
-            subnet.dict(),
+            subnet.model_dump(),
             start_ip="10.0.0.91",
             end_ip="10.0.0.100",
             type=IPRangeType.DYNAMIC,

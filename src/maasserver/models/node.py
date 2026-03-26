@@ -69,7 +69,6 @@ from twisted.internet.defer import (
     Deferred,
     DeferredList,
     inlineCallbacks,
-    returnValue,
     succeed,
 )
 from twisted.internet.error import ConnectionDone
@@ -4720,7 +4719,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Copy the virtual block devices for the created filesystem group.
         filesystem_map = {}
-        for source_vd, dest_vd in zip(source_vds, dest_vds):
+        for source_vd, dest_vd in zip(source_vds, dest_vds, strict=False):
             _clone_object(
                 dest_vd,
                 uuid=None,
@@ -6528,7 +6527,7 @@ class Node(CleanSave, TimestampedModel):
                             task_queue="region",
                             param=workflow_param,
                         )
-                        returnValue(res)
+                        return res
                     except WorkflowFailureError as e:
                         cause = getattr(e.cause, "cause", e.cause)
                         raise PowerActionFail(cause)  # noqa: B904
@@ -6881,7 +6880,7 @@ class Node(CleanSave, TimestampedModel):
     class Meta:
         constraints = [
             CheckConstraint(
-                check=(
+                condition=(
                     Q(is_dpu=False)
                     | Q(is_dpu=True, node_type=NODE_TYPE.MACHINE)
                 ),
@@ -7045,13 +7044,11 @@ class Controller(Node):
         token = yield deferToDatabase(self._get_token_for_controller)
 
         yield deferToDatabase(self._signal_start_of_refresh)
-        returnValue(
-            {
-                "consumer_key": token.consumer.key,
-                "token_key": token.key,
-                "token_secret": token.secret,
-            }
-        )
+        return {
+            "consumer_key": token.consumer.key,
+            "token_key": token.key,
+            "token_secret": token.secret,
+        }
 
 
 class RackController(Controller):

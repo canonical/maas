@@ -79,7 +79,7 @@ class TestInterfaceRepository:
         user = await create_test_user(fixture)
         machine = (
             await create_test_machine(fixture, bmc=bmc, user=user)
-        ).dict()
+        ).model_dump()
         config = await create_test_node_config_entry(fixture, node=machine)
         machine["current_config_id"] = config["id"]
 
@@ -133,14 +133,14 @@ class TestInterfaceRepository:
         user = await create_test_user(fixture)
         machine1 = (
             await create_test_machine(fixture, bmc=bmc, user=user)
-        ).dict()
+        ).model_dump()
         machine2 = (
             await create_test_machine(
                 fixture,
                 bmc=bmc,
                 user=user,
             )
-        ).dict()
+        ).model_dump()
 
         config1 = await create_test_node_config_entry(fixture, node=machine1)
         machine1["current_config_id"] = config1["id"]
@@ -207,7 +207,7 @@ class TestInterfaceRepository:
         user = await create_test_user(fixture)
         machine = (
             await create_test_machine(fixture, bmc=bmc, user=user)
-        ).dict()
+        ).model_dump()
         config = await create_test_node_config_entry(fixture, node=machine)
         machine["current_config_id"] = config["id"]
 
@@ -267,6 +267,7 @@ class TestInterfaceRepository:
             for created_dhcp, response_link in zip(
                 created_links,
                 response_links,
+                strict=False,
             ):
                 assert created_dhcp.ip_type == IpAddressType.DHCP
                 assert created_discovery.ip_type == IpAddressType.DISCOVERED
@@ -286,7 +287,7 @@ class TestInterfaceRepository:
         user = await create_test_user(fixture)
         machine = (
             await create_test_machine(fixture, bmc=bmc, user=user)
-        ).dict()
+        ).model_dump()
         config = await create_test_node_config_entry(fixture, node=machine)
         machine["current_config_id"] = config["id"]
 
@@ -335,7 +336,7 @@ class TestInterfaceRepository:
         user = await create_test_user(fixture)
         machine = (
             await create_test_machine(fixture, bmc=bmc, user=user)
-        ).dict()
+        ).model_dump()
         config = await create_test_node_config_entry(fixture, node=machine)
         machine["current_config_id"] = config["id"]
 
@@ -381,7 +382,7 @@ class TestInterfaceRepository:
         user = await create_test_user(fixture)
         machine = (
             await create_test_machine(fixture, bmc=bmc, user=user)
-        ).dict()
+        ).model_dump()
         config = await create_test_node_config_entry(fixture, node=machine)
         machine["current_config_id"] = config["id"]
 

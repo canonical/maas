@@ -397,14 +397,14 @@ class ExternalOAuthServiceCache(ServiceCache):
 
     async def clear_oauth_client(self) -> None:
         if self.oauth2_client:
-            await self.oauth2_client.client.aclose()
+            await self.oauth2_client.client.aclose()  # pyright: ignore[reportAttributeAccessIssue]
         self.oauth2_client = None
 
     async def close(self) -> None:
         if self.httpx_client:
             await self.httpx_client.aclose()
         if self.oauth2_client:
-            await self.oauth2_client.client.aclose()
+            await self.oauth2_client.client.aclose()  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class ExternalOAuthService(

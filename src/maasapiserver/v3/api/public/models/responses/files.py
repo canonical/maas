@@ -1,10 +1,10 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64encode
-from typing import List, Optional, Self
+from typing import Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -15,13 +15,13 @@ from maasservicelayer.models.filestorage import FileStorage
 
 
 class FileResponse(HalResponse[BaseHal]):
-    kind = "File"
+    kind: str = Field(default="File")
 
     id: int
     filename: str
     content: str
     key: str
-    owner_id: Optional[int]
+    owner_id: int | None = None
 
     @classmethod
     def from_model(cls, file: FileStorage, self_base_hyperlink: str) -> Self:
@@ -42,12 +42,12 @@ class FileResponse(HalResponse[BaseHal]):
 class FileListItemResponse(HalResponse[BaseHal]):
     # Files returned as part of a list query should not contain file content.
     # A separate, specific GET is required to retrieve content.
-    kind = "FileListItem"
+    kind: str = Field(default="FileListItem")
 
     id: int
     filename: str
     key: str
-    owner_id: Optional[int]
+    owner_id: int | None = None
 
     @classmethod
     def from_model(cls, file: FileStorage, self_base_hyperlink: str) -> Self:
@@ -65,6 +65,6 @@ class FileListItemResponse(HalResponse[BaseHal]):
 
 
 class FileListResponse(BaseModel):
-    kind = "FileList"
+    kind: str = Field(default="FileList")
 
-    items: List[FileListItemResponse]
+    items: list[FileListItemResponse]

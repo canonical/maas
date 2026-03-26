@@ -1,9 +1,9 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -19,11 +19,11 @@ from maasservicelayer.models.bootsources import (
 
 
 class BootSourceResponse(HalResponse[BaseHal]):
-    kind = "BootSource"
+    kind: str = Field(default="BootSource")
     id: int
     url: str
-    keyring_filename: Optional[str]
-    keyring_data: Optional[str]
+    keyring_filename: str | None = None
+    keyring_data: str | None = None
     priority: int
     skip_keyring_verification: bool
 
@@ -49,7 +49,7 @@ class BootSourceResponse(HalResponse[BaseHal]):
 
 
 class BootSourcesListResponse(PaginatedResponse[BootSourceResponse]):
-    kind = "BootSourcesList"
+    kind: str = Field(default="BootSourcesList")
 
 
 class BaseSourceAvailableImageResponse(BaseModel):
@@ -60,7 +60,7 @@ class BaseSourceAvailableImageResponse(BaseModel):
 
 
 class SourceAvailableImageResponse(BaseSourceAvailableImageResponse):
-    kind = "SourceAvailableImage"
+    kind: str = Field(default="SourceAvailableImage")
 
     @classmethod
     def from_model(
@@ -76,12 +76,12 @@ class SourceAvailableImageResponse(BaseSourceAvailableImageResponse):
 
 
 class SourceAvailableImageListResponse(BaseModel):
-    kind = "SourceAvailableImageList"
+    kind: str = Field(default="SourceAvailableImageList")
     items: list[SourceAvailableImageResponse]
 
 
 class BootSourceAvailableImageResponse(BaseSourceAvailableImageResponse):
-    kind = "BootSourceAvailableImage"
+    kind: str = Field(default="BootSourceAvailableImage")
 
     @classmethod
     def from_model(
@@ -99,11 +99,11 @@ class BootSourceAvailableImageResponse(BaseSourceAvailableImageResponse):
 class BootSourceAvailableImageListResponse(
     PaginatedResponse[BootSourceAvailableImageResponse]
 ):
-    kind = "BootSourceAvailableImageList"
+    kind: str = Field(default="BootSourceAvailableImageList")
 
 
 class UISourceAvailableImageResponse(BaseSourceAvailableImageResponse):
-    kind = "UISourceAvailableImage"
+    kind: str = Field(default="UISourceAvailableImage")
     source_id: int
     source_url: str
 
@@ -124,10 +124,10 @@ class UISourceAvailableImageResponse(BaseSourceAvailableImageResponse):
 
 
 class UISourceAvailableImageListResponse(BaseModel):
-    kind = "UISourceAvailableImageList"
+    kind: str = Field(default="UISourceAvailableImageList")
     items: list[UISourceAvailableImageResponse]
 
 
 class BootSourceSyncResponse(BaseModel):
-    kind = "BootSourceSync"
+    kind: str = Field(default="BootSourceSync")
     monitor_url: str

@@ -1,21 +1,22 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any, Dict, Generic, Optional, Sequence, TypeVar
+from typing import Any, Dict, Generic, Sequence, TypeVar
 
 from fastapi.openapi.models import Header as OpenApiHeader
 from fastapi.openapi.models import Schema
-from pydantic import BaseModel, Field
-from pydantic.generics import GenericModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BaseHref(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     href: str
 
 
 class BaseHrefWithId(BaseHref):
-    id: Optional[str] = None
-    name: Optional[str] = None
+    id: str | None = None
+    name: str | None = None
 
 
 class BaseHal(BaseModel):
@@ -25,7 +26,7 @@ class BaseHal(BaseModel):
 HAL = TypeVar("HAL", bound=BaseHal)
 
 
-class HalResponse(GenericModel, Generic[HAL]):
+class HalResponse(BaseModel, Generic[HAL]):
     """
     Base HAL response class that every response object must extend. The response object will look like
     {
@@ -36,29 +37,28 @@ class HalResponse(GenericModel, Generic[HAL]):
     }
     """
 
-    # TODO: when switching to Pydantic 2.x change alias to serialization_alias
-    # and remove pyright ignores in the models
-    hal_links: Optional[HAL] = Field(default=None, alias="_links")
-    hal_embedded: Optional[Dict[str, Any]] = Field(
+    model_config = ConfigDict(populate_by_name=True)
+
+    hal_links: HAL | None = Field(default=None, alias="_links")
+    hal_embedded: Dict[str, Any] | None = Field(
         default=None, alias="_embedded"
     )
-
-    class Config:
-        allow_population_by_field_name = True
 
 
 T = TypeVar("T")
 
 
-class PaginatedResponse(GenericModel, Generic[T]):
+class PaginatedResponse(BaseModel, Generic[T]):
     """
     Base class for offset-paginated responses.
     Derived classes should overwrite the items property
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     items: Sequence[T]
     total: int
-    next: Optional[str] = Field(default=None)
+    next: str | None = Field(default=None)
 
 
 OPENAPI_ETAG_HEADER = OpenApiHeader(

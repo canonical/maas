@@ -5,42 +5,54 @@
 
 """Auto generate builders for domain models.
 
-It generates a builder in src/maasservicelayer/builders/ for the corresponding
-model in src/maasservicelayer/models.
+Generates builder classes in src/maasservicelayer/builders/ for domain models
+in src/maasservicelayer/models/ decorated with `@generate_builder`.
 
-To generate a builder for a model, just decorate the model with
-`generate_builder` from src/maasservicelayer/models/base.py.
+Usage:
+    @generate_builder
+    class User(BaseModel):
+        name: str
 
-HEADS UP: this is currently tested with SQLAlchemy 1.x, we might want to revise
-this when we switch to 2.x.
+    $ make generate-builders        # Generate/update builders
+    $ make generate-builders-check  # Check if builders need updates
+
+Generation Flow:
+    1. Scan domain models with @generate_builder decorator
+    2. Scan existing builders using AST to preserve custom methods and imports
+       (AST parsing avoids import-time errors when builders reference new fields)
+    3. Generate builder classes (fields become FieldType | Unset)
+    4. Merge custom code back into generated builders
+    5. Write output only if changes detected
+    6. Delete builders for removed models
+
+Features:
+    - Preserves custom methods and imports in builder classes
+    - Automatically manages imports from type annotations
+    - Idempotent - only writes when changes detected
+
+Requires Pydantic 2.x and Python 3.10+.
 """
 
 from abc import ABC, abstractmethod
 import argparse
+import ast
 import dataclasses
+from datetime import datetime
 import importlib
 import inspect
 import os
 import re
 import sys
-from types import FunctionType, ModuleType
-from typing import get_args, get_origin, Self, TypeVar, Union
+from types import FunctionType, ModuleType, UnionType
+from typing import get_args, get_origin, Self
 
 from pydantic import BaseModel
-from pydantic.fields import ModelField
+from pydantic.fields import FieldInfo
 
 MODELS_PATH = "src/maasservicelayer/models"
 BUILDERS_PATH = "src/maasservicelayer/builders"
 MODELS_MODULE = "maasservicelayer.models"
 BUILDERS_MODULE = "maasservicelayer.builders"
-
-HEADER_TEMPLATE = """\
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
-
-{import_stmts}
-
-"""
 
 CLASS_TEMPLATE = """
 
@@ -59,6 +71,38 @@ class {model_name}(ResourceBuilder):
 
 EXCLUDED_FIELDS = ["id"]
 
+# Methods to exclude from extraction when preserving custom builder methods.
+# Includes standard Python magic methods, Pydantic/BaseModel methods,
+# Python 3.14+ annotation methods, and builder-specific methods.
+EXCLUDED_METHODS = {
+    "__init__",
+    "__new__",
+    "__del__",
+    "__repr__",
+    "__str__",
+    "__bytes__",
+    "__format__",
+    "__lt__",
+    "__le__",
+    "__eq__",
+    "__ne__",
+    "__gt__",
+    "__ge__",
+    "__bool__",
+    "__getattr__",
+    "__getattribute__",
+    "__setattr__",
+    "__delattr__",
+    "__dir__",
+    "__class_getitem__",
+    "__mro_entries__",
+    "__set_name__",
+    "__annotate__",  # Python 3.14+ PEP 649
+    "__annotate_func__",  # Python 3.14+ PEP 649
+    "to_file",
+    "update_methods",
+}
+
 MODELS_BASE = "maasservicelayer.models.base"
 sys.path.insert(0, "./src")
 try:
@@ -73,7 +117,6 @@ except KeyError as e:
 
 def default_imports() -> set:
     imports = set()
-    imports.add("from typing import Union")
     imports.add("from pydantic import Field")
     imports.add(
         "from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset"
@@ -82,7 +125,7 @@ def default_imports() -> set:
 
 
 def process_string(s) -> str:
-    """Preprocess the `annotation` or `type_` field of a ModelField.
+    """Preprocess annotation string representation.
 
     This function:
         - removes all the not wanted chars in e.g. <class 'x'> and <enum 'x'>
@@ -95,15 +138,12 @@ def process_string(s) -> str:
         .removeprefix("<enum '")
         .removesuffix("'>")
     )
-    # while dealing with pydantic modelfield, sometimes None is expressed as NoneType
     s = s.replace("NoneType", "None")
-    # remove all module prefixes
     s = re.sub(r"\w*\.", "", s)
     return s
 
 
 def get_module_name_for_type(type_) -> str:
-    # workaround for Literal["foo"]
     if isinstance(type_, str):
         return "builtins"
     module = inspect.getmodule(type_)
@@ -120,7 +160,17 @@ def add_imports(module_name: str, field: str, imports: set):
 
 
 def handle_composite_type(type_, imports: set):
+    from typing import Union
+
     outer = get_origin(type_)
+    if outer is UnionType or outer is Union:
+        inner = get_args(type_)
+        for inner_type in inner:
+            if get_origin(inner_type) is not None:
+                handle_composite_type(inner_type, imports)
+            else:
+                handle_simple_type(inner_type, imports)
+        return
     module_name = get_module_name_for_type(outer)
     add_imports(module_name, process_string(outer), imports)
 
@@ -137,35 +187,87 @@ def handle_simple_type(type_, imports: set):
     add_imports(module_name, process_string(type_), imports)
 
 
-def process_field(field: ModelField, imports: set) -> ModelField:
-    """Modifies the field and updates the import statements.
+def normalize_imports(imports: set) -> set:
+    """Normalize and deduplicate imports from the same module.
 
-    Updates the type_ and annotation of the field, making it a Union of the
-    already present value and Unset.
-    It also set the required attribute to False and updated the model_config
-    with the config of ResourceBuilder (in order to allow for arbitrary types).
+    Combines multiple imports from the same module into a single statement.
+    E.g., ["from x import a", "from x import b"] -> ["from x import a, b"]
     """
-    if get_origin(field.annotation) is not None:
-        handle_composite_type(field.annotation, imports)
-    else:
-        handle_simple_type(field.annotation, imports)
+    from_imports = {}  # module -> set of items
+    other_imports = set()
 
-    field.type_ = Union[field.type_, Unset]
-    field.annotation = Union[field.annotation, Unset]
-    field.default = UNSET
-    field.required = False
-    field.model_config = ResourceBuilder.__config__
-    return field
+    for imp in imports:
+        if not imp.startswith("from "):
+            other_imports.add(imp)
+            continue
+
+        parts = imp.split(" import ", 1)
+        if len(parts) != 2:
+            other_imports.add(imp)
+            continue
+
+        module = parts[0].replace("from ", "")
+        if module not in from_imports:
+            from_imports[module] = set()
+
+        for item in parts[1].split(", "):
+            from_imports[module].add(item.strip())
+
+    # Rebuild normalized imports
+    normalized = other_imports.copy()
+    for module in sorted(from_imports.keys()):
+        items = ", ".join(sorted(from_imports[module]))
+        normalized.add(f"from {module} import {items}")
+
+    return normalized
+
+
+def format_annotation(annotation) -> str:
+    from typing import Union
+
+    origin = get_origin(annotation)
+    if origin is UnionType or origin is Union:
+        return " | ".join(
+            format_annotation(arg) for arg in get_args(annotation)
+        )
+    return process_string(str(annotation))
+
+
+def annotation_contains_unset(annotation) -> bool:
+    from typing import Union
+
+    if annotation is Unset:
+        return True
+    origin = get_origin(annotation)
+    if origin is UnionType or origin is Union:
+        return any(
+            annotation_contains_unset(arg) for arg in get_args(annotation)
+        )
+    return False
+
+
+def process_field_annotation(annotation, imports: set) -> str:
+    """Process a field annotation and update imports, rendering a |-style union."""
+    extract_imports_from_annotation(annotation, imports)
+    annotation_str = format_annotation(annotation)
+    if annotation_contains_unset(annotation):
+        return annotation_str
+    return f"{annotation_str} | Unset"
+
+
+def extract_imports_from_annotation(annotation, imports: set):
+    """Extract imports from a type annotation."""
+    if get_origin(annotation) is not None:
+        handle_composite_type(annotation, imports)
+    else:
+        handle_simple_type(annotation, imports)
 
 
 @dataclasses.dataclass(kw_only=True)
 class GenericModel(ABC):
     name: str
-    fields: list[ModelField]
+    fields: dict[str, FieldInfo]
     model_imports: set = dataclasses.field(default_factory=default_imports)
-
-
-T = TypeVar("T", bound=GenericModel)
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -178,9 +280,6 @@ class GenericModule[T](ABC):
     @abstractmethod
     def from_file(cls, module: ModuleType, filename: str) -> Self:
         pass
-
-
-M = TypeVar("M", bound=GenericModule)
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -214,92 +313,336 @@ class BuilderModel(GenericModel):
     )
 
     def to_file(self) -> str:
+        output = self.get_output()
+        # Update model_imports for side effect (used by BuilderModule.to_file)
+        imports = self.model_imports.copy()
+        for field_name in self.fields.keys():
+            field_info = self.fields[field_name]
+            process_field_annotation(field_info.annotation, imports)
+        self.model_imports = imports
+        return output
+
+    def update_methods(self, methods):
+        self.methods = methods
+
+    def __eq__(self, other) -> bool:
+        """Compare the fields to check if the two models differ."""
+        if isinstance(other, BuilderModel):
+            if self.name != other.name:
+                return False
+            if set(self.fields.keys()) != set(other.fields.keys()):
+                return False
+            for field_name in self.fields:
+                if (
+                    self.fields[field_name].annotation
+                    != other.fields[field_name].annotation
+                ):
+                    return False
+            return True
+        return False
+
+    def get_output(self) -> str:
+        """Generate the class definition output."""
         field_lines = ""
-        for field in sorted(self.fields, key=lambda f: f.name):
-            field_lines += f"    {field.name}: {process_string(str(field.annotation))} = Field(default=UNSET, required=False)\n"
+        imports = self.model_imports.copy()
+
+        for field_name in sorted(self.fields.keys()):
+            field_info = self.fields[field_name]
+            annotation_str = process_field_annotation(
+                field_info.annotation, imports
+            )
+            field_lines += (
+                f"    {field_name}: {annotation_str} = Field(default=UNSET)\n"
+            )
+
         method_lines = ""
-        for _, method_obj in self.methods:
-            method_lines += "".join(inspect.getsourcelines(method_obj)[0])
+        for method_item in self.methods:
+            # Handle both (name, source_code) and (name, method_obj) formats
+            if isinstance(method_item[1], str):
+                # Source code string
+                method_lines += method_item[1] + "\n"
+            else:
+                # Method object
+                method_obj = method_item[1]
+                if method_obj is not None:
+                    method_lines += "".join(
+                        inspect.getsourcelines(method_obj)[0]
+                    )
+
         return CLASS_TEMPLATE.format(
             model_name=self.name,
             fields_definitions=field_lines,
             builder_methods=method_lines,
         )
 
-    def update_methods(self, methods):
-        self.methods = methods
-
-    def __eq__(self, other) -> bool:
-        """Compare the fields to check if the two model differs."""
-        if isinstance(other, BuilderModel):
-            if self.name != other.name:
-                return False
-            fields_self = sorted(self.fields, key=lambda m: m.name)
-            fields_other = sorted(other.fields, key=lambda m: m.name)
-            if len(fields_self) != len(fields_other):
-                return False
-            for f1, f2 in zip(fields_self, fields_other):
-                if f1.name != f2.name or f1.annotation != f2.annotation:
-                    return False
-
-            return True
-        return False
-
 
 @dataclasses.dataclass(kw_only=True)
 class BuilderModule(GenericModule[BuilderModel]):
+    source_methods: dict[str, list[tuple[str, str]]] = dataclasses.field(
+        default_factory=dict
+    )
+    source_imports: set = dataclasses.field(default_factory=set)
+    file_header: str = ""
+
     @classmethod
     def from_file(cls, module: ModuleType, filename: str):
-        model_classes = inspect.getmembers(
-            module,
-            lambda x: inspect.isclass and inspect.getmodule(x) == module,
-        )
+        # Extract file header (copyright and comments before imports)
+        filepath = os.path.join(BUILDERS_PATH, filename)
+        file_header = ""
+        try:
+            with open(filepath, "r") as f:
+                lines = []
+                for line in f:
+                    # Stop at first non-comment, non-blank line (usually an import)
+                    if line.strip() and not line.startswith("#"):
+                        break
+                    lines.append(line)
+                file_header = "".join(lines).rstrip("\n") + "\n\n"
+        except FileNotFoundError:
+            pass  # New file, use default header
+
+        # Extract methods from source code to avoid import-time failures
+
         models = []
-        for name, class_ in model_classes:
-            if name.endswith("Builder") and name != "ResourceBuilder":
-                builder_methods = inspect.getmembers(
-                    class_,
-                    lambda x: (inspect.isfunction(x) or inspect.ismethod(x))
-                    and not getattr(ResourceBuilder, x.__name__, False)
-                    and not getattr(BaseModel, x.__name__, False),
-                )
-                fields = list(class_.__fields__.values())
-                fields = [f for f in fields if f.name not in EXCLUDED_FIELDS]
-                models.append(
-                    BuilderModel(
-                        name=name,
-                        fields=fields,
-                        methods=builder_methods,
+        try:
+            model_classes = inspect.getmembers(
+                module,
+                lambda x: (
+                    inspect.isclass(x) and inspect.getmodule(x) == module
+                ),
+            )
+            for name, class_ in model_classes:
+                if name.endswith("Builder") and name != "ResourceBuilder":
+                    builder_methods = inspect.getmembers(
+                        class_,
+                        lambda x: (
+                            (inspect.isfunction(x) or inspect.ismethod(x))
+                            and not getattr(ResourceBuilder, x.__name__, False)
+                            and not getattr(BaseModel, x.__name__, False)
+                            and x.__name__ not in EXCLUDED_METHODS
+                        ),
                     )
-                )
-        return cls(filename=filename, models=models)
+                    fields = {
+                        k: v
+                        for k, v in class_.model_fields.items()
+                        if k not in EXCLUDED_FIELDS
+                    }
+                    models.append(
+                        BuilderModel(
+                            name=name,
+                            fields=fields,
+                            methods=builder_methods,
+                        )
+                    )
+        except Exception:
+            # If import fails, extract methods from source code instead
+            source_methods_dict, _ = extract_source_methods_and_imports(
+                filepath
+            )
+            for class_name, methods_list in source_methods_dict.items():
+                if (
+                    class_name.endswith("Builder")
+                    and class_name != "ResourceBuilder"
+                ):
+                    # Convert source code methods to tuples of (name, source)
+                    models.append(
+                        BuilderModel(
+                            name=class_name,
+                            fields={},
+                            methods=methods_list,
+                        )
+                    )
+        return cls(filename=filename, models=models, file_header=file_header)
 
     def to_file(self) -> str:
-        class_defs = ""
-        for class_ in self.models:
-            class_defs += class_.to_file()
-            self.module_imports = self.module_imports | class_.model_imports
-        imports = "\n".join(self.module_imports)
-        header = HEADER_TEMPLATE.format(import_stmts=imports)
-        return header + class_defs
+        """Generate the complete file output."""
+        return self._generate_output(use_to_file=True)
 
     def update_models_methods_from_other(self, other):
         if self.filename != other.filename:
             raise Exception("Cannot update models of different modules.")
         models_self = sorted(self.models, key=lambda m: m.name)
         models_other = sorted(other.models, key=lambda m: m.name)
-        for model, other_model in zip(models_self, models_other):
+        for model, other_model in zip(models_self, models_other, strict=False):
             model.update_methods(other_model.methods)
+        # Preserve source methods, imports, and file header from existing builder
+        self.source_methods = other.source_methods
+        self.source_imports = other.source_imports
+        self.file_header = other.file_header
 
     def __eq__(self, other) -> bool:
         models_self = sorted(self.models, key=lambda m: m.name)
         models_other = sorted(other.models, key=lambda m: m.name)
         if len(models_self) != len(models_other):
             return False
-        for m1, m2 in zip(models_self, models_other):
+        for m1, m2 in zip(models_self, models_other, strict=False):
             if m1 != m2:
                 return False
         return True
+
+    def get_output(self) -> str:
+        """Generate the complete file output without mutating self."""
+        return self._generate_output(use_to_file=False)
+
+    def _generate_output(self, use_to_file: bool = False) -> str:
+        """Internal method to generate output with optional mutation."""
+        class_defs = ""
+        module_imports = self.module_imports.copy()
+
+        for class_ in self.models:
+            if class_.name in self.source_methods:
+                class_.methods = self.source_methods[class_.name]
+
+            class_defs += (
+                class_.to_file() if use_to_file else class_.get_output()
+            )
+            module_imports = module_imports | class_.model_imports
+
+        module_imports |= self.source_imports
+        # Filter out unused Union import (we now use PEP 604 syntax)
+        module_imports = {
+            imp for imp in module_imports if imp != "from typing import Union"
+        }
+        module_imports = normalize_imports(module_imports)
+
+        imports = "\n".join(sorted(module_imports))
+        # Use preserved file header or generate default
+        if self.file_header:
+            header = self.file_header
+        else:
+            current_year = datetime.now().year
+            header = f"# Copyright {current_year} Canonical Ltd.  This software is licensed under the\n"
+            header += "# GNU Affero General Public License version 3 (see the file LICENSE).\n\n"
+        header += imports + "\n\n"
+        return header + class_defs
+
+    def _normalize_ast(self, tree: ast.Module) -> ast.Module:
+        """Normalize AST by sorting imports to ignore import order differences."""
+        # Separate imports from other statements
+        imports = []
+        other_stmts = []
+
+        for node in tree.body:
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                imports.append(node)
+            else:
+                other_stmts.append(node)
+
+        # Sort imports by module name for consistent comparison
+        def import_key(node):
+            if isinstance(node, ast.Import):
+                return node.names[0].name
+            elif isinstance(node, ast.ImportFrom):
+                return node.module or ""
+            return ""
+
+        imports.sort(key=import_key)
+
+        # Reconstruct tree with sorted imports
+        tree.body = imports + other_stmts
+        return tree
+
+    def outputs_match(self, other: "BuilderModule") -> bool:
+        """Check if two modules would generate identical output.
+
+        Compares AST representations to ignore formatting differences while
+        detecting substantive code changes like invalid Field() parameters.
+        """
+        if not isinstance(other, BuilderModule):
+            return False
+
+        # Compare against actual file content on disk using AST comparison
+        # This catches substantive differences (e.g., required=False) while
+        # ignoring formatting differences introduced by ruff
+        try:
+            filepath = os.path.join(BUILDERS_PATH, self.filename)
+            with open(filepath, "r") as f:
+                existing_content = f.read()
+
+            generated_output = self.get_output()
+
+            # Parse both as AST and compare with normalized imports
+            try:
+                existing_tree = self._normalize_ast(
+                    ast.parse(existing_content)
+                )
+                generated_tree = self._normalize_ast(
+                    ast.parse(generated_output)
+                )
+                return ast.dump(existing_tree) == ast.dump(generated_tree)
+            except SyntaxError:
+                # If either has syntax errors, fall back to string comparison
+                return generated_output == existing_content
+
+        except FileNotFoundError:
+            # File doesn't exist yet, compare generated outputs
+            return self.get_output() == other.get_output()
+
+
+def extract_source_methods_and_imports(
+    filepath: str,
+) -> tuple[dict[str, list[tuple[str, str]]], set]:
+    """Extract custom methods and imports from a builder source file without importing it.
+
+    Returns (methods_dict, imports_set) where methods_dict maps class names to lists of
+    (method_name, source_code) tuples.
+    """
+    methods_by_class = {}
+    imports = set()
+
+    try:
+        with open(filepath, "r") as f:
+            content = f.read()
+
+        tree = ast.parse(content)
+        lines = content.splitlines(keepends=True)
+
+        # Extract imports
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imports.add(
+                        f"import {alias.name} as {alias.asname}"
+                        if alias.asname
+                        else f"import {alias.name}"
+                    )
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                names = ", ".join(
+                    f"{a.name} as {a.asname}" if a.asname else a.name
+                    for a in node.names
+                )
+                imports.add(f"from {module} import {names}")
+
+        # Extract methods from classes
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                class_methods = []
+                seen_methods = set()
+                for item in node.body:
+                    if isinstance(
+                        item, (ast.FunctionDef, ast.AsyncFunctionDef)
+                    ):
+                        if (
+                            item.name not in EXCLUDED_METHODS
+                            and item.name not in seen_methods
+                        ):
+                            seen_methods.add(item.name)
+                            start_line = (
+                                item.decorator_list[0].lineno - 1
+                                if item.decorator_list
+                                else item.lineno - 1
+                            )
+                            source = "".join(
+                                lines[start_line : item.end_lineno]
+                            )
+                            class_methods.append((item.name, source))
+                if class_methods:
+                    methods_by_class[node.name] = class_methods
+    except Exception:
+        pass
+
+    return methods_by_class, imports
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -311,8 +654,22 @@ class BuilderCollection(GenericCollection[BuilderModule]):
         modules = []
         for filename in os.listdir(path):
             modulename = f"{cls.module_prefix}.{filename.removesuffix('.py')}"
-            module = importlib.import_module(modulename)
-            builder_module = BuilderModule.from_file(module, filename)
+            filepath = os.path.join(BUILDERS_PATH, filename)
+            source_methods, source_imports = (
+                extract_source_methods_and_imports(filepath)
+            )
+
+            try:
+                module = importlib.import_module(modulename)
+                builder_module = BuilderModule.from_file(module, filename)
+            except Exception:
+                # If import fails, create an empty builder module
+                builder_module = BuilderModule(filename=filename, models=[])
+
+            # Store source methods and imports for later use
+            builder_module.source_methods = source_methods
+            builder_module.source_imports = source_imports
+
             if len(builder_module.models) == 0:
                 continue
             modules.append(builder_module)
@@ -328,12 +685,15 @@ class BuilderCollection(GenericCollection[BuilderModule]):
 @dataclasses.dataclass(kw_only=True)
 class DomainModel(GenericModel):
     def to_builder(self) -> BuilderModel:
-        fields = []
         imports = default_imports()
-        for field in sorted(self.fields, key=lambda f: f.name):
-            fields.append(process_field(field, imports))
+
+        for field_info in self.fields.values():
+            extract_imports_from_annotation(field_info.annotation, imports)
+
         return BuilderModel(
-            name=f"{self.name}Builder", fields=fields, model_imports=imports
+            name=f"{self.name}Builder",
+            fields=self.fields,
+            model_imports=imports,
         )
 
 
@@ -343,13 +703,18 @@ class DomainModule(GenericModule[DomainModel]):
     def from_file(cls, module: ModuleType, filename: str):
         model_classes = inspect.getmembers(
             module,
-            lambda x: getattr(x, "__generate_builder__", False)
-            and inspect.getmodule(x) == module,
+            lambda x: (
+                getattr(x, "__generate_builder__", False)
+                and inspect.getmodule(x) == module
+            ),
         )
         models = []
         for name, class_ in model_classes:
-            fields = list(class_.__fields__.values())
-            fields = [f for f in fields if f.name not in EXCLUDED_FIELDS]
+            fields = {
+                k: v
+                for k, v in class_.model_fields.items()
+                if k not in EXCLUDED_FIELDS
+            }
             models.append(DomainModel(name=name, fields=fields))
 
         return cls(filename=filename, models=models)
@@ -373,7 +738,6 @@ class DomainCollection(GenericCollection[DomainModule]):
             module = importlib.import_module(modulename)
             domain_module = DomainModule.from_file(module, filename)
             if len(domain_module.models) == 0:
-                # we don't have to generate anything
                 continue
             modules.append(domain_module)
         return cls(modules=modules)
@@ -393,7 +757,6 @@ def main():
     parser.add_argument("-c", "--check", action="store_true")
     args = parser.parse_args()
 
-    # domain collection and builder collection
     domain_collection = DomainCollection.from_path(MODELS_PATH)
     builder_collection = BuilderCollection.from_path(BUILDERS_PATH)
 
@@ -409,13 +772,17 @@ def main():
 
         if existing_builder_module is None:
             to_write[filename] = generated_builder_module.to_file()
-        elif generated_builder_module != existing_builder_module:
+        else:
+            # Always update with existing methods first
             generated_builder_module.update_models_methods_from_other(
                 existing_builder_module
             )
-            to_write[filename] = generated_builder_module.to_file()
+            # Now check if the output would be the same
+            if not generated_builder_module.outputs_match(
+                existing_builder_module
+            ):
+                to_write[filename] = generated_builder_module.to_file()
 
-    # if there are other builders not processed, delete them
     for module in builder_collection:
         to_delete.append(module.filename)
 

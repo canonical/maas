@@ -5,12 +5,11 @@ import asyncio
 from dataclasses import dataclass
 from enum import StrEnum
 
-from jose import jwt
-from jose.exceptions import JWTClaimsError
 import structlog
 from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.enums.msm import MSMStatusEnum
+from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
 from maascommon.workflows.msm import (
     MSM_ENROL_SITE_WORKFLOW_NAME,
     MSM_HEARTBEAT_WORKFLOW_NAME,
@@ -86,16 +85,15 @@ class MSMService(Service):
         maas_name = await self.config_service.get(MAASNameConfig.name)
         maas_url = await self.config_service.get(MAASUrlConfig.name)
         try:
-            claims = jwt.decode(
+            claims = decode_unverified_jwt(
                 encoded,
-                key="",  # empty key since we are not verifying the signature
-                audience=SITE_AUDIENCE,
-                options={"verify_signature": False},
+                check_expiration=False,
+                expected_audience=SITE_AUDIENCE,
             )
-        except JWTClaimsError as ex:
-            raise MSMException(f"invalid JWT: {str(ex)}") from ex
+        except JWTDecodeError as ex:
+            raise MSMException(str(ex)) from ex
 
-        url = claims.get("service-url", None)
+        url = claims.get("service-url")
         if not url:
             raise MSMException("missing 'service-url' claim")
 

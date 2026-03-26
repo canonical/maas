@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from OpenSSL import crypto
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from maasservicelayer.exceptions.catalog import ValidationException
 
@@ -16,7 +16,8 @@ class AgentEnrollRequest(BaseModel):
         "certificate."
     )
 
-    @validator("csr")
+    @field_validator("csr", mode="after")
+    @classmethod
     def validate_csr(cls, value: str) -> str:
         try:
             crypto.load_certificate_request(

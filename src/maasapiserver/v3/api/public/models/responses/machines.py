@@ -1,7 +1,9 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -21,22 +23,22 @@ from maasservicelayer.models.machines import (
 
 
 class MachineResponse(HalResponse[BaseHal]):
-    kind = "Machine"
+    kind: str = Field(default="Machine")
     id: int
     system_id: str
     description: str
-    owner: Optional[str]
+    owner: str | None = None
     cpu_speed_MHz: int
     memory_MiB: int
     osystem: str
-    architecture: Optional[str]
+    architecture: str | None = None
     distro_series: str
-    hwe_kernel: Optional[str]
+    hwe_kernel: str | None = None
     locked: bool
     cpu_count: int
     # TODO: we don't want to return integers here. To be replaced with proper literal representation of the status
     status: NodeStatus
-    power_type: Optional[PowerTypeEnum]
+    power_type: PowerTypeEnum | None = None
     fqdn: str
 
     @classmethod
@@ -66,11 +68,11 @@ class MachineResponse(HalResponse[BaseHal]):
 
 
 class MachinesListResponse(PaginatedResponse[MachineResponse]):
-    kind = "MachinesList"
+    kind: str = Field(default="MachinesList")
 
 
 class UsbDeviceResponse(HalResponse[BaseHal]):
-    kind = "MachineHardwareDevice"
+    kind: str = Field(default="MachineHardwareDevice")
     id: int
     type: HardwareDeviceTypeEnum
     vendor_id: str
@@ -104,11 +106,11 @@ class UsbDeviceResponse(HalResponse[BaseHal]):
 
 
 class UsbDevicesListResponse(PaginatedResponse[UsbDeviceResponse]):
-    kind = "MachineHardwareDevicesList"
+    kind: str = Field(default="MachineHardwareDevicesList")
 
 
 class PciDeviceResponse(HalResponse[BaseHal]):
-    kind = "MachinePciDevice"
+    kind: str = Field(default="MachinePciDevice")
     id: int
     type: HardwareDeviceTypeEnum
     vendor_id: str
@@ -144,11 +146,11 @@ class PciDeviceResponse(HalResponse[BaseHal]):
 
 
 class PciDevicesListResponse(PaginatedResponse[PciDeviceResponse]):
-    kind = "MachinePciDevicesList"
+    kind: str = Field(default="MachinePciDevicesList")
 
 
 class PowerDriverResponse(HalResponse[BaseHal]):
-    kind = "MachinePowerParameters"
+    kind: str = Field(default="MachinePowerParameters")
     power_type: PowerTypeEnum
     power_parameters: dict
 

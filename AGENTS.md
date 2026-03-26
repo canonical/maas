@@ -133,6 +133,8 @@ Use one of these scopes where applicable:
 - Always reference related bugs: `Resolves LP:2066936` (Launchpad) or `Resolves GH:123` (GitHub)
 - Keep commit titles concise; put detailed reasoning in the body
 - Explain *why* a change was made, not just *what* changed
+- **Description (title)**: Provide a high-level overview only. Do not enumerate individual changes or list implementation details. Focus on the problem being solved or the feature being added.
+- **Body**: Use the body to explain the reasoning, context, and any non-obvious implementation details. Keep it concise and focused on the "why" rather than exhaustively documenting the "what".
 
 ### Examples
 
@@ -205,6 +207,46 @@ Follow the isort configuration in `pyproject.toml`:
 - Use type hints for function signatures
 - For new code in `maascommon`, `maasservicelayer`, `maasapiserver`, and `maastemporalworker`, ensure Pyright compliance
 - Use Pydantic models for data validation where appropriate
+
+### Pydantic v2 Models
+
+The codebase uses Pydantic v2 for data validation. Follow these patterns:
+
+**Model Definition**:
+- Use `model_config = ConfigDict(...)` for model configuration
+- All class attributes require type annotations
+- Mark non-field class attributes with `ClassVar`
+- Use `Field()` for field customization (default, alias, description, etc.)
+
+**Validators**:
+- Use `@field_validator(mode="before"|"after")` for field-level validation
+- Use `@model_validator(mode="after"|"before")` for model-level validation
+- Return the validated value from validators
+- Mark class methods with `@classmethod`
+
+**Serialization**:
+- Use `.model_dump()` to serialize to dict
+- Use `.model_dump_json()` to serialize to JSON string
+- Use `.model_validate()` to instantiate from dict
+- Use `.model_validate_json()` to instantiate from JSON string
+- Use `.model_json_schema()` to get JSON schema
+
+**Field Aliases**:
+- Use `alias` when the input and output field names are the same
+- Use `validation_alias` for input field names when they differ from output names
+- Use `serialization_alias` for output field names when they differ from input names
+- Use both `validation_alias` and `serialization_alias` only when input/output names differ from each other
+
+**Configuration Options**:
+- `populate_by_name=True` - accept both field name and alias on input
+- `arbitrary_types_allowed=True` - allow custom types as fields
+- `extra="forbid"` - reject fields not defined in model
+- `extra="ignore"` - silently ignore extra fields
+
+**Type Annotations**:
+- Use `Type | None` for optional types (Python 3.10+)
+- Use `list[T]`, `dict[K, V]`, `set[T]` for container types
+- Use `Optional[Type]` only when necessary for compatibility
 
 ### Async Code
 

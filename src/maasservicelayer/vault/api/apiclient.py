@@ -72,11 +72,11 @@ class AsyncVaultApiClient:
         """
         response = await self._session.post(
             url=f"/v1/auth/{approle}/login",
-            data=request.json(),
+            data=request.model_dump_json(),
             headers=headers,
         )
         self._raise_for_status(response)
-        return AppRoleLoginResponse.parse_obj(await response.json())
+        return AppRoleLoginResponse.model_validate(await response.json())
 
     async def token_lookup_self(
         self, headers: Dict[str, str] | None
@@ -101,7 +101,7 @@ class AsyncVaultApiClient:
             headers=headers,
         )
         self._raise_for_status(response)
-        return TokenLookupSelfResponse.parse_obj(await response.json())
+        return TokenLookupSelfResponse.model_validate(await response.json())
 
     async def kv_v2_delete_metadata_and_all_versions(
         self, path: str, kv_v2_mount_path: str, headers: Dict[str, str] | None
@@ -154,7 +154,7 @@ class AsyncVaultApiClient:
             headers=headers,
         )
         self._raise_for_status(response)
-        return KvV2ReadResponse.parse_obj(await response.json())
+        return KvV2ReadResponse.model_validate(await response.json())
 
     async def kv_v2_create_or_update(
         self,
@@ -183,11 +183,11 @@ class AsyncVaultApiClient:
         """
         response = await self._session.post(
             url=f"/v1/{kv_v2_mount_path}/data/{path}",
-            data=request.json(),
+            data=request.model_dump_json(),
             headers=headers,
         )
         self._raise_for_status(response)
-        return KvV2WriteResponse.parse_obj(await response.json())
+        return KvV2WriteResponse.model_validate(await response.json())
 
     def _raise_for_status(self, response: ClientResponse):
         if response.status < 400:

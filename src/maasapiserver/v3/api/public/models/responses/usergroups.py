@@ -1,7 +1,9 @@
-# Copyright 2026 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -13,10 +15,10 @@ from maasservicelayer.models.usergroups import UserGroup
 
 
 class UserGroupResponse(HalResponse[BaseHal]):
-    kind = "UserGroup"
+    kind: str = Field(default="UserGroup")
     id: int
     name: str
-    description: Optional[str]
+    description: str | None = None
 
     @classmethod
     def from_model(
@@ -35,4 +37,4 @@ class UserGroupResponse(HalResponse[BaseHal]):
 
 
 class UserGroupsListResponse(PaginatedResponse[UserGroupResponse]):
-    kind = "UserGroupsList"
+    kind: str = Field(default="UserGroupsList")

@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
-from jose import jwt
 from macaroonbakery.bakery import Macaroon
 import pytest
 
@@ -28,6 +27,7 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
 from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
+from maascommon.utils.jwt import decode_unverified_jwt
 from maasservicelayer.auth.external_oauth import (
     OAuth2Client,
     OAuthIDToken,
@@ -168,10 +168,11 @@ class TestAuthApi:
 
         token_response = TokenResponse(**response.json())
         assert token_response.token_type == "bearer"
-        assert (
-            jwt.get_unverified_claims(token_response.access_token)["sub"]
-            == "username"
+        # Decode JWT to get claims without verification
+        claims = decode_unverified_jwt(
+            token_response.access_token, check_expiration=False
         )
+        assert claims["sub"] == "username"
         assert token_response.refresh_token == "abc123"
 
     async def test_post_validation_failed(
@@ -259,7 +260,10 @@ class TestAuthApi:
         token_response = TokenResponse(**response.json())
         assert token_response.kind == "Tokens"
         assert token_response.token_type == "bearer"
-        decoded_token = jwt.get_unverified_claims(token_response.access_token)
+        # Decode JWT to get claims without verification
+        decoded_token = decode_unverified_jwt(
+            token_response.access_token, check_expiration=False
+        )
         assert decoded_token["sub"] == "username"
         assert decoded_token["user_id"] == 0
         assert token_response.refresh_token is None
@@ -281,7 +285,10 @@ class TestAuthApi:
         token_response = TokenResponse(**response.json())
         assert token_response.kind == "Tokens"
         assert token_response.token_type == "bearer"
-        decoded_token = jwt.get_unverified_claims(token_response.access_token)
+        # Decode JWT to get claims without verification
+        decoded_token = decode_unverified_jwt(
+            token_response.access_token, check_expiration=False
+        )
         assert decoded_token["sub"] == "username"
         assert decoded_token["user_id"] == 0
         assert token_response.refresh_token is None
@@ -481,7 +488,7 @@ class TestAuthApi:
         )
         response = await client.put(
             f"{self.BASE_PATH}/oauth/providers/1",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
 
         assert response.status_code == 200
@@ -520,7 +527,7 @@ class TestAuthApi:
         services_mock.external_oauth.update_provider.return_value = None
         response = await client.put(
             f"{self.BASE_PATH}/oauth/providers/1",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
 
         assert response.status_code == 404
@@ -582,7 +589,7 @@ class TestAuthApi:
 
         response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
         assert response.status_code == 200
         provider_response = OAuthProviderResponse(**response.json())
@@ -620,7 +627,7 @@ class TestAuthApi:
 
         response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
         assert response.status_code == 409
         error_response = ErrorBodyResponse(**response.json())
@@ -657,7 +664,7 @@ class TestAuthApi:
 
         response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
         assert response.status_code == 409
         error_response = ErrorBodyResponse(**response.json())
@@ -694,7 +701,7 @@ class TestAuthApi:
 
         response = await client.post(
             f"{self.BASE_PATH}/oauth/providers",
-            json=jsonable_encoder(request_body.dict()),
+            json=jsonable_encoder(request_body.model_dump()),
         )
         assert response.status_code == 502
         error_response = ErrorBodyResponse(**response.json())
@@ -809,7 +816,7 @@ class TestAuthApi:
             "scopes": created_provider.scopes,
             "enabled": created_provider.enabled,
             "id": created_provider.id,
-            "metadata": created_provider.metadata,
+            "metadata": created_provider.metadata.model_dump(),
             "token_type": "JWT",
             "user_count": 5,
         }
