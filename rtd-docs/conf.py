@@ -106,7 +106,7 @@ html_context = {
     # TODO: If there's no such website,
     #       remove the {{ product_page }} link from the page header template
     #       (usually .sphinx/_templates/header.html; also, see README.rst).
-    "product_page": "documentation.ubuntu.com",
+    "product_page": "canonical.com/maas",
     # Product tag image; the orange part of your logo, shown in the page header
     #
     # TODO: To add a tag image, uncomment and update as needed.
@@ -117,40 +117,37 @@ html_context = {
     #
     # NOTE: If set, adding ':discourse: 123' to an .rst file
     #       will add a link to Discourse topic 123 at the bottom of the page.
-    "discourse": "https://discourse.ubuntu.com",
+    "discourse": "https://discourse.maas.io",
     # Your Mattermost channel URL
     #
     # TODO: Change to your Mattermost channel URL or leave empty.
-    "mattermost": "https://chat.canonical.com/canonical/channels/documentation",
+    # "mattermost": "https://chat.canonical.com/canonical/channels/documentation",
     # Your Matrix channel URL
     #
     # TODO: Change to your Matrix channel URL or leave empty.
-    "matrix": "https://matrix.to/#/#documentation:ubuntu.com",
+    # "matrix": "https://matrix.to/#/#documentation:ubuntu.com",
     # Your documentation GitHub repository URL
     #
     # TODO: Change to your documentation GitHub repository URL or leave empty.
     #
     # NOTE: If set, links for viewing the documentation source files
     #       and creating GitHub issues are added at the bottom of each page.
-    "github_url": "https://github.com/canonical/sphinx-docs-starter-pack",
+    "github_url": "https://github.com/canonical/maas",
     # Docs branch in the repo; used in links for viewing the source files
     #
     # TODO: To customise the branch, uncomment and update as needed.
-    'repo_default_branch': 'main',
+    "repo_default_branch": "master",
     # Docs location in the repo; used in links for viewing the source files
     #
-
-
     # TODO: To customise the directory, uncomment and update as needed.
-    "repo_folder": "/docs/",
+    "repo_folder": "/rtd-docs/",
     # TODO: To enable or disable the Previous / Next buttons at the bottom of pages
     # Valid options: none, prev, next, both
     # "sequential_nav": "both",
     # TODO: To enable listing contributors on individual pages, set to True
     "display_contributors": False,
-
-    # Required for feedback button    
-    'github_issues': 'enabled',
+    # Required for feedback button
+    "github_issues": "enabled",
 }
 
 html_extra_path = []
@@ -188,7 +185,7 @@ html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "/")
 
 # sphinx-sitemap uses html_baseurl to generate the full URL for each page:
 
-sitemap_url_scheme = '{link}'
+sitemap_url_scheme = "{link}"
 
 # Include `lastmod` dates in the sitemap:
 
@@ -197,9 +194,9 @@ sitemap_show_lastmod = True
 # Exclude generated pages from the sitemap:
 
 sitemap_excludes = [
-    '404/',
-    'genindex/',
-    'search/',
+    "404/",
+    "genindex/",
+    "search/",
 ]
 
 # TODO: Add more pages to sitemap_excludes if needed. Wildcards are supported.
@@ -209,8 +206,8 @@ sitemap_excludes = [
 # Template and asset locations
 #######################
 
-#html_static_path = ["_static"]
-#templates_path = ["_templates"]
+# html_static_path = ["_static"]
+# templates_path = ["_templates"]
 
 
 #############
@@ -227,10 +224,10 @@ sitemap_excludes = [
 #       the sphinx_reredirects extension will be disabled.
 
 redirects = {
-    'reference/doc-cheat-sheet-myst/': '../myst-syntax-reference',
-    'reference/doc-cheat-sheet/': '../rst-syntax-reference',
-    'reference/style-guide-myst/': '../myst-syntax-reference',
-    'reference/style-guide/': '../rst-syntax-reference',
+    "reference/doc-cheat-sheet-myst/": "../myst-syntax-reference",
+    "reference/doc-cheat-sheet/": "../rst-syntax-reference",
+    "reference/style-guide-myst/": "../myst-syntax-reference",
+    "reference/style-guide/": "../rst-syntax-reference",
 }
 
 
@@ -244,8 +241,8 @@ redirects = {
 
 linkcheck_ignore = [
     "http://127.0.0.1:8000",
-    "https://github.com/canonical/ACME/*"
-    ]
+    "https://github.com/canonical/ACME/*",
+]
 
 
 # A regex list of URLs where anchors are ignored by 'make linkcheck'
@@ -361,13 +358,19 @@ if "discourse_prefix" not in html_context and "discourse" in html_context:
 
 # Workaround for substitutions.yaml
 
-if os.path.exists('./reuse/substitutions.yaml'):
-    with open('./reuse/substitutions.yaml', 'r') as fd:
+if os.path.exists("./reuse/substitutions.yaml"):
+    with open("./reuse/substitutions.yaml", "r") as fd:
         myst_substitutions = yaml.safe_load(fd.read())
 
 # Add configuration for intersphinx mapping
 
 intersphinx_mapping = {
-    'starter-pack': ('https://canonical-example-product-documentation.readthedocs-hosted.com/en/latest', None),
-    'sphinxcontrib-mermaid': ('https://sphinxcontrib-mermaid-demo.readthedocs.io/en/latest', None)
+    "starter-pack": (
+        "https://canonical-example-product-documentation.readthedocs-hosted.com/en/latest",
+        None,
+    ),
+    "sphinxcontrib-mermaid": (
+        "https://sphinxcontrib-mermaid-demo.readthedocs.io/en/latest",
+        None,
+    ),
 }
