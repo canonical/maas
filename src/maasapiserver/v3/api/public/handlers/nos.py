@@ -6,15 +6,16 @@ from typing import Iterator, Optional
 from fastapi import Depends, Request
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
+import structlog
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.v3.api import services
 from maascommon.fields import normalise_macaddress
-from maascommon.utils.images import get_bootresource_store_path
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.utils.image_local_files import CHUNK_SIZE
 
-_FIVE_MB = 5 * (2**10) * (2**10)
+logger = structlog.get_logger()
 
 
 class OnieHeaders(BaseModel):
@@ -22,6 +23,7 @@ class OnieHeaders(BaseModel):
 
     eth_address: str = Field(alias="onie-eth-addr")
 
+    # Additional ONIE headers for future use (e.g., architecture matching)
     serial_number: Optional[str] = Field(
         default=None, alias="onie-serial-number"
     )
@@ -89,6 +91,10 @@ class NOSInstallerHandler(Handler):
 
         mac_address = onie_headers.eth_address if onie_headers else None
         if not mac_address:
+            logger.debug(
+                "nos_installer_request_missing_mac",
+                headers=dict(request.headers),
+            )
             return PlainTextResponse(
                 content="MAC address not found in headers",
                 status_code=400,
@@ -97,74 +103,48 @@ class NOSInstallerHandler(Handler):
         mac_address = normalise_macaddress(mac_address)
 
         try:
-            boot_resource_id = (
-                await services_collection.switches.check_installer_for_switch(
-                    mac_address=mac_address
-                )
+            installer_file = await services_collection.switches.get_installer_file_for_switch(
+                mac_address=mac_address
             )
         except NotFoundException:
-            # Switch not found - return 404 to avoid leaking information
-            # about which switches are registered
+            logger.debug(
+                "nos_installer_switch_not_found",
+                mac_address=mac_address,
+            )
             return PlainTextResponse(
                 content="",
                 status_code=404,
             )
 
-        if not boot_resource_id:
-            # No installer assigned yet or switch not in correct state
+        if not installer_file:
+            logger.debug(
+                "nos_installer_not_assigned",
+                mac_address=mac_address,
+            )
             return PlainTextResponse(
                 content="",
                 status_code=404,
             )
 
-        try:
-            boot_resource = await services_collection.boot_resources.get_by_id(
-                id=boot_resource_id
-            )
-            if not boot_resource:
-                return PlainTextResponse(
-                    content="",
-                    status_code=404,
-                )
+        file_path, filename, file_size = installer_file
 
-            resource_set = await services_collection.boot_resource_sets.get_latest_complete_set_for_boot_resource(
-                boot_resource.id
-            )
-            if not resource_set:
-                return PlainTextResponse(
-                    content="",
-                    status_code=404,
-                )
-
-            files = await services_collection.boot_resource_files.get_files_in_resource_set(
-                resource_set.id
-            )
-            if not files:
-                return PlainTextResponse(
-                    content="",
-                    status_code=404,
-                )
-        except NotFoundException:
-            return PlainTextResponse(
-                content="",
-                status_code=404,
-            )
-
-        # Use the first file (uploaded boot resources typically have one file)
-        boot_file = files[0]
-
-        file_path = get_bootresource_store_path() / boot_file.filename_on_disk
+        logger.info(
+            "nos_installer_serving",
+            mac_address=mac_address,
+            filename=filename,
+            size=file_size,
+        )
 
         def file_stream() -> Iterator[bytes]:
             with open(file_path, "rb") as f:
-                while chunk := f.read(_FIVE_MB):
+                while chunk := f.read(CHUNK_SIZE):
                     yield chunk
 
         return StreamingResponse(
             content=file_stream(),
             media_type="application/octet-stream",
             headers={
-                "Content-Disposition": f'attachment; filename="{boot_file.filename}"',
-                "Content-Length": str(boot_file.size),
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(file_size),
             },
         )

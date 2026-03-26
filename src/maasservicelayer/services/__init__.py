@@ -759,5 +759,8 @@ class ServiceCollectionV3:
             staticipaddress_repository=StaticIPAddressRepository(context),
             staticipaddress_service=services.staticipaddress,
             interfaces_service=services.interfaces,
+            boot_resources_service=services.boot_resources,
+            boot_resource_sets_service=services.boot_resource_sets,
+            boot_resource_files_service=services.boot_resource_files,
         )
         return services
