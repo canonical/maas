@@ -1,0 +1,52 @@
+name: Bump MAAS Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      maas_version:
+        description: 'MAAS version to bump'
+        required: true
+      ubuntu_distro:
+        description: 'Ubuntu distro associated with this MAAS version'
+        type: choice
+        options:
+        - focal
+        - jammy
+        - noble
+        - resolute
+        required: true
+      debfullname:
+        description: ''
+        required: True
+      debemail:
+        description: ''
+        required: True
+
+
+env:
+  DEBFULLNAME: ${{ github.event.inputs.debfullname }}
+  DEBEMAIL: ${{ github.event.inputs.debemail }}
+
+permissions:
+  contents: write
+
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: sudo apt-get install -y devscripts
+
+      - name: Bump Version and Push
+        run: |
+          git config user.name "$DEBFULLNAME"
+          git config user.email "$DEBEMAIL"
+          ./utilities/version-bump.sh ${{ github.event.inputs.maas_version}} ${{ github.event.inputs.ubuntu_distro }}
+          git push origin HEAD:${GITHUB_REF_NAME} --tags
