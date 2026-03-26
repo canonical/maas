@@ -1,4 +1,4 @@
-# Api-Reference
+# API reference
 
 ```{toctree}
 :titlesonly:
