@@ -257,7 +257,8 @@ lint-shell:
 		utilities/run-performanced \
 		utilities/run-py-tests-ci \
 		utilities/schemaspy \
-		utilities/update-initial-sql
+		utilities/update-initial-sql \
+		utilities/version-bump.sh
 .PHONY: lint-shell
 
 check-types: bin/pyright
