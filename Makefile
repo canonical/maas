@@ -237,7 +237,7 @@ lint-shell:
 		package-files/usr/lib/maas/beacon-monitor \
 		package-files/usr/lib/maas/unverified-ssh \
 		snap/hooks/* \
-		snap/local/tree/bin/* \
+		snap/local/tree/usr/bin/* \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-get-fruid-api-data \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-kernel-cmdline \
 		src/provisioningserver/refresh/20-maas-03-machine-resources \
