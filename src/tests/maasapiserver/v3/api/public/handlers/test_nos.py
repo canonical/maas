@@ -52,8 +52,7 @@ class TestNOSInstallerApi(ApiCommonTests):
         mocked_api_client: AsyncClient,
     ) -> None:
         response = await mocked_api_client.get(self.BASE_PATH)
-        assert response.status_code == 400
-        assert "MAC address not found" in response.text
+        assert response.status_code == 422
 
     async def test_get_nos_installer_no_onie_headers(
         self,
@@ -62,8 +61,7 @@ class TestNOSInstallerApi(ApiCommonTests):
         response = await mocked_api_client.get(
             self.BASE_PATH, headers={"some-header": "value"}
         )
-        assert response.status_code == 400
-        assert "MAC address not found" in response.text
+        assert response.status_code == 422
 
     async def test_get_nos_installer_switch_not_found(
         self,
@@ -145,55 +143,3 @@ class TestNOSInstallerApi(ApiCommonTests):
         assert response.content == TEST_FILE_CONTENT
 
         mock_aiofiles_open.assert_called_once_with(file_path, "rb")
-
-    async def test_onie_headers_validation(self) -> None:
-        from fastapi import Request
-
-        from maasapiserver.v3.api.public.handlers.nos import OnieHeaders
-
-        # Create a mock request with valid ONIE headers
-        mock_request = Mock(spec=Request)
-        mock_request.headers = TEST_HEADERS
-
-        onie_headers = OnieHeaders.from_request(mock_request)
-        assert onie_headers is not None
-        assert onie_headers.eth_address == TEST_HEADERS["onie-eth-addr"]
-        assert onie_headers.serial_number == TEST_HEADERS["onie-serial-number"]
-        assert onie_headers.vendor_id == TEST_HEADERS["onie-vendor-id"]
-        assert onie_headers.machine == TEST_HEADERS["onie-machine"]
-        assert onie_headers.machine_rev == TEST_HEADERS["onie-machine-rev"]
-        assert onie_headers.arch == TEST_HEADERS["onie-arch"]
-        assert onie_headers.security_key == TEST_HEADERS["onie-security-key"]
-        assert onie_headers.operation == TEST_HEADERS["onie-operation"]
-        assert onie_headers.version == TEST_HEADERS["onie-version"]
-
-    async def test_onie_headers_validation_only_mac_address(self) -> None:
-        from fastapi import Request
-
-        from maasapiserver.v3.api.public.handlers.nos import OnieHeaders
-
-        # Create a mock request with only the MAC address header
-        mock_request = Mock(spec=Request)
-        mock_request.headers = {
-            "onie-eth-addr": TEST_MAC_ADDRESS,
-            "some-other-header": "value",
-        }
-
-        onie_headers = OnieHeaders.from_request(mock_request)
-        assert onie_headers is not None
-        assert onie_headers.eth_address == TEST_MAC_ADDRESS
-
-    async def test_onie_headers_validation_no_onie_headers(self) -> None:
-        from fastapi import Request
-
-        from maasapiserver.v3.api.public.handlers.nos import OnieHeaders
-
-        # Create a mock request with no ONIE headers
-        mock_request = Mock(spec=Request)
-        mock_request.headers = {
-            "user-agent": "test",
-            "accept": "*/*",
-        }
-
-        onie_headers = OnieHeaders.from_request(mock_request)
-        assert onie_headers is None

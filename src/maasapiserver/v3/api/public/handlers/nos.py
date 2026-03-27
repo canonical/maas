@@ -1,12 +1,12 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import AsyncIterator, Optional
+from typing import Annotated, AsyncIterator
 
 import aiofiles
-from fastapi import Depends, Request
+from fastapi import Depends, Header
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel
 import structlog
 
 from maasapiserver.common.api.base import Handler, handler
@@ -15,15 +15,8 @@ from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maascommon.fields import normalise_macaddress
-from maasservicelayer.exceptions.catalog import (
-    BadRequestException,
-    BaseExceptionDetail,
-    NotFoundException,
-)
-from maasservicelayer.exceptions.constants import (
-    INVALID_ARGUMENT_VIOLATION_TYPE,
-)
+from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.image_local_files import CHUNK_SIZE
 
@@ -31,32 +24,41 @@ logger = structlog.get_logger()
 
 
 class OnieHeaders(BaseModel):
-    """Headers that come out of a ONIE request for installer."""
+    """ONIE headers from switch installer request."""
 
-    eth_address: str = Field(alias="onie-eth-addr")
+    onie_eth_addr: MacAddress
+    onie_serial_number: str | None = None
+    onie_vendor_id: str | None = None
+    onie_machine: str | None = None
+    onie_machine_rev: str | None = None
+    onie_arch: str | None = None
+    onie_security_key: str | None = None
+    onie_operation: str | None = None
+    onie_version: str | None = None
 
-    # Additional ONIE headers for future use (e.g., architecture matching)
-    serial_number: Optional[str] = Field(
-        default=None, alias="onie-serial-number"
+
+async def get_onie_headers(
+    onie_eth_addr: Annotated[MacAddress, Header()],
+    onie_serial_number: Annotated[str | None, Header()] = None,
+    onie_vendor_id: Annotated[str | None, Header()] = None,
+    onie_machine: Annotated[str | None, Header()] = None,
+    onie_machine_rev: Annotated[str | None, Header()] = None,
+    onie_arch: Annotated[str | None, Header()] = None,
+    onie_security_key: Annotated[str | None, Header()] = None,
+    onie_operation: Annotated[str | None, Header()] = None,
+    onie_version: Annotated[str | None, Header()] = None,
+) -> OnieHeaders:
+    return OnieHeaders(
+        onie_eth_addr=onie_eth_addr,
+        onie_serial_number=onie_serial_number,
+        onie_vendor_id=onie_vendor_id,
+        onie_machine=onie_machine,
+        onie_machine_rev=onie_machine_rev,
+        onie_arch=onie_arch,
+        onie_security_key=onie_security_key,
+        onie_operation=onie_operation,
+        onie_version=onie_version,
     )
-    vendor_id: Optional[str] = Field(default=None, alias="onie-vendor-id")
-    machine: Optional[str] = Field(default=None, alias="onie-machine")
-    machine_rev: Optional[str] = Field(default=None, alias="onie-machine-rev")
-    arch: Optional[str] = Field(default=None, alias="onie-arch")
-    security_key: Optional[str] = Field(
-        default=None, alias="onie-security-key"
-    )
-    operation: Optional[str] = Field(default=None, alias="onie-operation")
-    version: Optional[str] = Field(default=None, alias="onie-version")
-
-    @staticmethod
-    def from_request(request: Request) -> Optional["OnieHeaders"]:
-        onie_headers = {k.lower(): v for k, v in request.headers.items()}
-
-        try:
-            return OnieHeaders(**onie_headers)
-        except ValidationError:
-            return None
 
 
 class NOSInstallerHandler(Handler):
@@ -88,7 +90,7 @@ class NOSInstallerHandler(Handler):
     )
     async def get_nos_installer(
         self,
-        request: Request,
+        headers: OnieHeaders = Depends(get_onie_headers),  # noqa: B008
         services_collection: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ):
         """Serve NOS installer binary.
@@ -99,33 +101,16 @@ class NOSInstallerHandler(Handler):
         - If assigned, streams the installer binary to the switch
 
         """
-        onie_headers = OnieHeaders.from_request(request)
-
-        mac_address = onie_headers.eth_address if onie_headers else None
-        if not mac_address:
-            logger.debug(
-                "nos_installer_request_missing_mac",
-                headers=dict(request.headers),
+        installer_file = (
+            await services_collection.switches.get_installer_file_for_switch(
+                mac_address=headers.onie_eth_addr
             )
-            raise BadRequestException(
-                details=[
-                    BaseExceptionDetail(
-                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                        message="MAC address not found in headers",
-                    )
-                ]
-            )
-
-        mac_address = normalise_macaddress(mac_address)
-
-        installer_file = await services_collection.switches.get_installer_file_for_switch(
-            mac_address=mac_address
         )
 
         if not installer_file:
             logger.debug(
                 "nos_installer_not_assigned",
-                mac_address=mac_address,
+                mac_address=headers.onie_eth_addr,
             )
             raise NotFoundException()
 
@@ -133,7 +118,7 @@ class NOSInstallerHandler(Handler):
 
         logger.info(
             "nos_installer_serving",
-            mac_address=mac_address,
+            mac_address=headers.onie_eth_addr,
             filename=filename,
             size=file_size,
         )
