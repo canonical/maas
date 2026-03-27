@@ -1,8 +1,9 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Iterator, Optional
+from typing import AsyncIterator, Optional
 
+import aiofiles
 from fastapi import Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
@@ -137,9 +138,9 @@ class NOSInstallerHandler(Handler):
             size=file_size,
         )
 
-        def file_stream() -> Iterator[bytes]:
-            with open(file_path, "rb") as f:
-                while chunk := f.read(CHUNK_SIZE):
+        async def file_stream() -> AsyncIterator[bytes]:
+            async with aiofiles.open(file_path, "rb") as f:
+                while chunk := await f.read(CHUNK_SIZE):
                     yield chunk
 
         return StreamingResponse(

@@ -3,7 +3,7 @@
 
 from pathlib import Path
 from typing import List
-from unittest.mock import AsyncMock, Mock, mock_open, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from httpx import AsyncClient
 import pytest
@@ -105,12 +105,8 @@ class TestNOSInstallerApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 404
 
-    @patch(
-        "builtins.open", new_callable=mock_open, read_data=TEST_FILE_CONTENT
-    )
     async def test_get_nos_installer_success(
         self,
-        mock_file_open,
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
@@ -121,10 +117,21 @@ class TestNOSInstallerApi(ApiCommonTests):
             return_value=(file_path, TEST_FILENAME, len(TEST_FILE_CONTENT))
         )
 
-        response = await mocked_api_client.get(
-            self.BASE_PATH,
-            headers=TEST_HEADERS,
-        )
+        # Create async mock for file operations
+        mock_file = Mock()
+        mock_file.read = AsyncMock(side_effect=[TEST_FILE_CONTENT, b""])
+
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_file
+        mock_context_manager.__aexit__.return_value = None
+
+        mock_aiofiles_open = Mock(return_value=mock_context_manager)
+
+        with patch("aiofiles.open", mock_aiofiles_open):
+            response = await mocked_api_client.get(
+                self.BASE_PATH,
+                headers=TEST_HEADERS,
+            )
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/octet-stream"
@@ -137,7 +144,7 @@ class TestNOSInstallerApi(ApiCommonTests):
         )
         assert response.content == TEST_FILE_CONTENT
 
-        mock_file_open.assert_called_once_with(file_path, "rb")
+        mock_aiofiles_open.assert_called_once_with(file_path, "rb")
 
     async def test_onie_headers_validation(self) -> None:
         from fastapi import Request
