@@ -191,28 +191,15 @@ class StaticIPAddressService(
             interface_id
         )
 
-    async def unlink_interface_from_ip(
-        self, interface_id: int, staticipaddress_id: int
+    async def delete_ip_if_no_linked_interfaces(
+        self, staticipaddress_id: int
     ) -> None:
-        """Remove the link between an interface and an IP address.
-
-        Args:
-            interface_id: The ID of the interface to unlink
-            staticipaddress_id: The ID of the IP address to unlink from
-        """
-        await self.repository.unlink_interface_from_ip(
-            interface_id=interface_id, staticipaddress_id=staticipaddress_id
-        )
-
-    async def get_interface_count_for_ip(self, staticipaddress_id: int) -> int:
-        """Get the count of interfaces associated with an IP address.
+        """Delete static IP when no interfaces are associated with it.
 
         Args:
             staticipaddress_id: The ID of the IP address
 
-        Returns:
-            The number of interfaces still linked to this IP
         """
-        return await self.repository.get_interface_count_for_ip(
+        await self.repository.delete_ip_if_no_linked_interfaces(
             staticipaddress_id
         )

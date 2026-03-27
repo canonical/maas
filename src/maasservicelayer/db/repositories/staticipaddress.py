@@ -263,44 +263,28 @@ class StaticIPAddressRepository(BaseRepository):
         results = (await self.execute_stmt(stmt)).all()
         return [StaticIPAddress(**row._asdict()) for row in results]
 
-    async def unlink_interface_from_ip(
-        self, interface_id: int, staticipaddress_id: int
+    async def delete_ip_if_no_linked_interfaces(
+        self, staticipaddress_id: int
     ) -> None:
-        """Remove the link between an interface and an IP address.
-
-        Args:
-            interface_id: The ID of the interface to unlink
-            staticipaddress_id: The ID of the IP address to unlink from
-        """
-        stmt = delete(InterfaceIPAddressTable).where(
-            and_(
-                eq(InterfaceIPAddressTable.c.interface_id, interface_id),
-                eq(
-                    InterfaceIPAddressTable.c.staticipaddress_id,
-                    staticipaddress_id,
-                ),
-            )
-        )
-        await self.execute_stmt(stmt)
-
-    async def get_interface_count_for_ip(self, staticipaddress_id: int) -> int:
-        """Get the count of interfaces associated with an IP address.
+        """Delete static IP when no interfaces are associated with it.
 
         Args:
             staticipaddress_id: The ID of the IP address
-
-        Returns:
-            The number of interfaces still linked to this IP
         """
-        stmt = (
-            select(func.count())
-            .select_from(InterfaceIPAddressTable)
+        has_interface = (
+            select(InterfaceIPAddressTable.c.interface_id)
             .where(
                 eq(
                     InterfaceIPAddressTable.c.staticipaddress_id,
                     staticipaddress_id,
                 )
             )
+            .exists()
         )
-        result = await self.execute_stmt(stmt)
-        return result.scalar_one()
+        stmt = delete(StaticIPAddressTable).where(
+            and_(
+                eq(StaticIPAddressTable.c.id, staticipaddress_id),
+                ~has_interface,
+            )
+        )
+        await self.execute_stmt(stmt)
