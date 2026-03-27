@@ -31,6 +31,7 @@ from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
 from tests.fixtures.factories.dnsdata import create_test_dnsdata_entry
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
+from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
 )
@@ -689,8 +690,8 @@ class TestStaticIPAddressServiceIntegration:
             10
         )
 
-    async def test_unlink_interface_from_ip(self) -> None:
-        """Test unlinking an interface from an IP address."""
+    async def test_delete_ip_if_no_linked_interfaces(self) -> None:
+        """Test cleanup check delegation for an IP address."""
         repository_mock = Mock(StaticIPAddressRepository)
 
         service = StaticIPAddressService(
@@ -700,34 +701,10 @@ class TestStaticIPAddressServiceIntegration:
             staticipaddress_repository=repository_mock,
         )
 
-        await service.unlink_interface_from_ip(
-            interface_id=10,
-            staticipaddress_id=100,
+        await service.delete_ip_if_no_linked_interfaces(staticipaddress_id=100)
+        repository_mock.delete_ip_if_no_linked_interfaces.assert_called_once_with(
+            100
         )
-
-        repository_mock.unlink_interface_from_ip.assert_called_once_with(
-            interface_id=10,
-            staticipaddress_id=100,
-        )
-
-    async def test_get_interface_count_for_ip(self) -> None:
-        """Test getting interface count for an IP address."""
-        repository_mock = Mock(StaticIPAddressRepository)
-        repository_mock.get_interface_count_for_ip.return_value = 2
-
-        service = StaticIPAddressService(
-            context=Context(),
-            temporal_service=Mock(TemporalService),
-            dnsresources_service=Mock(DNSResourcesService),
-            staticipaddress_repository=repository_mock,
-        )
-
-        result = await service.get_interface_count_for_ip(
-            staticipaddress_id=100
-        )
-
-        assert result == 2
-        repository_mock.get_interface_count_for_ip.assert_called_once_with(100)
 
     async def test_get_ip_addresses_for_interface_integration(
         self, services, fixture
@@ -747,9 +724,11 @@ class TestStaticIPAddressServiceIntegration:
             )
         )[0]
 
+        iface = await create_test_interface_entry(fixture, ips=[sip1, sip2])
+
         # Get IPs for the interface
         result = await services.staticipaddress.get_ip_addresses_for_interface(
-            interface_id=sip1["interface_id"]
+            interface_id=iface.id
         )
 
         # Should have at least the IPs we created
@@ -758,45 +737,12 @@ class TestStaticIPAddressServiceIntegration:
         assert sip1["id"] in result_ids
         assert sip2["id"] in result_ids
 
-    async def test_unlink_interface_from_ip_integration(
+    async def test_delete_ip_if_no_linked_interfaces_linked_integration(
         self, services, fixture
     ) -> None:
-        """Test unlinking interface from IP - integration test."""
-        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
-
-        sip = (
-            await create_test_staticipaddress_entry(
-                fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
-            )
-        )[0]
-        interface_id = sip["interface_id"]
-
-        # Verify link exists
-        ips_before = (
-            await services.staticipaddress.get_ip_addresses_for_interface(
-                interface_id=interface_id
-            )
-        )
-        assert any(ip.id == sip["id"] for ip in ips_before)
-
-        # Unlink the interface from the IP
-        await services.staticipaddress.unlink_interface_from_ip(
-            interface_id=interface_id,
-            staticipaddress_id=sip["id"],
-        )
-
-        # Verify link is removed
-        ips_after = (
-            await services.staticipaddress.get_ip_addresses_for_interface(
-                interface_id=interface_id
-            )
-        )
-        assert not any(ip.id == sip["id"] for ip in ips_after)
-
-    async def test_get_interface_count_for_ip_integration(
-        self, services, fixture
-    ) -> None:
-        """Test getting interface count for IP - integration test."""
+        """Test that IPs are not deleted if they are still linked to an
+        interface.
+        """
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
 
         sip = (
@@ -805,24 +751,29 @@ class TestStaticIPAddressServiceIntegration:
             )
         )[0]
 
-        # Check interface count (should be at least 1)
-        count_before = (
-            await services.staticipaddress.get_interface_count_for_ip(
-                staticipaddress_id=sip["id"]
-            )
-        )
-        assert count_before >= 1
+        await create_test_interface_entry(fixture, ips=[sip])
 
-        # Unlink from the interface
-        await services.staticipaddress.unlink_interface_from_ip(
-            interface_id=sip["interface_id"],
-            staticipaddress_id=sip["id"],
+        # Still linked to interface: static IP should remain.
+        await services.staticipaddress.delete_ip_if_no_linked_interfaces(
+            staticipaddress_id=sip["id"]
         )
+        static_ip = await services.staticipaddress.get_by_id(sip["id"])
+        assert static_ip is not None
 
-        # Count should go down
-        count_after = (
-            await services.staticipaddress.get_interface_count_for_ip(
-                staticipaddress_id=sip["id"]
+    async def test_delete_ip_if_no_linked_interfaces_unlinked_integration(
+        self, services, fixture
+    ) -> None:
+        """Test zero-interface cleanup for static IP - integration test."""
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+
+        sip = (
+            await create_test_staticipaddress_entry(
+                fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
             )
+        )[0]
+
+        await services.staticipaddress.delete_ip_if_no_linked_interfaces(
+            staticipaddress_id=sip["id"]
         )
-        assert count_after == count_before - 1
+        static_ip = await services.staticipaddress.get_by_id(sip["id"])
+        assert static_ip is None

@@ -16,6 +16,7 @@ from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
     StaticIPAddressRepository,
 )
+from maasservicelayer.db.tables import StaticIPAddressTable
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from tests.fixtures.factories.interface import create_test_interface_entry
@@ -429,56 +430,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
 
         assert result == []
 
-    async def test_unlink_interface_from_ip(
-        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
-    ):
-        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
-        ip = (
-            await create_test_staticipaddress_entry(
-                fixture,
-                subnet=subnet,
-                alloc_type=IpAddressType.DISCOVERED,
-            )
-        )[0]
-        interface1 = await create_test_interface_entry(fixture, ips=[ip])
-        interface2 = await create_test_interface_entry(fixture, ips=[ip])
-
-        links = await fixture.get("maasserver_interface_ip_addresses")
-        assert len(links) == 2
-
-        await repository_instance.unlink_interface_from_ip(
-            interface1.id, ip["id"]
-        )
-
-        links = await fixture.get("maasserver_interface_ip_addresses")
-        assert len(links) == 1
-        assert links[0]["interface_id"] == interface2.id
-
-    async def test_unlink_interface_from_ip_noop_when_not_linked(
-        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
-    ):
-        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
-        ip = (
-            await create_test_staticipaddress_entry(
-                fixture,
-                subnet=subnet,
-                alloc_type=IpAddressType.DISCOVERED,
-            )
-        )[0]
-        interface = await create_test_interface_entry(fixture, ips=[ip])
-        unrelated_interface = await create_test_interface_entry(
-            fixture, ips=[]
-        )
-
-        await repository_instance.unlink_interface_from_ip(
-            unrelated_interface.id, ip["id"]
-        )
-
-        links = await fixture.get("maasserver_interface_ip_addresses")
-        assert len(links) == 1
-        assert links[0]["interface_id"] == interface.id
-
-    async def test_get_interface_count_for_ip(
+    async def test_delete_ip_if_no_linked_interfaces(
         self, repository_instance: StaticIPAddressRepository, fixture: Fixture
     ):
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
@@ -492,11 +444,16 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         await create_test_interface_entry(fixture, ips=[ip])
         await create_test_interface_entry(fixture, ips=[ip])
 
-        count = await repository_instance.get_interface_count_for_ip(ip["id"])
+        await repository_instance.delete_ip_if_no_linked_interfaces(ip["id"])
 
-        assert count == 2
+        static_ip = await fixture.get_typed(
+            StaticIPAddressTable.name,
+            StaticIPAddress,
+            StaticIPAddressTable.c.id == ip["id"],
+        )
+        assert static_ip[0].id == ip["id"]
 
-    async def test_get_interface_count_for_ip_zero(
+    async def test_delete_ip_if_no_linked_interfaces_zero(
         self, repository_instance: StaticIPAddressRepository, fixture: Fixture
     ):
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
@@ -508,6 +465,11 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             )
         )[0]
 
-        count = await repository_instance.get_interface_count_for_ip(ip["id"])
+        await repository_instance.delete_ip_if_no_linked_interfaces(ip["id"])
 
-        assert count == 0
+        static_ip = await fixture.get_typed(
+            StaticIPAddressTable.name,
+            StaticIPAddress,
+            StaticIPAddressTable.c.id == ip["id"],
+        )
+        assert static_ip == []
