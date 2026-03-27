@@ -31,6 +31,7 @@ from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
 from tests.fixtures.factories.dnsdata import create_test_dnsdata_entry
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
+from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
 )
@@ -647,3 +648,132 @@ class TestStaticIPAddressServiceIntegration:
         )
         assert len(ips_after) == 1
         assert ips_after[0].id == sip2["id"]
+
+    async def test_get_ip_addresses_for_interface(self) -> None:
+        """Test getting IP addresses for an interface."""
+        repository_mock = Mock(StaticIPAddressRepository)
+
+        now = utcnow()
+        test_ips = [
+            StaticIPAddress(
+                id=1,
+                ip=IPv4Address("10.0.0.1"),
+                alloc_type=IpAddressType.AUTO,
+                lease_time=30,
+                subnet_id=1,
+                created=now,
+                updated=now,
+            ),
+            StaticIPAddress(
+                id=2,
+                ip=IPv4Address("10.0.0.2"),
+                alloc_type=IpAddressType.AUTO,
+                lease_time=30,
+                subnet_id=1,
+                created=now,
+                updated=now,
+            ),
+        ]
+        repository_mock.get_ip_addresses_for_interface.return_value = test_ips
+
+        service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=Mock(TemporalService),
+            dnsresources_service=Mock(DNSResourcesService),
+            staticipaddress_repository=repository_mock,
+        )
+
+        result = await service.get_ip_addresses_for_interface(interface_id=10)
+
+        assert result == test_ips
+        repository_mock.get_ip_addresses_for_interface.assert_called_once_with(
+            10
+        )
+
+    async def test_delete_ip_if_no_linked_interfaces(self) -> None:
+        """Test cleanup check delegation for an IP address."""
+        repository_mock = Mock(StaticIPAddressRepository)
+
+        service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=Mock(TemporalService),
+            dnsresources_service=Mock(DNSResourcesService),
+            staticipaddress_repository=repository_mock,
+        )
+
+        await service.delete_ip_if_no_linked_interfaces(staticipaddress_id=100)
+        repository_mock.delete_ip_if_no_linked_interfaces.assert_called_once_with(
+            100
+        )
+
+    async def test_get_ip_addresses_for_interface_integration(
+        self, services, fixture
+    ) -> None:
+        """Test getting IP addresses for an interface - integration test."""
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+
+        # Create an interface and associate IPs with it
+        sip1 = (
+            await create_test_staticipaddress_entry(
+                fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
+            )
+        )[0]
+        sip2 = (
+            await create_test_staticipaddress_entry(
+                fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
+            )
+        )[0]
+
+        iface = await create_test_interface_entry(fixture, ips=[sip1, sip2])
+
+        # Get IPs for the interface
+        result = await services.staticipaddress.get_ip_addresses_for_interface(
+            interface_id=iface.id
+        )
+
+        # Should have at least the IPs we created
+        assert len(result) >= 2
+        result_ids = {ip.id for ip in result}
+        assert sip1["id"] in result_ids
+        assert sip2["id"] in result_ids
+
+    async def test_delete_ip_if_no_linked_interfaces_linked_integration(
+        self, services, fixture
+    ) -> None:
+        """Test that IPs are not deleted if they are still linked to an
+        interface.
+        """
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+
+        sip = (
+            await create_test_staticipaddress_entry(
+                fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
+            )
+        )[0]
+
+        await create_test_interface_entry(fixture, ips=[sip])
+
+        # Still linked to interface: static IP should remain.
+        await services.staticipaddress.delete_ip_if_no_linked_interfaces(
+            staticipaddress_id=sip["id"]
+        )
+        static_ip = await services.staticipaddress.get_by_id(sip["id"])
+        assert static_ip is not None
+
+    async def test_delete_ip_if_no_linked_interfaces_unlinked_integration(
+        self, services, fixture
+    ) -> None:
+        """Test zero-interface cleanup for static IP - integration test."""
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+
+        sip = (
+            await create_test_staticipaddress_entry(
+                fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
+            )
+        )[0]
+
+        await services.staticipaddress.delete_ip_if_no_linked_interfaces(
+            staticipaddress_id=sip["id"]
+        )
+        static_ip = await services.staticipaddress.get_by_id(sip["id"])
+        assert static_ip is None

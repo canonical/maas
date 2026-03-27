@@ -236,3 +236,55 @@ class StaticIPAddressRepository(BaseRepository):
             )
         )
         await self.execute_stmt(stmt)
+
+    async def get_ip_addresses_for_interface(
+        self, interface_id: int
+    ) -> list[StaticIPAddress]:
+        """Get all IP addresses associated with a specific interface.
+
+        Args:
+            interface_id: The ID of the interface
+
+        Returns:
+            List of StaticIPAddress objects linked to this interface
+        """
+        stmt = (
+            select(StaticIPAddressTable)
+            .select_from(StaticIPAddressTable)
+            .join(
+                InterfaceIPAddressTable,
+                eq(
+                    StaticIPAddressTable.c.id,
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                ),
+            )
+            .where(eq(InterfaceIPAddressTable.c.interface_id, interface_id))
+        )
+        results = (await self.execute_stmt(stmt)).all()
+        return [StaticIPAddress(**row._asdict()) for row in results]
+
+    async def delete_ip_if_no_linked_interfaces(
+        self, staticipaddress_id: int
+    ) -> None:
+        """Delete static IP when no interfaces are associated with it.
+
+        Args:
+            staticipaddress_id: The ID of the IP address
+        """
+        has_interface = (
+            select(InterfaceIPAddressTable.c.interface_id)
+            .where(
+                eq(
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                    staticipaddress_id,
+                )
+            )
+            .exists()
+        )
+        stmt = delete(StaticIPAddressTable).where(
+            and_(
+                eq(StaticIPAddressTable.c.id, staticipaddress_id),
+                ~has_interface,
+            )
+        )
+        await self.execute_stmt(stmt)

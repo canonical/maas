@@ -226,3 +226,25 @@ class InterfacesService(
 
     async def get_for_ip(self, sip: StaticIPAddress) -> list[Interface] | None:
         return await self.repository.get_for_ip(ip_id=sip.id)
+
+    async def create_switch_interface(
+        self, switch_id: int, mac: str, name: str = "mgmt0"
+    ) -> int:
+        """Create a new switch interface and return its ID"""
+        return await self.interface_repository.create_switch_interface(
+            switch_id, mac, name=name
+        )
+
+    async def unlink_interface_from_ips(
+        self, interface_id: int, staticipaddress_ids: list[int]
+    ) -> None:
+        """Remove the link between an interface and an IP address.
+
+        Args:
+            interface_id: The ID of the interface to unlink
+            staticipaddress_ids: IDs of IP addresses to unlink from
+        """
+        await self.repository.unlink_interface_from_ips(
+            interface_id=interface_id,
+            staticipaddress_ids=staticipaddress_ids,
+        )

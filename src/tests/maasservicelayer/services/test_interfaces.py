@@ -408,3 +408,96 @@ class TestInterfacesService:
         builder = call_args[0][1]  # builder argument
         assert builder.switch_id == 42
         assert builder.type == InterfaceType.PHYSICAL
+
+    async def test_create_switch_interface(self):
+        temporal_service_mock = Mock(TemporalService)
+        node_service_mock = Mock(NodesService)
+        dnsresource_service_mock = Mock(DNSResourcesService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
+        domain_service_mock = Mock(DomainsService)
+
+        interface_repository_mock = Mock(InterfaceRepository)
+
+        interfaces_service = InterfacesService(
+            context=Context(),
+            temporal_service=temporal_service_mock,
+            dnsresource_service=dnsresource_service_mock,
+            dnspublication_service=dnspublications_service_mock,
+            domain_service=domain_service_mock,
+            node_service=node_service_mock,
+            interface_repository=interface_repository_mock,
+        )
+        test_id = 1
+        interface_repository_mock.create_switch_interface.return_value = (
+            test_id
+        )
+        test_switch_id = 2
+        test_mac = "aa:bb:cc:dd:ee:ff"
+        test_name = "mgmt1"
+        ret_id = await interfaces_service.create_switch_interface(
+            test_switch_id, test_mac, name=test_name
+        )
+        assert ret_id == 1
+        interface_repository_mock.create_switch_interface.assert_called_once_with(
+            test_switch_id, test_mac, name=test_name
+        )
+
+    async def test_unlink_interface_from_ips(self) -> None:
+        """Test unlinking an interface from an IP address."""
+        temporal_service_mock = Mock(TemporalService)
+        node_service_mock = Mock(NodesService)
+        dnsresource_service_mock = Mock(DNSResourcesService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
+        domain_service_mock = Mock(DomainsService)
+
+        interface_repository_mock = Mock(InterfaceRepository)
+
+        interfaces_service = InterfacesService(
+            context=Context(),
+            temporal_service=temporal_service_mock,
+            dnsresource_service=dnsresource_service_mock,
+            dnspublication_service=dnspublications_service_mock,
+            domain_service=domain_service_mock,
+            node_service=node_service_mock,
+            interface_repository=interface_repository_mock,
+        )
+
+        await interfaces_service.unlink_interface_from_ips(
+            interface_id=10,
+            staticipaddress_ids=[100],
+        )
+
+        interface_repository_mock.unlink_interface_from_ips.assert_called_once_with(
+            interface_id=10,
+            staticipaddress_ids=[100],
+        )
+
+    async def test_unlink_interface_from_ips_multiple_ids(self) -> None:
+        """Test unlinking an interface from multiple IP addresses."""
+        temporal_service_mock = Mock(TemporalService)
+        node_service_mock = Mock(NodesService)
+        dnsresource_service_mock = Mock(DNSResourcesService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
+        domain_service_mock = Mock(DomainsService)
+
+        interface_repository_mock = Mock(InterfaceRepository)
+
+        interfaces_service = InterfacesService(
+            context=Context(),
+            temporal_service=temporal_service_mock,
+            dnsresource_service=dnsresource_service_mock,
+            dnspublication_service=dnspublications_service_mock,
+            domain_service=domain_service_mock,
+            node_service=node_service_mock,
+            interface_repository=interface_repository_mock,
+        )
+
+        await interfaces_service.unlink_interface_from_ips(
+            interface_id=10,
+            staticipaddress_ids=[100, 101],
+        )
+
+        interface_repository_mock.unlink_interface_from_ips.assert_called_once_with(
+            interface_id=10,
+            staticipaddress_ids=[100, 101],
+        )
