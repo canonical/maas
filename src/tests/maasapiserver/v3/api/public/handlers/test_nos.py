@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock, mock_open, patch
 from httpx import AsyncClient
 import pytest
 
+from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
@@ -79,7 +80,10 @@ class TestNOSInstallerApi(ApiCommonTests):
             headers=TEST_HEADERS,
         )
         assert response.status_code == 404
-        assert response.text == ""
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
 
     async def test_get_nos_installer_no_installer_assigned(
         self,
@@ -96,7 +100,10 @@ class TestNOSInstallerApi(ApiCommonTests):
             headers=TEST_HEADERS,
         )
         assert response.status_code == 404
-        assert response.text == ""
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
 
     @patch(
         "builtins.open", new_callable=mock_open, read_data=TEST_FILE_CONTENT

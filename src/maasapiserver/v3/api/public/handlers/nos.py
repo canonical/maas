@@ -4,14 +4,25 @@
 from typing import Iterator, Optional
 
 from fastapi import Depends, Request
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 import structlog
 
 from maasapiserver.common.api.base import Handler, handler
+from maasapiserver.common.api.models.responses.errors import (
+    BadRequestBodyResponse,
+    NotFoundBodyResponse,
+)
 from maasapiserver.v3.api import services
 from maascommon.fields import normalise_macaddress
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.image_local_files import CHUNK_SIZE
 
@@ -68,8 +79,8 @@ class NOSInstallerHandler(Handler):
                 },
                 "description": "NOS installer binary",
             },
-            404: {"description": "No installer assigned or switch not found"},
-            400: {"description": "Bad request - MAC address not found"},
+            404: {"model": NotFoundBodyResponse},
+            400: {"model": BadRequestBodyResponse},
         },
         response_model_exclude_none=True,
         dependencies=[],
@@ -95,36 +106,27 @@ class NOSInstallerHandler(Handler):
                 "nos_installer_request_missing_mac",
                 headers=dict(request.headers),
             )
-            return PlainTextResponse(
-                content="MAC address not found in headers",
-                status_code=400,
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message="MAC address not found in headers",
+                    )
+                ]
             )
 
         mac_address = normalise_macaddress(mac_address)
 
-        try:
-            installer_file = await services_collection.switches.get_installer_file_for_switch(
-                mac_address=mac_address
-            )
-        except NotFoundException:
-            logger.debug(
-                "nos_installer_switch_not_found",
-                mac_address=mac_address,
-            )
-            return PlainTextResponse(
-                content="",
-                status_code=404,
-            )
+        installer_file = await services_collection.switches.get_installer_file_for_switch(
+            mac_address=mac_address
+        )
 
         if not installer_file:
             logger.debug(
                 "nos_installer_not_assigned",
                 mac_address=mac_address,
             )
-            return PlainTextResponse(
-                content="",
-                status_code=404,
-            )
+            raise NotFoundException()
 
         file_path, filename, file_size = installer_file
 
