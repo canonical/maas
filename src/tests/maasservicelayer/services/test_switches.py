@@ -68,21 +68,6 @@ class TestCommonSwitchesService(ServiceCommonTests):
 class TestSwitchesService:
     """Specific tests for SwitchesService business logic."""
 
-    async def test_service_initialization(self) -> None:
-        switches_repository = Mock(SwitchesRepository)
-        staticipaddress_service = Mock(StaticIPAddressService)
-        interfaces_service = Mock(InterfacesService)
-        service = SwitchesService(
-            context=Context(),
-            switches_repository=switches_repository,
-            staticipaddress_service=staticipaddress_service,
-            interfaces_service=interfaces_service,
-            boot_resources_service=Mock(BootResourceService),
-            boot_resource_sets_service=Mock(BootResourceSetsService),
-            boot_resource_files_service=Mock(BootResourceFilesService),
-        )
-        assert service.repository == switches_repository
-
     async def test_get_switch_by_mac_address(self) -> None:
         """Test getting a switch by its management interface MAC address."""
         switches_repository = Mock(SwitchesRepository)

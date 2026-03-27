@@ -438,7 +438,7 @@ class TestInterfacesService:
             test_switch_id, test_mac, name=test_name
         )
         assert ret_id == 1
-        interface_repository_mock.create_switch_interface.asssert_called_once_with(
+        interface_repository_mock.create_switch_interface.assert_called_once_with(
             test_switch_id, test_mac, name=test_name
         )
 
