@@ -1,8 +1,6 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
-
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -86,7 +84,6 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         Returns:
             The Switch if found, None otherwise
         """
-        # Find the interface with this MAC address
         interface = await self.interfaces_service.get_one(
             query=QuerySpec(
                 where=InterfaceClauseFactory.with_mac_address(mac_address)
@@ -96,7 +93,6 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         if not interface or not interface.switch_id:
             return None
 
-        # Get the switch
         return await self.get_by_id(id=interface.switch_id)
 
     async def check_installer_for_switch(self, mac_address: str) -> int | None:
@@ -116,13 +112,6 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         if not switch:
             raise NotFoundException()
 
-        # Update heartbeat timestamp
-        await self.update_by_id(
-            id=switch.id,
-            builder=SwitchBuilder(updated=datetime.now(timezone.utc)),
-        )
-
-        # Return the target image ID if assigned
         if switch.target_image_id:
             return switch.target_image_id
 
