@@ -755,7 +755,6 @@ class ServiceCollectionV3:
         services.switches = SwitchesService(
             context=context,
             switches_repository=SwitchesRepository(context),
-            staticipaddress_repository=StaticIPAddressRepository(context),
             staticipaddress_service=services.staticipaddress,
             interfaces_service=services.interfaces,
         )

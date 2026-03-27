@@ -175,3 +175,44 @@ class StaticIPAddressService(
         if builder.must_trigger_workflow():
             await self.post_update_many_hook(updated_resources)
         return updated_resources
+
+    async def get_ip_addresses_for_interface(
+        self, interface_id: int
+    ) -> list[StaticIPAddress]:
+        """Get all IP addresses associated with a specific interface.
+
+        Args:
+            interface_id: The ID of the interface
+
+        Returns:
+            List of StaticIPAddress objects linked to this interface
+        """
+        return await self.repository.get_ip_addresses_for_interface(
+            interface_id
+        )
+
+    async def unlink_interface_from_ip(
+        self, interface_id: int, staticipaddress_id: int
+    ) -> None:
+        """Remove the link between an interface and an IP address.
+
+        Args:
+            interface_id: The ID of the interface to unlink
+            staticipaddress_id: The ID of the IP address to unlink from
+        """
+        await self.repository.unlink_interface_from_ip(
+            interface_id=interface_id, staticipaddress_id=staticipaddress_id
+        )
+
+    async def get_interface_count_for_ip(self, staticipaddress_id: int) -> int:
+        """Get the count of interfaces associated with an IP address.
+
+        Args:
+            staticipaddress_id: The ID of the IP address
+
+        Returns:
+            The number of interfaces still linked to this IP
+        """
+        return await self.repository.get_interface_count_for_ip(
+            staticipaddress_id
+        )

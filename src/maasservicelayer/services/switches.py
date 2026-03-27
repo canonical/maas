@@ -7,9 +7,6 @@ from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressRepository,
-)
 from maasservicelayer.db.repositories.switches import SwitchesRepository
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.switches import Switch
@@ -29,12 +26,10 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         self,
         context: Context,
         switches_repository: SwitchesRepository,
-        staticipaddress_repository: StaticIPAddressRepository,
         staticipaddress_service: StaticIPAddressService,
         interfaces_service: InterfacesService,
     ):
         super().__init__(context, switches_repository)
-        self.staticipaddress_repository = staticipaddress_repository
         self.staticipaddress_service = staticipaddress_service
         self.interfaces_service = interfaces_service
 
@@ -158,15 +153,15 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
 
         interface_ids = [iface.id for iface in interfaces]
         for interface_id in interface_ids:
-            ip_addresses = await self.staticipaddress_repository.get_ip_addresses_for_interface(
+            ip_addresses = await self.staticipaddress_service.get_ip_addresses_for_interface(
                 interface_id
             )
             for ip in ip_addresses:
-                await self.staticipaddress_repository.unlink_interface_from_ip(
+                await self.staticipaddress_service.unlink_interface_from_ip(
                     interface_id=interface_id,
                     staticipaddress_id=ip.id,
                 )
-                remaining_count = await self.staticipaddress_repository.get_interface_count_for_ip(
+                remaining_count = await self.staticipaddress_service.get_interface_count_for_ip(
                     ip.id
                 )
                 if remaining_count == 0:
