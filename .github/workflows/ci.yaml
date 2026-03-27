@@ -1,6 +1,9 @@
-name: run CI
+name: CI check
+
 on:
   pull_request:
+  merge_group:
+    types: [checks_requested]
 
 env:
   REGISTRY: ghcr.io
