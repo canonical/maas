@@ -1,0 +1,313 @@
+mermaid-diagram-flowchart-start
+``````{tab-set}
+
+`````{tab-item} Diagram
+```{image} https://assets.ubuntu.com/v1/34c7105c-screenshot_from_2025_10_13_15_05_56.png
+```
+`````
+
+`````{tab-item} MyST
+
+````{code-block} md
+```{mermaid}
+flowchart LR
+    A([New PR])
+    B[Needs review]
+    C{Review approved?}
+    D{Merge conflicts?}
+    E[Needs work]
+    F[Needs CI]
+    G{Passed testing?}
+    H[Ready for merge]
+    I[(PR merged)]
+    J{Comments addressed?}
+    K[(PR closed)]
+
+    A --> B
+    B --> C
+    C -- no --> E
+    C -- yes --> D
+    D -- yes --> E
+    D -- no --> F
+    F --> G
+    G -- yes --> H
+    G -- no --> E
+    H --> I
+    E --> J
+    J -- yes --> B
+    J -- no --> K
+```
+````
+
+`````
+
+`````{tab-item} rST
+
+````{code-block} rst
+.. mermaid::
+
+   flowchart LR
+       A([New PR])
+       B[Needs review]
+       C{Review approved?}
+       D{Merge conflicts?}
+       E[Needs work]
+       F[Needs CI]
+       G{Passed testing?}
+       H[Ready for merge]
+       I[(PR merged)]
+       J{Comments addressed?}
+       K[(PR closed)]
+   
+       A --> B
+       B --> C
+       C -- no --> E
+       C -- yes --> D
+       D -- yes --> E
+       D -- no --> F
+       F --> G
+       G -- yes --> H
+       G -- no --> E
+       H --> I
+       E --> J
+       J -- yes --> B
+       J -- no --> K
+````
+
+`````
+``````
+mermaid-diagram-flowchart-end
+
+mermaid-diagram-sequence-start
+``````{tab-set}
+
+`````{tab-item} Diagram
+
+```{image} https://assets.ubuntu.com/v1/a7eb0fcf-screenshot_from_2025_10_13_15_08_06.png
+```
+
+`````
+
+`````{tab-item} Custom CSS
+
+First, create a Mermaid stylesheet in the {file}`_static` directory and
+customize it as needed. For example, {file}`mermaid-sequence.css`.
+
+Then, enable custom stylesheets in {file}`conf.py`.
+Uncomment this line so Sphinx can use local stylesheets:
+
+```{code-block} py
+:caption: conf\.py
+
+html_static_path = ["_static"]
+```
+
+Link to your custom Mermaid stylesheet:
+
+```{code-block} py
+:caption: conf\.py
+
+html_css_files = [
+    "mermaid-sequence.css",
+]
+```
+
+Here's an example stylesheet that changes the default typefaces and colors of Mermaid components.
+It also sets a solid background color for all Mermaid diagrams.
+
+```{code-block} css
+:caption: mermaid-sequence.css
+
+.actor {
+  stroke: #eb6536 !important;
+  stroke-width: 2;
+  fill: #f5b29b !important;
+}
+
+text.actor {
+  fill: black;
+  stroke: none;
+  font-family: Helvetica;
+}
+
+.actor-line {
+  stroke: #77216f;
+}
+
+.mermaid {
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 0.5em;
+}
+```
+`````
+
+`````{tab-item} MyST
+
+````{code-block} md
+```{mermaid}
+sequenceDiagram
+    participant User
+    participant Snap as snapd (Client)
+    participant Store as Snap Store
+    participant System
+
+    User->>Snap: snap install hello
+    Snap->>Store: Request snap info and download
+    Store-->>Snap: Return snap package
+    Snap->>System: Install and mount snap
+    System-->>Snap: Installation result
+    Snap-->>User: Confirm snap is installed
+```
+````
+
+`````
+
+`````{tab-item} rST
+
+````{code-block} rst
+.. mermaid::
+
+   sequenceDiagram
+       participant User
+       participant Snap as snapd (Client)
+       participant Store as Snap Store
+       participant System
+   
+       User->>Snap: snap install hello
+       Snap->>Store: Request snap info and download
+       Store-->>Snap: Return snap package
+       Snap->>System: Install and mount snap
+       System-->>Snap: Installation result
+       Snap-->>User: Confirm snap is installed
+````
+
+`````
+``````
+mermaid-diagram-sequence-end
+
+mermaid-diagram-timeline-start
+``````{tab-set}
+
+`````{tab-item} Diagram
+
+```{image} https://assets.ubuntu.com/v1/24895eed-screenshot_from_2025_10_13_15_06_35.png
+```
+
+`````
+
+`````{tab-item} MyST
+
+````{code-block} md
+:emphasize-lines: 2
+```{mermaid}
+%%{init: {"theme":"forest"}}%%
+timeline
+    title Ubuntu recent releases
+
+    2020 : 20.04 LTS (Focal Fossa) : 20.10 (Groovy Gorilla)
+    2021 : 21.04 (Hirsute Hippo) : 21.10 (Impish Indri)   
+    2022 : 22.04 LTS (Jammy Jellyfish) : 22.10 (Kinetic Kudu)
+    2023 : 23.04 (Lunar Lobster) : 23.10 (Mantic Minotaur)
+    2024 : 24.04 LTS (Noble Numbat) : 24.10 (Oracular Oriole)
+    2025 : 25.04 (Plucky Puffin)
+```
+````
+
+`````
+
+`````{tab-item} rST
+
+````{code-block} rst
+:emphasize-lines: 3
+
+.. mermaid::
+
+   %%{init: {"theme":"forest"}}%%
+   timeline
+       title Ubuntu recent releases
+
+       2020 : 20.04 LTS (Focal Fossa) : 20.10 (Groovy Gorilla)
+       2021 : 21.04 (Hirsute Hippo) : 21.10 (Impish Indri)   
+       2022 : 22.04 LTS (Jammy Jellyfish) : 22.10 (Kinetic Kudu)
+       2023 : 23.04 (Lunar Lobster) : 23.10 (Mantic Minotaur)
+       2024 : 24.04 LTS (Noble Numbat) : 24.10 (Oracular Oriole)
+       2025 : 25.04 (Plucky Puffin)
+````
+
+`````
+``````
+mermaid-diagram-timeline-end
+
+mermaid-diagram-state-start
+``````{tab-set}
+
+`````{tab-item} Diagram
+
+```{image} https://assets.ubuntu.com/v1/dd4fb237-screenshot_from_2025_10_13_15_08_51.png
+```
+
+`````
+
+`````{tab-item} MyST
+
+````{code-block} md
+:emphasize-lines: 3-6, 17-20
+
+```{mermaid}
+stateDiagram-v2
+    classDef review fill:#FCE83A
+    classDef approved  fill:#2DCCFF
+    classDef published fill:#56F000
+    classDef archived fill:#7B8089
+
+    [*] --> Draft
+    Draft --> Review : submit for review
+    Review --> Draft : changes requested
+    Review --> Approved : review passed
+    Approved --> Build : trigger build
+    Build --> Published : build success
+    Build --> Draft : build failed
+    Published --> Archived : old version
+
+    class Review review
+    class Approved approved
+    class Published published
+    class Archived archived
+```
+````
+
+`````
+
+`````{tab-item} rST
+
+````{code-block} rst
+:emphasize-lines: 4-7, 18-21
+
+.. mermaid::
+
+    stateDiagram-v2
+        classDef review fill:#FCE83A
+        classDef approved  fill:#2DCCFF
+        classDef published fill:#56F000
+        classDef archived fill:#7B8089
+    
+        [*] --> Draft
+        Draft --> Review : submit for review
+        Review --> Draft : changes requested
+        Review --> Approved : review passed
+        Approved --> Build : trigger build
+        Build --> Published : build success
+        Build --> Draft : build failed
+        Published --> Archived : old version
+    
+        class Review review
+        class Approved approved
+        class Published published
+        class Archived archived
+````
+
+`````
+``````
+mermaid-diagram-state-end
