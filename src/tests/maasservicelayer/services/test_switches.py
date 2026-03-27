@@ -302,16 +302,16 @@ class TestSwitchesService:
 
         if expected_exception:
             with pytest.raises(expected_exception):
-                await service.get_installer_file_for_switch("00:11:22:33:44:55")
+                await service.get_installer_file_for_switch(
+                    "00:11:22:33:44:55"
+                )
         else:
             result = await service.get_installer_file_for_switch(
                 "00:11:22:33:44:55"
             )
             assert result is None
 
-    @patch(
-        "maasservicelayer.services.switches.get_bootresource_store_path"
-    )
+    @patch("maasservicelayer.services.switches.get_bootresource_store_path")
     async def test_get_installer_file_for_switch_success(
         self, mock_get_store_path
     ) -> None:
@@ -369,9 +369,11 @@ class TestSwitchesService:
 
         interfaces_repository.get_one.return_value = test_interface
         switches_repository.get_by_id.return_value = test_switch
-        boot_resources_service.get_by_id = AsyncMock(return_value=boot_resource)
-        boot_resource_sets_service.get_latest_complete_set_for_boot_resource = (
-            AsyncMock(return_value=resource_set)
+        boot_resources_service.get_by_id = AsyncMock(
+            return_value=boot_resource
+        )
+        boot_resource_sets_service.get_latest_complete_set_for_boot_resource = AsyncMock(
+            return_value=resource_set
         )
         boot_resource_files_service.get_files_in_resource_set = AsyncMock(
             return_value=[boot_file]
@@ -408,9 +410,7 @@ class TestSwitchesService:
             10
         )
 
-    @patch(
-        "maasservicelayer.services.switches.get_bootresource_store_path"
-    )
+    @patch("maasservicelayer.services.switches.get_bootresource_store_path")
     async def test_get_installer_file_for_switch_file_not_on_disk(
         self, mock_get_store_path
     ) -> None:
@@ -468,9 +468,11 @@ class TestSwitchesService:
 
         interfaces_repository.get_one.return_value = test_interface
         switches_repository.get_by_id.return_value = test_switch
-        boot_resources_service.get_by_id = AsyncMock(return_value=boot_resource)
-        boot_resource_sets_service.get_latest_complete_set_for_boot_resource = (
-            AsyncMock(return_value=resource_set)
+        boot_resources_service.get_by_id = AsyncMock(
+            return_value=boot_resource
+        )
+        boot_resource_sets_service.get_latest_complete_set_for_boot_resource = AsyncMock(
+            return_value=resource_set
         )
         boot_resource_files_service.get_files_in_resource_set = AsyncMock(
             return_value=[boot_file]
@@ -490,8 +492,9 @@ class TestSwitchesService:
 
         with patch.object(Path, "exists", return_value=False):
             with pytest.raises(NotFoundException):
-                await service.get_installer_file_for_switch("00:11:22:33:44:55")
-
+                await service.get_installer_file_for_switch(
+                    "00:11:22:33:44:55"
+                )
 
     async def test_create_switch_and_link_interface(self) -> None:
         interfaces_repository = Mock(InterfaceRepository)
