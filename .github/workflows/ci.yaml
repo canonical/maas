@@ -7,17 +7,13 @@ on:
   merge_group:
     types: [checks_requested]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
-
 jobs:
   lint-and-test:
     runs-on: ubuntu-24.04
     if: ${{ !github.event.pull_request.draft }}
 
     container:
-      image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
       volumes:
         - $HOME/go/pkg/mod:/home/ubuntu/go/pkg/mod
         - $HOME/.cache/go-build:/home/ubuntu/.cache/go-build
