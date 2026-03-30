@@ -9,7 +9,7 @@ Before installing anything, make sure MAAS is the right fit. Confirm that your i
 <!-- * *Confirm intended use matches reference architecture* -->
 
 * [Examine and confirm requirements](/reference/configuration-guides/installation-requirements.md)
-* [Choose the installation type](/docs/how-to-guides/get-maas-up-and-running.md#install-maas)
+* [Choose the installation type](/how-to-guides/get-maas-up-and-running.md#install-maas)
 
 ## Install and set up
 
@@ -40,7 +40,7 @@ Once your systems are running, it's time to manage them effectively. Learn how t
 
 * [Labeling machines](/how-to-guides/manage-machine-groups.md)
   * [Tags](/how-to-guides/manage-machine-groups.md#manage-tags-in-maas)
-  * [Resource pools](/docs/how-to-guides/manage-machine-groups.md#manage-resource-pools)
+  * [Resource pools](/how-to-guides/manage-machine-groups.md#manage-resource-pools)
   * [Availability zones](/how-to-guides/manage-machine-groups.md#manage-availability-zones)
   * [Notes](/how-to-guides/manage-machine-groups.md#manage-notes-in-maas)
   * [Annotations](/how-to-guides/manage-machine-groups.md#manage-dynamic-annotations-in-maas)
@@ -77,7 +77,7 @@ This section helps you observe and debug your MAAS deployment using tools like P
 * [Using Prometheus and Loki](/how-to-guides/monitor-maas.md)
 * [Debugging via logs](/how-to-guides/use-logging.md)
 * [Auditing with logs](/how-to-guides/use-logging.md#auditing-maas)
-* [Troubleshooting machine behaviors](/docs/how-to-guides/manage-machines.md#rescue-recovery)
+* [Troubleshooting machine behaviors](/how-to-guides/manage-machines.md#rescue-recovery)
 * [Troubleshooting network issues](/reference/configuration-guides/troubleshooting.md)
 
 <!-- * Troubleshooting performance -->

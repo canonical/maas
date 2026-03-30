@@ -11,13 +11,13 @@ These release notes for MAAS summarize new features, bug fixes and backwards-inc
 
 ### Older releases
 
- [MAAS 3.3 release notes](/docs/uncategorized/maas-3-3-release-notes.md)
- [MAAS 3.2 release notes](/docs/uncategorized/maas-3-2-release-notes.md)
- [MAAS 3.1 release notes](/docs/uncategorized/maas-3-1-release-notes.md)
- [MAAS 3.0 release notes](/docs/uncategorized/maas-3-0-release-notes.md)
- [MAAS 2.9 release notes](/docs/uncategorized/maas-2-9-release-notes.md)
- [MAAS 2.8 release notes](/docs/uncategorized/maas-2-8-release-notes.md)
- [MAAS 2.7 release notes](/docs/uncategorized/maas-2-7-release-notes.md)
+ [MAAS 3.3 release notes](/uncategorized/maas-3-3-release-notes.md)
+ [MAAS 3.2 release notes](/uncategorized/maas-3-2-release-notes.md)
+ [MAAS 3.1 release notes](/uncategorized/maas-3-1-release-notes.md)
+ [MAAS 3.0 release notes](/uncategorized/maas-3-0-release-notes.md)
+ [MAAS 2.9 release notes](/uncategorized/maas-2-9-release-notes.md)
+ [MAAS 2.8 release notes](/uncategorized/maas-2-8-release-notes.md)
+ [MAAS 2.7 release notes](/uncategorized/maas-2-7-release-notes.md)
 
 <!--
 ## Release policy and schedule

@@ -197,7 +197,7 @@ Include your root and intermediate CA certificates in the same PEM file, if requ
 
 ## Use TLS termination (3.2-)
 
-MAAS versions 3.2 and below don't support native TLS encryption. If you are not interested in [setting up an HAProxy](/docs/how-to-guides/manage-high-availability.md#highly-available-api-with-haproxy), you can still enable TLS.
+MAAS versions 3.2 and below don't support native TLS encryption. If you are not interested in [setting up an HAProxy](/how-to-guides/manage-high-availability.md#highly-available-api-with-haproxy), you can still enable TLS.
 
 ### Configure nginx
 
