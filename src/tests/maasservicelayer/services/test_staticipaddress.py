@@ -690,7 +690,7 @@ class TestStaticIPAddressServiceIntegration:
             10
         )
 
-    async def test_delete_ip_if_no_linked_interfaces(self) -> None:
+    async def test_delete_ips_if_no_linked_interfaces(self) -> None:
         """Test cleanup check delegation for an IP address."""
         repository_mock = Mock(StaticIPAddressRepository)
 
@@ -701,9 +701,9 @@ class TestStaticIPAddressServiceIntegration:
             staticipaddress_repository=repository_mock,
         )
 
-        await service.delete_ip_if_no_linked_interfaces(staticipaddress_id=100)
-        repository_mock.delete_ip_if_no_linked_interfaces.assert_called_once_with(
-            100
+        await service.delete_ips_if_no_linked_interfaces([100])
+        repository_mock.delete_ips_if_no_linked_interfaces.assert_called_once_with(
+            [100]
         )
 
     async def test_get_ip_addresses_for_interface_integration(
@@ -737,7 +737,7 @@ class TestStaticIPAddressServiceIntegration:
         assert sip1["id"] in result_ids
         assert sip2["id"] in result_ids
 
-    async def test_delete_ip_if_no_linked_interfaces_linked_integration(
+    async def test_delete_ips_if_no_linked_interfaces_linked_integration(
         self, services, fixture
     ) -> None:
         """Test that IPs are not deleted if they are still linked to an
@@ -754,13 +754,13 @@ class TestStaticIPAddressServiceIntegration:
         await create_test_interface_entry(fixture, ips=[sip])
 
         # Still linked to interface: static IP should remain.
-        await services.staticipaddress.delete_ip_if_no_linked_interfaces(
-            staticipaddress_id=sip["id"]
+        await services.staticipaddress.delete_ips_if_no_linked_interfaces(
+            [sip["id"]]
         )
         static_ip = await services.staticipaddress.get_by_id(sip["id"])
         assert static_ip is not None
 
-    async def test_delete_ip_if_no_linked_interfaces_unlinked_integration(
+    async def test_delete_ips_if_no_linked_interfaces_unlinked_integration(
         self, services, fixture
     ) -> None:
         """Test zero-interface cleanup for static IP - integration test."""
@@ -772,8 +772,8 @@ class TestStaticIPAddressServiceIntegration:
             )
         )[0]
 
-        await services.staticipaddress.delete_ip_if_no_linked_interfaces(
-            staticipaddress_id=sip["id"]
+        await services.staticipaddress.delete_ips_if_no_linked_interfaces(
+            [sip["id"]]
         )
         static_ip = await services.staticipaddress.get_by_id(sip["id"])
         assert static_ip is None

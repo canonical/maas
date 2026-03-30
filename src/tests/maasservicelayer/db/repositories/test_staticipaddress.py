@@ -430,7 +430,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
 
         assert result == []
 
-    async def test_delete_ip_if_no_linked_interfaces(
+    async def test_delete_ips_if_no_linked_interfaces(
         self, repository_instance: StaticIPAddressRepository, fixture: Fixture
     ):
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
@@ -444,7 +444,9 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         await create_test_interface_entry(fixture, ips=[ip])
         await create_test_interface_entry(fixture, ips=[ip])
 
-        await repository_instance.delete_ip_if_no_linked_interfaces(ip["id"])
+        await repository_instance.delete_ips_if_no_linked_interfaces(
+            [ip["id"]]
+        )
 
         static_ip = await fixture.get_typed(
             StaticIPAddressTable.name,
@@ -453,7 +455,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         )
         assert static_ip[0].id == ip["id"]
 
-    async def test_delete_ip_if_no_linked_interfaces_zero(
+    async def test_delete_ips_if_no_linked_interfaces_zero(
         self, repository_instance: StaticIPAddressRepository, fixture: Fixture
     ):
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
@@ -465,7 +467,9 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             )
         )[0]
 
-        await repository_instance.delete_ip_if_no_linked_interfaces(ip["id"])
+        await repository_instance.delete_ips_if_no_linked_interfaces(
+            [ip["id"]]
+        )
 
         static_ip = await fixture.get_typed(
             StaticIPAddressTable.name,
@@ -473,3 +477,65 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             StaticIPAddressTable.c.id == ip["id"],
         )
         assert static_ip == []
+
+    async def test_delete_ips_if_no_linked_interfaces_multiple(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip1 = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        ip2 = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+
+        await repository_instance.delete_ips_if_no_linked_interfaces(
+            [ip1["id"], ip2["id"]]
+        )
+
+        static_ip = await fixture.get_typed(
+            StaticIPAddressTable.name,
+            StaticIPAddress,
+            StaticIPAddressTable.c.id.in_([ip1["id"], ip2["id"]]),
+        )
+        assert static_ip == []
+
+    async def test_delete_ips_if_no_linked_interfaces_mixed(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip1 = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        ip2 = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        await create_test_interface_entry(fixture, ips=[ip1])
+
+        await repository_instance.delete_ips_if_no_linked_interfaces(
+            [ip1["id"], ip2["id"]]
+        )
+
+        static_ip = await fixture.get_typed(
+            StaticIPAddressTable.name,
+            StaticIPAddress,
+            StaticIPAddressTable.c.id.in_([ip1["id"], ip2["id"]]),
+        )
+        assert len(static_ip) == 1
+        assert static_ip[0].id == ip1["id"]

@@ -191,15 +191,15 @@ class StaticIPAddressService(
             interface_id
         )
 
-    async def delete_ip_if_no_linked_interfaces(
-        self, staticipaddress_id: int
+    async def delete_ips_if_no_linked_interfaces(
+        self, staticipaddress_ids: list[int]
     ) -> None:
-        """Delete static IP when no interfaces are associated with it.
+        """Delete static IPs when no interfaces are associated with them.
 
         Args:
-            staticipaddress_id: The ID of the IP address
+            staticipaddress_ids: The IDs of the IP addresses
 
         """
-        await self.repository.delete_ip_if_no_linked_interfaces(
-            staticipaddress_id
+        await self.repository.delete_ips_if_no_linked_interfaces(
+            staticipaddress_ids
         )

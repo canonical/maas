@@ -219,11 +219,11 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
             ip_addresses = await self.staticipaddress_service.get_ip_addresses_for_interface(
                 interface_id
             )
+            ip_ids = [i.id for i in ip_addresses]
             await self.interfaces_service.unlink_interface_from_ips(
                 interface_id=interface_id,
-                staticipaddress_ids=[i.id for i in ip_addresses],
+                staticipaddress_ids=ip_ids,
             )
-            for ip in ip_addresses:
-                await self.staticipaddress_service.delete_ip_if_no_linked_interfaces(
-                    ip.id
-                )
+            await self.staticipaddress_service.delete_ips_if_no_linked_interfaces(
+                ip_ids
+            )
