@@ -18,7 +18,7 @@ jobs:
         - /home/runner/go/pkg/mod:/home/ubuntu/go/pkg/mod
         - /home/runner/.cache/go-build:/home/ubuntu/.cache/go-build
         - ${{ github.workspace }}:/work
-      options: --user ubuntu --workdir /work
+      options: --workdir /work
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
