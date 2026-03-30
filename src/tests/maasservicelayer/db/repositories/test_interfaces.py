@@ -558,7 +558,7 @@ class TestInterfaceRepository:
         assert iface["mac_address"] == "00:11:22:33:44:55"
         assert iface["switch_id"] == switch_id
 
-    async def test_unlink_interface_from_ip(
+    async def test_unlink_interface_from_ips(
         self, db_connection: AsyncConnection, fixture: Fixture
     ):
         interfaces_repository = InterfaceRepository(
@@ -578,9 +578,7 @@ class TestInterfaceRepository:
         links = await fixture.get("maasserver_interface_ip_addresses")
         assert len(links) == 2
 
-        await interfaces_repository.unlink_interface_from_ips(
-            interface1.id, [ip["id"]]
-        )
+        await interfaces_repository.unlink_interface_from_ips(interface1.id)
 
         links = await fixture.get("maasserver_interface_ip_addresses")
         assert len(links) == 1
@@ -606,7 +604,7 @@ class TestInterfaceRepository:
         )
 
         await interfaces_repository.unlink_interface_from_ips(
-            unrelated_interface.id, [ip["id"]]
+            unrelated_interface.id
         )
 
         links = await fixture.get("maasserver_interface_ip_addresses")
@@ -641,9 +639,7 @@ class TestInterfaceRepository:
         links = await fixture.get("maasserver_interface_ip_addresses")
         assert len(links) == 3
 
-        await interfaces_repository.unlink_interface_from_ips(
-            interface.id, [ip1["id"], ip2["id"]]
-        )
+        await interfaces_repository.unlink_interface_from_ips(interface.id)
 
         links = await fixture.get("maasserver_interface_ip_addresses")
         assert len(links) == 1

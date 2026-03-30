@@ -3,7 +3,7 @@
 
 from typing import Any, List, Type
 
-from sqlalchemy import and_, delete, desc, insert, Select, select, Table
+from sqlalchemy import delete, desc, insert, Select, select, Table
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.functions import count
@@ -416,21 +416,13 @@ class InterfaceRepository(BaseRepository):
 
         return [Interface(**r._asdict()) for r in result]
 
-    async def unlink_interface_from_ips(
-        self, interface_id: int, staticipaddress_ids: list[int]
-    ) -> None:
-        """Remove the link between an interface and an IP address.
+    async def unlink_interface_from_ips(self, interface_id: int) -> None:
+        """Remove the link between an interface and all of its IP addresses.
 
         Args:
             interface_id: The ID of the interface to unlink
-            staticipaddress_ids: IDs of IP addresses to unlink from
         """
         stmt = delete(InterfaceIPAddressTable).where(
-            and_(
-                eq(InterfaceIPAddressTable.c.interface_id, interface_id),
-                InterfaceIPAddressTable.c.staticipaddress_id.in_(
-                    staticipaddress_ids
-                ),
-            )
+            eq(InterfaceIPAddressTable.c.interface_id, interface_id)
         )
         await self.execute_stmt(stmt)

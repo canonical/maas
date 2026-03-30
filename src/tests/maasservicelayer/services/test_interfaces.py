@@ -535,12 +535,10 @@ class TestInterfacesService:
 
         await interfaces_service.unlink_interface_from_ips(
             interface_id=10,
-            staticipaddress_ids=[100],
         )
 
         interface_repository_mock.unlink_interface_from_ips.assert_called_once_with(
             interface_id=10,
-            staticipaddress_ids=[100],
         )
 
     async def test_unlink_interface_from_ips_multiple_ids(self) -> None:
@@ -565,10 +563,8 @@ class TestInterfacesService:
 
         await interfaces_service.unlink_interface_from_ips(
             interface_id=10,
-            staticipaddress_ids=[100, 101],
         )
 
         interface_repository_mock.unlink_interface_from_ips.assert_called_once_with(
             interface_id=10,
-            staticipaddress_ids=[100, 101],
         )

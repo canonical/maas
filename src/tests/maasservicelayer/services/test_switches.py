@@ -187,8 +187,7 @@ class TestSwitchesService:
             test_interface.id
         )
         interfaces_service.unlink_interface_from_ips.assert_called_once_with(
-            interface_id=test_interface.id,
-            staticipaddress_ids=[test_ip.id],
+            interface_id=test_interface.id
         )
         staticipaddress_service.delete_ips_if_no_linked_interfaces.assert_called_once_with(
             [test_ip.id]
@@ -264,8 +263,8 @@ class TestSwitchesService:
         )
         assert interfaces_service.unlink_interface_from_ips.call_count == 2
         assert interfaces_service.unlink_interface_from_ips.call_args_list == [
-            call(interface_id=10, staticipaddress_ids=[ip1.id, ip2.id]),
-            call(interface_id=20, staticipaddress_ids=[ip3.id]),
+            call(interface_id=10),
+            call(interface_id=20),
         ]
         assert (
             staticipaddress_service.delete_ips_if_no_linked_interfaces.call_count
