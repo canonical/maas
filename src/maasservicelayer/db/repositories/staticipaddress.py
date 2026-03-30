@@ -4,7 +4,7 @@
 from ipaddress import IPv4Address, IPv6Address
 from typing import List, Type
 
-from sqlalchemy import and_, delete, func, join, select, Table
+from sqlalchemy import and_, delete, func, join, not_, select, Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
@@ -284,7 +284,7 @@ class StaticIPAddressRepository(BaseRepository):
         stmt = delete(StaticIPAddressTable).where(
             and_(
                 eq(StaticIPAddressTable.c.id, staticipaddress_id),
-                ~has_interface,
+                not_(has_interface),
             )
         )
         await self.execute_stmt(stmt)
