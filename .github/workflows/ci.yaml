@@ -18,7 +18,7 @@ jobs:
         - /home/runner/go/pkg/mod:/home/ubuntu/go/pkg/mod
         - /home/runner/.cache/go-build:/home/ubuntu/.cache/go-build
         - ${{ github.workspace }}:/work
-      options: --workdir /work
+      options: --user ubuntu --workdir /work
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -52,14 +52,14 @@ jobs:
           useradd ubuntu || true
           chown -R ubuntu:ubuntu /home/ubuntu
           chown -R ubuntu:ubuntu /work
-          sudo -H -u ubuntu make install-dependencies
-          sudo -H -u ubuntu make build
+          make install-dependencies
+          make build
 
       - name: Lint
-        run: sudo -H -u ubuntu make lint
+        run: make lint
 
       - name: Test
-        run: sudo -H -u ubuntu make test
+        run: make test
 
       - name: Archive logs
         if: always()
