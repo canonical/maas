@@ -475,7 +475,7 @@ The node is in rescue mode and is ready to accept SSH connections. See node acti
 
 #### Router
 
-A [router](https://en.wikipedia.org/wiki/Router_%28computing%29#firstHeading) is a device that transfers packets from one network to another. Unlike switches, which only ensure that pre-addressed packets get to the correct recipient machines, routers actually modify or encapsulate packets to ensure that they can travel on other networks to reach a remote destination. Choices about routing are so important that we'll spend a [great deal of time on the subject](#routing-still-rules) when we learn about cloud networking.
+A [router](https://en.wikipedia.org/wiki/Router_%28computing%29#firstHeading) is a device that transfers packets from one network to another. Unlike switches, which only ensure that pre-addressed packets get to the correct recipient machines, routers actually modify or encapsulate packets to ensure that they can travel on other networks to reach a remote destination. Choices about routing are so important that we'll spend a great deal of time on the subject when we learn about cloud networking.
 
 ### S
 
@@ -511,7 +511,7 @@ For a deeper dive, try this [SR-IOV presentation](https://www.youtube.com/watch?
 
 A subnet is a "layer 3" network, defined by a network address and a network mask length (in bits) and usually written in "CIDR" format. MAAS supports IPv4 and IPv6 subnets. Examples include:
 
-``` no-highlight
+```text
 - 0.0.0/8
 - 16.0.0/12
 - 168.0.0/16

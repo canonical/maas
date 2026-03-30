@@ -8,11 +8,11 @@ We have released MAAS 2.9.2, which contains two new features, and some notable [
 
 - Power driver Webhook:  A webhook was added to 2.9.2, which allows MAAS to interface with another web service that's running the power commands. This webhook is provided for interacting with objects that MAAS does not support, that is, the MAAS team supports the driver itself, but whatever is interfacing to the driver is not supported. This webhook as three URLs, one each for power on, power off, and power query. Optionally, this webhook also supports a power user and password or token (RFC 6717). This gives you a way to add your own power drivers without waiting for the driver to be added to MAAS. There is a [video tutorial](https://discourse.maas.io/t/maas-show-and-tell-proxmox-and-webhook/3754/3) available on this new feature.
 
-You can also find a [digest](#bug-fixes-2-9-2) of the 2.9.2 bug fixes below.
+You can also find a [digest](#bug-fixes) of the 2.9.2 bug fixes below.
 
 ## MAAS 2.9.1
 
-Building upon MAAS 2.9, we have released 2.9.1, which contains some notable [bug fixes](https://launchpad.net/maas/+milestone/2.9.1). You can find a [digest](#bug-fixes-2-9-1) of these fixes below.
+Building upon MAAS 2.9, we have released 2.9.1, which contains some notable [bug fixes](https://launchpad.net/maas/+milestone/2.9.1). You can find a [digest](#bug-fixes) of these fixes below.
 
 ## MAAS 2.9
 
@@ -60,7 +60,7 @@ Both regular and administrative users can snooze these notifications for two wee
 
 ### IPMI configuration
 
-MAAS now includes UI panels corresponding to the [IPMI power driver upgrades](#ipmi-driver) mentioned earlier:
+MAAS now includes UI panels corresponding to the IPMI power driver upgrades mentioned earlier:
 
 ![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/1X/433b28f5dd807caef7c7382f9a877607c2ea2dac.png)
 
@@ -183,7 +183,7 @@ Commissioning scripts have been reordered and some are now set to run in paralle
 
 9. 99-maas-01-capture-lldp -> maas-capture-lldp(now runs in parallel)
 
-See the [How to read commissioning logs](/how-to-read-commissioning-logs/5248) for more details on these changes.
+See the [How to read commissioning logs](https://discourse.maas.io/t/how-to-read-commissioning-logs/5248) for more details on these changes.
 
 ### Commissioning is faster now
 

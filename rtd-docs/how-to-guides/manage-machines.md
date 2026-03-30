@@ -180,7 +180,7 @@ Set the correct power type:
   maas $PROFILE machine update $SYSTEM_ID power_type="$POWER_TYPE"
   ```
 
-## Commission & test machines
+## Commission and test machines
 
 Commissioning collects hardware info and prepares machines for deployment.
 
@@ -367,7 +367,7 @@ Upload a commissioning script that outputs a JSON layout.
     maas $PROFILE machine deploy $SYSTEM_ID cloud_init_userdata="$(cat cloud-init.yaml)"
     ```
 
-## Rescue & recovery
+## Rescue and recovery
 
 Use rescue mode to log in and diagnose issues.
 

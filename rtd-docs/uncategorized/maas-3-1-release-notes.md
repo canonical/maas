@@ -6,17 +6,17 @@ We are happy to announce that MAAS 3.1 is now available. This release provides n
 
 - [Support for LXD clusters](#lxd-clusters): MAAS 3.1 can use LXD clusters with MAAS KVMs.
 
-- [Improved image sync performance](#image-sync-performance): After images are downloaded, rack controllers sync new images more quickly.
+- [Improved image sync performance](#improved-image-sync-performance): After images are downloaded, rack controllers sync new images more quickly.
 
 - [Ability to enlist deployed machines](#enlist-deployed-machines): Users can enlist deployed machines, a top feature poll request.
 
-- [Static Ubuntu image upload and reuse](#static-ubuntu-images): Users can upload, deploy and reuse a bootable ubuntu image
+- [Static Ubuntu image upload and reuse](#static-ubuntu-image-upload): Users can upload, deploy and reuse a bootable ubuntu image
 
-- [Machine configuration cloning UI](#machine-cloning-ui): We have extended machine cloning to the UI.
+- [Machine configuration cloning UI](#how-to-clone-a-machine-from-the-ui): We have extended machine cloning to the UI.
 
-- [LXD authentication UX improvements](#lxd-auth-ux-improvements): LXD certificates are easier to use.
+- [LXD authentication UX improvements](#lxd-authentication-ux-improvements): LXD certificates are easier to use.
 
-- [MAAS 3.1 cumulative bug fixes](#maas-3-1-cumulative-bug-fixes)
+- [MAAS 3.1 cumulative bug fixes](#bug-fixes)
 
 Critical and high-priority fixes also extend or repair MAAS features:
 

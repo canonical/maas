@@ -126,7 +126,7 @@ We are happy to announce that MAAS 3.3.1 has been released with the following bu
 
 ### MAAS 3.3 has been released
 
-We are happy to announce that MAAS 3.3 has been released, with [one additional bug fix](#MAAS-3-3-bug-list). MAAS 3.3 is a concerted effort to improve MAAS on multiple fronts, including a large number of bug fixes.
+We are happy to announce that MAAS 3.3 has been released, with [one additional bug fix](#maas-330-bug-list). MAAS 3.3 is a concerted effort to improve MAAS on multiple fronts, including a large number of bug fixes.
 
 ## Features
 
@@ -134,11 +134,11 @@ New features created for MAAS 3.3 include:
 
 - [Improved machine list filtering](#improved-machine-list-filtering): MAAS 3.3 enhances the presentation and filtering of the machine list, with a shorter wait to start filtering and a wider range of filter choices.
 
-- [Integration of Vault for credential storage](#vault-integration): MAAS 3.3 allows you to use [Hashicorp Vault](https://www.vaultproject.io/) to protect your secrets, if you wish.
+- Integration of Vault for credential storage: MAAS 3.3 allows you to use [Hashicorp Vault](https://www.vaultproject.io/) to protect your secrets, if you wish.
 
 Improved capabilities include the following:
 
-- [Native support for 22.04 LTS and core22](#22-04-support): We've removed the requirement to use snaps on 22.04 (Jammy Jellyfish); you now can load MAAS 3.3 on 22.04 using packages.
+- [Native support for 22.04 LTS and core22](#native-support-for-2204-lts-and-core22): We've removed the requirement to use snaps on 22.04 (Jammy Jellyfish); you now can load MAAS 3.3 on 22.04 using packages.
 
 - [UI performance improvements for large machine counts](#ui-performance-improvements): We've improved the performance of the UI machine list for large (>10000 machines) MAAS instances. The machine list now goes live just a few seconds after the first visible page loads, with the rest of the list loading in background.
 
@@ -146,7 +146,7 @@ Improved capabilities include the following:
 
 Greatly expanded documentation sections include:
 
-- [MAAS configuration settings reference](#maas-config-settings-ref): There is now one reference page that addresses all MAAS settings in one place. Other references throughout the document are preserved for now.
+- [MAAS configuration settings reference](#maas-configuration-settings-reference): There is now one reference page that addresses all MAAS settings in one place. Other references throughout the document are preserved for now.
 
 - [Improved MAAS event documentation](#improved-maas-event-documentation): MAAS event documentation has been expanded to include [much better explanations](/explanation/events) of MAAS events, including many examples.
 
@@ -162,7 +162,7 @@ Several forward-looking improvements are included as well:
 
 These will be documented later in blog posts.
 
-This release also includes well over one-hundred [bug fixes](#MAAS-3.3-bug-list). Read on to catch up with what we've done so far this cycle.
+This release also includes well over one-hundred [bug fixes](#bugs-fixed). Read on to catch up with what we've done so far this cycle.
 
 ### Improved machine list filtering
 

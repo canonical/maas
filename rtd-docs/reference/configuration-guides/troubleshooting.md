@@ -254,7 +254,7 @@ The user ultimately resolved the issue by disabling the router's DHCP and using 
 
    Example DHCP configuration for PXE boot:
 
-   ```plaintext
+   ```text
    dhcp-option=66, "192.168.1.100"  # IP address of the MAAS server
    dhcp-option=67, "pxelinux.0"     # Bootloader file
    ```

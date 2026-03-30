@@ -1,6 +1,6 @@
 # MAAS 3.0 release notes
 
-We are happy to announce the release of MAAS 3.0. This release provides new features, along with critical and high-priority [bug fixes](#maas-3-bug-fixes).
+We are happy to announce the release of MAAS 3.0. This release provides new features, along with critical and high-priority [bug fixes](#bug-fixes).
 
 MAAS 3.0 can be installed fresh (recommended) with:
 

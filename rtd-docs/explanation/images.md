@@ -108,7 +108,7 @@ Most templates supplied by Canonical also include a `Makefile` file. It's strong
 
 #### Example: Ubuntu packer template  
 
-```hcl
+```text
 packer {
   required_version = ">= 1.7.0"
   required_plugins {

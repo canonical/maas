@@ -48,7 +48,7 @@ We are happy to announce that MAAS 3.2.7 has been released.
 
 ### Bug fixes
 
-This point release of MAAS 3.2 provides a number of [high-profile bug fixes](#MAAS-3-2-7-bug-fixes).
+This point release of MAAS 3.2 provides a number of high-profile bug fixes.
 
 MAAS 3.2.7 bug fixes
 The following bugs have been fixed in MAAS 3.2.7:

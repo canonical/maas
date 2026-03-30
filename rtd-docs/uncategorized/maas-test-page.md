@@ -23,9 +23,9 @@ Here, you'll install and initialize MAAS, then configure it to manage your infra
 This section covers how to enlist machines into MAAS, test and commission them, and then deploy your desired OS or workloads. It also includes advanced topics like custom image creation, ephemeral deployments, and how to manage machines MAAS didn’t originally deploy.
 
 * [Enlist machines](/how-to-guides/manage-machines.md#discover-machines)
-* [Commission/test machines](/how-to-guides/manage-machines.md#commission-test-machines)
+* [Commission/test machines](/how-to-guides/manage-machines.md#commission-and-test-machines)
 * [Deploy machines](/how-to-guides/manage-machines.md#deploy-machines)
-* [Confirm deployment](/how-to-guides/manage-machines.md#rescue-recovery)
+* [Confirm deployment](/how-to-guides/manage-machines.md#rescue-and-recovery)
 * [Customize deployment](/how-to-guides/manage-machines.md#configure-deployment)
 * Special deployments
   * [Custom images: building, using, and maintaining](/how-to-guides/build-custom-images.md)
@@ -71,7 +71,7 @@ This section helps you observe and debug your MAAS deployment using tools like P
 * [Using Prometheus and Loki](/how-to-guides/monitor-maas.md)
 * [Debugging via logs](/how-to-guides/use-logging.md)
 * [Auditing with logs](/how-to-guides/use-logging.md#auditing-maas)
-* [Troubleshooting machine behaviors](/how-to-guides/manage-machines.md#rescue-recovery)
+* [Troubleshooting machine behaviors](/how-to-guides/manage-machines.md#rescue-and-recovery)
 * [Troubleshooting network issues](/reference/configuration-guides/troubleshooting.md)
 * Troubleshooting performance
 
