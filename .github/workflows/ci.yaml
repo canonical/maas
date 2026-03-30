@@ -18,7 +18,6 @@ jobs:
         - /home/runner/go/pkg/mod:/home/ubuntu/go/pkg/mod
         - /home/runner/.cache/go-build:/home/ubuntu/.cache/go-build
         - ${{ github.workspace }}/maas:/work
-      options: --workdir /work
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -52,7 +51,6 @@ jobs:
         run: |
           pwd
           ls -la .
-          ls /work
           git config --global --add safe.directory /work
           make install-dependencies
           make build
