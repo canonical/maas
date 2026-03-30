@@ -49,9 +49,6 @@ jobs:
       - name: Prepare container
         run: |
           git config --global --add safe.directory /work
-          useradd ubuntu || true
-          chown -R ubuntu:ubuntu /home/ubuntu
-          chown -R ubuntu:ubuntu /work
           make install-dependencies
           make build
 
