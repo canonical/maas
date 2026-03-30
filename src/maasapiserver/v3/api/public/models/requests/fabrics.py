@@ -12,7 +12,7 @@ class FabricRequest(NamedBaseModel):
     description: str | None = Field(
         description="The description of the fabric.", default=""
     )
-    class_type: str | None = None
+    class_type: str | None
 
     def to_builder(self) -> FabricBuilder:
         return FabricBuilder(
