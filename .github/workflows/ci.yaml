@@ -48,6 +48,8 @@ jobs:
 
       - name: Prepare container
         run: |
+          pwd
+          ls -la .
           git config --global --add safe.directory /work
           make install-dependencies
           make build
