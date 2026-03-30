@@ -17,7 +17,6 @@ jobs:
       volumes:
         - /home/runner/go/pkg/mod:/home/ubuntu/go/pkg/mod
         - /home/runner/.cache/go-build:/home/ubuntu/.cache/go-build
-        - ${{ github.workspace }}/maas:/work
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -34,8 +33,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-        with:
-          path: ${{ github.workspace }}/maas
 
       - name: Go modules cache
         uses: actions/cache@v5
@@ -51,7 +48,7 @@ jobs:
         run: |
           pwd
           ls -la .
-          git config --global --add safe.directory /work
+          git config --global --add safe.directory $(pwd)
           make install-dependencies
           make build
 
