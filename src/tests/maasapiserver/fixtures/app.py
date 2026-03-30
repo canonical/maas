@@ -236,6 +236,8 @@ def mocked_api_client_user_with_permissions(
         return mocked_api_client_user
 
     return _with_permissions
+
+
 async def mocked_api_client_admin(
     app_with_mocked_services_admin: FastAPI,
 ) -> AsyncIterator[AsyncClient]:

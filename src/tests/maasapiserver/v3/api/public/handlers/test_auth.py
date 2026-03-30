@@ -2,10 +2,9 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
-from json import dumps as _dumps, _loads
+from json import dumps as _dumps
 from typing import Callable
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
-import base64
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
