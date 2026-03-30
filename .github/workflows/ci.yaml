@@ -19,18 +19,18 @@ jobs:
     container:
       image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
       volumes:
-        - $HOME/go/pkg/mod:/home/ubuntu/go/pkg/mod \
-        - $HOME/.cache/go-build:/home/ubuntu/.cache/go-build \
-        - ${{ github.workspace }}:/work \
+        - $HOME/go/pkg/mod:/home/ubuntu/go/pkg/mod
+        - $HOME/.cache/go-build:/home/ubuntu/.cache/go-build
+        - ${{ github.workspace }}:/work
       options: --workdir /work
       credentials:
-        - username: ${{ github.actor }}
-        - password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     # containers default to sh, make bash as the default
     defaults:
       run:
-      shell: bash
+        shell: bash
 
     permissions:
       contents: read
