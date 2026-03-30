@@ -1,14 +1,20 @@
-name: run CI
+name: CI check
+
 on:
+  # Run on default events, and also when converted from draft to ready
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+    types: [checks_requested]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}-build-env:${{ github.base_ref }}
+  IMAGE_NAME: ${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
 
 jobs:
   lint-and-test:
     runs-on: ubuntu-24.04
+    if: ${{ !github.event.pull_request.draft }}
 
     permissions:
       contents: read
@@ -17,6 +23,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+
+      - name: Go modules cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('src/**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go
 
       - name: Log in to the Container registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
@@ -27,12 +43,15 @@ jobs:
       - name: Prepare container, lint and test
         run: |
           docker run --rm \
+            -v $HOME/go/pkg/mod:/home/ubuntu/go/pkg/mod \
+            -v $HOME/.cache/go-build:/home/ubuntu/.cache/go-build \
             -v ${{ github.workspace }}:/work \
             -w /work \
             ghcr.io/${{ env.IMAGE_NAME }} \
             sh -c "
               git config --global --add safe.directory /work
               useradd ubuntu || true
+              chown -R ubuntu:ubuntu /home/ubuntu
               chown -R ubuntu:ubuntu /work
               sudo -H -u ubuntu make install-dependencies
               sudo -H -u ubuntu make build
