@@ -157,7 +157,7 @@ MAAS will run on [just about any modern hardware configuration](/reference/confi
 
 - [How to do a fresh install of MAAS 3.4](/how-to-guides/get-maas-up-and-running): Use the tabs to select snaps or packages.
 
-- [How to upgrade from an earlier version to MAAS 3.4](/): Use the tabs to select snaps or packages.
+- [How to upgrade from an earlier version to MAAS 3.4](https://discourse.maas.io/t/how-to-upgrade-maas/5436): Use the tabs to select snaps or packages.
 
 - [Initialise MAAS for a production configuration](/how-to-guides/get-maas-up-and-running)
 

@@ -142,7 +142,7 @@ Improved capabilities include the following:
 
 - [UI performance improvements for large machine counts](#ui-performance-improvements): We've improved the performance of the UI machine list for large (>10000 machines) MAAS instances. The machine list now goes live just a few seconds after the first visible page loads, with the rest of the list loading in background.
 
-- [Enhanced MIB support for Windows OS images](#enhanced-mib-support-for-windows-os-images): The [procedure](/) for creating custom Windows OS images has been thoroughly updated and verified.
+- [Enhanced MIB support for Windows OS images](#enhanced-mib-support-for-windows-os-images): The [procedure](https://discourse.maas.io/t/customising-images-for-specific-needs/5104) for creating custom Windows OS images has been thoroughly updated and verified.
 
 Greatly expanded documentation sections include:
 
@@ -150,7 +150,7 @@ Greatly expanded documentation sections include:
 
 - [Improved MAAS event documentation](#improved-maas-event-documentation): MAAS event documentation has been expanded to include [much better explanations](/explanation/events) of MAAS events, including many examples.
 
-- [Improved MAAS audit event documentation](#improved-maas-audit-event-documentation): MAAS audit event documentation has been greatly expanded to include [much better explanations](/) of MAAS audit events, including many examples and use cases.
+- [Improved MAAS audit event documentation](#improved-maas-audit-event-documentation): MAAS audit event documentation has been greatly expanded to include [much better explanations](/explanation/events.md) of MAAS audit events, including many examples and use cases.
 
 Several forward-looking improvements are included as well:
 
@@ -193,7 +193,7 @@ The following table describes the expanded filter set for the MAAS machine list:
 - Items marked "Grp" can be used to group machines, instead of the default machine status.
 - Items marked "Man" must be manually entered, i.e., they are not in the UI filter drop-down, but can be entered in the "Search" box if properly formatted (as in the examples given).
 
-See [How to search MAAS](/) for more details on how to use these parameters.
+See [How to search MAAS](https://discourse.maas.io/t/locating-and-searching-for-machines/5192) for more details on how to use these parameters.
 
 | Parameter (bold) w/example           | Shows nodes...                  | Dyn | Grp | Man |
 |--------------------------------------|----------------------------------|-----|-----|-----|
@@ -302,7 +302,7 @@ In MAAS 3.2 and earlier, machine search and filter requires that all machines be
 
 ### Enhanced MIB support for Windows OS images
 
-The [procedure](/) for creating custom Windows OS images has been thoroughly updated and verified.
+The [procedure](https://discourse.maas.io/t/customising-images-for-specific-needs/5104) for creating custom Windows OS images has been thoroughly updated and verified.
 
 #### Ten words or less
 
@@ -366,7 +366,7 @@ MAAS 3.3 documentation consolidates configuration settings in one article, in ad
 
 #### What is new about this update
 
-MAAS configuration settings are scattered in various (generally relevant) places throughout the documentation, but there has never been one reference page that addresses all settings in one place. MAAS 3.3 remedies this by adding the [Configuration settings reference](/).
+MAAS configuration settings are scattered in various (generally relevant) places throughout the documentation, but there has never been one reference page that addresses all settings in one place. MAAS 3.3 remedies this by adding the [Configuration settings reference](https://discourse.maas.io/t/maas-settings/6347).
 
 A minor new feature added with MAAS 3.3 is MAAS site identity, which enables some new configuration parameters:
 
@@ -489,7 +489,7 @@ Additional examples and techniques are provided as part of this new documentatio
 
 ### Improved MAAS audit event documentation
 
-MAAS audit event documentation has been greatly expanded to include [much better explanations](/) of MAAS audit events, including [detailed examples of how to reconstruct machine life-cycles](/) in the updated version of "[How to work with audit event logs](/)".
+MAAS audit event documentation has been greatly expanded to include [much better explanations](https://discourse.maas.io/t/understanding-audit-events/6372) of MAAS audit events, including detailed examples of how to reconstruct machine life-cycles in the updated version of "[How to work with audit event logs](https://discourse.maas.io/t/auditing-maas-operations/5987)".
 
 #### Ten words or less
 
@@ -566,7 +566,7 @@ Later on in the documentation, we walk through a sample of audit events and demo
 
 #### Auditing with finesse
 
-As part of the updates to our "[How to work with audit event logs](/)", we've tried to offer you some finesse in reconstructing machine life-cycles. We've shown how to combine various levels of MAAS event queries with standard command line utilities to produce clear audit trails such as this one:
+As part of the updates to our "[How to work with audit event logs](https://discourse.maas.io/t/auditing-maas-operations/5987)", we've tried to offer you some finesse in reconstructing machine life-cycles. We've shown how to combine various levels of MAAS event queries with standard command line utilities to produce clear audit trails such as this one:
 
 ```text
 418606  ERROR    Marking node broken               Wed, 17 Nov. 2021 00:02:52  A Physical Interface requires a MAC address.

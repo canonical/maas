@@ -647,7 +647,7 @@ Also, the monitoring setup sequence for MAAS [has changed](/how-to-guides/monito
 
 #### Logs collapsed into system log files
 
-With the advent of 3.5, all of the separate logs used by MAAS through version 3.4 have been eliminated and replaced with logging into the standard `systemd` files.  See [How to use MAAS systemd logs](/) in the documentation set for details.
+With the advent of 3.5, all of the separate logs used by MAAS through version 3.4 have been eliminated and replaced with logging into the standard `systemd` files.  See [How to use MAAS systemd logs](https://discourse.maas.io/t/how-to-use-maas-systemd-logs/8103) in the documentation set for details.
 
 #### Deployment of Oracle Linux 8 and 9 on MAAS machines
 
@@ -995,7 +995,7 @@ MAAS will run on [just about any modern hardware configuration](/reference/confi
 
 * [How to do a fresh install of MAAS 3.4](/how-to-guides/get-maas-up-and-running): Use the tabs to select snaps or packages.
 
-* [How to upgrade from an earlier version to MAAS 3.4](/): Use the tabs to select snaps or packages.
+* [How to upgrade from an earlier version to MAAS 3.4](https://discourse.maas.io/t/how-to-upgrade-maas/5436): Use the tabs to select snaps or packages.
 
 * [Initialize MAAS for a production configuration](/how-to-guides/get-maas-up-and-running)
 

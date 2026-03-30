@@ -364,7 +364,7 @@ Check the appropriate box to grant administrative rights.
 
 *Settings* > *Users* > *[User]* > *Pencil* > [Follow instructions]
 
-> *Note that administrators can change any user's password.  Learn more about [strong passwords](/).*
+> *Note that administrators can change any user's password.  Learn more about [strong passwords](https://discourse.maas.io/t/how-to-use-maas-systemd-logs/8103).*
 
 ## Manage Vault
 
