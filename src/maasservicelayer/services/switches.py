@@ -16,7 +16,11 @@ from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
 from maasservicelayer.db.repositories.switches import SwitchesRepository
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ConflictException,
+    NotFoundException,
+)
 from maasservicelayer.models.switches import Switch
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.bootresourcefiles import (
@@ -195,7 +199,14 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         if not files:
             raise NotFoundException()
 
-        # NOS installer images are self-extracting binaries with a single file
+        if len(files) != 1:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        "NOS installer images are expected to be self-extracting binaries with a single file"
+                    )
+                ]
+            )
         boot_file = files[0]
         file_path = get_bootresource_store_path() / boot_file.filename_on_disk
 
