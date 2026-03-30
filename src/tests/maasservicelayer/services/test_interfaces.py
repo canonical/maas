@@ -10,6 +10,10 @@ from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
+from maasservicelayer.exceptions.catalog import (
+    NotFoundException,
+    PreconditionFailedException,
+)
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.fabrics import Fabric
 from maasservicelayer.models.interfaces import Interface
@@ -378,6 +382,13 @@ class TestInterfacesService:
         domain_service_mock = Mock(DomainsService)
 
         interface_repository_mock = Mock(InterfaceRepository)
+        interface = Interface(
+            id=1,
+            name="eth0",
+            mac_address="00:11:22:33:44:55",
+            type=InterfaceType.UNKNOWN,
+            switch_id=42,
+        )
         updated_interface = Interface(
             id=1,
             name="eth0",
@@ -385,6 +396,7 @@ class TestInterfacesService:
             type=InterfaceType.PHYSICAL,
             switch_id=42,
         )
+        interface_repository_mock.get_by_id.return_value = interface
         interface_repository_mock.update_by_id.return_value = updated_interface
 
         interface_service = InterfacesService(
@@ -408,6 +420,65 @@ class TestInterfacesService:
         builder = call_args[0][1]  # builder argument
         assert builder.switch_id == 42
         assert builder.type == InterfaceType.PHYSICAL
+
+    async def test_link_interface_to_switch_not_found(self):
+        """Test attempting to link an interface that doesn't exist raises a NotFoundException."""
+        temporal_service_mock = Mock(TemporalService)
+        node_service_mock = Mock(NodesService)
+        dnsresource_service_mock = Mock(DNSResourcesService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
+        domain_service_mock = Mock(DomainsService)
+
+        interface_repository_mock = Mock(InterfaceRepository)
+        interface_repository_mock.get_by_id.return_value = None
+
+        interface_service = InterfacesService(
+            context=Context(),
+            temporal_service=temporal_service_mock,
+            dnsresource_service=dnsresource_service_mock,
+            dnspublication_service=dnspublications_service_mock,
+            domain_service=domain_service_mock,
+            node_service=node_service_mock,
+            interface_repository=interface_repository_mock,
+        )
+
+        with pytest.raises(NotFoundException):
+            await interface_service.link_interface_to_switch(
+                interface_id=999, switch_id=42
+            )
+
+    async def test_link_interface_to_switch_not_unknown(self):
+        """Test attempting to link an interface that isn't unknown raises a PreconditionFailedException."""
+        temporal_service_mock = Mock(TemporalService)
+        node_service_mock = Mock(NodesService)
+        dnsresource_service_mock = Mock(DNSResourcesService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
+        domain_service_mock = Mock(DomainsService)
+
+        interface_repository_mock = Mock(InterfaceRepository)
+        interface = Interface(
+            id=1,
+            name="eth0",
+            mac_address="00:11:22:33:44:55",
+            type=InterfaceType.PHYSICAL,
+            switch_id=42,
+        )
+        interface_repository_mock.get_by_id.return_value = interface
+
+        interface_service = InterfacesService(
+            context=Context(),
+            temporal_service=temporal_service_mock,
+            dnsresource_service=dnsresource_service_mock,
+            dnspublication_service=dnspublications_service_mock,
+            domain_service=domain_service_mock,
+            node_service=node_service_mock,
+            interface_repository=interface_repository_mock,
+        )
+
+        with pytest.raises(PreconditionFailedException):
+            await interface_service.link_interface_to_switch(
+                interface_id=interface.id, switch_id=42
+            )
 
     async def test_create_switch_interface(self):
         temporal_service_mock = Mock(TemporalService)
