@@ -263,15 +263,14 @@ class InterfacesService(
         )
 
     async def unlink_interface_from_ips(
-        self, interface_id: int, staticipaddress_ids: list[int]
+        self,
+        interface_id: int,
     ) -> None:
-        """Remove the link between an interface and an IP address.
+        """Remove the link between an interface and all of its IP addresses.
 
         Args:
             interface_id: The ID of the interface to unlink
-            staticipaddress_ids: IDs of IP addresses to unlink from
         """
         await self.repository.unlink_interface_from_ips(
             interface_id=interface_id,
-            staticipaddress_ids=staticipaddress_ids,
         )
