@@ -78,7 +78,7 @@ jobs:
           chown -R ubuntu:ubuntu /home/ubuntu
           chown -R ubuntu:ubuntu $(pwd)
           git config --global --add safe.directory $(pwd)
-          su ubuntu -c "make install-dependencies"
+          make install-dependencies
           su ubuntu -c "make build"
 
       - name: Lint Python
