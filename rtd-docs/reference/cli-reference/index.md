@@ -63,6 +63,7 @@ status
 subnet
 tag
 user
+user-group
 version
 vlan
 vm-cluster

@@ -2,7 +2,7 @@
 
 MAAS 3.8 introduces a new relationship-based access control (ReBAC) system for managing users, groups, and permissions. This replaces the previous Canonical RBAC integration, which is deprecated in 3.8 and removed in MAAS 4.0.
 
-This guide explains how the access control model works and how to use user groups and entitlements to control access to MAAS resources. For full CLI command syntax, see the [user-group CLI reference](/t/user-group/15754).
+This guide explains how the access control model works and how to use user groups and entitlements to control access to MAAS resources. For full CLI command syntax, see the [user-group CLI reference](/reference/cli-reference/user-group.md).
 
 ## How access control works
 
@@ -40,7 +40,7 @@ Permissions follow two inheritance rules:
 
 1. **Higher permissions imply lower ones.** For any resource, `can_edit_*` implies `can_view_*`. For machines specifically, the full hierarchy is:
 
-    ```nohighlight
+    ```text
     can_edit_machines
     ├── can_deploy_machines
     │   └── can_view_machines
