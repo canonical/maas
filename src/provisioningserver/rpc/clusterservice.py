@@ -19,7 +19,6 @@ from twisted.internet.defer import (
     DeferredList,
     inlineCallbacks,
     maybeDeferred,
-    returnValue,
 )
 from twisted.internet.error import ConnectError, ConnectionClosed, ProcessDone
 from twisted.internet.threads import deferToThread
@@ -681,7 +680,7 @@ class ClusterClient(Cluster):
         response = yield self.callRemote(region.Authenticate, message=message)
         salt, digest = response["salt"], response["digest"]
         digest_local = calculate_digest(MAAS_SECRET.get(), message, salt)
-        returnValue(digest == digest_local)
+        return digest == digest_local
 
     @inlineCallbacks
     def registerRackWithRegion(self):
@@ -1107,11 +1106,10 @@ class ClusterClientService(TimerService):
                 #
                 # 502 means nginx is running but the region is not yet up
                 # 503 means the region is not completely up and running yet
-                returnValue(({"eventloops": None}, orig_url))
-                return
+                return ({"eventloops": None}, orig_url)
 
             payload = yield readBody(response)
-            returnValue((json.loads(payload.decode("utf-8")), orig_url))
+            return (json.loads(payload.decode("utf-8")), orig_url)
 
         # Request the RPC information.
         agent = Agent(reactor)

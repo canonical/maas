@@ -17,7 +17,6 @@ from twisted.internet.defer import (
     Deferred,
     DeferredQueue,
     inlineCallbacks,
-    returnValue,
 )
 from twisted.logger import LogLevel
 from twisted.python.failure import Failure
@@ -75,7 +74,7 @@ class PostgresListenerServiceSpy(PostgresListenerService):
             notice = yield self._captured_notifies.get()
             if notice.channel == channel:
                 self.log.debug(f"Found a notification for channel {channel}")
-                returnValue(notice)
+                return notice
 
 
 class TestPostgresListenerService(MAASServerTestCase):

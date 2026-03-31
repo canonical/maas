@@ -10,7 +10,7 @@ from unittest import TestCase
 from unittest.mock import call, MagicMock
 from urllib.parse import urlparse
 
-from twisted.internet.defer import fail, inlineCallbacks, returnValue, succeed
+from twisted.internet.defer import fail, inlineCallbacks, succeed
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
@@ -189,7 +189,7 @@ class TestDiscoverPod(MAASTestCase):
                 for _ in range(0, 3)
             ],
         )
-        fake_driver.discover.return_value = returnValue(expected_cluster)
+        fake_driver.discover.return_value = succeed(expected_cluster)
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
         result = yield pods.discover_pod(fake_driver.name, {})
         discovered_cluster = result["cluster"]

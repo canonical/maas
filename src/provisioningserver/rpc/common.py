@@ -6,7 +6,7 @@
 from os import getpid
 from socket import gethostname
 
-from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
+from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.protocols import amp
 from twisted.python.failure import Failure
 
@@ -413,7 +413,7 @@ class SecuredRPCProtocol(RPCProtocol):
         # For this reason we retry 5 times with exponential backoff before considering the connection not trusted.
         while retry < 5:
             if self.auth_status.is_authenticated:
-                returnValue(True)
+                return True
             else:
                 # Exponential backoff
                 sleep_time = ((2**retry) - 1) / 2
@@ -422,7 +422,7 @@ class SecuredRPCProtocol(RPCProtocol):
                 )
                 yield pause(sleep_time)
             retry += 1
-        returnValue(False)
+        return False
 
     def dispatchCommand(self, box):
         """
