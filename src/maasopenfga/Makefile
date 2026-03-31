@@ -31,8 +31,7 @@ $(BUILD_DIR)/%: $(generated) $(deps)
 
 .PHONY: install
 install: build
-	install -d $(DESTDIR)/bin
-	install $(addprefix $(BUILD_DIR)/,$(ARTIFACTS)) $(DESTDIR)/bin
+	install -t $(DESTDIR)/usr/sbin -D $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
 
 .PHONY: test
 test: $(generated) $(deps) build
