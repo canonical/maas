@@ -15,8 +15,8 @@ jobs:
     container:
       image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
       volumes:
-        - /home/runner/go/pkg/mod:/home/ubuntu/go/pkg/mod
-        - /home/runner/.cache/go-build:/home/ubuntu/.cache/go-build
+        - ~/go/pkg/mod:/github/home/go/pkg/mod
+        - ~/.cache/go-build:/github/home/.cache/go-build
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -46,7 +46,8 @@ jobs:
 
       - name: Prepare container
         run: |
-          echo $HOME
+          ls ~/go/pkg/mod
+          ls ~/.cache/go-build
           git config --global --add safe.directory $(pwd)
           make install-dependencies
           make build
