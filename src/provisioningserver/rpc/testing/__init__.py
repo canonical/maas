@@ -10,7 +10,7 @@ from unittest.mock import Mock
 
 import fixtures
 from twisted.internet import defer, endpoints, reactor
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
 from twisted.protocols import amp
@@ -403,7 +403,7 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
         # get the user to add `shutdown` to the clean-up tasks for the *test*,
         # on the assumption they're using a test framework that accommodates
         # deferred work (like testtools with `MAASTwistedRunTest`).
-        returnValue(shutdown)
+        return shutdown
 
 
 # An iterable of names for new dynamically-created AMP protocol factories.

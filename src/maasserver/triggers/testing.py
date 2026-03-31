@@ -6,7 +6,7 @@
 
 from django.contrib.auth.models import User
 from piston3.models import Token
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 
 from maasserver.enum import INTERFACE_TYPE, NODE_TYPE
 from maasserver.listener import PostgresListenerService
@@ -844,7 +844,7 @@ class DNSHelpersMixin:
     def capturePublication(self):
         """Capture the most recent `DNSPublication` record."""
         self.__publication = yield deferToDatabase(self.getPublication)
-        returnValue(self.__publication)
+        return self.__publication
 
     def getCapturedPublication(self):
         """Return the captured publication."""
@@ -887,7 +887,7 @@ class RBACHelpersMixin:
     def captureSynced(self):
         """Capture the most recent `RBACSync` record."""
         self.__synced = yield deferToDatabase(self.getSynced)
-        returnValue(self.__synced)
+        return self.__synced
 
     def getCapturedSynced(self):
         """Return the captured sync record."""

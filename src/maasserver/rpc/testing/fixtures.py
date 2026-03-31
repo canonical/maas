@@ -312,7 +312,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         finally:
             patcher.restore()
 
-        defer.returnValue(protocol)
+        return protocol
 
     @synchronous
     def makeCluster(self, rack_controller, *commands):
