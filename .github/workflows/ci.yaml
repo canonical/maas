@@ -1,63 +1,51 @@
 name: CI check
 
 on:
-  # Run on default events, and also when converted from draft to ready
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
     types: [checks_requested]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
-
 jobs:
   lint-and-test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     if: ${{ !github.event.pull_request.draft }}
 
-    permissions:
-      contents: read
-      packages: read
-
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Go modules cache
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('src/**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Prepare container, lint and test
+      - name: Configure apt to keep downloaded packages
         run: |
-          docker run --rm \
-            -v $HOME/go/pkg/mod:/home/ubuntu/go/pkg/mod \
-            -v $HOME/.cache/go-build:/home/ubuntu/.cache/go-build \
-            -v ${{ github.workspace }}:/work \
-            -w /work \
-            ghcr.io/${{ env.IMAGE_NAME }} \
-            sh -c "
-              git config --global --add safe.directory /work
-              useradd ubuntu || true
-              chown -R ubuntu:ubuntu /home/ubuntu
-              chown -R ubuntu:ubuntu /work
-              sudo -H -u ubuntu make install-dependencies
-              sudo -H -u ubuntu make build
-              sudo -H -u ubuntu make lint
-              sudo -H -u ubuntu make test
-            "
+          # Disable the automatic purging of the apt cache in docker images
+          sudo rm -f /etc/apt/apt.conf.d/docker-clean
+          # Retain downloaded .deb files
+          echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' | sudo tee /etc/apt/apt.conf.d/keep-cache
+
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-${{ hashFiles('**/required-packages/base'), hashFiles('**/required-packages/dev') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
+
+      - name: Install make and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make
+          make install-dependencies
+
+      - name: Build
+        run: make
+
+      - name: Lint
+        run: make lint
+
+      - name: Run Tests
+        run: make test
+
       - name: Archive logs
         if: always()
         uses: actions/upload-artifact@v4
