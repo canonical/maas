@@ -108,4 +108,4 @@ jobs:
         with:
           name: test-reports
           path: |
-            ${{ GITHUB_WORKSPACE }}/junit*.xml
+            $GITHUB_WORKSPACE/junit*.xml
