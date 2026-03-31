@@ -1,7 +1,6 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 from pathlib import Path
 
 from maascommon.utils.images import get_bootresource_store_path
