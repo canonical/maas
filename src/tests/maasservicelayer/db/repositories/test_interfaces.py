@@ -557,3 +557,91 @@ class TestInterfaceRepository:
         assert iface["type"] == "physical"
         assert iface["mac_address"] == "00:11:22:33:44:55"
         assert iface["switch_id"] == switch_id
+
+    async def test_unlink_interface_from_ips(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        interface1 = await create_test_interface_entry(fixture, ips=[ip])
+        interface2 = await create_test_interface_entry(fixture, ips=[ip])
+
+        links = await fixture.get("maasserver_interface_ip_addresses")
+        assert len(links) == 2
+
+        await interfaces_repository.unlink_interface_from_ips(interface1.id)
+
+        links = await fixture.get("maasserver_interface_ip_addresses")
+        assert len(links) == 1
+        assert links[0]["interface_id"] == interface2.id
+
+    async def test_unlink_interface_from_ip_noop_when_not_linked(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        interface = await create_test_interface_entry(fixture, ips=[ip])
+        unrelated_interface = await create_test_interface_entry(
+            fixture, ips=[]
+        )
+
+        await interfaces_repository.unlink_interface_from_ips(
+            unrelated_interface.id
+        )
+
+        links = await fixture.get("maasserver_interface_ip_addresses")
+        assert len(links) == 1
+        assert links[0]["interface_id"] == interface.id
+
+    async def test_unlink_interface_from_ip_multiple_ips(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip1 = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+        ip2 = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+
+        interface = await create_test_interface_entry(fixture, ips=[ip1, ip2])
+        other_interface = await create_test_interface_entry(fixture, ips=[ip1])
+
+        links = await fixture.get("maasserver_interface_ip_addresses")
+        assert len(links) == 3
+
+        await interfaces_repository.unlink_interface_from_ips(interface.id)
+
+        links = await fixture.get("maasserver_interface_ip_addresses")
+        assert len(links) == 1
+        assert links[0]["interface_id"] == other_interface.id
+        assert links[0]["staticipaddress_id"] == ip1["id"]
