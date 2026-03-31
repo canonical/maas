@@ -4,7 +4,7 @@ from subprocess import Popen
 
 import prometheus_client
 import pytest
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 
 from provisioningserver.prometheus.utils import (
     clean_prometheus_dir,
@@ -106,7 +106,7 @@ class TestPrometheusMetricsNew:
         @inlineCallbacks
         def func(param1, param2=None):
             yield
-            returnValue(retval)
+            return retval
 
         param1 = object()
         result = await func(param1, param2="baz")

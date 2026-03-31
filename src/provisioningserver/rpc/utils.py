@@ -6,7 +6,7 @@
 import json
 
 from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 from twisted.protocols.amp import UnhandledCommand, UnknownRemoteError
 
 from maascommon.utils.network import coerce_to_valid_hostname
@@ -69,7 +69,7 @@ def create_node(
         maaslog.error(
             "A node with one of the mac addresses in %s already exists.", macs
         )
-        returnValue(None)
+        return None
     except UnhandledCommand:
         # The region hasn't been upgraded to support this method
         # yet, so give up.
@@ -77,7 +77,7 @@ def create_node(
             "Unable to create node on region: Region does not "
             "support the CreateNode RPC method."
         )
-        returnValue(None)
+        return None
     except UnknownRemoteError as e:
         # This happens, for example, if a ValidationError occurs on the region.
         # (In particular, we see this if the hostname is a duplicate.)
@@ -88,9 +88,9 @@ def create_node(
             macs,
             e.description,
         )
-        returnValue(None)
+        return None
     else:
-        returnValue(response["system_id"])
+        return response["system_id"]
 
 
 @asynchronous
@@ -131,4 +131,7 @@ def commission_node(system_id, user):
             "support the CommissionNode RPC method."
         )
     finally:
-        returnValue(None)
+        # TODO: return in a finally block silently suppresses any exception
+        # propagating from the try/except above. Pre-existing behaviour from
+        # the old returnValue(None) here, but should be revisited.
+        return None

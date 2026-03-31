@@ -4,7 +4,7 @@
 import dataclasses
 from unittest.mock import sentinel
 
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 
 from maastesting import get_testing_timeout
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -73,7 +73,7 @@ class TestRackVersionUpdateCheckService(MAASTestCase):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(UpdateControllerState)
         self.addCleanup((yield connecting))
-        returnValue(protocol)
+        return protocol
 
     def test_get_state_in_deb(self):
         service = RackVersionUpdateCheckService(None)

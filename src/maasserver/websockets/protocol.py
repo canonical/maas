@@ -18,7 +18,7 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from django.utils import timezone
 import netaddr
-from twisted.internet.defer import fail, inlineCallbacks, returnValue, succeed
+from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet.task import LoopingCall
 from twisted.python.modules import getModule
@@ -189,8 +189,7 @@ class WebSocketProtocol(Protocol):
         if tokens is None or csrftoken not in tokens:
             # No csrftoken in the request or the token does not match.
             self.loseConnection(STATUSES.PROTOCOL_ERROR, "Invalid CSRF token.")
-            returnValue(False)
-            return
+            return False
 
         try:
             result = yield deferToDatabase(
@@ -200,8 +199,7 @@ class WebSocketProtocol(Protocol):
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR, f"Error authenticating user: {error}"
             )
-            returnValue(False)
-            return
+            return False
         if result:
             self.user, self.session = result
         else:
@@ -211,9 +209,9 @@ class WebSocketProtocol(Protocol):
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR, "Failed to authenticate user."
             )
-            returnValue(False)
+            return False
         else:
-            returnValue(True)
+            return True
 
     def dataReceived(self, data):
         """Received message from client and queue up the message."""
@@ -544,4 +542,4 @@ class WebSocketFactory(Factory):
             if client := client_sessions.get(session_key):
                 client.loseConnection(STATUSES.NORMAL, "Session expired")
 
-        returnValue(None)
+        return None

@@ -7,7 +7,7 @@ from abc import abstractmethod
 import dataclasses
 from datetime import timedelta
 
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateControllerState
@@ -62,4 +62,4 @@ class RackVersionUpdateCheckService(VersionUpdateCheckService):
                 yield pause(1.0)
                 continue
             else:
-                returnValue(client)
+                return client
