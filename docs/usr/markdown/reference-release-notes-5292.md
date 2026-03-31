@@ -67,15 +67,17 @@ We are happy to announce that MAAS 3.7.1 has been released, with the following b
 
 #### MAAS 3.7 on Ubuntu 24.04 LTS
 
-MAAS 3.7 is supported on **Ubuntu 24.04 LTS (Noble)** with **PostgreSQL 16**. **Ubuntu 22.04 (Jammy) and PostgreSQL 14 are not supported** with MAAS 3.7; see [Supported MAAS versions](https://canonical.com/maas/docs/supported-maas-versions).
+MAAS 3.7 is supported on Ubuntu 24.04 LTS (Noble) with PostgreSQL 16. Ubuntu 22.04 (Jammy) and PostgreSQL 14 are not supported with MAAS 3.7; see [Supported MAAS versions](https://canonical.com/maas/docs/supported-maas-versions).
 
-It's available in both deb (PPA) and snap formats.
+It's available in both deb and snap formats.
 
-You should upgrade the node Ubuntu distribution to 24.04 LTS before attempting to upgrade MAAS, so plan your maintenance window appropriately. Note that you must upgrade PostgreSQL to version 16 before continuing with the MAAS upgrade (see below).
+If you use the deb format, you should upgrade the node Ubuntu distribution to 24.04 LTS before attempting to upgrade MAAS, and plan a maintenance window accordingly. You must move the MAAS database to PostgreSQL 16 before continuing with the MAAS upgrade.
+
+If you use the snap, follow [How to upgrade MAAS](https://canonical.com/maas/docs/how-to-upgrade-maas).
 
 #### MAAS 3.7 requires PostgreSQL 16
 
-**Ubuntu 24.04 LTS** includes PostgreSQL 16, which is required for MAAS 3.7. Upgrade the MAAS database to PostgreSQL 16 before upgrading to MAAS 3.7.x. Use your operating system and PostgreSQL documentation for the upgrade procedure.
+Ubuntu 24.04 LTS includes PostgreSQL 16, which is required for MAAS 3.7. Upgrade the MAAS database to PostgreSQL 16 before upgrading to MAAS 3.7.x. Use your operating system and PostgreSQL documentation for the upgrade procedure.
 
 #### BlueField-3 DPU provisioning
 
