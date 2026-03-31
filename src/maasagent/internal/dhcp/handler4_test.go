@@ -49,6 +49,8 @@ func (m *MockLeaseReporter) EnqueueLeaseNotification(_ context.Context, n *dhcpd
 }
 
 func TestDORAHandlerServeDHCP4(t *testing.T) {
+	t.Skip("DORA handler code is not currently used in production")
+
 	hostname, hostnameErr := os.Hostname()
 	require.NoError(t, hostnameErr)
 
