@@ -31,6 +31,30 @@ We support two releases of MAAS plus one Beta release (when available).  The two
 
 ## Version 3.7 release notes
 
+### MAAS 3.7.1 has been released
+
+We are happy to announce that MAAS 3.7.1 has been released, with the following bug fixes:
+
+- [2132663](https://launchpad.net/maas/+bug/2132663):  Custom images fail to deploy in memory
+- [2134059](https://launchpad.net/maas/+bug/2134059):  In-memory deployments cause incorrect netplan
+- [2134484](https://launchpad.net/maas/+bug/2134484):  DHCP fails to start due to dhcpd.conf not formatted correctly for multi-homed clients
+- [2134485](https://launchpad.net/maas/+bug/2134485):  MAAS 3.7.0: DHCP Fails on Split Region/Rack with VLANs (Initial Crash, Duplicate Host, and Event Trigger Failure)
+- [2127672](https://launchpad.net/maas/+bug/2127672):  _gen_reverse_zones takes a lot of time in environments with lots of subnets
+- [2110046](https://launchpad.net/maas/+bug/2110046):  MAAS allows AXFR from all sources
+- [2129772](https://launchpad.net/maas/+bug/2129772):  TFTP server reports intermittent "Error code 1: File not found"
+- [2130621](https://launchpad.net/maas/+bug/2130621):  DGX H200 commissioning failed randomly due to a password policy mismatch
+- [2132282](https://launchpad.net/maas/+bug/2132282):  20-maas-03-machine-resources fails for uint64 counters
+- [2137254](https://launchpad.net/maas/+bug/2137254):  "Add Hardware" fails with 500 error when Candid is enabled and RBAC is disabled (UI calls service-layer endpoint that does not exist)
+- [2137017](https://launchpad.net/maas/+bug/2137017):  maas-run-scripts failing with 'NoneType' object is not iterable
+- [2137724](https://launchpad.net/maas/+bug/2137724):  Temporal worker pool configuration failure on NULL IP
+- [2135830](https://launchpad.net/maas/+bug/2135830):  Virsh VM cannot use storage type ZFS
+- [2138301](https://launchpad.net/maas/+bug/2138301):  The images page of a MAAS with many boot resources is slow
+- [2138312](https://launchpad.net/maas/+bug/2138312):  ARM64 custom image deploy fails if AMD64 custom image exists with the same name
+- [2138738](https://launchpad.net/maas/+bug/2138738):  MAAS 3.7.0 does not allow to change the hostname
+- [2080646](https://launchpad.net/maas/+bug/2080646):  MAAS_PATH env variable missing from snap env, causes maas not to be able to connect to virsh
+- [2107706](https://launchpad.net/maas/+bug/2107706):  Power error for intel AMT when using HTTPS: Unsupported protocol
+- [2135117](https://launchpad.net/maas/+bug/2135117):  MAAS is trying to remove lost+found for filesystem mounted on /var/lib/maas/image-storage
+
 ### 3.7.0
 
 #### BlueField-3 DPU provisioning
@@ -117,6 +141,32 @@ In rack-only mode, we no longer run a BIND instance to forward queries to the re
 - [LP#2130269](https://bugs.launchpad.net/bugs/2130269) - Build is failing to download pre-built UI assets
 
 ## Version 3.6 release notes
+
+### MAAS 3.6.3 has been released
+
+We are happy to announce that MAAS 3.6.3 has been released, with the following bug fixes:
+
+- [2080646](https://bugs.launchpad.net/maas/+bug/2080646): MAAS_PATH env variable missing from snap env, causes maas  not to be able to connect to virsh
+- [2107706](https://bugs.launchpad.net/maas/+bug/2107706): Power error for intel AMT when using HTTPS: Unsupported protocol
+- [2110046](https://bugs.launchpad.net/maas/+bug/2110046): MAAS allows AXFR from all sources
+- [2122720](https://bugs.launchpad.net/maas/+bug/2122720): Cilium and MAAS routing rule priorities conflict in some cases
+- [2129772](https://bugs.launchpad.net/maas/+bug/2129772): TFTP server reports intermittent "Error code 1: File not found"
+- [2130037](https://bugs.launchpad.net/maas/+bug/2130037): MAAS boot_images_no_proxy configuration ignored, MAAS cannot download images from mirror in the same network
+- [2130237](https://bugs.launchpad.net/maas/+bug/2130237): RPC RegisterRackController can saturate all the database threads, causing region controllers to become unresponsive for minutes
+- [2130269](https://bugs.launchpad.net/maas/+bug/2130269): Build is failing to download pre-built UI assets
+- [2130621](https://bugs.launchpad.net/maas/+bug/2130621): DGX H200 commissioning failed randomly due to a password policy mismatch
+- [2132282](https://bugs.launchpad.net/maas/+bug/2132282): 20-maas-03-machine-resources fails for uint64 counters
+- [2132663](https://bugs.launchpad.net/maas/+bug/2132663): Custom images fail to deploy in memory
+- [2134059](https://bugs.launchpad.net/maas/+bug/2134059): In-memory deployments cause incorrect netplan
+- [2134484](https://bugs.launchpad.net/maas/+bug/2134484): DHCP fails to start due to dhcpd.conf not formatted correctly for multi-homed clients
+- [2134485](https://bugs.launchpad.net/maas/+bug/2134485): MAAS 3.7.0: DHCP Fails on Split Region/Rack with VLANs (Initial Crash, Duplicate Host, and Event Trigger Failure)
+- [2135117](https://bugs.launchpad.net/maas/+bug/2135117): MAAS is trying to remove lost+found for filesystem mounted on /var/lib/maas/image-storage
+- [2135830](https://bugs.launchpad.net/maas/+bug/2135830): Virsh VM cannot use storage type ZFS
+- [2136694](https://bugs.launchpad.net/maas/+bug/2136694): Ephemeral deployments lack control over the amount of RAM allocated for the rootfs
+- [2137017](https://bugs.launchpad.net/maas/+bug/2137017): maas-run-scripts failing with 'NoneType' object is not iterable
+- [2137724](https://bugs.launchpad.net/maas/+bug/2137724): Temporal worker pool configuration failure on NULL IP
+- [2138312](https://bugs.launchpad.net/maas/+bug/2138312): ARM64 custom image deploy fails if AMD64 custom image exists with the same name
+- [2138910](https://bugs.launchpad.net/maas/+bug/2138910): Alias interfaces duplicate the gateway4/6 config in netplan
 
 ### MAAS 3.6.2 has been released
 
