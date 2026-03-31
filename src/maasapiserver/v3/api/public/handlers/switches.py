@@ -155,7 +155,6 @@ class SwitchesHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SwitchResponse:
         """Create a new switch with its management interface."""
-        # Check for existing interface with this MAC address
         existing_interfaces = await services.interfaces.list(
             page=1,
             size=1,
@@ -168,14 +167,11 @@ class SwitchesHandler(Handler):
 
         if existing_interfaces.total > 0:
             existing_interface = existing_interfaces.items[0]
-
-            # Check if it's an UNKNOWN interface that can be claimed
             if (
                 existing_interface.type == InterfaceType.UNKNOWN
                 and existing_interface.node_config_id is None
                 and existing_interface.switch_id is None
             ):
-                # Claim this UNKNOWN interface for the new switch
                 switch = (
                     await services.switches.create_switch_and_link_interface(
                         await switch_request.to_switch_builder(services),
@@ -183,7 +179,6 @@ class SwitchesHandler(Handler):
                     )
                 )
             else:
-                # Interface is already assigned to a node or switch
                 raise ConflictException(
                     details=[
                         BaseExceptionDetail(
@@ -193,7 +188,6 @@ class SwitchesHandler(Handler):
                     ]
                 )
         else:
-            # No existing interface, create both switch and interface
             switch = await services.switches.create_new_switch_and_interface(
                 await switch_request.to_switch_builder(services),
                 switch_request.mac_address,
@@ -234,7 +228,6 @@ class SwitchesHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SwitchResponse:
         """Update a switch's target image."""
-        # Check if switch exists
         existing_switch = await services.switches.get_one_with_target_image(
             switch_id
         )
@@ -249,9 +242,9 @@ class SwitchesHandler(Handler):
             )
 
         # TODO - Check if the new target image is valid and compatible with the switch before updating
-        # TODO - If the switch is currently already deployed, consider the implications of changing the target image and whether to allow it or not
+        # TODO - If the switch is currently already deployed, consider the implications of changing
+        # the target image and whether to allow it or not
 
-        # Update the switch
         switch = await services.switches.update_by_id(
             switch_id, await switch_request.to_switch_builder(services)
         )

@@ -26,10 +26,10 @@ class SwitchResponse(HalResponse[BaseHal]):
         switch: SwitchWithTargetImage,
         self_base_hyperlink: str,
     ) -> Self:
-        """Convert a Switch model to a response object.
+        """Convert a SwitchWithTargetImage model to a response object.
 
         Args:
-            switch: The switch model to convert
+            switch: The SwitchWithTargetImage model to convert
             self_base_hyperlink: Base URL for HAL links
 
         Returns:
@@ -56,7 +56,8 @@ class SwitchResponse(HalResponse[BaseHal]):
         """Convert a Switch model to a response object.
 
         Args:
-            switch: The switch model to convert
+            switch: The Switch model to convert
+            target_image: The image name assigned to this switch
             self_base_hyperlink: Base URL for HAL links
 
         Returns:
