@@ -28,7 +28,6 @@ jobs:
               - 'pyproject.toml'
               - 'tox.ini'
               - 'setup.py'
-              - 'utilities/**'
               - 'openapi.yaml'
               - 'Makefile'
             go:
@@ -38,56 +37,14 @@ jobs:
               - 'src/**/Makefile'
               - 'Makefile'
 
-  lint-and-test-python:
+  lint-and-test:
     needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' || github.event_name == 'merge_group' }}
+    if: ${{ needs.changes.outputs.python == 'true' || needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
     runs-on: ubuntu-24.04
 
     container:
       image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    defaults:
-      run:
-        shell: bash
-
-    permissions:
-      contents: read
-      packages: read
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Prepare container
-        run: |
-          git config --global --add safe.directory $(pwd)
-          make install-dependencies
-          make build
-
-      - name: Lint
-        run: make lint-py-builders lint-py check-types lint-py-imports lint-py-linefeeds lint-oapi lint-shell
-
-      - name: Test
-        run: make test-py
-
-      - name: Archive logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-test-reports
-          path: |
-            /work/junit*.xml
-
-  lint-and-test-go:
-    needs: changes
-    if: ${{ needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
-    runs-on: ubuntu-24.04
-
-    container:
-      image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
+      options: --user ubuntu
       env:
         GOPATH: /github/home/go
         GOCACHE: /github/home/.cache/go-build
@@ -123,26 +80,42 @@ jobs:
           make install-dependencies
           make build
 
-      - name: Lint
+      - name: Lint Python
+        if: ${{ needs.changes.outputs.python == 'true' || github.event_name == 'merge_group' }}
+        run: make lint-py-builders lint-py check-types lint-py-imports lint-py-linefeeds lint-oapi lint-shell
+
+      - name: Test Python
+        if: ${{ needs.changes.outputs.python == 'true' || github.event_name == 'merge_group' }}
+        run: make test-py
+
+      - name: Lint Go
+        if: ${{ needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
         run: make lint-go
 
-      - name: Test
+      - name: Test Go
+        if: ${{ needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
         run: make test-go
+
+      - name: Archive logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            /work/junit*.xml
 
   ci-result:
     if: ${{ always() && !github.event.pull_request.draft }}
-    needs: [lint-and-test-python, lint-and-test-go]
+    needs: [lint-and-test]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
       - name: Verify all checks passed
         run: |
-          results=("${{ needs.lint-and-test-python.result }}" "${{ needs.lint-and-test-go.result }}")
-          for result in "${results[@]}"; do
-            if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
-              echo "One or more checks failed or were cancelled"
-              exit 1
-            fi
-          done
+          result="${{ needs.lint-and-test.result }}"
+          if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+            echo "CI check failed or was cancelled"
+            exit 1
+          fi
           echo "All checks passed or were skipped"
