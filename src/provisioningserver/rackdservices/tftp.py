@@ -19,7 +19,6 @@ from twisted.internet.address import IPv4Address, IPv6Address
 from twisted.internet.defer import (
     inlineCallbacks,
     maybeDeferred,
-    returnValue,
     succeed,
 )
 from twisted.internet.task import deferLater
@@ -154,8 +153,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
             params = yield maybeDeferred(method.match_path, self, file_name)
             if params is not None:
                 params["bios_boot_method"] = method.bios_boot_method
-                returnValue((method, params))
-        returnValue((None, None))
+                return (method, params)
+        return (None, None)
 
     def _handle_image_not_found(
         self,
@@ -480,7 +479,7 @@ class TransferTimeTrackingTFTP(TFTP):
                 filename,
                 prometheus_metrics=prometheus_metrics,
             )
-        returnValue(session)
+        return session
 
     def _clean_filename(self, datagram):
         filename = datagram.filename.decode("ascii")

@@ -3,7 +3,7 @@
 
 """Networks monitoring service for rack controllers."""
 
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -46,15 +46,12 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
     def getRefreshDetails(self):
         client = yield self._getRPCClient()
         if client is None:
-            returnValue((None, None, None))
-            return
+            return (None, None, None)
         credentials = yield client(
             RequestRackRefresh,
             system_id=client.localIdent,
         )
-        returnValue(
-            (self.clientService.maas_url, client.localIdent, credentials)
-        )
+        return (self.clientService.maas_url, client.localIdent, credentials)
 
     def reportNeighbours(self, neighbours):
         """Report neighbour information to the region."""
@@ -87,4 +84,4 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
                 yield pause(1.0)
                 continue
             else:
-                returnValue(client)
+                return client
