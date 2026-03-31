@@ -16,6 +16,7 @@ from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.switches import SwitchesRepository
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootresourcesets import BootResourceSet
@@ -23,6 +24,7 @@ from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.switches import Switch
 from maasservicelayer.services import SwitchesService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.bootresourcefiles import (
     BootResourceFilesService,
 )
@@ -31,6 +33,7 @@ from maasservicelayer.services.bootresourcesets import BootResourceSetsService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.utils.date import utcnow
+from tests.maasservicelayer.services.base import ServiceCommonTests
 
 TEST_SWITCH = Switch(
     id=1,
@@ -38,6 +41,35 @@ TEST_SWITCH = Switch(
     created=utcnow(),
     updated=utcnow(),
 )
+
+
+@pytest.mark.asyncio
+class TestCommonSwitchesService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return SwitchesService(
+            context=Context(),
+            switches_repository=Mock(SwitchesRepository),
+            staticipaddress_service=Mock(StaticIPAddressService),
+            interfaces_service=Mock(InterfacesService),
+            boot_resources_service=Mock(BootResourceService),
+            boot_resource_sets_service=Mock(BootResourceSetsService),
+            boot_resource_files_service=Mock(BootResourceFilesService),
+        )
+
+    @pytest.fixture
+    def builder_model(self) -> type[ResourceBuilder]:
+        return SwitchBuilder
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        now = utcnow()
+        return Switch(
+            id=1,
+            created=now,
+            updated=now,
+            target_image_id=2,
+        )
 
 
 @pytest.mark.asyncio
