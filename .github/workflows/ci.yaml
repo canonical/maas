@@ -75,37 +75,31 @@ jobs:
 
       - name: Prepare container
         run: |
-          useradd ubuntu || true
           chown -R ubuntu:ubuntu /home/ubuntu
           chown -R ubuntu:ubuntu $(pwd)
-          su ubuntu
           git config --global --add safe.directory $(pwd)
-          make install-dependencies
-          make build
+          su ubuntu -c "make install-dependencies"
+          su ubuntu -c "make build"
 
       - name: Lint Python
         if: ${{ needs.changes.outputs.python == 'true' || github.event_name == 'merge_group' }}
         run: |
-          su ubuntu
-          make lint-py-builders lint-py check-types lint-py-imports lint-py-linefeeds lint-oapi lint-shell
+          su ubuntu -c "make lint-py-builders lint-py check-types lint-py-imports lint-py-linefeeds lint-oapi lint-shell"
 
       - name: Test Python
         if: ${{ needs.changes.outputs.python == 'true' || github.event_name == 'merge_group' }}
         run: |
-          su ubuntu
-          make test-py
+          su ubuntu -c "make test-py"
 
       - name: Lint Go
         if: ${{ needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
         run: |
-          su ubuntu
-          make lint-go
+          su ubuntu -c "make lint-go"
 
       - name: Test Go
         if: ${{ needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
         run: |
-          su ubuntu
-          make test-go
+          su ubuntu -c "make test-go"
 
       - name: Archive logs
         if: always()
