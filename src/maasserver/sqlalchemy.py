@@ -8,6 +8,7 @@ See the docstring for get_sqlalchemy_django_connection() for more info.
 
 import asyncio
 from asyncio import AbstractEventLoop
+import inspect
 import threading
 from typing import Any, Callable, Coroutine, TypeVar
 
@@ -66,7 +67,7 @@ class SyncServiceCollectionV3Adapter:
                 """
                 method = getattr(self._service, method_name)
 
-                if asyncio.iscoroutinefunction(method):
+                if inspect.iscoroutinefunction(method):
 
                     def sync_wrapper(*args, **kwargs):
                         """

@@ -10,7 +10,7 @@ __all__ = [
     "Handler",
 ]
 
-import asyncio
+import inspect
 from functools import reduce, wraps
 from operator import attrgetter
 
@@ -422,7 +422,7 @@ class Handler(metaclass=HandlerMetaclass):
                 # methods must out themselves explicitly.
                 if IAsynchronous.providedBy(
                     method
-                ) or asyncio.iscoroutinefunction(method):
+                ) or inspect.iscoroutinefunction(method):
                     # Running in the io thread so clear RBAC/openfga now.
                     clear_caches()
 
