@@ -4,7 +4,7 @@
 """Tests for networks monitor."""
 
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
+from twisted.internet.defer import Deferred, inlineCallbacks
 
 from maasserver.regiondservices.networks_monitoring import (
     RegionNetworksMonitoringService,
@@ -36,7 +36,7 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
             result = yield orig_call()
             if not deferred.called:
                 deferred.callback(None)
-            returnValue(result)
+            return result
 
         setattr(obj, call_name, wrapped_call)
         return deferred
