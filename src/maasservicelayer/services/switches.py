@@ -14,6 +14,7 @@ from maasservicelayer.exceptions.catalog import (
     ConflictException,
     NotFoundException,
 )
+from maasservicelayer.exceptions.constants import CONFLICT_VIOLATION_TYPE
 from maasservicelayer.models.switches import Switch
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.bootresourcefiles import (
@@ -178,7 +179,8 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
             raise ConflictException(
                 details=[
                     BaseExceptionDetail(
-                        "NOS installer images are expected to be self-extracting binaries with a single file"
+                        type=CONFLICT_VIOLATION_TYPE,
+                        message=f"NOS installer images are expected to be self-extracting binaries with one (and only one) file, and it currently has {len(files)} files.",
                     )
                 ]
             )
