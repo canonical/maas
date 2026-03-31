@@ -46,6 +46,8 @@ jobs:
 
       - name: Prepare container
         run: |
+          echo $HOME
+          git config --global --add safe.directory $(pwd)
           make install-dependencies
           make build
 
