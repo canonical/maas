@@ -1,0 +1,130 @@
+name: Test coverage and TiCS Report
+on:
+  schedule:
+    - cron: "30 0 * * 6" # Weekly full analysis
+  push:
+    branches:
+      - "tics-debug-*"
+  pull_request: # will remove after testing
+
+jobs:
+  test-coverage-tics:
+    name: Run tests with coverage and generate TiCS report
+    runs-on: [ self-hosted, reactive, linux, amd64, large-tiobe, jammy ]
+    timeout-minutes: 720
+    container:
+      image: ghcr.io/${{ github.repository }}-build-env:master
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    defaults:
+      run:
+        shell: bash
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Important for TICS to analyze history
+
+      - name: Prepare container
+        run: |
+          chown -R ubuntu:ubuntu /home/ubuntu
+          chown -R ubuntu:ubuntu $(pwd)
+          git config --global --add safe.directory $(pwd)
+          make install-dependencies
+          su ubuntu -c "make build"
+
+      - name: Download dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y python3-coverage
+          su ubuntu -c "go install github.com/axw/gocov/gocov@latest"
+          su ubuntu -c "go install github.com/AlekSi/gocov-xml@latest"
+
+
+      - name: Run python tests with coverage
+        run: |
+          mkdir -p coverage
+          COVERAGE_FILE=.coverage.legacy su ubuntu -c "bin/test.region.legacy --with-coverage --cover-branches || true"
+          COVERAGE_FILE=.coverage.region su ubuntu -c "bin/test.region --with-coverage --cover-branches || true"
+          COVERAGE_FILE=.coverage.rack su ubuntu -c "bin/test.rack --with-coverage --cover-branches || true"
+          COVERAGE_FILE=.coverage.pytest su ubuntu -c "bin/pytest --cov=src --cov-branch -n auto --maxprocesses=4 --dist=load || true"
+          su ubuntu -c "python3-coverage combine .coverage.legacy .coverage.region .coverage.rack .coverage.pytest"
+          su ubuntu -c "python3-coverage report"
+          su ubuntu -c "python3-coverage xml -o coverage/py-coverage.xml"
+
+
+      - name: Run go tests with coverage
+        run: |
+          su ubuntu -c "make test-go-cover || true"
+
+          cd src/maasagent/
+          su ubuntu -c '/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > coverage-maasagent.xml'
+          cp coverage-maasagent.xml "$GITHUB_WORKSPACE/coverage/coverage-maasagent.xml"
+
+          cd ../host-info/
+          su ubuntu -c '/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > coverage-host-info.xml'
+          cp coverage-host-info.xml "$GITHUB_WORKSPACE/coverage/coverage-host-info.xml"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+          retention-days: 1
+
+      - name: Run TICS Analyzer
+        uses: tiobe/tics-github-action@v3
+        env:
+          # Add environment variables to optimize TICS performance
+          TICS_NUM_THREADS: 4  # Adjust based on your runner's capabilities
+        with:
+          mode: ${{ github.event_name == 'pull_request' && 'client' || 'qserver' }}
+          project: maas
+          viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=default
+          ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
+          installTics: true
+          tmpdir: /tmp/tics
+
+      - name: Upload TICS Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: tics-report
+          path: /tmp/tics
+          retention-days: 7
+
+  publish-coverage-report:
+    name: Publish Coverage Report
+    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    runs-on: [ self-hosted, reactive, linux, amd64, tiobe, jammy ]
+    needs: test-coverage-tics
+    permissions:
+      id-token: write
+      pages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: coverage
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
