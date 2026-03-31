@@ -128,4 +128,5 @@ script-maas-with-python
 deploy-vms-on-ibm-z
 deploy-dpus
 sso
+user-groups-and-entitlements
 ```
