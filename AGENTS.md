@@ -84,7 +84,7 @@ All commits and pull/merge requests must follow the [Conventional Commits](https
 ### Commit Message Format
 
 ```
-<type>[scope][!]: <description>
+<type>[(scope)][!]: <description>
 
 [body]
 
@@ -103,7 +103,7 @@ All commits and pull/merge requests must follow the [Conventional Commits](https
 | Type | Purpose |
 | :--- | :--- |
 | **feat** | A new feature |
-| **fix** | A bug fix (should reference the bug) |
+| **fix** | A bug fix |
 | **refactor** | Code change that doesn't fix a bug or add a feature |
 | **perf** | Performance improvement |
 | **test** | Adding or correcting tests |
@@ -123,16 +123,14 @@ Use one of these scopes where applicable:
 - **security**: Security improvements or fixes
 - **storage**: Storage management
 - **tftp**: TFTP service
-- **deps**: Dependency changes
+- **deps**: Dependency changes — used as a scope under the `build` type (e.g., `build(deps): upgrade SQLAlchemy to 2.x`), not as a standalone type
 - **ci**: CI/CD changes
 
 ### Guidelines
 
-- Use scope when applicable to help categorize and group commits
-- For breaking changes, include `!` before the colon AND add a `BREAKING CHANGE:` footer
-- Always reference related bugs: `Resolves LP:2066936` (Launchpad) or `Resolves GH:123` (GitHub)
-- Keep commit titles concise; put detailed reasoning in the body
-- Explain *why* a change was made, not just *what* changed
+- Ticket references are **mandatory** for `fix` commits. For all other types, include them when a relevant issue exists. Supported trackers: `Resolves LP:2066936` (Launchpad), `Resolves GH:123` (GitHub), `Resolves JIRA-123` (Jira).
+- **Description (title)**: Provide a high-level overview only. Do not enumerate individual changes or list implementation details. Focus on the problem being solved or the feature being added.
+- **Body**: Use the body to explain the reasoning, context, and any non-obvious implementation details. Keep it concise and focused on the "why" rather than exhaustively documenting the "what".
 
 ### Examples
 
@@ -160,9 +158,9 @@ Good feature:
 ```
 feat(bootresources): check if controller has enough disk space
 
-- Don't export images from DB if they don't fit in the disk
-- Don't retry downloads on out-of-disk errors
-- Notify user about out-of-disk errors
+Controllers were silently failing or retrying indefinitely when disk
+space was insufficient. This adds pre-flight checks to fail fast with
+a clear user-facing error rather than producing confusing partial state.
 ```
 
 ## Python Guidelines
