@@ -127,4 +127,5 @@ set-up-air-gapped-maas
 script-maas-with-python
 deploy-vms-on-ibm-z
 deploy-dpus
+sso
 ```
