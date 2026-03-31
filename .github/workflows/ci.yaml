@@ -25,6 +25,7 @@ jobs:
           filters: |
             python:
               - 'src/**/*.py'
+              - 'utilities/**'
               - 'pyproject.toml'
               - 'tox.ini'
               - 'setup.py'
@@ -39,7 +40,6 @@ jobs:
 
   lint-and-test:
     needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' || needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
     runs-on: ubuntu-24.04
 
     container:
@@ -67,13 +67,14 @@ jobs:
         uses: actions/cache@v5
         with:
           path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
+            /github/home/.cache/go-build
+            /github/home/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('src/**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go
 
       - name: Prepare container
+        if: ${{ needs.changes.outputs.python == 'true' || needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
         run: |
           chown -R ubuntu:ubuntu /home/ubuntu
           chown -R ubuntu:ubuntu $(pwd)
@@ -107,4 +108,4 @@ jobs:
         with:
           name: test-reports
           path: |
-            /work/junit*.xml
+            $PWD/junit*.xml
