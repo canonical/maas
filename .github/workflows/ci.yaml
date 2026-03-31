@@ -27,7 +27,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-${{ hashFiles('**/required-packages/base'), hashFiles('**/required-packages/dev') }}
+          key: ${{ runner.os }}-apt-${{ hashFiles('**/required-packages/base', '**/required-packages/dev') }}
           restore-keys: |
             ${{ runner.os }}-apt-
 
