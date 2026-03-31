@@ -6,7 +6,11 @@ from datetime import datetime, timedelta
 from functools import cached_property
 from typing import Any, cast, Self
 
-from jose import jwt, JWTError
+from joserfc import jwt
+from joserfc.errors import JoseError
+from joserfc.jws import JWSRegistry
+from joserfc.jwk import OctKey
+from joserfc.jwt import JWTClaimsRegistry
 
 from maasservicelayer.auth.time import utc_from_timestamp
 from maasservicelayer.utils.date import utcnow
@@ -26,10 +30,6 @@ class JWT:
 
     payload: dict[str, Any]
     encoded: str
-
-    _REQUIRED_FIELDS: frozenset[str] = frozenset(
-        ("aud", "iat", "iss", "exp", "sub")
-    )
 
     @cached_property
     def issuer(self) -> str:
@@ -69,7 +69,8 @@ class JWT:
             # private claims
             "user_id": user_id,
         }
-        encoded = jwt.encode(payload, key, algorithm=cls.TOKEN_ALGORITHM)
+        key_obj = OctKey.import_key(key)
+        encoded = jwt.encode({"alg": cls.TOKEN_ALGORITHM}, payload, key_obj)
         return cls(
             payload=payload,
             encoded=encoded,
@@ -79,23 +80,22 @@ class JWT:
     def decode(cls, key: str, encoded: str) -> Self:
         """Decode a token string."""
         try:
-            payload = jwt.decode(
-                encoded,
-                key,
-                algorithms=[cls.TOKEN_ALGORITHM],
-                issuer=cls.ISSUER,
-                audience=cls.AUDIENCE,
+            key_obj = OctKey.import_key(key)
+            jws_reg = JWSRegistry(algorithms=[cls.TOKEN_ALGORITHM])
+            token = jwt.decode(encoded, key_obj, registry=jws_reg)
+            claims_reg = JWTClaimsRegistry(
+                iss={"essential": True, "value": cls.ISSUER},
+                aud={"essential": True, "value": cls.AUDIENCE},
+                exp={"essential": True},
+                sub={"essential": True},
+                iat={"essential": True},
             )
-        except JWTError:
+            claims_reg.validate(token.claims)
+            payload = token.claims
+        except (JoseError, KeyError, ValueError):
             raise InvalidToken()  # noqa: B904
 
-        # check that all required fields are there
-        if cls._REQUIRED_FIELDS - set(payload):
-            raise InvalidToken()
-
-        token = cls(
+        return cls(
             payload=payload,
             encoded=encoded,
         )
-
-        return token

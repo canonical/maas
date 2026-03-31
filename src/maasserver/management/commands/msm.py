@@ -10,13 +10,17 @@ from ssl import CertificateError
 from urllib.parse import urlparse
 
 from django.core.management.base import CommandError
-from jose import ExpiredSignatureError, JOSEError, jwt
 from jsonschema import validate, ValidationError
 import pytz
 import yaml
 
 from maascli.init import prompt_yes_no
 from maascommon.enums.msm import MSMStatusEnum
+from maascommon.utils.jwt import (
+    decode_unverified_jwt,
+    JWTExpiredError,
+    JWTInvalidError,
+)
 from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.sqlalchemy import service_layer
 
@@ -83,29 +87,24 @@ class Command(BaseCommandWithConnection):
                 print("Could not determine the status of enrolment")
 
     def _enrol(self, options):
-        # We don't know exactly what to expect from these claims, so don't verify them
-        decode_opts = {
-            "verify_signature": False,
-            "verify_aud": False,
-            "verify_sub": False,
-            "verify_iss": False,
-        }
         enrolment_token = options["enrolment_token"]
         config = ""
         if options["config_file"] is not None:
             with closing(options["config_file"]) as cfg_file:
                 config = cfg_file.read()
         try:
-            decoded = jwt.decode(
-                enrolment_token,
-                "",
-                algorithms=["HS256"],
-                options=decode_opts,
+            decoded = decode_unverified_jwt(
+                enrolment_token, check_expiration=True
             )
-        except ExpiredSignatureError:
-            raise CommandError("Enrolment token is expired.")  # noqa: B904
-        except JOSEError:
-            raise CommandError("Invalid enrolment token.")  # noqa: B904
+        except JWTExpiredError as e:
+            raise CommandError("Enrolment token is expired") from e
+        except JWTInvalidError as e:
+            raise CommandError("Invalid enrolment token format") from e
+
+        base_url = decoded.get("service-url")
+        if not base_url:
+            raise CommandError("Enrolment token missing 'service-url' claim")
+
         # validate the yaml config
         if config:
             try:
@@ -120,7 +119,6 @@ class Command(BaseCommandWithConnection):
                 raise CommandError(  # noqa: B904
                     f"Invalid config file: {e.problem}: line {e.problem_mark.line}, column: {e.problem_mark.column}"
                 )
-        base_url = decoded["service-url"]
 
         if not options["non_interactive"]:
             # check if we've previously been enroled
