@@ -46,6 +46,7 @@ node-result
 node-script
 node-script-result
 notification
+oidc
 package-repository
 partition
 pod
