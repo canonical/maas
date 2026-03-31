@@ -14,7 +14,7 @@ import tokenize
 from python_standard_libs import python_standard_libs
 
 # Get a list of all standard library modules.
-sys.path.insert(0, Path(__file__).parent.absolute())
+sys.path.insert(0, str(Path(__file__).parent.absolute()))
 
 
 def flatten(*things):
