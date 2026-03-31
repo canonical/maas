@@ -16,6 +16,32 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
+class TestSwitchClauseFactory:
+    """Tests for SwitchClauseFactory query builder."""
+
+    def test_with_id(self) -> None:
+        clause = SwitchClauseFactory.with_id(1)
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_switch.id = 1"
+        )
+
+    def test_with_ids(self) -> None:
+        clause = SwitchClauseFactory.with_ids([1, 2, 3])
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_switch.id IN (1, 2, 3)"
+        )
+
+
 class TestSwitchesRepository(RepositoryCommonTests[Switch]):
     """Tests for SwitchesRepository database operations."""
 
