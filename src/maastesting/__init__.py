@@ -55,15 +55,8 @@ filterwarnings("ignore", category=DeprecationWarning, module=r"^twisted\b")
 
 # Make sure that sentinel objects are not copied.
 sentinel_type = type(mock.sentinel.foo)
-try:
-    # Try to use the private dispatch dicts if available (Python < 3.14)
-    copy._copy_dispatch[sentinel_type] = copy._copy_immutable
-    copy._deepcopy_dispatch[sentinel_type] = copy._copy_immutable
-except AttributeError:
-    # Fallback for Python 3.14+ where private dispatch dicts were removed
-    # Sentinel objects should not be copied, so return them unchanged
-    sentinel_type.__copy__ = lambda self: self
-    sentinel_type.__deepcopy__ = lambda self, memo: self
+sentinel_type.__copy__ = lambda self: self
+sentinel_type.__deepcopy__ = lambda self, memo: self
 
 
 # This patches testtools.content.TracebackContent to fix LP:1188420
