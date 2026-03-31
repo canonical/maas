@@ -105,13 +105,13 @@ endif
 
 $(VENV):
 	python3 -m venv --system-site-packages --clear $@
-	$(VENV)/bin/pip install --no-build-isolation -e .[testing]
+	$(VENV)/bin/pip install --upgrade --no-build-isolation --force-reinstall -e .[testing]
 
 $(BIN_DIR):
 	mkdir $@
 
 $(BIN_SCRIPTS): $(VENV) $(BIN_DIR)
-	ln -sf ../$(VENV)/$@ $@
+	ln -sf ../$(VENV)/bin/$(notdir $@) $@
 
 bin/py: $(VENV) $(BIN_DIR)
 	ln -sf ../$(VENV)/bin/ipython3 $@
@@ -237,7 +237,7 @@ lint-shell:
 		package-files/usr/lib/maas/beacon-monitor \
 		package-files/usr/lib/maas/unverified-ssh \
 		snap/hooks/* \
-		snap/local/tree/bin/* \
+		snap/local/tree/usr/bin/* \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-get-fruid-api-data \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-kernel-cmdline \
 		src/provisioningserver/refresh/20-maas-03-machine-resources \
@@ -276,6 +276,12 @@ format: format-py format-go
 format-py:
 	@tox -e format
 .PHONY: format-py
+
+# Run ruff autofix across the Python files via tox.
+# This invokes the `ruff-fix` tox environment which performs `ruff --fix`.
+fix-py:
+	@tox -e ruff-fix
+.PHONY: fix-py
 
 format-go:
 	@$(MAKE) -C src/host-info format
@@ -488,7 +494,7 @@ snap-tree-sync: $(UI_BUILD) clean-agent clean-openfga go-bins $(SNAP_UNPACKED_DI
 		--exclude 'host-info' --exclude 'maas-offline-docs' \
 		--exclude '*.pyc' --exclude '__pycache__' \
 		src/ \
-		$(SNAP_UNPACKED_DIR)/lib/python3.*/site-packages/
+		$(SNAP_UNPACKED_DIR)/usr/lib/python3.*/dist-packages/
 	$(RSYNC) \
 		$(UI_BUILD)/ \
 		$(SNAP_UNPACKED_DIR)/usr/share/maas/web/static/
