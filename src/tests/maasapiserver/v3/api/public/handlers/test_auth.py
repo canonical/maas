@@ -9,10 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
-from jose import jwt
 from macaroonbakery.bakery import Macaroon
 import pytest
 
+from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
@@ -168,10 +168,10 @@ class TestAuthApi:
 
         token_response = TokenResponse(**response.json())
         assert token_response.token_type == "bearer"
-        assert (
-            jwt.get_unverified_claims(token_response.access_token)["sub"]
-            == "username"
+        claims = decode_unverified_jwt(
+            token_response.access_token, check_expiration=False
         )
+        assert claims["sub"] == "username"
         assert token_response.refresh_token == "abc123"
 
     async def test_post_validation_failed(
@@ -259,7 +259,9 @@ class TestAuthApi:
         token_response = TokenResponse(**response.json())
         assert token_response.kind == "Tokens"
         assert token_response.token_type == "bearer"
-        decoded_token = jwt.get_unverified_claims(token_response.access_token)
+        decoded_token = decode_unverified_jwt(
+            token_response.access_token, check_expiration=False
+        )
         assert decoded_token["sub"] == "username"
         assert decoded_token["user_id"] == 0
         assert token_response.refresh_token is None
@@ -281,7 +283,9 @@ class TestAuthApi:
         token_response = TokenResponse(**response.json())
         assert token_response.kind == "Tokens"
         assert token_response.token_type == "bearer"
-        decoded_token = jwt.get_unverified_claims(token_response.access_token)
+        decoded_token = decode_unverified_jwt(
+            token_response.access_token, check_expiration=False
+        )
         assert decoded_token["sub"] == "username"
         assert decoded_token["user_id"] == 0
         assert token_response.refresh_token is None
