@@ -46,8 +46,6 @@ jobs:
 
       - name: Prepare container
         run: |
-          ls ~/go/pkg/mod
-          ls ~/.cache/go-build
           git config --global --add safe.directory $(pwd)
           make install-dependencies
           make build
