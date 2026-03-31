@@ -89,8 +89,7 @@ type ProxyOption func(*Proxy)
 func WithRewriter(r *Rewriter) ProxyOption {
 	return func(p *Proxy) {
 		p.rewriter = r
-		// At most one of Rewrite or Director may be set. Set Director to nil.
-		p.revproxy.Director = nil
+		// Use Rewrite instead of deprecated Director
 		p.revproxy.Rewrite = p.rewriteRequest()
 		p.revproxy.ModifyResponse = p.modifyResponse()
 		p.revproxy.ErrorHandler = p.errorHandler()

@@ -170,6 +170,7 @@ func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) err
 				mu.Lock()
 
 				targets = append(targets, u)
+
 				mu.Unlock()
 
 				if err := conn.Close(); err != nil {

@@ -5,7 +5,7 @@ BIN_DIR    := bin
 BUILD_DIR  := build
 VENDOR_DIR := vendor
 BTF_PATH   := /sys/kernel/btf/vmlinux
-LDFLAGS    := -ldflags '-linkmode=external -extldflags "-fPIC -static -luv -llz4 -ldqlite"'
+LDFLAGS    := -ldflags '-linkmode=external -extldflags "-fPIC -static -luv -llz4 -lxxhash -ldqlite"'
 
 GO      ?= go
 GOFLAGS ?= -mod=readonly
