@@ -15,8 +15,8 @@ jobs:
     container:
       image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
       volumes:
-        - ~/go/pkg/mod:/github/home/go/pkg/mod
-        - ~/.cache/go-build:/github/home/.cache/go-build
+        - /home/runner/go/pkg/mod:/github/home/go/pkg/mod
+        - /home/runner/.cache/go-build:/github/home/.cache/go-build
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
