@@ -7,8 +7,6 @@ import json
 from typing import Awaitable, Callable, Dict, Sequence
 
 from fastapi import Request, Response
-from jose import jwt
-from jose.exceptions import JWTError
 from macaroonbakery import bakery
 import macaroonbakery._utils as utils
 from pymacaroons import Macaroon
@@ -28,6 +26,7 @@ from maascommon.logging.security import (
     AUTHN_AUTH_SUCCESSFUL,
     SECURITY,
 )
+from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
@@ -80,7 +79,7 @@ class AuthenticationProvider(abc.ABC):
         pass
 
 
-class JWTAuthenticationProvider(AuthenticationProvider):
+class JWTAuthenticationProvider(AuthenticationProvider, abc.ABC):
     @classmethod
     @abc.abstractmethod
     def get_issuer(cls):
@@ -573,8 +572,8 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
     ) -> AuthenticatedUser:
         token = auth_header.split(" ")[1]
         try:
-            header = jwt.get_unverified_claims(token)
-        except JWTError:
+            header = decode_unverified_jwt(token, check_expiration=False)
+        except JWTDecodeError:
             raise BadRequestException(  # noqa: B904
                 details=[
                     BaseExceptionDetail(
