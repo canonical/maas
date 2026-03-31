@@ -10,13 +10,16 @@ from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.switches import SwitchesRepository
+from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.switches import Switch
 from maasservicelayer.services import SwitchesService
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.utils.date import utcnow
+from tests.maasservicelayer.services.base import ServiceCommonTests
 
 TEST_SWITCH = Switch(
     id=1,
@@ -24,6 +27,32 @@ TEST_SWITCH = Switch(
     created=utcnow(),
     updated=utcnow(),
 )
+
+
+@pytest.mark.asyncio
+class TestCommonSwitchesService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return SwitchesService(
+            context=Context(),
+            switches_repository=Mock(SwitchesRepository),
+            staticipaddress_service=Mock(StaticIPAddressService),
+            interfaces_service=Mock(InterfacesService),
+        )
+
+    @pytest.fixture
+    def builder_model(self) -> type[ResourceBuilder]:
+        return SwitchBuilder
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        now = utcnow()
+        return Switch(
+            id=1,
+            created=now,
+            updated=now,
+            target_image_id=2,
+        )
 
 
 @pytest.mark.asyncio
