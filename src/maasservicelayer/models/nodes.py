@@ -1,7 +1,6 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from datetime import datetime
-from typing import Optional
 
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
@@ -20,11 +19,11 @@ class Node(MaasTimestampedBaseModel):
     node_type: NodeTypeEnum
     power_state: PowerState
     power_state_updated: datetime | None
-    owner_id: Optional[int] = None
+    owner_id: int | None = None
     error_description: str = ""
     current_commissioning_script_set_id: int | None = None
     current_testing_script_set_id: int | None = None
     current_installation_script_set_id: int | None = None
-    boot_interface_id: Optional[int] = None
-    current_config_id: Optional[int] = None
-    domain_id: Optional[int] = None
+    boot_interface_id: int | None = None
+    current_config_id: int | None = None
+    domain_id: int | None = None

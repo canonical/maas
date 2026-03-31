@@ -35,14 +35,15 @@ through the use of pydantic validators. See the preprocess_* validators.
 from abc import ABC, abstractmethod
 from datetime import date, datetime
 from enum import StrEnum
-from typing import List, Optional, override, Type, Union
+from typing import List, override, Type, Union
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
-    root_validator,
+    field_validator,
+    model_validator,
     ValidationError,
-    validator,
 )
 
 
@@ -77,14 +78,14 @@ class IndexContent(BaseModel):
     name: str
     path: str
     updated: datetime
-    datatype: Optional[Datatype]
+    datatype: Datatype | None = None
     format: str = "products:1.0"
     products: List[str]
 
-    # TODO: switch to field_validator when we migrate to pydantic 2.x
-    _validate_updated = validator("updated", pre=True, allow_reuse=True)(
-        updated_validator
-    )
+    @field_validator("updated", mode="before")
+    @classmethod
+    def _validate_updated(cls, v):
+        return updated_validator(v)
 
 
 class SimpleStreamsIndexList(BaseModel):
@@ -92,12 +93,13 @@ class SimpleStreamsIndexList(BaseModel):
     format: str = "index:1.0"
     indexes: list[IndexContent]
 
-    # TODO: switch to field_validator when we migrate to pydantic 2.x
-    _validate_updated = validator("updated", pre=True, allow_reuse=True)(
-        updated_validator
-    )
+    @field_validator("updated", mode="before")
+    @classmethod
+    def _validate_updated(cls, v):
+        return updated_validator(v)
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def preprocess_index(cls, v):
         """Transform 'index' into a list of IndexContent."""
 
@@ -128,9 +130,12 @@ class ImageFile(DownloadableFile):
 
 
 class Version(BaseModel, ABC):
+    model_config = ConfigDict(populate_by_name=True)
+
     version_name: str
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def preprocess_items(cls, v: dict):
         """Unpack items into the specific fields.
 
@@ -152,21 +157,16 @@ class Version(BaseModel, ABC):
     ) -> list[DownloadableFile]:
         pass
 
-    @override
-    def dict(self, **kwargs):
-        """This is needed when serializing and de-serializing the object.
-
-        TODO: remove when we switch to Pydantic 2.x and use validation_alias instead of alias
-        """
-        kwargs["by_alias"] = True
-        return super().dict(**kwargs)
-
 
 class BootloaderVersion(Version):
-    grub2_signed: BootloaderFile | None = Field(None, alias="grub2-signed")
-    shim_signed: BootloaderFile | None = Field(None, alias="shim-signed")
-    grub2: BootloaderFile | None
-    syslinux: BootloaderFile | None
+    grub2_signed: BootloaderFile | None = Field(
+        None, validation_alias="grub2-signed"
+    )
+    shim_signed: BootloaderFile | None = Field(
+        None, validation_alias="shim-signed"
+    )
+    grub2: BootloaderFile | None = None
+    syslinux: BootloaderFile | None = None
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
@@ -180,18 +180,28 @@ class BootloaderVersion(Version):
 
 
 class MultiFileImageVersion(Version):
-    support_eol: date | None
-    support_esm_eol: date | None
-    boot_initrd: ImageFile = Field(..., alias="boot-initrd")
-    boot_kernel: ImageFile = Field(..., alias="boot-kernel")
+    support_eol: date | None = None
+    support_esm_eol: date | None = None
+    boot_initrd: ImageFile = Field(..., validation_alias="boot-initrd")
+    boot_kernel: ImageFile = Field(..., validation_alias="boot-kernel")
     manifest: ImageFile
-    root_image_gz: ImageFile | None = Field(None, alias="root-image.gz")
-    squashfs: ImageFile | None
+    root_image_gz: ImageFile | None = Field(
+        None, validation_alias="root-image.gz"
+    )
+    squashfs: ImageFile | None = None
 
-    # TODO: switch to field_validator when we migrate to pydantic 2.x
-    _validate_support_eol = validator(
-        "support_eol", "support_esm_eol", pre=True, allow_reuse=True
-    )(support_eol_validator)
+    @field_validator("support_eol", "support_esm_eol", mode="before")
+    @classmethod
+    def _validate_support_eol(cls, v):
+        return support_eol_validator(v)
+
+    @model_validator(mode="after")
+    def validate_has_image_file(self) -> "MultiFileImageVersion":
+        if self.squashfs is None and self.root_image_gz is None:
+            raise ValueError(
+                "At least one of 'squashfs' or 'root-image.gz' must be present."
+            )
+        return self
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
@@ -206,7 +216,7 @@ class MultiFileImageVersion(Version):
 
 class SingleFileImageVersion(Version):
     manifest: ImageFile
-    root_tgz: ImageFile = Field(..., alias="root-tgz")
+    root_tgz: ImageFile = Field(..., validation_alias="root-tgz")
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
@@ -214,6 +224,8 @@ class SingleFileImageVersion(Version):
 
 
 class Product(BaseModel, ABC):
+    model_config = ConfigDict(populate_by_name=True)
+
     product_name: str
     arch: str
     label: str
@@ -225,8 +237,8 @@ class Product(BaseModel, ABC):
     def version_class() -> Type[Version]:
         pass
 
-    # TODO: switch to model_validator when we migrate to pydantic 2.x
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def preprocess_versions(cls, v):
         """Transform versions in a list.
 
@@ -256,19 +268,10 @@ class Product(BaseModel, ABC):
                 return v
         return None
 
-    @override
-    def dict(self, **kwargs):
-        """This is needed when serializing and de-serializing the object.
-
-        TODO: remove when we switch to Pydantic 2.x and use validation_alias instead of alias
-        """
-        kwargs["by_alias"] = True
-        return super().dict(**kwargs)
-
 
 class BootloaderProduct(Product):
     arches: str
-    bootloader_type: str = Field(..., alias="bootloader-type")
+    bootloader_type: str = Field(..., validation_alias="bootloader-type")
     versions: list[BootloaderVersion]
 
     @override
@@ -285,13 +288,13 @@ class ImageProduct(Product):
     release_title: str
     subarch: str
     subarches: str
-    support_eol: date | None
+    support_eol: date | None = None
     version: str
 
-    # TODO: switch to field_validator when we migrate to pydantic 2.x
-    _validate_support_eol = validator(
-        "support_eol", pre=True, allow_reuse=True
-    )(support_eol_validator)
+    @field_validator("support_eol", mode="before")
+    @classmethod
+    def _validate_support_eol(cls, v):
+        return support_eol_validator(v)
 
     def __hash__(self):
         return hash((self.os, self.release, self.arch, self.subarch))
@@ -325,18 +328,18 @@ class SimpleStreamsProductList(BaseModel, ABC):
     updated: datetime
     products: list
 
-    # TODO: switch to field_validator when we migrate to pydantic 2.x
-    _validate_updated = validator("updated", pre=True, allow_reuse=True)(
-        updated_validator
-    )
+    @field_validator("updated", mode="before")
+    @classmethod
+    def _validate_updated(cls, v):
+        return updated_validator(v)
 
     @staticmethod
     @abstractmethod
     def product_class() -> type[Product]:
         pass
 
-    # TODO: switch to model_validator when we migrate to pydantic 2.x
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def preprocess_products(cls, v: dict):
         """Transform products into a list of product objects.
         'products' is a dict like

@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any, Optional
+from typing import Any
 
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maasservicelayer.models.base import (
@@ -17,7 +17,7 @@ class Notification(MaasTimestampedBaseModel):
     admins: bool
     message: str
     context: dict[str, Any]
-    user_id: Optional[int]
+    user_id: int | None = None
     category: NotificationCategoryEnum
     dismissable: bool
 
