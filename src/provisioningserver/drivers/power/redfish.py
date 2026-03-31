@@ -13,12 +13,14 @@ from typing import Callable
 
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.web import error as web_error
 from twisted.web.client import (
     Agent,
     FileBodyProducer,
     PartialDownloadError,
     readBody,
     RedirectAgent,
+    ResponseFailed,
 )
 from twisted.web.http_headers import Headers
 
@@ -51,6 +53,8 @@ REDFISH_SYSTEMS_ENDPOINT = b"redfish/v1/Systems"
 MAX_REQUEST_RETRIES = 5
 
 MAX_STATUS_REQUEST_RETRIES = 7
+
+MAX_REDIRECTS = 5
 
 
 class PowerChange(str, Enum):
@@ -150,6 +154,38 @@ class RedfishPowerDriverBase(PowerDriver):
             method, uri, headers=headers, bodyProducer=get_bodyProducer()
         )
 
+        # Track redirect count for loop detection
+        redirect_count = 0
+
+        def handle_redirect_error(failure):
+            """Handle redirects that RedirectAgent refuses to follow."""
+            nonlocal redirect_count
+
+            # Only handle ResponseFailed errors
+            if not failure.check(ResponseFailed):
+                return failure
+
+            # Check if this is a PageRedirect that RedirectAgent refused to follow
+            for reason in failure.value.reasons:
+                if reason.check(web_error.PageRedirect):
+                    if redirect_count >= MAX_REDIRECTS:
+                        raise PowerFatalError(
+                            f"Redfish request exceeded maximum redirects ({MAX_REDIRECTS}) - possible redirect loop."
+                        )
+                    # Increment redirect count
+                    redirect_count += 1
+                    # Extract the location and follow the redirect
+                    location = reason.value.location
+                    redirect_deferred = agent.request(
+                        method,
+                        location,
+                        headers=headers,
+                        bodyProducer=get_bodyProducer(),
+                    )
+                    # Attach the errback to handle further redirects
+                    redirect_deferred.addErrback(handle_redirect_error)
+                    return redirect_deferred
+
         def render_response(response, uri):
             """Render the HTTPS response received."""
 
@@ -180,47 +216,31 @@ class RedfishPowerDriverBase(PowerDriver):
             def cb_attach_headers(data, headers):
                 return data, headers
 
-            if response.code >= int(HTTPStatus.BAD_REQUEST) or (
-                response.code == int(HTTPStatus.PERMANENT_REDIRECT)
-            ):
+            if response.code >= int(HTTPStatus.BAD_REQUEST):
                 # Error out if the response has a status code of 400 or above.
-                if response.code >= int(HTTPStatus.BAD_REQUEST):
-                    # if there was no trailing slash,
-                    # retry with a trailing slash
-                    # because of varying requirements of BMC manufacturers
-                    if response.code == HTTPStatus.NOT_FOUND and (
-                        uri.decode("utf-8")[-1] != "/"
-                    ):
-                        d = agent.request(
-                            method,
-                            uri + b"/",
-                            headers=headers,
-                            bodyProducer=get_bodyProducer(),
-                        )
-                    elif (
-                        response.code == HTTPStatus.UNAUTHORIZED
-                        or response.code == HTTPStatus.FORBIDDEN
-                    ):
-                        raise PowerAuthError(
-                            f"Redfish request failed with response status code: {response.code}."
-                        )
-                    else:
-                        raise PowerActionError(
-                            f"Redfish request failed with response status code: {response.code}."
-                        )
-                elif response.code == int(HTTPStatus.PERMANENT_REDIRECT):
-                    uri = response.headers.getRawHeaders(b"location")[0]
-                    if b"http" in uri:
-                        d = agent.request(
-                            method,
-                            uri,
-                            headers=headers,
-                            bodyProducer=get_bodyProducer(),
-                        )
-                    else:
-                        raise PowerActionError(
-                            f"Redfish request failed with response status code: {response.code}."
-                        )
+                # if there was no trailing slash,
+                # retry with a trailing slash
+                # because of varying requirements of BMC manufacturers
+                if response.code == HTTPStatus.NOT_FOUND and (
+                    uri.decode("utf-8")[-1] != "/"
+                ):
+                    d = agent.request(
+                        method,
+                        uri + b"/",
+                        headers=headers,
+                        bodyProducer=get_bodyProducer(),
+                    )
+                elif (
+                    response.code == HTTPStatus.UNAUTHORIZED
+                    or response.code == HTTPStatus.FORBIDDEN
+                ):
+                    raise PowerAuthError(
+                        f"Redfish request failed with response status code: {response.code}."
+                    )
+                else:
+                    raise PowerActionError(
+                        f"Redfish request failed with response status code: {response.code}."
+                    )
                 d.addCallback(readBody)
             else:
                 d = readBody(response)
@@ -230,6 +250,7 @@ class RedfishPowerDriverBase(PowerDriver):
             d.addCallback(cb_attach_headers, headers=response.headers)
             return d
 
+        d.addErrback(handle_redirect_error)
         d.addCallback(render_response, uri=uri)
         return d
 

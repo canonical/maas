@@ -14,13 +14,23 @@ from unittest.mock import call, MagicMock, Mock
 
 from twisted.internet._sslverify import ClientTLSOptions
 from twisted.internet.defer import fail, inlineCallbacks, succeed
-from twisted.web.client import FileBodyProducer, PartialDownloadError
+from twisted.python.failure import Failure
+from twisted.web import error as web_error
+from twisted.web.client import (
+    FileBodyProducer,
+    PartialDownloadError,
+    ResponseFailed,
+)
 from twisted.web.http_headers import Headers
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from provisioningserver.drivers.power import PowerActionError, PowerAuthError
+from provisioningserver.drivers.power import (
+    PowerActionError,
+    PowerAuthError,
+    PowerFatalError,
+)
 import provisioningserver.drivers.power.redfish as redfish_module
 from provisioningserver.drivers.power.redfish import (
     REDFISH_POWER_CONTROL_ENDPOINT,
@@ -558,6 +568,97 @@ class TestRedfishPowerDriver(MAASTestCase):
 
         mock_agent.assert_called_once()
         mock_readBody.assert_not_called()
+
+    @inlineCallbacks
+    def test_redfish_request_follows_308_redirect_for_patch(self):
+        """Test that 308 redirects are followed for non-GET/HEAD methods like PATCH."""
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        uri = join(url, b"redfish/v1/Systems/1")
+        redirect_uri = join(url, b"redfish/v1/Systems/1/")
+        headers = driver.make_auth_headers(**context)
+
+        mock_redirect_agent = self.patch(redfish_module, "RedirectAgent")
+        mock_agent_instance = Mock()
+        mock_redirect_agent.return_value = mock_agent_instance
+
+        # First request returns 308, RedirectAgent raises PageRedirect wrapped in ResponseFailed
+        mock_response_308 = Mock()
+        mock_response_308.code = HTTPStatus.PERMANENT_REDIRECT
+
+        page_redirect_error = web_error.PageRedirect(
+            HTTPStatus.PERMANENT_REDIRECT, location=redirect_uri
+        )
+        response_failed = ResponseFailed(
+            [Failure(page_redirect_error)], mock_response_308
+        )
+
+        # Second request succeeds at the redirected location
+        mock_response_ok = Mock()
+        mock_response_ok.code = HTTPStatus.OK
+
+        mock_agent_instance.request.side_effect = [
+            fail(response_failed),  # First PATCH returns 308 redirect
+            succeed(mock_response_ok),  # Second PATCH succeeds
+        ]
+
+        mock_readBody = self.patch(redfish_module, "readBody")
+        mock_readBody.return_value = succeed(
+            json.dumps({"Status": "OK"}).encode("utf-8")
+        )
+
+        response, _ = yield driver.redfish_request(b"PATCH", uri, headers)
+
+        # Verify redirect was followed
+        self.assertEqual({"Status": "OK"}, response)
+        self.assertEqual(2, mock_agent_instance.request.call_count)
+        # Verify both URIs were called in order
+        self.assertEqual(
+            uri, mock_agent_instance.request.call_args_list[0][0][1]
+        )
+        self.assertEqual(
+            redirect_uri, mock_agent_instance.request.call_args_list[1][0][1]
+        )
+
+    @inlineCallbacks
+    def test_redfish_request_raises_error_on_too_many_redirects(self):
+        """Test that excessive redirects (>5) raise a fatal error without retrying."""
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        uri = join(url, b"redfish/v1/Systems/1")
+        headers = driver.make_auth_headers(**context)
+
+        mock_redirect_agent = self.patch(redfish_module, "RedirectAgent")
+        mock_agent_instance = Mock()
+        mock_redirect_agent.return_value = mock_agent_instance
+
+        # Create an infinite redirect loop
+        mock_response_308 = Mock()
+        mock_response_308.code = HTTPStatus.PERMANENT_REDIRECT
+
+        page_redirect_error = web_error.PageRedirect(
+            HTTPStatus.PERMANENT_REDIRECT, location=uri
+        )
+        response_failed = ResponseFailed(
+            [Failure(page_redirect_error)], mock_response_308
+        )
+
+        # Always return redirect to create infinite loop
+        mock_agent_instance.request.side_effect = lambda *args, **kwargs: fail(
+            response_failed
+        )
+
+        # PowerFatalError should be raised after MAX_REDIRECTS (5) without retrying
+        with self.assertRaisesRegex(
+            PowerFatalError,
+            r"^Redfish request exceeded maximum redirects \(5\) - possible redirect loop\.$",
+        ):
+            yield driver.redfish_request(b"PATCH", uri, headers)
+
+        # Should have tried 6 times: original + 5 redirect attempts (no retries)
+        self.assertEqual(6, mock_agent_instance.request.call_count)
 
     @inlineCallbacks
     def test_power_issues_power_reset(self):
