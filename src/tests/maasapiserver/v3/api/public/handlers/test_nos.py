@@ -125,7 +125,10 @@ class TestNOSInstallerApi(ApiCommonTests):
 
         mock_aiofiles_open = Mock(return_value=mock_context_manager)
 
-        with patch("aiofiles.open", mock_aiofiles_open):
+        with patch(
+            "maasapiserver.v3.api.public.handlers.nos.aiofiles_open",
+            mock_aiofiles_open,
+        ):
             response = await mocked_api_client.get(
                 self.BASE_PATH,
                 headers=TEST_HEADERS,
