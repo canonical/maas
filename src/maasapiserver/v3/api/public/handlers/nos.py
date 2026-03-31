@@ -3,7 +3,7 @@
 
 from typing import Annotated, AsyncIterator
 
-import aiofiles
+from aiofiles import open as aiofiles_open
 from fastapi import Depends, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -124,7 +124,7 @@ class NOSInstallerHandler(Handler):
         )
 
         async def file_stream() -> AsyncIterator[bytes]:
-            async with aiofiles.open(file_path, "rb") as f:
+            async with aiofiles_open(file_path, "rb") as f:
                 while chunk := await f.read(CHUNK_SIZE):
                     yield chunk
 
