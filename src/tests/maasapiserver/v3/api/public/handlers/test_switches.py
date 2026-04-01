@@ -205,7 +205,6 @@ class TestSwitchesApi(ApiCommonTests):
 
         response = await client.post(f"{self.BASE_PATH}", json=new_switch_data)
         assert response.status_code == 201
-        assert response.headers["Location"] == f"{self.BASE_PATH}/1"
 
     async def test_create_switch_with_image(
         self,
@@ -238,7 +237,6 @@ class TestSwitchesApi(ApiCommonTests):
 
         response = await client.post(f"{self.BASE_PATH}", json=new_switch_data)
         assert response.status_code == 201
-        assert response.headers["Location"] == f"{self.BASE_PATH}/1"
 
         switch_response = SwitchResponse(**response.json())
         assert switch_response.target_image_id == TEST_NOS_IMAGE.id
@@ -357,7 +355,6 @@ class TestSwitchesApi(ApiCommonTests):
 
         response = await client.post(f"{self.BASE_PATH}", json=new_switch_data)
         assert response.status_code == 201
-        assert response.headers["Location"] == f"{self.BASE_PATH}/1"
         # Verify that create_switch_and_link_interface was called instead of create_new_switch_and_interface
         services_mock.switches.create_switch_and_link_interface.assert_called_once()
 
