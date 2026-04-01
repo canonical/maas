@@ -92,7 +92,9 @@ class DictCharField(forms.MultiValueField):
                 # subfields 'field1' and 'field2', data will be
                 # ['value1', 'value2'] and we will return:
                 # {'field1': 'value1', 'field2': 'value2'}
-                return dict(zip(self.names, data))
+                # strict=False: when skip_check=True, self.names includes the
+                # extra SKIP_CHECK_NAME entry that is absent from data.
+                return dict(zip(self.names, data, strict=False))
         return None
 
     def get_names(self):
@@ -264,7 +266,7 @@ class DictCharWidget(forms.widgets.MultiWidget):
         self.initials = initials
         self.labels = labels
         self.skip_check = skip_check
-        self._named_widgets = dict(zip(names, widgets))
+        self._named_widgets = dict(zip(names, widgets, strict=True))
         super().__init__(widgets, attrs)
 
     def render(self, name, value, attrs=None):
