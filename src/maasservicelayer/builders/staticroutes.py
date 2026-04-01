@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -17,11 +16,9 @@ class StaticRouteBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    destination_id: Union[int, Unset] = Field(default=UNSET)
-    gateway_ip: Union[IPvAnyAddress, Unset] = Field(
-        default=UNSET
-    )
-    metric: Union[int, Unset] = Field(default=UNSET)
-    source_id: Union[int, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    destination_id: int | Unset = Field(default=UNSET)
+    gateway_ip: IPvAnyAddress | Unset = Field(default=UNSET)
+    metric: int | Unset = Field(default=UNSET)
+    source_id: int | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

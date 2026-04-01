@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from pydantic import Field
@@ -17,18 +16,16 @@ class UserBuilder(ResourceBuilder):
     the generated code.
     """
 
-    date_joined: Union[datetime, Unset] = Field(default=UNSET)
-    email: Union[str, None, Unset] = Field(default=UNSET)
-    first_name: Union[str, Unset] = Field(default=UNSET)
-    is_active: Union[bool, Unset] = Field(default=UNSET)
-    is_staff: Union[bool, Unset] = Field(default=UNSET)
-    is_superuser: Union[bool, Unset] = Field(default=UNSET)
-    last_login: Union[datetime, None, Unset] = Field(
-        default=UNSET
-    )
-    last_name: Union[str, None, Unset] = Field(default=UNSET)
-    password: Union[str, Unset] = Field(default=UNSET)
-    username: Union[str, Unset] = Field(default=UNSET)
+    date_joined: datetime | Unset = Field(default=UNSET)
+    email: str | None | Unset = Field(default=UNSET)
+    first_name: str | Unset = Field(default=UNSET)
+    is_active: bool | Unset = Field(default=UNSET)
+    is_staff: bool | Unset = Field(default=UNSET)
+    is_superuser: bool | Unset = Field(default=UNSET)
+    last_login: datetime | None | Unset = Field(default=UNSET)
+    last_name: str | None | Unset = Field(default=UNSET)
+    password: str | Unset = Field(default=UNSET)
+    username: str | Unset = Field(default=UNSET)
 
     @staticmethod
     def hash_password(password: str) -> str:
@@ -44,10 +41,8 @@ class UserProfileBuilder(ResourceBuilder):
     the generated code.
     """
 
-    auth_last_check: Union[datetime, None, Unset] = Field(
-        default=UNSET
-    )
-    completed_intro: Union[bool, Unset] = Field(default=UNSET)
-    is_local: Union[bool, Unset] = Field(default=UNSET)
-    provider_id: Union[int, None, Unset] = Field(default=UNSET)
-    user_id: Union[int, Unset] = Field(default=UNSET)
+    auth_last_check: datetime | None | Unset = Field(default=UNSET)
+    completed_intro: bool | Unset = Field(default=UNSET)
+    is_local: bool | Unset = Field(default=UNSET)
+    provider_id: int | None | Unset = Field(default=UNSET)
+    user_id: int | Unset = Field(default=UNSET)

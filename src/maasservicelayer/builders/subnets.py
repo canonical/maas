@@ -2,14 +2,13 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
-
-from pydantic import Field
-from pydantic.networks import IPvAnyAddress
-
+from ipaddress import IPv4Network, IPv6Network
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
 from maasservicelayer.models.fields import IPv4v6Network
+from pydantic import Field
+from pydantic.networks import IPvAnyAddress
+
 
 
 class SubnetBuilder(ResourceBuilder):
@@ -19,23 +18,21 @@ class SubnetBuilder(ResourceBuilder):
     the generated code.
     """
 
-    active_discovery: Union[bool, Unset] = Field(default=UNSET)
-    allow_dns: Union[bool, Unset] = Field(default=UNSET)
-    allow_proxy: Union[bool, Unset] = Field(default=UNSET)
-    cidr: Union[IPv4v6Network, Unset] = Field(default=UNSET)
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    description: Union[str, None, Unset] = Field(default=UNSET)
-    disabled_boot_architectures: Union[list[str], Unset] = Field(
-        default=UNSET
-    )
-    dns_servers: Union[list[str], None, Unset] = Field(
-        default=UNSET
-    )
-    gateway_ip: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET
-    )
-    managed: Union[bool, Unset] = Field(default=UNSET)
-    name: Union[str, None, Unset] = Field(default=UNSET)
-    rdns_mode: Union[RdnsMode, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    vlan_id: Union[int, Unset] = Field(default=UNSET)
+    active_discovery: bool | Unset = Field(default=UNSET)
+    allow_dns: bool | Unset = Field(default=UNSET)
+    allow_proxy: bool | Unset = Field(default=UNSET)
+    cidr: IPv4v6Network | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | None | Unset = Field(default=UNSET)
+    disabled_boot_architectures: list[str] | Unset = Field(default=UNSET)
+    dns_servers: list[str] | None | Unset = Field(default=UNSET)
+    gateway_ip: IPvAnyAddress | None | Unset = Field(default=UNSET)
+    managed: bool | Unset = Field(default=UNSET)
+    name: str | None | Unset = Field(default=UNSET)
+    rdns_mode: RdnsMode | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    vlan_id: int | Unset = Field(default=UNSET)
+
+
+
+

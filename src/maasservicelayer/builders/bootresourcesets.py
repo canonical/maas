@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,8 +15,8 @@ class BootResourceSetBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    label: Union[str, Unset] = Field(default=UNSET)
-    resource_id: Union[int, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    version: Union[str, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    label: str | Unset = Field(default=UNSET)
+    resource_id: int | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    version: str | Unset = Field(default=UNSET)

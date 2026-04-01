@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -18,20 +17,14 @@ class StaticIPAddressBuilder(ResourceBuilder):
     the generated code.
     """
 
-    alloc_type: Union[IpAddressType, Unset] = Field(
-        default=UNSET
-    )
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    ip: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET
-    )
-    lease_time: Union[int, Unset] = Field(default=UNSET)
-    subnet_id: Union[int, None, Unset] = Field(default=UNSET)
-    temp_expires_on: Union[datetime, None, Unset] = Field(
-        default=UNSET
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    user_id: Union[int, None, Unset] = Field(default=UNSET)
+    alloc_type: IpAddressType | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    ip: IPvAnyAddress | None | Unset = Field(default=UNSET)
+    lease_time: int | Unset = Field(default=UNSET)
+    subnet_id: int | None | Unset = Field(default=UNSET)
+    temp_expires_on: datetime | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    user_id: int | None | Unset = Field(default=UNSET)
 
     def must_trigger_workflow(self) -> bool:
         return (

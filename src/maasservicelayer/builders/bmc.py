@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -17,9 +16,7 @@ class BmcBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    power_parameters: Union[dict, Unset] = Field(default=UNSET)
-    power_type: Union[PowerTypeEnum, Unset] = Field(
-        default=UNSET
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    power_parameters: dict | Unset = Field(default=UNSET)
+    power_type: PowerTypeEnum | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

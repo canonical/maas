@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Self, Union
+from typing import Self
 
 from pydantic import Field
 
@@ -23,27 +23,19 @@ class BootResourceBuilder(ResourceBuilder):
     the generated code.
     """
 
-    alias: Union[str, None, Unset] = Field(default=UNSET)
-    architecture: Union[str, Unset] = Field(default=UNSET)
-    base_image: Union[str, Unset] = Field(default=UNSET)
-    bootloader_type: Union[str, None, Unset] = Field(
-        default=UNSET
-    )
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    extra: Union[dict, Unset] = Field(default=UNSET)
-    kflavor: Union[str, None, Unset] = Field(default=UNSET)
-    last_deployed: Union[datetime, None, Unset] = Field(
-        default=UNSET
-    )
-    name: Union[str, Unset] = Field(default=UNSET)
-    rolling: Union[bool, Unset] = Field(default=UNSET)
-    rtype: Union[BootResourceType, Unset] = Field(
-        default=UNSET
-    )
-    selection_id: Union[int, None, Unset] = Field(
-        default=UNSET
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET)
+    alias: str | None | Unset = Field(default=UNSET)
+    architecture: str | Unset = Field(default=UNSET)
+    base_image: str | Unset = Field(default=UNSET)
+    bootloader_type: str | None | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    extra: dict | Unset = Field(default=UNSET)
+    kflavor: str | None | Unset = Field(default=UNSET)
+    last_deployed: datetime | None | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    rolling: bool | Unset = Field(default=UNSET)
+    rtype: BootResourceType | Unset = Field(default=UNSET)
+    selection_id: int | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
 
     @classmethod
     def _from_simplestreams_bootloader_product(

@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,10 +15,10 @@ class ResourcePoolBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    description: Union[str, Unset] = Field(default=UNSET)
-    name: Union[str, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
 
 
 class ResourcePoolWithSummaryBuilder(ResourceBuilder):
@@ -29,13 +28,9 @@ class ResourcePoolWithSummaryBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    description: Union[str, Unset] = Field(default=UNSET)
-    machine_ready_count: Union[int, Unset] = Field(
-        default=UNSET
-    )
-    machine_total_count: Union[int, Unset] = Field(
-        default=UNSET
-    )
-    name: Union[str, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | Unset = Field(default=UNSET)
+    machine_ready_count: int | Unset = Field(default=UNSET)
+    machine_total_count: int | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

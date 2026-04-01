@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,9 +15,9 @@ class DNSDataBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    dnsresource_id: Union[int, Unset] = Field(default=UNSET)
-    rrdata: Union[str, Unset] = Field(default=UNSET)
-    rrtype: Union[str, Unset] = Field(default=UNSET)
-    ttl: Union[int, None, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    dnsresource_id: int | Unset = Field(default=UNSET)
+    rrdata: str | Unset = Field(default=UNSET)
+    rrtype: str | Unset = Field(default=UNSET)
+    ttl: int | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

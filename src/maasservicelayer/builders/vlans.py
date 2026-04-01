@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -17,27 +16,17 @@ class VlanBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    description: Union[str, Unset] = Field(default=UNSET)
-    dhcp_on: Union[bool, Unset] = Field(default=UNSET)
-    external_dhcp: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET
-    )
-    fabric_id: Union[int, Unset] = Field(default=UNSET)
-    mtu: Union[int, Unset] = Field(default=UNSET)
-    name: Union[str, None, Unset] = Field(default=UNSET)
-    primary_rack_id: Union[int, None, Unset] = Field(
-        default=UNSET
-    )
-    relay_vlan_id: Union[int, None, Unset] = Field(
-        default=UNSET
-    )
-    relayed_vlan_id: Union[int, None, Unset] = Field(
-        default=UNSET
-    )
-    secondary_rack_id: Union[int, None, Unset] = Field(
-        default=UNSET
-    )
-    space_id: Union[int, None, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    vid: Union[int, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | Unset = Field(default=UNSET)
+    dhcp_on: bool | Unset = Field(default=UNSET)
+    external_dhcp: IPvAnyAddress | None | Unset = Field(default=UNSET)
+    fabric_id: int | Unset = Field(default=UNSET)
+    mtu: int | Unset = Field(default=UNSET)
+    name: str | None | Unset = Field(default=UNSET)
+    primary_rack_id: int | None | Unset = Field(default=UNSET)
+    relay_vlan_id: int | None | Unset = Field(default=UNSET)
+    relayed_vlan_id: int | None | Unset = Field(default=UNSET)
+    secondary_rack_id: int | None | Unset = Field(default=UNSET)
+    space_id: int | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    vid: int | Unset = Field(default=UNSET)

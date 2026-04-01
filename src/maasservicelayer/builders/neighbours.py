@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -18,15 +17,11 @@ class NeighbourBuilder(ResourceBuilder):
     the generated code.
     """
 
-    count: Union[int, Unset] = Field(default=UNSET)
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    interface_id: Union[int, Unset] = Field(default=UNSET)
-    ip: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET
-    )
-    mac_address: Union[MacAddress, None, Unset] = Field(
-        default=UNSET
-    )
-    time: Union[int, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    vid: Union[int, None, Unset] = Field(default=UNSET)
+    count: int | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    interface_id: int | Unset = Field(default=UNSET)
+    ip: IPvAnyAddress | None | Unset = Field(default=UNSET)
+    mac_address: MacAddress | None | Unset = Field(default=UNSET)
+    time: int | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    vid: int | None | Unset = Field(default=UNSET)

@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,10 +15,8 @@ class AgentBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    rack_id: Union[int, Unset] = Field(default=UNSET)
-    rackcontroller_id: Union[int, None, Unset] = Field(
-        default=UNSET
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    uuid: Union[str, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    rack_id: int | Unset = Field(default=UNSET)
+    rackcontroller_id: int | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    uuid: str | Unset = Field(default=UNSET)

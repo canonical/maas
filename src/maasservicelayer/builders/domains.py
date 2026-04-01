@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,8 +15,8 @@ class DomainBuilder(ResourceBuilder):
     the generated code.
     """
 
-    authoritative: Union[bool, Unset] = Field(default=UNSET)
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    name: Union[str, Unset] = Field(default=UNSET)
-    ttl: Union[int, None, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
+    authoritative: bool | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    ttl: int | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

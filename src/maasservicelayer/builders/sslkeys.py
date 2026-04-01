@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,7 +15,7 @@ class SSLKeyBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    key: Union[str, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    user_id: Union[int, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    key: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    user_id: int | Unset = Field(default=UNSET)

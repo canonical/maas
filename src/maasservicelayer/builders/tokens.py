@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,10 +15,10 @@ class OIDCRevokedTokenBuilder(ResourceBuilder):
     the generated code.
     """
 
-    provider_id: Union[int, Unset] = Field(default=UNSET)
-    revoked_at: Union[datetime, Unset] = Field(default=UNSET)
-    token_hash: Union[str, Unset] = Field(default=UNSET)
-    user_email: Union[str, Unset] = Field(default=UNSET)
+    provider_id: int | Unset = Field(default=UNSET)
+    revoked_at: datetime | Unset = Field(default=UNSET)
+    token_hash: str | Unset = Field(default=UNSET)
+    user_email: str | Unset = Field(default=UNSET)
 
 
 class RefreshTokenBuilder(ResourceBuilder):
@@ -29,11 +28,11 @@ class RefreshTokenBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    expires_at: Union[datetime, Unset] = Field(default=UNSET)
-    token: Union[str, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    user_id: Union[int, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    expires_at: datetime | Unset = Field(default=UNSET)
+    token: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    user_id: int | Unset = Field(default=UNSET)
 
 
 class TokenBuilder(ResourceBuilder):
@@ -43,15 +42,13 @@ class TokenBuilder(ResourceBuilder):
     the generated code.
     """
 
-    callback: Union[str, None, Unset] = Field(default=UNSET)
-    callback_confirmed: Union[bool, Unset] = Field(
-        default=UNSET
-    )
-    consumer_id: Union[int, Unset] = Field(default=UNSET)
-    is_approved: Union[bool, Unset] = Field(default=UNSET)
-    key: Union[str, Unset] = Field(default=UNSET)
-    secret: Union[str, Unset] = Field(default=UNSET)
-    timestamp: Union[int, Unset] = Field(default=UNSET)
-    token_type: Union[int, Unset] = Field(default=UNSET)
-    user_id: Union[int, None, Unset] = Field(default=UNSET)
-    verifier: Union[str, Unset] = Field(default=UNSET)
+    callback: str | None | Unset = Field(default=UNSET)
+    callback_confirmed: bool | Unset = Field(default=UNSET)
+    consumer_id: int | Unset = Field(default=UNSET)
+    is_approved: bool | Unset = Field(default=UNSET)
+    key: str | Unset = Field(default=UNSET)
+    secret: str | Unset = Field(default=UNSET)
+    timestamp: int | Unset = Field(default=UNSET)
+    token_type: int | Unset = Field(default=UNSET)
+    user_id: int | None | Unset = Field(default=UNSET)
+    verifier: str | Unset = Field(default=UNSET)

@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,8 +15,8 @@ class FabricBuilder(ResourceBuilder):
     the generated code.
     """
 
-    class_type: Union[str, None, Unset] = Field(default=UNSET)
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    description: Union[str, None, Unset] = Field(default=UNSET)
-    name: Union[str, None, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
+    class_type: str | None | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | None | Unset = Field(default=UNSET)
+    name: str | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

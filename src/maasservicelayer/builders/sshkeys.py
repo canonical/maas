@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -17,11 +16,9 @@ class SshKeyBuilder(ResourceBuilder):
     the generated code.
     """
 
-    auth_id: Union[str, None, Unset] = Field(default=UNSET)
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    key: Union[str, Unset] = Field(default=UNSET)
-    protocol: Union[SshKeysProtocolType, None, Unset] = Field(
-        default=UNSET
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    user_id: Union[int, Unset] = Field(default=UNSET)
+    auth_id: str | None | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    key: str | Unset = Field(default=UNSET)
+    protocol: SshKeysProtocolType | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    user_id: int | Unset = Field(default=UNSET)

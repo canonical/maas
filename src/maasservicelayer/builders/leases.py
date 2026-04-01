@@ -1,8 +1,6 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Union
-
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
 
@@ -17,14 +15,10 @@ class LeaseBuilder(ResourceBuilder):
     the generated code.
     """
 
-    action: Union[LeaseAction, Unset] = Field(default=UNSET)
-    hostname: Union[str, Unset] = Field(default=UNSET)
-    ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET)
-    ip_family: Union[IpAddressFamily, Unset] = Field(
-        default=UNSET
-    )
-    lease_time_seconds: Union[int, Unset] = Field(
-        default=UNSET
-    )
-    mac: Union[str, Unset] = Field(default=UNSET)
-    timestamp_epoch: Union[int, Unset] = Field(default=UNSET)
+    action: LeaseAction | Unset = Field(default=UNSET)
+    hostname: str | Unset = Field(default=UNSET)
+    ip: IPvAnyAddress | Unset = Field(default=UNSET)
+    ip_family: IpAddressFamily | Unset = Field(default=UNSET)
+    lease_time_seconds: int | Unset = Field(default=UNSET)
+    mac: str | Unset = Field(default=UNSET)
+    timestamp_epoch: int | Unset = Field(default=UNSET)

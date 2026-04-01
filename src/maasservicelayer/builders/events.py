@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -22,25 +21,19 @@ class EventBuilder(ResourceBuilder):
     the generated code.
     """
 
-    action: Union[str, Unset] = Field(default=UNSET)
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    description: Union[str, Unset] = Field(default=UNSET)
-    endpoint: Union[EndpointChoicesEnum, Unset] = Field(
-        default=UNSET
-    )
-    ip_address: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET
-    )
-    node_hostname: Union[str, Unset] = Field(default=UNSET)
-    node_id: Union[int, None, Unset] = Field(default=UNSET)
-    node_system_id: Union[str, None, Unset] = Field(
-        default=UNSET
-    )
-    owner: Union[str, Unset] = Field(default=UNSET)
-    type: Union[EventType, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    user_agent: Union[str, Unset] = Field(default=UNSET)
-    user_id: Union[int, None, Unset] = Field(default=UNSET)
+    action: str | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | Unset = Field(default=UNSET)
+    endpoint: EndpointChoicesEnum | Unset = Field(default=UNSET)
+    ip_address: IPvAnyAddress | None | Unset = Field(default=UNSET)
+    node_hostname: str | Unset = Field(default=UNSET)
+    node_id: int | None | Unset = Field(default=UNSET)
+    node_system_id: str | None | Unset = Field(default=UNSET)
+    owner: str | Unset = Field(default=UNSET)
+    type: EventType | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    user_agent: str | Unset = Field(default=UNSET)
+    user_id: int | None | Unset = Field(default=UNSET)
 
 
 class EventTypeBuilder(ResourceBuilder):
@@ -50,10 +43,8 @@ class EventTypeBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    description: Union[str, Unset] = Field(default=UNSET)
-    level: Union[LoggingLevelEnum, Unset] = Field(
-        default=UNSET
-    )
-    name: Union[str, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | Unset = Field(default=UNSET)
+    level: LoggingLevelEnum | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

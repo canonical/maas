@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -18,16 +17,14 @@ class IPRangeBuilder(ResourceBuilder):
     the generated code.
     """
 
-    comment: Union[str, None, Unset] = Field(default=UNSET)
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    end_ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET)
-    start_ip: Union[IPvAnyAddress, Unset] = Field(
-        default=UNSET
-    )
-    subnet_id: Union[int, Unset] = Field(default=UNSET)
-    type: Union[IPRangeType, Unset] = Field(default=UNSET)
-    updated: Union[datetime, Unset] = Field(default=UNSET)
-    user_id: Union[int, None, Unset] = Field(default=UNSET)
+    comment: str | None | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    end_ip: IPvAnyAddress | Unset = Field(default=UNSET)
+    start_ip: IPvAnyAddress | Unset = Field(default=UNSET)
+    subnet_id: int | Unset = Field(default=UNSET)
+    type: IPRangeType | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    user_id: int | None | Unset = Field(default=UNSET)
 
     def must_trigger_workflow(self) -> bool:
         return (

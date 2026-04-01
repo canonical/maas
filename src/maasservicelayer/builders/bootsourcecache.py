@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import date, datetime
-from typing import Self, Union
+from typing import Self
 
 from pydantic import Field
 
@@ -23,31 +23,21 @@ class BootSourceCacheBuilder(ResourceBuilder):
     the generated code.
     """
 
-    arch: Union[str, Unset] = Field(default=UNSET)
-    boot_source_id: Union[int, Unset] = Field(default=UNSET)
-    bootloader_type: Union[str, None, Unset] = Field(
-        default=UNSET
-    )
-    created: Union[datetime, Unset] = Field(default=UNSET)
-    extra: Union[dict, Unset] = Field(default=UNSET)
-    kflavor: Union[str, None, Unset] = Field(default=UNSET)
-    label: Union[str, Unset] = Field(default=UNSET)
-    latest_version: Union[str, None, Unset] = Field(
-        default=UNSET
-    )
-    os: Union[str, Unset] = Field(default=UNSET)
-    release: Union[str, Unset] = Field(default=UNSET)
-    release_codename: Union[str, None, Unset] = Field(
-        default=UNSET
-    )
-    release_title: Union[str, None, Unset] = Field(
-        default=UNSET
-    )
-    subarch: Union[str, Unset] = Field(default=UNSET)
-    support_eol: Union[date, None, Unset] = Field(
-        default=UNSET
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET)
+    arch: str | Unset = Field(default=UNSET)
+    boot_source_id: int | Unset = Field(default=UNSET)
+    bootloader_type: str | None | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    extra: dict | Unset = Field(default=UNSET)
+    kflavor: str | None | Unset = Field(default=UNSET)
+    label: str | Unset = Field(default=UNSET)
+    latest_version: str | None | Unset = Field(default=UNSET)
+    os: str | Unset = Field(default=UNSET)
+    release: str | Unset = Field(default=UNSET)
+    release_codename: str | None | Unset = Field(default=UNSET)
+    release_title: str | None | Unset = Field(default=UNSET)
+    subarch: str | Unset = Field(default=UNSET)
+    support_eol: date | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
 
     def __hash__(self):
         return hash(
