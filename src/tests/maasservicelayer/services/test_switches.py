@@ -630,3 +630,23 @@ class TestSwitchesService:
             staticipaddress_service.delete_ips_if_no_linked_interfaces.call_args_list
             == [call([ip1.id, ip2.id]), call([ip3.id])]
         )
+
+    async def test_list_with_target_image(
+        self,
+        switches_repository,
+        service,
+    ) -> None:
+        await service.list_with_target_image(12, 5)
+        switches_repository.list_with_target_image.assert_called_once_with(
+            12, 5
+        )
+
+    async def test_get_with_target_image(
+        self,
+        switches_repository,
+        service,
+    ) -> None:
+        await service.get_one_with_target_image(12)
+        switches_repository.get_one_with_target_image.assert_called_once_with(
+            12
+        )
