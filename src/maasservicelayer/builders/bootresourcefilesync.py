@@ -16,8 +16,8 @@ class BootResourceFileSyncBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    file_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    region_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    size: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    file_id: Union[int, Unset] = Field(default=UNSET)
+    region_id: Union[int, Unset] = Field(default=UNSET)
+    size: Union[int, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

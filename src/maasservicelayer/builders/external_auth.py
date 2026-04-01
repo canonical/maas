@@ -20,18 +20,18 @@ class OAuthProviderBuilder(ResourceBuilder):
     the generated code.
     """
 
-    client_id: Union[str, Unset] = Field(default=UNSET, required=False)
-    client_secret: Union[str, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    enabled: Union[bool, Unset] = Field(default=UNSET, required=False)
-    issuer_url: Union[str, Unset] = Field(default=UNSET, required=False)
+    client_id: Union[str, Unset] = Field(default=UNSET)
+    client_secret: Union[str, Unset] = Field(default=UNSET)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    enabled: Union[bool, Unset] = Field(default=UNSET)
+    issuer_url: Union[str, Unset] = Field(default=UNSET)
     metadata: Union[ProviderMetadata, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    redirect_uri: Union[str, Unset] = Field(default=UNSET, required=False)
-    scopes: Union[str, Unset] = Field(default=UNSET, required=False)
+    name: Union[str, Unset] = Field(default=UNSET)
+    redirect_uri: Union[str, Unset] = Field(default=UNSET)
+    scopes: Union[str, Unset] = Field(default=UNSET)
     token_type: Union[AccessTokenType, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

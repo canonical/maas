@@ -23,22 +23,22 @@ class BootResourceFileBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    extra: Union[dict, Unset] = Field(default=UNSET, required=False)
-    filename: Union[str, Unset] = Field(default=UNSET, required=False)
-    filename_on_disk: Union[str, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    extra: Union[dict, Unset] = Field(default=UNSET)
+    filename: Union[str, Unset] = Field(default=UNSET)
+    filename_on_disk: Union[str, Unset] = Field(default=UNSET)
     filetype: Union[BootResourceFileType, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     largefile_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     resource_set_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    sha256: Union[str, Unset] = Field(default=UNSET, required=False)
-    size: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    sha256: Union[str, Unset] = Field(default=UNSET)
+    size: Union[int, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
 
     @classmethod
     def _from_simplestreams_file(

@@ -16,16 +16,16 @@ class BootSourceBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    url: Union[str, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    url: Union[str, Unset] = Field(default=UNSET)
     keyring_filename: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     keyring_data: Union[bytes, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    priority: Union[int, Unset] = Field(default=UNSET, required=False)
+    priority: Union[int, Unset] = Field(default=UNSET)
     skip_keyring_verification: Union[bool, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )

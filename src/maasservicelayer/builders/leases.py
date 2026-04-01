@@ -17,14 +17,14 @@ class LeaseBuilder(ResourceBuilder):
     the generated code.
     """
 
-    action: Union[LeaseAction, Unset] = Field(default=UNSET, required=False)
-    hostname: Union[str, Unset] = Field(default=UNSET, required=False)
-    ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET, required=False)
+    action: Union[LeaseAction, Unset] = Field(default=UNSET)
+    hostname: Union[str, Unset] = Field(default=UNSET)
+    ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET)
     ip_family: Union[IpAddressFamily, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     lease_time_seconds: Union[int, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    mac: Union[str, Unset] = Field(default=UNSET, required=False)
-    timestamp_epoch: Union[int, Unset] = Field(default=UNSET, required=False)
+    mac: Union[str, Unset] = Field(default=UNSET)
+    timestamp_epoch: Union[int, Unset] = Field(default=UNSET)

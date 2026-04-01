@@ -15,5 +15,5 @@ class NodeGroupToRackControllerBuilder(ResourceBuilder):
     the generated code.
     """
 
-    subnet_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    uuid: Union[str, Unset] = Field(default=UNSET, required=False)
+    subnet_id: Union[int, Unset] = Field(default=UNSET)
+    uuid: Union[str, Unset] = Field(default=UNSET)

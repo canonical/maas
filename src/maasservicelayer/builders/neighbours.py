@@ -18,15 +18,15 @@ class NeighbourBuilder(ResourceBuilder):
     the generated code.
     """
 
-    count: Union[int, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    interface_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    count: Union[int, Unset] = Field(default=UNSET)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    interface_id: Union[int, Unset] = Field(default=UNSET)
     ip: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     mac_address: Union[MacAddress, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    time: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    vid: Union[int, None, Unset] = Field(default=UNSET, required=False)
+    time: Union[int, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    vid: Union[int, None, Unset] = Field(default=UNSET)

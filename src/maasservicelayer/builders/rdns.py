@@ -17,9 +17,9 @@ class RDNSBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    hostname: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    hostnames: Union[list[str], Unset] = Field(default=UNSET, required=False)
-    ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET, required=False)
-    observer_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    hostname: Union[str, None, Unset] = Field(default=UNSET)
+    hostnames: Union[list[str], Unset] = Field(default=UNSET)
+    ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET)
+    observer_id: Union[int, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

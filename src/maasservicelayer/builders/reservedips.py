@@ -18,11 +18,11 @@ class ReservedIPBuilder(ResourceBuilder):
     the generated code.
     """
 
-    comment: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET, required=False)
+    comment: Union[str, None, Unset] = Field(default=UNSET)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET)
     mac_address: Union[MacAddress, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    subnet_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    subnet_id: Union[int, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

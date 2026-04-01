@@ -21,8 +21,8 @@ class ImageManifestBuilder(ResourceBuilder):
     the generated code.
     """
 
-    boot_source_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    last_update: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    boot_source_id: Union[int, Unset] = Field(default=UNSET)
+    last_update: Union[datetime, Unset] = Field(default=UNSET)
     manifest: Union[
         list[
             Union[
@@ -32,4 +32,4 @@ class ImageManifestBuilder(ResourceBuilder):
             ]
         ],
         Unset,
-    ] = Field(default=UNSET, required=False)
+    ] = Field(default=UNSET)

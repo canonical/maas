@@ -17,18 +17,18 @@ class UserBuilder(ResourceBuilder):
     the generated code.
     """
 
-    date_joined: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    email: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    first_name: Union[str, Unset] = Field(default=UNSET, required=False)
-    is_active: Union[bool, Unset] = Field(default=UNSET, required=False)
-    is_staff: Union[bool, Unset] = Field(default=UNSET, required=False)
-    is_superuser: Union[bool, Unset] = Field(default=UNSET, required=False)
+    date_joined: Union[datetime, Unset] = Field(default=UNSET)
+    email: Union[str, None, Unset] = Field(default=UNSET)
+    first_name: Union[str, Unset] = Field(default=UNSET)
+    is_active: Union[bool, Unset] = Field(default=UNSET)
+    is_staff: Union[bool, Unset] = Field(default=UNSET)
+    is_superuser: Union[bool, Unset] = Field(default=UNSET)
     last_login: Union[datetime, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    last_name: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    password: Union[str, Unset] = Field(default=UNSET, required=False)
-    username: Union[str, Unset] = Field(default=UNSET, required=False)
+    last_name: Union[str, None, Unset] = Field(default=UNSET)
+    password: Union[str, Unset] = Field(default=UNSET)
+    username: Union[str, Unset] = Field(default=UNSET)
 
     @staticmethod
     def hash_password(password: str) -> str:
@@ -45,9 +45,9 @@ class UserProfileBuilder(ResourceBuilder):
     """
 
     auth_last_check: Union[datetime, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    completed_intro: Union[bool, Unset] = Field(default=UNSET, required=False)
-    is_local: Union[bool, Unset] = Field(default=UNSET, required=False)
-    provider_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    completed_intro: Union[bool, Unset] = Field(default=UNSET)
+    is_local: Union[bool, Unset] = Field(default=UNSET)
+    provider_id: Union[int, None, Unset] = Field(default=UNSET)
+    user_id: Union[int, Unset] = Field(default=UNSET)

@@ -16,8 +16,8 @@ class BootResourceSetBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    label: Union[str, Unset] = Field(default=UNSET, required=False)
-    resource_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    version: Union[str, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    label: Union[str, Unset] = Field(default=UNSET)
+    resource_id: Union[int, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    version: Union[str, Unset] = Field(default=UNSET)

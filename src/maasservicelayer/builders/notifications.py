@@ -17,20 +17,20 @@ class NotificationBuilder(ResourceBuilder):
     the generated code.
     """
 
-    admins: Union[bool, Unset] = Field(default=UNSET, required=False)
+    admins: Union[bool, Unset] = Field(default=UNSET)
     category: Union[NotificationCategoryEnum, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     context: Union[dict[str, Any], Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    dismissable: Union[bool, Unset] = Field(default=UNSET, required=False)
-    ident: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    message: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
-    users: Union[bool, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    dismissable: Union[bool, Unset] = Field(default=UNSET)
+    ident: Union[str, None, Unset] = Field(default=UNSET)
+    message: Union[str, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    user_id: Union[int, None, Unset] = Field(default=UNSET)
+    users: Union[bool, Unset] = Field(default=UNSET)
 
 
 class NotificationDismissalBuilder(ResourceBuilder):
@@ -40,7 +40,7 @@ class NotificationDismissalBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    notification_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    notification_id: Union[int, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    user_id: Union[int, Unset] = Field(default=UNSET)

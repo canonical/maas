@@ -16,8 +16,8 @@ class DNSResourceBuilder(ResourceBuilder):
     the generated code.
     """
 
-    address_ttl: Union[int, None, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    domain_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    address_ttl: Union[int, None, Unset] = Field(default=UNSET)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    domain_id: Union[int, Unset] = Field(default=UNSET)
+    name: Union[str, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

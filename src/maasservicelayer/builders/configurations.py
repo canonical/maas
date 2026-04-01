@@ -15,5 +15,5 @@ class DatabaseConfigurationBuilder(ResourceBuilder):
     the generated code.
     """
 
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    value: Union[Any, Unset] = Field(default=UNSET, required=False)
+    name: Union[str, Unset] = Field(default=UNSET)
+    value: Union[Any, Unset] = Field(default=UNSET)

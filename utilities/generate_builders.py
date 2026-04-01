@@ -24,10 +24,10 @@ import os
 import re
 import sys
 from types import FunctionType, ModuleType
-from typing import get_args, get_origin, Self, TypeVar, Union
+from typing import Any, get_args, get_origin, Self, TypeVar, Union
 
 from pydantic import BaseModel
-from pydantic.fields import ModelField
+from pydantic.fields import FieldInfo
 
 MODELS_PATH = "src/maasservicelayer/models"
 BUILDERS_PATH = "src/maasservicelayer/builders"
@@ -69,6 +69,12 @@ try:
 except KeyError as e:
     print(f"{e} not found in {MODELS_BASE}")
     sys.exit(1)
+
+
+@dataclasses.dataclass
+class FieldDef:
+    name: str
+    annotation: Any
 
 
 def default_imports() -> set:
@@ -137,31 +143,21 @@ def handle_simple_type(type_, imports: set):
     add_imports(module_name, process_string(type_), imports)
 
 
-def process_field(field: ModelField, imports: set) -> ModelField:
-    """Modifies the field and updates the import statements.
-
-    Updates the type_ and annotation of the field, making it a Union of the
-    already present value and Unset.
-    It also set the required attribute to False and updated the model_config
-    with the config of ResourceBuilder (in order to allow for arbitrary types).
-    """
-    if get_origin(field.annotation) is not None:
-        handle_composite_type(field.annotation, imports)
+def process_field(name: str, annotation: Any, imports: set) -> FieldDef:
+    """Collect imports for the annotation and return a FieldDef wrapping it with Unset."""
+    if get_origin(annotation) is not None:
+        handle_composite_type(annotation, imports)
     else:
-        handle_simple_type(field.annotation, imports)
+        handle_simple_type(annotation, imports)
 
-    field.type_ = Union[field.type_, Unset]
-    field.annotation = Union[field.annotation, Unset]
-    field.default = UNSET
-    field.required = False
-    field.model_config = ResourceBuilder.__config__
-    return field
+    wrapped = annotation | Unset
+    return FieldDef(name=name, annotation=wrapped)
 
 
 @dataclasses.dataclass(kw_only=True)
 class GenericModel(ABC):
     name: str
-    fields: list[ModelField]
+    fields: list[FieldDef]
     model_imports: set = dataclasses.field(default_factory=default_imports)
 
 
@@ -216,7 +212,7 @@ class BuilderModel(GenericModel):
     def to_file(self) -> str:
         field_lines = ""
         for field in sorted(self.fields, key=lambda f: f.name):
-            field_lines += f"    {field.name}: {process_string(str(field.annotation))} = Field(default=UNSET, required=False)\n"
+            field_lines += f"    {field.name}: {process_string(str(field.annotation))} = Field(default=UNSET)\n"
         method_lines = ""
         for _, method_obj in self.methods:
             method_lines += "".join(inspect.getsourcelines(method_obj)[0])
@@ -263,8 +259,11 @@ class BuilderModule(GenericModule[BuilderModel]):
                     and not getattr(ResourceBuilder, x.__name__, False)
                     and not getattr(BaseModel, x.__name__, False),
                 )
-                fields = list(class_.__fields__.values())
-                fields = [f for f in fields if f.name not in EXCLUDED_FIELDS]
+                fields = [
+                    FieldDef(name=fn, annotation=fi.annotation)
+                    for fn, fi in class_.model_fields.items()
+                    if fn not in EXCLUDED_FIELDS
+                ]
                 models.append(
                     BuilderModel(
                         name=name,
@@ -331,7 +330,7 @@ class DomainModel(GenericModel):
         fields = []
         imports = default_imports()
         for field in sorted(self.fields, key=lambda f: f.name):
-            fields.append(process_field(field, imports))
+            fields.append(process_field(field.name, field.annotation, imports))
         return BuilderModel(
             name=f"{self.name}Builder", fields=fields, model_imports=imports
         )
@@ -348,8 +347,11 @@ class DomainModule(GenericModule[DomainModel]):
         )
         models = []
         for name, class_ in model_classes:
-            fields = list(class_.__fields__.values())
-            fields = [f for f in fields if f.name not in EXCLUDED_FIELDS]
+            fields = [
+                FieldDef(name=fn, annotation=fi.annotation)
+                for fn, fi in class_.model_fields.items()
+                if fn not in EXCLUDED_FIELDS
+            ]
             models.append(DomainModel(name=name, fields=fields))
 
         return cls(filename=filename, models=models)

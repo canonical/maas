@@ -20,11 +20,11 @@ class OpenFGATupleBuilder(ResourceBuilder):
     the generated code.
     """
 
-    object_id: Union[str, Unset] = Field(default=UNSET, required=False)
-    object_type: Union[str, Unset] = Field(default=UNSET, required=False)
-    relation: Union[str, Unset] = Field(default=UNSET, required=False)
-    user: Union[str, Unset] = Field(default=UNSET, required=False)
-    user_type: Union[str, Unset] = Field(default=UNSET, required=False)
+    object_id: Union[str, Unset] = Field(default=UNSET)
+    object_type: Union[str, Unset] = Field(default=UNSET)
+    relation: Union[str, Unset] = Field(default=UNSET)
+    user: Union[str, Unset] = Field(default=UNSET)
+    user_type: Union[str, Unset] = Field(default=UNSET)
 
     @classmethod
     def build_user_member_group(

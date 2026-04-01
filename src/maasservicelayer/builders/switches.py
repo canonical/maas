@@ -16,8 +16,8 @@ class SwitchBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
     target_image_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

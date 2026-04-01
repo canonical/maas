@@ -17,13 +17,13 @@ class ScriptResultBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    output: Union[str, Unset] = Field(default=UNSET, required=False)
-    parameters: Union[dict, Unset] = Field(default=UNSET, required=False)
-    result: Union[str, Unset] = Field(default=UNSET, required=False)
-    script_set_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    status: Union[ScriptStatus, Unset] = Field(default=UNSET, required=False)
-    stderr: Union[str, Unset] = Field(default=UNSET, required=False)
-    stdout: Union[str, Unset] = Field(default=UNSET, required=False)
-    suppressed: Union[bool, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    output: Union[str, Unset] = Field(default=UNSET)
+    parameters: Union[dict, Unset] = Field(default=UNSET)
+    result: Union[str, Unset] = Field(default=UNSET)
+    script_set_id: Union[int, Unset] = Field(default=UNSET)
+    status: Union[ScriptStatus, Unset] = Field(default=UNSET)
+    stderr: Union[str, Unset] = Field(default=UNSET)
+    stdout: Union[str, Unset] = Field(default=UNSET)
+    suppressed: Union[bool, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

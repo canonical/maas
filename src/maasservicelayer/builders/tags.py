@@ -16,9 +16,9 @@ class TagBuilder(ResourceBuilder):
     the generated code.
     """
 
-    comment: Union[str, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    definition: Union[str, Unset] = Field(default=UNSET, required=False)
-    kernel_opts: Union[str, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    comment: Union[str, Unset] = Field(default=UNSET)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    definition: Union[str, Unset] = Field(default=UNSET)
+    kernel_opts: Union[str, Unset] = Field(default=UNSET)
+    name: Union[str, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

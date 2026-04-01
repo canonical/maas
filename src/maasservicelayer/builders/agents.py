@@ -16,10 +16,10 @@ class AgentBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    rack_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    rack_id: Union[int, Unset] = Field(default=UNSET)
     rackcontroller_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    uuid: Union[str, Unset] = Field(default=UNSET, required=False)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    uuid: Union[str, Unset] = Field(default=UNSET)

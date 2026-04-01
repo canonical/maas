@@ -17,11 +17,11 @@ class StaticRouteBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    destination_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    destination_id: Union[int, Unset] = Field(default=UNSET)
     gateway_ip: Union[IPvAnyAddress, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    metric: Union[int, Unset] = Field(default=UNSET, required=False)
-    source_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    metric: Union[int, Unset] = Field(default=UNSET)
+    source_id: Union[int, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

@@ -16,10 +16,10 @@ class OIDCRevokedTokenBuilder(ResourceBuilder):
     the generated code.
     """
 
-    provider_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    revoked_at: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    token_hash: Union[str, Unset] = Field(default=UNSET, required=False)
-    user_email: Union[str, Unset] = Field(default=UNSET, required=False)
+    provider_id: Union[int, Unset] = Field(default=UNSET)
+    revoked_at: Union[datetime, Unset] = Field(default=UNSET)
+    token_hash: Union[str, Unset] = Field(default=UNSET)
+    user_email: Union[str, Unset] = Field(default=UNSET)
 
 
 class RefreshTokenBuilder(ResourceBuilder):
@@ -29,11 +29,11 @@ class RefreshTokenBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    expires_at: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    token: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    expires_at: Union[datetime, Unset] = Field(default=UNSET)
+    token: Union[str, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    user_id: Union[int, Unset] = Field(default=UNSET)
 
 
 class TokenBuilder(ResourceBuilder):
@@ -43,15 +43,15 @@ class TokenBuilder(ResourceBuilder):
     the generated code.
     """
 
-    callback: Union[str, None, Unset] = Field(default=UNSET, required=False)
+    callback: Union[str, None, Unset] = Field(default=UNSET)
     callback_confirmed: Union[bool, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    consumer_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    is_approved: Union[bool, Unset] = Field(default=UNSET, required=False)
-    key: Union[str, Unset] = Field(default=UNSET, required=False)
-    secret: Union[str, Unset] = Field(default=UNSET, required=False)
-    timestamp: Union[int, Unset] = Field(default=UNSET, required=False)
-    token_type: Union[int, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
-    verifier: Union[str, Unset] = Field(default=UNSET, required=False)
+    consumer_id: Union[int, Unset] = Field(default=UNSET)
+    is_approved: Union[bool, Unset] = Field(default=UNSET)
+    key: Union[str, Unset] = Field(default=UNSET)
+    secret: Union[str, Unset] = Field(default=UNSET)
+    timestamp: Union[int, Unset] = Field(default=UNSET)
+    token_type: Union[int, Unset] = Field(default=UNSET)
+    user_id: Union[int, None, Unset] = Field(default=UNSET)
+    verifier: Union[str, Unset] = Field(default=UNSET)

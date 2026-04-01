@@ -22,25 +22,25 @@ class EventBuilder(ResourceBuilder):
     the generated code.
     """
 
-    action: Union[str, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, Unset] = Field(default=UNSET, required=False)
+    action: Union[str, Unset] = Field(default=UNSET)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    description: Union[str, Unset] = Field(default=UNSET)
     endpoint: Union[EndpointChoicesEnum, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     ip_address: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    node_hostname: Union[str, Unset] = Field(default=UNSET, required=False)
-    node_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
+    node_hostname: Union[str, Unset] = Field(default=UNSET)
+    node_id: Union[int, None, Unset] = Field(default=UNSET)
     node_system_id: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    owner: Union[str, Unset] = Field(default=UNSET, required=False)
-    type: Union[EventType, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    user_agent: Union[str, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
+    owner: Union[str, Unset] = Field(default=UNSET)
+    type: Union[EventType, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    user_agent: Union[str, Unset] = Field(default=UNSET)
+    user_id: Union[int, None, Unset] = Field(default=UNSET)
 
 
 class EventTypeBuilder(ResourceBuilder):
@@ -50,10 +50,10 @@ class EventTypeBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    description: Union[str, Unset] = Field(default=UNSET)
     level: Union[LoggingLevelEnum, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    name: Union[str, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

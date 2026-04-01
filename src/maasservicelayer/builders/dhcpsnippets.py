@@ -16,12 +16,12 @@ class DhcpSnippetBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, Unset] = Field(default=UNSET, required=False)
-    enabled: Union[bool, Unset] = Field(default=UNSET, required=False)
-    iprange_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    node_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    subnet_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    value_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    description: Union[str, Unset] = Field(default=UNSET)
+    enabled: Union[bool, Unset] = Field(default=UNSET)
+    iprange_id: Union[int, Unset] = Field(default=UNSET)
+    name: Union[str, Unset] = Field(default=UNSET)
+    node_id: Union[int, Unset] = Field(default=UNSET)
+    subnet_id: Union[int, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    value_id: Union[int, None, Unset] = Field(default=UNSET)

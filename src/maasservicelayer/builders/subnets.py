@@ -19,23 +19,23 @@ class SubnetBuilder(ResourceBuilder):
     the generated code.
     """
 
-    active_discovery: Union[bool, Unset] = Field(default=UNSET, required=False)
-    allow_dns: Union[bool, Unset] = Field(default=UNSET, required=False)
-    allow_proxy: Union[bool, Unset] = Field(default=UNSET, required=False)
-    cidr: Union[IPv4v6Network, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, None, Unset] = Field(default=UNSET, required=False)
+    active_discovery: Union[bool, Unset] = Field(default=UNSET)
+    allow_dns: Union[bool, Unset] = Field(default=UNSET)
+    allow_proxy: Union[bool, Unset] = Field(default=UNSET)
+    cidr: Union[IPv4v6Network, Unset] = Field(default=UNSET)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    description: Union[str, None, Unset] = Field(default=UNSET)
     disabled_boot_architectures: Union[list[str], Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     dns_servers: Union[list[str], None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     gateway_ip: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    managed: Union[bool, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    rdns_mode: Union[RdnsMode, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    vlan_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    managed: Union[bool, Unset] = Field(default=UNSET)
+    name: Union[str, None, Unset] = Field(default=UNSET)
+    rdns_mode: Union[RdnsMode, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    vlan_id: Union[int, Unset] = Field(default=UNSET)

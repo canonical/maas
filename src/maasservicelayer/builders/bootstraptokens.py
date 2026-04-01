@@ -16,8 +16,8 @@ class BootstrapTokenBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    expires_at: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    rack_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    secret: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    expires_at: Union[datetime, Unset] = Field(default=UNSET)
+    rack_id: Union[int, Unset] = Field(default=UNSET)
+    secret: Union[str, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)

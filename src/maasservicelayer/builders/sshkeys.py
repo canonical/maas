@@ -17,11 +17,11 @@ class SshKeyBuilder(ResourceBuilder):
     the generated code.
     """
 
-    auth_id: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    key: Union[str, Unset] = Field(default=UNSET, required=False)
+    auth_id: Union[str, None, Unset] = Field(default=UNSET)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    key: Union[str, Unset] = Field(default=UNSET)
     protocol: Union[SshKeysProtocolType, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    user_id: Union[int, Unset] = Field(default=UNSET)

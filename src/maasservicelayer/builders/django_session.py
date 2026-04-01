@@ -16,6 +16,6 @@ class DjangoSessionBuilder(ResourceBuilder):
     the generated code.
     """
 
-    expire_date: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    session_data: Union[str, Unset] = Field(default=UNSET, required=False)
-    session_key: Union[str, Unset] = Field(default=UNSET, required=False)
+    expire_date: Union[datetime, Unset] = Field(default=UNSET)
+    session_data: Union[str, Unset] = Field(default=UNSET)
+    session_key: Union[str, Unset] = Field(default=UNSET)

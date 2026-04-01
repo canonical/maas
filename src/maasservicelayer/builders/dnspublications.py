@@ -16,7 +16,7 @@ class DNSPublicationBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    serial: Union[int, Unset] = Field(default=UNSET, required=False)
-    source: Union[str, Unset] = Field(default=UNSET, required=False)
-    update: Union[str, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    serial: Union[int, Unset] = Field(default=UNSET)
+    source: Union[str, Unset] = Field(default=UNSET)
+    update: Union[str, Unset] = Field(default=UNSET)

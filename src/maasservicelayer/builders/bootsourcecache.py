@@ -23,31 +23,31 @@ class BootSourceCacheBuilder(ResourceBuilder):
     the generated code.
     """
 
-    arch: Union[str, Unset] = Field(default=UNSET, required=False)
-    boot_source_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    arch: Union[str, Unset] = Field(default=UNSET)
+    boot_source_id: Union[int, Unset] = Field(default=UNSET)
     bootloader_type: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    extra: Union[dict, Unset] = Field(default=UNSET, required=False)
-    kflavor: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    label: Union[str, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    extra: Union[dict, Unset] = Field(default=UNSET)
+    kflavor: Union[str, None, Unset] = Field(default=UNSET)
+    label: Union[str, Unset] = Field(default=UNSET)
     latest_version: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    os: Union[str, Unset] = Field(default=UNSET, required=False)
-    release: Union[str, Unset] = Field(default=UNSET, required=False)
+    os: Union[str, Unset] = Field(default=UNSET)
+    release: Union[str, Unset] = Field(default=UNSET)
     release_codename: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     release_title: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    subarch: Union[str, Unset] = Field(default=UNSET, required=False)
+    subarch: Union[str, Unset] = Field(default=UNSET)
     support_eol: Union[date, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
 
     def __hash__(self):
         return hash(

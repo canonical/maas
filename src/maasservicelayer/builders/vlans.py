@@ -17,27 +17,27 @@ class VlanBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, Unset] = Field(default=UNSET, required=False)
-    dhcp_on: Union[bool, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    description: Union[str, Unset] = Field(default=UNSET)
+    dhcp_on: Union[bool, Unset] = Field(default=UNSET)
     external_dhcp: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    fabric_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    mtu: Union[int, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, None, Unset] = Field(default=UNSET, required=False)
+    fabric_id: Union[int, Unset] = Field(default=UNSET)
+    mtu: Union[int, Unset] = Field(default=UNSET)
+    name: Union[str, None, Unset] = Field(default=UNSET)
     primary_rack_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     relay_vlan_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     relayed_vlan_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
     secondary_rack_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    space_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    vid: Union[int, Unset] = Field(default=UNSET, required=False)
+    space_id: Union[int, None, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    vid: Union[int, Unset] = Field(default=UNSET)

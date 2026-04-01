@@ -18,16 +18,16 @@ class IPRangeBuilder(ResourceBuilder):
     the generated code.
     """
 
-    comment: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    end_ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET, required=False)
+    comment: Union[str, None, Unset] = Field(default=UNSET)
+    created: Union[datetime, Unset] = Field(default=UNSET)
+    end_ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET)
     start_ip: Union[IPvAnyAddress, Unset] = Field(
-        default=UNSET, required=False
+        default=UNSET
     )
-    subnet_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    type: Union[IPRangeType, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
+    subnet_id: Union[int, Unset] = Field(default=UNSET)
+    type: Union[IPRangeType, Unset] = Field(default=UNSET)
+    updated: Union[datetime, Unset] = Field(default=UNSET)
+    user_id: Union[int, None, Unset] = Field(default=UNSET)
 
     def must_trigger_workflow(self) -> bool:
         return (
