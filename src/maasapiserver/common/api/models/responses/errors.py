@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi.encoders import jsonable_encoder
 from macaroonbakery import httpbakery
 from macaroonbakery.bakery import Macaroon
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
 
@@ -12,7 +12,7 @@ from maasservicelayer.exceptions.catalog import BaseExceptionDetail
 
 
 class ErrorBodyResponse(BaseModel):
-    kind = "Error"
+    kind: str = Field(default="Error")
     code: int
     message: str
     details: Optional[list[BaseExceptionDetail]] = None

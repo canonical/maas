@@ -36,7 +36,7 @@ UISubnetEmbeddedType = TypedDict(
 
 
 class UISubnetResponse(HalResponse[BaseHal]):
-    kind = "UISubnet"
+    kind: str = Field(default="UISubnet")
     id: int
     name: Optional[str]
     description: Optional[str]
@@ -104,4 +104,4 @@ class UISubnetResponse(HalResponse[BaseHal]):
 
 
 class UISubnetsListResponse(PaginatedResponse[UISubnetResponse]):
-    kind = "UISubnetsList"
+    kind: str = Field(default="UISubnetsList")

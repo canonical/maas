@@ -7,7 +7,7 @@ from re import compile
 from typing import ClassVar, Optional
 
 from fastapi import Query
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from maasservicelayer.db.filters import (
     Clause,
@@ -23,8 +23,8 @@ MODEL_NAME_VALIDATOR = compile(r"^\w[ \w-]*$")
 class NamedBaseModel(BaseModel):
     name: str = Field(description="The unique name of the entity.")
 
-    # TODO: move to @field_validator when we migrate to pydantic 2.x
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def check_regex_name(cls, v: str) -> str:
         if not MODEL_NAME_VALIDATOR.match(v):
             raise ValueError("Invalid entity name.")
@@ -36,8 +36,8 @@ class OptionalNamedBaseModel(BaseModel):
         description="The unique name of the entity.", default=None
     )
 
-    # TODO: move to @field_validator when we migrate to pydantic 2.x
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def check_regex_name(cls, v: str) -> str:
         # If the name is set, it must not be None and it must match the regex
         if v is not None and not MODEL_NAME_VALIDATOR.match(v):
@@ -52,7 +52,7 @@ class OrderByQueryFilter(BaseModel):
             title="Properties to order by. You can wrap the property with `asc()` or `desc()` to modify the ordering",
         )
     )
-    _order_by_columns: ClassVar[dict[str, OrderByClause]] = Field(exclude=True)
+    _order_by_columns: ClassVar[dict[str, OrderByClause]]
 
     @classmethod
     def _clean_field(cls, field: str) -> str:
@@ -61,7 +61,8 @@ class OrderByQueryFilter(BaseModel):
             field.removeprefix("asc(").removeprefix("desc(").removesuffix(")")
         )
 
-    @validator("order_by")
+    @field_validator("order_by")
+    @classmethod
     def check_order_by_fields(
         cls, v: Optional[list[str]]
     ) -> Optional[list[str]]:

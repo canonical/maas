@@ -5,7 +5,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -25,7 +25,7 @@ from maasservicelayer.models.bootsourceselections import (
 
 
 class ImageResponse(HalResponse[BaseHal]):
-    kind = "Image"
+    kind: str = Field(default="Image")
     id: int
     os: str
     release: str
@@ -75,11 +75,11 @@ class ImageResponse(HalResponse[BaseHal]):
 
 
 class ImageListResponse(PaginatedResponse[ImageResponse]):
-    kind = "ImageList"
+    kind: str = Field(default="ImageList")
 
 
 class ImageStatusResponse(BaseModel):
-    kind = "ImageStatus"
+    kind: str = Field(default="ImageStatus")
     id: int
     status: ImageStatus
     update_status: ImageUpdateStatus
@@ -98,11 +98,11 @@ class ImageStatusResponse(BaseModel):
 
 
 class ImageStatusListResponse(PaginatedResponse[ImageStatusResponse]):
-    kind = "ImageStatusList"
+    kind: str = Field(default="ImageStatusList")
 
 
 class ImageStatisticResponse(BaseModel):
-    kind = "ImageStatistic"
+    kind: str = Field(default="ImageStatistic")
     id: int
     last_updated: datetime | None
     last_deployed: datetime | None
@@ -123,4 +123,4 @@ class ImageStatisticResponse(BaseModel):
 
 
 class ImageStatisticListResponse(PaginatedResponse[ImageStatisticResponse]):
-    kind = "ImageStatisticList"
+    kind: str = Field(default="ImageStatisticList")

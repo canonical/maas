@@ -5,8 +5,7 @@ from typing import Any, Dict, Generic, Optional, Sequence, TypeVar
 
 from fastapi.openapi.models import Header as OpenApiHeader
 from fastapi.openapi.models import Schema
-from pydantic import BaseModel, Field
-from pydantic.generics import GenericModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BaseHref(BaseModel):
@@ -25,7 +24,7 @@ class BaseHal(BaseModel):
 HAL = TypeVar("HAL", bound=BaseHal)
 
 
-class HalResponse(GenericModel, Generic[HAL]):
+class HalResponse(BaseModel, Generic[HAL]):
     """
     Base HAL response class that every response object must extend. The response object will look like
     {
@@ -36,21 +35,18 @@ class HalResponse(GenericModel, Generic[HAL]):
     }
     """
 
-    # TODO: when switching to Pydantic 2.x change alias to serialization_alias
-    # and remove pyright ignores in the models
+    model_config = ConfigDict(populate_by_name=True)
+
     hal_links: Optional[HAL] = Field(default=None, alias="_links")
     hal_embedded: Optional[Dict[str, Any]] = Field(
         default=None, alias="_embedded"
     )
 
-    class Config:
-        allow_population_by_field_name = True
-
 
 T = TypeVar("T")
 
 
-class PaginatedResponse(GenericModel, Generic[T]):
+class PaginatedResponse(BaseModel, Generic[T]):
     """
     Base class for offset-paginated responses.
     Derived classes should overwrite the items property

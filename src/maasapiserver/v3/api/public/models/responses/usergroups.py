@@ -3,6 +3,8 @@
 
 from typing import Optional, Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -13,7 +15,7 @@ from maasservicelayer.models.usergroups import UserGroup
 
 
 class UserGroupResponse(HalResponse[BaseHal]):
-    kind = "UserGroup"
+    kind: str = Field(default="UserGroup")
     id: int
     name: str
     description: Optional[str]
@@ -35,4 +37,4 @@ class UserGroupResponse(HalResponse[BaseHal]):
 
 
 class UserGroupsListResponse(PaginatedResponse[UserGroupResponse]):
-    kind = "UserGroupsList"
+    kind: str = Field(default="UserGroupsList")

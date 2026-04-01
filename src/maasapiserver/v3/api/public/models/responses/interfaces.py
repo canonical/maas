@@ -26,7 +26,7 @@ class LinkResponse(BaseModel):
 
 
 class InterfaceResponse(HalResponse[BaseHal]):
-    kind = "Interface"
+    kind: str = Field(default="Interface")
     id: int
     name: str
     type: InterfaceType
@@ -69,4 +69,4 @@ class InterfaceResponse(HalResponse[BaseHal]):
 
 
 class InterfaceListResponse(PaginatedResponse[InterfaceResponse]):
-    kind = "InterfaceList"
+    kind: str = Field(default="InterfaceList")

@@ -88,7 +88,7 @@ def default_imports() -> set:
 
 
 def process_string(s) -> str:
-    """Preprocess the `annotation` or `type_` field of a ModelField.
+    """Preprocess a type annotation string for use in generated code.
 
     This function:
         - removes all the not wanted chars in e.g. <class 'x'> and <enum 'x'>

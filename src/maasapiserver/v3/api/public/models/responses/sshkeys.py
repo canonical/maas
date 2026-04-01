@@ -3,6 +3,8 @@
 
 from typing import Optional, Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -14,7 +16,7 @@ from maasservicelayer.models.sshkeys import SshKey
 
 
 class SshKeyResponse(HalResponse[BaseHal]):
-    kind = "SshKey"
+    kind: str = Field(default="SshKey")
     id: int
     key: str
     protocol: Optional[SshKeysProtocolType] = None
@@ -36,4 +38,4 @@ class SshKeyResponse(HalResponse[BaseHal]):
 
 
 class SshKeysListResponse(PaginatedResponse[SshKeyResponse]):
-    kind = "SshKeysList"
+    kind: str = Field(default="SshKeysList")

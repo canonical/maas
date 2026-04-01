@@ -3,6 +3,8 @@
 
 from typing import Optional, Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -14,7 +16,7 @@ from maasservicelayer.models.spaces import Space
 
 
 class SpaceResponse(HalResponse[BaseHal]):
-    kind = "Space"
+    kind: str = Field(default="Space")
     id: int
     name: Optional[str]
     description: Optional[str]
@@ -42,4 +44,4 @@ class SpaceResponse(HalResponse[BaseHal]):
 
 
 class SpacesListResponse(PaginatedResponse[SpaceResponse]):
-    kind = "SpacesList"
+    kind: str = Field(default="SpacesList")

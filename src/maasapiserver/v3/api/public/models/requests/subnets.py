@@ -2,9 +2,9 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from ipaddress import IPv6Address
-from typing import Any, Optional
+from typing import Optional, Self
 
-from pydantic import Field, IPvAnyAddress, validator
+from pydantic import Field, IPvAnyAddress, model_validator
 
 from maasapiserver.v3.api.public.models.requests.base import (
     OptionalNamedBaseModel,
@@ -65,16 +65,14 @@ class SubnetRequest(OptionalNamedBaseModel):
         default_factory=list,
     )
 
-    @validator("gateway_ip")
-    def ensure_gatweway_ip_in_cidr(
-        cls, v: Optional[IPvAnyAddress], values: dict[str, Any]
-    ):
-        if v is None:
-            return v
-        gateway_ip: IPvAnyAddress = v
-        network: IPv4v6Network = values["cidr"]
+    @model_validator(mode="after")
+    def ensure_gateway_ip_in_cidr(self) -> Self:
+        if self.gateway_ip is None:
+            return self
+        gateway_ip: IPvAnyAddress = self.gateway_ip
+        network: IPv4v6Network = self.cidr
         if gateway_ip in network:
-            return gateway_ip
+            return self
         elif (
             network.version == 6
             and isinstance(gateway_ip, IPv6Address)
@@ -83,7 +81,7 @@ class SubnetRequest(OptionalNamedBaseModel):
             # If this is an IPv6 network and the gateway is in the link-local
             # network (fe80::/64 -- required to be configured by the spec),
             # then it is also valid.
-            return gateway_ip
+            return self
         else:
             raise ValueError("gateway IP must be within CIDR range.")
 

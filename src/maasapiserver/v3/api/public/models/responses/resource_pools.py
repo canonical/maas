@@ -3,6 +3,8 @@
 from enum import StrEnum
 from typing import Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -16,7 +18,7 @@ from maasservicelayer.models.resource_pools import (
 
 
 class ResourcePoolResponse(HalResponse[BaseHal]):
-    kind = "ResourcePool"
+    kind: str = Field(default="ResourcePool")
     id: int
     name: str
     description: str
@@ -38,7 +40,7 @@ class ResourcePoolResponse(HalResponse[BaseHal]):
 
 
 class ResourcePoolsListResponse(PaginatedResponse[ResourcePoolResponse]):
-    kind = "ResourcePoolList"
+    kind: str = Field(default="ResourcePoolList")
 
 
 class ResourcePoolPermission(StrEnum):
@@ -47,7 +49,7 @@ class ResourcePoolPermission(StrEnum):
 
 
 class ResourcePoolWithSummaryResponse(ResourcePoolResponse):
-    kind = "ResourcePoolWithSummary"
+    kind: str = Field(default="ResourcePoolWithSummary")
     machine_total_count: int
     machine_ready_count: int
     is_default: bool
@@ -79,4 +81,4 @@ class ResourcePoolWithSummaryResponse(ResourcePoolResponse):
 class ResourcePoolsWithSummaryListResponse(
     PaginatedResponse[ResourcePoolWithSummaryResponse]
 ):
-    kind = "ResourcePoolsWithSummaryList"
+    kind: str = Field(default="ResourcePoolsWithSummaryList")

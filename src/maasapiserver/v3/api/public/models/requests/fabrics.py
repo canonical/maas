@@ -3,7 +3,7 @@
 
 from typing import Optional
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
 from maasservicelayer.builders.fabrics import FabricBuilder
@@ -23,8 +23,8 @@ class FabricRequest(NamedBaseModel):
             class_type=self.class_type,
         )
 
-    # TODO: move to @field_validator when we migrate to pydantic 2.x
     # This handles the case where the client sends a request with {"description": null}.
-    @validator("description")
+    @field_validator("description")
+    @classmethod
     def set_default(cls, v: str) -> str:
         return v if v else ""

@@ -3,7 +3,7 @@
 
 from typing import Optional, Self
 
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -16,7 +16,7 @@ from maasservicelayer.models.reservedips import ReservedIP
 
 
 class ReservedIPResponse(HalResponse[BaseHal]):
-    kind = "ReservedIP"
+    kind: str = Field(default="ReservedIP")
     id: int
     ip: IPvAnyAddress
     mac_address: MacAddress
@@ -40,4 +40,4 @@ class ReservedIPResponse(HalResponse[BaseHal]):
 
 
 class ReservedIPsListResponse(PaginatedResponse[ReservedIPResponse]):
-    kind = "ReservedIPsList"
+    kind: str = Field(default="ReservedIPsList")

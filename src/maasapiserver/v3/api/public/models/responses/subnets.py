@@ -3,7 +3,7 @@
 
 from typing import Optional, Self
 
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -17,7 +17,7 @@ from maasservicelayer.models.subnets import Subnet
 
 
 class SubnetResponse(HalResponse[BaseHal]):
-    kind = "Subnet"
+    kind: str = Field(default="Subnet")
     id: int
     name: Optional[str]
     description: Optional[str]
@@ -55,4 +55,4 @@ class SubnetResponse(HalResponse[BaseHal]):
 
 
 class SubnetsListResponse(PaginatedResponse[SubnetResponse]):
-    kind = "SubnetsList"
+    kind: str = Field(default="SubnetsList")

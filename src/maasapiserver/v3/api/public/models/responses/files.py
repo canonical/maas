@@ -4,7 +4,7 @@
 from base64 import b64encode
 from typing import List, Optional, Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -15,7 +15,7 @@ from maasservicelayer.models.filestorage import FileStorage
 
 
 class FileResponse(HalResponse[BaseHal]):
-    kind = "File"
+    kind: str = Field(default="File")
 
     id: int
     filename: str
@@ -42,7 +42,7 @@ class FileResponse(HalResponse[BaseHal]):
 class FileListItemResponse(HalResponse[BaseHal]):
     # Files returned as part of a list query should not contain file content.
     # A separate, specific GET is required to retrieve content.
-    kind = "FileListItem"
+    kind: str = Field(default="FileListItem")
 
     id: int
     filename: str
@@ -65,6 +65,6 @@ class FileListItemResponse(HalResponse[BaseHal]):
 
 
 class FileListResponse(BaseModel):
-    kind = "FileList"
+    kind: str = Field(default="FileList")
 
     items: List[FileListItemResponse]

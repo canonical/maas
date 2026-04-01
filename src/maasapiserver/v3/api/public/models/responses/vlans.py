@@ -3,7 +3,7 @@
 
 from typing import Optional, Self
 
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -16,7 +16,7 @@ from maasservicelayer.models.vlans import Vlan
 
 
 class VlanResponse(HalResponse[BaseHal]):
-    kind = "Vlan"
+    kind: str = Field(default="Vlan")
     id: int
     vid: int
     name: Optional[str]
@@ -56,4 +56,4 @@ class VlanResponse(HalResponse[BaseHal]):
 
 
 class VlansListResponse(PaginatedResponse[VlanResponse]):
-    kind = "VlansList"
+    kind: str = Field(default="VlansList")

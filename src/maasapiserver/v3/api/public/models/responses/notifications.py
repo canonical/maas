@@ -4,6 +4,7 @@
 from typing import Any, Optional, Self
 
 from markupsafe import Markup
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -15,7 +16,7 @@ from maasservicelayer.models.notifications import Notification
 
 
 class NotificationResponse(HalResponse[BaseHal]):
-    kind = "Notification"
+    kind: str = Field(default="Notification")
     id: int
     ident: str | None
     users: bool
@@ -51,4 +52,4 @@ class NotificationResponse(HalResponse[BaseHal]):
 
 
 class NotificationsListResponse(PaginatedResponse[NotificationResponse]):
-    kind = "NotificationsList"
+    kind: str = Field(default="NotificationsList")

@@ -3,6 +3,8 @@
 
 from typing import Optional, Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -12,7 +14,7 @@ from maasservicelayer.models.agents import Agent
 
 
 class AgentResponse(HalResponse[BaseHal]):
-    kind = "Agent"
+    kind: str = Field(default="Agent")
     id: int
     rack_id: int
     rackcontroller_id: Optional[int]
@@ -32,7 +34,7 @@ class AgentResponse(HalResponse[BaseHal]):
 
 
 class AgentConfigResponse(HalResponse[BaseHal]):
-    kind = "AgentSignedCertificate"
+    kind: str = Field(default="AgentSignedCertificate")
     maas_url: str
     rpc_secret: str
     system_id: str
@@ -59,7 +61,7 @@ class AgentConfigResponse(HalResponse[BaseHal]):
 
 
 class AgentSignedCertificateResponse(HalResponse[BaseHal]):
-    kind = "AgentSignedCertificate"
+    kind: str = Field(default="AgentSignedCertificate")
     certificate: str
     ca: str
 

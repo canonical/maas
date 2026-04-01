@@ -6,7 +6,7 @@ from ipaddress import IPv4Address, IPv6Address
 import re
 from typing import Self
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 # starts with a letter, ends with a letter or digit, can contain hyphens, at most 63 chars
 LABEL = r"[a-zA-Z]([-a-zA-Z0-9]{0,61}[a-zA-Z0-9]){0,1}"
@@ -60,9 +60,10 @@ class AAAARecord(DNSRecord):
 class CNAMERecord(DNSRecord):
     cname: str
 
-    _validate_cname = validator("cname", allow_reuse=True)(
-        validate_domain_name
-    )
+    @field_validator("cname")
+    @classmethod
+    def validate_cname(cls, v: str) -> str:
+        return validate_domain_name(v)
 
     @classmethod
     def from_text(cls, rrdata: str) -> Self:
@@ -76,9 +77,10 @@ class MXRecord(DNSRecord):
     preference: int = Field(..., ge=0, le=65535)
     exchange: str
 
-    _validate_exchange = validator("exchange", allow_reuse=True)(
-        validate_domain_name
-    )
+    @field_validator("exchange")
+    @classmethod
+    def validate_exchange(cls, v: str) -> str:
+        return validate_domain_name(v)
 
     @classmethod
     def from_text(cls, rrdata: str) -> Self:
@@ -97,9 +99,10 @@ class MXRecord(DNSRecord):
 class NSRecord(DNSRecord):
     nsdname: str
 
-    _validate_nsdname = validator("nsdname", allow_reuse=True)(
-        validate_domain_name
-    )
+    @field_validator("nsdname")
+    @classmethod
+    def validate_nsdname(cls, v: str) -> str:
+        return validate_domain_name(v)
 
     @classmethod
     def from_text(cls, rrdata: str) -> Self:
@@ -115,7 +118,8 @@ class SRVRecord(DNSRecord):
     port: int = Field(..., ge=0, le=65535)
     target: str
 
-    @validator("target")
+    @field_validator("target")
+    @classmethod
     def validate_target(cls, target: str) -> str:
         # target can be '.', in which case "the service is decidedly not
         # available at this domain."  Otherwise, it must be a valid name.

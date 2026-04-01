@@ -4,7 +4,7 @@
 from datetime import datetime
 from typing import Optional, Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -22,7 +22,7 @@ class UserInfoResponse(BaseModel):
 
 
 class UserResponse(HalResponse[BaseHal]):
-    kind = "User"
+    kind: str = Field(default="User")
     id: int
     username: str
     is_superuser: bool
@@ -52,11 +52,11 @@ class UserResponse(HalResponse[BaseHal]):
 
 
 class UsersListResponse(PaginatedResponse[UserResponse]):
-    kind = "UsersList"
+    kind: str = Field(default="UsersList")
 
 
 class UserWithSummaryResponse(HalResponse[BaseHal]):
-    kind = "UserWithSummary"
+    kind: str = Field(default="UserWithSummary")
     id: int
     completed_intro: bool
     email: Optional[str] = None
@@ -92,4 +92,4 @@ class UserWithSummaryResponse(HalResponse[BaseHal]):
 
 
 class UsersWithSummaryListResponse(PaginatedResponse[UserWithSummaryResponse]):
-    kind = "UserWithSummaryList"
+    kind: str = Field(default="UserWithSummaryList")
