@@ -62,6 +62,11 @@ class MacAddress(str):
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
+        # Pydantic v2 requires explicit core schema definition for str subclasses.
+        # We use core_schema.no_info_after_validator_function instead of
+        # Annotated + BeforeValidator because str subclasses with custom __new__
+        # cannot be represented through the Annotated approach; they need to define
+        # their own validation via __get_pydantic_core_schema__.
         return core_schema.no_info_after_validator_function(
             cls.validate,
             core_schema.str_schema(pattern=MAC_FIELD_RE.pattern),
@@ -96,6 +101,11 @@ class PackageRepoUrl(str):
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
+        # Pydantic v2 requires explicit core schema definition for str subclasses.
+        # We use core_schema.no_info_after_validator_function instead of
+        # Annotated + BeforeValidator because str subclasses with custom __new__
+        # cannot be represented through the Annotated approach; they need to define
+        # their own validation via __get_pydantic_core_schema__.
         return core_schema.no_info_after_validator_function(
             cls.validate,
             core_schema.str_schema(pattern=cls.COMBINED_RE.pattern),

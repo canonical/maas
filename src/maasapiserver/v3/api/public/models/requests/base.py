@@ -52,6 +52,9 @@ class OrderByQueryFilter(BaseModel):
             title="Properties to order by. You can wrap the property with `asc()` or `desc()` to modify the ordering",
         )
     )
+    # Note: Renamed from _order_by_columns in Pydantic v1. The leading underscore
+    # convention conflicts with Pydantic v2's handling of private ClassVar attributes,
+    # so the public name is now used. Subclasses must reference this as `cls.order_by_columns`.
     order_by_columns: ClassVar[dict[str, OrderByClause]] = Field(exclude=True)
 
     @classmethod
@@ -113,6 +116,8 @@ class OrderByQueryFilter(BaseModel):
 
 
 class FreeTextSearchQueryParam(BaseModel, ABC):
+    # Note: Header/Query parameters in Pydantic v2 require explicit Field configuration.
+    # They cannot be inferred from bare type annotations when used with FastAPI Depends().
     q: str | None = Field(Query(default=None, title="Free text search query"))
 
     @abstractmethod

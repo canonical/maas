@@ -268,7 +268,7 @@ class TestRacksApi(ApiCommonTests):
         )
         services_mock.racks = Mock(RacksService)
         services_mock.racks.get_by_id.return_value = TEST_RACK_1
-        updated = TEST_RACK_1.copy()
+        updated = TEST_RACK_1.model_copy()
         updated.name = "rack-1"
         services_mock.racks.update_by_id.return_value = updated
 

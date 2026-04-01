@@ -54,7 +54,7 @@ class DatabaseConfiguration(MaasBaseModel):
 
 
 class Config(BaseModel, Generic[T]):
-    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True, url_preserve_empty_path=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
     name: ClassVar[str]
     description: ClassVar[str]
     help_text: ClassVar[str | None] = None
@@ -1055,6 +1055,7 @@ class EnableHttpProxyConfig(Config[bool | None]):
 
 
 class HttpProxyConfig(Config[AnyHttpUrl | None]):
+    model_config: ClassVar[ConfigDict] = ConfigDict(url_preserve_empty_path=True)
     is_public: ClassVar[bool] = True
     name: ClassVar[str] = "http_proxy"
     default: ClassVar[AnyHttpUrl | None] = None

@@ -40,6 +40,7 @@ import dataclasses
 from datetime import datetime
 import importlib
 import inspect
+import logging
 import os
 import re
 import sys
@@ -48,6 +49,8 @@ from typing import get_args, get_origin, Self
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
+
+logger = logging.getLogger(__name__)
 
 MODELS_PATH = "src/maasservicelayer/models"
 BUILDERS_PATH = "src/maasservicelayer/builders"
@@ -456,7 +459,7 @@ class BuilderModule(GenericModule[BuilderModel]):
 
     def to_file(self) -> str:
         """Generate the complete file output."""
-        return self._generate_output(use_to_file=True)
+        return self._generate_output()
 
     def update_models_methods_from_other(self, other):
         if self.filename != other.filename:
@@ -480,12 +483,8 @@ class BuilderModule(GenericModule[BuilderModel]):
                 return False
         return True
 
-    def get_output(self) -> str:
-        """Generate the complete file output without mutating self."""
-        return self._generate_output(use_to_file=False)
-
-    def _generate_output(self, use_to_file: bool = False) -> str:
-        """Internal method to generate output with optional mutation."""
+    def _generate_output(self) -> str:
+        """Generate the complete file output."""
         class_defs = ""
         module_imports = self.module_imports.copy()
 
@@ -493,9 +492,7 @@ class BuilderModule(GenericModule[BuilderModel]):
             if class_.name in self.source_methods:
                 class_.methods = self.source_methods[class_.name]
 
-            class_defs += (
-                class_.to_file() if use_to_file else class_.get_output()
-            )
+            class_defs += class_.to_file()
             module_imports = module_imports | class_.model_imports
 
         module_imports |= self.source_imports
@@ -586,6 +583,11 @@ def extract_source_methods_and_imports(
 
     Returns (methods_dict, imports_set) where methods_dict maps class names to lists of
     (method_name, source_code) tuples.
+
+    This uses AST parsing to avoid import-time failures when builder files have
+    references to newly added fields or other incompatibilities with the current
+    environment. Exceptions are logged but not raised; incomplete extraction is
+    preferred over generation failure.
     """
     methods_by_class = {}
     imports = set()
@@ -639,8 +641,11 @@ def extract_source_methods_and_imports(
                             class_methods.append((item.name, source))
                 if class_methods:
                     methods_by_class[node.name] = class_methods
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(
+            f"Failed to extract methods/imports from {filepath}: {e}. "
+            "Will regenerate without preserving custom code."
+        )
 
     return methods_by_class, imports
 
@@ -662,8 +667,15 @@ class BuilderCollection(GenericCollection[BuilderModule]):
             try:
                 module = importlib.import_module(modulename)
                 builder_module = BuilderModule.from_file(module, filename)
-            except Exception:
-                # If import fails, create an empty builder module
+            except Exception as e:
+                # If import fails, create an empty builder module and log for debugging.
+                # This is intentional fault-tolerance: AST parsing may preserve some code
+                # even if the builder file cannot be imported due to forward references
+                # or other compatibility issues.
+                logger.debug(
+                    f"Failed to import builder module {modulename}: {e}. "
+                    "Proceeding with AST-extracted methods only."
+                )
                 builder_module = BuilderModule(filename=filename, models=[])
 
             # Store source methods and imports for later use
