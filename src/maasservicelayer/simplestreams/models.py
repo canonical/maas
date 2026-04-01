@@ -32,10 +32,10 @@ The original structure of the SimpleStreams JSON has been slightly refactored
 through the use of pydantic validators. See the preprocess_* validators.
 """
 
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
 from datetime import date, datetime
 from enum import StrEnum
-from typing import List, override, Type, Union
+from typing import Generic, override, TypeVar
 
 from pydantic import (
     BaseModel,
@@ -45,6 +45,9 @@ from pydantic import (
     model_validator,
     ValidationError,
 )
+
+VersionT = TypeVar("VersionT", bound="Version")
+ProductT = TypeVar("ProductT", bound="Product")
 
 
 def updated_validator(v: str | datetime) -> datetime:
@@ -80,11 +83,11 @@ class IndexContent(BaseModel):
     updated: datetime
     datatype: Datatype | None = None
     format: str = "products:1.0"
-    products: List[str]
+    products: list[str]
 
     @field_validator("updated", mode="before")
     @classmethod
-    def _validate_updated(cls, v):
+    def validate_updated(cls, v: str | datetime) -> datetime:
         return updated_validator(v)
 
 
@@ -95,12 +98,12 @@ class SimpleStreamsIndexList(BaseModel):
 
     @field_validator("updated", mode="before")
     @classmethod
-    def _validate_updated(cls, v):
+    def validate_updated(cls, v: str | datetime) -> datetime:
         return updated_validator(v)
 
     @model_validator(mode="before")
     @classmethod
-    def preprocess_index(cls, v):
+    def preprocess_index(cls, v: dict) -> dict:
         """Transform 'index' into a list of IndexContent."""
 
         if v.get("index") and isinstance(v["index"], dict):
@@ -126,17 +129,17 @@ class BootloaderFile(DownloadableFile):
 
 
 class ImageFile(DownloadableFile):
-    kpackage: str | None
+    kpackage: str | None = None
 
 
-class Version(BaseModel, ABC):
-    model_config = ConfigDict(populate_by_name=True)
+class Version(BaseModel, metaclass=ABCMeta):
+    model_config = ConfigDict(validate_by_alias=True, serialize_by_alias=True)
 
     version_name: str
 
     @model_validator(mode="before")
     @classmethod
-    def preprocess_items(cls, v: dict):
+    def preprocess_items(cls, v: dict) -> dict:
         """Unpack items into the specific fields.
 
         A version is formed by a dict which has the following structure:
@@ -160,13 +163,29 @@ class Version(BaseModel, ABC):
 
 class BootloaderVersion(Version):
     grub2_signed: BootloaderFile | None = Field(
-        None, validation_alias="grub2-signed"
+        default=None, alias="grub2-signed"
     )
     shim_signed: BootloaderFile | None = Field(
-        None, validation_alias="shim-signed"
+        default=None, alias="shim-signed"
     )
-    grub2: BootloaderFile | None = None
-    syslinux: BootloaderFile | None = None
+    grub2: BootloaderFile | None = Field(default=None)
+    syslinux: BootloaderFile | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def at_least_one_file_present(self) -> "BootloaderVersion":
+        """Ensure at least one bootloader file is present."""
+        if not any(
+            [
+                self.grub2_signed,
+                self.shim_signed,
+                self.grub2,
+                self.syslinux,
+            ]
+        ):
+            raise ValueError(
+                "At least one of grub2_signed, shim_signed, grub2, or syslinux must be provided"
+            )
+        return self
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
@@ -182,24 +201,23 @@ class BootloaderVersion(Version):
 class MultiFileImageVersion(Version):
     support_eol: date | None = None
     support_esm_eol: date | None = None
-    boot_initrd: ImageFile = Field(..., validation_alias="boot-initrd")
-    boot_kernel: ImageFile = Field(..., validation_alias="boot-kernel")
+    boot_initrd: ImageFile = Field(..., alias="boot-initrd")
+    boot_kernel: ImageFile = Field(..., alias="boot-kernel")
     manifest: ImageFile
-    root_image_gz: ImageFile | None = Field(
-        None, validation_alias="root-image.gz"
-    )
+    root_image_gz: ImageFile | None = Field(None, alias="root-image.gz")
     squashfs: ImageFile | None = None
 
     @field_validator("support_eol", "support_esm_eol", mode="before")
     @classmethod
-    def _validate_support_eol(cls, v):
+    def validate_support_eol(cls, v: str | None) -> date | None:
         return support_eol_validator(v)
 
     @model_validator(mode="after")
-    def validate_has_image_file(self) -> "MultiFileImageVersion":
-        if self.squashfs is None and self.root_image_gz is None:
+    def at_least_one_root_image(self) -> "MultiFileImageVersion":
+        """Ensure at least one of squashfs or root_image_gz is present."""
+        if not any([self.squashfs, self.root_image_gz]):
             raise ValueError(
-                "At least one of 'squashfs' or 'root-image.gz' must be present."
+                "At least one of squashfs or root_image_gz must be provided"
             )
         return self
 
@@ -216,30 +234,36 @@ class MultiFileImageVersion(Version):
 
 class SingleFileImageVersion(Version):
     manifest: ImageFile
-    root_tgz: ImageFile = Field(..., validation_alias="root-tgz")
+    root_tgz: ImageFile = Field(..., alias="root-tgz")
 
     @override
     def get_downloadable_files(self) -> list[DownloadableFile]:
         return [self.root_tgz]
 
 
-class Product(BaseModel, ABC):
-    model_config = ConfigDict(populate_by_name=True)
+class Product(BaseModel, Generic[VersionT], metaclass=ABCMeta):
+    model_config = ConfigDict(validate_by_alias=True, serialize_by_alias=True)
 
     product_name: str
     arch: str
     label: str
     os: str
-    versions: list
+    versions: list[VersionT]
 
     @staticmethod
     @abstractmethod
-    def version_class() -> Type[Version]:
+    def version_class() -> type[Version]:
+        """Return the Version subclass for this Product type.
+
+        Required by preprocess_versions validator to instantiate correct
+        version objects during deserialization. Concrete subclasses must
+        implement this to specify their supported version type.
+        """
         pass
 
     @model_validator(mode="before")
     @classmethod
-    def preprocess_versions(cls, v):
+    def preprocess_versions(cls, v: dict) -> dict:
         """Transform versions in a list.
 
         The 'versions' field is a dict where the key is the version name and the
@@ -249,7 +273,11 @@ class Product(BaseModel, ABC):
 
         # When serializing the object as a dict and then re-converting it into a
         # model we might not need to to the pre-processing.
-        if v.get("versions") and isinstance(v["versions"], dict):
+        if (
+            isinstance(v, dict)
+            and v.get("versions")
+            and isinstance(v["versions"], dict)
+        ):
             versions = []
             for prod_name, version in v["versions"].items():
                 versions.append(
@@ -258,79 +286,79 @@ class Product(BaseModel, ABC):
             v["versions"] = versions
         return v
 
-    def get_latest_version(self) -> Version:
+    def get_latest_version(self) -> VersionT:
         # we are usually interested only in the last version
         return sorted(self.versions, key=lambda v: v.version_name)[-1]
 
-    def get_version_by_name(self, name: str) -> Version | None:
+    def get_version_by_name(self, name: str) -> VersionT | None:
         for v in self.versions:
-            if v.name == name:
+            if v.version_name == name:
                 return v
         return None
 
 
-class BootloaderProduct(Product):
+class BootloaderProduct(Product[BootloaderVersion]):
     arches: str
-    bootloader_type: str = Field(..., validation_alias="bootloader-type")
-    versions: list[BootloaderVersion]
+    bootloader_type: str = Field(..., alias="bootloader-type")
 
     @override
     @staticmethod
-    def version_class() -> Type[Version]:
+    def version_class() -> type[Version]:
         return BootloaderVersion
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.os, self.arch, self.bootloader_type))
 
 
-class ImageProduct(Product):
+class ImageProduct(Product[VersionT], metaclass=ABCMeta):
     release: str
     release_title: str
     subarch: str
     subarches: str
-    support_eol: date | None = None
+    support_eol: date | None
     version: str
 
     @field_validator("support_eol", mode="before")
     @classmethod
-    def _validate_support_eol(cls, v):
+    def validate_support_eol(cls, v: str | None) -> date | None:
         return support_eol_validator(v)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.os, self.release, self.arch, self.subarch))
 
 
-class MultiFileProduct(ImageProduct):
+class MultiFileProduct(ImageProduct[MultiFileImageVersion]):
     kflavor: str
     krel: str  # seems to not be used
     release_codename: str
-    versions: list[MultiFileImageVersion]
 
     @override
     @staticmethod
-    def version_class() -> Type[Version]:
+    def version_class() -> type[Version]:
         return MultiFileImageVersion
 
 
-class SingleFileProduct(ImageProduct):
-    versions: list[SingleFileImageVersion]
-
+class SingleFileProduct(ImageProduct[SingleFileImageVersion]):
     @override
     @staticmethod
-    def version_class() -> Type[Version]:
+    def version_class() -> type[Version]:
         return SingleFileImageVersion
 
 
-class SimpleStreamsProductList(BaseModel, ABC):
+class SimpleStreamsProductList(
+    BaseModel, Generic[ProductT], metaclass=ABCMeta
+):
+    model_config = ConfigDict(validate_by_alias=True, serialize_by_alias=True)
+
     content_id: str
     datatype: Datatype
     format: str = "products:1.0"
     updated: datetime
-    products: list
+    products: list[ProductT]
 
     @field_validator("updated", mode="before")
     @classmethod
-    def _validate_updated(cls, v):
+    def validate_updated(cls, v: str | datetime) -> datetime:
         return updated_validator(v)
 
     @staticmethod
@@ -340,7 +368,7 @@ class SimpleStreamsProductList(BaseModel, ABC):
 
     @model_validator(mode="before")
     @classmethod
-    def preprocess_products(cls, v: dict):
+    def preprocess_products(cls, v: dict) -> dict:
         """Transform products into a list of product objects.
         'products' is a dict like
         {"com.ubuntu.maas.stable:v3:boot:12.04:amd64:hwe-p": {<product>}}
@@ -348,7 +376,11 @@ class SimpleStreamsProductList(BaseModel, ABC):
 
         # When serializing the object as a dict and then re-converting it into a
         # model we might not need to do the pre-processing.
-        if v.get("products") and isinstance(v["products"], dict):
+        if (
+            isinstance(v, dict)
+            and v.get("products")
+            and isinstance(v["products"], dict)
+        ):
             products = []
             for product_name, product in v["products"].items():
                 product = cls.product_class()(
@@ -359,39 +391,39 @@ class SimpleStreamsProductList(BaseModel, ABC):
         return v
 
 
-class SimpleStreamsBootloaderProductList(SimpleStreamsProductList):
-    products: list[BootloaderProduct]
-
+class SimpleStreamsBootloaderProductList(
+    SimpleStreamsProductList[BootloaderProduct]
+):
     @override
     @staticmethod
     def product_class() -> type[Product]:
         return BootloaderProduct
 
 
-class SimpleStreamsMultiFileProductList(SimpleStreamsProductList):
-    products: list[MultiFileProduct]
-
+class SimpleStreamsMultiFileProductList(
+    SimpleStreamsProductList[MultiFileProduct]
+):
     @override
     @staticmethod
     def product_class() -> type[Product]:
         return MultiFileProduct
 
 
-class SimpleStreamsSingleFileProductList(SimpleStreamsProductList):
-    products: list[SingleFileProduct]
-
+class SimpleStreamsSingleFileProductList(
+    SimpleStreamsProductList[SingleFileProduct]
+):
     @override
     @staticmethod
     def product_class() -> type[Product]:
         return SingleFileProduct
 
 
-# TypeVar for concrete SimpleStreams product list types
-SimpleStreamsProductListType = Union[
-    SimpleStreamsBootloaderProductList,
-    SimpleStreamsSingleFileProductList,
-    SimpleStreamsMultiFileProductList,
-]
+# Union type for concrete SimpleStreams product list types
+SimpleStreamsProductListType = (
+    SimpleStreamsBootloaderProductList
+    | SimpleStreamsSingleFileProductList
+    | SimpleStreamsMultiFileProductList
+)
 
 # Define a manifest as a list of SimpleStreams product lists
 SimpleStreamsManifest = list[SimpleStreamsProductListType]
@@ -399,8 +431,8 @@ SimpleStreamsManifest = list[SimpleStreamsProductListType]
 
 class SimpleStreamsProductListFactory:
     @staticmethod
-    def produce(data) -> SimpleStreamsProductListType:
-        product = None
+    def produce(data: dict) -> SimpleStreamsProductListType:
+        product: SimpleStreamsProductListType | None = None
         try:
             product = SimpleStreamsBootloaderProductList(**data)
         except ValidationError:
