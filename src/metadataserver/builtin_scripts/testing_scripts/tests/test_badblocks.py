@@ -45,17 +45,47 @@ class TestRunBadBlocks(MAASTestCase):
         )
 
     def test_get_parallel_blocks(self):
-        # Most systems will have more then enough more to test 5000
-        # blocks at a time. Simulate that by reading test system memory
-        # values and giving a block size of 1.
-        self.mock_check_output.return_value = b"1\n"
+        # Most systems will have more than enough memory to test 50000
+        # blocks at a time. This test mocks system memory values and
+        # lsblk output to verify the function returns the expected value.
+        def open_side_effect(path, *args, **kwargs):
+            if path == "/proc/sys/vm/min_free_kbytes":
+                return io.StringIO("110000\n")
+            elif path == "/proc/meminfo":
+                return io.StringIO(
+                    "MemTotal:        8000000 kB\n"
+                    "MemFree:         7000000 kB\n"
+                )
+            else:
+                self.fail(f"Unexpected file open: {path}")
+
+        mock_open = self.patch(badblocks, "open")
+        mock_open.side_effect = open_side_effect
+        # Mock lsblk output with 1 storage device
+        self.mock_check_output.return_value = b"NAME=sda MODEL=TestDisk SERIAL=12345\n"
+
         self.assertEqual(50000, badblocks.get_parallel_blocks(1))
 
     def test_get_parallel_blocks_limited(self):
-        # Systems with a large amount of disks and not that much RAM will need
-        # to throttle the amount of blocks tested at once. Simulate that by
-        # reading test system memory values and giving a large block size.
-        self.mock_check_output.return_value = b"1\n" * 1000
+        # Systems with a large amount of disks and not much RAM need to
+        # throttle the amount of blocks tested at once. This test verifies
+        # the function respects the 50000 block limit when needed.
+        def open_side_effect(path, *args, **kwargs):
+            if path == "/proc/sys/vm/min_free_kbytes":
+                return io.StringIO("110000\n")
+            elif path == "/proc/meminfo":
+                return io.StringIO(
+                    "MemTotal:        8000000 kB\n"
+                    "MemFree:         7000000 kB\n"
+                )
+            else:
+                self.fail(f"Unexpected file open: {path}")
+
+        mock_open = self.patch(badblocks, "open")
+        mock_open.side_effect = open_side_effect
+        # Mock lsblk output with 1000 storage devices (many devices)
+        self.mock_check_output.return_value = b"NAME=sda MODEL=TestDisk SERIAL=12345\n" * 1000
+
         self.assertGreaterEqual(50000, badblocks.get_parallel_blocks(1000))
 
     def test_run_badblocks_nondestructive_and_writes_results_file(self):

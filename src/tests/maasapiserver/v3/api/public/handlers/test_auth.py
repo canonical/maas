@@ -12,7 +12,6 @@ from httpx import AsyncClient
 from macaroonbakery.bakery import Macaroon
 import pytest
 
-from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
@@ -28,6 +27,7 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
 from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
+from maascommon.utils.jwt import decode_unverified_jwt
 from maasservicelayer.auth.external_oauth import (
     OAuth2Client,
     OAuthIDToken,
@@ -168,6 +168,7 @@ class TestAuthApi:
 
         token_response = TokenResponse(**response.json())
         assert token_response.token_type == "bearer"
+        # Decode JWT to get claims without verification
         claims = decode_unverified_jwt(
             token_response.access_token, check_expiration=False
         )
@@ -259,6 +260,7 @@ class TestAuthApi:
         token_response = TokenResponse(**response.json())
         assert token_response.kind == "Tokens"
         assert token_response.token_type == "bearer"
+        # Decode JWT to get claims without verification
         decoded_token = decode_unverified_jwt(
             token_response.access_token, check_expiration=False
         )
@@ -283,6 +285,7 @@ class TestAuthApi:
         token_response = TokenResponse(**response.json())
         assert token_response.kind == "Tokens"
         assert token_response.token_type == "bearer"
+        # Decode JWT to get claims without verification
         decoded_token = decode_unverified_jwt(
             token_response.access_token, check_expiration=False
         )
