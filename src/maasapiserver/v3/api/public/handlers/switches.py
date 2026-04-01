@@ -1,4 +1,4 @@
-# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from fastapi import Depends, Response
@@ -64,7 +64,7 @@ class SwitchesHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SwitchesListResponse:
         """List all switches with pagination."""
-        switches = await services.switches.get_with_target_image(
+        switches = await services.switches.list_with_target_image(
             pagination_params.page,
             pagination_params.size,
         )
@@ -150,14 +150,11 @@ class SwitchesHandler(Handler):
     )
     async def create_switch(
         self,
-        response: Response,
         switch_request: SwitchRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SwitchResponse:
         """Create a new switch with its management interface."""
-        existing_interfaces = await services.interfaces.list(
-            page=1,
-            size=1,
+        existing_interface = await services.interfaces.get_one(
             query=QuerySpec(
                 where=InterfaceClauseFactory.with_mac_address(
                     switch_request.mac_address
@@ -165,8 +162,7 @@ class SwitchesHandler(Handler):
             ),
         )
 
-        if existing_interfaces.total > 0:
-            existing_interface = existing_interfaces.items[0]
+        if existing_interface is not None:
             if (
                 existing_interface.type == InterfaceType.UNKNOWN
                 and existing_interface.node_config_id is None
@@ -193,7 +189,6 @@ class SwitchesHandler(Handler):
                 switch_request.mac_address,
             )
 
-        response.headers["Location"] = f"{V3_API_PREFIX}/switches/{switch.id}"
         return SwitchResponse.from_switch_model(
             switch=switch,
             target_image=switch_request.image,

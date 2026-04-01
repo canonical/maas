@@ -55,7 +55,7 @@ class SwitchesRepository(BaseRepository[Switch]):
             SwitchWithTargetImage(**row._asdict()) if row is not None else None
         )
 
-    async def get_with_target_image(
+    async def list_with_target_image(
         self, page: int, size: int
     ) -> ListResult[SwitchWithTargetImage]:
         total_stmt = select(func.count()).select_from(SwitchTable)

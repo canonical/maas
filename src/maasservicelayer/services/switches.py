@@ -56,10 +56,10 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
     ) -> SwitchWithTargetImage | None:
         return await self.repository.get_one_with_target_image(id)
 
-    async def get_with_target_image(
+    async def list_with_target_image(
         self, page: int, size: int
     ) -> ListResult[SwitchWithTargetImage]:
-        return await self.repository.get_with_target_image(page, size)
+        return await self.repository.list_with_target_image(page, size)
 
     async def create_new_switch_and_interface(
         self,
