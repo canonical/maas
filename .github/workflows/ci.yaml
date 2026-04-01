@@ -44,6 +44,9 @@ jobs:
 
     container:
       image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
+      env:
+        GOPATH: /home/ubuntu/go
+        GOCACHE: /home/ubuntu/.cache/go-build
       volumes:
         - /github/home/go:/home/ubuntu/go
         - /github/home/.cache/go-build:/home/ubuntu/.cache/go-build
@@ -108,4 +111,4 @@ jobs:
         with:
           name: test-reports
           path: |
-            $GITHUB_WORKSPACE/junit*.xml
+            ${{ github.workspace }}/junit*.xml
