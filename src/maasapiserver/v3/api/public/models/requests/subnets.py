@@ -1,10 +1,9 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv6Address
-from typing import Optional, Self
+from ipaddress import IPv4Network, IPv6Address, IPv6Network
 
-from pydantic import Field, IPvAnyAddress, model_validator
+from pydantic import Field, field_validator, IPvAnyAddress, ValidationInfo
 
 from maasapiserver.v3.api.public.models.requests.base import (
     OptionalNamedBaseModel,
@@ -23,7 +22,7 @@ from maasservicelayer.models.fields import IPv4v6Network
 
 
 class SubnetRequest(OptionalNamedBaseModel):
-    description: Optional[str] = Field(
+    description: str | None = Field(
         description="The description of the subnet.", default=""
     )
     cidr: IPv4v6Network = Field(
@@ -38,7 +37,7 @@ class SubnetRequest(OptionalNamedBaseModel):
         " network is small enough to require the support described in RFC2317.",
         default=RdnsMode.DEFAULT,
     )
-    gateway_ip: Optional[IPvAnyAddress] = Field(
+    gateway_ip: IPvAnyAddress | None = Field(
         description="The gateway IP for this subnet.", default=None
     )
     dns_servers: list[IPvAnyAddress] = Field(
@@ -65,23 +64,29 @@ class SubnetRequest(OptionalNamedBaseModel):
         default_factory=list,
     )
 
-    @model_validator(mode="after")
-    def ensure_gateway_ip_in_cidr(self) -> Self:
-        if self.gateway_ip is None:
-            return self
-        gateway_ip: IPvAnyAddress = self.gateway_ip
-        network: IPv4v6Network = self.cidr
+    @field_validator("gateway_ip", mode="after")
+    @classmethod
+    def ensure_gatweway_ip_in_cidr(
+        cls, v: IPvAnyAddress | None, info: ValidationInfo
+    ) -> IPvAnyAddress | None:
+        if v is None:
+            return v
+        gateway_ip: IPvAnyAddress = v
+        network_data = info.data.get("cidr")
+        if not isinstance(network_data, (IPv4Network, IPv6Network)):
+            return gateway_ip
+        network: IPv4Network | IPv6Network = network_data
         if gateway_ip in network:
-            return self
+            return gateway_ip
         elif (
             network.version == 6
             and isinstance(gateway_ip, IPv6Address)
-            and gateway_ip.is_link_local
+            and gateway_ip in IPv6Network("fe80::/64")
         ):
             # If this is an IPv6 network and the gateway is in the link-local
             # network (fe80::/64 -- required to be configured by the spec),
             # then it is also valid.
-            return self
+            return gateway_ip
         else:
             raise ValueError("gateway IP must be within CIDR range.")
 

@@ -1,55 +1,56 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import _BaseNetwork, IPv4Network, IPv6Network
+from ipaddress import IPv4Network, IPv6Network
 import re
-from typing import Any, Union
+from typing import Annotated, Any
 
-from pydantic import GetCoreSchemaHandler
-from pydantic_core import core_schema
+from pydantic import BeforeValidator, GetCoreSchemaHandler
+from pydantic_core import core_schema, PydanticCustomError
 
 from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
 
 
-class IPv4v6Network(_BaseNetwork):
-    """Re-implementation of pydantic's IPvAnyNetwork.
+def _validate_ipv4v6_network(value: Any) -> IPv4Network | IPv6Network:
+    """Validate an IPv4 or IPv6 network with strict=False.
 
-    We need this because pydantic uses `strict=True` by default, but that doesn't
-    allow us to set host bits, resulting in all networks having /32.
+    Allows host bits in CIDR notation (e.g., 192.168.1.5/24 instead of
+    requiring 192.168.1.0/24). Validates that prefix length is greater than 0.
     """
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
-    ) -> core_schema.CoreSchema:
-        return core_schema.no_info_plain_validator_function(cls.validate)
-
-    @classmethod
-    def __get_pydantic_json_schema__(
-        cls, _core_schema: Any, handler: Any
-    ) -> dict[str, Any]:
-        return {"type": "string", "format": "ipvanynetwork"}
-
-    @classmethod
-    def validate(cls, value: Any) -> Union[IPv4Network, IPv6Network]:
-        ip = None
-        try:
-            ip = IPv4Network(value, strict=False)
-        except ValueError:
-            pass
-
-        if ip is None:
-            try:
-                ip = IPv6Network(value, strict=False)
-            except ValueError:
-                raise ValueError("Value is not a valid IPv4 or IPv6 network.")  # noqa: B904
-
-        if ip.prefixlen == 0:
-            raise ValueError(
-                "The prefix length of the CIDR must be greater than 0."
+    if isinstance(value, (IPv4Network, IPv6Network)):
+        if value.prefixlen == 0:
+            raise PydanticCustomError(
+                "ip_any_network",
+                "The prefix length of the CIDR must be greater than 0.",
             )
+        return value
 
-        return ip
+    try:
+        network = IPv4Network(value, strict=False)
+    except ValueError:
+        try:
+            network = IPv6Network(value, strict=False)
+        except ValueError:
+            raise PydanticCustomError(
+                "ip_any_network",
+                "value is not a valid IPv4 or IPv6 network",
+            ) from None
+
+    if network.prefixlen == 0:
+        raise PydanticCustomError(
+            "ip_any_network",
+            "The prefix length of the CIDR must be greater than 0.",
+        )
+
+    return network
+
+
+# Type alias for IPv4 or IPv6 networks with strict=False behavior,
+# allowing host bits in CIDR notation (e.g., 192.168.1.5/24).
+IPv4v6Network = Annotated[
+    IPv4Network | IPv6Network,
+    BeforeValidator(_validate_ipv4v6_network),
+]
 
 
 class MacAddress(str):
@@ -61,13 +62,10 @@ class MacAddress(str):
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
-        return core_schema.no_info_plain_validator_function(cls.validate)
-
-    @classmethod
-    def __get_pydantic_json_schema__(
-        cls, _core_schema: Any, handler: Any
-    ) -> dict[str, Any]:
-        return {"type": "string", "pattern": MAC_FIELD_RE.pattern}
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.str_schema(pattern=MAC_FIELD_RE.pattern),
+        )
 
     @classmethod
     def validate(cls, value: str) -> str:
@@ -98,7 +96,10 @@ class PackageRepoUrl(str):
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
-        return core_schema.no_info_plain_validator_function(cls.validate)
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.str_schema(pattern=cls.COMBINED_RE.pattern),
+        )
 
     @classmethod
     def validate(cls, value: str) -> str:

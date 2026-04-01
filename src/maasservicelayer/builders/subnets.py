@@ -5,7 +5,7 @@ from datetime import datetime
 from ipaddress import IPv4Network, IPv6Network
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
-from maasservicelayer.models.fields import IPv4v6Network
+
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
 
@@ -21,7 +21,7 @@ class SubnetBuilder(ResourceBuilder):
     active_discovery: bool | Unset = Field(default=UNSET)
     allow_dns: bool | Unset = Field(default=UNSET)
     allow_proxy: bool | Unset = Field(default=UNSET)
-    cidr: IPv4v6Network | Unset = Field(default=UNSET)
+    cidr: IPv4Network | IPv6Network | Unset = Field(default=UNSET)
     created: datetime | Unset = Field(default=UNSET)
     description: str | None | Unset = Field(default=UNSET)
     disabled_boot_architectures: list[str] | Unset = Field(default=UNSET)

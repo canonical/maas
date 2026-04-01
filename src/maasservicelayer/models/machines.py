@@ -46,7 +46,7 @@ class HardwareDevice(MaasTimestampedBaseModel):
     # physical_blockdevice_id: Optional[int]
     # node_config_id: int
 
-    @field_validator("vendor_id", "product_id")
+    @field_validator("vendor_id", "product_id", mode="after")
     @classmethod
     def validate_hex_ids(cls, id):
         if not DEVICE_ID_REGEX.match(id):

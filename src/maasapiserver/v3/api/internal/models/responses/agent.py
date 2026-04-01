@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd. This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
 from pydantic import Field
 
@@ -17,7 +17,7 @@ class AgentResponse(HalResponse[BaseHal]):
     kind: str = Field(default="Agent")
     id: int
     rack_id: int
-    rackcontroller_id: Optional[int]
+    rackcontroller_id: int | None = None
 
     @classmethod
     def from_model(cls, agent: Agent, self_base_hyperlink: str) -> Self:

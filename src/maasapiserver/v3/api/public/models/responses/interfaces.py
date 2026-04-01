@@ -1,9 +1,9 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
-from pydantic import BaseModel, Field, IPvAnyAddress
+from pydantic import BaseModel, ConfigDict, Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -18,7 +18,7 @@ from maasservicelayer.models.interfaces import Interface, InterfaceType, Link
 class LinkResponse(BaseModel):
     id: int
     mode: InterfaceLinkType
-    ip_address: Optional[IPvAnyAddress]
+    ip_address: IPvAnyAddress | None = None
 
     @classmethod
     def from_model(cls, link: Link) -> Self:
@@ -26,11 +26,13 @@ class LinkResponse(BaseModel):
 
 
 class InterfaceResponse(HalResponse[BaseHal]):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     kind: str = Field(default="Interface")
     id: int
     name: str
     type: InterfaceType
-    mac_address: Optional[str]
+    mac_address: str | None = None
     # TODO
     # effective_mtu: int = 0
     link_connected: bool = True
@@ -39,9 +41,6 @@ class InterfaceResponse(HalResponse[BaseHal]):
     link_speed: int = 0
     sriov_max_vf: int = 0
     links: list[LinkResponse] = Field(default_factory=list)
-
-    class Config:  # pyright: ignore [reportIncompatibleVariableOverride]
-        arbitrary_types_allowed = True
 
     @classmethod
     def from_model(

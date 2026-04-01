@@ -1,8 +1,6 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Self
-
 from pydantic import BaseModel, Field, model_validator
 
 from maascommon.enums.notifications import NotificationCategoryEnum
@@ -21,11 +19,13 @@ class NotificationRequest(BaseModel):
         default=NotificationCategoryEnum.INFO,
     )
     ident: str | None = Field(
-        description="Unique identifier for this notification."
+        default=None,
+        description="Unique identifier for this notification.",
     )
     user_id: int | None = Field(
+        default=None,
         description="User ID this notification is intended for."
-        "By default it will not be targeted to any individual user."
+        "By default it will not be targeted to any individual user.",
     )
     for_users: bool = Field(
         description="True to notify all users,"
@@ -49,7 +49,7 @@ class NotificationRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_recipient(self) -> Self:
+    def validate_recipient(self) -> "NotificationRequest":
         if (
             self.user_id is None
             and self.for_users is False

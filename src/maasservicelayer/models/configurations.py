@@ -54,6 +54,7 @@ class DatabaseConfiguration(MaasBaseModel):
 
 
 class Config(BaseModel, Generic[T]):
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True, url_preserve_empty_path=True)
     name: ClassVar[str]
     description: ClassVar[str]
     help_text: ClassVar[str | None] = None
@@ -108,7 +109,7 @@ class MAASProxyPortConfig(Config[int | None]):
     )
     value: int | None = Field(default=default, description=description)
 
-    @field_validator("value")
+    @field_validator("value", mode="after")
     @classmethod
     def validate_port(cls, value):
         if value is None:
@@ -203,7 +204,7 @@ class MAASInternalDomainConfig(Config[str | None]):
     )
     value: str | None = Field(default=default, description=description)
 
-    @field_validator("value")
+    @field_validator("value", mode="after")
     @classmethod
     def validate_value(cls, value: str | None) -> str | None:
         if value is None:
@@ -240,7 +241,7 @@ class DNSTrustedAclConfig(Config[str | None]):
     )
     value: str | None = Field(default=default, description=description)
 
-    @field_validator("value")
+    @field_validator("value", mode="after")
     @classmethod
     def validate_value(cls, value: str | None) -> str | None:
         if value is None:
@@ -301,7 +302,7 @@ class RemoteSyslogConfig(Config[str | None]):
     )
     value: str | None = Field(default=default, description=description)
 
-    @field_validator("value")
+    @field_validator("value", mode="after")
     @classmethod
     def validate_value(cls, value: str | None) -> str | None:
         if not value:
@@ -323,7 +324,7 @@ class MAASSyslogPortConfig(Config[int | None]):
     )
     value: int | None = Field(default=default, description=description)
 
-    @field_validator("value")
+    @field_validator("value", mode="after")
     @classmethod
     def validate_port(cls, value):
         if value is None:
@@ -767,7 +768,7 @@ class MAASAutoIPMIKGBmcKeyConfig(Config[str | None]):
     )
     value: str | None = Field(default=default, description=description)
 
-    @field_validator("value")
+    @field_validator("value", mode="after")
     @classmethod
     def validate_value(cls, value: str | None) -> str | None:
         """
@@ -847,7 +848,7 @@ class NTPServersConfig(Config[str | None]):
     )
     value: str | None = Field(default=default, description=description)
 
-    @field_validator("value")
+    @field_validator("value", mode="after")
     @classmethod
     def validate_value(cls, value: str | None) -> str | None:
         if value is None:
@@ -953,7 +954,7 @@ class HardwareSyncIntervalConfig(Config[str | None]):
     )
     value: str | None = Field(default=default, description=description)
 
-    @field_validator("value")
+    @field_validator("value", mode="after")
     @classmethod
     def validate_systemd_interval(cls, value: str | None) -> str | None:
         if value is None:
