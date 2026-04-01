@@ -4,6 +4,9 @@ on:
   # Run on default events, and also when converted from draft to ready
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - 'docs/**'
+      - 'rtd-docs/**'
   merge_group:
     types: [checks_requested]
 
