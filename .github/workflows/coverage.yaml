@@ -51,10 +51,10 @@ jobs:
       - name: Run python tests with coverage
         run: |
           su ubuntu -c "mkdir -p coverage"
-          COVERAGE_FILE=.coverage.legacy su ubuntu -c "bin/test.region.legacy --processes=4 --with-coverage --cover-branches || true"
-          COVERAGE_FILE=.coverage.region su ubuntu -c "bin/test.region --processes=4 --with-coverage --cover-branches || true"
-          COVERAGE_FILE=.coverage.rack su ubuntu -c "bin/test.rack --processes=4 --with-coverage --cover-branches || true"
-          COVERAGE_FILE=.coverage.pytest su ubuntu -c "bin/pytest --cov=src --cov-branch -n auto --maxprocesses=4 --dist=load || true"
+          COVERAGE_FILE=.coverage.legacy su ubuntu -c "bin/test.region.legacy --with-coverage --cover-branches || true"
+          COVERAGE_FILE=.coverage.region su ubuntu -c "bin/test.region --with-coverage --cover-branches || true"
+          COVERAGE_FILE=.coverage.rack su ubuntu -c "bin/test.rack --with-coverage --cover-branches || true"
+          COVERAGE_FILE=.coverage.pytest su ubuntu -c "bin/pytest --cov=src --cov-branch -n auto --dist=load || true"
           su ubuntu -c "python3-coverage combine .coverage.legacy .coverage.region .coverage.rack .coverage.pytest"
           su ubuntu -c "python3-coverage report"
           su ubuntu -c "python3-coverage xml -o coverage/py-coverage.xml"
