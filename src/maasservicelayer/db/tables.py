@@ -2245,6 +2245,12 @@ SwitchTable = Table(
         ),
         nullable=True,
     ),
+    Column(
+        "ztp_enabled", Boolean, nullable=False, server_default=text("false")
+    ),
+    Column("ztp_script_key", String(255), nullable=True),
+    Column("ztp_delivery_mechanism", String(32), nullable=True),
+    Column("mgmt_mac_address", String(17), nullable=True),
     Index("maasserver_switch_target_image_id_idx", "target_image_id"),
 )
 

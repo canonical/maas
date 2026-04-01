@@ -3,6 +3,7 @@
 
 from typing import Optional
 
+from maasservicelayer.enums.ztp import ZTPDeliveryMechanism
 from maasservicelayer.models.base import (
     generate_builder,
     MaasTimestampedBaseModel,
@@ -17,3 +18,7 @@ class Switch(MaasTimestampedBaseModel):
     """
 
     target_image_id: Optional[int]
+    ztp_enabled: bool = False
+    ztp_script_key: Optional[str] = None
+    ztp_delivery_mechanism: Optional[ZTPDeliveryMechanism] = None
+    mgmt_mac_address: Optional[str] = None

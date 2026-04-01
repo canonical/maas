@@ -6,6 +6,7 @@ from typing import Union
 
 from pydantic import Field
 
+from maasservicelayer.enums.ztp import ZTPDeliveryMechanism
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
 
 
@@ -17,7 +18,17 @@ class SwitchBuilder(ResourceBuilder):
     """
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    mgmt_mac_address: Union[str, None, Unset] = Field(
+        default=UNSET, required=False
+    )
     target_image_id: Union[int, None, Unset] = Field(
         default=UNSET, required=False
     )
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    ztp_delivery_mechanism: Union[ZTPDeliveryMechanism, None, Unset] = Field(
+        default=UNSET, required=False
+    )
+    ztp_enabled: Union[bool, Unset] = Field(default=UNSET, required=False)
+    ztp_script_key: Union[str, None, Unset] = Field(
+        default=UNSET, required=False
+    )
