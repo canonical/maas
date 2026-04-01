@@ -208,13 +208,13 @@ class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
     ):
         created_resource = await repository_instance.create(instance_builder)
         assert created_resource is not None
-        created_resource = created_resource.dict()
+        created_resource = created_resource.model_dump()
         if repository_instance.has_timestamped_fields:
             # We can expect these fields to be populated
             assert created_resource["created"] is not None
             assert created_resource["updated"] is not None
 
-        for key, value in instance_builder.dict().items():
+        for key, value in instance_builder.model_dump().items():
             if not isinstance(value, Unset):
                 assert created_resource[key] == value
 
@@ -236,13 +236,13 @@ class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
             [instance_builder]
         )
         assert len(created_resources) == 1
-        created_resource = created_resources[0].dict()
+        created_resource = created_resources[0].model_dump()
         if repository_instance.has_timestamped_fields:
             # We can expect these fields to be populated
             assert created_resource["created"] is not None
             assert created_resource["updated"] is not None
 
-        for key, value in instance_builder.dict().items():
+        for key, value in instance_builder.model_dump().items():
             if not isinstance(value, Unset):
                 assert created_resource[key] == value
 

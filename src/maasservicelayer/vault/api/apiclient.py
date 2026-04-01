@@ -72,7 +72,7 @@ class AsyncVaultApiClient:
         """
         response = await self._session.post(
             url=f"/v1/auth/{approle}/login",
-            data=request.json(),
+            data=request.model_dump_json(),
             headers=headers,
         )
         self._raise_for_status(response)
