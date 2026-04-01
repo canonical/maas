@@ -161,7 +161,8 @@ class RedfishPowerDriverBase(PowerDriver):
             """Handle redirects that RedirectAgent refuses to follow."""
             nonlocal redirect_count
 
-            # Only handle ResponseFailed errors
+            # Twisted raises `ResponseFailed` if a non-idempotent (POST/PATCH/..) request is being redirected.
+            # Do not handle the failure for all the other cases.
             if not failure.check(ResponseFailed):
                 return failure
 
@@ -172,10 +173,20 @@ class RedfishPowerDriverBase(PowerDriver):
                         raise PowerFatalError(
                             f"Redfish request exceeded maximum redirects ({MAX_REDIRECTS}) - possible redirect loop."
                         )
-                    # Increment redirect count
                     redirect_count += 1
                     # Extract the location and follow the redirect
-                    location = reason.value.location
+                    locationHeaders = (
+                        failure.value.response.headers.getRawHeaders(
+                            b"location", []
+                        )
+                    )
+                    if not locationHeaders:
+                        raise PowerFatalError(
+                            "Redfish request failed: redirect response missing 'Location' header."
+                        )
+                    location = agent._resolveLocation(
+                        reason.value.location, locationHeaders[0]
+                    )
                     redirect_deferred = agent.request(
                         method,
                         location,
@@ -185,6 +196,7 @@ class RedfishPowerDriverBase(PowerDriver):
                     # Attach the errback to handle further redirects
                     redirect_deferred.addErrback(handle_redirect_error)
                     return redirect_deferred
+            return failure
 
         def render_response(response, uri):
             """Render the HTTPS response received."""

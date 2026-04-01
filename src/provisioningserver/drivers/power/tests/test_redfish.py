@@ -17,6 +17,7 @@ from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.python.failure import Failure
 from twisted.web import error as web_error
 from twisted.web.client import (
+    _urljoin,
     FileBodyProducer,
     PartialDownloadError,
     ResponseFailed,
@@ -582,13 +583,21 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_redirect_agent = self.patch(redfish_module, "RedirectAgent")
         mock_agent_instance = Mock()
         mock_redirect_agent.return_value = mock_agent_instance
+        # Use the real _urljoin implementation for resolving locations
+        mock_agent_instance._resolveLocation = lambda reqURI, loc: _urljoin(
+            reqURI, loc
+        )
 
         # First request returns 308, RedirectAgent raises PageRedirect wrapped in ResponseFailed
         mock_response_308 = Mock()
         mock_response_308.code = HTTPStatus.PERMANENT_REDIRECT
+        # Mock headers to return location header
+        mock_headers = Mock()
+        mock_headers.getRawHeaders = Mock(return_value=[redirect_uri])
+        mock_response_308.headers = mock_headers
 
         page_redirect_error = web_error.PageRedirect(
-            HTTPStatus.PERMANENT_REDIRECT, location=redirect_uri
+            HTTPStatus.PERMANENT_REDIRECT, location=uri
         )
         response_failed = ResponseFailed(
             [Failure(page_redirect_error)], mock_response_308
@@ -633,10 +642,18 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_redirect_agent = self.patch(redfish_module, "RedirectAgent")
         mock_agent_instance = Mock()
         mock_redirect_agent.return_value = mock_agent_instance
+        # Use the real _urljoin implementation for resolving locations
+        mock_agent_instance._resolveLocation = lambda reqURI, loc: _urljoin(
+            reqURI, loc
+        )
 
         # Create an infinite redirect loop
         mock_response_308 = Mock()
         mock_response_308.code = HTTPStatus.PERMANENT_REDIRECT
+        # Mock headers to return location header
+        mock_headers = Mock()
+        mock_headers.getRawHeaders = Mock(return_value=[uri])
+        mock_response_308.headers = mock_headers
 
         page_redirect_error = web_error.PageRedirect(
             HTTPStatus.PERMANENT_REDIRECT, location=uri
