@@ -489,6 +489,12 @@ def get_base_preseed(node=None):
         "manage_etc_hosts": True
     }
 
+    if node is not None and node.status == NODE_STATUS.DEPLOYING:
+        # python3-packaging is a dependency of curtin which might or might not
+        # be included in the images. For instance, it is not included in the
+        # image we use of bionic.
+        cloud_config["packages"] = ["python3-packaging"]
+
     if node is None or node.status in COMMISSIONING_LIKE_STATUSES:
         # All other ephemeral environments use the MAAS script runner or
         # signaler to send MAAS information about process status. cloud-init
