@@ -1,25 +1,33 @@
 name: CI check
 
 on:
-  # Run on default events, and also when converted from draft to ready
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
     types: [checks_requested]
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   changes:
     runs-on: ubuntu-24.04
     if: ${{ !github.event.pull_request.draft }}
-    permissions:
-      contents: read
-      pull-requests: read
+
     outputs:
       python: ${{ steps.filter.outputs.python }}
       go: ${{ steps.filter.outputs.go }}
+
     steps:
-      - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+      - uses: dorny/paths-filter@61f87a10cd2c304679af17bb73ef192addf33c1c
         id: filter
         with:
           filters: |
@@ -38,77 +46,61 @@ jobs:
               - 'src/**/Makefile'
               - 'Makefile'
 
-  lint-and-test:
-    needs: changes
+  lint:
     runs-on: ubuntu-24.04
+    if: ${{ !github.event.pull_request.draft }}
 
     container:
       image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
-      env:
-        GOPATH: /home/ubuntu/go
-        GOCACHE: /home/ubuntu/.cache/go-build
-      volumes:
-        - /github/home/go:/home/ubuntu/go
-        - /github/home/.cache/go-build:/home/ubuntu/.cache/go-build
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    defaults:
-      run:
-        shell: bash
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      - uses: ./.github/actions/ci-setup
 
-    permissions:
-      contents: read
-      packages: read
+      - name: Run lint
+        run: |
+          su ubuntu -c "make lint"
+
+  test-python:
+    needs: changes
+    runs-on: ubuntu-24.04
+    if: >-
+      ${{ !github.event.pull_request.draft && needs.changes.outputs.python == 'true' }}
+
+    container:
+      image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      - uses: ./.github/actions/ci-setup
 
-      - name: Go modules cache
-        uses: actions/cache@v5
-        with:
-          path: |
-            /github/home/.cache/go-build
-            /github/home/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('src/**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go
-
-      - name: Prepare container
-        if: ${{ needs.changes.outputs.python == 'true' || needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
+      - name: Test
         run: |
-          chown -R ubuntu:ubuntu /home/ubuntu
-          chown -R ubuntu:ubuntu $(pwd)
-          git config --global --add safe.directory $(pwd)
-          make install-dependencies
-          su ubuntu -c "make build"
+          CACHE_DIR=/home/ubuntu/.cache/pip
+          su ubuntu -c "PIP_CACHE_DIR=$CACHE_DIR make test-py"
 
-      - name: Lint Python
-        if: ${{ needs.changes.outputs.python == 'true' || github.event_name == 'merge_group' }}
-        run: |
-          su ubuntu -c "make lint-py-builders lint-py check-types lint-py-imports lint-py-linefeeds lint-oapi lint-shell"
+  test-go:
+    needs: changes
+    runs-on: ubuntu-24.04
+    if: >-
+      ${{ !github.event.pull_request.draft && needs.changes.outputs.go == 'true' }}
 
-      - name: Test Python
-        if: ${{ needs.changes.outputs.python == 'true' || github.event_name == 'merge_group' }}
-        run: |
-          su ubuntu -c "make test-py"
+    container:
+      image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Lint Go
-        if: ${{ needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
-        run: |
-          su ubuntu -c "make lint-go"
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      - uses: ./.github/actions/ci-setup
 
-      - name: Test Go
-        if: ${{ needs.changes.outputs.go == 'true' || github.event_name == 'merge_group' }}
+      - name: Test
         run: |
           su ubuntu -c "make test-go"
-
-      - name: Archive logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: |
-            ${{ github.workspace }}/junit*.xml
