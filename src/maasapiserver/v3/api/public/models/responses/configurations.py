@@ -14,7 +14,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
 class ConfigurationResponse(HalResponse[BaseHal]):
     kind: str = Field(default="Configuration")
     name: str
-    value: Any
+    value: Any | None = None
 
 
 class ConfigurationsListResponse(HalResponse[BaseHal]):
