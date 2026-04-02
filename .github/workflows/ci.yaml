@@ -34,7 +34,6 @@ jobs:
           filters: |
             python:
               - 'src/**/*.py'
-              - 'utilities/**'
               - 'pyproject.toml'
               - 'tox.ini'
               - 'setup.py'
