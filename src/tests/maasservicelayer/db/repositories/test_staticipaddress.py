@@ -442,7 +442,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         repository_instance: StaticIPAddressRepository,
         fixture: Fixture,
         num_interfaces: int,
-        expected: bool,
+        expected_has_linked_interfaces: bool,
     ):
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
         ip = (
@@ -458,4 +458,4 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
 
         result = await repository_instance.has_linked_interfaces(ip["id"])
 
-        assert result == expected
+        assert result == expected_has_linked_interfaces
