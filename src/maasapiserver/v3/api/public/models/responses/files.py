@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64encode
-from typing import List, Optional, Self
+from typing import List, Self
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +21,7 @@ class FileResponse(HalResponse[BaseHal]):
     filename: str
     content: str
     key: str
-    owner_id: Optional[int]
+    owner_id: int | None = None
 
     @classmethod
     def from_model(cls, file: FileStorage, self_base_hyperlink: str) -> Self:
@@ -47,7 +47,7 @@ class FileListItemResponse(HalResponse[BaseHal]):
     id: int
     filename: str
     key: str
-    owner_id: Optional[int]
+    owner_id: int | None = None
 
     @classmethod
     def from_model(cls, file: FileStorage, self_base_hyperlink: str) -> Self:

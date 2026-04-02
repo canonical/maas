@@ -8,8 +8,8 @@ from typing import Any, cast, Self
 
 from joserfc import jwt
 from joserfc.errors import JoseError
-from joserfc.jws import JWSRegistry
 from joserfc.jwk import OctKey
+from joserfc.jws import JWSRegistry
 from joserfc.jwt import JWTClaimsRegistry
 
 from maasservicelayer.auth.time import utc_from_timestamp

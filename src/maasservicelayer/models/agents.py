@@ -11,4 +11,6 @@ from maasservicelayer.models.base import (
 class Agent(MaasTimestampedBaseModel):
     uuid: str
     rack_id: int
-    rackcontroller_id: int | None = None  # WIP: remove Optional once MAE is complete
+    rackcontroller_id: int | None = (
+        None  # WIP: remove Optional once MAE is complete
+    )

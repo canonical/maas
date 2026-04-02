@@ -114,7 +114,9 @@ class TestRbacAsyncClient:
             f"{RBAC_BASE_URL}/user/user", payload=expected_response
         )
         response = await rbac_client.get_user_details("user")
-        assert response == UserDetailsResponse.model_validate(expected_response)
+        assert response == UserDetailsResponse.model_validate(
+            expected_response
+        )
         mock_aioresponse.assert_called_once_with(
             method="GET",
             url=f"{RBAC_BASE_URL}/user/user",
@@ -159,7 +161,9 @@ class TestRbacAsyncClient:
             RbacResourceType.RESOURCE_POOL, req
         )
 
-        assert resp == UpdateResourcesResponse.model_validate(expected_response)
+        assert resp == UpdateResourcesResponse.model_validate(
+            expected_response
+        )
         mock_aioresponse.assert_called_once_with(
             method="POST",
             url=f"{RBAC_BASE_URL}/resources/resource-pool",
@@ -188,7 +192,9 @@ class TestRbacAsyncClient:
         resp = await rbac_client.update_resources(
             RbacResourceType.RESOURCE_POOL, req
         )
-        assert resp == UpdateResourcesResponse.model_validate(expected_response)
+        assert resp == UpdateResourcesResponse.model_validate(
+            expected_response
+        )
         mock_aioresponse.assert_called_once_with(
             method="POST",
             url=f"{RBAC_BASE_URL}/resources/resource-pool",

@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Optional, Self
+from typing import Self
 
 from pydantic import BaseModel, Field
 
@@ -27,10 +27,10 @@ class UserResponse(HalResponse[BaseHal]):
     username: str
     is_superuser: bool
     first_name: str
-    last_name: Optional[str]
+    last_name: str | None = None
     date_joined: datetime
-    email: Optional[str]
-    last_login: Optional[datetime]
+    email: str | None = None
+    last_login: datetime | None = None
 
     @classmethod
     def from_model(cls, user: User, self_base_hyperlink: str) -> Self:
@@ -59,11 +59,11 @@ class UserWithSummaryResponse(HalResponse[BaseHal]):
     kind: str = Field(default="UserWithSummary")
     id: int
     completed_intro: bool
-    email: Optional[str] = None
+    email: str | None = None
     is_local: bool
     is_superuser: bool
-    last_name: Optional[str] = None
-    last_login: Optional[datetime] = None
+    last_name: str | None = None
+    last_login: datetime | None = None
     machines_count: int
     sshkeys_count: int
     username: str

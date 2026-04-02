@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self, TypedDict
+from typing import Self, TypedDict
 
 from pydantic import Field, IPvAnyAddress
 
@@ -21,8 +21,8 @@ from maasservicelayer.models.ui_subnets import UISubnet, UISubnetStatistics
 class VlanHref(BaseHrefWithId):
     vid: str
     dhcp_on: bool
-    external_dhcp: Optional[str]
-    relay_vlan_id: Optional[str]
+    external_dhcp: str | None = None
+    relay_vlan_id: str | None = None
 
 
 UISubnetEmbeddedType = TypedDict(
@@ -38,12 +38,12 @@ UISubnetEmbeddedType = TypedDict(
 class UISubnetResponse(HalResponse[BaseHal]):
     kind: str = Field(default="UISubnet")
     id: int
-    name: Optional[str]
-    description: Optional[str]
+    name: str | None = None
+    description: str | None = None
     cidr: IPv4v6Network
     rdns_mode: RdnsMode
-    gateway_ip: Optional[IPvAnyAddress]
-    dns_servers: Optional[list[str]]
+    gateway_ip: IPvAnyAddress | None = None
+    dns_servers: list[str] | None = None
     allow_dns: bool
     allow_proxy: bool
     active_discovery: bool

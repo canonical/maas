@@ -12,8 +12,8 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    IPvAnyAddress,
     field_validator,
+    IPvAnyAddress,
 )
 
 from maascommon.constants import IMPORT_RESOURCES_SERVICE_PERIOD, NODE_TIMEOUT
@@ -54,7 +54,9 @@ class DatabaseConfiguration(MaasBaseModel):
 
 
 class Config(BaseModel, Generic[T]):
-    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(
+        arbitrary_types_allowed=True
+    )
     name: ClassVar[str]
     description: ClassVar[str]
     help_text: ClassVar[str | None] = None
@@ -188,9 +190,7 @@ class DNSSECValidationConfig(Config[DNSSECEnumm | None]):
     help_text: ClassVar[str | None] = (
         "Only used when MAAS is running its own DNS server. This value is used as the value of 'dnssec_validation' in the DNS server config."
     )
-    value: DNSSECEnumm | None = Field(
-        default=default, description=description
-    )
+    value: DNSSECEnumm | None = Field(default=default, description=description)
 
 
 class MAASInternalDomainConfig(Config[str | None]):
@@ -223,7 +223,9 @@ class DNSTrustedAclConfig(Config[str | None]):
 
     _separators: ClassVar[re.Pattern] = re.compile(r"[,\s]+")
     _pt_ipv4: ClassVar[str] = r"(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
-    _pt_ipv6: ClassVar[str] = r"(?:([0-9A-Fa-f]{1,4})?[:]([0-9A-Fa-f]{1,4})?[:](.*))"
+    _pt_ipv6: ClassVar[str] = (
+        r"(?:([0-9A-Fa-f]{1,4})?[:]([0-9A-Fa-f]{1,4})?[:](.*))"
+    )
     _pt_ip: ClassVar[re.Pattern] = re.compile(
         rf"^({_pt_ipv4}|{_pt_ipv6})$", re.VERBOSE
     )
@@ -564,9 +566,7 @@ class MaxNodeCommissioningResultsConfig(Config[int | None]):
         "The maximum number of commissioning results runs which are stored"
     )
     help_text: ClassVar[str | None] = ""
-    value: int | None = Field(
-        default=default, description=description, ge=1
-    )
+    value: int | None = Field(default=default, description=description, ge=1)
 
 
 class MaxNodeTestingResultsConfig(Config[int | None]):
@@ -576,9 +576,7 @@ class MaxNodeTestingResultsConfig(Config[int | None]):
         "The maximum number of testing results runs which are stored"
     )
     help_text: ClassVar[str | None] = ""
-    value: int | None = Field(
-        default=default, description=description, ge=1
-    )
+    value: int | None = Field(default=default, description=description, ge=1)
 
 
 class MaxNodeInstallationResultsConfig(Config[int | None]):
@@ -588,9 +586,7 @@ class MaxNodeInstallationResultsConfig(Config[int | None]):
         "The maximum number of installation result runs which are stored"
     )
     help_text: ClassVar[str | None] = ""
-    value: int | None = Field(
-        default=default, description=description, ge=1
-    )
+    value: int | None = Field(default=default, description=description, ge=1)
 
 
 class MaxNodeReleaseResultsConfig(Config[int | None]):
@@ -600,9 +596,7 @@ class MaxNodeReleaseResultsConfig(Config[int | None]):
         "The maximum number of release result runs which are stored"
     )
     help_text: ClassVar[str | None] = ""
-    value: int | None = Field(
-        default=default, description=description, ge=1
-    )
+    value: int | None = Field(default=default, description=description, ge=1)
 
 
 class MaxNodeDeploymentResultsConfig(Config[int | None]):
@@ -612,9 +606,7 @@ class MaxNodeDeploymentResultsConfig(Config[int | None]):
         "The maximum number of deployment result runs which are stored"
     )
     help_text: ClassVar[str | None] = ""
-    value: int | None = Field(
-        default=default, description=description, ge=1
-    )
+    value: int | None = Field(default=default, description=description, ge=1)
 
 
 class SubnetIPExhaustionThresholdCountConfig(Config[int | None]):
@@ -624,9 +616,7 @@ class SubnetIPExhaustionThresholdCountConfig(Config[int | None]):
         "If the number of free IP addresses on a subnet becomes less than or equal to this threshold, an IP exhaustion warning will appear for that subnet"
     )
     help_text: ClassVar[str | None] = ""
-    value: int | None = Field(
-        default=default, description=description, ge=1
-    )
+    value: int | None = Field(default=default, description=description, ge=1)
 
 
 class ReleaseNotificationsConfig(Config[bool | None]):
@@ -660,9 +650,7 @@ class NodeTimeoutConfig(Config[int | None]):
     help_text: ClassVar[str | None] = (
         "Commissioning, testing, deploying, and entering rescue mode all set a timeout when beginning. If MAAS does not hear from the node within the specified number of minutes the node is powered off and set into a failed status."
     )
-    value: int | None = Field(
-        default=default, description=description, ge=1
-    )
+    value: int | None = Field(default=default, description=description, ge=1)
 
 
 class PrometheusEnabledConfig(Config[bool | None]):
@@ -739,9 +727,7 @@ class MAASAutoIPMIUserConfig(Config[str | None]):
     value: str | None = Field(default=default, description=description)
 
 
-class MAASAutoIPMIUserPrivilegeLevelConfig(
-    Config[IPMIPrivilegeLevel | None]
-):
+class MAASAutoIPMIUserPrivilegeLevelConfig(Config[IPMIPrivilegeLevel | None]):
     name: ClassVar[str] = "maas_auto_ipmi_user_privilege_level"
     default: ClassVar[IPMIPrivilegeLevel | None] = IPMIPrivilegeLevel.ADMIN
     description: ClassVar[str] = "MAAS IPMI privilege level"
@@ -755,9 +741,7 @@ class MAASAutoIPMIUserPrivilegeLevelConfig(
 
 class MAASAutoIPMIKGBmcKeyConfig(Config[str | None]):
     stored_as_secret: ClassVar[bool] = True
-    secret_model: ClassVar[GlobalSecret | None] = (
-        MAASAutoIPMIKGBmcKeySecret()
-    )
+    secret_model: ClassVar[GlobalSecret | None] = MAASAutoIPMIKGBmcKeySecret()
     name: ClassVar[str] = "maas_auto_ipmi_k_g_bmc_key"
     default: ClassVar[str | None] = ""
     description: ClassVar[str] = (
@@ -831,7 +815,9 @@ class NTPServersConfig(Config[str | None]):
 
     # Regular expressions to sniff out things that look like IP addresses;
     # additional and more robust validation ought to be done to make sure.
-    _pt_ipv4: ClassVar[str] = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
+    _pt_ipv4: ClassVar[str] = (
+        r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
+    )
     _pt_ipv6: ClassVar[str] = (
         r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % _pt_ipv4
     )
@@ -1055,7 +1041,9 @@ class EnableHttpProxyConfig(Config[bool | None]):
 
 
 class HttpProxyConfig(Config[AnyHttpUrl | None]):
-    model_config: ClassVar[ConfigDict] = ConfigDict(url_preserve_empty_path=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(
+        url_preserve_empty_path=True
+    )
     is_public: ClassVar[bool] = True
     name: ClassVar[str] = "http_proxy"
     default: ClassVar[AnyHttpUrl | None] = None
@@ -1063,9 +1051,7 @@ class HttpProxyConfig(Config[AnyHttpUrl | None]):
     help_text: ClassVar[str | None] = (
         "This will be passed onto provisioned nodes to use as a proxy for APT or YUM traffic. MAAS also uses the proxy for downloading boot images. If no URL is provided, the built-in MAAS proxy will be used."
     )
-    value: AnyHttpUrl | None = Field(
-        default=default, description=description
-    )
+    value: AnyHttpUrl | None = Field(default=default, description=description)
 
 
 class MAASUrlConfig(Config[str | None]):

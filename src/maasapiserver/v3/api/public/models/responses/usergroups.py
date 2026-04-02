@@ -1,7 +1,7 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
 from pydantic import Field
 
@@ -18,7 +18,7 @@ class UserGroupResponse(HalResponse[BaseHal]):
     kind: str = Field(default="UserGroup")
     id: int
     name: str
-    description: Optional[str]
+    description: str | None = None
 
     @classmethod
     def from_model(

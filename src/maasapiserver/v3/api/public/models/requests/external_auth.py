@@ -4,7 +4,7 @@
 from enum import StrEnum
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.exceptions.catalog import ValidationException

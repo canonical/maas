@@ -2,7 +2,6 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections.abc import Sequence
-from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 

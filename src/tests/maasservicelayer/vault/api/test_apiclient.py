@@ -60,7 +60,9 @@ class TestAsyncVaultApiClient:
 
         request = AppRoleLoginRequest(role_id="role_id", secret_id="secret_id")
         response = await client.auth_approle_login("approle", request=request)
-        assert response == AppRoleLoginResponse.model_validate(expected_response)
+        assert response == AppRoleLoginResponse.model_validate(
+            expected_response
+        )
         mock_aioresponse.assert_called_with(
             url="http://test:5200/v1/auth/approle/login",
             data='{"role_id":"role_id","secret_id":"secret_id"}',
@@ -134,7 +136,9 @@ class TestAsyncVaultApiClient:
 
         headers = {"X-Vault-Token": "mytoken"}
         response = await client.token_lookup_self(headers=headers)
-        assert response == TokenLookupSelfResponse.model_validate(expected_response)
+        assert response == TokenLookupSelfResponse.model_validate(
+            expected_response
+        )
         mock_aioresponse.assert_called_with(
             url="http://test:5200/v1/auth/token/lookup-self",
             headers=headers,

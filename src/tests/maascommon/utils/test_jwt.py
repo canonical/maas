@@ -74,9 +74,7 @@ class TestDecodeUnverifiedJWT:
             JWTDecodeError,
             match="invalid audience: expected expected-audience, got wrong-audience",
         ):
-            decode_unverified_jwt(
-                token, expected_audience="expected-audience"
-            )
+            decode_unverified_jwt(token, expected_audience="expected-audience")
 
     def test_decode_token_missing_audience(self):
         payload = {"sub": "user123"}
@@ -85,9 +83,7 @@ class TestDecodeUnverifiedJWT:
             JWTDecodeError,
             match="invalid audience: expected expected-audience, got None",
         ):
-            decode_unverified_jwt(
-                token, expected_audience="expected-audience"
-            )
+            decode_unverified_jwt(token, expected_audience="expected-audience")
 
     def test_decode_invalid_format_two_parts(self):
         token = "header.payload"

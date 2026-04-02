@@ -3,12 +3,12 @@
 
 from datetime import datetime
 from ipaddress import IPv4Network, IPv6Network
-from maascommon.enums.subnet import RdnsMode
-from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
 
+from maascommon.enums.subnet import RdnsMode
+from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
 
 
 class SubnetBuilder(ResourceBuilder):
@@ -32,7 +32,3 @@ class SubnetBuilder(ResourceBuilder):
     rdns_mode: RdnsMode | Unset = Field(default=UNSET)
     updated: datetime | Unset = Field(default=UNSET)
     vlan_id: int | Unset = Field(default=UNSET)
-
-
-
-

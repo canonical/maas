@@ -64,9 +64,7 @@ class OrderByQueryFilter(BaseModel):
 
     @field_validator("order_by", mode="after")
     @classmethod
-    def check_order_by_fields(
-        cls, v: list[str] | None
-    ) -> list[str] | None:
+    def check_order_by_fields(cls, v: list[str] | None) -> list[str] | None:
         seen_fields = set()
         if not v:
             return None

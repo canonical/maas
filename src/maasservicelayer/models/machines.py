@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import re
+
 from pydantic import field_validator
 
 from maascommon.enums.node import HardwareDeviceTypeEnum

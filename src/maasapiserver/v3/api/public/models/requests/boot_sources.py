@@ -5,7 +5,13 @@ from base64 import b64decode
 from typing import Self
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.db.filters import QuerySpec
@@ -134,6 +140,7 @@ class BootSourceCreateRequest(BootSourceRequest):
     url: str = Field(
         description="URL of SimpleStreams server providing boot source information."
     )
+
     @field_validator("url", mode="before")
     @classmethod
     def validate_url(cls, v: str) -> str:
@@ -159,6 +166,7 @@ class BootSourceFetchRequest(BootSourceRequest):
     url: str = Field(
         description="URL of SimpleStreams server providing boot source information."
     )
+
     @field_validator("url", mode="before")
     @classmethod
     def validate_url(cls, v: str) -> str:
