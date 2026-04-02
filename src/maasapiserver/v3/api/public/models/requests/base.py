@@ -52,10 +52,8 @@ class OrderByQueryFilter(BaseModel):
             title="Properties to order by. You can wrap the property with `asc()` or `desc()` to modify the ordering",
         )
     )
-    # Note: Renamed from _order_by_columns in Pydantic v1. The leading underscore
-    # convention conflicts with Pydantic v2's handling of private ClassVar attributes,
-    # so the public name is now used. Subclasses must reference this as `cls.order_by_columns`.
-    order_by_columns: ClassVar[dict[str, OrderByClause]] = Field(exclude=True)
+
+    order_by_columns: ClassVar[dict[str, OrderByClause]] = {}
 
     @classmethod
     def _clean_field(cls, field: str) -> str:

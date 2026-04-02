@@ -5,7 +5,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import Depends, Header, Query, Request, Response
-from pydantic import Field
+from pydantic import AfterValidator, Field
 from starlette import status
 import structlog
 
@@ -85,34 +85,10 @@ from provisioningserver.utils.env import MAAS_ID
 logger = structlog.get_logger()
 
 
-async def get_boot_resource_create_request(
-    name: Annotated[str, Header(description="Name of the boot resource.")],
-    sha256: Annotated[str, Header(description="The `sha256` hash of the resource.")],
-    architecture: Annotated[
-        str, Header(description="Architecture the boot resource supports.")
-    ],
-    file_type: Annotated[
-        BootResourceFileTypeChoice,
-        Header(description="Filetype for uploaded content."),
-    ] = BootResourceFileTypeChoice.TGZ,
-    title: Annotated[
-        str | None, Header(description="Title for the boot resource.")
-    ] = None,
-    base_image: Annotated[
-        str | None,
-        Header(
-            description="The Base OS image a custom image is built on top of. Only required for images of type 'custom'."
-        ),
-    ] = None,
-) -> BootResourceCreateRequest:
-    return BootResourceCreateRequest(
-        name=name,
-        sha256=sha256,
-        architecture=architecture,
-        file_type=file_type,
-        title=title,
-        base_image=base_image,
-    )
+def _no_duplicate_ids(ids: list[int]) -> list[int]:
+    if len(ids) != len(set(ids)):
+        raise ValueError("Duplicate IDs are not allowed.")
+    return ids
 
 
 class CustomImagesHandler(Handler):
@@ -183,7 +159,7 @@ class CustomImagesHandler(Handler):
     )
     async def upload_custom_image(
         self,
-        create_request: Annotated[BootResourceCreateRequest, Depends(get_boot_resource_create_request)],
+        create_request: Annotated[BootResourceCreateRequest, Header()],
         request: Request,
         response: Response,
         services: Annotated[ServiceCollectionV3, Depends(services)],
@@ -482,7 +458,11 @@ class CustomImagesHandler(Handler):
     )
     async def bulk_delete_custom_images(
         self,
-        ids: Annotated[list[int], Field(min_length=1)] = Query(  # noqa: B008
+        ids: Annotated[
+            list[int],
+            Field(min_length=1),
+            AfterValidator(_no_duplicate_ids),
+        ] = Query(  # noqa: B008
             description="ids of custom images to delete", alias="id"
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008

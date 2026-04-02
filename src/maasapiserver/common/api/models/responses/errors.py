@@ -102,7 +102,7 @@ class PreconditionFailedResponse(JSONResponse):
 
 
 class ValidationErrorBodyResponse(ErrorBodyResponse):
-    code: int = status.HTTP_422_UNPROCESSABLE_ENTITY
+    code: int = status.HTTP_422_UNPROCESSABLE_CONTENT
     message: str = "Failed to validate the request."
 
 
@@ -112,7 +112,7 @@ class ValidationErrorResponse(JSONResponse):
             content=jsonable_encoder(
                 ValidationErrorBodyResponse(details=details)
             ),
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         )
 
 

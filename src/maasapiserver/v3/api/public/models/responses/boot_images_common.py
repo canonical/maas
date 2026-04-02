@@ -31,7 +31,7 @@ class ImageResponse(HalResponse[BaseHal]):
     release: str
     title: str
     architecture: str
-    boot_source_id: int | None
+    boot_source_id: int | None = None
 
     @classmethod
     def from_selection(
@@ -104,8 +104,8 @@ class ImageStatusListResponse(PaginatedResponse[ImageStatusResponse]):
 class ImageStatisticResponse(BaseModel):
     kind: str = Field(default="ImageStatistic")
     id: int
-    last_updated: datetime | None
-    last_deployed: datetime | None
+    last_updated: datetime | None = None
+    last_deployed: datetime | None = None
     size: str
     node_count: int
     deploy_to_memory: bool
