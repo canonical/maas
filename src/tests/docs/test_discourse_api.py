@@ -22,6 +22,9 @@ class FakeResponse:
         if not (200 <= self.status_code < 300):
             raise RuntimeError("http error")
 
+    def close(self):
+        pass
+
 
 class FakeSession:
     """Fake requests session for testing."""
