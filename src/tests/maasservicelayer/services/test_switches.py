@@ -559,8 +559,8 @@ class TestSwitchesService:
 
         interfaces_service.get_many.assert_called_once()
         # No IP operations should be called
-        staticipaddress_service.get_ip_addresses_for_interface.assert_not_called()
-        interfaces_service.unlink_interface_from_ips.assert_not_called()
+        staticipaddress_service.get_ips_for_interfaces_without_other_links.assert_not_called()
+        interfaces_service.unlink_interfaces_from_ips.assert_not_called()
 
     async def test_pre_delete_hook_with_interface_own_ip(
         self,
@@ -587,25 +587,21 @@ class TestSwitchesService:
         )
 
         interfaces_service.get_many.return_value = [test_interface]
-        staticipaddress_service.get_ip_addresses_for_interface.return_value = [
+        staticipaddress_service.get_ips_for_interfaces_without_other_links.return_value = [
             test_ip
         ]
-        staticipaddress_service.has_linked_interfaces.return_value = False
 
         await service.pre_delete_hook(TEST_SWITCH)
 
         interfaces_service.get_many.assert_called_once()
-        staticipaddress_service.get_ip_addresses_for_interface.assert_called_once_with(
-            test_interface.id
+        staticipaddress_service.get_ips_for_interfaces_without_other_links.assert_called_once_with(
+            [test_interface.id]
         )
-        interfaces_service.unlink_interface_from_ips.assert_called_once_with(
-            interface_id=test_interface.id
+        interfaces_service.unlink_interfaces_from_ips.assert_called_once_with(
+            interface_ids=[test_interface.id]
         )
-        interfaces_service.delete_by_id.assert_called_once_with(
-            test_interface.id
-        )
-        staticipaddress_service.has_linked_interfaces.assert_called_once_with(
-            test_ip.id
+        interfaces_service.delete_many_by_id.assert_called_once_with(
+            [test_interface.id]
         )
         staticipaddress_service.delete_by_id.assert_called_once_with(
             test_ip.id
@@ -644,62 +640,33 @@ class TestSwitchesService:
             ip="192.168.1.10",
             alloc_type=IpAddressType.AUTO,
             lease_time=0,
-        )  # Only on interface1
-        ip2 = StaticIPAddress(
-            id=200,
-            ip="192.168.1.20",
-            alloc_type=IpAddressType.AUTO,
-            lease_time=0,
-        )  # Shared (will remain)
+        )
         ip3 = StaticIPAddress(
             id=300,
             ip="192.168.1.30",
             alloc_type=IpAddressType.AUTO,
             lease_time=0,
-        )  # Only on interface2
+        )
 
         interfaces_service.get_many.return_value = [interface1, interface2]
-
-        # Setup IP associations
-        def get_ips_for_interface(interface_id):
-            if interface_id == 10:
-                return [ip1, ip2]  # interface1 has ip1 and ip2
-            elif interface_id == 20:
-                return [ip3]  # interface2 has ip3
-            return []
-
-        staticipaddress_service.get_ip_addresses_for_interface.side_effect = (
-            get_ips_for_interface
-        )
-
-        # ip1 has no other interfaces, ip2 is shared (still has interfaces), ip3 has no other interfaces
-        def has_linked_interfaces(ip_id):
-            if ip_id == 200:  # ip2 is shared
-                return True
-            return False
-
-        staticipaddress_service.has_linked_interfaces.side_effect = (
-            has_linked_interfaces
-        )
+        # The batch query returns only IPs that would be orphaned
+        staticipaddress_service.get_ips_for_interfaces_without_other_links.return_value = [
+            ip1,
+            ip3,
+        ]
 
         await service.pre_delete_hook(TEST_SWITCH)
 
-        # Verify all IPs were processed
-        assert (
-            staticipaddress_service.get_ip_addresses_for_interface.call_count
-            == 2
+        # Verify batch operations were called once
+        staticipaddress_service.get_ips_for_interfaces_without_other_links.assert_called_once_with(
+            [10, 20]
         )
-        assert interfaces_service.unlink_interface_from_ips.call_count == 2
-        assert interfaces_service.unlink_interface_from_ips.call_args_list == [
-            call(interface_id=10),
-            call(interface_id=20),
-        ]
-        assert interfaces_service.delete_by_id.call_count == 2
-        assert interfaces_service.delete_by_id.call_args_list == [
-            call(10),
-            call(20),
-        ]
-        assert staticipaddress_service.has_linked_interfaces.call_count == 3
+        interfaces_service.unlink_interfaces_from_ips.assert_called_once_with(
+            interface_ids=[10, 20]
+        )
+        interfaces_service.delete_many_by_id.assert_called_once_with([10, 20])
+
+        # Only orphaned IPs should be deleted
         assert staticipaddress_service.delete_by_id.call_count == 2
         assert staticipaddress_service.delete_by_id.call_args_list == [
             call(100),

@@ -176,32 +176,6 @@ class StaticIPAddressService(
             await self.post_update_many_hook(updated_resources)
         return updated_resources
 
-    async def get_ip_addresses_for_interface(
-        self, interface_id: int
-    ) -> list[StaticIPAddress]:
-        """Get all IP addresses associated with a specific interface.
-
-        Args:
-            interface_id: The ID of the interface
-
-        Returns:
-            List of StaticIPAddress objects linked to this interface
-        """
-        return await self.repository.get_ip_addresses_for_interface(
-            interface_id
-        )
-
-    async def has_linked_interfaces(self, staticipaddress_id: int) -> bool:
-        """Check if a static IP address has any linked interfaces.
-
-        Args:
-            staticipaddress_id: The ID of the IP address
-
-        Returns:
-            True if the IP has at least one linked interface, False otherwise
-        """
-        return await self.repository.has_linked_interfaces(staticipaddress_id)
-
     async def get_ips_for_interfaces_without_other_links(
         self, interface_ids: list[int]
     ) -> list[StaticIPAddress]:

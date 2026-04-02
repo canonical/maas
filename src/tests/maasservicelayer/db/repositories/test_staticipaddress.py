@@ -384,9 +384,10 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         links = await fixture.get("maasserver_interface_ip_addresses")
         assert len(links) == 0
 
-    async def test_get_ip_addresses_for_interface(
+    async def test_get_ips_for_interfaces_without_other_links(
         self, repository_instance: StaticIPAddressRepository, fixture: Fixture
     ):
+        """Test getting IPs that would be orphaned if interfaces were deleted."""
         subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
         ip1 = (
             await create_test_staticipaddress_entry(
@@ -402,60 +403,46 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
                 alloc_type=IpAddressType.DISCOVERED,
             )
         )[0]
-        other_ip = (
+        ip3 = (
             await create_test_staticipaddress_entry(
                 fixture,
                 subnet=subnet,
                 alloc_type=IpAddressType.DISCOVERED,
             )
         )[0]
-        interface = await create_test_interface_entry(fixture, ips=[ip1, ip2])
-        await create_test_interface_entry(fixture, ips=[other_ip])
+        # interface1 has ip1 only
+        interface1 = await create_test_interface_entry(fixture, ips=[ip1])
+        # interface2 has ip2 and ip3
+        interface2 = await create_test_interface_entry(fixture, ips=[ip2, ip3])
+        # interface3 also has ip3 (shared IP)
+        await create_test_interface_entry(fixture, ips=[ip3])  # interface3
 
-        result = await repository_instance.get_ip_addresses_for_interface(
-            interface.id
+        # If we delete interface1 and interface2, ip1 and ip2 would be orphaned, but not ip3
+        result = await repository_instance.get_ips_for_interfaces_without_other_links(
+            [interface1.id, interface2.id]
         )
 
-        assert {r.id for r in result} == {ip1["id"], ip2["id"]}
+        result_ids = {r.id for r in result}
+        assert result_ids == {ip1["id"], ip2["id"]}
 
-    async def test_get_ip_addresses_for_interface_none(
+    async def test_get_ips_for_interfaces_without_other_links_empty(
         self, repository_instance: StaticIPAddressRepository, fixture: Fixture
     ):
-        interface = await create_test_interface_entry(fixture, ips=[])
-
-        result = await repository_instance.get_ip_addresses_for_interface(
-            interface.id
+        """Test with empty interface list."""
+        result = await repository_instance.get_ips_for_interfaces_without_other_links(
+            []
         )
 
         assert result == []
 
-    @pytest.mark.parametrize(
-        "num_interfaces,expected_has_linked_interfaces",
-        [
-            (0, False),
-            (1, True),
-            (2, True),  # Multiple interfaces linked (e.g., bridged/shared IP)
-        ],
-    )
-    async def test_has_linked_interfaces(
-        self,
-        repository_instance: StaticIPAddressRepository,
-        fixture: Fixture,
-        num_interfaces: int,
-        expected_has_linked_interfaces: bool,
+    async def test_get_ips_for_interfaces_without_other_links_no_ips(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
     ):
-        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
-        ip = (
-            await create_test_staticipaddress_entry(
-                fixture,
-                subnet=subnet,
-                alloc_type=IpAddressType.DISCOVERED,
-            )
-        )[0]
+        """Test with interfaces that have no IPs."""
+        interface = await create_test_interface_entry(fixture, ips=[])
 
-        for _ in range(num_interfaces):
-            await create_test_interface_entry(fixture, ips=[ip])
+        result = await repository_instance.get_ips_for_interfaces_without_other_links(
+            [interface.id]
+        )
 
-        result = await repository_instance.has_linked_interfaces(ip["id"])
-
-        assert result == expected_has_linked_interfaces
+        assert result == []

@@ -265,19 +265,6 @@ class InterfacesService(
             switch_id, mac, name=name
         )
 
-    async def unlink_interface_from_ips(
-        self,
-        interface_id: int,
-    ) -> None:
-        """Remove the link between an interface and all of its IP addresses.
-
-        Args:
-            interface_id: The ID of the interface to unlink
-        """
-        await self.repository.unlink_interface_from_ips(
-            interface_id=interface_id,
-        )
-
     async def unlink_interfaces_from_ips(
         self, interface_ids: list[int]
     ) -> None:

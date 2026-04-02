@@ -237,55 +237,6 @@ class StaticIPAddressRepository(BaseRepository):
         )
         await self.execute_stmt(stmt)
 
-    async def get_ip_addresses_for_interface(
-        self, interface_id: int
-    ) -> list[StaticIPAddress]:
-        """Get all IP addresses associated with a specific interface.
-
-        Args:
-            interface_id: The ID of the interface
-
-        Returns:
-            List of StaticIPAddress objects linked to this interface
-        """
-        stmt = (
-            select(StaticIPAddressTable)
-            .select_from(StaticIPAddressTable)
-            .join(
-                InterfaceIPAddressTable,
-                eq(
-                    StaticIPAddressTable.c.id,
-                    InterfaceIPAddressTable.c.staticipaddress_id,
-                ),
-            )
-            .where(eq(InterfaceIPAddressTable.c.interface_id, interface_id))
-        )
-        results = (await self.execute_stmt(stmt)).all()
-        return [StaticIPAddress(**row._asdict()) for row in results]
-
-    async def has_linked_interfaces(self, staticipaddress_id: int) -> bool:
-        """Check if a static IP address has any linked interfaces.
-
-        Args:
-            staticipaddress_id: The ID of the IP address
-
-        Returns:
-            True if the IP has at least one linked interface, False otherwise
-        """
-        exists_clause = (
-            select(InterfaceIPAddressTable.c.interface_id)
-            .where(
-                eq(
-                    InterfaceIPAddressTable.c.staticipaddress_id,
-                    staticipaddress_id,
-                )
-            )
-            .exists()
-        )
-        stmt = select(exists_clause)
-        result = (await self.execute_stmt(stmt)).scalar()
-        return bool(result)
-
     async def get_ips_for_interfaces_without_other_links(
         self, interface_ids: list[int]
     ) -> list[StaticIPAddress]:
@@ -315,6 +266,7 @@ class StaticIPAddressRepository(BaseRepository):
                     ~InterfaceIPAddressTable.c.interface_id.in_(interface_ids),
                 )
             )
+            .correlate(StaticIPAddressTable)
             .exists()
         )
 

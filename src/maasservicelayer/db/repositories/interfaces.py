@@ -420,17 +420,6 @@ class InterfaceRepository(BaseRepository):
 
         return [Interface(**r._asdict()) for r in result]
 
-    async def unlink_interface_from_ips(self, interface_id: int) -> None:
-        """Remove the link between an interface and all of its IP addresses.
-
-        Args:
-            interface_id: The ID of the interface to unlink
-        """
-        stmt = delete(InterfaceIPAddressTable).where(
-            eq(InterfaceIPAddressTable.c.interface_id, interface_id)
-        )
-        await self.execute_stmt(stmt)
-
     async def unlink_interfaces_from_ips(
         self, interface_ids: list[int]
     ) -> None:
