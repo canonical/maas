@@ -125,11 +125,11 @@ jobs:
       working-directory: "rtd-docs"
       run: make html
 
-  pr-checks:
+  ci-check:
     runs-on: ubuntu-slim
     if: always()
     needs: [lint, test-python, test-go, test-docs]
     steps:
       - name: Check job results
-        if: ${{ needs.*.result }} == 'failure'
+        if: needs.*.result == 'failure'
         run: exit 1
