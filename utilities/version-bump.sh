@@ -96,7 +96,8 @@ commit() {
 
 tag() {
     local version="$1"
-    local tag="$(tag_version "$version")"
+    local tag
+    tag="$(tag_version "$version")"
     git tag "$tag"
 }
 
