@@ -326,9 +326,6 @@ class DeployManyWorkflow:
                 param,
                 id=f"deploy:{param.system_id}",
                 task_queue=param.task_queue,
-                retry_policy=RetryPolicy(
-                    maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
-                ),
                 execution_timeout=timedelta(minutes=param.timeout),
             )
             pending.add(wf)
@@ -401,7 +398,8 @@ class DeployWorkflow:
             task_queue=params.power_params.task_queue,
             start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
             retry_policy=RetryPolicy(
-                maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
+                maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
+                maximum_attempts=3,
             ),
         )
 
@@ -418,7 +416,8 @@ class DeployWorkflow:
                 task_queue=params.power_params.task_queue,
                 start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(
-                    maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
+                    maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
+                    maximum_attempts=3,
                 ),
             )
         else:
@@ -435,6 +434,7 @@ class DeployWorkflow:
                 start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(
                     maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
+                    maximum_attempts=3,
                 ),
             )
         if new_result["state"] != result["state"]:
@@ -475,7 +475,8 @@ class DeployWorkflow:
                 task_queue=params.power_params.task_queue,
                 start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(
-                    maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT
+                    maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
+                    maximum_attempts=3,
                 ),
             )
         else:
