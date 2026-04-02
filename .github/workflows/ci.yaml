@@ -23,6 +23,7 @@ jobs:
     outputs:
       python: ${{ steps.filter.outputs.python }}
       go: ${{ steps.filter.outputs.go }}
+      docs: ${{ steps.filter.outputs.docs }}
 
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
@@ -104,3 +105,12 @@ jobs:
       - name: Test
         run: |
           su ubuntu -c "make test-go"
+
+  pr-checks:
+    runs-on: ubuntu-24.04
+    if: always()
+    needs: [lint, test-python, test-go]
+    steps:
+      - name: Check job results
+        if: ${{ needs.lint.result }} == 'failure' || ${{ needs.test-python.result }} == 'failure' || ${{ needs.test-go.result }} == 'failure'
+        run: exit 1
