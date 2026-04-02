@@ -201,3 +201,20 @@ class StaticIPAddressService(
             True if the IP has at least one linked interface, False otherwise
         """
         return await self.repository.has_linked_interfaces(staticipaddress_id)
+
+    async def get_ips_for_interfaces_without_other_links(
+        self, interface_ids: list[int]
+    ) -> list[StaticIPAddress]:
+        """Get IP addresses that would be orphaned if given interfaces were deleted.
+
+        Args:
+            interface_ids: List of interface IDs to check
+
+        Returns:
+            List of StaticIPAddress objects that would be orphaned
+        """
+        return (
+            await self.repository.get_ips_for_interfaces_without_other_links(
+                interface_ids
+            )
+        )

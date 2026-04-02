@@ -285,3 +285,56 @@ class StaticIPAddressRepository(BaseRepository):
         stmt = select(exists_clause)
         result = (await self.execute_stmt(stmt)).scalar()
         return bool(result)
+
+    async def get_ips_for_interfaces_without_other_links(
+        self, interface_ids: list[int]
+    ) -> list[StaticIPAddress]:
+        """Get IP addresses linked to interfaces that have no other interface links.
+
+        Returns IPs that are linked to the given interface IDs and would become
+        orphaned if those interfaces were deleted (i.e., they have no links to
+        any interfaces outside the given set).
+
+        Args:
+            interface_ids: List of interface IDs to check
+
+        Returns:
+            List of StaticIPAddress objects that would be orphaned
+        """
+        if not interface_ids:
+            return []
+
+        has_external_links = (
+            select(InterfaceIPAddressTable.c.staticipaddress_id)
+            .where(
+                and_(
+                    eq(
+                        InterfaceIPAddressTable.c.staticipaddress_id,
+                        StaticIPAddressTable.c.id,
+                    ),
+                    ~InterfaceIPAddressTable.c.interface_id.in_(interface_ids),
+                )
+            )
+            .exists()
+        )
+
+        stmt = (
+            select(StaticIPAddressTable)
+            .select_from(StaticIPAddressTable)
+            .join(
+                InterfaceIPAddressTable,
+                eq(
+                    StaticIPAddressTable.c.id,
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                ),
+            )
+            .where(
+                and_(
+                    InterfaceIPAddressTable.c.interface_id.in_(interface_ids),
+                    ~has_external_links,
+                )
+            )
+            .distinct()
+        )
+        results = (await self.execute_stmt(stmt)).all()
+        return [StaticIPAddress(**row._asdict()) for row in results]
