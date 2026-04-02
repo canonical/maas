@@ -45,6 +45,8 @@ jobs:
               - 'src/**/go.sum'
               - 'src/**/Makefile'
               - 'Makefile'
+            docs:
+              - 'rtd-docs/**'
 
   lint:
     runs-on: ubuntu-24.04
@@ -104,11 +106,29 @@ jobs:
       - name: Test
         run: |
           su ubuntu -c "make test-go"
+  test-docs:
+    needs: changes
+    runs-on: ubuntu-24.04
+    if: >-
+      ${{ !github.event.pull_request.draft && needs.changes.outputs.docs == 'true' }}
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - name: Create venv
+      working-directory: "rtd-docs"
+      run: make install
+    - name: Lint markdown
+      working-directory: "rtd-docs"
+      run: make lint-md
+    - name: Test build
+      working-directory: "rtd-docs"
+      run: make html
 
   pr-checks:
     runs-on: ubuntu-slim
     if: always()
-    needs: [lint, test-python, test-go]
+    needs: [lint, test-python, test-go, test-docs]
     steps:
       - name: Check job results
         if: ${{ needs.*.result }} == 'failure'
