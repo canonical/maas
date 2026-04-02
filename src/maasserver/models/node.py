@@ -6091,7 +6091,7 @@ class Node(CleanSave, TimestampedModel):
         d: Deferred,
         power_info: PowerInfo,
         task_queue: str,
-        timeout: int = 2 * NODE_TIMEOUT,
+        timeout: int = 2 * NODE_TIMEOUT + 10,
     ) -> Deferred:
         dd = start_workflow(
             DEPLOY_MANY_WORKFLOW_NAME,
