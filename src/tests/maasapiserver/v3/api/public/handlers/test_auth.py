@@ -12,7 +12,6 @@ from httpx import AsyncClient
 from macaroonbakery.bakery import Macaroon
 import pytest
 
-from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
@@ -28,6 +27,7 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
 from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
+from maascommon.utils.jwt import decode_unverified_jwt
 from maasservicelayer.auth.external_oauth import (
     OAuth2Client,
     OAuthIDToken,
@@ -110,11 +110,14 @@ TEST_PROVIDER_2 = OAuthProvider(
 )
 
 
+def json_dumps_with_mocks(*args, **kwargs):
+    return _dumps(*args, **(kwargs | {"default": lambda obj: "mock"}))
+
+
 @pytest.mark.asyncio
 class TestAuthApi:
     BASE_PATH = f"{V3_API_PREFIX}/auth"
 
-    # GET /auth/login
     async def test_get(
         self,
         services_mock: ServiceCollectionV3,
@@ -149,7 +152,6 @@ class TestAuthApi:
             == "http://candid.example.com"
         )
 
-    # POST /auth/login
     async def test_post(
         self,
         services_mock: ServiceCollectionV3,
@@ -199,11 +201,7 @@ class TestAuthApi:
             macaroon=Mock(Macaroon)
         )
 
-        # we have to mock json.dumps as it doesn't know how to deal with Mock objects
-        def custom_json_dumps(*args, **kwargs):
-            return _dumps(*args, **(kwargs | {"default": lambda obj: "mock"}))
-
-        with patch("json.dumps", custom_json_dumps):
+        with patch("json.dumps", json_dumps_with_mocks):
             response = await mocked_api_client_user_rbac.post(
                 f"{self.BASE_PATH}/login",
                 data={"username": "username", "password": "test"},
@@ -237,7 +235,6 @@ class TestAuthApi:
         assert error_response.kind == "Error"
         assert error_response.code == 401
 
-    # GET /auth/access_token
     async def test_get_access_token_with_jwt(
         self,
         services_mock: ServiceCollectionV3,
@@ -306,7 +303,6 @@ class TestAuthApi:
         assert error_response.kind == "Error"
         assert error_response.code == 401
 
-    # GET /auth/login_info
     @patch(
         "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.set_auth_cookie"
     )
@@ -386,7 +382,6 @@ class TestAuthApi:
         assert data["provider_name"] is None
         assert data["is_oidc"] is False
 
-    # GET /auth/oauth/providers
     async def test_list_oauth_providers_200_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
@@ -442,7 +437,6 @@ class TestAuthApi:
             == f"{self.BASE_PATH}/oauth/providers?page=2&size=1"
         )
 
-    # PUT /auth/oauth/providers/:provider_id
     async def test_update_oauth_provider_success(
         self,
         services_mock: ServiceCollectionV3,
@@ -561,7 +555,6 @@ class TestAuthApi:
         assert error_response.kind == "Error"
         assert error_response.code == 422
 
-    # POST /auth/oauth/providers
     async def test_create_oauth_provider_success(
         self,
         services_mock: ServiceCollectionV3,
@@ -705,7 +698,6 @@ class TestAuthApi:
         assert error_response.kind == "Error"
         assert error_response.code == 502
 
-    # DELETE /auth/oauth/providers/:provider_id
     async def test_delete_oauth_provider(
         self,
         services_mock: ServiceCollectionV3,
@@ -891,7 +883,6 @@ class TestAuthApi:
             == "No OIDC provider with the given ID was found."
         )
 
-    # GET /auth/oauth/callback
     @patch(
         "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.set_auth_cookie"
     )
@@ -905,10 +896,9 @@ class TestAuthApi:
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
-        # Sample state with /machines as redirect target
-        state = "L21hY2hpbmVz.R8kFv9s1Xq2aL3pTz4uM0wY7"
+        state_with_redirect = "L21hY2hpbmVz.R8kFv9s1Xq2aL3pTz4uM0wY7"
         cookie_manager_get_cookie.side_effect = [
-            state,
+            state_with_redirect,
             "stored_nonce",
         ]
         services_mock.external_oauth = Mock(ExternalOAuthService)
@@ -925,7 +915,7 @@ class TestAuthApi:
         )
 
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/oauth/callback?state={state}&code=auth_code"
+            f"{self.BASE_PATH}/oauth/callback?state={state_with_redirect}&code=auth_code"
         )
         assert response.status_code == 200
         target = CallbackTargetResponse(**response.json())
@@ -957,10 +947,9 @@ class TestAuthApi:
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ) -> None:
-        # Sample state with /machines as redirect target
-        state = "L21hY2hpbmVz.R8kFv9s1Xq2aL3pTz4uM0wY7"
+        state_with_redirect = "L21hY2hpbmVz.R8kFv9s1Xq2aL3pTz4uM0wY7"
         cookie_manager_get_cookie.side_effect = [
-            state,
+            state_with_redirect,
             "stored_nonce",
         ]
         services_mock.external_oauth = Mock(ExternalOAuthService)
@@ -981,7 +970,7 @@ class TestAuthApi:
         )
 
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/oauth/callback?state={state}&code=auth_code"
+            f"{self.BASE_PATH}/oauth/callback?state={state_with_redirect}&code=auth_code"
         )
         assert response.status_code == 200
         target = CallbackTargetResponse(**response.json())

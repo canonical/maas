@@ -12,11 +12,7 @@ import types
 from testtools import runtest, twistedsupport
 from twisted.internet import defer, interfaces, reactor
 from twisted.internet.base import DelayedCall
-from twisted.internet.defer import (
-    Deferred,
-    DeferredList,
-    inlineCallbacks,
-)
+from twisted.internet.defer import Deferred, DeferredList, inlineCallbacks
 from twisted.internet.process import reapAllProcesses
 from twisted.internet.task import deferLater, LoopingCall
 from twisted.internet.threads import blockingCallFromThread

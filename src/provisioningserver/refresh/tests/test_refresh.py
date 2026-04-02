@@ -26,6 +26,9 @@ from provisioningserver.refresh.node_info_scripts import (
 class FakeResponse:
     status = 200
 
+    def close(self):
+        pass
+
 
 class TestRefresh(MAASTestCase):
     def setUp(self):
