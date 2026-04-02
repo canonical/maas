@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - "tics-debug-*"
-  pull_request: # will remove after testing
 
 jobs:
   test-coverage-tics:
