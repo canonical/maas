@@ -20,7 +20,7 @@ from maasservicelayer.db import Database
 
 
 class DummyRequest(BaseModel):
-    optional_property: Optional[str]
+    optional_property: Optional[str] = None
     required_property: str
 
 
