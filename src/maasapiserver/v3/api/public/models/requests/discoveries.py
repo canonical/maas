@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
 from fastapi import Query
 from pydantic import BaseModel, Field, IPvAnyAddress, model_validator
@@ -11,10 +11,10 @@ from maasservicelayer.models.fields import MacAddress
 
 
 class DiscoveriesIPAndMacFiltersParams(BaseModel):
-    ip: Optional[IPvAnyAddress] = Field(
+    ip: IPvAnyAddress | None = Field(
         Query(default=None, description="Delete discoveries with this IP.")
     )
-    mac: Optional[MacAddress] = Field(
+    mac: MacAddress | None = Field(
         Query(default=None, description="Delete discoveries with this MAC.")
     )
 

@@ -1,7 +1,6 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
 
 from fastapi import Query
 from pydantic import BaseModel, Field, field_validator
@@ -13,11 +12,11 @@ from maasservicelayer.db.repositories.zones import ZonesClauseFactory
 
 
 class ZonesFiltersParams(BaseModel):
-    ids: Optional[list[int]] = Field(
+    ids: list[int] | None = Field(
         Query(default=None, title="Filter by zone id", alias="id")
     )
 
-    def to_clause(self) -> Optional[Clause]:
+    def to_clause(self) -> Clause | None:
         if self.ids:
             return ZonesClauseFactory.with_ids(self.ids)
         return None
@@ -31,7 +30,7 @@ class ZonesFiltersParams(BaseModel):
 
 class ZoneRequest(NamedBaseModel):
     # inherited from the django model where it's optional in the request and empty by default.
-    description: Optional[str] = Field(
+    description: str | None = Field(
         description="The description of the zone.", default=""
     )
 

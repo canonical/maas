@@ -18,7 +18,7 @@ from maasservicelayer.models.notifications import Notification
 class NotificationResponse(HalResponse[BaseHal]):
     kind: str = Field(default="Notification")
     id: int
-    ident: str | None
+    ident: str | None = None
     users: bool
     admins: bool
     message: str

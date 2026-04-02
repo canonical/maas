@@ -152,11 +152,11 @@ class DomainResourceRecordSetResponse(HalResponse[BaseHal]):
     a_records: list[ARecordResponse] | None = None
     aaaa_records: list[AAAARecordResponse] | None = None
     cname_record: CNAMERecordResponse | None = None
-    mx_records: list[MXRecordResponse] | None
-    ns_records: list[NSRecordResponse] | None
-    sshfp_records: list[SSHFPRecordResponse] | None
-    srv_records: list[SRVRecordResponse] | None
-    txt_records: list[TXTRecordResponse] | None
+    mx_records: list[MXRecordResponse] | None = None
+    ns_records: list[NSRecordResponse] | None = None
+    sshfp_records: list[SSHFPRecordResponse] | None = None
+    srv_records: list[SRVRecordResponse] | None = None
+    txt_records: list[TXTRecordResponse] | None = None
 
     @classmethod
     def from_model(

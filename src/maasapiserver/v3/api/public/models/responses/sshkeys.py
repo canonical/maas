@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
 
 from pydantic import Field
 
@@ -19,8 +19,8 @@ class SshKeyResponse(HalResponse[BaseHal]):
     kind: str = Field(default="SshKey")
     id: int
     key: str
-    protocol: Optional[SshKeysProtocolType] = None
-    auth_id: Optional[str] = None
+    protocol: SshKeysProtocolType | None = None
+    auth_id: str | None = None
 
     @classmethod
     def from_model(cls, sshkey: SshKey, self_base_hyperlink: str) -> Self:
