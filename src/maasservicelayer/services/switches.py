@@ -203,7 +203,7 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
 
         return (file_path, boot_file.filename, boot_file.size)
 
-    async def post_delete_hook(self, resource: Switch) -> None:
+    async def pre_delete_hook(self, resource_to_be_deleted: Switch) -> None:
         """Clean up IP addresses on switch deletion
 
         This mimics the Django signal behavior from
@@ -216,11 +216,11 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         4. Let CASCADE handle the interface deletion
 
         Args:
-            resource: The switch that was deleted
+            resource_to_be_deleted: The switch that is about to be deleted
         """
         interfaces = await self.interfaces_service.get_many(
             query=QuerySpec(
-                where=InterfaceClauseFactory.with_switch_id(resource.id)
+                where=InterfaceClauseFactory.with_switch_id(resource_to_be_deleted.id)
             )
         )
         if not interfaces:
