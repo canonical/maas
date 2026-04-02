@@ -213,14 +213,17 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         1. Get all interfaces for this switch
         2. For each interface, unlink it from its IP addresses
         3. Delete IP addresses that no longer have any interface associations
-        4. Let CASCADE handle the interface deletion
+           (using service layer to trigger pre_delete_hook for DNS cleanup)
+        4. Delete the interfaces
 
         Args:
             resource_to_be_deleted: The switch that is about to be deleted
         """
         interfaces = await self.interfaces_service.get_many(
             query=QuerySpec(
-                where=InterfaceClauseFactory.with_switch_id(resource_to_be_deleted.id)
+                where=InterfaceClauseFactory.with_switch_id(
+                    resource_to_be_deleted.id
+                )
             )
         )
         if not interfaces:
@@ -234,6 +237,14 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
             await self.interfaces_service.unlink_interface_from_ips(
                 interface_id=interface_id,
             )
-            await self.staticipaddress_service.delete_ips_if_no_linked_interfaces(
-                [i.id for i in ip_addresses]
+            await self.interfaces_service.delete_by_id(
+                interface_id,
             )
+            for ip in ip_addresses:
+                has_interfaces = (
+                    await self.staticipaddress_service.has_linked_interfaces(
+                        ip.id
+                    )
+                )
+                if not has_interfaces:
+                    await self.staticipaddress_service.delete_by_id(ip.id)

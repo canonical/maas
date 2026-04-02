@@ -191,6 +191,17 @@ class StaticIPAddressService(
             interface_id
         )
 
+    async def has_linked_interfaces(self, staticipaddress_id: int) -> bool:
+        """Check if a static IP address has any linked interfaces.
+
+        Args:
+            staticipaddress_id: The ID of the IP address
+
+        Returns:
+            True if the IP has at least one linked interface, False otherwise
+        """
+        return await self.repository.has_linked_interfaces(staticipaddress_id)
+
     async def delete_ips_if_no_linked_interfaces(
         self, staticipaddress_ids: list[int]
     ) -> None:

@@ -263,6 +263,29 @@ class StaticIPAddressRepository(BaseRepository):
         results = (await self.execute_stmt(stmt)).all()
         return [StaticIPAddress(**row._asdict()) for row in results]
 
+    async def has_linked_interfaces(self, staticipaddress_id: int) -> bool:
+        """Check if a static IP address has any linked interfaces.
+
+        Args:
+            staticipaddress_id: The ID of the IP address
+
+        Returns:
+            True if the IP has at least one linked interface, False otherwise
+        """
+        exists_clause = (
+            select(InterfaceIPAddressTable.c.interface_id)
+            .where(
+                eq(
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                    staticipaddress_id,
+                )
+            )
+            .exists()
+        )
+        stmt = select(exists_clause)
+        result = (await self.execute_stmt(stmt)).scalar()
+        return bool(result)
+
     async def delete_ips_if_no_linked_interfaces(
         self, staticipaddress_ids: list[int]
     ) -> None:
