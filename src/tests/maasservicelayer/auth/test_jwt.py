@@ -13,9 +13,9 @@ class TestJWT:
     @pytest.mark.parametrize(
         "key, subject, user_id",
         [
-            ("123", "aa", 0),
-            ("mykey", "myusername", 0),
-            ("abcdfig", "test", 1),
+            ("1"*112, "aa", 0),
+            ("a"*112, "myusername", 0),
+            ("a"*112, "test", 1),
             ("", "", 3),
         ],
     )
@@ -39,20 +39,20 @@ class TestJWT:
         [
             # empty payload
             (
-                "123",
+                "1"*112,
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.KkiNWdzcAgD_0PF169pvBausbptBe1mSQcTorMEqciA",
             ),
             # missing required claims
             (
-                "123",
+                "1"*112,
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYSIsImlzcyI6ImFhIn0"
-                ".3hIU3UbJTJkok9sJyl4z6X05_uqhKpy6ouRZ3EbJy3Y",
+                + ".3hIU3UbJTJkok9sJyl4z6X05_uqhKpy6ouRZ3EbJy3Y",
             ),
             # malformed
-            ("123", "eyJhbGciOi"),
+            ("1"*112, "eyJhbGciOi"),
             # Expired
             (
-                "123",
+                "1"*112,
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYSIsImlzcyI6Ik1BQVMiLCJpYXQiOjE3MDk3MjAzMTUsImV4cCI6MTcwOTcyMDkxNSwiYXVkIjoiYXBpIiwicm9sZXMiOltdfQ.DH7XiHnNokJ1dRJK8IZ0YItqZKihV7qzxfA8Mi0WpfI",
             ),
         ],

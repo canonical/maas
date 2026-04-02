@@ -87,8 +87,9 @@ class JWT:
                 iss={"essential": True, "value": cls.ISSUER},
                 aud={"essential": True, "value": cls.AUDIENCE},
                 exp={"essential": True},
-                sub={"essential": True},
+                sub={"essential": True, "allow_blank": True},
                 iat={"essential": True},
+                leeway=120,
             )
             claims_reg.validate(token.claims)
             payload = token.claims
