@@ -4,7 +4,7 @@
 from itertools import islice
 
 from hypothesis import given
-from hypothesis.strategies import floats, lists
+from hypothesis.strategies import floats
 
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.backoff import exponential_growth, full_jitter
@@ -26,11 +26,19 @@ class TestFunctions(MAASTestCase):
         self.assertEqual((base * rate), growth_seq[0])
         self.assertEqual((base * (rate**10)), growth_seq[-1])
 
-    @given(lists(floats(0.0, 10000.0), min_size=0, max_size=100))
-    def test_full_jitter(self, values):
+    def test_full_jitter(self):
+        # Test with various input values
+        values = [10.0, 100.0, 1000.0]
         jittered = list(full_jitter(values))
 
-        for thing in jittered:
-            self.assertIsInstance(thing, float)
-            self.assertGreaterEqual(thing, 0.0)
-            self.assertLess(thing, 10000.0)
+        self.assertEqual(len(jittered), len(values))
+        for original, jittered_value in zip(values, jittered, strict=True):
+            self.assertIsInstance(jittered_value, float)
+            self.assertGreaterEqual(jittered_value, 0.0)
+            self.assertLess(jittered_value, original)
+
+        # Test with empty list
+        self.assertEqual(list(full_jitter([])), [])
+
+        # Test with zero - should always produce zero
+        self.assertEqual(list(full_jitter([0.0])), [0.0])
