@@ -190,6 +190,7 @@ APIServer = files("src/maasapiserver/**/*.py")
 
 APIServerRule = Rule(
     Allow("aiofiles.tempfile.NamedTemporaryFile"),
+    Allow("aiofiles.open"),
     Allow("aiofiles.os"),
     Allow("aiohttp|aiohttp.**"),
     Allow("asyncpg|asyncpg.**"),

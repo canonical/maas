@@ -26,6 +26,19 @@ We support two releases of MAAS plus one Beta release (when available).  The two
 
 ## Version 3.7 release notes
 
+### MAAS 3.7.2 has been released
+
+We are happy to announce that MAAS 3.7.2 has been released, with the following bug fixes:
+
+- [2136694](https://launchpad.net/maas/+bug/2136694): Ephemeral deployments lack control over the amount of RAM allocated for the rootfs
+- [2138910](https://launchpad.net/maas/+bug/2138910): Alias interfaces duplicate the gateway4/6 config in netplan
+- [2141388](https://launchpad.net/maas/+bug/2141388): Introductory warning for non available images contains an absolute URL with internal IP when MAAS is accessed via a Load Balancer
+- [2141598](https://launchpad.net/maas/+bug/2141598): Custom images stuck in "Loading Queued for download" after upgrade to 3.5
+- [2142793](https://launchpad.net/maas/+bug/2142793): maasagent memory leak on DHCP expiry failure due to constraint violation
+- [2142861](https://launchpad.net/maas/+bug/2142861): Rapid requests to MAAS get_config API reaches database race condition
+- [2143730](https://launchpad.net/maas/+bug/2143730): Lease processing returns 404 and causes the agent to memory leak
+- [2143919](https://launchpad.net/maas/+bug/2143919): 30-maas-01-bmc-config configures wrong power_address on Lenovo XCC BMC
+
 ### MAAS 3.7.1 has been released
 
 We are happy to announce that MAAS 3.7.1 has been released, with the following bug fixes:
@@ -50,7 +63,21 @@ We are happy to announce that MAAS 3.7.1 has been released, with the following b
 - [2107706](https://launchpad.net/maas/+bug/2107706):  Power error for intel AMT when using HTTPS: Unsupported protocol
 - [2135117](https://launchpad.net/maas/+bug/2135117):  MAAS is trying to remove lost+found for filesystem mounted on /var/lib/maas/image-storage
 
-### 3.7.0
+### MAAS 3.7.0 has been released
+
+#### MAAS 3.7 on Ubuntu 24.04 LTS
+
+MAAS 3.7 is supported on Ubuntu 24.04 LTS (Noble) with PostgreSQL 16. Ubuntu 22.04 (Jammy) and PostgreSQL 14 are not supported with MAAS 3.7; see [Supported MAAS versions](https://canonical.com/maas/docs/supported-maas-versions).
+
+It's available in both deb and snap formats.
+
+If you use the deb format, you should upgrade the node Ubuntu distribution to 24.04 LTS before attempting to upgrade MAAS, and plan a maintenance window accordingly. You must move the MAAS database to PostgreSQL 16 before continuing with the MAAS upgrade.
+
+If you use the snap, follow [How to upgrade MAAS](https://canonical.com/maas/docs/how-to-upgrade-maas).
+
+#### MAAS 3.7 requires PostgreSQL 16
+
+Ubuntu 24.04 LTS includes PostgreSQL 16, which is required for MAAS 3.7. Upgrade the MAAS database to PostgreSQL 16 before upgrading to MAAS 3.7.x. Use your operating system and PostgreSQL documentation for the upgrade procedure.
 
 #### BlueField-3 DPU provisioning
 

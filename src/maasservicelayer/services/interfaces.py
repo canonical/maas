@@ -16,6 +16,15 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.repositories.nodes import NodeClauseFactory
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    NotFoundException,
+    PreconditionFailedException,
+)
+from maasservicelayer.exceptions.constants import (
+    PRECONDITION_FAILED,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.nodes import Node
@@ -111,7 +120,25 @@ class InterfacesService(
         Returns:
             The updated Interface with switch_id and type=PHYSICAL
         """
-
+        interface = await self.interface_repository.get_by_id(interface_id)
+        if interface is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"Interface with ID {interface_id} does not exist.",
+                    )
+                ]
+            )
+        if interface.type != InterfaceType.UNKNOWN:
+            raise PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PRECONDITION_FAILED,
+                        message="Cannot link an interface that is not UNKNOWN to a switch.",
+                    )
+                ]
+            )
         builder = InterfaceBuilder(
             switch_id=switch_id, type=InterfaceType.PHYSICAL
         )
@@ -226,3 +253,24 @@ class InterfacesService(
 
     async def get_for_ip(self, sip: StaticIPAddress) -> list[Interface] | None:
         return await self.repository.get_for_ip(ip_id=sip.id)
+
+    async def create_switch_interface(
+        self, switch_id: int, mac: str, name: str = "mgmt0"
+    ) -> int:
+        """Create a new switch interface and return its ID"""
+        return await self.interface_repository.create_switch_interface(
+            switch_id, mac, name=name
+        )
+
+    async def unlink_interface_from_ips(
+        self,
+        interface_id: int,
+    ) -> None:
+        """Remove the link between an interface and all of its IP addresses.
+
+        Args:
+            interface_id: The ID of the interface to unlink
+        """
+        await self.repository.unlink_interface_from_ips(
+            interface_id=interface_id,
+        )

@@ -46,6 +46,7 @@ node-result
 node-script
 node-script-result
 notification
+oidc
 package-repository
 partition
 pod
@@ -62,6 +63,7 @@ status
 subnet
 tag
 user
+user-group
 version
 vlan
 vm-cluster

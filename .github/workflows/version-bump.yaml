@@ -16,11 +16,11 @@ on:
         - resolute
         required: true
       full_name:
-        description: 'Full name of the releaser (used for git commit and debian changelog)'
+        description: 'Full name of the releaser (used for debian changelog)'
         type: string
         required: true
       email:
-        description: 'Email of the releaser (used for git commit and debian changelog)'
+        description: 'Email of the releaser (used for debian changelog)'
         type: string
         required: true
 
@@ -41,7 +41,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.LANDER_GH_TOKEN }}
 
       - name: Install dependencies
         run: |
@@ -50,7 +50,7 @@ jobs:
 
       - name: Bump Version and Push
         run: |
-          git config user.name "$DEBFULLNAME"
-          git config user.email "$DEBEMAIL"
+          git config user.name ${{ vars.LANDER_USERNAME }}
+          git config user.email ${{ vars.LANDER_EMAIL }}
           ./utilities/version-bump.sh ${{ github.event.inputs.maas_version}} ${{ github.event.inputs.ubuntu_distro }}
           git push origin HEAD:${GITHUB_REF_NAME} --tags

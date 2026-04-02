@@ -4,7 +4,7 @@
 from ipaddress import IPv4Address, IPv6Address
 from typing import List, Type
 
-from sqlalchemy import and_, delete, func, join, select, Table
+from sqlalchemy import and_, delete, func, join, not_, select, Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
@@ -233,6 +233,60 @@ class StaticIPAddressRepository(BaseRepository):
             eq(
                 InterfaceIPAddressTable.c.staticipaddress_id,
                 staticipaddress_id,
+            )
+        )
+        await self.execute_stmt(stmt)
+
+    async def get_ip_addresses_for_interface(
+        self, interface_id: int
+    ) -> list[StaticIPAddress]:
+        """Get all IP addresses associated with a specific interface.
+
+        Args:
+            interface_id: The ID of the interface
+
+        Returns:
+            List of StaticIPAddress objects linked to this interface
+        """
+        stmt = (
+            select(StaticIPAddressTable)
+            .select_from(StaticIPAddressTable)
+            .join(
+                InterfaceIPAddressTable,
+                eq(
+                    StaticIPAddressTable.c.id,
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                ),
+            )
+            .where(eq(InterfaceIPAddressTable.c.interface_id, interface_id))
+        )
+        results = (await self.execute_stmt(stmt)).all()
+        return [StaticIPAddress(**row._asdict()) for row in results]
+
+    async def delete_ips_if_no_linked_interfaces(
+        self, staticipaddress_ids: list[int]
+    ) -> None:
+        """Delete static IPs when no interfaces are associated with them.
+
+        Args:
+            staticipaddress_ids: The IDs of the IP addresses
+        """
+        if not staticipaddress_ids:
+            return
+        has_interface = (
+            select(InterfaceIPAddressTable.c.interface_id)
+            .where(
+                eq(
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                    StaticIPAddressTable.c.id,
+                )
+            )
+            .exists()
+        )
+        stmt = delete(StaticIPAddressTable).where(
+            and_(
+                StaticIPAddressTable.c.id.in_(staticipaddress_ids),
+                not_(has_interface),
             )
         )
         await self.execute_stmt(stmt)
