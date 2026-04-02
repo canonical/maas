@@ -488,31 +488,31 @@ class TestSwitchesService:
             interface_id=10, switch_id=test_switch.id
         )
 
-    async def test_post_delete_hook_with_no_interfaces(
+    async def test_pre_delete_hook_with_no_interfaces(
         self,
         service,
         interfaces_service,
         staticipaddress_service,
     ) -> None:
-        """Test post_delete_hook when switch has no interfaces."""
+        """Test pre_delete_hook when switch has no interfaces."""
         # No interfaces for this switch
         interfaces_service.get_many.return_value = []
 
         # Should complete without any IP operations
-        await service.post_delete_hook(TEST_SWITCH)
+        await service.pre_delete_hook(TEST_SWITCH)
 
         interfaces_service.get_many.assert_called_once()
         # No IP operations should be called
         staticipaddress_service.get_ip_addresses_for_interface.assert_not_called()
         interfaces_service.unlink_interface_from_ips.assert_not_called()
 
-    async def test_post_delete_hook_with_interface_own_ip(
+    async def test_pre_delete_hook_with_interface_own_ip(
         self,
         service,
         interfaces_service,
         staticipaddress_service,
     ) -> None:
-        """Test post_delete_hook with interface having its own IP (not shared)."""
+        """Test pre_delete_hook with interface having its own IP (not shared)."""
         # One interface with one IP
         test_interface = Interface(
             id=10,
@@ -535,7 +535,7 @@ class TestSwitchesService:
             test_ip
         ]
 
-        await service.post_delete_hook(TEST_SWITCH)
+        await service.pre_delete_hook(TEST_SWITCH)
 
         interfaces_service.get_many.assert_called_once()
         staticipaddress_service.get_ip_addresses_for_interface.assert_called_once_with(
@@ -545,13 +545,13 @@ class TestSwitchesService:
             interface_id=test_interface.id
         )
 
-    async def test_post_delete_hook_with_multiple_interfaces_and_ips(
+    async def test_pre_delete_hook_with_multiple_interfaces_and_ips(
         self,
         service,
         interfaces_service,
         staticipaddress_service,
     ) -> None:
-        """Test post_delete_hook with multiple interfaces and various IP scenarios."""
+        """Test pre_delete_hook with multiple interfaces and various IP scenarios."""
         # Two interfaces
         interface1 = Interface(
             id=10,
@@ -606,7 +606,7 @@ class TestSwitchesService:
             get_ips_for_interface
         )
 
-        await service.post_delete_hook(TEST_SWITCH)
+        await service.pre_delete_hook(TEST_SWITCH)
 
         # Verify all IPs were processed
         assert (
