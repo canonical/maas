@@ -24,7 +24,7 @@ jobs:
       python: ${{ steps.filter.outputs.python }}
       go: ${{ steps.filter.outputs.go }}
       docs: ${{ steps.filter.outputs.docs }}
-
+      lint: ${{ steps.filter.outputs.lint }}
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -32,26 +32,34 @@ jobs:
         id: filter
         with:
           filters: |
-            python:
+            lint:
               - 'src/**/*.py'
               - 'pyproject.toml'
               - 'tox.ini'
               - 'setup.py'
               - 'openapi.yaml'
               - 'Makefile'
-            go:
+              - 'utilities/**'
               - 'src/**/*.go'
               - 'src/**/go.mod'
               - 'src/**/go.sum'
               - 'src/**/Makefile'
-              - 'Makefile'
+            python:
+              - 'src/**/*.py'
+              - 'utilities/generate_builders.py'
+              - 'utilities/run-py-tests-ci'
+            go:
+              - 'src/**/*.go'
+              - 'src/**/go.mod'
+              - 'src/**/go.sum'
             docs:
               - 'rtd-docs/**'
 
   lint:
     runs-on: ubuntu-24.04
-    if: ${{ !github.event.pull_request.draft }}
-
+    needs: changes
+    if: >-
+      ${{ !github.event.pull_request.draft && needs.changes.outputs.lint == 'true' }}
     container:
       image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
       credentials:
@@ -112,7 +120,7 @@ jobs:
     if: >-
       ${{ !github.event.pull_request.draft && needs.changes.outputs.docs == 'true' }}
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
       with:
         fetch-depth: 0
     - name: Create venv
