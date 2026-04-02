@@ -63,7 +63,7 @@ class TestAsyncVaultApiClient:
         assert response == AppRoleLoginResponse.model_validate(expected_response)
         mock_aioresponse.assert_called_with(
             url="http://test:5200/v1/auth/approle/login",
-            data='{"role_id": "role_id", "secret_id": "secret_id"}',
+            data='{"role_id":"role_id","secret_id":"secret_id"}',
             headers=None,
             allow_redirects=True,
             method="POST",
@@ -327,7 +327,7 @@ class TestAsyncVaultApiClient:
         assert response == KvV2WriteResponse.model_validate(expected_response)
         mock_aioresponse.assert_called_with(
             url="http://test:5200/v1/secret/data/test/dummy",
-            data='{"options": null, "data": {"test_key": "test_value"}}',
+            data='{"options":null,"data":{"test_key":"test_value"}}',
             headers=headers,
             allow_redirects=True,
             method="POST",

@@ -183,7 +183,7 @@ class AsyncVaultApiClient:
         """
         response = await self._session.post(
             url=f"/v1/{kv_v2_mount_path}/data/{path}",
-            data=request.json(),
+            data=request.model_dump_json(),
             headers=headers,
         )
         self._raise_for_status(response)
