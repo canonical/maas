@@ -3,7 +3,6 @@
 
 """Support for testing with `crochet`."""
 
-from asyncio import iscoroutinefunction
 from functools import wraps
 import inspect
 
@@ -134,7 +133,7 @@ def wait_for(timeout=None):
         def wrapper(function, _, args, kwargs):
             @crochet.run_in_reactor
             def run():
-                if iscoroutinefunction(function):
+                if inspect.iscoroutinefunction(function):
                     return ensureDeferred(function(*args, **kwargs))
                 else:
                     return function(*args, **kwargs)
@@ -146,7 +145,7 @@ def wait_for(timeout=None):
                 eventual_result.cancel()
                 raise TimeoutInTestException(function, args, kwargs, timeout)  # noqa: B904
 
-        if iscoroutinefunction(function):
+        if inspect.iscoroutinefunction(function):
             # Create a non-async wrapper with same signature.
             @wraps(function)
             def non_async_wrapper():
