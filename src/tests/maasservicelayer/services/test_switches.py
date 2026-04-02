@@ -15,7 +15,10 @@ from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.switches import SwitchesRepository
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.exceptions.catalog import (
+    ConflictException,
+    NotFoundException,
+)
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import BootResource
@@ -237,6 +240,59 @@ class TestSwitchesService:
                     "files": [],
                 },
                 NotFoundException,
+            ),
+            pytest.param(
+                "multiple_files",
+                lambda: {
+                    "target_image_id": 42,
+                    "interface_exists": True,
+                    "boot_resource": BootResource(
+                        id=42,
+                        name="test-nos",
+                        rtype=BootResourceType.UPLOADED,
+                        architecture="amd64/generic",
+                        extra={},
+                        rolling=False,
+                        base_image="",
+                        created=utcnow(),
+                        updated=utcnow(),
+                    ),
+                    "resource_set": BootResourceSet(
+                        id=10,
+                        version="1.0",
+                        label="uploaded",
+                        resource_id=42,
+                        created=utcnow(),
+                        updated=utcnow(),
+                    ),
+                    "files": [
+                        BootResourceFile(
+                            id=1,
+                            filename="nos-installer-1.bin",
+                            filename_on_disk="abc123.bin",
+                            filetype=BootResourceFileType.SELF_EXTRACTING,
+                            extra={},
+                            sha256="abc123",
+                            size=1024000,
+                            resource_set_id=10,
+                            created=utcnow(),
+                            updated=utcnow(),
+                        ),
+                        BootResourceFile(
+                            id=2,
+                            filename="nos-installer-2.bin",
+                            filename_on_disk="def456.bin",
+                            filetype=BootResourceFileType.SELF_EXTRACTING,
+                            extra={},
+                            sha256="def456",
+                            size=2048000,
+                            resource_set_id=10,
+                            created=utcnow(),
+                            updated=utcnow(),
+                        ),
+                    ],
+                },
+                ConflictException,
             ),
         ],
     )
@@ -534,6 +590,7 @@ class TestSwitchesService:
         staticipaddress_service.get_ip_addresses_for_interface.return_value = [
             test_ip
         ]
+        staticipaddress_service.has_linked_interfaces.return_value = False
 
         await service.pre_delete_hook(TEST_SWITCH)
 
@@ -543,6 +600,15 @@ class TestSwitchesService:
         )
         interfaces_service.unlink_interface_from_ips.assert_called_once_with(
             interface_id=test_interface.id
+        )
+        interfaces_service.delete_by_id.assert_called_once_with(
+            test_interface.id
+        )
+        staticipaddress_service.has_linked_interfaces.assert_called_once_with(
+            test_ip.id
+        )
+        staticipaddress_service.delete_by_id.assert_called_once_with(
+            test_ip.id
         )
 
     async def test_pre_delete_hook_with_multiple_interfaces_and_ips(
@@ -606,6 +672,16 @@ class TestSwitchesService:
             get_ips_for_interface
         )
 
+        # ip1 has no other interfaces, ip2 is shared (still has interfaces), ip3 has no other interfaces
+        def has_linked_interfaces(ip_id):
+            if ip_id == 200:  # ip2 is shared
+                return True
+            return False
+
+        staticipaddress_service.has_linked_interfaces.side_effect = (
+            has_linked_interfaces
+        )
+
         await service.pre_delete_hook(TEST_SWITCH)
 
         # Verify all IPs were processed
@@ -617,6 +693,17 @@ class TestSwitchesService:
         assert interfaces_service.unlink_interface_from_ips.call_args_list == [
             call(interface_id=10),
             call(interface_id=20),
+        ]
+        assert interfaces_service.delete_by_id.call_count == 2
+        assert interfaces_service.delete_by_id.call_args_list == [
+            call(10),
+            call(20),
+        ]
+        assert staticipaddress_service.has_linked_interfaces.call_count == 3
+        assert staticipaddress_service.delete_by_id.call_count == 2
+        assert staticipaddress_service.delete_by_id.call_args_list == [
+            call(100),
+            call(300),
         ]
 
     async def test_list_with_target_image(

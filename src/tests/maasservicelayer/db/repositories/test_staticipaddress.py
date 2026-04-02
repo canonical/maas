@@ -428,3 +428,34 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         )
 
         assert result == []
+
+    @pytest.mark.parametrize(
+        "num_interfaces,expected_has_linked_interfaces",
+        [
+            (0, False),
+            (1, True),
+            (2, True),  # Multiple interfaces linked (e.g., bridged/shared IP)
+        ],
+    )
+    async def test_has_linked_interfaces(
+        self,
+        repository_instance: StaticIPAddressRepository,
+        fixture: Fixture,
+        num_interfaces: int,
+        expected: bool,
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        ip = (
+            await create_test_staticipaddress_entry(
+                fixture,
+                subnet=subnet,
+                alloc_type=IpAddressType.DISCOVERED,
+            )
+        )[0]
+
+        for _ in range(num_interfaces):
+            await create_test_interface_entry(fixture, ips=[ip])
+
+        result = await repository_instance.has_linked_interfaces(ip["id"])
+
+        assert result == expected
