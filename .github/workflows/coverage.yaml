@@ -50,27 +50,29 @@ jobs:
 
       - name: Run python tests with coverage
         run: |
-          su ubuntu -c "mkdir -p .coverage"
           COVERAGE_FILE=.coverage.legacy su ubuntu -c "bin/test.region.legacy --with-coverage --cover-branches || true"
           COVERAGE_FILE=.coverage.region su ubuntu -c "bin/test.region --with-coverage --cover-branches || true"
           COVERAGE_FILE=.coverage.rack su ubuntu -c "bin/test.rack --with-coverage --cover-branches || true"
           COVERAGE_FILE=.coverage.pytest su ubuntu -c "bin/pytest --cov=src --cov-branch -n auto --dist=load || true"
           su ubuntu -c "python3-coverage combine .coverage.legacy .coverage.region .coverage.rack .coverage.pytest"
           su ubuntu -c "python3-coverage report"
-          su ubuntu -c "python3-coverage xml -o .coverage/py-coverage.xml"
-
+          su ubuntu -c "python3-coverage xml -o py-coverage.xml"
+          # The .coverage file is created by python3-coverage. Should be deleted by it, but just to make sure
+          rm -rf ./.coverage
+          su ubuntu -c "mkdir -p $GITHUB_WORKSPACE/.coverage"
+          su ubuntu -c "cp py-coverage.xml $GITHUB_WORKSPACE/.coverage/py-coverage.xml"
 
       - name: Run go tests with coverage
         run: |
           su ubuntu -c "make test-go-cover || true"
 
-          cd src/maasagent/
+          cd $GITHUB_WORKSPACE/src/maasagent/
           su ubuntu -c '/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > coverage-maasagent.xml'
-          cp coverage-maasagent.xml "$GITHUB_WORKSPACE/coverage/coverage-maasagent.xml"
+          su ubuntu -c "cp coverage-maasagent.xml $GITHUB_WORKSPACE/.coverage/coverage-maasagent.xml"
 
-          cd ../host-info/
+          cd $GITHUB_WORKSPACE/src/host-info/
           su ubuntu -c '/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > coverage-host-info.xml'
-          cp coverage-host-info.xml "$GITHUB_WORKSPACE/.coverage/coverage-host-info.xml"
+          su ubuntu -c "cp coverage-host-info.xml $GITHUB_WORKSPACE/.coverage/coverage-host-info.xml"
 
       - name: Upload coverage report
         if: always()
