@@ -459,7 +459,7 @@ class BuilderModule(GenericModule[BuilderModel]):
 
     def to_file(self) -> str:
         """Generate the complete file output."""
-        return self._generate_output()
+        return self.get_output()
 
     def update_models_methods_from_other(self, other):
         if self.filename != other.filename:
@@ -483,7 +483,7 @@ class BuilderModule(GenericModule[BuilderModel]):
                 return False
         return True
 
-    def _generate_output(self) -> str:
+    def get_output(self) -> str:
         """Generate the complete file output."""
         class_defs = ""
         module_imports = self.module_imports.copy()
