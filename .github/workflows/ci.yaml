@@ -111,5 +111,5 @@ jobs:
     needs: [lint, test-python, test-go]
     steps:
       - name: Check job results
-        if: ${{ needs.lint.result }} == 'failure' || ${{ needs.test-python.result }} == 'failure' || ${{ needs.test-go.result }} == 'failure'
+        if: ${{ needs.*.result }} == 'failure'
         run: exit 1
