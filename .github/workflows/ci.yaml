@@ -48,6 +48,8 @@ jobs:
               - 'src/**/*.py'
               - 'utilities/generate_builders.py'
               - 'utilities/run-py-tests-ci'
+              - 'pyproject.toml'
+              - 'tox.ini'
             go:
               - 'src/**/*.go'
               - 'src/**/go.mod'
