@@ -690,22 +690,6 @@ class TestStaticIPAddressServiceIntegration:
             10
         )
 
-    async def test_delete_ips_if_no_linked_interfaces(self) -> None:
-        """Test cleanup check delegation for an IP address."""
-        repository_mock = Mock(StaticIPAddressRepository)
-
-        service = StaticIPAddressService(
-            context=Context(),
-            temporal_service=Mock(TemporalService),
-            dnsresources_service=Mock(DNSResourcesService),
-            staticipaddress_repository=repository_mock,
-        )
-
-        await service.delete_ips_if_no_linked_interfaces([100])
-        repository_mock.delete_ips_if_no_linked_interfaces.assert_called_once_with(
-            [100]
-        )
-
     async def test_get_ip_addresses_for_interface_integration(
         self, services, fixture
     ) -> None:
@@ -736,44 +720,3 @@ class TestStaticIPAddressServiceIntegration:
         result_ids = {ip.id for ip in result}
         assert sip1["id"] in result_ids
         assert sip2["id"] in result_ids
-
-    async def test_delete_ips_if_no_linked_interfaces_linked_integration(
-        self, services, fixture
-    ) -> None:
-        """Test that IPs are not deleted if they are still linked to an
-        interface.
-        """
-        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
-
-        sip = (
-            await create_test_staticipaddress_entry(
-                fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
-            )
-        )[0]
-
-        await create_test_interface_entry(fixture, ips=[sip])
-
-        # Still linked to interface: static IP should remain.
-        await services.staticipaddress.delete_ips_if_no_linked_interfaces(
-            [sip["id"]]
-        )
-        static_ip = await services.staticipaddress.get_by_id(sip["id"])
-        assert static_ip is not None
-
-    async def test_delete_ips_if_no_linked_interfaces_unlinked_integration(
-        self, services, fixture
-    ) -> None:
-        """Test zero-interface cleanup for static IP - integration test."""
-        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
-
-        sip = (
-            await create_test_staticipaddress_entry(
-                fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
-            )
-        )[0]
-
-        await services.staticipaddress.delete_ips_if_no_linked_interfaces(
-            [sip["id"]]
-        )
-        static_ip = await services.staticipaddress.get_by_id(sip["id"])
-        assert static_ip is None

@@ -505,7 +505,6 @@ class TestSwitchesService:
         # No IP operations should be called
         staticipaddress_service.get_ip_addresses_for_interface.assert_not_called()
         interfaces_service.unlink_interface_from_ips.assert_not_called()
-        staticipaddress_service.delete_ips_if_no_linked_interfaces.assert_not_called()
 
     async def test_post_delete_hook_with_interface_own_ip(
         self,
@@ -544,9 +543,6 @@ class TestSwitchesService:
         )
         interfaces_service.unlink_interface_from_ips.assert_called_once_with(
             interface_id=test_interface.id
-        )
-        staticipaddress_service.delete_ips_if_no_linked_interfaces.assert_called_once_with(
-            [test_ip.id]
         )
 
     async def test_post_delete_hook_with_multiple_interfaces_and_ips(
@@ -622,14 +618,6 @@ class TestSwitchesService:
             call(interface_id=10),
             call(interface_id=20),
         ]
-        assert (
-            staticipaddress_service.delete_ips_if_no_linked_interfaces.call_count
-            == 2
-        )
-        assert (
-            staticipaddress_service.delete_ips_if_no_linked_interfaces.call_args_list
-            == [call([ip1.id, ip2.id]), call([ip3.id])]
-        )
 
     async def test_list_with_target_image(
         self,

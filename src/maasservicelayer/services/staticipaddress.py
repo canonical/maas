@@ -201,16 +201,3 @@ class StaticIPAddressService(
             True if the IP has at least one linked interface, False otherwise
         """
         return await self.repository.has_linked_interfaces(staticipaddress_id)
-
-    async def delete_ips_if_no_linked_interfaces(
-        self, staticipaddress_ids: list[int]
-    ) -> None:
-        """Delete static IPs when no interfaces are associated with them.
-
-        Args:
-            staticipaddress_ids: The IDs of the IP addresses
-
-        """
-        await self.repository.delete_ips_if_no_linked_interfaces(
-            staticipaddress_ids
-        )
