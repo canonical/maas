@@ -3,9 +3,13 @@
 
 import math
 
+from fastapi import FastAPI
+from httpx import AsyncClient, Headers
+import pytest
 from sqlalchemy import func, select
 
 from maasapiserver.v3.api.public.models.requests.query import MAX_PAGE_SIZE
+from maasapiserver.v3.api.public.models.responses.oauth2 import TokenResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasserver.enum import NODE_TYPE
 from maasservicelayer.db.tables import NodeTable
@@ -21,12 +25,24 @@ async def get_machine_count(conn):
     return result.scalar()
 
 
+@pytest.fixture(autouse=True)
+async def api_client(api_app: FastAPI, db_connection):
+    async with AsyncClient(app=api_app, base_url="http://test") as client:
+        response = await client.post(
+            f"{V3_API_PREFIX}/auth/login",
+            # the sampledata always creates an admin user with these credentials. If you run the perftests with a different dataset, make sure to update these credentials accordingly.
+            data={"username": "admin1", "password": "secret"},
+        )
+        token_response = TokenResponse(**response.json())
+        client.headers = Headers(
+            {"Authorization": "bearer " + token_response.access_token}
+        )
+        yield client
+
+
 async def test_perf_list_machines_APIv3_endpoint(
-    perf,
-    authenticated_admin_api_client_v3,
-    db_connection,
+    perf, api_client, db_connection, mock_maas_env, openfga_server
 ):
-    api_client = authenticated_admin_api_client_v3
     # This should test the APIv3 calls that are used to load
     # the machine listing page on the initial page load.
     machine_count = await get_machine_count(db_connection)
@@ -49,11 +65,8 @@ async def test_perf_list_machines_APIv3_endpoint(
 
 
 async def test_perf_list_machines_APIv3_endpoint_all(
-    perf,
-    authenticated_admin_api_client_v3,
-    db_connection,
+    perf, api_client, db_connection, mock_maas_env, openfga_server
 ):
-    api_client = authenticated_admin_api_client_v3
     # How long would it take to list all the machines using the
     # APIv3 without any pagination.
     machine_count = await get_machine_count(db_connection)
@@ -77,11 +90,8 @@ async def test_perf_list_machines_APIv3_endpoint_all(
 
 
 async def test_perf_list_machines_APIv3_endpoint_all_local_filtering(
-    perf,
-    authenticated_admin_api_client_v3,
-    db_connection,
+    perf, api_client, db_connection, mock_maas_env, openfga_server
 ):
-    api_client = authenticated_admin_api_client_v3
     # How long would it take to list all the machines using the
     # APIv3 without any pagination and filter them locally
     machine_count = await get_machine_count(db_connection)
@@ -115,11 +125,8 @@ async def test_perf_list_machines_APIv3_endpoint_all_local_filtering(
 
 
 async def test_perf_list_machines_APIv3_endpoint_all_pci_devices(
-    perf,
-    authenticated_admin_api_client_v3,
-    db_connection,
+    perf, api_client, db_connection, mock_maas_env, openfga_server
 ):
-    api_client = authenticated_admin_api_client_v3
     # How long would it take to list all the machines' pci devices using the
     # APIv3 without any pagination and filter them locally
     machine_count = await get_machine_count(db_connection)
