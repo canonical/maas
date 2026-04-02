@@ -71,7 +71,7 @@ class OAuthProviderResponse(BaseModel):
     enabled: bool
     id: int
     metadata: ProviderMetadata
-    user_count: int | None
+    user_count: int | None = None
     token_type: OAuthTokenTypeChoices
 
     @classmethod
