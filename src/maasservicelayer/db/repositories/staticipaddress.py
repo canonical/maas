@@ -285,31 +285,3 @@ class StaticIPAddressRepository(BaseRepository):
         stmt = select(exists_clause)
         result = (await self.execute_stmt(stmt)).scalar()
         return bool(result)
-
-    async def delete_ips_if_no_linked_interfaces(
-        self, staticipaddress_ids: list[int]
-    ) -> None:
-        """Delete static IPs when no interfaces are associated with them.
-
-        Args:
-            staticipaddress_ids: The IDs of the IP addresses
-        """
-        if not staticipaddress_ids:
-            return
-        has_interface = (
-            select(InterfaceIPAddressTable.c.interface_id)
-            .where(
-                eq(
-                    InterfaceIPAddressTable.c.staticipaddress_id,
-                    StaticIPAddressTable.c.id,
-                )
-            )
-            .exists()
-        )
-        stmt = delete(StaticIPAddressTable).where(
-            and_(
-                StaticIPAddressTable.c.id.in_(staticipaddress_ids),
-                not_(has_interface),
-            )
-        )
-        await self.execute_stmt(stmt)
