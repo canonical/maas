@@ -203,7 +203,7 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
 
         return (file_path, boot_file.filename, boot_file.size)
 
-    async def post_delete_hook(self, resource: Switch) -> None:
+    async def pre_delete_hook(self, resource_to_be_deleted: Switch) -> None:
         """Clean up IP addresses on switch deletion
 
         This mimics the Django signal behavior from
@@ -213,27 +213,33 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         1. Get all interfaces for this switch
         2. For each interface, unlink it from its IP addresses
         3. Delete IP addresses that no longer have any interface associations
-        4. Let CASCADE handle the interface deletion
+           (using service layer to trigger pre_delete_hook for DNS cleanup)
+        4. Delete the interfaces
 
         Args:
-            resource: The switch that was deleted
+            resource_to_be_deleted: The switch that is about to be deleted
         """
         interfaces = await self.interfaces_service.get_many(
             query=QuerySpec(
-                where=InterfaceClauseFactory.with_switch_id(resource.id)
+                where=InterfaceClauseFactory.with_switch_id(
+                    resource_to_be_deleted.id
+                )
             )
         )
         if not interfaces:
             return
 
         interface_ids = [iface.id for iface in interfaces]
-        for interface_id in interface_ids:
-            ip_addresses = await self.staticipaddress_service.get_ip_addresses_for_interface(
-                interface_id
-            )
-            await self.interfaces_service.unlink_interface_from_ips(
-                interface_id=interface_id,
-            )
-            await self.staticipaddress_service.delete_ips_if_no_linked_interfaces(
-                [i.id for i in ip_addresses]
-            )
+
+        orphaned_ips = await self.staticipaddress_service.get_ips_for_interfaces_without_other_links(
+            interface_ids
+        )
+
+        await self.interfaces_service.unlink_interfaces_from_ips(
+            interface_ids=interface_ids
+        )
+
+        await self.interfaces_service.delete_many_by_id(interface_ids)
+
+        for ip in orphaned_ips:
+            await self.staticipaddress_service.delete_by_id(ip.id)

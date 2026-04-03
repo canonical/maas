@@ -176,30 +176,19 @@ class StaticIPAddressService(
             await self.post_update_many_hook(updated_resources)
         return updated_resources
 
-    async def get_ip_addresses_for_interface(
-        self, interface_id: int
+    async def get_ips_for_interfaces_without_other_links(
+        self, interface_ids: list[int]
     ) -> list[StaticIPAddress]:
-        """Get all IP addresses associated with a specific interface.
+        """Get IP addresses that would be orphaned if given interfaces were deleted.
 
         Args:
-            interface_id: The ID of the interface
+            interface_ids: List of interface IDs to check
 
         Returns:
-            List of StaticIPAddress objects linked to this interface
+            List of StaticIPAddress objects that would be orphaned
         """
-        return await self.repository.get_ip_addresses_for_interface(
-            interface_id
-        )
-
-    async def delete_ips_if_no_linked_interfaces(
-        self, staticipaddress_ids: list[int]
-    ) -> None:
-        """Delete static IPs when no interfaces are associated with them.
-
-        Args:
-            staticipaddress_ids: The IDs of the IP addresses
-
-        """
-        await self.repository.delete_ips_if_no_linked_interfaces(
-            staticipaddress_ids
+        return (
+            await self.repository.get_ips_for_interfaces_without_other_links(
+                interface_ids
+            )
         )

@@ -237,17 +237,43 @@ class StaticIPAddressRepository(BaseRepository):
         )
         await self.execute_stmt(stmt)
 
-    async def get_ip_addresses_for_interface(
-        self, interface_id: int
+    async def get_ips_for_interfaces_without_other_links(
+        self, interface_ids: list[int]
     ) -> list[StaticIPAddress]:
-        """Get all IP addresses associated with a specific interface.
+        """Get IP addresses linked to interfaces that have no other interface links.
+
+        Returns IPs that are linked to the given interface IDs and would become
+        orphaned if those interfaces were deleted (i.e., they have no links to
+        any interfaces outside the given set).
 
         Args:
-            interface_id: The ID of the interface
+            interface_ids: List of interface IDs to check
 
         Returns:
-            List of StaticIPAddress objects linked to this interface
+            List of StaticIPAddress objects that would be orphaned
         """
+        if not interface_ids:
+            return []
+
+        has_external_links = (
+            select(InterfaceIPAddressTable.c.staticipaddress_id)
+            .where(
+                and_(
+                    eq(
+                        InterfaceIPAddressTable.c.staticipaddress_id,
+                        StaticIPAddressTable.c.id,
+                    ),
+                    not_(
+                        InterfaceIPAddressTable.c.interface_id.in_(
+                            interface_ids
+                        )
+                    ),
+                )
+            )
+            .correlate(StaticIPAddressTable)
+            .exists()
+        )
+
         stmt = (
             select(StaticIPAddressTable)
             .select_from(StaticIPAddressTable)
@@ -258,35 +284,13 @@ class StaticIPAddressRepository(BaseRepository):
                     InterfaceIPAddressTable.c.staticipaddress_id,
                 ),
             )
-            .where(eq(InterfaceIPAddressTable.c.interface_id, interface_id))
+            .where(
+                and_(
+                    InterfaceIPAddressTable.c.interface_id.in_(interface_ids),
+                    not_(has_external_links),
+                )
+            )
+            .distinct()
         )
         results = (await self.execute_stmt(stmt)).all()
         return [StaticIPAddress(**row._asdict()) for row in results]
-
-    async def delete_ips_if_no_linked_interfaces(
-        self, staticipaddress_ids: list[int]
-    ) -> None:
-        """Delete static IPs when no interfaces are associated with them.
-
-        Args:
-            staticipaddress_ids: The IDs of the IP addresses
-        """
-        if not staticipaddress_ids:
-            return
-        has_interface = (
-            select(InterfaceIPAddressTable.c.interface_id)
-            .where(
-                eq(
-                    InterfaceIPAddressTable.c.staticipaddress_id,
-                    StaticIPAddressTable.c.id,
-                )
-            )
-            .exists()
-        )
-        stmt = delete(StaticIPAddressTable).where(
-            and_(
-                StaticIPAddressTable.c.id.in_(staticipaddress_ids),
-                not_(has_interface),
-            )
-        )
-        await self.execute_stmt(stmt)
