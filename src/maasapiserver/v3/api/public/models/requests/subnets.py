@@ -81,10 +81,10 @@ class SubnetRequest(OptionalNamedBaseModel):
         elif (
             network.version == 6
             and isinstance(gateway_ip, IPv6Address)
-            and gateway_ip in IPv6Network("fe80::/64")
+            and gateway_ip.is_link_local
         ):
             # If this is an IPv6 network and the gateway is in the link-local
-            # network (fe80::/64 -- required to be configured by the spec),
+            # network (fe80::/10 -- required to be configured by the spec),
             # then it is also valid.
             return gateway_ip
         else:
