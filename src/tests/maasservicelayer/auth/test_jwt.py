@@ -16,7 +16,7 @@ class TestJWT:
             ("1" * 112, "aa", 0),
             ("a" * 112, "myusername", 0),
             ("a" * 112, "test", 1),
-            ("", "", 3),
+            ("b" * 112, "anotheruser", 3),
         ],
     )
     def test_create_and_decode(
@@ -26,7 +26,9 @@ class TestJWT:
         token = JWT.create(key, subject, user_id)
         assert token.subject == subject
         assert token.user_id == user_id
-        assert token.issued >= now
+        # jwt.py stores timestamps as integers (second precision), so
+        # token.issued may be truncated below `now` by up to ~1 second.
+        assert (now - token.issued).total_seconds() < 1
         assert token.expiration == token.issued + timedelta(minutes=10)
         assert token.issuer == "MAAS"
         assert token.audience == "api"

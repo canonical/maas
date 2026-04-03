@@ -63,8 +63,8 @@ class JWT:
         payload = {
             "sub": subject,
             "iss": cls.ISSUER,
-            "iat": issued.timestamp(),
-            "exp": expiration.timestamp(),
+            "iat": int(issued.timestamp()),
+            "exp": int(expiration.timestamp()),
             "aud": cls.AUDIENCE,
             # private claims
             "user_id": user_id,
@@ -87,9 +87,8 @@ class JWT:
                 iss={"essential": True, "value": cls.ISSUER},
                 aud={"essential": True, "value": cls.AUDIENCE},
                 exp={"essential": True},
-                sub={"essential": True, "allow_blank": True},
+                sub={"essential": True},
                 iat={"essential": True},
-                leeway=120,
             )
             claims_reg.validate(token.claims)
             payload = token.claims
