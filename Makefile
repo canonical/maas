@@ -154,7 +154,7 @@ build-openfga:
 	$(MAKE) --no-print-directory -j -C src/maasopenfga build
 .PHONY: build-openfga
 
-test: test-py lint-oapi test-go
+test: test-py test-go
 .PHONY: test
 
 test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit bin/pytest
@@ -191,7 +191,7 @@ sec: sec-py
 sec-py:
 	@tox -e bandit
 
-lint: lint-py-builders lint-py check-types lint-py-imports lint-py-linefeeds lint-go lint-shell
+lint: lint-py-builders lint-py check-types lint-py-imports lint-py-linefeeds lint-go lint-oapi lint-shell
 .PHONY: lint
 
 # Check if service layer builders must be re-generated
