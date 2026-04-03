@@ -747,11 +747,12 @@ class Interface(CleanSave, TimestampedModel):
             from maasserver.models.vlan import DEFAULT_MTU
 
             mtu = DEFAULT_MTU
-        children = self.get_successors()
         # Check if any child interface has a greater MTU. It is an invalid
         # configuration for the parent MTU to be smaller. (LP: #1662948)
-        for child in children:
-            child_mtu = child.get_effective_mtu()
+        # Iterate direct children only; the recursive call propagates the max
+        # MTU up the tree without repeated full-tree scans (avoids O(N^2)).
+        for rel in self.children_relationships.all():
+            child_mtu = rel.child.get_effective_mtu()
             if mtu < child_mtu:
                 mtu = child_mtu
         return mtu
@@ -776,7 +777,7 @@ class Interface(CleanSave, TimestampedModel):
             if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
                 link_type = ip_address.get_interface_link_type()
                 link = {"id": ip_address.id, "mode": link_type}
-                ip, subnet = ip_address.get_ip_and_subnet()
+                ip, subnet = ip_address.get_ip_and_subnet(interface=self)
                 if ip and ip_address.temp_expires_on is None:
                     link["ip_address"] = f"{ip}"
                 if subnet:
@@ -1584,8 +1585,8 @@ class Interface(CleanSave, TimestampedModel):
         """Returns all the ancestors of the interface (that is, including each
         child's children, and so on.)
         """
-        children = {rel.child for rel in self.children_relationships.all()}
-        children_relationships = set(self.children_relationships.all())
+        children_relationships = list(self.children_relationships.all())
+        children = {rel.child for rel in children_relationships}
         for child_rel in children_relationships:
             children |= child_rel.child.get_successors()
         return children

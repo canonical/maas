@@ -81,6 +81,7 @@ INTERFACES_PREFETCH = [
     "vlan__fabric__vlan_set",
     "vlan__space",
     "numa_node",
+    "node_config__node",
     "parents",
     "ip_addresses__subnet",
     # Prefetch 3 levels deep, anything more will require extra queries.
