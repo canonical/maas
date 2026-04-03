@@ -749,7 +749,8 @@ class Interface(CleanSave, TimestampedModel):
             mtu = DEFAULT_MTU
         # Check if any child interface has a greater MTU. It is an invalid
         # configuration for the parent MTU to be smaller. (LP: #1662948)
-        # Iterate direct children only; get_effective_mtu() recurses naturally.
+        # Iterate direct children only; the recursive call propagates the max
+        # MTU up the tree without repeated full-tree scans (avoids O(N^2)).
         for rel in self.children_relationships.all():
             child_mtu = rel.child.get_effective_mtu()
             if mtu < child_mtu:
