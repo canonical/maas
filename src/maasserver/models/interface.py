@@ -776,7 +776,7 @@ class Interface(CleanSave, TimestampedModel):
             if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
                 link_type = ip_address.get_interface_link_type()
                 link = {"id": ip_address.id, "mode": link_type}
-                ip, subnet = ip_address.get_ip_and_subnet()
+                ip, subnet = ip_address.get_ip_and_subnet(interface=self)
                 if ip and ip_address.temp_expires_on is None:
                     link["ip_address"] = f"{ip}"
                 if subnet:

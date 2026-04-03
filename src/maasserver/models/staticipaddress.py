@@ -497,15 +497,20 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         ip, subnet = self.get_ip_and_subnet()
         return ip
 
-    def get_ip_and_subnet(self):
+    def get_ip_and_subnet(self, interface=None):
         """Return the IP address and subnet assigned.
 
         For all alloc_types except DHCP it returns `ip` and `subnet`. When
         `alloc_type` is DHCP it returns the associated DISCOVERED `ip` and
         `subnet` on the same linked interfaces.
+
+        Pass `interface` to use that interface's already-prefetched
+        ip_addresses instead of issuing a new database query.
         """
         if self.alloc_type == IPADDRESS_TYPE.DHCP:
-            discovered_ip = self._get_related_discovered_ip()
+            discovered_ip = self._get_related_discovered_ip(
+                interface=interface
+            )
             if discovered_ip is not None:
                 return discovered_ip.ip, discovered_ip.subnet
         return self.ip, self.subnet
@@ -683,12 +688,25 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                 self.save()
                 self._set_subnet(subnet, interfaces=self.interface_set.all())
 
-    def _get_related_discovered_ip(self):
+    def _get_related_discovered_ip(self, interface=None):
         """Return the related DISCOVERED IP address for this IP address.
 
         This comes from looking at the DISCOVERED IP addresses assigned to the
         related interfaces.
+
+        When `interface` is provided, use its already-prefetched ip_addresses
+        to avoid issuing a new database query.
         """
+        if interface is not None:
+            discovered = sorted(
+                (
+                    ip
+                    for ip in interface.ip_addresses.all()
+                    if ip.alloc_type == IPADDRESS_TYPE.DISCOVERED and ip.ip
+                ),
+                key=lambda ip: -ip.id,
+            )
+            return discovered[0] if discovered else None
         return (
             StaticIPAddress.objects.filter(
                 interface__in=self.interface_set.all(),

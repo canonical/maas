@@ -118,6 +118,7 @@ NODES_PREFETCH = [
         "boot_interface__children_relationships__child__"
         "children_relationships__child"
     ),
+    "current_config__interface_set__node_config__node",
     "current_config__interface_set__vlan__primary_rack",
     "current_config__interface_set__vlan__secondary_rack",
     "current_config__interface_set__vlan__fabric__vlan_set",
