@@ -4,15 +4,14 @@
 import math
 
 from fastapi import FastAPI
-from httpx import AsyncClient, Headers
 import pytest
 from sqlalchemy import func, select
 
 from maasapiserver.v3.api.public.models.requests.query import MAX_PAGE_SIZE
-from maasapiserver.v3.api.public.models.responses.oauth2 import TokenResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasserver.enum import NODE_TYPE
 from maasservicelayer.db.tables import NodeTable
+from tests.maasapiserver.fixtures.app import build_client
 
 
 async def get_machine_count(conn):
@@ -25,18 +24,12 @@ async def get_machine_count(conn):
     return result.scalar()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 async def api_client(api_app: FastAPI, db_connection):
-    async with AsyncClient(app=api_app, base_url="http://test") as client:
-        response = await client.post(
-            f"{V3_API_PREFIX}/auth/login",
-            # the sampledata always creates an admin user with these credentials. If you run the perftests with a different dataset, make sure to update these credentials accordingly.
-            data={"username": "admin1", "password": "secret"},
-        )
-        token_response = TokenResponse(**response.json())
-        client.headers = Headers(
-            {"Authorization": "bearer " + token_response.access_token}
-        )
+    # the sampledata always creates an admin user with these credentials. If you run the perftests with a different dataset, make sure to update these credentials accordingly.
+    async with build_client(
+        api_app, "http://test", "admin1", "secret"
+    ) as client:
         yield client
 
 
