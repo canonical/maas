@@ -4,7 +4,7 @@
 from ipaddress import IPv4Address, IPv6Address
 from typing import List, Type
 
-from sqlalchemy import and_, delete, func, join, select, Table
+from sqlalchemy import and_, delete, func, join, not_, select, Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
@@ -263,7 +263,11 @@ class StaticIPAddressRepository(BaseRepository):
                         InterfaceIPAddressTable.c.staticipaddress_id,
                         StaticIPAddressTable.c.id,
                     ),
-                    ~InterfaceIPAddressTable.c.interface_id.in_(interface_ids),
+                    not_(
+                        InterfaceIPAddressTable.c.interface_id.in_(
+                            interface_ids
+                        )
+                    ),
                 )
             )
             .correlate(StaticIPAddressTable)
@@ -283,7 +287,7 @@ class StaticIPAddressRepository(BaseRepository):
             .where(
                 and_(
                     InterfaceIPAddressTable.c.interface_id.in_(interface_ids),
-                    ~has_external_links,
+                    not_(has_external_links),
                 )
             )
             .distinct()
