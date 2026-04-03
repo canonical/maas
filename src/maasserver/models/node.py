@@ -6091,7 +6091,7 @@ class Node(CleanSave, TimestampedModel):
         d: Deferred,
         power_info: PowerInfo,
         task_queue: str,
-        timeout: int = 2 * NODE_TIMEOUT + 10,
+        timeout: int = 2 * NODE_TIMEOUT,
     ) -> Deferred:
         dd = start_workflow(
             DEPLOY_MANY_WORKFLOW_NAME,
@@ -6115,6 +6115,7 @@ class Node(CleanSave, TimestampedModel):
             ),
             task_queue="region",
             id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
+            execution_timeout=timeout + 10,
         )
         if not dd.called:
             return dd
