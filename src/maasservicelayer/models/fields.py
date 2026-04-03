@@ -3,12 +3,29 @@
 
 from ipaddress import IPv4Network, IPv6Network
 import re
-from typing import Annotated, Any
+from typing import Annotated, Any, Hashable, TypeVar
 
-from pydantic import BeforeValidator, GetCoreSchemaHandler
+from pydantic import AfterValidator, BeforeValidator, Field, GetCoreSchemaHandler
 from pydantic_core import core_schema, PydanticCustomError
 
 from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
+
+_T = TypeVar("_T", bound=Hashable)
+
+
+def _validate_unique_list(v: list[_T]) -> list[_T]:
+    if len(v) != len(set(v)):
+        raise PydanticCustomError("unique_list", "List must be unique")
+    return v
+
+
+# Drop-in replacement for pydantic v1's conlist(unique_items=True).
+# Rejects lists with duplicate elements; T must be hashable.
+UniqueList = Annotated[
+    list[_T],
+    AfterValidator(_validate_unique_list),
+    Field(json_schema_extra={"uniqueItems": True}),
+]
 
 
 def _validate_ipv4v6_network(value: Any) -> IPv4Network | IPv6Network:

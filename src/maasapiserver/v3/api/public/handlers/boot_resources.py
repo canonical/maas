@@ -5,7 +5,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import Depends, Header, Query, Request, Response
-from pydantic import AfterValidator, Field
+from pydantic import Field
 from starlette import status
 import structlog
 
@@ -75,6 +75,7 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.buffer import ChunkBuffer
 from maasservicelayer.utils.date import utcnow
+from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.utils.image_local_files import (
     AsyncLocalBootResourceFile,
     LocalStoreAllocationFail,
@@ -83,12 +84,6 @@ from maasservicelayer.utils.image_local_files import (
 from provisioningserver.utils.env import MAAS_ID
 
 logger = structlog.get_logger()
-
-
-def _no_duplicate_ids(ids: list[int]) -> list[int]:
-    if len(ids) != len(set(ids)):
-        raise ValueError("Duplicate IDs are not allowed.")
-    return ids
 
 
 class CustomImagesHandler(Handler):
@@ -459,9 +454,8 @@ class CustomImagesHandler(Handler):
     async def bulk_delete_custom_images(
         self,
         ids: Annotated[
-            list[int],
+            UniqueList[int],
             Field(min_length=1),
-            AfterValidator(_no_duplicate_ids),
         ] = Query(  # noqa: B008
             description="ids of custom images to delete", alias="id"
         ),

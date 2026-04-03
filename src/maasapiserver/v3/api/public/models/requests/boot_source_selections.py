@@ -2,10 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from typing import Annotated
-
 from fastapi import Query
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
@@ -16,6 +14,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionStatusClauseFactory,
 )
 from maasservicelayer.models.bootsources import BootSource
+from maasservicelayer.models.fields import UniqueList
 
 
 class BaseSelectionRequest(BaseModel):
@@ -43,9 +42,14 @@ class BootSourceSelectionRequest(BaseSelectionRequest):
 
 
 class SelectionRequest(BaseSelectionRequest):
+    model_config = ConfigDict(frozen=True)
+
     boot_source_id: int = Field(
         description="The id of the boot source that this selection refers to"
     )
+
+    def __hash__(self) -> int:
+        return hash((self.os, self.release, self.arch, self.boot_source_id))
 
     def to_builder(self) -> BootSourceSelectionBuilder:
         return BootSourceSelectionBuilder(
@@ -57,26 +61,10 @@ class SelectionRequest(BaseSelectionRequest):
 
 
 class BulkSelectionRequest(BaseModel):
-    selections: Annotated[
-        list[SelectionRequest],
-        Field(
-            description="Boot source selections to create",
-            min_length=1,
-        ),
-    ]
-
-    @model_validator(mode="after")
-    def check_unique_selections(self) -> "BulkSelectionRequest":
-        seen = set()
-        for s in self.selections:
-            key = (s.os, s.release, s.arch, s.boot_source_id)
-            if key in seen:
-                raise ValueError(
-                    f"Duplicate selection: os={s.os}, release={s.release}, "
-                    f"arch={s.arch}, boot_source_id={s.boot_source_id}"
-                )
-            seen.add(key)
-        return self
+    selections: UniqueList[SelectionRequest] = Field(
+        description="Boot source selections to create",
+        min_length=1,
+    )
 
     def get_builders(self) -> list[BootSourceSelectionBuilder]:
         return [s.to_builder() for s in self.selections]
