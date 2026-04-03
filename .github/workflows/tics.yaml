@@ -6,10 +6,18 @@ on:
     branches:
       - "tics-debug-*"
 
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   test-coverage-tics:
     name: Run tests with coverage and generate TiCS report
-    runs-on: [ self-hosted, reactive, linux, amd64, large-tiobe, jammy ]
+    runs-on: [ self-hosted, linux, amd64, large-tiobe ]
     timeout-minutes: 720
     container:
       image: ghcr.io/${{ github.repository }}-build-env:master
@@ -17,17 +25,9 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    defaults:
-      run:
-        shell: bash
-
-    permissions:
-      contents: read
-      packages: read
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0  # Important for TICS to analyze history
 
@@ -47,7 +47,7 @@ jobs:
           su ubuntu -c "go install github.com/AlekSi/gocov-xml@v1.1.0"
 
 
-      - name: Run python tests with coverage
+      - name: Run Python tests with coverage
         run: |
           COVERAGE_FILE=.coverage.legacy su ubuntu -c "bin/test.region.legacy --with-coverage --cover-branches || true"
           COVERAGE_FILE=.coverage.region su ubuntu -c "bin/test.region --with-coverage --cover-branches || true"
@@ -61,7 +61,7 @@ jobs:
           su ubuntu -c "mkdir -p $GITHUB_WORKSPACE/.coverage"
           su ubuntu -c "cp py-coverage.xml $GITHUB_WORKSPACE/.coverage/py-coverage.xml"
 
-      - name: Run go tests with coverage
+      - name: Run Go tests with coverage
         run: |
           su ubuntu -c "make test-go-cover || true"
 
@@ -73,19 +73,20 @@ jobs:
           su ubuntu -c '/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > coverage-host-info.xml'
           su ubuntu -c "cp coverage-host-info.xml $GITHUB_WORKSPACE/.coverage/coverage-host-info.xml"
 
+          cd $GITHUB_WORKSPACE/src/maasopenfga/
+          su ubuntu -c '/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > coverage-maasopenfga.xml'
+          su ubuntu -c "cp coverage-maasopenfga.xml $GITHUB_WORKSPACE/.coverage/coverage-maasopenfga.xml"
+
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-report
           path: .coverage
           retention-days: 1
 
       - name: Run TICS Analyzer
-        uses: tiobe/tics-github-action@v3
-        env:
-          # Add environment variables to optimize TICS performance
-          TICS_NUM_THREADS: 4  # Adjust based on your runner's capabilities
+        uses: tiobe/tics-github-action@a53037a6bb9f71b6a97cdeb0ac41632266804b9e # v3.8.0
         with:
           mode: ${{ github.event_name == 'pull_request' && 'client' || 'qserver' }}
           project: maas
@@ -93,10 +94,3 @@ jobs:
           ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
           installTics: true
           tmpdir: /tmp/tics
-
-      - name: Upload TICS Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: tics-report
-          path: /tmp/tics
-          retention-days: 7
