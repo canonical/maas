@@ -1,0 +1,92 @@
+name: Test coverage and TiCS Report
+on:
+  schedule:
+    - cron: "30 0 * * 6" # Weekly full analysis
+  push:
+    branches:
+      - "tics-debug-*"
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  test-coverage-tics:
+    name: Run tests with coverage and generate TiCS report
+    runs-on: [ self-hosted, linux, amd64, large-tiobe ]
+    timeout-minutes: 720
+    container:
+      image: ghcr.io/${{ github.repository }}-build-env:master
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0  # Important for TICS to analyze history
+
+      - name: Prepare container
+        run: |
+          chown -R ubuntu:ubuntu /home/ubuntu
+          chown -R ubuntu:ubuntu $(pwd)
+          git config --global --add safe.directory $(pwd)
+          make install-dependencies
+          su ubuntu -c "make build"
+
+      - name: Download dependencies
+        run: |
+          apt update
+          apt install -y python3-coverage
+          su ubuntu -c "go install github.com/axw/gocov/gocov@v1.1.0"
+          su ubuntu -c "go install github.com/AlekSi/gocov-xml@v1.1.0"
+
+      - name: Run Python tests with coverage
+        run: |
+          COVERAGE_FILE=.coverage.legacy su ubuntu -c "bin/test.region.legacy --with-coverage --cover-branches || true"
+          COVERAGE_FILE=.coverage.region su ubuntu -c "bin/test.region --with-coverage --cover-branches || true"
+          COVERAGE_FILE=.coverage.rack su ubuntu -c "bin/test.rack --with-coverage --cover-branches || true"
+          COVERAGE_FILE=.coverage.pytest su ubuntu -c "bin/pytest --cov=src --cov-branch -n auto --dist=load || true"
+          su ubuntu -c "python3-coverage combine .coverage.legacy .coverage.region .coverage.rack .coverage.pytest"
+          su ubuntu -c "python3-coverage report"
+          su ubuntu -c "python3-coverage xml -o py-coverage.xml"
+          # The .coverage file is created by python3-coverage. Should be deleted by it, but just to make sure
+          rm -f ./.coverage
+          su ubuntu -c "mkdir -p $GITHUB_WORKSPACE/.coverage"
+          su ubuntu -c "cp py-coverage.xml $GITHUB_WORKSPACE/.coverage/py-coverage.xml"
+
+      - name: Run Go tests with coverage
+        run: |
+          su ubuntu -c "make test-go-cover || true"
+
+          cd $GITHUB_WORKSPACE/src/maasagent/
+          su ubuntu -c "/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > $GITHUB_WORKSPACE/.coverage/coverage-maasagent.xml"
+
+          cd $GITHUB_WORKSPACE/src/host-info/
+          su ubuntu -c "/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > $GITHUB_WORKSPACE/.coverage/coverage-host-info.xml"
+
+          cd $GITHUB_WORKSPACE/src/maasopenfga/
+          su ubuntu -c "/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > $GITHUB_WORKSPACE/.coverage/coverage-maasopenfga.xml"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-report
+          path: .coverage
+          retention-days: 7
+
+      - name: Run TICS Analyzer
+        uses: tiobe/tics-github-action@a53037a6bb9f71b6a97cdeb0ac41632266804b9e # v3.8.0
+        with:
+          mode: ${{ github.event_name == 'pull_request' && 'client' || 'qserver' }}
+          project: maas
+          viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=GoProjects
+          ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
+          installTics: true
+          tmpdir: /tmp/tics
