@@ -398,7 +398,6 @@ class DeployWorkflow:
             task_queue=params.power_params.task_queue,
             start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
             retry_policy=RetryPolicy(
-                maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
                 maximum_attempts=3,
             ),
         )
@@ -416,7 +415,6 @@ class DeployWorkflow:
                 task_queue=params.power_params.task_queue,
                 start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(
-                    maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
                     maximum_attempts=3,
                 ),
             )
@@ -433,7 +431,6 @@ class DeployWorkflow:
                 task_queue=params.power_params.task_queue,
                 start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(
-                    maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
                     maximum_attempts=3,
                 ),
             )
@@ -475,7 +472,6 @@ class DeployWorkflow:
                 task_queue=params.power_params.task_queue,
                 start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(
-                    maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
                     maximum_attempts=3,
                 ),
             )
