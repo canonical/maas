@@ -41,8 +41,8 @@ jobs:
 
       - name: Download dependencies
         run: |
-          sudo apt update
-          sudo apt install -y python3-coverage
+          apt update
+          apt install -y python3-coverage
           su ubuntu -c "go install github.com/axw/gocov/gocov@v1.1.0"
           su ubuntu -c "go install github.com/AlekSi/gocov-xml@v1.1.0"
 
