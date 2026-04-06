@@ -6450,7 +6450,7 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         tags = [factory.make_name("tag") for _ in range(3)]
         nodes = [factory.make_Machine() for _ in range(3)]
         ifaces = [factory.make_Interface(tags=tags) for _ in range(3)]
-        for node, iface in zip(nodes, ifaces):
+        for node, iface in zip(nodes, ifaces, strict=True):
             node.current_config.interface_set.add(iface)
         handler = MachineHandler(user, {}, None)
         result = handler.filter_options({"group_key": "interfaces"})

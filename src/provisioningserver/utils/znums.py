@@ -10,7 +10,7 @@ digits. Put another way, it's a base-24 number with a custom alphabet.
 from itertools import count
 
 zchars = "34678abcdefghkmnpqrstwxy"
-znums = dict(zip(zchars, count(0)))
+znums = dict(zip(zchars, count(0), strict=False))
 
 
 def from_int(num, _chars=zchars):
@@ -26,6 +26,6 @@ def from_int(num, _chars=zchars):
 
 def to_int(zs, _nums=znums):
     total, div = 0, len(_nums)
-    for char, exp in zip(zs[::-1], count(0)):
+    for char, exp in zip(zs[::-1], count(0), strict=False):
         total += _nums[char] * (div**exp)
     return total
