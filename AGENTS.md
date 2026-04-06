@@ -1,73 +1,36 @@
 # AI Coding Agent Guidelines
 
-This document provides guidelines for AI coding agents (such as GitHub Copilot, Cursor, Cline, etc.) working on the MAAS project. These rules help ensure consistency, quality, and security across the codebase.
+Entry point for AI coding agents (GitHub Copilot, Cursor, Cline, etc.) working on the MAAS project. The canonical rules live in the `.github/` directory — read those files before proceeding.
 
-## Table of Contents
+## Canonical Instruction Files
 
-- [General Principles](#general-principles)
-- [Code Quality and Verbosity](#code-quality-and-verbosity)
-- [Security Requirements](#security-requirements)
-- [Documentation Standards](#documentation-standards)
-- [Collaboration Practices](#collaboration-practices)
-- [Conventional Commits](#conventional-commits)
-- [Python Guidelines](#python-guidelines)
-- [Go Guidelines](#go-guidelines)
-- [Subdirectory-Specific Rules](#subdirectory-specific-rules)
+Read these files before writing any code. They contain the authoritative rules for this codebase:
 
-## General Principles
+| File | Content |
+|------|---------|
+| `.github/copilot-instructions.md` | Core directives, interaction philosophy, code quality, security, subdirectory reference |
+| `.github/instructions/python.instructions.md` | Python coding guidelines (style, imports, async, DB, testing, service layer patterns) |
+| `.github/instructions/go.instructions.md` | Go coding guidelines (style, versions, testing, subdirectory specifics) |
 
-- Write code that is modular and testable
-- Prefer explicit over implicit code
-- Follow the project's established patterns and idioms
-- Suggest refactoring when code duplication is detected
-- Avoid generating large boilerplate unless explicitly requested
-- Always check existing code patterns in the same module before introducing new patterns
+## GitHub Copilot
 
-## Code Quality and Verbosity
+The files above are applied automatically in Copilot Chat sessions. The following task prompts are also available:
 
-Write clean, readable code that speaks for itself:
+| Prompt | Invoke with | Purpose |
+|--------|-------------|---------|
+| `.github/prompts/architect.prompt.md` | `/architect` | Architectural planning and design guidance |
+| `.github/prompts/code-review.prompt.md` | `/code-review` | Branch code review against `master` |
+| `.github/prompts/commit-message.prompt.md` | `/commit-message` | Write conventional commit messages |
 
-- **Better naming over comments**: Use clear, descriptive names for variables, functions, and tests instead of explaining unclear code with comments. Avoid abbreviations unless widely understood.
-- **Avoid trivial comments**: Don't comment on obvious logic or implementation details
-- **Concise documentation**: Keep it simple and straightforward
-- **Clean test code**: No verbose docstrings in tests; fixtures should be self-documenting without obvious comments
-- **Reasonable merge proposals**: Keep changes focused and reasonably sized
-- **Copyright headers**: Add copyright header to all new files (update year as needed):
-  ```
-  #  Copyright 2026 Canonical Ltd.  This software is licensed under the
-  #  GNU Affero General Public License version 3 (see the file LICENSE).
-  ```
+## Conventional Commits
 
-### When to Comment
+All commits and pull/merge requests must follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. Full specification with allowed types, scopes, and examples: `.github/prompts/commit-message.prompt.md`.
 
-Only add comments when:
-- Explaining *why* something is done (not *what* is being done)
-- Documenting non-obvious business logic or domain knowledge
-- Clarifying complex algorithms
-- Noting important gotchas or edge cases
-- Providing context that cannot be expressed in code
-
-## Security Requirements
-
-Across all parts of the codebase:
-
-- Never hardcode credentials, secrets, or tokens
-- Validate and sanitize all user inputs
-- Use parameterized queries for database access
-- Avoid deprecated or insecure libraries
-- Follow security best practices for the specific technology stack
-- Be especially careful with authentication and authorization code
-- Always use secure defaults for cryptographic operations
-
-## Documentation Standards
-
-- Keep inline comments focused on *why*, not *what*
-- Use concise docstrings for public functions, classes, and modules (purpose and usage, not implementation)
-- **Avoid redundancy and obvious statements**: Don't repeat what the code already shows or state the obvious
-- Update README files when functionality changes
-- Document API changes immediately
-- Keep architecture documentation synchronized with code changes
-- Include type hints where applicable
+Quick reference:
+- Format: `<type>[(scope)][!]: <description>`
+- Ticket reference mandatory for `fix`: `Resolves LP:2066936` (Launchpad), `Resolves GH:123` (GitHub)
+- Description: high-level summary only, 72 chars or less; no implementation detail lists
+- Body: explain the *why*, not the *what*
 
 ## Collaboration Practices
 
@@ -76,174 +39,6 @@ Across all parts of the codebase:
 - Reference related issues in commits and pull requests
 - Link to relevant documentation when making architectural changes
 - Ensure code is compatible with the project's current dependency versions
-
-## Conventional Commits
-
-All commits and pull/merge requests must follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. This ensures consistent, readable commit history and enables automated changelog generation.
-
-### Commit Message Format
-
-```
-<type>[(scope)][!]: <description>
-
-[body]
-
-[footer(s)]
-```
-
-- **type**: Kind of change (feat, fix, refactor, perf, test, build, chore, docs)
-- **scope**: Optional - affected component or system (e.g., bootresources, network, security, deps)
-- **!**: Add before colon if commit introduces breaking changes
-- **description**: Brief summary, aim for 72 characters or less
-- **body**: Optional - detailed explanation of the change
-- **footer**: Optional - metadata like `Resolves LP:2066936` or `BREAKING CHANGE: description`
-
-### Allowed Types
-
-| Type | Purpose |
-| :--- | :--- |
-| **feat** | A new feature |
-| **fix** | A bug fix |
-| **refactor** | Code change that doesn't fix a bug or add a feature |
-| **perf** | Performance improvement |
-| **test** | Adding or correcting tests |
-| **build** | Build, packaging, or dependency changes |
-| **chore** | Changes that don't fit other types (e.g., version bumps) |
-| **docs** | Documentation-only changes |
-
-### Allowed Scopes (MAAS)
-
-Use one of these scopes where applicable:
-
-- **bootresources**: Images download and synchronization
-- **dhcp**: DHCP service
-- **dns**: DNS service
-- **network**: Networking-related changes
-- **power**: Power drivers and machine power management
-- **security**: Security improvements or fixes
-- **storage**: Storage management
-- **tftp**: TFTP service
-- **deps**: Dependency changes — used as a scope under the `build` type (e.g., `build(deps): upgrade SQLAlchemy to 2.x`), not as a standalone type
-- **ci**: CI/CD changes
-
-### Guidelines
-
-- Ticket references are **mandatory** for `fix` commits. For all other types, include them when a relevant issue exists. Supported trackers: `Resolves LP:2066936` (Launchpad), `Resolves GH:123` (GitHub), `Resolves JIRA-123` (Jira).
-- **Description (title)**: Provide a high-level overview only. Do not enumerate individual changes or list implementation details. Focus on the problem being solved or the feature being added.
-- **Body**: Use the body to explain the reasoning, context, and any non-obvious implementation details. Keep it concise and focused on the "why" rather than exhaustively documenting the "what".
-
-### Examples
-
-Good commit with breaking change:
-```
-feat(bootresources)!: replace tcpdump with maas-netmon
-
-New binary `maas-netmon` is introduced for ARP network discovery.
-
-BREAKING CHANGE: Binary doesn't read PCAP format, thus it is not 
-possible to pass in stdin or file as an argument anymore.
-```
-
-Good bug fix:
-```
-fix(network): correct VLAN configuration parsing
-
-The parser was incorrectly handling tagged VLANs with non-standard
-MTU values, causing network interface initialization to fail.
-
-Resolves LP:2066936
-```
-
-Good feature:
-```
-feat(bootresources): check if controller has enough disk space
-
-Controllers were silently failing or retrying indefinitely when disk
-space was insufficient. This adds pre-flight checks to fail fast with
-a clear user-facing error rather than producing confusing partial state.
-```
-
-## Python Guidelines
-
-MAAS Python code must adhere to the following standards:
-
-### Code Style
-
-- **Line length**: Maximum 79 characters (as configured in `pyproject.toml`)
-- **Indentation**: 4 spaces (no tabs)
-- **Quotes**: Use double quotes for strings
-- **Formatting**: Use Ruff formatter (configured in `pyproject.toml`)
-- **Linting**: Follow Ruff linting rules (pycodestyle, pyflakes, isort, flake8-bugbear)
-
-### Python Version Compatibility
-
-- Target Python 3.9+ (check `pyproject.toml` for exact supported versions)
-- Avoid using features from Python versions not yet supported
-- Use type hints from `typing` module for compatibility
-
-### Import Organization
-
-Follow the isort configuration in `pyproject.toml`:
-
-1. Standard library imports
-2. Third-party library imports
-3. MAAS first-party imports (in this order):
-    - `apiclient`
-    - `maasapiserver`
-    - `maascli`
-    - `maascommon`
-    - `maasserver`
-    - `maasservicelayer`
-    - `maastesting`
-    - `metadataserver`
-    - `provisioningserver`
-
-### Type Hints
-
-- Use type hints for function signatures
-- For new code in `maascommon`, `maasservicelayer`, `maasapiserver`, and `maastemporalworker`, ensure Pyright compliance
-- Use Pydantic models for data validation where appropriate
-
-### Async Code
-
-- Use `async`/`await` patterns in asynchronous contexts
-- Be aware of the difference between sync and async database access patterns
-- In v3 API code, prefer async patterns
-- In legacy Django code, use `deferToDatabase` for database operations in async contexts
-
-### Database Access
-
-- **New code**: Use SQLAlchemy Core (not ORM) in the service layer
-- **Legacy code**: Continue using Django ORM where already established
-- Always use parameterized queries
-- Never construct SQL with string concatenation
-- Use transactions appropriately
-
-### Testing
-
-- Write tests using `pytest` for new code
-- Follow existing test patterns in the subdirectory
-- Use appropriate fixtures (`db_connection`, `services_mock`, etc.)
-- Mock external dependencies appropriately
-- **Avoid trivial assertions**: Don't test obvious behavior or framework functionality
-- **Keep tests minimal**: Write only necessary tests that verify meaningful behavior
-
-### Common Patterns
-
-- Use builders (Pydantic models) for creating/updating entities in the service layer
-- Implement `ClauseFactory` for reusable query filters
-- Use `QuerySpec` for filtering in repository methods
-- Follow the three-tier architecture in v3 API code (repository → service → API)
-
-## Go Guidelines
-
-MAAS Go code (primarily in `maasagent` and `host-info`) follows the standards documented in [`go-style-guide.md`](go-style-guide.md).
-
-Key points:
-- Follow standard Go formatting (`gofmt` / `go fmt`)
-- Check `go.mod` for Go version (currently Go 1.24.4 for `maasagent`, Go 1.18 for `host-info`)
-- Use table-driven tests where appropriate
-- Follow the microcluster patterns in `maasagent`
 
 ## Subdirectory-Specific Rules
 
@@ -385,7 +180,6 @@ Key points:
     - OpenTelemetry tracing
 - **Testing**: Use Go testing with testify
 - **Dependencies**: Check `go.mod` before adding dependencies
-- **Notes**: Modern Go service; follow Go best practices
 
 ### `src/host-info`
 
@@ -396,16 +190,13 @@ Key points:
     - Hardware detection and reporting
     - Minimal dependencies
 - **Testing**: Standard Go tests
-- **Notes**: Standalone utility for hardware information gathering
+- **Notes**: Standalone utility; do not introduce new dependencies without good reason
 
 ### `src/perftests`
 
-**Purpose**: Performance testing
+**Purpose**: Performance benchmarks
 
 - **Technology**: Python
-- **Key Patterns**:
-    - Performance benchmarks
-    - Load testing scenarios
 - **Notes**: Add performance tests for critical paths
 
 ### `src/tests`
@@ -413,46 +204,62 @@ Key points:
 **Purpose**: Integration and cross-component tests
 
 - **Technology**: Python, pytest
-- **Key Patterns**:
-    - Integration tests
-    - End-to-end scenarios
 - **Notes**: Tests that span multiple components
 
 ## Excluded Directories
 
-The following directories should be ignored by AI coding agents:
+Do not read or modify:
 
 - `src/maas-offline-docs`: Documentation artifacts
 - `src/maasui`: UI components (separate frontend codebase)
 
 ## Running Checks
 
-Before submitting code, ensure:
+### Formatting
+
+Prefer the specialized format target that matches the files you changed.
+
+| Target | When to use |
+|--------|-------------|
+| `make format` | Full format pass — when multiple categories are affected |
+| `make format-py` | Any Python change |
+| `make format-go` | Any Go change |
+
+### Linting
+
+Prefer the specialized lint target that matches the files you changed — it is faster and gives more focused output. Fall back to `make lint` when multiple categories are affected.
+
+| Target | When to use |
+|--------|-------------|
+| `make lint` | Full lint pass — run before submitting a PR or when multiple categories are affected |
+| `make lint-py` | Any Python change (runs Ruff linter + formatter check) |
+| `make lint-py-imports` | After adding, removing, or reordering imports in Python files |
+| `make lint-py-builders` | After modifying builder classes or Pydantic create/update models |
+| `make lint-py-linefeeds` | If you suspect mixed or incorrect line endings in Python files |
+| `make lint-go` | Any Go change |
+| `make lint-go-fix` | Go change where you want auto-fix applied (runs `gofmt`/`golangci-lint --fix`) |
+| `make lint-oapi` | After modifying any OpenAPI spec file (e.g. in `src/maasapiserver`) |
+| `make lint-shell` | After modifying any shell script |
+
+### Tests
+
+Prefer the specialized test target that matches the files you changed.
+
+| Target | When to use |
+|--------|-------------|
+| `make test` | Full test suite — run before submitting a PR or when multiple components are affected |
+| `make test-py` | Any Python change |
+| `make test-go` | Any Go change |
 
 ```bash
-# Python linting and formatting
-make lint
-
-# Python tests
-make test
-
-# Go tests (in respective directories)
-cd src/maasagent && make test
-cd src/host-info && go test ./...
+cd src/maasagent && make test    # Go agent tests (alternative)
+cd src/host-info && go test ./...  # host-info tests
 ```
 
 ## Additional Resources
 
 - Python configuration: `pyproject.toml`
+- Go style guide: `go-style-guide.md`
 - Go configuration: `src/maasagent/go.mod`, `src/host-info/go.mod`
 - Service layer architecture: `src/maasservicelayer/README.md`
 - Database migrations: `src/maasservicelayer/db/alembic/`
-
-## Questions and Clarifications
-
-When in doubt:
-
-1. Check existing code in the same subdirectory for patterns
-2. Review the subdirectory's README if available
-3. Consult `pyproject.toml` or `go.mod` for configuration
-4. Ask the human reviewer for clarification on architectural decisions
