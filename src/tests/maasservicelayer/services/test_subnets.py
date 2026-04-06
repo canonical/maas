@@ -268,7 +268,7 @@ class TestSubnetsService:
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )
-        mock_dnspublications.create_for_config_update(
+        await mock_dnspublications.create_for_config_update(
             source=f"added subnet {subnet.cidr}",
             action=DnsUpdateAction.RELOAD,
             zone="",

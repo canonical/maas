@@ -5,7 +5,12 @@ from ipaddress import IPv4Network, IPv6Network
 import re
 from typing import Annotated, Any, Hashable, TypeVar
 
-from pydantic import AfterValidator, BeforeValidator, Field, GetCoreSchemaHandler
+from pydantic import (
+    AfterValidator,
+    BeforeValidator,
+    Field,
+    GetCoreSchemaHandler,
+)
 from pydantic_core import core_schema, PydanticCustomError
 
 from maascommon.fields import MAC_FIELD_RE, normalise_macaddress

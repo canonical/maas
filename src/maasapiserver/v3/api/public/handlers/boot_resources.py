@@ -72,10 +72,10 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.buffer import ChunkBuffer
 from maasservicelayer.utils.date import utcnow
-from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.utils.image_local_files import (
     AsyncLocalBootResourceFile,
     LocalStoreAllocationFail,

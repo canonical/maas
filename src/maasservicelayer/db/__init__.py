@@ -29,8 +29,8 @@ class DatabaseConfig:
         )
 
 
-def custom_json_serializer(*args, **kwargs):
-    return json.dumps(*args, default=to_jsonable_python, **kwargs)
+def custom_json_serializer(obj, *args, **kwargs):
+    return json.dumps(to_jsonable_python(obj), *args, **kwargs)
 
 
 class Database:

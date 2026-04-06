@@ -43,8 +43,8 @@ class HardwareDevice(MaasTimestampedBaseModel):
     bus_number: int
     device_number: int
     # numa_node_id: int
-    # physical_interface_id: Optional[int]
-    # physical_blockdevice_id: Optional[int]
+    # physical_interface_id: int | None
+    # physical_blockdevice_id: int | None
     # node_config_id: int
 
     @field_validator("vendor_id", "product_id", mode="after")

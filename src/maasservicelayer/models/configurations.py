@@ -60,7 +60,7 @@ class Config(BaseModel, Generic[T]):
     name: ClassVar[str]
     description: ClassVar[str]
     help_text: ClassVar[str | None] = None
-    default: ClassVar
+    default: ClassVar[Any]
 
     # If the config should be exposed to the users via API.
     is_public: ClassVar[bool] = True

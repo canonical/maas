@@ -15,7 +15,7 @@ class ErrorBodyResponse(BaseModel):
     kind: str = Field(default="Error")
     code: int
     message: str
-    details: Optional[list[BaseExceptionDetail]] = None
+    details: list[BaseExceptionDetail] | None = None
 
 
 class BadRequestBodyResponse(ErrorBodyResponse):
