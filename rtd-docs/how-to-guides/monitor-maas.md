@@ -10,7 +10,7 @@ From version 3.2 onward, MAAS simplifies the integration process with key Grafan
 
 Below is a reference observability stack featuring Prometheus for metric collection and alerting, Loki for log aggregation and alerts, Grafana for visualization, Alertmanager for handling notifications, and Grafana Agent as the telemetry collector.
 
-![observability stack](/images/monitor-maas/observability.webp)
+![observability stack](/images/how-to-guides/monitor-maas/observability.webp)
 
 This section walks you through setting up the stack to ingest telemetry data and trigger alerts for failures.
 

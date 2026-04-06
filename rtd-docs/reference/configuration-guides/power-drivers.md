@@ -210,7 +210,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 
 Consider a machine backed by VM. Below, a 'Power type' of `Virsh` has been selected, and the 'Power address' of `qemu+ssh://ubuntu@192.168.1.2/system` has been entered (replace values as appropriate). The value of 'Power ID' is the VM domain (guest) name, here `node2`.
 
-![Power configuration using 'Power type' of Virsh](/images/power-drivers/example-virsh.webp)
+![Power configuration using 'Power type' of Virsh](/images/reference/configuration-guides/power-drivers/example-virsh.webp)
 
 > **Pro tip**: The machine's hostname -- according to MAAS -- is a randomly chosen string (here `dear.ant`). You should change this hostname to something descriptive, that helps you remember why this machine is in your MAAS network.
 
