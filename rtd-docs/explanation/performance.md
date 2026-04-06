@@ -18,13 +18,13 @@ To keep MAAS fast, we run continuous performance tests that mimic real-world dat
 
 - Tooling: Jenkins executes the scenarios, results are stored in a database, and we review them via dashboards.
 
-![Performance Monitoring Snapshot](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/d/d8a0887dd9d6f01311966c10f5d9093feb76806f.png)
+![Performance Monitoring Snapshot](/images/performance/performance_monitoring.webp)
 
 This lets us see how new changes scale before they reach users. We also compare development and stable releases to spot regressions early.
 
 Example result: In MAAS 3.2, machine listings through the REST API loaded 32% faster than in 3.1.
 
-![Dashboard](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/f/f5f831164e70273e81b4120b442469f665e16b47.png)
+![Dashboard](/images/performance/dashboard.webp)
 
 ## Work done so far
 
