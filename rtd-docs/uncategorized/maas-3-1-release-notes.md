@@ -40,15 +40,15 @@ LXD clusters in MAAS allow you to view and manage existing VM host clusters and 
 
 MAAS assumes you have already configured an LXD cluster. You then need to configure the cluster with a single trust which MAAS uses to communicate it. Adding a LXD cluster is like adding a single LXD host: you provide authentication in a similar way, and then select a project. MAAS then connects to the provided host to discover other hosts within the cluster, renaming the cluster host with a name you supply.
 
-![MAAS dashboard with "Add LXD host" circled in red](https://discourse.maas.io/uploads/default/original/2X/3/3aba7d6e30eda61623f66cb162ca85814128864a.png)
+![MAAS dashboard with "Add LXD host" circled in red](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/optimized/2X/3/3aba7d6e30eda61623f66cb162ca85814128864a_2_690x231.png)
 
 First, add an LXD KVM:
 
-!["Credentials" tab for LXD addition](https://discourse.maas.io/uploads/default/original/2X/c/c7d35ad0d8e1d9038dd39a8965307a49f57d453a.png)
+!["Credentials" tab for LXD addition](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/optimized/2X/c/c7d35ad0d8e1d9038dd39a8965307a49f57d453a_2_690x284.png)
 
 Next, set up credentials and let LXD trust your MAAS certificate:
 
-!["Authentication" tab for LXD addition](https://discourse.maas.io/uploads/default/original/2X/b/b3ea7559edc066e899e41f41846a268b2459b1a5.png)
+!["Authentication" tab for LXD addition](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/optimized/2X/b/b3ea7559edc066e899e41f41846a268b2459b1a5_2_690x327.png)
 
 Once connected, you can select the project in that cluster:
 
@@ -56,25 +56,19 @@ Once connected, you can select the project in that cluster:
 
 If the KVM host address is part of a cluster, it will show as a cluster on the listing page.
 
-![image](https://discourse.maas.io/uploads/default/original/2X/0/069bae193cbb09ead3c811fd1a1d28582b946ff4.png)
-
 #### How to compose VMs in LXD clusters
 
 Composing a VM in a LXD cluster via MAAS is similar to composing a VM for a single VM host. MAAS does not provide any sort of scheduling of said VM, and will instead target the host you select for composing the VM.
 
 From the KVM host listing page, click on the `+` icon to add a VM to a specific host:
 
-![KVM host listing page, circling a "plus" icon on the lower right](https://discourse.maas.io/uploads/default/original/2X/2/219a302c245992a390cd44ada341cfe5a93a7b5a.png)
-
-If you are in a specific KVM host page, you can click `+ add virtual machine`:
-
-![KVM host listing page, circling a "plus" icon on the lower right](https://discourse.maas.io/uploads/default/original/2X/2/219a302c245992a390cd44ada341cfe5a93a7b5a.png)
+![KVM host listing page, circling a "plus" icon on the lower right](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/optimized/2X/2/219a302c245992a390cd44ada341cfe5a93a7b5a_2_690x375.png)
 
 #### How to delete LXD clusters
 
 To delete an LXD cluster, simply delete any VM host within the cluster:
 
-![Cluster settings page, highlighting "Remove KVM" option with a red circle](https://discourse.maas.io/uploads/default/original/2X/e/ea7cd2476ae8cafe6d8e78f2b029d0cd41afa592.png)
+![Cluster settings page, highlighting "Remove KVM" option with a red circle](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/optimized/2X/e/ea7cd2476ae8cafe6d8e78f2b029d0cd41afa592_2_690x434.png)
 
 ### Enlist deployed machines
 
@@ -247,15 +241,13 @@ Assume you have two machines available, like this:
 
 Select the machine *to which you want to clone configuration*, and select "Clone from..."
 
-![Dropdown with clone from](https://discourse.maas.io/uploads/default/original/2X/b/b4e42a59f1d4bc6d63f2cd24d77316eea3aada1b.png)
+![Dropdown with clone from](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/optimized/2X/b/b4e42a59f1d4bc6d63f2cd24d77316eea3aada1b_2_690x388.png)
 
-Under "1. Select the source machine" -- choose a machine from the attached list:
-
-![Source machine selection](https://discourse.maas.io/uploads/default/original/2X/2/287bbf3db4bbc3253a976ecde8965c341fc1bee3.png)
+Under "1. Select the source machine" -- choose a machine from the attached list.
 
 Under "2. Select what to clone", choose "Network", "Storage", or both (here, we've chosen "Storage"):
 
-![Page divided in two parts: 1. Select the source machine, 2. Select what to close](https://discourse.maas.io/uploads/default/original/2X/6/622afe3c0bcd4775ef4c19460cf0f1f480c11efb.png)
+![Page divided in two parts: 1. Select the source machine, 2. Select what to close](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/optimized/2X/6/622afe3c0bcd4775ef4c19460cf0f1f480c11efb_2_690x250.png)
 
 Click "Clone to machine". MAAS will report the status of the attempt.
 
@@ -297,11 +289,11 @@ The imported key must not have a passphrase; otherwise, MAAS will not be able to
 
 Suppose that you're creating a new LXD KVM, beginning from the top tab in MAAS:
 
-![MAAS top tab, containing an existing lxd entry example](upload://5Rn9eea7n648iKo1sjohP7r5ARY.png)
+![MAAS top tab, containing an existing lxd entry example](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/2/291367633f5724005127f7ced73886c5094ccb8a.png)
 
 Select "Add KVM", which brings you to the definition screen:
 
-![definition screen requiring name, zone, resource pool and lxd address](upload://2uPyI3yDteiWizFUhOM95C5B1Hg.png)
+![definition screen requiring name, zone, resource pool and lxd address](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/1/11808fe056574856ab292338253017891b846fa6.png)
 
 From here, you'll continue by choosing your authentication method.
 
@@ -309,7 +301,7 @@ From here, you'll continue by choosing your authentication method.
 
 If you choose "Generate new certificate", as shown above, you'll come to a screen like this one:
 
-![certificate screen containing a lxc command to run and a "Use trust password" checkbox](upload://vc5IuTP53xKYzCDYkkPhLxcZFUE.png)
+![certificate screen containing a lxc command to run and a "Use trust password" checkbox](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/d/daa1523ca54177ce677df5f74880e72dd8a60954.png)
 
 You can still choose to use the LXD trust password (entered when you ran `lxd init` during LXD installation). You can also, though, choose to use the certificate MAAS has just generated for you. To do that, select the entire contents of the text box, copy it, and paste it into a terminal window -- then hit "Enter":
 
@@ -349,7 +341,7 @@ $
 
 The certificate will be created for you. When you click the "Check authentication" button, you will be brought to this screen:
 
-![image](upload://5J5yTzf8p1wHMmyaB8Af6rRBTPC.png)
+![Project selection screen under the 'Add KVM' flow](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/2/2823b077918567d874bfab8f93d45556c2cf6a24.png)
 
 from which you can continue with normal LXD KVM setup.
 
@@ -357,11 +349,9 @@ from which you can continue with normal LXD KVM setup.
 
 Suppose that, after identifying your LXD KVM, you choose "Provide certificate and private key". When you do so, the screen will extend to allow you to upload these items:
 
-![image](upload://5J5yTzf8p1wHMmyaB8Af6rRBTPC.png)
+![Project selection screen under the 'Add KVM' flow](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/2/2823b077918567d874bfab8f93d45556c2cf6a24.png)
 
-Paste or upload your certificate and private key, then click "Next" to validate your authentication criteria, before continuing through the normal LXD KVM creation process. If your certificate and/or key aren't usable for some reason, MAAS will return an error (in this case, the private key was entered as gibberish, to produce an error output):
-
-![image](https://discourse.maas.io/uploads/default/original/2X/2/286e648de20c9db3bb6c56c5855647c23a5d9e2e.png)
+Paste or upload your certificate and private key, then click "Next" to validate your authentication criteria, before continuing through the normal LXD KVM creation process. If your certificate and/or key aren't usable for some reason, MAAS will return an error.
 
 ### Improved image sync performance
 
