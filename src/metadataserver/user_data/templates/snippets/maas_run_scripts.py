@@ -344,13 +344,14 @@ def get_machine_token(maas_url, admin_token, system_id):
                 reason=e.reason, details=e.read().decode("utf8")
             )
         )
-    creds = json.loads(response.read().decode("utf8"))
-    if creds is None:
-        raise ExitError(
-            "Failed getting machine credentials: Credentials not found"
-        )
-    creds["endpoint"] = maas_url + "/metadata/status/" + system_id
-    return creds
+    with closing(response):
+        creds = json.loads(response.read().decode("utf8"))
+        if creds is None:
+            raise ExitError(
+                "Failed getting machine credentials: Credentials not found"
+            )
+        creds["endpoint"] = maas_url + "/metadata/status/" + system_id
+        return creds
 
 
 def write_token(credentials, path=None):
@@ -449,14 +450,15 @@ def action_register_machine(ns):
                 reason=e.reason, details=e.read().decode("utf8")
             )
         )
-    result = json.loads(response.read().decode("utf8"))
-    system_id = result["system_id"]
-    print(
-        "Machine {hostname} created with system ID: {system_id}".format(
-            hostname=hostname,
-            system_id=system_id,
+    with closing(response):
+        result = json.loads(response.read().decode("utf8"))
+        system_id = result["system_id"]
+        print(
+            "Machine {hostname} created with system ID: {system_id}".format(
+                hostname=hostname,
+                system_id=system_id,
+            )
         )
-    )
 
     creds = get_machine_token(maas_url, ns.admin_token, system_id)
     creds_path = Path(ns.base_dir) / (hostname + "-creds.yaml")
