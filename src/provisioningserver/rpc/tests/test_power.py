@@ -405,7 +405,7 @@ class TestPowerQueryAsync(MAASTestCase):
         report_power_state.assert_has_calls(
             [
                 call(query, node["system_id"], node["hostname"])
-                for query, node in zip(queries, nodes)
+                for query, node in zip(queries, nodes, strict=True)
             ]
         )
 

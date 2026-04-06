@@ -1084,7 +1084,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
         for created_machine, discovered_machine in zip(
-            created_machines, discovered.machines
+            created_machines, discovered.machines, strict=True
         ):
             self.assertEqual(
                 created_machine.architecture, discovered_machine.architecture
@@ -1113,6 +1113,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             for created_device, (idx, discovered_device) in zip(
                 created_machine.physicalblockdevice_set,
                 enumerate(discovered_machine.block_devices),
+                strict=True,
             ):
                 self.assertEqual(
                     created_device.name,
@@ -1135,6 +1136,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             for created_if, (idx, discovered_if) in zip(
                 created_machine.current_config.interface_set.all(),
                 enumerate(discovered_machine.interfaces),
+                strict=True,
             ):
                 self.assertEqual(created_if.name, f"eth{idx}")
                 self.assertEqual(
@@ -2010,7 +2012,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             .distinct()
         )
         for created_machine, discovered_machine in zip(
-            created_machines, discovered.machines
+            created_machines, discovered.machines, strict=True
         ):
             self.assertEqual(
                 created_machine.architecture, discovered_machine.architecture
@@ -2039,6 +2041,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             for created_device, (idx, discovered_device) in zip(
                 created_machine.physicalblockdevice_set,
                 enumerate(discovered_machine.block_devices),
+                strict=True,
             ):
                 self.assertEqual(
                     created_device.name,
@@ -2061,6 +2064,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             for created_if, (idx, discovered_if) in zip(
                 created_machine.current_config.interface_set.all(),
                 enumerate(discovered_machine.interfaces),
+                strict=True,
             ):
                 self.assertEqual(created_if.name, f"eth{idx}")
                 self.assertEqual(

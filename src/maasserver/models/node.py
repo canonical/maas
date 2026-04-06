@@ -4721,7 +4721,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Copy the virtual block devices for the created filesystem group.
         filesystem_map = {}
-        for source_vd, dest_vd in zip(source_vds, dest_vds):
+        for source_vd, dest_vd in zip(source_vds, dest_vds, strict=True):
             _clone_object(
                 dest_vd,
                 uuid=None,

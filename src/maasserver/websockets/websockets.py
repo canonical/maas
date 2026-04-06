@@ -118,7 +118,7 @@ def _mask(buf: bytes, key: bytes) -> bytes:
     @rtype: C{str}
     @return: A masked buffer of bytes.
     """
-    return bytes((b ^ k) for b, k in zip(buf, cycle(key)))
+    return bytes((b ^ k) for b, k in zip(buf, cycle(key), strict=False))
 
 
 def _makeFrame(buf: bytes, opcode, fin: bool, mask: bytes = None) -> bytes:
