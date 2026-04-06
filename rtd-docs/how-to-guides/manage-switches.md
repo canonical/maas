@@ -24,6 +24,7 @@ curl -X GET "http://<maas-server>:5248/MAAS/a/v3/switches" \
 ```
 
 Example response:
+
 ```json
 {
   "kind": "SwitchesList",
@@ -61,6 +62,7 @@ Register a switch in MAAS by providing its management interface MAC address and 
 ### API
 
 **Register a switch without an image:**
+
 ```bash
 curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
   -H "Authorization: Bearer <api-token>" \
@@ -71,6 +73,7 @@ curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
 ```
 
 **Register a switch with an image:**
+
 ```bash
 curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
   -H "Authorization: Bearer <api-token>" \
@@ -82,6 +85,7 @@ curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
 ```
 
 The `image` field accepts two formats:
+
 - Full format: `onie/vendor-version` (e.g., `onie/mellanox-3.8.0`)
 - Short format: `vendor-version` (e.g., `mellanox-3.8.0`) — automatically prefixed with `onie/`
 
@@ -101,6 +105,7 @@ curl -X PATCH "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
 ```
 
 To remove the image assignment:
+
 ```bash
 curl -X PATCH "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
   -H "Authorization: Bearer <api-token>" \
@@ -146,6 +151,7 @@ curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
 ```
 
 **Important parameters:**
+
 - `name` header: Must start with `onie/` followed by a descriptive name (e.g., `onie/mellanox-3.8.0`)
 - `architecture` header: Typically `amd64/generic` for x86 switches
 - `file-type` header: Use `self-extracting` for NOS installers
@@ -206,6 +212,7 @@ MAAS automatically handles the DHCP configuration needed for ONIE. When a switch
 ### Initial switch deployment
 
 1. Upload the required NOS image:
+
    ```bash
    SHA256=$(sha256sum /path/to/installer.bin | awk '{print $1}')
    curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
@@ -220,6 +227,7 @@ MAAS automatically handles the DHCP configuration needed for ONIE. When a switch
    ```
 
 2. Register the switch with its target image:
+
    ```bash
    curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
      -H "Authorization: Bearer <api-token>" \
@@ -239,10 +247,12 @@ MAAS automatically handles the DHCP configuration needed for ONIE. When a switch
 ### Switch doesn't receive installer URL
 
 **Check network connectivity:**
+
 - Verify the switch's management interface is connected to a network where MAAS provides DHCP
 - Confirm DHCP is enabled on the appropriate subnet in MAAS
 
 **Check switch registration:**
+
 ```bash
 curl -X GET "http://<maas-server>:5248/MAAS/a/v3/switches" \
   -H "Authorization: Bearer <api-token>"
@@ -253,18 +263,21 @@ curl -X GET "http://<maas-server>:5248/MAAS/a/v3/switches" \
 ### Installer not found error
 
 **Verify the image is assigned:**
+
 ```bash
 curl -X GET "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
   -H "Authorization: Bearer <api-token>"
 ```
 
 **Check the boot resource exists:**
+
 ```bash
 curl -X GET "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
   -H "Authorization: Bearer <api-token>" | jq '.items[] | select(.name | startswith("onie/"))'
 ```
 
 **Ensure the image file was downloaded:**
+
 ```bash
 ls -lh /var/lib/maas/boot-resources/current/
 ```
@@ -277,10 +290,10 @@ From there it is generally simple to select the correct MAC address that ONIE is
 
 ### Wrong interface MAC registered
 
-
 If you registered the wrong MAC address:
 
 1. Delete the incorrect switch entry:
+
    ```bash
    curl -X DELETE "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
      -H "Authorization: Bearer <api-token>"
