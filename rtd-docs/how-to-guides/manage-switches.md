@@ -314,4 +314,3 @@ If you registered the wrong MAC address:
 
 - [ONIE Project Documentation](https://opencomputeproject.github.io/onie/)
 - [MAAS Images](manage-images.md)
-- [Switch Provisioning Concepts](../explanation/switch-provisioning.md)
