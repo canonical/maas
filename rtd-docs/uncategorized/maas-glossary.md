@@ -207,7 +207,7 @@ You could describe a fabric as a VLAN namespace. It's a switch or a combination 
 
 The following conceptual diagram shows two fabrics in the same data centre or region, each using distinct VLAN ranges and their associated subnets:
 
-![image](/images/glossary/maas-region-diagram.webp)
+![Conceptual diagram showing two fabrics in a data centre, each with distinct VLAN ranges and associated subnets](/images/glossary/maas-region-diagram.webp)
 
 #### Failed Commissioning
 
@@ -276,7 +276,7 @@ This action marks a machine as locked, preventing the user from performing actio
 
 A locked machine has a padlock symbol next to its name.
 
-![image](/images/glossary/locked-machine.webp)
+![A machine listing showing a padlock symbol next to the name of a locked machine](/images/glossary/locked-machine.webp)
 
 ### M
 
@@ -417,7 +417,7 @@ Like before, a public GPG key will be needed. Also get this from the PPA's Launc
 
 To add this PPA, then, hit the 'Add repository' button and fill in the fields. Before saving, the form should look something like this:
 
-![image](/images/glossary/add-repository.webp)
+![Add repository form filled in with PPA details including GPG key and repository URL](/images/glossary/add-repository.webp)
 
 Click 'Add repository' to save the configuration.
 
@@ -542,7 +542,7 @@ An Ubuntu package repository is a repository that makes available Ubuntu package
 
 MAAS comes equipped with the official Ubuntu repository `archive.ubuntu.com` as well as the equivalent for architectures other than i386 and amd64: `ports.ubuntu.com` as is evident in the default configuration below:
 
-![image](/images/glossary/default-package-repositories.webp)
+![Default package repositories configuration showing archive.ubuntu.com and ports.ubuntu.com entries](/images/glossary/default-package-repositories.webp)
 
 Adding a third-party repository is elementary. Begin by basing the configuration on a line you would typically place in a system's `/etc/apt/sources.list` file. For instance, for the Google Chrome repository, the line would look like:
 
@@ -560,7 +560,7 @@ To add this repository, then, hit the 'Add repository' button and fill in the fi
 
 Before saving, the form should look very similar to this:
 
-![image](/images/glossary/add-repository-form.webp)
+![Add repository form filled in with Google Chrome repository details including GPG key and sources.list entry](/images/glossary/add-repository-form.webp)
 
 Click 'Add repository' to save the configuration.
 
