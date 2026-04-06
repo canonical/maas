@@ -25,6 +25,12 @@ Requirements:
 - 16 GB RAM, 4-core CPU with virtualization support (VT or AMD-V)
 - 30 GB free disk space
 
+If you already have MAAS running locally, stop it:
+
+```
+sudo snap stop maas
+```
+
 Install and verify Multipass:
 
 ```
