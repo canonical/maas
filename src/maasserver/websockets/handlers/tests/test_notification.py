@@ -219,7 +219,7 @@ class TestNotificationHandlerListeningScenarios(MAASServerTestCase):
     scenarios_notifications = (
         (
             "to-user=%s;to-users=%s;to-admins=%s" % scenario,
-            dict(zip(("to_user", "to_users", "to_admins"), scenario)),
+            dict(zip(("to_user", "to_users", "to_admins"), scenario, strict=False)),
         )
         for scenario in product(
             (False, True, "Other"),  # To specific user.

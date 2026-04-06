@@ -853,6 +853,7 @@ class TestImageSyncService:
                     "oracular/amd64/20250404/ga-24.10/generic/boot-kernel",
                     "oracular/amd64/20250404/squashfs",
                 ],
+                strict=True,
             )
         ]
 
@@ -945,6 +946,7 @@ class TestImageSyncService:
                     "bootloaders/uefi/amd64/20210819.0/grub2-signed.tar.xz",
                     "bootloaders/uefi/amd64/20210819.0/shim-signed.tar.xz",
                 ],
+                strict=True,
             )
         ]
 

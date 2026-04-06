@@ -695,7 +695,7 @@ def _match_compose_value(field, values):
     return [
         reduce(
             lambda x, y: x.__and__(Q(**{f"{y[0]}": y[1]})),
-            zip(subfields, v.split(".", 1)),
+            zip(subfields, v.split(".", 1), strict=False),
             Q(),
         )
         for v in values
