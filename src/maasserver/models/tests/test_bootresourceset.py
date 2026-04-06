@@ -130,7 +130,7 @@ class TestBootResourceSet(MAASServerTestCase):
         for _ in range(3):
             filetype = types.pop()
             size = file_sizes.pop()
-            sync_status = zip(regions, repeat(size))
+            sync_status = zip(regions, repeat(size), strict=False)
             factory.make_boot_resource_file_with_content(
                 resource_set,
                 filename=filetype,

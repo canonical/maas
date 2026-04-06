@@ -45,7 +45,7 @@ def allocate_ports(*addrs):
     """
     sockets = [socket.socket() for addr in addrs]
     try:
-        for addr, sock in zip(addrs, sockets):
+        for addr, sock in zip(addrs, sockets, strict=True):
             sock.bind((addr, 0))
         return [get_port(sock) for sock in sockets]
     finally:
