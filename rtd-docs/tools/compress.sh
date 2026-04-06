@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Compresses images for intended for docs usage.
+# Compresses images intended for docs usage.
 
 if [ -z "$1" ]; then
   echo "Usage: ./compress.sh filename.png"
