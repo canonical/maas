@@ -15,6 +15,7 @@ from temporalio.service import RPCError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
+from maascommon.constants import NODE_TIMEOUT
 from maascommon.enums.node import NodeStatus
 from maascommon.workflows.deploy import (
     DEPLOY_MANY_WORKFLOW_NAME,
@@ -966,8 +967,8 @@ class TestDeployManyWorkflow:
         await create_test_interface_dict(fixture, node=machine, ips=[ip])
         await create_test_blockdevice_entry(fixture, node=machine)
 
-        deploy_timeout_minutes = 60
-        deploy_many_timeout_minutes = 70
+        deploy_timeout_minutes = 2 * NODE_TIMEOUT
+        deploy_many_timeout_minutes = 2 * NODE_TIMEOUT + 10
 
         calls = defaultdict(list)
 
