@@ -246,7 +246,7 @@ class TestImageManifestsService:
         self.repository.get.return_value = TEST_IMAGE_MANIFEST
         self.repository.update.return_value = TEST_IMAGE_MANIFEST
         # return an updated manifest from the simplestream server
-        updated_manifest = MANIFEST.copy()
+        updated_manifest = MANIFEST.model_copy()
         updated_manifest.updated = LAST_UPDATE + timedelta(minutes=1)
         self.service.fetch_image_metadata_for_boot_source = AsyncMock(
             return_value=[updated_manifest]

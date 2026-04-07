@@ -385,13 +385,15 @@ def signal(
     data, headers = encode_multipart_data(params, files=files)
 
     try:
-        with closing(geturl(
-            url,
-            credentials=credentials,
-            headers=headers,
-            data=data,
-            retry=retry,
-        )) as ret:
+        with closing(
+            geturl(
+                url,
+                credentials=credentials,
+                headers=headers,
+                data=data,
+                retry=retry,
+            )
+        ) as ret:
             if ret.status != 200:
                 raise SignalException(
                     "Unexpected status(%d) sending region commissioning data: %s"

@@ -3,13 +3,13 @@
 
 from typing import Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 
 
 class EntitlementResponse(BaseModel):
-    kind = "Entitlement"
+    kind: str = Field(default="Entitlement")
     resource_type: str
     resource_id: int
     entitlement: str
@@ -24,5 +24,5 @@ class EntitlementResponse(BaseModel):
 
 
 class EntitlementsListResponse(BaseModel):
-    kind = "EntitlementsList"
+    kind: str = Field(default="EntitlementsList")
     items: list[EntitlementResponse]

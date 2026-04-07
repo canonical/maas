@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,9 +15,9 @@ class TagBuilder(ResourceBuilder):
     the generated code.
     """
 
-    comment: Union[str, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    definition: Union[str, Unset] = Field(default=UNSET, required=False)
-    kernel_opts: Union[str, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    comment: str | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    definition: str | Unset = Field(default=UNSET)
+    kernel_opts: str | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

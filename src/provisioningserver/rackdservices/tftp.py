@@ -16,11 +16,7 @@ from twisted.application.service import MultiService
 from twisted.internet import reactor, udp
 from twisted.internet.abstract import isIPv6Address
 from twisted.internet.address import IPv4Address, IPv6Address
-from twisted.internet.defer import (
-    inlineCallbacks,
-    maybeDeferred,
-    succeed,
-)
+from twisted.internet.defer import inlineCallbacks, maybeDeferred, succeed
 from twisted.internet.task import deferLater
 from twisted.python.filepath import FilePath
 from twisted.web.client import Agent, readBody

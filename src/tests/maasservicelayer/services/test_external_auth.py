@@ -875,7 +875,6 @@ class TestExternalOAuthService(ServiceCommonTests):
         self,
         service_instance: ExternalOAuthService,
         test_instance: OAuthProvider,
-        builder_model: OAuthProviderBuilder,
     ) -> None:
         metadata_raw = {
             "authorization_endpoint": "https://example.com/auth",
@@ -914,13 +913,14 @@ class TestExternalOAuthService(ServiceCommonTests):
     async def test_create_conflict(
         self,
         service_instance: ExternalOAuthService,
-        builder_model: OAuthProviderBuilder,
+        builder_model: type[OAuthProviderBuilder],
         test_instance: OAuthProvider,
     ) -> None:
-        builder_model.enabled = True
+        builder = builder_model()
+        builder.enabled = True
         service_instance.get_provider = AsyncMock(return_value=test_instance)
         with pytest.raises(ConflictException) as exc_info:
-            await service_instance.create(builder=builder_model)
+            await service_instance.create(builder=builder)
         details = exc_info.value.details
         assert details is not None
         assert (
@@ -976,7 +976,7 @@ class TestExternalOAuthService(ServiceCommonTests):
 
     async def test_update_provider_success(
         self,
-        builder_model: OAuthProviderBuilder,
+        builder_model: type[OAuthProviderBuilder],
         service_instance: ExternalOAuthService,
         test_instance: OAuthProvider,
     ) -> None:
@@ -987,17 +987,18 @@ class TestExternalOAuthService(ServiceCommonTests):
         service_instance.get_provider_metadata = AsyncMock(
             return_value=test_instance.metadata
         )
-        builder_model.issuer_url = test_instance.issuer_url
+        builder = builder_model()
+        builder.issuer_url = test_instance.issuer_url
 
         updated_provider = await service_instance.update_provider(
-            id=1, builder=builder_model
+            id=1, builder=builder
         )
 
         assert updated_provider is not None
         assert updated_provider.client_id == "updated_id"
         assert updated_provider.metadata == test_instance.metadata
         service_instance.get_provider_metadata.assert_awaited_once_with(
-            builder_model
+            builder
         )
         assert not updated_provider.enabled
 
@@ -1005,24 +1006,25 @@ class TestExternalOAuthService(ServiceCommonTests):
         self,
         service_instance: ExternalOAuthService,
         test_instance: OAuthProvider,
-        builder_model: OAuthProviderBuilder,
+        builder_model: type[OAuthProviderBuilder],
     ) -> None:
         service_instance.get_provider = AsyncMock(return_value=None)
         service_instance.update_by_id = AsyncMock(return_value=test_instance)
-        builder_model.enabled = True
-        builder_model.issuer_url = test_instance.issuer_url
+        builder = builder_model()
+        builder.enabled = True
+        builder.issuer_url = test_instance.issuer_url
         service_instance.get_provider_metadata = AsyncMock(
             return_value=test_instance.metadata
         )
         updated_provider = await service_instance.update_provider(
-            id=1, builder=builder_model
+            id=1, builder=builder
         )
 
         service_instance.update_by_id.assert_awaited_once_with(
-            id=1, builder=builder_model
+            id=1, builder=builder
         )
         service_instance.get_provider_metadata.assert_awaited_once_with(
-            builder_model
+            builder
         )
         assert updated_provider == test_instance
 
@@ -1030,14 +1032,15 @@ class TestExternalOAuthService(ServiceCommonTests):
         self,
         service_instance: ExternalOAuthService,
         test_instance: OAuthProvider,
-        builder_model: OAuthProviderBuilder,
+        builder_model: type[OAuthProviderBuilder],
     ) -> None:
         service_instance.get_provider = AsyncMock(return_value=test_instance)
-        builder_model.enabled = True
-        builder_model.name = "A new name"
+        builder = builder_model()
+        builder.enabled = True
+        builder.name = "A new name"
 
         with pytest.raises(ConflictException) as exc_info:
-            await service_instance.update_provider(id=2, builder=builder_model)
+            await service_instance.update_provider(id=2, builder=builder)
         details = exc_info.value.details
         assert details is not None
         assert (

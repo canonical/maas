@@ -3,7 +3,7 @@
 
 from typing import Self
 
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -15,7 +15,7 @@ from maasservicelayer.models.staticroutes import StaticRoute
 
 
 class StaticRouteResponse(HalResponse[BaseHal]):
-    kind = "StaticRoute"
+    kind: str = Field(default="StaticRoute")
     id: int
     destination_id: int
     gateway_ip: IPvAnyAddress
@@ -39,4 +39,4 @@ class StaticRouteResponse(HalResponse[BaseHal]):
 
 
 class StaticRoutesListResponse(PaginatedResponse[StaticRouteResponse]):
-    kind = "StaticRoutesList"
+    kind: str = Field(default="StaticRoutesList")

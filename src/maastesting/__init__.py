@@ -3,7 +3,6 @@
 
 """Testing infrastructure for MAAS."""
 
-import copy
 from os import environ
 from os.path import abspath, dirname, join, pardir, realpath
 import re

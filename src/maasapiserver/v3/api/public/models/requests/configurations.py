@@ -39,9 +39,13 @@ class UpdateConfigurationRequest(BaseModel):
         try:
             model(value=self.value)
         except ValidationError as e:
+            field_info = model.model_fields.get("value")
+            type_name = getattr(
+                getattr(field_info, "annotation", None), "__name__", "unknown"
+            )
             raise ValidationException.build_for_field(
                 field="value",
-                message=f"Expected type '{model.__fields__['value'].type_.__name__}' but got '{type(self.value).__name__}' for configuration '{name}'",
+                message=f"Expected type '{type_name}' but got '{type(self.value).__name__}' for configuration '{name}'",
             ) from e
 
 

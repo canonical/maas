@@ -15,11 +15,7 @@ from urllib.parse import urlparse
 from netaddr import IPAddress
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    DeferredList,
-    inlineCallbacks,
-    maybeDeferred,
-)
+from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
 from twisted.internet.error import ConnectError, ConnectionClosed, ProcessDone
 from twisted.internet.threads import deferToThread
 from twisted.python.reflect import fullyQualifiedName
@@ -613,7 +609,9 @@ class Cluster(SecuredRPCProtocol):
         )
 
         def map_results(results):
-            for request, (success, mac_address) in zip(ip_addresses, results, strict=True):
+            for request, (success, mac_address) in zip(
+                ip_addresses, results, strict=True
+            ):
                 request["used"] = success
                 if success and mac_address:
                     request["mac_address"] = mac_address

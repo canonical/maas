@@ -3,13 +3,13 @@
 
 from typing import Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from maasservicelayer.models.usergroup_members import UserGroupMember
 
 
 class UserGroupMemberResponse(BaseModel):
-    kind = "UserGroupMember"
+    kind: str = Field(default="UserGroupMember")
     user_id: int
     username: str
     email: str
@@ -24,5 +24,5 @@ class UserGroupMemberResponse(BaseModel):
 
 
 class UserGroupMembersListResponse(BaseModel):
-    kind = "UserGroupMembersList"
+    kind: str = Field(default="UserGroupMembersList")
     items: list[UserGroupMemberResponse]

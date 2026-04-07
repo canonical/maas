@@ -358,7 +358,7 @@ class MachineHandler(NodeHandler):
         res = self.list_ids(params)
         return service_layer.services.machines_v2.list(
             MachineListRequest(**res)
-        ).dict()
+        ).model_dump()
 
     def list(self, params):
         res = self._list_sqlalchemy(params)

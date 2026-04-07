@@ -235,6 +235,15 @@ class AgentHandler(Handler):
         )
 
         agent_common_name = signed_cert.cert.get_subject().CN
+        if agent_common_name is None:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="Certificate must have a Common Name (CN).",
+                    )
+                ]
+            )
         cert_pem_bytes = crypto.dump_certificate(
             crypto.FILETYPE_PEM, signed_cert.cert
         )
