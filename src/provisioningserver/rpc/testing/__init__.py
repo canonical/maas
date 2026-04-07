@@ -223,7 +223,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         """
         return [self.maas_url]
 
-    def _build_rpc_info_urls(self):
+    def _build_rpc_info_urls(self, urls):
         """Patch-in for `ClusterClientService._build_rpc_info_urls`.
 
         Returns a dummy value.
