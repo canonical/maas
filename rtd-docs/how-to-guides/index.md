@@ -55,11 +55,6 @@ Once your systems are running, it's time to manage them effectively. Learn how t
   * [Special DNS / DHCP / NTP settings](/how-to-guides/manage-network-services.md)
   * [Creating an air gap](/how-to-guides/set-up-air-gapped-maas.md)
 
-* [Switches](/how-to-guides/manage-switches.md)
-  * [Upload NOS images](/how-to-guides/manage-switches.md#upload-nos-images)
-  * [Register switches](/how-to-guides/manage-switches.md#register-a-new-switch)
-  * [Assign NOS images](/how-to-guides/manage-switches.md#assign-or-change-a-nos-image)
-
 * [Power control](/how-to-guides/manage-machines.md#control-machine-power)
   * [Specific machine types](/how-to-guides/manage-machines.md#control-machine-power)
 
@@ -117,7 +112,6 @@ get-maas-up-and-running
 back-up-maas
 manage-networks
 manage-network-services
-manage-switches
 manage-machines
 manage-machine-groups
 manage-images
@@ -132,7 +126,4 @@ deploy-a-fips-kernel
 set-up-air-gapped-maas
 script-maas-with-python
 deploy-vms-on-ibm-z
-deploy-dpus
-sso
-user-groups-and-entitlements
 ```
