@@ -207,7 +207,7 @@ You could describe a fabric as a VLAN namespace. It's a switch or a combination 
 
 The following conceptual diagram shows two fabrics in the same data centre or region, each using distinct VLAN ranges and their associated subnets:
 
-![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/1X/46177305128bf7f3190f8a7bbd037c33e96f6a9e.png)
+![Conceptual diagram showing two fabrics in a data centre, each with distinct VLAN ranges and associated subnets](/images/uncategorized/maas-glossary/maas-region-diagram.webp)
 
 #### Failed Commissioning
 
@@ -276,7 +276,7 @@ This action marks a machine as locked, preventing the user from performing actio
 
 A locked machine has a padlock symbol next to its name.
 
-![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/1X/7d1f0928fb599d465916e43e731535dfee60e65a.png)
+![A machine listing showing a padlock symbol next to the name of a locked machine](/images/uncategorized/maas-glossary/locked-machine.webp)
 
 ### M
 
@@ -417,7 +417,7 @@ Like before, a public GPG key will be needed. Also get this from the PPA's Launc
 
 To add this PPA, then, hit the 'Add repository' button and fill in the fields. Before saving, the form should look something like this:
 
-![image](upload://mUC9A0CfBrvMbV5lBBwhbLkot40.png)
+![Add repository form filled in with PPA details including GPG key and repository URL](/images/uncategorized/maas-glossary/add-repository.webp)
 
 Click 'Add repository' to save the configuration.
 
@@ -542,7 +542,7 @@ An Ubuntu package repository is a repository that makes available Ubuntu package
 
 MAAS comes equipped with the official Ubuntu repository `archive.ubuntu.com` as well as the equivalent for architectures other than i386 and amd64: `ports.ubuntu.com` as is evident in the default configuration below:
 
-![image](upload://h57DYCwR238lYt1RVCF4xPTvO5k.png)
+![Default package repositories configuration showing archive.ubuntu.com and ports.ubuntu.com entries](/images/uncategorized/maas-glossary/default-package-repositories.webp)
 
 Adding a third-party repository is elementary. Begin by basing the configuration on a line you would typically place in a system's `/etc/apt/sources.list` file. For instance, for the Google Chrome repository, the line would look like:
 
@@ -560,7 +560,7 @@ To add this repository, then, hit the 'Add repository' button and fill in the fi
 
 Before saving, the form should look very similar to this:
 
-![image](upload://3NB0hcj1diCB8RTRkSVOkopAU3E.png)
+![Add repository form filled in with Google Chrome repository details including GPG key and sources.list entry](/images/uncategorized/maas-glossary/add-repository-form.webp)
 
 Click 'Add repository' to save the configuration.
 

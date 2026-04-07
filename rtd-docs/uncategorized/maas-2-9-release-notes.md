@@ -40,7 +40,7 @@ Specifically, there are five new features available to support NUMA, SR-IOV, and
 
 This functionality comes with an enhanced panel in the "KVM" details section:
 
-<a href="https://discourse.maas.io/uploads/default/optimized/1X/57245bbbfe6d28e83c9b7fb30e52caf05714eb00_2_485x500.png" target = "_blank">![kvm resources and storage](upload://5qDhxTUUitJxRzlVYIhaxShZXS9.png)</a>
+![kvm resources and storage](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/2/260d99c074f2eb2005f92a8a4f29c1c1d2ba46b1.png)
 
 See the [VM hosting](https://discourse.maas.io/t/about-virtual-machines/6704) page for more details, and be sure to use the menu at the top of that page to select your desired build method and interface, so that you'll see the most relevant instructions.
 

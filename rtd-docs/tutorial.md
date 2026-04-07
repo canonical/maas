@@ -1,5 +1,3 @@
-(tutorial)=
-
 # Tutorial
 
 | Key | Value |
@@ -15,9 +13,7 @@ MAAS works by detecting servers that attempt to boot via a network (PXE booting)
 
 ## A potential MAAS test setup
 
-One way to try MAAS is to have a separate network with a switch, router, and several servers. One runs MAAS, the rest are targets for provisioning. In this tutorial, we automate all of this in a virtual machine with Multipass and use LXD to simulate machines MAAS can control.  The setup looks something like this:
-
-![MAAS-tutorial-architeture|500x500](upload://kHdpli4aleyQU80GIBqyAIqgxCA.jpeg)
+One way to try MAAS is to have a separate network with a switch, router, and several servers. One runs MAAS, the rest are targets for provisioning. In this tutorial, we automate all of this in a virtual machine with Multipass and use LXD to simulate machines MAAS can control. The setup mirrors the sample architecture diagram in the [maas-multipass repository](https://github.com/canonical/maas-multipass).
 
 ## 1. Setting up Multipass and launching the VM
 
@@ -149,10 +145,8 @@ In this tutorial, we:
 
 Explore editing the `maas.yml` file to fine-tune VM parameters. You can also expand this setup to a real physical environment or explore more advanced features of MAAS like tagging, scripts, and custom commissioning flows.
 
-You may also want to try using a local copy of MAAS with real hardware, which is a much simpler architecture:
+You may also want to try using a local copy of MAAS with real hardware, which is a much simpler architecture based on a single MAAS controller and a few target machines.
 
-![basic-MAAS-reference-architecture|500x500](upload://gXmpXjTxzwSiFDR6qVMrysNQ7Nv.jpeg)
-
-If you're brave, you can try that in your homelab, with some simple, off-the-shelf NUCs or mini-PCs, using the instructions found [in this GitHub repository](https://github.com/canonical/maas-hw-tutorial).  
+If you're brave, you can try that in your homelab, with some simple, off-the-shelf NUCs or mini-PCs, using the instructions found [in this GitHub repository](https://github.com/canonical/maas-hw-tutorial).
 
 Learn more at: <https://maas.io>
