@@ -464,6 +464,13 @@ class BeaconingSocketProtocol(DatagramProtocol):
         self.last_solicited_mcast = 0
         self._join_multicast_groups()
 
+    def _is_ipv6_interface(self):
+        """Check if the configured interface is an IPv6 address."""
+        try:
+            IPAddress(self.interface, version=6)
+            return True
+        except (ValueError, TypeError):
+            return False
     def _join_multicast_groups(self):
         try:
             # Need to ensure that the passed-in reactor is, in fact, a "real"
@@ -480,9 +487,11 @@ class BeaconingSocketProtocol(DatagramProtocol):
             # This is only necessary for testing.
             self.transport.setLoopbackMode(self.loopback)
             set_ipv6_multicast_loopback(sock, self.loopback)
-            self.transport.joinGroup(
-                BEACON_IPV4_MULTICAST, interface="127.0.0.1"
-            )
+            # Only join IPv4 multicast group if not using IPv6 interface.
+            if not self._is_ipv6_interface():
+                self.transport.joinGroup(
+                    BEACON_IPV4_MULTICAST, interface="127.0.0.1"
+                )
             # Loopback interface always has index 1.
             join_ipv6_beacon_group(sock, 1)
         for ifname, ifdata in self.interfaces.items():
