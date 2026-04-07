@@ -90,21 +90,21 @@ jobs:
       - name: Test
         run: |
           export MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
-          export URL="http://${MAAS_IP}:5240/MAAS/r/"
+          export CYPRESS_URL="http://${MAAS_IP}:5240/MAAS/r/"
 
-          mkdir /tmp/playwright-test
-          cd /tmp/playwright-test
-          npm install --global yarn
-          yarn init -y
-          yarn add @playwright/test
-          echo 'import { test, expect } from "@playwright/test"; test("check status", async ({ page }) => { await page.goto(process.env.URL); await page.waitForSelector("#maas-ui"); await expect(page.getByText("Loading")).toBeHidden(); await expect(page.getByText("No admin user has been created yet")).toBeVisible({ timeout: 30000 }); });' > test.spec.js
-          npx playwright install
-          npx playwright install-deps
-          npx playwright test test.spec.js
+          mkdir /tmp/cypress-test
+          cd /tmp/cypress-test
+          npm init -y
+          npm install cypress
+
+          mkdir -p cypress/e2e
+          echo 'const { defineConfig } = require("cypress"); module.exports = defineConfig({ e2e: { setupNodeEvents(on, config) {} } });' > cypress.config.js
+          echo 'describe("MAAS UI sync check", () => { it("loads and shows the initial setup page", () => { cy.visit(Cypress.env("URL")); cy.get("#maas-ui", { timeout: 30000 }).should("exist"); cy.contains(/Loading/i, { timeout: 30000 }).should("not.exist"); cy.contains("Failed to connect").should("not.exist"); cy.get(".p-card__title", { timeout: 30000 }).should("contain", "No admin user has been created yet"); }); });' > cypress/e2e/sync-check.cy.js
+          npx cypress run
 
       - name: Commit submodule update
         run: |
-          git config user.name ${{ vars.LANDER_USERNAME }}
+          git config user.name ${{ vars.LANDER_NAME }}
           git config user.email ${{ vars.LANDER_EMAIL }}
 
           git submodule update --init --remote src/maasui/src
