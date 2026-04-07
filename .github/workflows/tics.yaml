@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - "tics-debug-*"
+  workflow_dispatch:
 
 defaults:
   run:
@@ -45,6 +46,7 @@ jobs:
           apt install -y python3-coverage
           su ubuntu -c "go install github.com/axw/gocov/gocov@v1.1.0"
           su ubuntu -c "go install github.com/AlekSi/gocov-xml@v1.1.0"
+          su ubuntu -c "go install honnef.co/go/tools/cmd/staticcheck@v0.6.1"
 
       - name: Run Python tests with coverage
         run: |
