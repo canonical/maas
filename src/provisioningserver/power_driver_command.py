@@ -69,7 +69,7 @@ def add_arguments(parser):
     parser.add_argument(
         "command",
         help="Power driver command.",
-        choices=["status", "on", "cycle", "off", "reset", "set-boot-order"],
+        choices=["status", "on", "cycle", "off", "reset"],
     )
     parser.add_argument(
         "--is-dpu",
