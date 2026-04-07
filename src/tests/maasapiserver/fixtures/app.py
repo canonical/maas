@@ -1,6 +1,6 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
+from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import AsyncIterator, Awaitable, Callable, Iterator
 from unittest.mock import Mock
@@ -349,6 +349,24 @@ async def authenticated_api_client(
         yield client
 
 
+@asynccontextmanager
+async def build_client(
+    app: FastAPI, base_url: str, username: str, password: str
+):
+    async with AsyncClient(app=app, base_url=base_url) as client:
+        response = await client.post(
+            f"{V3_API_PREFIX}/auth/login",
+            data={"username": username, "password": password},
+        )
+        response.raise_for_status()
+
+        token_response = TokenResponse(**response.json())
+        client.headers = Headers(
+            {"Authorization": "bearer " + token_response.access_token}
+        )
+        yield client
+
+
 @pytest.fixture
 async def authenticated_admin_api_client_v3(
     api_app: FastAPI, fixture: Fixture
@@ -356,15 +374,9 @@ async def authenticated_admin_api_client_v3(
     """Authenticated admin client for the V3 API."""
     params = {"is_superuser": True, "username": "admin"}
     created_user = await create_test_user(fixture, **params)
-    async with AsyncClient(app=api_app, base_url="http://test") as client:
-        response = await client.post(
-            f"{V3_API_PREFIX}/auth/login",
-            data={"username": created_user.username, "password": "test"},
-        )
-        token_response = TokenResponse(**response.json())
-        client.headers = Headers(
-            {"Authorization": "bearer " + token_response.access_token}
-        )
+    async with build_client(
+        api_app, "http://test", created_user.username, "test"
+    ) as client:
         yield client
 
 
@@ -375,15 +387,9 @@ async def authenticated_user_api_client_v3(
     """Authenticated user client for the V3 API."""
     params = {"is_superuser": False, "username": "user"}
     created_user = await create_test_user(fixture, **params)
-    async with AsyncClient(app=api_app, base_url="http://test") as client:
-        response = await client.post(
-            f"{V3_API_PREFIX}/auth/login",
-            data={"username": created_user.username, "password": "test"},
-        )
-        token_response = TokenResponse(**response.json())
-        client.headers = Headers(
-            {"Authorization": "bearer " + token_response.access_token}
-        )
+    async with build_client(
+        api_app, "http://test", created_user.username, "test"
+    ) as client:
         yield client
 
 
