@@ -12,6 +12,6 @@ from maasservicelayer.models.base import (
 @generate_builder()
 class RDNS(MaasTimestampedBaseModel):
     ip: IPvAnyAddress
-    hostname: str | None
+    hostname: str | None = None
     hostnames: list[str]
     observer_id: int

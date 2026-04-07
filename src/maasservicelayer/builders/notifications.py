@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Any, Union
+from typing import Any
 
 from pydantic import Field
 
@@ -17,20 +17,16 @@ class NotificationBuilder(ResourceBuilder):
     the generated code.
     """
 
-    admins: Union[bool, Unset] = Field(default=UNSET, required=False)
-    category: Union[NotificationCategoryEnum, Unset] = Field(
-        default=UNSET, required=False
-    )
-    context: Union[dict[str, Any], Unset] = Field(
-        default=UNSET, required=False
-    )
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    dismissable: Union[bool, Unset] = Field(default=UNSET, required=False)
-    ident: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    message: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
-    users: Union[bool, Unset] = Field(default=UNSET, required=False)
+    admins: bool | Unset = Field(default=UNSET)
+    category: NotificationCategoryEnum | Unset = Field(default=UNSET)
+    context: dict[str, Any] | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    dismissable: bool | Unset = Field(default=UNSET)
+    ident: str | None | Unset = Field(default=UNSET)
+    message: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    user_id: int | None | Unset = Field(default=UNSET)
+    users: bool | Unset = Field(default=UNSET)
 
 
 class NotificationDismissalBuilder(ResourceBuilder):
@@ -40,7 +36,7 @@ class NotificationDismissalBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    notification_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    notification_id: int | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    user_id: int | Unset = Field(default=UNSET)

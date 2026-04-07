@@ -8,8 +8,8 @@ from typing import Any, cast, Self
 
 from joserfc import jwt
 from joserfc.errors import JoseError
-from joserfc.jws import JWSRegistry
 from joserfc.jwk import OctKey
+from joserfc.jws import JWSRegistry
 from joserfc.jwt import JWTClaimsRegistry
 
 from maasservicelayer.auth.time import utc_from_timestamp
@@ -63,8 +63,8 @@ class JWT:
         payload = {
             "sub": subject,
             "iss": cls.ISSUER,
-            "iat": issued.timestamp(),
-            "exp": expiration.timestamp(),
+            "iat": int(issued.timestamp()),
+            "exp": int(expiration.timestamp()),
             "aud": cls.AUDIENCE,
             # private claims
             "user_id": user_id,

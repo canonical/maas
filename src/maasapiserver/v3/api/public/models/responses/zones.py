@@ -3,6 +3,8 @@
 
 from typing import Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -13,7 +15,7 @@ from maasservicelayer.models.zones import Zone, ZoneWithSummary
 
 
 class ZoneResponse(HalResponse[BaseHal]):
-    kind = "Zone"
+    kind: str = Field(default="Zone")
     id: int
     name: str
     description: str
@@ -33,11 +35,11 @@ class ZoneResponse(HalResponse[BaseHal]):
 
 
 class ZonesListResponse(PaginatedResponse[ZoneResponse]):
-    kind = "ZonesList"
+    kind: str = Field(default="ZonesList")
 
 
 class ZoneWithSummaryResponse(HalResponse[BaseHal]):
-    kind = "ZoneWithSummary"
+    kind: str = Field(default="ZoneWithSummary")
     id: int
     name: str
     description: str
@@ -65,4 +67,4 @@ class ZoneWithSummaryResponse(HalResponse[BaseHal]):
 
 
 class ZonesWithSummaryListResponse(PaginatedResponse[ZoneWithSummaryResponse]):
-    kind = "ZonesWithSummaryList"
+    kind: str = Field(default="ZonesWithSummaryList")

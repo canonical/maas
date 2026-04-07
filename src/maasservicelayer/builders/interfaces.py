@@ -1,8 +1,7 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -18,19 +17,17 @@ class InterfaceBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    enabled: Union[bool, Unset] = Field(default=UNSET, required=False)
-    interface_speed: Union[int, Unset] = Field(default=UNSET, required=False)
-    link_connected: Union[bool, Unset] = Field(default=UNSET, required=False)
-    link_speed: Union[int, Unset] = Field(default=UNSET, required=False)
-    links: Union[list[Link], Unset] = Field(default=UNSET, required=False)
-    mac_address: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    node_config_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    sriov_max_vf: Union[int, Unset] = Field(default=UNSET, required=False)
-    switch_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
-    type: Union[InterfaceType, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    vlan_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    enabled: bool | Unset = Field(default=UNSET)
+    interface_speed: int | Unset = Field(default=UNSET)
+    link_connected: bool | Unset = Field(default=UNSET)
+    link_speed: int | Unset = Field(default=UNSET)
+    links: list[Link] | Unset = Field(default=UNSET)
+    mac_address: str | None | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    node_config_id: int | None | Unset = Field(default=UNSET)
+    sriov_max_vf: int | Unset = Field(default=UNSET)
+    switch_id: int | None | Unset = Field(default=UNSET)
+    type: InterfaceType | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    vlan_id: int | None | Unset = Field(default=UNSET)

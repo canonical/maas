@@ -1151,7 +1151,9 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
 
     @inlineCallbacks
     def test_sends_and_receives_unicast_beacons(self):
-        self.skipTest("UUID1 timestamps offset due to libuuid bug (LP#2145734)")
+        self.skipTest(
+            "UUID1 timestamps offset due to libuuid bug (LP#2145734)"
+        )
         # Note: Always use a random port for testing. (port=0)
         logger = self.useFixture(TwistedLoggerFixture())
         protocol = BeaconingSocketProtocol(
@@ -1198,7 +1200,9 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
 
     @inlineCallbacks
     def test_send_multicast_beacon_sets_ipv4_source(self):
-        self.skipTest("UUID1 timestamps offset due to libuuid bug (LP#2145734)")
+        self.skipTest(
+            "UUID1 timestamps offset due to libuuid bug (LP#2145734)"
+        )
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,
@@ -1303,7 +1307,9 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
 
     @inlineCallbacks
     def test_hints_for_same_beacon_seen_on_multiple_interfaces(self):
-        self.skipTest("UUID1 timestamps offset due to libuuid bug (LP#2145734)")
+        self.skipTest(
+            "UUID1 timestamps offset due to libuuid bug (LP#2145734)"
+        )
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,

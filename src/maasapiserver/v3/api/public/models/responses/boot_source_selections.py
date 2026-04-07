@@ -2,9 +2,9 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BootSourceSelectionSyncResponse(BaseModel):
-    kind = "BootSourceSelectionSync"
+    kind: str = Field(default="BootSourceSelectionSync")
     monitor_url: str

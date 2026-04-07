@@ -3,6 +3,8 @@
 
 from typing import Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -14,7 +16,7 @@ from maasservicelayer.models.package_repositories import PackageRepository
 
 
 class PackageRepositoryResponse(HalResponse[BaseHal]):
-    kind = "PackageRepository"
+    kind: str = Field(default="PackageRepository")
     id: int
     name: str
     key: str
@@ -55,4 +57,4 @@ class PackageRepositoryResponse(HalResponse[BaseHal]):
 class PackageRepositoryListResponse(
     PaginatedResponse[PackageRepositoryResponse]
 ):
-    kind = "PackageRepositoryList"
+    kind: str = Field(default="PackageRepositoryList")

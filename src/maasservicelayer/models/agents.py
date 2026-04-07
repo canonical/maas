@@ -1,8 +1,6 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
-
 from maasservicelayer.models.base import (
     generate_builder,
     MaasTimestampedBaseModel,
@@ -13,6 +11,6 @@ from maasservicelayer.models.base import (
 class Agent(MaasTimestampedBaseModel):
     uuid: str
     rack_id: int
-    rackcontroller_id: Optional[
-        int
-    ]  # WIP: remove Optional once MAE is complete
+    rackcontroller_id: int | None = (
+        None  # WIP: remove Optional once MAE is complete
+    )

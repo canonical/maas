@@ -48,9 +48,10 @@ class VlanCreateRequest(OptionalNamedBaseModel):
         le=65535,
     )
 
-    space_id: Optional[int] = Field(
+    space_id: int | None = Field(
         description="The space this VLAN should be placed in. If not specified, the VLAN will be "
-        "placed in the 'undefined' space."
+        "placed in the 'undefined' space.",
+        default=None,
     )
 
     async def to_builder(
@@ -75,17 +76,17 @@ class VlanUpdateRequest(VlanCreateRequest):
         description="Whether or not DHCP should be managed on the VLAN."
     )
 
-    primary_rack_id: Optional[int] = Field(
+    primary_rack_id: int | None = Field(
         description="The primary rack controller ID managing the VLAN.",
         default=None,
     )
 
-    secondary_rack_id: Optional[int] = Field(
+    secondary_rack_id: int | None = Field(
         description="The secondary rack controller ID managing the VLAN",
         default=None,
     )
 
-    relay_vlan_id: Optional[int] = Field(
+    relay_vlan_id: int | None = Field(
         description="Relay VLAN ID. Only set when this VLAN will be using a DHCP relay to forward DHCP requests to another VLAN that MAAS is managing. MAAS will not run the DHCP relay itself, it must be configured to proxy reqests to the primary and/or secondary rack controller interfaces for the VLAN specified in this field.",
         default=None,
     )

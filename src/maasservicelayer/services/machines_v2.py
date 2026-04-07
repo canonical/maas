@@ -1,7 +1,6 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 import logging
-from typing import Optional
 
 from pydantic import BaseModel
 from sqlalchemy import case, desc, distinct, or_, select
@@ -54,10 +53,10 @@ class MachineRequest(BaseModel):
 
 
 class MachineListGroupRequest(BaseModel):
-    name: Optional[str]
-    value: Optional[str]
-    count: Optional[int]
-    collapsed: Optional[bool]
+    name: str | None = None
+    value: str | None = None
+    count: int | None = None
+    collapsed: bool | None = None
     items: list[MachineRequest]
 
 
@@ -75,23 +74,23 @@ class ModelRef(BaseModel):
 
 
 class TestStatus(BaseModel):
-    status: Optional[int]
-    pending: Optional[int]
-    running: Optional[int]
-    passed: Optional[int]
-    failed: Optional[int]
+    status: int | None = None
+    pending: int | None = None
+    running: int | None = None
+    passed: int | None = None
+    failed: int | None = None
 
 
 class Vlan(BaseModel):
-    id: Optional[int]
-    name: Optional[str]
-    fabric_id: Optional[int]
-    fabric_name: Optional[str]
+    id: int | None = None
+    name: str | None = None
+    fabric_id: int | None = None
+    fabric_name: str | None = None
 
 
 class IPAddress(BaseModel):
-    ip: Optional[str]
-    is_boot: Optional[bool]
+    ip: str | None = None
+    is_boot: bool | None = None
 
 
 class Machine(BaseModel):
@@ -102,10 +101,10 @@ class Machine(BaseModel):
     hostname: str
     description: str
     pool: ModelRef
-    pod: Optional[ModelRef]
+    pod: ModelRef | None = None
     domain: ModelRef
     owner: str
-    parent: Optional[str]
+    parent: str | None = None
     error_description: str
     zone: ModelRef
     cpu_count: int
@@ -116,10 +115,10 @@ class Machine(BaseModel):
     fqdn: str
     actions: list[str]
     link_type: str
-    tags: Optional[list[int]]
-    physical_disk_count: Optional[int]
-    storage: Optional[float]
-    testing_status: Optional[TestStatus]
+    tags: list[int] | None = None
+    physical_disk_count: int | None = None
+    storage: float | None = None
+    testing_status: TestStatus | None = None
     architecture: str
     osystem: str
     distro_series: str
@@ -127,35 +126,35 @@ class Machine(BaseModel):
     status_code: int
     simple_status: str
     ephemeral_deploy: bool
-    fabrics: Optional[list[str]]
-    spaces: Optional[list[str]]
-    extra_macs: Optional[list[str]]
-    status_message: Optional[str]
-    pxe_mac: Optional[str]
-    vlan: Optional[Vlan]
-    power_type: Optional[str]
-    ip_addresses: Optional[list[IPAddress]]
-    cpu_test_status: Optional[TestStatus]
-    memory_test_status: Optional[TestStatus]
-    network_test_status: Optional[TestStatus]
-    storage_test_status: Optional[TestStatus]
+    fabrics: list[str] | None = None
+    spaces: list[str] | None = None
+    extra_macs: list[str] | None = None
+    status_message: str | None = None
+    pxe_mac: str | None = None
+    vlan: Vlan | None = None
+    power_type: str | None = None
+    ip_addresses: list[IPAddress] | None = None
+    cpu_test_status: TestStatus | None = None
+    memory_test_status: TestStatus | None = None
+    network_test_status: TestStatus | None = None
+    storage_test_status: TestStatus | None = None
     is_dpu: bool
 
 
 # Responses
 class MachineListGroupResponse(BaseModel):
-    name: Optional[str]
-    value: Optional[str]
-    count: Optional[int]
-    collapsed: Optional[bool]
-    items: Optional[list[Machine]]
+    name: str | None = None
+    value: str | None = None
+    count: int | None = None
+    collapsed: bool | None = None
+    items: list[Machine] | None = None
 
 
 class MachineListResponse(BaseModel):
     count: int
     cur_page: int
     num_pages: int
-    groups: Optional[list[MachineListGroupResponse]]
+    groups: list[MachineListGroupResponse] | None = None
 
 
 class MachinesV2Service(Service, Repository):
