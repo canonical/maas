@@ -27,6 +27,7 @@ from maasservicelayer.services.bootresourcefilesync import (
 )
 from maasservicelayer.services.bootresourcesets import BootResourceSetsService
 from maasservicelayer.simplestreams.models import (
+    BootloaderFile,
     BootloaderProduct,
     BootloaderVersion,
 )
@@ -116,6 +117,21 @@ class TestBootResourceSetsService:
             boot_resource_file_sync_service=mock_boot_resource_file_sync_service,
         )
 
+    @pytest.fixture
+    def bootloader_version(self) -> BootloaderVersion:
+        return BootloaderVersion(
+            version_name="foo",
+            grub2=BootloaderFile(
+                ftype="boot-grub2",
+                path="path/to/grub2",
+                sha256="abcdef0123456789" * 4,
+                size=1000,
+                src_package="grub2-signed",
+                src_release="focal",
+                src_version="1.187.3~20.04.1",
+            ),
+        )
+
     async def test_pre_delete_hook_deletes_files(
         self,
         mock_repository: Mock,
@@ -167,6 +183,7 @@ class TestBootResourceSetsService:
         self,
         mock_repository: Mock,
         service: BootResourceSetsService,
+        bootloader_version: BootloaderVersion,
     ) -> None:
         mock_repository.get_one.return_value = None
         mock_repository.create.return_value = TEST_BOOT_RESOURCE_SET
@@ -180,7 +197,7 @@ class TestBootResourceSetsService:
                 "bootloader-type": "uefi",
                 "label": "stable",
                 "os": "grub-efi-signed",
-                "versions": [BootloaderVersion(version_name="foo")],
+                "versions": [bootloader_version],
             }
         )
         await service.get_or_create_from_simplestreams_product(product, 1)
@@ -201,6 +218,7 @@ class TestBootResourceSetsService:
         self,
         mock_repository: Mock,
         service: BootResourceSetsService,
+        bootloader_version: BootloaderVersion,
     ) -> None:
         mock_repository.get_one.return_value = TEST_BOOT_RESOURCE_SET
 
@@ -213,7 +231,7 @@ class TestBootResourceSetsService:
                 "bootloader-type": "uefi",
                 "label": "stable",
                 "os": "grub-efi-signed",
-                "versions": [BootloaderVersion(version_name="foo")],
+                "versions": [bootloader_version],
             }
         )
         await service.get_or_create_from_simplestreams_product(product, 1)

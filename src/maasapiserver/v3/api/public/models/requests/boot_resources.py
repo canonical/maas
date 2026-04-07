@@ -4,7 +4,7 @@ from enum import StrEnum
 import re
 from typing import Annotated
 
-from fastapi import Header, Query
+from fastapi import Query
 from pydantic import BaseModel, Field
 
 from maascommon.enums.boot_resources import (
@@ -63,27 +63,27 @@ class BootResourceFileTypeChoice(StrEnum):
 
 
 class BootResourceCreateRequest(BaseModel):
-    name: Annotated[str, Header(description="Name of the boot resource.")]
+    name: Annotated[str, Field(description="Name of the boot resource.")]
     sha256: Annotated[
-        str, Header(description="The `sha256` hash of the resource.")
+        str, Field(description="The `sha256` hash of the resource.")
     ]
     architecture: Annotated[
-        str, Header(description="Architecture the boot resource supports.")
+        str, Field(description="Architecture the boot resource supports.")
     ]
     file_type: Annotated[
         BootResourceFileTypeChoice,
-        Header(description="Filetype for uploaded content."),
+        Field(description="Filetype for uploaded content."),
     ] = BootResourceFileTypeChoice.TGZ
 
     title: Annotated[
-        str | None, Header(description="Title for the boot resource.")
-    ]
+        str | None, Field(description="Title for the boot resource.")
+    ] = None
     base_image: Annotated[
         str | None,
-        Header(
+        Field(
             description="The Base OS image a custom image is built on top of. Only required for images of type 'custom'."
         ),
-    ]
+    ] = None
 
     def _get_supported_operating_systems(self) -> dict[str, OperatingSystem]:
         return {os_name: os for os_name, os in OperatingSystemRegistry}

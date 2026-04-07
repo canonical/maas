@@ -212,7 +212,9 @@ class DomainsHandler(Handler):
             )
         )
         dns_records = await services.v3dnsrrsets.get_dns_records_for_domain(
-            domain_id, user_id=authenticated_user.id, can_view_all_records=can_view_all_records
+            domain_id,
+            user_id=authenticated_user.id,
+            can_view_all_records=can_view_all_records,
         )
         return DomainResourceRecordSetListResponse(
             items=[

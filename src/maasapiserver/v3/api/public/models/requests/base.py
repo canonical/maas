@@ -4,10 +4,10 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from re import compile
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from fastapi import Query
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from maasservicelayer.db.filters import (
     Clause,
@@ -23,8 +23,8 @@ MODEL_NAME_VALIDATOR = compile(r"^\w[ \w-]*$")
 class NamedBaseModel(BaseModel):
     name: str = Field(description="The unique name of the entity.")
 
-    # TODO: move to @field_validator when we migrate to pydantic 2.x
-    @validator("name")
+    @field_validator("name", mode="after")
+    @classmethod
     def check_regex_name(cls, v: str) -> str:
         if not MODEL_NAME_VALIDATOR.match(v):
             raise ValueError("Invalid entity name.")
@@ -32,12 +32,12 @@ class NamedBaseModel(BaseModel):
 
 
 class OptionalNamedBaseModel(BaseModel):
-    name: Optional[str] = Field(
+    name: str | None = Field(
         description="The unique name of the entity.", default=None
     )
 
-    # TODO: move to @field_validator when we migrate to pydantic 2.x
-    @validator("name")
+    @field_validator("name", mode="after")
+    @classmethod
     def check_regex_name(cls, v: str) -> str:
         # If the name is set, it must not be None and it must match the regex
         if v is not None and not MODEL_NAME_VALIDATOR.match(v):
@@ -46,13 +46,14 @@ class OptionalNamedBaseModel(BaseModel):
 
 
 class OrderByQueryFilter(BaseModel):
-    order_by: Optional[list[str]] = Field(
+    order_by: list[str] | None = Field(
         Query(
             default=None,
             title="Properties to order by. You can wrap the property with `asc()` or `desc()` to modify the ordering",
         )
     )
-    _order_by_columns: ClassVar[dict[str, OrderByClause]] = Field(exclude=True)
+
+    order_by_columns: ClassVar[dict[str, OrderByClause]] = {}
 
     @classmethod
     def _clean_field(cls, field: str) -> str:
@@ -61,16 +62,15 @@ class OrderByQueryFilter(BaseModel):
             field.removeprefix("asc(").removeprefix("desc(").removesuffix(")")
         )
 
-    @validator("order_by")
-    def check_order_by_fields(
-        cls, v: Optional[list[str]]
-    ) -> Optional[list[str]]:
+    @field_validator("order_by", mode="after")
+    @classmethod
+    def check_order_by_fields(cls, v: list[str] | None) -> list[str] | None:
         seen_fields = set()
         if not v:
             return None
         for elem in v:
             field = cls._clean_field(elem)
-            if field not in cls._order_by_columns:
+            if field not in cls.order_by_columns:
                 raise ValidationException.build_for_field(
                     "order_by",
                     f"'{elem}' is not an allowed property.",
@@ -91,7 +91,7 @@ class OrderByQueryFilter(BaseModel):
         if not self.order_by:
             return []
         for field in self.order_by:
-            orig_clause = self._order_by_columns.get(self._clean_field(field))
+            orig_clause = self.order_by_columns.get(self._clean_field(field))
             assert orig_clause is not None
 
             clause = deepcopy(orig_clause)
@@ -111,8 +111,10 @@ class OrderByQueryFilter(BaseModel):
         return s
 
 
-class FreeTextSearchQueryParam(ABC, BaseModel):
-    q: str | None
+class FreeTextSearchQueryParam(BaseModel, ABC):
+    # Note: Header/Query parameters in Pydantic v2 require explicit Field configuration.
+    # They cannot be inferred from bare type annotations when used with FastAPI Depends().
+    q: str | None = Field(Query(default=None, title="Free text search query"))
 
     @abstractmethod
     def to_clause(self) -> Clause | None:

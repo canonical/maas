@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -17,11 +16,9 @@ class MDNSBuilder(ResourceBuilder):
     the generated code.
     """
 
-    count: Union[int, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    hostname: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    interface_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    ip: Union[IPvAnyAddress, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    count: int | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    hostname: str | None | Unset = Field(default=UNSET)
+    interface_id: int | Unset = Field(default=UNSET)
+    ip: IPvAnyAddress | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

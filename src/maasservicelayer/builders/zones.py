@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,10 +15,10 @@ class ZoneBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
 
 
 class ZoneWithSummaryBuilder(ResourceBuilder):
@@ -29,10 +28,10 @@ class ZoneWithSummaryBuilder(ResourceBuilder):
     the generated code.
     """
 
-    controllers_count: Union[int, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    description: Union[str, Unset] = Field(default=UNSET, required=False)
-    devices_count: Union[int, Unset] = Field(default=UNSET, required=False)
-    machines_count: Union[int, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    controllers_count: int | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    description: str | Unset = Field(default=UNSET)
+    devices_count: int | Unset = Field(default=UNSET)
+    machines_count: int | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

@@ -10,8 +10,8 @@ __all__ = [
     "Handler",
 ]
 
-import inspect
 from functools import reduce, wraps
+import inspect
 from operator import attrgetter
 
 from django.contrib.auth.models import User

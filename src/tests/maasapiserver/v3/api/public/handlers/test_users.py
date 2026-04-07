@@ -628,7 +628,7 @@ class TestUsersApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        user = USER_1.copy()
+        user = USER_1.model_copy()
         # the api client we use has an authenticated user with id=0
         user.id = 0
         services_mock.users = Mock(UsersService)
