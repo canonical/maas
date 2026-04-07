@@ -60,7 +60,7 @@ def add_arguments(parser):
     parser.add_argument(
         "command",
         help="Power driver command.",
-        choices=["status", "on", "cycle", "off"],
+        choices=["status", "on", "cycle", "off", "set-boot-order"],
     )
 
     # NOTE: In python 3.7 and above required=True can be passed to add_subparsers.

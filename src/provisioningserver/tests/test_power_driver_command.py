@@ -13,6 +13,7 @@ from maastesting import get_testing_timeout
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import power_driver_command
 from provisioningserver.drivers.power import PowerDriver
+from provisioningserver.drivers.power.hmcz import HMCZPowerDriver
 
 
 class FakeDriver(PowerDriver):
@@ -27,6 +28,10 @@ class FakeDriver(PowerDriver):
     settings = []
     _state = "off"
 
+    def __init__(self):
+        super().__init__()
+        self.calls = {"set_boot_order": []}
+
     def power_on(self, *args, **kwargs):
         self._state = "on"
 
@@ -37,10 +42,65 @@ class FakeDriver(PowerDriver):
         return self._state
 
 
+class FakeHMCZDriver(FakeDriver):
+    can_set_boot_order = True
+    settings = HMCZPowerDriver.settings
+
+    async def set_boot_order(self, system_id, context, order):
+        self.calls["set_boot_order"].append(
+            {
+                "system_id": system_id,
+                "context": context,
+                "order": order,
+            }
+        )
+
+
 class TestPowerDriverCommand(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(
         timeout=get_testing_timeout()
     )
+
+    @inlineCallbacks
+    def test_run_set_boot_order_hmcz_uses_split_order(self):
+        args = power_driver_command._parse_args(
+            [
+                "set-boot-order",
+                "hmcz",
+                "--power-address",
+                "hmc.example",
+                "--power-user",
+                "maas",
+                "--power-pass",
+                "secret",
+                "--power-partition-name",
+                "partition-1",
+                "--power-verify-ssl",
+                "y",
+            ]
+        )
+        args.order = "pxe,disk"
+
+        driver = FakeHMCZDriver()
+        status = yield ensureDeferred(
+            power_driver_command._run(reactor, args, {"hmcz": driver})
+        )
+
+        self.assertEqual(status, "off")
+        self.assertEqual(len(driver.calls["set_boot_order"]), 1)
+        set_boot_order_call = driver.calls["set_boot_order"][0]
+        self.assertEqual(set_boot_order_call["system_id"], None)
+        self.assertEqual(set_boot_order_call["order"], ["pxe", "disk"])
+        self.assertEqual(
+            set_boot_order_call["context"],
+            {
+                "power_address": "hmc.example",
+                "power_user": "maas",
+                "power_pass": "secret",
+                "power_partition_name": "partition-1",
+                "power_verify_ssl": "y",
+            },
+        )
 
     def test_create_subparser(self):
         parser = ArgumentParser()
