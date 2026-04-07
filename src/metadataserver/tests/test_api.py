@@ -4153,7 +4153,7 @@ class TestAnonymousAPI(MAASServerTestCase):
 
     def test_anonymous_get_enlist_preseed_uses_rack_url(self):
         url = "http://%s" % factory.make_name("host")
-        network = IPNetwork("10.1.1/24")
+        network = IPNetwork("10.1.1.0/24")
         ip = factory.pick_ip_in_network(network)
         rack = factory.make_RackController(interface=True, url=url)
         nic = rack.get_boot_interface()
