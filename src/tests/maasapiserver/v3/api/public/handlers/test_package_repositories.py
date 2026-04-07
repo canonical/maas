@@ -222,7 +222,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
         services_mock.package_repositories.get_by_id.return_value = (
             TEST_PACKAGE_REPO
         )
-        updated = TEST_PACKAGE_REPO.copy()
+        updated = TEST_PACKAGE_REPO.model_copy()
         updated.name = "new_name"
         services_mock.package_repositories.update_by_id.return_value = updated
 

@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -20,18 +19,14 @@ class OAuthProviderBuilder(ResourceBuilder):
     the generated code.
     """
 
-    client_id: Union[str, Unset] = Field(default=UNSET, required=False)
-    client_secret: Union[str, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    enabled: Union[bool, Unset] = Field(default=UNSET, required=False)
-    issuer_url: Union[str, Unset] = Field(default=UNSET, required=False)
-    metadata: Union[ProviderMetadata, Unset] = Field(
-        default=UNSET, required=False
-    )
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    redirect_uri: Union[str, Unset] = Field(default=UNSET, required=False)
-    scopes: Union[str, Unset] = Field(default=UNSET, required=False)
-    token_type: Union[AccessTokenType, Unset] = Field(
-        default=UNSET, required=False
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    client_id: str | Unset = Field(default=UNSET)
+    client_secret: str | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    enabled: bool | Unset = Field(default=UNSET)
+    issuer_url: str | Unset = Field(default=UNSET)
+    metadata: ProviderMetadata | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    redirect_uri: str | Unset = Field(default=UNSET)
+    scopes: str | Unset = Field(default=UNSET)
+    token_type: AccessTokenType | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

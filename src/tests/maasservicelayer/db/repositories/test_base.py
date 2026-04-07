@@ -109,10 +109,10 @@ class AModel(MaasTimestampedBaseModel):
 
 
 class AResourceBuilder(ResourceBuilder):
-    id: int | Unset = Field(default=UNSET, required=False)
-    created: datetime | Unset = Field(default=UNSET, required=False)
-    updated: datetime | Unset = Field(default=UNSET, required=False)
-    data: str | Unset = Field(default=UNSET, required=False)
+    id: int | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    data: str | Unset = Field(default=UNSET)
 
 
 class MyRepository(BaseRepository[AModel]):

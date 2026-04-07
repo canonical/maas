@@ -35,7 +35,7 @@ async def create_test_subnet_entry(
     subnet.update(extra_details)
 
     if not subnet.get("name"):
-        subnet["name"] = subnet["cidr"]
+        subnet["name"] = str(subnet["cidr"])
 
     if not subnet.get("vlan_id"):
         vlan = await create_test_vlan_entry(fixture)

@@ -1,8 +1,6 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Union
-
 from pydantic import Field
 
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
@@ -15,7 +13,7 @@ class FileStorageBuilder(ResourceBuilder):
     the generated code.
     """
 
-    content: Union[bytes, Unset] = Field(default=UNSET, required=False)
-    filename: Union[str, Unset] = Field(default=UNSET, required=False)
-    key: Union[str, Unset] = Field(default=UNSET, required=False)
-    owner_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
+    content: bytes | Unset = Field(default=UNSET)
+    filename: str | Unset = Field(default=UNSET)
+    key: str | Unset = Field(default=UNSET)
+    owner_id: int | None | Unset = Field(default=UNSET)

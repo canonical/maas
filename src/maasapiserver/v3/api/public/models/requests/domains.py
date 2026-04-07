@@ -2,9 +2,9 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import re
-from typing import Any, Optional
+from typing import Self
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, model_validator
 
 from maasapiserver.v3.api.public.models.dnsresourcerecordsets import (
     AAAARecord,
@@ -31,7 +31,7 @@ class DomainRequest(NamedBaseModel):
     authoritative: bool = Field(
         description="Class type of the domain", default=True
     )
-    ttl: Optional[int] = Field(
+    ttl: int | None = Field(
         description="TTL for the domain.", default=None, ge=1, le=604800
     )
 
@@ -43,7 +43,7 @@ class DomainRequest(NamedBaseModel):
 
 class DNSResourceRecordSetRequest(BaseModel):
     name: str
-    ttl: Optional[int] = None
+    ttl: int | None = None
     rrtype: DNSResourceTypeEnum
     a_records: list[ARecord] | None = None
     aaaa_records: list[AAAARecord] | None = None
@@ -54,20 +54,18 @@ class DNSResourceRecordSetRequest(BaseModel):
     srv_records: list[SRVRecord] | None = None
     txt_records: list[TXTRecord] | None = None
 
-    # TODO: switch to model_validator when we migrate to pydantic 2.x
-    @root_validator
-    def validate_domain_name_based_on_type(cls, values: dict[str, Any]):
-        if values["name"] not in SPECIAL_NAMES:
-            if values["rrtype"] == DNSResourceTypeEnum.SRV:
-                if not re.match(SRV_NAME_RE, values["name"]):
+    @model_validator(mode="after")
+    def validate_domain_name_based_on_type(self) -> Self:
+        if self.name not in SPECIAL_NAMES:
+            if self.rrtype == DNSResourceTypeEnum.SRV:
+                if not re.match(SRV_NAME_RE, self.name):
                     raise ValueError("Invalid SRV domain name.")
             else:
-                validate_domain_name(values["name"])
-        return values
+                validate_domain_name(self.name)
+        return self
 
-    # TODO: switch to model_validator when we migrate to pydantic 2.x
-    @root_validator
-    def ensure_only_one_record_set(cls, values: dict[str, Any]):
+    @model_validator(mode="after")
+    def ensure_only_one_record_set(self) -> Self:
         record_fields = [
             "a_records",
             "aaaa_records",
@@ -79,18 +77,17 @@ class DNSResourceRecordSetRequest(BaseModel):
             "txt_records",
         ]
         fields_set_count = sum(
-            values.get(field, None) is not None for field in record_fields
+            getattr(self, field, None) is not None for field in record_fields
         )
         if fields_set_count != 1:
             raise ValueError("Only one resource record type must be set.")
-        return values
+        return self
 
-    # TODO: switch to model_validator when we migrate to pydantic 2.x
-    @root_validator
-    def ensure_rrtype_matches_records(cls, values: dict[str, Any]):
+    @model_validator(mode="after")
+    def ensure_rrtype_matches_records(self) -> Self:
         error = False
         field = None
-        match values["rrtype"]:
+        match self.rrtype:
             case DNSResourceTypeEnum.A:
                 field = "a_records"
             case DNSResourceTypeEnum.AAAA:
@@ -108,13 +105,13 @@ class DNSResourceRecordSetRequest(BaseModel):
             case DNSResourceTypeEnum.TXT:
                 field = "txt_records"
         if field is not None:
-            error = values.get(field, None) is None
+            error = getattr(self, field, None) is None
             if error:
                 raise ValidationException.build_for_field(
                     field=field,
                     message="Missing required field for the rrtype specified",
                 )
-        return values
+        return self
 
     def to_generic_dns_record(self) -> GenericDNSRecord:
         match self.rrtype:

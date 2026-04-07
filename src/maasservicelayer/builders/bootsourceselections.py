@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,12 +15,10 @@ class BootSourceSelectionBuilder(ResourceBuilder):
     the generated code.
     """
 
-    arch: Union[str, Unset] = Field(default=UNSET, required=False)
-    boot_source_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    legacyselection_id: Union[int, Unset] = Field(
-        default=UNSET, required=False
-    )
-    os: Union[str, Unset] = Field(default=UNSET, required=False)
-    release: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    arch: str | Unset = Field(default=UNSET)
+    boot_source_id: int | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    legacyselection_id: int | Unset = Field(default=UNSET)
+    os: str | Unset = Field(default=UNSET)
+    release: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

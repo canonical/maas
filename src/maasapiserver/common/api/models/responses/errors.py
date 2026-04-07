@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi.encoders import jsonable_encoder
 from macaroonbakery import httpbakery
 from macaroonbakery.bakery import Macaroon
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
 
@@ -12,10 +12,10 @@ from maasservicelayer.exceptions.catalog import BaseExceptionDetail
 
 
 class ErrorBodyResponse(BaseModel):
-    kind = "Error"
+    kind: str = Field(default="Error")
     code: int
     message: str
-    details: Optional[list[BaseExceptionDetail]] = None
+    details: list[BaseExceptionDetail] | None = None
 
 
 class BadRequestBodyResponse(ErrorBodyResponse):
@@ -102,7 +102,7 @@ class PreconditionFailedResponse(JSONResponse):
 
 
 class ValidationErrorBodyResponse(ErrorBodyResponse):
-    code: int = status.HTTP_422_UNPROCESSABLE_ENTITY
+    code: int = status.HTTP_422_UNPROCESSABLE_CONTENT
     message: str = "Failed to validate the request."
 
 
@@ -112,7 +112,7 @@ class ValidationErrorResponse(JSONResponse):
             content=jsonable_encoder(
                 ValidationErrorBodyResponse(details=details)
             ),
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         )
 
 

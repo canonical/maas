@@ -4,11 +4,7 @@
 
 from unittest.mock import call, Mock
 
-from twisted.internet.defer import (
-    inlineCallbacks,
-    maybeDeferred,
-    succeed,
-)
+from twisted.internet.defer import inlineCallbacks, maybeDeferred, succeed
 from twisted.internet.task import Clock
 
 from maastesting import get_testing_timeout

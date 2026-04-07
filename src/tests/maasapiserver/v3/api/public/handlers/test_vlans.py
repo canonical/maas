@@ -286,7 +286,7 @@ class TestVlanApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        updated_vlan = TEST_VLAN.copy()
+        updated_vlan = TEST_VLAN.model_copy()
         updated_vlan.name = "newname"
         services_mock.vlans = Mock(VlansService)
         services_mock.vlans.update_one.return_value = updated_vlan

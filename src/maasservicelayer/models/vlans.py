@@ -1,8 +1,6 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional
-
 from pydantic import IPvAnyAddress
 
 from maasservicelayer.models.base import (
@@ -15,14 +13,14 @@ from maasservicelayer.models.base import (
 class Vlan(MaasTimestampedBaseModel):
     id: int
     vid: int
-    name: Optional[str] = None
+    name: str | None = None
     description: str
     mtu: int
     dhcp_on: bool
-    external_dhcp: Optional[IPvAnyAddress] = None
-    primary_rack_id: Optional[int] = None
-    secondary_rack_id: Optional[int] = None
-    relay_vlan_id: Optional[int] = None
+    external_dhcp: IPvAnyAddress | None = None
+    primary_rack_id: int | None = None
+    secondary_rack_id: int | None = None
+    relay_vlan_id: int | None = None
     fabric_id: int
-    space_id: Optional[int] = None
-    relayed_vlan_id: Optional[int] = None
+    space_id: int | None = None
+    relayed_vlan_id: int | None = None

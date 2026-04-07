@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -17,13 +16,13 @@ class ScriptResultBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    output: Union[str, Unset] = Field(default=UNSET, required=False)
-    parameters: Union[dict, Unset] = Field(default=UNSET, required=False)
-    result: Union[str, Unset] = Field(default=UNSET, required=False)
-    script_set_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    status: Union[ScriptStatus, Unset] = Field(default=UNSET, required=False)
-    stderr: Union[str, Unset] = Field(default=UNSET, required=False)
-    stdout: Union[str, Unset] = Field(default=UNSET, required=False)
-    suppressed: Union[bool, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    output: str | Unset = Field(default=UNSET)
+    parameters: dict | Unset = Field(default=UNSET)
+    result: str | Unset = Field(default=UNSET)
+    script_set_id: int | Unset = Field(default=UNSET)
+    status: ScriptStatus | Unset = Field(default=UNSET)
+    stderr: str | Unset = Field(default=UNSET)
+    stdout: str | Unset = Field(default=UNSET)
+    suppressed: bool | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
