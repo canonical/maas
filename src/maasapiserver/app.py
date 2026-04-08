@@ -16,9 +16,7 @@ from maasapiserver.common.constants import API_PREFIX
 
 
 class MiddlewareHandler:
-    def __init__(
-        self, middleware_class: type[Any], **kwargs: Any
-    ) -> None:
+    def __init__(self, middleware_class: type[Any], **kwargs: Any) -> None:
         self.middleware_class = middleware_class
         self.kwargs = kwargs
 

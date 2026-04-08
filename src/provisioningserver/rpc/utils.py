@@ -130,4 +130,3 @@ def commission_node(system_id, user):
             "Unable to commission node on region: Region does not "
             "support the CommissionNode RPC method."
         )
-
