@@ -2,7 +2,7 @@
 
 Single Sign-On (SSO) allows users to log in to multiple applications with a single set of credentials. In MAAS, you can configure SSO using an external identity provider (IdP) that supports the OpenID Connect (OIDC) protocol.
 
-This guide explains how to configure SSO using an OIDC-compliant IdP in MAAS 3.8 and later versions.
+This guide explains how to configure SSO using an OIDC-compliant IdP in MAAS.
 
 ## Prerequisites
 
