@@ -49,8 +49,6 @@ from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.temporal import TemporalServiceException
 
 
-
-
 class BootSourceSelectionsHandler(Handler):
     """BootSourceSelections handler."""
 
