@@ -269,7 +269,12 @@ linkcheck_retries = 3
 # NOTE: By default, the following MyST extensions are enabled:
 #       substitution, deflist, linkify
 
-myst_enable_extensions = {"colon_fence", "html_admonition", "html_image"}
+myst_enable_extensions = {
+    "colon_fence",
+    "html_admonition",
+    "html_image",
+    "strikethrough",
+}
 
 
 # Custom Sphinx extensions; see
@@ -299,6 +304,12 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_sitemap",
 ]
+
+# Prevents MyST-Parser from flagging strikethrough as a non-portable feature.
+# Since Docutils lacks a universal 'strike' node, this warning persists for
+# non-HTML formats. Safe to ignore for Read the Docs web builds.
+
+suppress_warnings = ["myst.strikethrough"]
 
 # Excludes files or directories from processing
 
