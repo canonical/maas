@@ -242,6 +242,7 @@ CommonRule = Rule(
     Allow(StandardLibraries),
     Allow("distro_info|distro_info.*"),
     Allow("httpx"),
+    Allow("joserfc|joserfc.**"),
     Allow("lxml|lxml.**"),
     Allow("maascommon|maascommon.**"),
     Allow("maasservicelayer.simplestreams.**"),
@@ -479,6 +480,7 @@ ServiceLayerRule = Rule(
         "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
     ),
     Allow("httpx|httpx.**"),
+    Allow("joserfc|joserfc.**"),
     Allow("jose|jose.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
     Allow("maascommon|maascommon.**"),
@@ -503,6 +505,7 @@ ServiceLayerRule = Rule(
     Allow("provisioningserver.utils.version.**"),
     Allow("psycopg2|psycopg2.**"),
     Allow("pydantic|pydantic.**"),
+    Allow("pydantic_core|pydantic_core.**"),
     Allow("pymacaroons|pymacaroons.**"),
     Allow("pythonjsonlogger|pythonjsonlogger.**"),
     Allow("sqlalchemy|sqlalchemy.**"),

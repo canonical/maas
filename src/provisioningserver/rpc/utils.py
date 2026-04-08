@@ -130,8 +130,3 @@ def commission_node(system_id, user):
             "Unable to commission node on region: Region does not "
             "support the CommissionNode RPC method."
         )
-    finally:
-        # TODO: return in a finally block silently suppresses any exception
-        # propagating from the try/except above. Pre-existing behaviour from
-        # the old returnValue(None) here, but should be revisited.
-        return None

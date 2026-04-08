@@ -471,6 +471,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
             return True
         except (ValueError, TypeError):
             return False
+
     def _join_multicast_groups(self):
         try:
             # Need to ensure that the passed-in reactor is, in fact, a "real"

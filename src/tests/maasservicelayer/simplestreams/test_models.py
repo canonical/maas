@@ -95,7 +95,6 @@ class TestMultiFileProductList:
         SimpleStreamsMultiFileProductList(**json_version)
 
 
-
 class TestSingleFileProductList:
     def test_from_json(self):
         centos_product_list = SimpleStreamsSingleFileProductList(
