@@ -75,7 +75,7 @@ Description: MAAS server common files
 
 Package: maas-region-api
 Architecture: all
-Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
+Depends: bind9 (>= 1:9.18),
          bind9utils,
          chrony,
          iproute2,
@@ -97,7 +97,7 @@ Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
          python3-hvac,
          python3-httpx,
          python3-joserfc,
-         python3-pydantic (>= 2.0),
+         python3-pydantic (>= 2.0.0),
          python3-maas-provisioningserver (= ${binary:Version}),
          python3-macaroonbakery (>= 1.2.1),
          python3-mimeparse,
@@ -110,7 +110,7 @@ Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
          python3-sqlalchemy (>= 2.0.0),
          python3-starlette,
          python3-structlog,
-         python3-temporalio,
+         python3-temporalio (>= 1.10.0),
          temporal (>=1.21.5-1-0ubuntu1),
          ubuntu-keyring,
          ${misc:Depends},
@@ -129,7 +129,7 @@ Architecture: all
 Depends: dbconfig-pgsql,
          iputils-ping,
          maas-region-api (= ${binary:Version}),
-         postgresql (>= 12),
+         postgresql (>= 16),
          tcpdump,
          ${misc:Depends},
 Recommends: openssh-server
@@ -224,7 +224,7 @@ Description: MAAS python API client (Python 3)
 Package: maas-rack-controller
 Architecture: all
 Depends: avahi-utils,
-         bind9 (>= 1:9.10.3.dfsg.P2-5~),
+         bind9 (>= 1:9.18),
          bind9utils,
          distro-info,
          freeipmi-tools,
@@ -301,7 +301,7 @@ Description: MAAS server Django web framework (Python 3)
 
 Package: maas-dhcp
 Architecture: all
-Depends: isc-dhcp-server (>= 4.3.3-5ubuntu10~), ${misc:Depends}
+Depends: isc-dhcp-server (>= 4.4.3-P1-1), ${misc:Depends}
 Description: MAAS DHCP server
  This package installs and configures a DHCP server that can be used by
  MAAS, and enhances the overall MAAS user experience.
@@ -315,7 +315,7 @@ Description: dummy transitional package for MAAS DNS server
 
 Package: maas-proxy
 Architecture: all
-Depends: squid (>> 3.5), ${misc:Depends}
+Depends: squid (>= 4.0), ${misc:Depends}
 Conflicts: squid-deb-proxy
 Description: MAAS Caching Proxy
  This package installs and configures a Caching Proxy server that can be
