@@ -15,7 +15,10 @@ from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.switches import SwitchesRepository
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.exceptions.catalog import (
+    ConflictException,
+    NotFoundException,
+)
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import BootResource
@@ -237,6 +240,59 @@ class TestSwitchesService:
                     "files": [],
                 },
                 NotFoundException,
+            ),
+            pytest.param(
+                "multiple_files",
+                lambda: {
+                    "target_image_id": 42,
+                    "interface_exists": True,
+                    "boot_resource": BootResource(
+                        id=42,
+                        name="test-nos",
+                        rtype=BootResourceType.UPLOADED,
+                        architecture="amd64/generic",
+                        extra={},
+                        rolling=False,
+                        base_image="",
+                        created=utcnow(),
+                        updated=utcnow(),
+                    ),
+                    "resource_set": BootResourceSet(
+                        id=10,
+                        version="1.0",
+                        label="uploaded",
+                        resource_id=42,
+                        created=utcnow(),
+                        updated=utcnow(),
+                    ),
+                    "files": [
+                        BootResourceFile(
+                            id=1,
+                            filename="nos-installer-1.bin",
+                            filename_on_disk="abc123.bin",
+                            filetype=BootResourceFileType.SELF_EXTRACTING,
+                            extra={},
+                            sha256="abc123",
+                            size=1024000,
+                            resource_set_id=10,
+                            created=utcnow(),
+                            updated=utcnow(),
+                        ),
+                        BootResourceFile(
+                            id=2,
+                            filename="nos-installer-2.bin",
+                            filename_on_disk="def456.bin",
+                            filetype=BootResourceFileType.SELF_EXTRACTING,
+                            extra={},
+                            sha256="def456",
+                            size=2048000,
+                            resource_set_id=10,
+                            created=utcnow(),
+                            updated=utcnow(),
+                        ),
+                    ],
+                },
+                ConflictException,
             ),
         ],
     )
@@ -488,32 +544,31 @@ class TestSwitchesService:
             interface_id=10, switch_id=test_switch.id
         )
 
-    async def test_post_delete_hook_with_no_interfaces(
+    async def test_pre_delete_hook_with_no_interfaces(
         self,
         service,
         interfaces_service,
         staticipaddress_service,
     ) -> None:
-        """Test post_delete_hook when switch has no interfaces."""
+        """Test pre_delete_hook when switch has no interfaces."""
         # No interfaces for this switch
         interfaces_service.get_many.return_value = []
 
         # Should complete without any IP operations
-        await service.post_delete_hook(TEST_SWITCH)
+        await service.pre_delete_hook(TEST_SWITCH)
 
         interfaces_service.get_many.assert_called_once()
         # No IP operations should be called
-        staticipaddress_service.get_ip_addresses_for_interface.assert_not_called()
-        interfaces_service.unlink_interface_from_ips.assert_not_called()
-        staticipaddress_service.delete_ips_if_no_linked_interfaces.assert_not_called()
+        staticipaddress_service.get_ips_for_interfaces_without_other_links.assert_not_called()
+        interfaces_service.unlink_interfaces_from_ips.assert_not_called()
 
-    async def test_post_delete_hook_with_interface_own_ip(
+    async def test_pre_delete_hook_with_interface_own_ip(
         self,
         service,
         interfaces_service,
         staticipaddress_service,
     ) -> None:
-        """Test post_delete_hook with interface having its own IP (not shared)."""
+        """Test pre_delete_hook with interface having its own IP (not shared)."""
         # One interface with one IP
         test_interface = Interface(
             id=10,
@@ -532,30 +587,33 @@ class TestSwitchesService:
         )
 
         interfaces_service.get_many.return_value = [test_interface]
-        staticipaddress_service.get_ip_addresses_for_interface.return_value = [
+        staticipaddress_service.get_ips_for_interfaces_without_other_links.return_value = [
             test_ip
         ]
 
-        await service.post_delete_hook(TEST_SWITCH)
+        await service.pre_delete_hook(TEST_SWITCH)
 
         interfaces_service.get_many.assert_called_once()
-        staticipaddress_service.get_ip_addresses_for_interface.assert_called_once_with(
-            test_interface.id
+        staticipaddress_service.get_ips_for_interfaces_without_other_links.assert_called_once_with(
+            [test_interface.id]
         )
-        interfaces_service.unlink_interface_from_ips.assert_called_once_with(
-            interface_id=test_interface.id
+        interfaces_service.unlink_interfaces_from_ips.assert_called_once_with(
+            interface_ids=[test_interface.id]
         )
-        staticipaddress_service.delete_ips_if_no_linked_interfaces.assert_called_once_with(
-            [test_ip.id]
+        interfaces_service.delete_many_by_id.assert_called_once_with(
+            [test_interface.id]
+        )
+        staticipaddress_service.delete_by_id.assert_called_once_with(
+            test_ip.id
         )
 
-    async def test_post_delete_hook_with_multiple_interfaces_and_ips(
+    async def test_pre_delete_hook_with_multiple_interfaces_and_ips(
         self,
         service,
         interfaces_service,
         staticipaddress_service,
     ) -> None:
-        """Test post_delete_hook with multiple interfaces and various IP scenarios."""
+        """Test pre_delete_hook with multiple interfaces and various IP scenarios."""
         # Two interfaces
         interface1 = Interface(
             id=10,
@@ -582,54 +640,38 @@ class TestSwitchesService:
             ip="192.168.1.10",
             alloc_type=IpAddressType.AUTO,
             lease_time=0,
-        )  # Only on interface1
-        ip2 = StaticIPAddress(
-            id=200,
-            ip="192.168.1.20",
-            alloc_type=IpAddressType.AUTO,
-            lease_time=0,
-        )  # Shared (will remain)
+        )
         ip3 = StaticIPAddress(
             id=300,
             ip="192.168.1.30",
             alloc_type=IpAddressType.AUTO,
             lease_time=0,
-        )  # Only on interface2
+        )
 
         interfaces_service.get_many.return_value = [interface1, interface2]
-
-        # Setup IP associations
-        def get_ips_for_interface(interface_id):
-            if interface_id == 10:
-                return [ip1, ip2]  # interface1 has ip1 and ip2
-            elif interface_id == 20:
-                return [ip3]  # interface2 has ip3
-            return []
-
-        staticipaddress_service.get_ip_addresses_for_interface.side_effect = (
-            get_ips_for_interface
-        )
-
-        await service.post_delete_hook(TEST_SWITCH)
-
-        # Verify all IPs were processed
-        assert (
-            staticipaddress_service.get_ip_addresses_for_interface.call_count
-            == 2
-        )
-        assert interfaces_service.unlink_interface_from_ips.call_count == 2
-        assert interfaces_service.unlink_interface_from_ips.call_args_list == [
-            call(interface_id=10),
-            call(interface_id=20),
+        # The batch query returns only IPs that would be orphaned
+        staticipaddress_service.get_ips_for_interfaces_without_other_links.return_value = [
+            ip1,
+            ip3,
         ]
-        assert (
-            staticipaddress_service.delete_ips_if_no_linked_interfaces.call_count
-            == 2
+
+        await service.pre_delete_hook(TEST_SWITCH)
+
+        # Verify batch operations were called once
+        staticipaddress_service.get_ips_for_interfaces_without_other_links.assert_called_once_with(
+            [10, 20]
         )
-        assert (
-            staticipaddress_service.delete_ips_if_no_linked_interfaces.call_args_list
-            == [call([ip1.id, ip2.id]), call([ip3.id])]
+        interfaces_service.unlink_interfaces_from_ips.assert_called_once_with(
+            interface_ids=[10, 20]
         )
+        interfaces_service.delete_many_by_id.assert_called_once_with([10, 20])
+
+        # Only orphaned IPs should be deleted
+        assert staticipaddress_service.delete_by_id.call_count == 2
+        assert staticipaddress_service.delete_by_id.call_args_list == [
+            call(100),
+            call(300),
+        ]
 
     async def test_list_with_target_image(
         self,

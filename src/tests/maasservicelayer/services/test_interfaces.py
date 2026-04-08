@@ -513,8 +513,7 @@ class TestInterfacesService:
             test_switch_id, test_mac, name=test_name
         )
 
-    async def test_unlink_interface_from_ips(self) -> None:
-        """Test unlinking an interface from an IP address."""
+    async def test_unlink_interfaces_from_ips(self) -> None:
         temporal_service_mock = Mock(TemporalService)
         node_service_mock = Mock(NodesService)
         dnsresource_service_mock = Mock(DNSResourcesService)
@@ -533,16 +532,15 @@ class TestInterfacesService:
             interface_repository=interface_repository_mock,
         )
 
-        await interfaces_service.unlink_interface_from_ips(
-            interface_id=10,
+        await interfaces_service.unlink_interfaces_from_ips(
+            interface_ids=[10, 20, 30],
         )
 
-        interface_repository_mock.unlink_interface_from_ips.assert_called_once_with(
-            interface_id=10,
+        interface_repository_mock.unlink_interfaces_from_ips.assert_called_once_with(
+            interface_ids=[10, 20, 30],
         )
 
-    async def test_unlink_interface_from_ips_multiple_ids(self) -> None:
-        """Test unlinking an interface from multiple IP addresses."""
+    async def test_unlink_interfaces_from_ips_empty_list(self) -> None:
         temporal_service_mock = Mock(TemporalService)
         node_service_mock = Mock(NodesService)
         dnsresource_service_mock = Mock(DNSResourcesService)
@@ -561,10 +559,10 @@ class TestInterfacesService:
             interface_repository=interface_repository_mock,
         )
 
-        await interfaces_service.unlink_interface_from_ips(
-            interface_id=10,
+        await interfaces_service.unlink_interfaces_from_ips(
+            interface_ids=[],
         )
 
-        interface_repository_mock.unlink_interface_from_ips.assert_called_once_with(
-            interface_id=10,
+        interface_repository_mock.unlink_interfaces_from_ips.assert_called_once_with(
+            interface_ids=[],
         )

@@ -119,7 +119,7 @@ class NOSInstallerHandler(Handler):
         logger.info(
             "nos_installer_serving",
             mac_address=headers.onie_eth_addr,
-            filename=filename,
+            installer_filename=filename,
             size=file_size,
         )
 

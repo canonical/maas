@@ -44,13 +44,13 @@ New features for MAAS 3.0 release candidate 1.
 
 The logs and events tabs have combined and now live under "Logs". In addition to a number of small improvements, navigating and displaying events has been made easier.
 
-![image](upload://zvQSdbcenjYrkYsq2mtDx8UCGgS.png)
+![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/f/f8e5dad6d92073b90374c5f8cec3de7ae876cbce.png)
 
 #### Downloading logs
 
 A helpful new feature is the ability to download the machine and installation output, and if a machine has failed deployment you can now download a full tar of the curtain logs.
 
-![image](upload://m0CtHR0E4GvNFqRQkcfcFpeSCId.png)
+![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/original/2X/9/9a41c98e5df20a7777d2e1b26552bd219b5c329d.png)
 
 ### Disabling boot methods
 
@@ -207,13 +207,11 @@ MAAS 3.0 supports the use of LXD projects:
 
 ### PCI and USB device tabs in UI machine details
 
-Tables for detected PCI and USB devices have been added to the machine details page for MAAS 3.0:
-
-<a  href="https://discourse.maas.io/uploads/default/original/2X/8/87f42bafe321d45af94d73216f933a9067f01df2.png" target = "_blank"><img src="https://discourse.maas.io/uploads/default/original/2X/8/87f42bafe321d45af94d73216f933a9067f01df2.png"></a>
+Tables for detected PCI and USB devices have been added to the machine details page for MAAS 3.0.
 
 These tables include a new skeleton loading state while node devices are being fetched:
 
-![image](https://discourse.maas.io/uploads/default/original/2X/4/4faa1d8cd996a25ee5089ada924b405bc8903aa4.png)
+![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/optimized/2X/4/4faa1d8cd996a25ee5089ada924b405bc8903aa4_2_690x266.png)
 
 The user is prompted to commission the machine if no devices are detected.
 
@@ -221,7 +219,7 @@ The user is prompted to commission the machine if no devices are detected.
 
 Workload annotations have been added to the machine summary page in MAAS 3.0. These allow you to apply `owner_data` to a machine and make it visible while the machine is in allocated or deployed state:
 
-![image](https://discourse.maas.io/uploads/default/original/2X/5/54682ae5f9c7bb449a1ad222679be0156f27d109.png)
+![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/optimized/2X/5/54682ae5f9c7bb449a1ad222679be0156f27d109_2_690x313.png)
 
 This data is cleared once the machine state changes to something other than "allocated" or "deployed."  The machine list can be filtered by these workload annotations. MAAS will warn you on the release page to remind you that workload annotations will be cleared upon releasing the machine.
 
@@ -229,7 +227,7 @@ This data is cleared once the machine state changes to something other than "all
 
 In MAAS 3.0, a fixed status bar has been added to the bottom of the screen, which will always display the MAAS name and version on the left. The right side of the status bar is intended to show contextual data, depending on the UI panel currently displayed. For now, the only data shown is a “last commissioned” timestamp when the user is on a machine details page:
 
-![image](https://discourse.maas.io/uploads/default/original/2X/3/3a15d7e1d7251f3e928e3054a2aab71f414503bd.png)
+![image](https://discourse-maas-io-uploads.s3.us-east-1.amazonaws.com/optimized/2X/3/3a15d7e1d7251f3e928e3054a2aab71f414503bd_2_690x71.png)
 
 ## Bug fixes
 

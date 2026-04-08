@@ -14,7 +14,10 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.builders.interfaces import InterfaceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.interfaces import InterfaceRepository
+from maasservicelayer.db.repositories.interfaces import (
+    InterfaceClauseFactory,
+    InterfaceRepository,
+)
 from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -262,15 +265,29 @@ class InterfacesService(
             switch_id, mac, name=name
         )
 
-    async def unlink_interface_from_ips(
-        self,
-        interface_id: int,
+    async def unlink_interfaces_from_ips(
+        self, interface_ids: list[int]
     ) -> None:
-        """Remove the link between an interface and all of its IP addresses.
+        """Remove the links between multiple interfaces and their IP addresses.
 
         Args:
-            interface_id: The ID of the interface to unlink
+            interface_ids: List of interface IDs to unlink
         """
-        await self.repository.unlink_interface_from_ips(
-            interface_id=interface_id,
+        await self.repository.unlink_interfaces_from_ips(
+            interface_ids=interface_ids,
+        )
+
+    async def delete_many_by_id(self, interface_ids: list[int]) -> None:
+        """Delete multiple interfaces by their IDs.
+
+        Args:
+            interface_ids: List of interface IDs to delete
+        """
+        if not interface_ids:
+            return
+
+        await self.delete_many(
+            query=QuerySpec(
+                where=InterfaceClauseFactory.with_ids(interface_ids)
+            )
         )

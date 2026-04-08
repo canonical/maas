@@ -34,6 +34,10 @@ class InterfaceClauseFactory(ClauseFactory):
         return Clause(condition=eq(InterfaceTable.c.id, id))
 
     @classmethod
+    def with_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=InterfaceTable.c.id.in_(ids))
+
+    @classmethod
     def with_mac_address(cls, mac_address: str) -> Clause:
         return Clause(condition=eq(InterfaceTable.c.mac_address, mac_address))
 
@@ -416,13 +420,18 @@ class InterfaceRepository(BaseRepository):
 
         return [Interface(**r._asdict()) for r in result]
 
-    async def unlink_interface_from_ips(self, interface_id: int) -> None:
-        """Remove the link between an interface and all of its IP addresses.
+    async def unlink_interfaces_from_ips(
+        self, interface_ids: list[int]
+    ) -> None:
+        """Remove the links between multiple interfaces and their IP addresses.
 
         Args:
-            interface_id: The ID of the interface to unlink
+            interface_ids: List of interface IDs to unlink
         """
+        if not interface_ids:
+            return
+
         stmt = delete(InterfaceIPAddressTable).where(
-            eq(InterfaceIPAddressTable.c.interface_id, interface_id)
+            InterfaceIPAddressTable.c.interface_id.in_(interface_ids)
         )
         await self.execute_stmt(stmt)
