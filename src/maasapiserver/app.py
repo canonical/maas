@@ -4,7 +4,7 @@
 import asyncio
 from dataclasses import dataclass
 import ssl
-from typing import Callable, Type
+from typing import Any, Callable, Type
 
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
@@ -16,27 +16,29 @@ from maasapiserver.common.constants import API_PREFIX
 
 
 class MiddlewareHandler:
-    def __init__(self, middleware_class, **kwargs):
+    def __init__(
+        self, middleware_class: type[Any], **kwargs: Any
+    ) -> None:
         self.middleware_class = middleware_class
         self.kwargs = kwargs
 
-    def get_middleware(self):
+    def get_middleware(self) -> type[Any]:
         return self.middleware_class
 
-    def get_kwargs(self):
+    def get_kwargs(self) -> dict[str, Any]:
         return self.kwargs
 
 
 @dataclass
 class ExceptionHandler:
     exception_type: Type[Exception]
-    handler: Callable
+    handler: Callable[..., Any]
 
 
 @dataclass
 class EventListener:
     event: str
-    handler: Callable
+    handler: Callable[..., Any]
 
 
 @dataclass
@@ -100,7 +102,7 @@ class App:
             api.register(app.router)
 
         for middleware in self._middlewares:
-            app.add_middleware(
+            app.add_middleware(  # pyright: ignore [reportCallIssue]
                 middleware.get_middleware(), **middleware.get_kwargs()
             )
 

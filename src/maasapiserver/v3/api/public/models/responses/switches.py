@@ -44,7 +44,7 @@ class SwitchResponse(HalResponse[BaseHal]):
             id=switch.id,
             target_image_id=switch.target_image_id,
             target_image=switch.target_image,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{switch.id}"
                 )
@@ -72,7 +72,7 @@ class SwitchResponse(HalResponse[BaseHal]):
             id=switch.id,
             target_image_id=switch.target_image_id,
             target_image=target_image,
-            hal_links=BaseHal(
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{switch.id}"
                 )
