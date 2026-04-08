@@ -3,6 +3,8 @@
 
 from typing import Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -13,12 +15,15 @@ from maasservicelayer.models.switches import Switch, SwitchWithTargetImage
 
 
 class SwitchResponse(HalResponse[BaseHal]):
-    """Response model for a single switch."""
+    """Response model for a single switch.
 
-    kind = "Switch"
+    Represents a network switch device with its target image configuration.
+    """
+
+    kind: str = Field(default="Switch")
     id: int
-    target_image_id: int | None
-    target_image: str | None
+    target_image_id: int | None = None
+    target_image: str | None = None
 
     @classmethod
     def from_model(
@@ -29,17 +34,17 @@ class SwitchResponse(HalResponse[BaseHal]):
         """Convert a SwitchWithTargetImage model to a response object.
 
         Args:
-            switch: The SwitchWithTargetImage model to convert
-            self_base_hyperlink: Base URL for HAL links
+            switch: The SwitchWithTargetImage model to convert.
+            self_base_hyperlink: Base URL for HAL self link.
 
         Returns:
-            SwitchResponse with all switch details including target image name
+            SwitchResponse with all switch details including target image name.
         """
         return cls(
             id=switch.id,
             target_image_id=switch.target_image_id,
             target_image=switch.target_image,
-            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+            hal_links=BaseHal(
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{switch.id}"
                 )
@@ -56,18 +61,18 @@ class SwitchResponse(HalResponse[BaseHal]):
         """Convert a Switch model to a response object.
 
         Args:
-            switch: The Switch model to convert
-            target_image: The image name assigned to this switch
-            self_base_hyperlink: Base URL for HAL links
+            switch: The Switch model to convert.
+            target_image: The image name assigned to this switch.
+            self_base_hyperlink: Base URL for HAL self link.
 
         Returns:
-            SwitchResponse with all switch details including target image name
+            SwitchResponse with all switch details including target image name.
         """
         return cls(
             id=switch.id,
             target_image_id=switch.target_image_id,
             target_image=target_image,
-            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+            hal_links=BaseHal(
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{switch.id}"
                 )
@@ -76,6 +81,9 @@ class SwitchResponse(HalResponse[BaseHal]):
 
 
 class SwitchesListResponse(PaginatedResponse[SwitchResponse]):
-    """Response model for a list of switches."""
+    """Response model for a paginated list of switches.
 
-    kind = "SwitchesList"
+    Contains a collection of SwitchResponse items with pagination metadata.
+    """
+
+    kind: str = Field(default="SwitchesList")
