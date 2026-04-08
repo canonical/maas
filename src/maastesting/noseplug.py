@@ -448,7 +448,7 @@ class Subunit(Plugin):
         if self.enabled:
             # Process --${name}-fd.
             fd = getattr(options, self.option_fd)
-            self.stream = open(fd, "wb")
+            self.stream = open(fd, "wb", closefd=False)
 
     def prepareTestResult(self, result):
         from subunit import TestProtocolClient

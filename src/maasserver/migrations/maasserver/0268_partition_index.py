@@ -134,7 +134,9 @@ def partitions_size_match(actual_sizes, expected_sizes):
         return
     return all(
         expected_size in (None, actual_size)
-        for expected_size, actual_size in zip(actual_sizes, expected_sizes, strict=True)
+        for expected_size, actual_size in zip(
+            actual_sizes, expected_sizes, strict=True
+        )
     )
 
 

@@ -14,12 +14,12 @@ class RBACPermissionsPools(BaseModel):
     - An empty set: If the user does not have any resource pools for the specific permission.
     - A set of pool IDs: If the user has permissions for those specific resource pools.
 
-    visible_pools (Optional[set[int]]): pools where the user can see machines either unowned or owned by themselves
-    view_all_pools (Optional[set[int]]): pools where the user can see all machines even if the machine is owned by a different
+    visible_pools (set[int] | None): pools where the user can see machines either unowned or owned by themselves
+    view_all_pools (set[int] | None): pools where the user can see all machines even if the machine is owned by a different
     user
-    deploy_pools (Optional[set[int]]): pools where the user can deploy machines
-    admin_pools (Optional[set[int]]): pools where the user can admin machines
-    edit_pools (Optional[set[int]]): pools that the user can edit
+    deploy_pools (set[int] | None): pools where the user can deploy machines
+    admin_pools (set[int] | None): pools where the user can admin machines
+    edit_pools (set[int] | None): pools that the user can edit
     """
 
     visible_pools: set[int] | None = Field(default=None)
@@ -36,7 +36,7 @@ class AuthenticatedUser(BaseModel):
     Attributes:
         id (int): the user ID
         username (str): the username of the user
-        rbac_permissions (Optional[RBACPermissionsPools]): Contains the RBAC permissions for the user if RBAC
+        rbac_permissions (RBACPermissionsPools | None): Contains the RBAC permissions for the user if RBAC
             is enabled. If RBAC is disabled, this attribute is set to `None`.
     """
 

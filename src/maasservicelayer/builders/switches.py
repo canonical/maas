@@ -15,11 +15,9 @@ class SwitchBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    target_image_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    target_image_id: int | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
 
 
 class SwitchWithTargetImageBuilder(ResourceBuilder):
@@ -29,11 +27,7 @@ class SwitchWithTargetImageBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    target_image: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    target_image_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    target_image: str | None | Unset = Field(default=UNSET)
+    target_image_id: int | None | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

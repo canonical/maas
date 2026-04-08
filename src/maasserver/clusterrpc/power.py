@@ -140,7 +140,9 @@ def power_query_all(system_id, hostname, power_info, timeout=60):
         power_states = set()
         responded_rack_ids = set()
         failed_rack_ids = set()
-        for rack_system_id, (success, response) in zip(call_order, result, strict=True):
+        for rack_system_id, (success, response) in zip(
+            call_order, result, strict=True
+        ):
             if success:
                 power_state = response["state"]
                 if power_state == POWER_STATE.ERROR:
