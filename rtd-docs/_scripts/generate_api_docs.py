@@ -15,7 +15,6 @@ from pathlib import Path
 import sys
 from typing import Any
 
-# Response status code descriptions
 HTTP_STATUS_CODES = {
     200: "OK",
     201: "CREATED",
@@ -168,7 +167,7 @@ def generate_markdown(spec: dict[str, Any]) -> str:
         lines.append("")
 
         endpoints = sorted(paths_by_tag[tag])
-        for idx, (path, method, operation, path_item) in enumerate(endpoints):
+        for _, (path, method, operation, path_item) in enumerate(endpoints):
             operation_id = operation.get("operationId", "")
             summary = operation.get("summary", "")
             description = operation.get("description", "")
@@ -249,25 +248,15 @@ def generate_docs() -> None:
     Raises:
         RuntimeError: If OpenAPI spec generation fails.
     """
-    # Generate OpenAPI spec
-    print("Generating OpenAPI specification...")
     spec = get_openapi_spec()
 
-    # Write to output file
     output_dir = (
         Path(__file__).resolve().parent.parent / "reference" / "api-reference"
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / "api-v2-generated.md"
-
-    # Convert to Markdown
-    print("Converting to Markdown...")
     markdown = generate_markdown(spec)
-
-    print(f"Writing to {output_file}...")
     output_file.write_text(markdown)
-
-    print("✓ API documentation generated successfully!")
 
 
 def main():

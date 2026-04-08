@@ -31,26 +31,19 @@ def generate_api_docs(app, config):
 
     generate_script = scripts_dir / "generate_api_docs.py"
 
-    # Verify script exists
     if not generate_script.exists():
         logger.warning(
             f"API docs generator script not found: {generate_script}"
         )
         return
 
-    # app.info("Generating API documentation...")
-
-    # Add scripts directory to path and import the generator
     sys.path.insert(0, str(scripts_dir))
 
     try:
-        # Import and call the generation function (not main, to avoid argparse)
         import generate_api_docs as gen_module
 
-        # Call generate_docs to generate from source
         gen_module.generate_docs()
 
-        # app.info("✓ API documentation generated successfully!")
     except Exception as e:
         logger.warning(f"Failed to generate API documentation: {e}")
         import traceback
@@ -63,8 +56,6 @@ def setup(app):
 
     This function is called by Sphinx to register the extension.
     """
-    # Connect our generator to the config-inited event
-    # This runs after configuration is loaded but before source files are read
     app.connect("config-inited", generate_api_docs)
 
     return {

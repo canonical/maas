@@ -46,10 +46,8 @@ def _patch_distro_info():
     import sys
     from unittest.mock import MagicMock
 
-    # Create a fake distro_info module
     distro_info = MagicMock()
 
-    # Create minimal fake classes for common distroinfo types
     class FakeDistroInfo:
         def __init__(self, *args, **kwargs):
             pass
@@ -63,7 +61,6 @@ def _patch_distro_info():
     distro_info.UbuntuDistroInfo = FakeDistroInfo
     distro_info.DebianDistroInfo = FakeDistroInfo
 
-    # Inject the fake module into sys.modules
     sys.modules["distro_info"] = distro_info
 
 
@@ -72,13 +69,11 @@ def _patch_seamicroclient():
     import sys
     from unittest.mock import MagicMock
 
-    # Create a fake seamicroclient module with v2.client
     seamicroclient = MagicMock()
     seamicroclient.exceptions = MagicMock()
     seamicroclient.v2 = MagicMock()
     seamicroclient.v2.client = MagicMock()
 
-    # Inject the fake modules into sys.modules
     sys.modules["seamicroclient"] = seamicroclient
     sys.modules["seamicroclient.v2"] = seamicroclient.v2
     sys.modules["seamicroclient.v2.client"] = seamicroclient.v2.client
@@ -89,14 +84,12 @@ def _patch_curtin():
     import sys
     from unittest.mock import MagicMock
 
-    # Create a fake curtin module with config and pack submodules
     curtin = MagicMock()
     curtin.config = MagicMock()
     curtin.config.merge_config = MagicMock()
     curtin.pack = MagicMock()
     curtin.pack.pack_install = MagicMock()
 
-    # Inject the fake modules into sys.modules
     sys.modules["curtin"] = curtin
     sys.modules["curtin.config"] = curtin.config
     sys.modules["curtin.pack"] = curtin.pack
@@ -107,12 +100,10 @@ def _patch_tftp():
     import sys
     from unittest.mock import MagicMock
 
-    # Create a fake tftp module with backend submodule
     tftp = MagicMock()
     tftp.backend = MagicMock()
     tftp.backend.IReader = MagicMock()
 
-    # Inject the fake modules into sys.modules
     sys.modules["tftp"] = tftp
     sys.modules["tftp.backend"] = tftp.backend
 
