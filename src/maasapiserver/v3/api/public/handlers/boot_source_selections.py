@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import Depends, Query, Response
 from fastapi.exceptions import RequestValidationError
-from pydantic import AfterValidator, Field, ValidationError
+from pydantic import Field, ValidationError
 from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
@@ -44,14 +44,11 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.configurations import BootImagesAutoImportConfig
+from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.temporal import TemporalServiceException
 
 
-def _no_duplicate_ids(ids: list[int]) -> list[int]:
-    if len(ids) != len(set(ids)):
-        raise ValueError("Duplicate IDs are not allowed.")
-    return ids
 
 
 class BootSourceSelectionsHandler(Handler):
@@ -226,9 +223,8 @@ class BootSourceSelectionsHandler(Handler):
     async def bulk_delete_selections(
         self,
         ids: Annotated[
-            list[int],
+            UniqueList[int],
             Field(min_length=1),
-            AfterValidator(_no_duplicate_ids),
         ] = Query(  # noqa: B008
             description="ids of selections to delete", alias="id"
         ),
