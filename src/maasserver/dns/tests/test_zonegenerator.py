@@ -296,7 +296,9 @@ def assertIsForwardZoneWithDomain(testcase, zone, domain):
 
 
 def assertIsReverseZoneWithDomain(testcase, zone, domain, network):
-    network = network if network is None else IPNetwork(network, expand_partial=True)
+    network = (
+        network if network is None else IPNetwork(network, expand_partial=True)
+    )
     testcase.assertIsInstance(zone, DNSReverseZoneConfig)
     testcase.assertEqual(zone.domain, domain)
     testcase.assertEqual(zone._network, network)
