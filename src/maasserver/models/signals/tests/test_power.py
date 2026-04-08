@@ -45,6 +45,22 @@ class TestStatusQueryEvent(MAASServerTestCase):
             node.system_id
         )
 
+    def test_commissioning_to_new_emits_query_event(self):
+        self.patch_autospec(power, "update_power_state_of_node_soon")
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, power_type="virsh"
+        )
+        node.update_status(NODE_STATUS.NEW)
+
+        with post_commit_hooks:
+            node.save()
+            power.update_power_state_of_node_soon.assert_not_called()
+
+        post_commit_hooks.fire()
+        power.update_power_state_of_node_soon.assert_called_once_with(
+            node.system_id
+        )
+
     def test_changing_not_tracked_status_of_node_doesnt_emit_event(self):
         self.patch_autospec(power, "update_power_state_of_node_soon")
         old_status = NODE_STATUS.ALLOCATED
