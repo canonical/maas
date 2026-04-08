@@ -132,10 +132,10 @@ def generate_api_description_from_source():
 
 def get_openapi_spec() -> str:
     """Generate and return the OpenAPI specification from MAAS source.
-    
+
     This function sets up the environment, applies necessary patches,
     and generates the OpenAPI spec by introspecting the MAAS codebase.
-    
+
     Returns:
         OpenAPI specification as a YAML string.
     """

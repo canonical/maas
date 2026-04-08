@@ -4,27 +4,16 @@
 
 """Generate API documentation in Markdown format from OpenAPI specification.
 
-This script generates API documentation by reading the OpenAPI YAML file
+This script generates API documentation by generating the OpenAPI spec from source
 and converting it to Markdown suitable for inclusion in the RTD documentation.
 
 Usage:
-    # Auto-detect (try to load or generate from source)
     python3 rtd-docs/_scripts/generate_api_docs.py
-
-    # Read from file
-    python3 rtd-docs/_scripts/generate_api_docs.py openapi.yaml
-
-    # Read from stdin
-    bin/maas-region generate_oapi_spec | python3 rtd-docs/_scripts/generate_api_docs.py -
 """
 
-import argparse
 from pathlib import Path
-import subprocess
 import sys
 from typing import Any
-
-import yaml
 
 # Response status code descriptions
 HTTP_STATUS_CODES = {
@@ -42,119 +31,29 @@ HTTP_STATUS_CODES = {
 }
 
 
-def find_maas_root() -> Path:
-    """Find the MAAS root directory."""
-    # Start from script location and go up to find MAAS root
-    current = Path(__file__).resolve().parent
-    while current != current.parent:
-        if (current / "src" / "maasserver").is_dir():
-            return current
-        current = current.parent
-    raise FileNotFoundError("Could not find MAAS root directory")
-
-
-def get_openapi_spec(spec_file: str | None = None) -> dict[str, Any] | None:
-    """Load or generate the OpenAPI specification.
-
-    Args:
-        spec_file: Path to OpenAPI YAML file, or None to auto-detect.
-                   Use '-' to read from stdin.
+def get_openapi_spec() -> dict[str, Any]:
+    """Generate the OpenAPI specification from source.
 
     Returns:
-        OpenAPI specification dictionary or None if unavailable.
+        OpenAPI specification dictionary.
 
-    Tries in order:
-    1. Read from stdin if spec_file is '-'
-    2. Load from spec_file if provided
-    3. Generate from source using get_api_spec module
-    4. Load existing openapi.yaml from MAAS root
-    5. Generate it using bin/maas-region
-    6. Return None if all fail
+    Raises:
+        RuntimeError: If generation fails.
     """
-    # Read from stdin
-    if spec_file == "-":
-        print("Reading OpenAPI spec from stdin...")
-        try:
-            return yaml.safe_load(sys.stdin)
-        except Exception as e:
-            print(
-                f"Warning: Failed to parse YAML from stdin: {e}",
-                file=sys.stderr,
-            )
-            return None
+    print("Generating OpenAPI spec from source...")
+    scripts_dir = Path(__file__).parent
+    sys.path.insert(0, str(scripts_dir))
 
-    # Load from provided file
-    if spec_file:
-        spec_path = Path(spec_file)
-        if spec_path.exists():
-            print(f"Loading OpenAPI spec from {spec_path}")
-            with open(spec_path) as f:
-                return yaml.safe_load(f)
-        else:
-            print(
-                f"Warning: Spec file not found: {spec_path}", file=sys.stderr
-            )
-            return None
-
-    # Try to find MAAS root for auto-detection
     try:
-        maas_root = find_maas_root()
-    except FileNotFoundError:
-        print("Warning: Could not find MAAS root directory", file=sys.stderr)
-        return None
-
-    # Try to generate from source directly (preferred method)
-    try:
-        print("Generating OpenAPI spec from source...")
-        scripts_dir = Path(__file__).parent
-        sys.path.insert(0, str(scripts_dir))
         from get_api_spec import get_openapi_spec as generate_spec
-        
-        spec_yaml = generate_spec()
+
+        spec = generate_spec()
         print("✓ Successfully generated OpenAPI spec from source")
-        return yaml.safe_load(spec_yaml)
+        return spec
     except Exception as e:
-        print(
-            f"Warning: Failed to generate spec from source: {e}",
-            file=sys.stderr,
-        )
-        # Fall through to other methods
-
-    openapi_file = maas_root / "openapi.yaml"
-
-    # Try to load existing file
-    if openapi_file.exists():
-        print(f"Loading existing OpenAPI spec from {openapi_file}")
-        with open(openapi_file) as f:
-            return yaml.safe_load(f)
-
-    # Try to generate it using bin/maas-region
-    maas_region_bin = maas_root / "bin" / "maas-region"
-    if maas_region_bin.exists():
-        print(f"Generating OpenAPI spec using {maas_region_bin}...")
-        try:
-            result = subprocess.run(
-                [str(maas_region_bin), "generate_oapi_spec"],
-                capture_output=True,
-                text=True,
-                check=True,
-                cwd=maas_root,
-            )
-            return yaml.safe_load(result.stdout)
-        except subprocess.CalledProcessError as e:
-            print(
-                f"Warning: Failed to generate OpenAPI spec: {e}",
-                file=sys.stderr,
-            )
-            if e.stderr:
-                print(f"Error output: {e.stderr}", file=sys.stderr)
-        except Exception as e:
-            print(
-                f"Warning: Unexpected error generating spec: {e}",
-                file=sys.stderr,
-            )
-
-    return None
+        raise RuntimeError(
+            f"Failed to generate OpenAPI spec from source: {e}"
+        ) from e
 
 
 def format_parameter(
@@ -344,59 +243,15 @@ def generate_markdown(spec: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def generate_placeholder(reason: str) -> str:
-    """Generate a placeholder message when spec cannot be loaded."""
-    return f"""# MAAS API v2 Reference
-
-```{{warning}}
-The API documentation could not be automatically generated.
-{reason}
-```
-
-## Generating the API Documentation
-
-To generate the API documentation, first build the OpenAPI specification from the MAAS root directory:
-
-```bash
-# From the MAAS root directory
-make openapi.yaml
-```
-
-Then rebuild the documentation:
-
-```bash
-# From rtd-docs directory
-make clean
-make serve
-```
-
-## Alternative: View the API Documentation
-
-You can view the API documentation through:
-
-- **Web UI**: Access your MAAS instance at `/MAAS/api/docs/`
-- **OpenAPI Spec**: Download from `/MAAS/api/2.0/openapi.yaml`
-- **Online Docs**: Visit [maas.io/docs](https://maas.io/docs)
-
-## API Overview
-
-The MAAS API provides programmatic access to all MAAS functionality. Every feature available in the UI is also accessible through the API.
-
-For authentication and basic usage, see:
-- [How to login to the MAAS API](api-login.md)
-- [Managing your API profile](api-profile.md)
-"""
-
-
-def generate_docs(spec_file: str | None = None) -> None:
+def generate_docs() -> None:
     """Generate API documentation from OpenAPI specification.
-    
-    Args:
-        spec_file: Path to OpenAPI YAML file, '-' for stdin, or None to auto-detect.
+
+    Raises:
+        RuntimeError: If OpenAPI spec generation fails.
     """
-    # Load or generate OpenAPI spec
-    print("Loading OpenAPI specification...")
-    spec = get_openapi_spec(spec_file)
+    # Generate OpenAPI spec
+    print("Generating OpenAPI specification...")
+    spec = get_openapi_spec()
 
     # Write to output file
     output_dir = (
@@ -405,16 +260,9 @@ def generate_docs(spec_file: str | None = None) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / "api-v2-generated.md"
 
-    if spec is None:
-        # Generate placeholder
-        print("⚠ Could not load OpenAPI spec, generating placeholder...")
-        markdown = generate_placeholder(
-            "The openapi.yaml file could not be found or generated."
-        )
-    else:
-        # Convert to Markdown
-        print("Converting to Markdown...")
-        markdown = generate_markdown(spec)
+    # Convert to Markdown
+    print("Converting to Markdown...")
+    markdown = generate_markdown(spec)
 
     print(f"Writing to {output_file}...")
     output_file.write_text(markdown)
@@ -424,19 +272,7 @@ def generate_docs(spec_file: str | None = None) -> None:
 
 def main():
     """Main entry point for CLI usage."""
-    parser = argparse.ArgumentParser(
-        description="Generate API documentation from OpenAPI specification"
-    )
-    parser.add_argument(
-        "spec_file",
-        nargs="?",
-        default=None,
-        help="Path to OpenAPI YAML file, or '-' to read from stdin. "
-        "If not provided, auto-detects or generates the spec.",
-    )
-    args = parser.parse_args()
-
-    generate_docs(args.spec_file)
+    generate_docs()
 
 
 if __name__ == "__main__":

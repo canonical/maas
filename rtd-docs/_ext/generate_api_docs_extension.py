@@ -15,6 +15,10 @@ ensuring the API documentation is always up-to-date.
 from pathlib import Path
 import sys
 
+from sphinx.util import logging
+
+logger = logging.getLogger(__name__)
+
 
 def generate_api_docs(app, config):
     """Generate API documentation during Sphinx build.
@@ -29,7 +33,9 @@ def generate_api_docs(app, config):
 
     # Verify script exists
     if not generate_script.exists():
-        app.warn(f"API docs generator script not found: {generate_script}")
+        logger.warning(
+            f"API docs generator script not found: {generate_script}"
+        )
         return
 
     # app.info("Generating API documentation...")
@@ -41,15 +47,15 @@ def generate_api_docs(app, config):
         # Import and call the generation function (not main, to avoid argparse)
         import generate_api_docs as gen_module
 
-        # Call generate_docs directly with no arguments (auto-detect mode)
+        # Call generate_docs to generate from source
         gen_module.generate_docs()
 
         # app.info("✓ API documentation generated successfully!")
     except Exception as e:
-        app.warn(f"Failed to generate API documentation: {e}")
+        logger.warning(f"Failed to generate API documentation: {e}")
         import traceback
 
-        app.warn(traceback.format_exc())
+        logger.warning(traceback.format_exc())
 
 
 def setup(app):
