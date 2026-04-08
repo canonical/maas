@@ -304,6 +304,7 @@ extensions = [
 
 exclude_patterns = [
     "doc-cheat-sheet*",
+    "_scripts/_templates/*",  # Template files for API documentation generation
 ]
 
 # Adds custom CSS files, located under 'html_static_path'

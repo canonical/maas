@@ -11,9 +11,12 @@ Usage:
     python3 rtd-docs/_scripts/generate_api_docs.py
 """
 
+from collections import defaultdict
 from pathlib import Path
 import sys
 from typing import Any
+
+from jinja2 import Environment, FileSystemLoader
 
 HTTP_STATUS_CODES = {
     200: "OK",
@@ -101,48 +104,37 @@ def format_request_body(request_body: dict[str, Any]) -> list[str]:
     return lines
 
 
-def format_response(status_code: str, response: dict[str, Any]) -> list[str]:
+def format_response(status_code: str, response: dict[str, Any]) -> str:
     """Format a response for markdown output."""
     status_name = HTTP_STATUS_CODES.get(int(status_code), "")
     description = response.get("description", "")
 
     lines = [f"  **HTTP {status_code} {status_name}**"]
     if description:
-        lines.append(f"  ")
+        lines.append("  ")
         lines.append(f"  {description}")
 
     if "content" in response:
         content_types = list(response["content"].keys())
         if content_types:
             content_type = content_types[0]
-            lines.append(f"  ")
+            lines.append("  ")
             lines.append(f"  Content type: `{content_type}`")
 
-    return lines
+    return "\n".join(lines)
 
 
-def generate_markdown(spec: dict[str, Any]) -> str:
-    """Convert OpenAPI specification to Markdown documentation."""
-    lines = []
+def prepare_template_data(spec: dict[str, Any]) -> dict[str, Any]:
+    """Prepare data structure for Jinja2 template rendering.
 
-    # Header
-    lines.append("# MAAS API v2 Reference")
-    lines.append("")
-    lines.append(spec["info"]["description"])
-    lines.append("")
+    Args:
+        spec: OpenAPI specification dictionary.
 
-    # API information
-    lines.append("## API Information")
-    lines.append("")
-    lines.append(f"**Version:** {spec['info']['version']}")
-    lines.append("")
-    lines.append(
-        f"**License:** [{spec['info']['license']['name']}]({spec['info']['license']['url']})"
-    )
-    lines.append("")
-
+    Returns:
+        Dictionary containing all data needed for template rendering.
+    """
     # Group paths by tag
-    paths_by_tag: dict[str, list[tuple[str, str, dict, dict]]] = {}
+    paths_by_tag: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     for path, path_item in spec["paths"].items():
         for method, operation in path_item.items():
@@ -152,94 +144,89 @@ def generate_markdown(spec: dict[str, Any]) -> str:
             tags = operation.get("tags", ["Uncategorized"])
             tag = tags[0] if tags else "Uncategorized"
 
-            if tag not in paths_by_tag:
-                paths_by_tag[tag] = []
-
-            paths_by_tag[tag].append(
-                (path, method.upper(), operation, path_item)
-            )
-
-    # Generate documentation for each tag
-    for tag in sorted(paths_by_tag.keys()):
-        lines.append(f"## {tag}")
-        lines.append("")
-        lines.append(f"Operations for {tag.lower()} resources.")
-        lines.append("")
-
-        endpoints = sorted(paths_by_tag[tag])
-        for _, (path, method, operation, path_item) in enumerate(endpoints):
-            operation_id = operation.get("operationId", "")
-            summary = operation.get("summary", "")
-            description = operation.get("description", "")
-            deprecated = operation.get("deprecated", False)
-
-            # Create dropdown title
-            endpoint_display = f"{method} /MAAS/api/2.0{path}"
-            if summary:
-                dropdown_title = f"{endpoint_display}: {summary}"
-            else:
-                dropdown_title = endpoint_display
-
-            # Mark deprecated in title
-            if deprecated:
-                dropdown_title = f"~~{dropdown_title}~~"
-
-            # Start collapsible dropdown
-            lines.append(f"````{{dropdown}} {dropdown_title}")
-            lines.append("")
-
-            # Description
-            if description:
-                lines.append(f"  {description}")
-                lines.append("")
-
-            if deprecated:
-                lines.append("  ```{warning}")
-                lines.append("  This endpoint is deprecated.")
-                lines.append("  ```")
-                lines.append("")
-
-            lines.append(f"  **Operation ID:** `{operation_id}`")
-            lines.append("")
-
-            # Parameters
+            # Prepare endpoint data
             endpoint_params = path_item.get("parameters", [])
             operation_params = operation.get("parameters", [])
             all_params = endpoint_params + operation_params
 
-            if all_params:
-                lines.append("  **Parameters:**")
-                lines.append("")
-                for param in all_params:
-                    # Indent parameter lines
-                    param_line = format_parameter(param, endpoint_params)
-                    lines.append(f"  {param_line}")
-                lines.append("")
+            # Format parameters
+            formatted_params = []
+            for param in all_params:
+                formatted_params.append(format_parameter(param, endpoint_params))
 
-            # Request body
+            # Format request body
+            formatted_request_body = []
             if "requestBody" in operation:
-                lines.append("  **Request body (multipart/form-data):**")
-                lines.append("")
-                body_lines = format_request_body(operation["requestBody"])
-                lines.extend(body_lines)
-                lines.append("")
+                formatted_request_body = format_request_body(operation["requestBody"])
 
-            # Responses
+            # Format responses
+            formatted_responses = []
             if "responses" in operation:
-                lines.append("  **Responses:**")
-                lines.append("")
-                for status_code, response in sorted(
-                    operation["responses"].items()
-                ):
-                    response_lines = format_response(status_code, response)
-                    lines.extend(response_lines)
-                    lines.append("")
+                for status_code, response in sorted(operation["responses"].items()):
+                    formatted_responses.append(format_response(status_code, response))
 
-            # Close dropdown
-            lines.append("````")
-            lines.append("")
+            endpoint_data = {
+                "path": path,
+                "method": method.upper(),
+                "operation_id": operation.get("operationId", ""),
+                "summary": operation.get("summary", ""),
+                "description": operation.get("description", ""),
+                "deprecated": operation.get("deprecated", False),
+                "parameters": formatted_params,
+                "request_body": formatted_request_body,
+                "responses": formatted_responses,
+            }
 
-    return "\n".join(lines)
+            paths_by_tag[tag].append(endpoint_data)
+
+    # Sort endpoints within each tag
+    for tag in paths_by_tag:
+        paths_by_tag[tag] = sorted(
+            paths_by_tag[tag], key=lambda x: (x["path"], x["method"])
+        )
+
+    return {
+        "version": spec["info"]["version"],
+        "license_name": spec["info"]["license"]["name"],
+        "license_url": spec["info"]["license"]["url"],
+        "tags": dict(sorted(paths_by_tag.items())),
+    }
+
+
+def generate_markdown(spec: dict[str, Any]) -> str:
+    """Convert OpenAPI specification to Markdown documentation using Jinja2.
+
+    Args:
+        spec: OpenAPI specification dictionary.
+
+    Returns:
+        Rendered markdown documentation.
+    """
+    scripts_dir = Path(__file__).parent
+    templates_dir = scripts_dir / "_templates"
+
+    # Load header and footer content
+    header_file = templates_dir / "api-v2-header.md"
+    footer_file = templates_dir / "api-v2-footer.md"
+
+    header_content = header_file.read_text()
+    footer_content = footer_file.read_text()
+
+    # Prepare template data
+    template_data = prepare_template_data(spec)
+    template_data["header"] = header_content
+    template_data["footer"] = footer_content
+
+    # Setup Jinja2 environment
+    env = Environment(
+        loader=FileSystemLoader(templates_dir),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+
+    # Render template
+    template = env.get_template("api-v2-template.md.j2")
+    return template.render(**template_data)
 
 
 def generate_docs() -> None:
@@ -257,6 +244,7 @@ def generate_docs() -> None:
     output_file = output_dir / "api-v2-generated.md"
     markdown = generate_markdown(spec)
     output_file.write_text(markdown)
+    print(f"✓ Successfully generated API documentation at {output_file}")
 
 
 def main():
