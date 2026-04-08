@@ -3,7 +3,7 @@
 
 import asyncio
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 import uuid
 
 from temporalio.client import (
@@ -149,7 +149,7 @@ class TemporalService(Service):
         return workflow_name
 
     def workflow_is_registered(
-        self, workflow_name: str, workflow_id: Optional[str] = None
+        self, workflow_name: str, workflow_id: str | None = None
     ) -> bool:
         key = self._make_key(workflow_name, workflow_id)
         return key in self._post_commit_workflows
@@ -157,9 +157,9 @@ class TemporalService(Service):
     def register_workflow_call(
         self,
         workflow_name: str,
-        parameter: Optional[Any] = None,
-        workflow_id: Optional[str] = None,
-        wait: Optional[bool] = True,
+        parameter: Any | None = None,
+        workflow_id: str | None = None,
+        wait: bool | None = True,
         *args: list[Any],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -176,11 +176,11 @@ class TemporalService(Service):
     def register_or_update_workflow_call(
         self,
         workflow_name: str,
-        parameter: Optional[Any] = None,
-        workflow_id: Optional[str] = None,
-        wait: Optional[bool] = True,
-        override_previous_parameters: Optional[bool] = False,
-        parameter_merge_func: Optional[Callable] = None,
+        parameter: Any | None = None,
+        workflow_id: str | None = None,
+        wait: bool | None = True,
+        override_previous_parameters: bool | None = False,
+        parameter_merge_func: Callable | None = None,
         *args,
         **kwargs,
     ) -> None:

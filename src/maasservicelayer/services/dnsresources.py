@@ -1,7 +1,6 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import List, Optional
 
 from maascommon.enums.dns import DnsUpdateAction
 from maascommon.enums.ipaddress import IpAddressType
@@ -113,7 +112,7 @@ class DNSResourcesService(
         return
 
     async def post_update_many_hook(
-        self, resources: List[DNSResource]
+        self, resources: list[DNSResource]
     ) -> None:
         raise NotImplementedError("Not implemented yet.")
 
@@ -135,7 +134,7 @@ class DNSResourcesService(
         return
 
     async def post_delete_many_hook(
-        self, resources: List[DNSResource]
+        self, resources: list[DNSResource]
     ) -> None:
         await self.dnspublications_service.create_for_config_update(
             source="zone(s) removed resource(s)",
@@ -143,7 +142,7 @@ class DNSResourcesService(
         )
 
     async def release_dynamic_hostname(
-        self, ip: StaticIPAddress, but_not_for: Optional[DNSResource] = None
+        self, ip: StaticIPAddress, but_not_for: DNSResource | None = None
     ) -> None:
         if ip.ip is None or ip.alloc_type != IpAddressType.DISCOVERED.value:
             return
@@ -247,8 +246,8 @@ class DNSResourcesService(
     async def get_ips_for_dnsresource(
         self,
         dnsrr_id: int,
-        discovered_only: Optional[bool] = False,
-        matching: Optional[StaticIPAddress] = None,
+        discovered_only: bool | None = False,
+        matching: StaticIPAddress | None = None,
     ) -> list[StaticIPAddress]:
         return await self.repository.get_ips_for_dnsresource(
             dnsrr_id=dnsrr_id,
@@ -265,22 +264,22 @@ class DNSResourcesService(
         return await self.repository.get_dnsdata_for_dnsresource(dnsrr_id)
 
     async def get_dnsresources_without_ips(
-        self, dnsresource_ids: List[int]
-    ) -> List[int]:
+        self, dnsresource_ids: list[int]
+    ) -> list[int]:
         return await self.repository.get_dnsresources_without_ips(
             dnsresource_ids
         )
 
     async def get_dnsresources_without_dnsdata(
-        self, dnsresource_ids: List[int]
-    ) -> List[int]:
+        self, dnsresource_ids: list[int]
+    ) -> list[int]:
         return await self.repository.get_dnsresources_without_dnsdata(
             dnsresource_ids
         )
 
     async def get_dnsresources_for_ip(
         self, ip: StaticIPAddress
-    ) -> List[DNSResource]:
+    ) -> list[DNSResource]:
         return await self.repository.get_dnsresources_for_ip(ip)
 
     async def unlink_ip_from_all_dnsresources(
