@@ -8,14 +8,14 @@ This script generates API documentation by reading the OpenAPI YAML file
 and converting it to Markdown suitable for inclusion in the RTD documentation.
 
 Usage:
-    # Read from stdin
-    bin/maas-region generate_oapi_spec | python3 rtd-docs/_scripts/generate_api_docs.py
+    # Auto-detect (try to load or generate from source)
+    python3 rtd-docs/_scripts/generate_api_docs.py
 
     # Read from file
     python3 rtd-docs/_scripts/generate_api_docs.py openapi.yaml
 
-    # Auto-detect (try to load or generate)
-    python3 rtd-docs/_scripts/generate_api_docs.py
+    # Read from stdin
+    bin/maas-region generate_oapi_spec | python3 rtd-docs/_scripts/generate_api_docs.py -
 """
 
 import argparse
@@ -66,9 +66,10 @@ def get_openapi_spec(spec_file: str | None = None) -> dict[str, Any] | None:
     Tries in order:
     1. Read from stdin if spec_file is '-'
     2. Load from spec_file if provided
-    3. Load existing openapi.yaml from MAAS root
-    4. Generate it using bin/maas-region
-    5. Return None if all fail
+    3. Generate from source using get_api_spec module
+    4. Load existing openapi.yaml from MAAS root
+    5. Generate it using bin/maas-region
+    6. Return None if all fail
     """
     # Read from stdin
     if spec_file == "-":
@@ -102,6 +103,23 @@ def get_openapi_spec(spec_file: str | None = None) -> dict[str, Any] | None:
         print("Warning: Could not find MAAS root directory", file=sys.stderr)
         return None
 
+    # Try to generate from source directly (preferred method)
+    try:
+        print("Generating OpenAPI spec from source...")
+        scripts_dir = Path(__file__).parent
+        sys.path.insert(0, str(scripts_dir))
+        from get_api_spec import get_openapi_spec as generate_spec
+        
+        spec_yaml = generate_spec()
+        print("✓ Successfully generated OpenAPI spec from source")
+        return yaml.safe_load(spec_yaml)
+    except Exception as e:
+        print(
+            f"Warning: Failed to generate spec from source: {e}",
+            file=sys.stderr,
+        )
+        # Fall through to other methods
+
     openapi_file = maas_root / "openapi.yaml"
 
     # Try to load existing file
@@ -110,7 +128,7 @@ def get_openapi_spec(spec_file: str | None = None) -> dict[str, Any] | None:
         with open(openapi_file) as f:
             return yaml.safe_load(f)
 
-    # Try to generate it
+    # Try to generate it using bin/maas-region
     maas_region_bin = maas_root / "bin" / "maas-region"
     if maas_region_bin.exists():
         print(f"Generating OpenAPI spec using {maas_region_bin}...")
@@ -370,23 +388,15 @@ For authentication and basic usage, see:
 """
 
 
-def main():
-    """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Generate API documentation from OpenAPI specification"
-    )
-    parser.add_argument(
-        "spec_file",
-        nargs="?",
-        default=None,
-        help="Path to OpenAPI YAML file, or '-' to read from stdin. "
-        "If not provided, auto-detects or generates the spec.",
-    )
-    args = parser.parse_args()
-
+def generate_docs(spec_file: str | None = None) -> None:
+    """Generate API documentation from OpenAPI specification.
+    
+    Args:
+        spec_file: Path to OpenAPI YAML file, '-' for stdin, or None to auto-detect.
+    """
     # Load or generate OpenAPI spec
     print("Loading OpenAPI specification...")
-    spec = get_openapi_spec(args.spec_file)
+    spec = get_openapi_spec(spec_file)
 
     # Write to output file
     output_dir = (
@@ -410,6 +420,23 @@ def main():
     output_file.write_text(markdown)
 
     print("✓ API documentation generated successfully!")
+
+
+def main():
+    """Main entry point for CLI usage."""
+    parser = argparse.ArgumentParser(
+        description="Generate API documentation from OpenAPI specification"
+    )
+    parser.add_argument(
+        "spec_file",
+        nargs="?",
+        default=None,
+        help="Path to OpenAPI YAML file, or '-' to read from stdin. "
+        "If not provided, auto-detects or generates the spec.",
+    )
+    args = parser.parse_args()
+
+    generate_docs(args.spec_file)
 
 
 if __name__ == "__main__":

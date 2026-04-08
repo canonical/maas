@@ -19,7 +19,6 @@ def add_repo_src_to_path():
         os.path.join(os.path.dirname(__file__), "..", "..")
     )
     src_dir = os.path.join(repo_root, "src")
-    print(src_dir)
     if os.path.isdir(src_dir) and src_dir not in sys.path:
         sys.path.insert(0, src_dir)
 
@@ -131,17 +130,27 @@ def generate_api_description_from_source():
     return get_api_endpoint()
 
 
-def main():
-    """Main entry point for CLI introspection."""
+def get_openapi_spec() -> str:
+    """Generate and return the OpenAPI specification from MAAS source.
+    
+    This function sets up the environment, applies necessary patches,
+    and generates the OpenAPI spec by introspecting the MAAS codebase.
+    
+    Returns:
+        OpenAPI specification as a YAML string.
+    """
     add_repo_src_to_path()
     _patch_maas_metadata()
     _patch_distro_info()
     _patch_seamicroclient()
     _patch_curtin()
     _patch_tftp()
-    print(generate_api_description_from_source())
-    print("SUCCESS")
+    return generate_api_description_from_source()
 
+
+def main():
+    """CLI entry point - print the OpenAPI spec to stdout."""
+    print(get_openapi_spec())
     return 0
 
 

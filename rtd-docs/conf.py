@@ -1,6 +1,12 @@
 import datetime
 import os
+from pathlib import Path
+import sys
+
 import yaml
+
+# Add custom extensions directory to Python path
+sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 
 # Configuration for the Sphinx documentation builder.
 # All configuration specific to your project should be done in this file.
@@ -272,6 +278,7 @@ myst_enable_extensions = {"colon_fence", "html_admonition", "html_image"}
 # NOTE: The canonical_sphinx extension is required for the starter pack.
 
 extensions = [
+    "generate_api_docs_extension",  # Auto-generate API docs during build
     "canonical_sphinx",
     "notfound.extension",
     "sphinx_design",
