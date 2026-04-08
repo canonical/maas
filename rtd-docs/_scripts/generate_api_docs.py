@@ -98,7 +98,7 @@ def format_request_body(request_body: dict[str, Any]) -> list[str]:
             )
             description = prop_info.get("description", "")
             lines.append(
-                f"  - **`{prop_name}`** (*{prop_type}*, {is_required}): {description}"
+                f"- **`{prop_name}`** (*{prop_type}*, {is_required}): {description}"
             )
 
     return lines
@@ -109,17 +109,17 @@ def format_response(status_code: str, response: dict[str, Any]) -> str:
     status_name = HTTP_STATUS_CODES.get(int(status_code), "")
     description = response.get("description", "")
 
-    lines = [f"  **HTTP {status_code} {status_name}**"]
+    lines = [f"**HTTP {status_code} {status_name}**"]
     if description:
-        lines.append("  ")
-        lines.append(f"  {description}")
+        lines.append("")
+        lines.append(f"{description}")
 
     if "content" in response:
         content_types = list(response["content"].keys())
         if content_types:
             content_type = content_types[0]
-            lines.append("  ")
-            lines.append(f"  Content type: `{content_type}`")
+            lines.append("")
+            lines.append(f"Content type: `{content_type}`")
 
     return "\n".join(lines)
 
