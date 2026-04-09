@@ -43,8 +43,6 @@ def get_openapi_spec() -> dict[str, Any]:
         RuntimeError: If generation fails.
     """
     print("Generating OpenAPI spec from source...")
-    scripts_dir = Path(__file__).parent
-    sys.path.insert(0, str(scripts_dir))
 
     try:
         from get_api_spec import get_openapi_spec as generate_spec
