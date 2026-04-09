@@ -7,6 +7,8 @@ runs:
     - name: Fix workspace permissions for ubuntu user (root)
       shell: bash
       run: |
+        # jammy doesn't have the ubuntu user by default
+        useradd -m ubuntu
         mkdir -p /home/ubuntu
         mkdir -p /home/ubuntu/.cache/pip /home/ubuntu/.cache/go-build /home/ubuntu/go
         chown -R ubuntu:ubuntu "$GITHUB_WORKSPACE" /home/ubuntu
