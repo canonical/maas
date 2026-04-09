@@ -1,0 +1,61 @@
+{{ header }}
+
+## Operations
+
+{% for tag, endpoints in tags.items() %}
+### {{ tag }}
+
+{% for endpoint in endpoints %}
+{%- set endpoint_display = endpoint.method ~ ' /MAAS/api/2.0' ~ endpoint.path -%}
+{%- if endpoint.summary -%}
+{%- set dropdown_title = endpoint_display ~ ': ' ~ endpoint.summary -%}
+{%- else -%}
+{%- set dropdown_title = endpoint_display -%}
+{%- endif -%}
+{%- if endpoint.deprecated -%}
+{%- set dropdown_title = '~~' ~ dropdown_title ~ '~~' -%}
+{%- endif %}
+````{dropdown} {{ dropdown_title }}
+:color: secondary
+
+{% if endpoint.description %}
+  {{ endpoint.description }}
+
+{% endif %}
+{%- if endpoint.deprecated %}
+  ```{warning}
+  This endpoint is deprecated.
+  ```
+
+{% endif %}
+  **Operation ID:** `{{ endpoint.operation_id }}`
+
+{% if endpoint.parameters %}
+  **Parameters:**
+
+{% for param in endpoint.parameters %}
+  {{ param }}
+{% endfor %}
+
+{% endif %}
+{%- if endpoint.request_body %}
+  **Request body (multipart/form-data):**
+
+{% for body_param in endpoint.request_body %}
+  {{ body_param }}
+{% endfor %}
+
+{% endif %}
+{%- if endpoint.responses %}
+  **Responses:**
+
+{% for response in endpoint.responses %}
+  {{ response }}
+
+{% endfor %}
+{% endif %}
+````
+
+{% endfor %}
+{% endfor %}
+{{ footer }}
