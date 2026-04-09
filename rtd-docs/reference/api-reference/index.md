@@ -11,7 +11,7 @@ The MAAS API provides programmatic access to all MAAS functionality. Every featu
 
 The complete MAAS API v2 reference documentation is automatically generated from the OpenAPI specification:
 
-- [MAAS API v2 endpoints](api-v2-generated.md)
+- [API v2 endpoints](api-v2-generated.md)
 
 ```{toctree}
 :titlesonly:

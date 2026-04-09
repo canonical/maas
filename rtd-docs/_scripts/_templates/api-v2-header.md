@@ -1,4 +1,4 @@
-# MAAS API v2 Reference
+# API v2 Reference
 
 This is the documentation for the API that lets you control and query MAAS. The API is "RESTful", which means that you access it through normal HTTP requests.
 
