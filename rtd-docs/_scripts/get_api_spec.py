@@ -6,6 +6,7 @@
 
 import os
 import sys
+from typing import Any
 
 try:
     import importlib.metadata as _ilm
@@ -121,7 +122,7 @@ def generate_api_description_from_source():
     return get_api_endpoint()
 
 
-def get_openapi_spec() -> str:
+def get_openapi_spec() -> dict[str, str | Any]:
     """Generate and return the OpenAPI specification from MAAS source.
 
     This function sets up the environment, applies necessary patches,
