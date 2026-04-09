@@ -1,6 +1,12 @@
 import datetime
 import os
+from pathlib import Path
+import sys
+
 import yaml
+
+# Add custom extensions directory to Python path
+sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 
 # Configuration for the Sphinx documentation builder.
 # All configuration specific to your project should be done in this file.
@@ -263,7 +269,12 @@ linkcheck_retries = 3
 # NOTE: By default, the following MyST extensions are enabled:
 #       substitution, deflist, linkify
 
-myst_enable_extensions = {"colon_fence", "html_admonition", "html_image"}
+myst_enable_extensions = {
+    "colon_fence",
+    "html_admonition",
+    "html_image",
+    "strikethrough",
+}
 
 
 # Custom Sphinx extensions; see
@@ -272,6 +283,7 @@ myst_enable_extensions = {"colon_fence", "html_admonition", "html_image"}
 # NOTE: The canonical_sphinx extension is required for the starter pack.
 
 extensions = [
+    "generate_api_docs_extension",  # Auto-generate API docs during build
     "canonical_sphinx",
     "notfound.extension",
     "sphinx_design",
@@ -293,10 +305,17 @@ extensions = [
     "sphinx_sitemap",
 ]
 
+# Prevents MyST-Parser from flagging strikethrough as a non-portable feature.
+# Since Docutils lacks a universal 'strike' node, this warning persists for
+# non-HTML formats. Safe to ignore for Read the Docs web builds.
+
+suppress_warnings = ["myst.strikethrough"]
+
 # Excludes files or directories from processing
 
 exclude_patterns = [
     "doc-cheat-sheet*",
+    "_scripts/_templates/*",  # Template files for API documentation generation
 ]
 
 # Adds custom CSS files, located under 'html_static_path'
