@@ -16,6 +16,9 @@
 # Build outputs
 _build
 
+# Generated Documentation
+reference/api-reference/api-v2-generated.md
+
 # Node.js
 package*.json
 
@@ -24,3 +27,4 @@ package*.json
 __pycache__
 .idea/
 .vscode/
+
