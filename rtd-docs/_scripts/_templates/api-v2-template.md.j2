@@ -16,6 +16,7 @@
 {%- set dropdown_title = '~~' ~ dropdown_title ~ '~~' -%}
 {%- endif %}
 ````{dropdown} {{ dropdown_title }}
+:color: secondary
 
 {% if endpoint.description %}
   {{ endpoint.description }}
