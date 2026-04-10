@@ -49,8 +49,8 @@ class DomainForm(MAASModelForm):
         # specifically says that it is a "hook for doing any extra
         # form-wide cleaning after Field.clean() has
         # been called on every field."
-        if self.cleaned_data.get("authoritative") and len(
-            self.cleaned_data.get("forward_dns_servers", "")
+        if self.cleaned_data.get("authoritative") and self.cleaned_data.get(
+            "forward_dns_servers", ""
         ):
             raise ValidationError(
                 "a domain cannot be both authoritative and have forward dns servers"
