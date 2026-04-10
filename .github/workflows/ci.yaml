@@ -17,7 +17,7 @@ permissions:
 jobs:
   changes:
     runs-on: ubuntu-24.04
- if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft }}
  
     outputs:
       python: ${{ steps.filter.outputs.python }}
