@@ -18,7 +18,7 @@ permissions:
 jobs:
   test-coverage:
     name: Run tests with coverage
-    runs-on: [ self-hosted, linux, amd64, large-tiobe ]
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     container:
       image: ghcr.io/${{ github.repository }}-build-env:master
@@ -84,7 +84,7 @@ jobs:
   tics-analyzer:
     name: TiCS Analyzer
     needs: test-coverage
-    runs-on: ubuntu-latest
+    runs-on: [ self-hosted, linux, amd64, large-tiobe ]
     timeout-minutes: 300
     steps:
       - name: Checkout code
@@ -110,7 +110,7 @@ jobs:
       - name: Run TiCS Analyzer
         uses: tiobe/tics-github-action@a53037a6bb9f71b6a97cdeb0ac41632266804b9e # v3.8.0
         with:
-          mode: ${{ (github.event_name == 'pull_request' && 'client' || 'qserver') }}
+          mode: qserver
           project: maas
           viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=GoProjects
           ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
