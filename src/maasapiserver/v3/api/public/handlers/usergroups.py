@@ -22,6 +22,7 @@ from maasapiserver.v3.api.public.models.requests.usergroup_members import (
 )
 from maasapiserver.v3.api.public.models.requests.usergroups import (
     UserGroupRequest,
+    UserGroupsFiltersParam,
 )
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -44,6 +45,7 @@ from maascommon.openfga.base import (
     MAASResourceEntitlement,
     OpenFGAEntitlementResourceType,
 )
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -89,17 +91,20 @@ class UserGroupsHandler(Handler):
     async def list_groups(
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
+        filters: UserGroupsFiltersParam = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserGroupsListResponse:
-        groups = await services.usergroups.list(
+        groups = await services.usergroups.list_with_user_count(
             page=pagination_params.page,
             size=pagination_params.size,
+            query=QuerySpec(where=filters.to_clause()),
         )
         next_link = None
         if groups.has_next(pagination_params.page, pagination_params.size):
             next_link = (
                 f"{V3_API_PREFIX}/groups?"
                 f"{pagination_params.to_next_href_format()}"
+                f"{filters.to_href_format()}"
             )
 
         return UserGroupsListResponse(
