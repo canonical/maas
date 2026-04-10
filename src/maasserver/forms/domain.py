@@ -40,13 +40,22 @@ class DomainForm(MAASModelForm):
         return self.instance
 
     def clean(self):
-        if self.data.get("authoritative") and len(
-            self.data.get("forward_dns_servers", "")
+        # Using "cleaned_data" here, inside a `clean` method
+        # that later calls super().clean() looks like things are out
+        # of order, but the way Django works is that this method is
+        # supposed to run _after_ field-level validation has run.
+        #
+        # You can see that the method that this overrides in the parent
+        # specifically says that it is a "hook for doing any extra
+        # form-wide cleaning after Field.clean() has
+        # been called on every field."
+        if self.cleaned_data.get("authoritative") and len(
+            self.cleaned_data.get("forward_dns_servers", "")
         ):
             raise ValidationError(
                 "a domain cannot be both authoritative and have forward dns servers"
             )
-        super().clean()
+        return super().clean()
 
     def _post_clean(self):
         # ttl=None needs to make it through.  See also APIEditMixin
