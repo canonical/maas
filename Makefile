@@ -142,6 +142,10 @@ swagger-css: $(swagger-dist)
 go-bins: build-host-info build-agent build-openfga
 .PHONY: go-bins
 
+generate-go:
+	@find src -maxdepth 3 -type f -name go.mod -execdir sh -c "make generate" {} +
+.PHONY: generate-go
+
 build-host-info:
 	$(MAKE) --no-print-directory -j -C src/host-info build
 .PHONY: build-host-info
