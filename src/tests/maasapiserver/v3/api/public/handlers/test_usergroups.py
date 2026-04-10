@@ -43,7 +43,10 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroup_members import UserGroupMember
-from maasservicelayer.models.usergroups import UserGroup
+from maasservicelayer.models.usergroups import (
+    UserGroup,
+    UserGroupWithUserCount,
+)
 from maasservicelayer.models.users import User
 from maasservicelayer.services import ServiceCollectionV3, UsersService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
@@ -158,8 +161,13 @@ class TestUserGroupsApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
         services_mock.usergroups = Mock(UserGroupsService)
-        services_mock.usergroups.list.return_value = ListResult[UserGroup](
-            items=[TEST_GROUP], total=2
+        services_mock.usergroups.list_with_user_count.return_value = (
+            ListResult[UserGroupWithUserCount](
+                items=[
+                    UserGroupWithUserCount(**TEST_GROUP.dict(), user_count=5)
+                ],
+                total=2,
+            )
         )
         response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -167,6 +175,7 @@ class TestUserGroupsApi(ApiCommonTests):
         assert len(groups_response.items) == 1
         assert groups_response.total == 2
         assert groups_response.next == f"{self.BASE_PATH}?page=2&size=1"
+        assert groups_response.items[0].user_count == 5
 
     async def test_list_no_other_page(
         self,
@@ -177,8 +186,13 @@ class TestUserGroupsApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
         services_mock.usergroups = Mock(UserGroupsService)
-        services_mock.usergroups.list.return_value = ListResult[UserGroup](
-            items=[TEST_GROUP], total=1
+        services_mock.usergroups.list_with_user_count.return_value = (
+            ListResult[UserGroupWithUserCount](
+                items=[
+                    UserGroupWithUserCount(**TEST_GROUP.dict(), user_count=5)
+                ],
+                total=1,
+            )
         )
         response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -186,6 +200,7 @@ class TestUserGroupsApi(ApiCommonTests):
         assert len(groups_response.items) == 1
         assert groups_response.total == 1
         assert groups_response.next is None
+        assert groups_response.items[0].user_count == 5
 
     # GET /groups/{group_id}
     async def test_get(

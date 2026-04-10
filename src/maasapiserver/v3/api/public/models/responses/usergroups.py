@@ -9,7 +9,10 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maasservicelayer.models.usergroups import UserGroup
+from maasservicelayer.models.usergroups import (
+    UserGroup,
+    UserGroupWithUserCount,
+)
 
 
 class UserGroupResponse(HalResponse[BaseHal]):
@@ -17,15 +20,20 @@ class UserGroupResponse(HalResponse[BaseHal]):
     id: int
     name: str
     description: Optional[str]
+    user_count: Optional[int] = None
 
     @classmethod
     def from_model(
         cls, usergroup: UserGroup, self_base_hyperlink: str
     ) -> Self:
+        user_count = None
+        if isinstance(usergroup, UserGroupWithUserCount):
+            user_count = usergroup.user_count
         return cls(
             id=usergroup.id,
             name=usergroup.name,
             description=usergroup.description,
+            user_count=user_count,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{usergroup.id}"
