@@ -2,8 +2,6 @@ name: CI check
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-  merge_group:
-    types: [checks_requested]
   workflow_dispatch:
 
 defaults:
@@ -62,7 +60,7 @@ jobs:
     if: >-
       ${{ !github.event.pull_request.draft && needs.changes.outputs.lint == 'true' }}
     container:
-      image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
+      image: ghcr.io/${{ github.repository }}-build-env:${{ github.base_ref }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -82,7 +80,7 @@ jobs:
       ${{ !github.event.pull_request.draft && needs.changes.outputs.python == 'true' }}
 
     container:
-      image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
+      image: ghcr.io/${{ github.repository }}-build-env:${{ github.base_ref }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -103,7 +101,7 @@ jobs:
       ${{ !github.event.pull_request.draft && needs.changes.outputs.go == 'true' }}
 
     container:
-      image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
+      image: ghcr.io/${{ github.repository }}-build-env:${{ github.base_ref }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
