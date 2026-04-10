@@ -6115,6 +6115,7 @@ class Node(CleanSave, TimestampedModel):
             ),
             task_queue="region",
             id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
+            execution_timeout=timedelta(minutes=timeout + 10),
         )
         if not dd.called:
             return dd
