@@ -1,5 +1,6 @@
 name: Test coverage and TiCS Report
 on:
+  workflow_dispatch:
   schedule:
     - cron: "30 0 * * 6" # Weekly full analysis
   push:
@@ -15,10 +16,10 @@ permissions:
   packages: read
 
 jobs:
-  test-coverage-tics:
-    name: Run tests with coverage and generate TiCS report
+  test-coverage:
+    name: Run tests with coverage
     runs-on: [ self-hosted, linux, amd64, large-tiobe ]
-    timeout-minutes: 720
+    timeout-minutes: 120
     container:
       image: ghcr.io/${{ github.repository }}-build-env:master
       credentials:
@@ -29,7 +30,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
-          fetch-depth: 0  # Important for TICS to analyze history
+          fetch-depth: 0
 
       - name: Prepare container
         run: |
@@ -73,18 +74,36 @@ jobs:
           cd $GITHUB_WORKSPACE/src/maasopenfga/
           su ubuntu -c "/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > $GITHUB_WORKSPACE/.coverage/coverage-maasopenfga.xml"
 
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+  tics-analyzer:
+    name: TiCS Analyzer
+    needs: test-coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 'stable'
+
+      - name: Install dependencies
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
+
+      - name: Download coverage
+        uses: actions/download-artifact@v4
         with:
           name: coverage-report
-          path: .coverage
-          retention-days: 7
+          path: .coverage/
 
-      - name: Run TICS Analyzer
+      - name: Run TiCS Analyzer
         uses: tiobe/tics-github-action@a53037a6bb9f71b6a97cdeb0ac41632266804b9e # v3.8.0
         with:
-          mode: ${{ github.event_name == 'pull_request' && 'client' || 'qserver' }}
+          mode: ${{ (github.event_name == 'pull_request' && 'client' || 'qserver') }}
           project: maas
           viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=GoProjects
           ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
