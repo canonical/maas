@@ -74,6 +74,12 @@ jobs:
           cd $GITHUB_WORKSPACE/src/maasopenfga/
           su ubuntu -c "/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > $GITHUB_WORKSPACE/.coverage/coverage-maasopenfga.xml"
 
+      - name: Upload coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-report
+          path: .coverage/
+
   tics-analyzer:
     name: TiCS Analyzer
     needs: test-coverage
@@ -95,7 +101,7 @@ jobs:
           go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
 
       - name: Download coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@a9bc5e6ef2cb54c177f32aa5726adaa15e7e2d59 # v3.1.0
         with:
           name: coverage-report
           path: .coverage/
