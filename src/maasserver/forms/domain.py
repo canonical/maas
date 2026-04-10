@@ -25,7 +25,7 @@ class DomainForm(MAASModelForm):
 
     forward_dns_servers = IPPortListFormField(default_port=53, required=False)
 
-    def save(self):
+    def save(self, *args, **kwargs):
         super(MAASModelForm, self).save()
         fwd_srvrs = self.cleaned_data.get("forward_dns_servers")
         if fwd_srvrs is not None:
