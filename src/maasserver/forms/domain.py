@@ -46,7 +46,7 @@ class DomainForm(MAASModelForm):
         # supposed to run _after_ field-level validation has run.
         #
         # You can see that the method that this overrides in the parent
-        # specifically says that it is a "hook for doing any extra
+        # (BaseForm) specifically says that it is a "hook for doing any extra
         # form-wide cleaning after Field.clean() has
         # been called on every field."
         if self.cleaned_data.get("authoritative") and self.cleaned_data.get(
