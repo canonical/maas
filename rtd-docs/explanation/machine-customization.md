@@ -13,7 +13,7 @@ Before a machine is deployed, you can customise:
 
 ## Post-deployment detection
 
-From MAAS 3.2 onward, you can modify a running machine outside MAAS (e.g. by swapping hardware or adjusting a VM definition). MAAS can then detect:
+You can modify a running machine outside MAAS (e.g. by swapping hardware or adjusting a VM definition). MAAS can then detect:
 
 - Added or removed disks.
 - Added or removed NICs.
