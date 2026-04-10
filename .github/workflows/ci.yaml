@@ -1,4 +1,4 @@
-name: run CI
+name: CI check
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -113,6 +113,7 @@ jobs:
       - name: Test
         run: |
           su ubuntu -c "make test-go"
+
   test-docs:
     needs: changes
     runs-on: ubuntu-24.04
