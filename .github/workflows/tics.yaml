@@ -38,6 +38,7 @@ jobs:
           chown -R ubuntu:ubuntu $(pwd)
           git config --global --add safe.directory $(pwd)
           make install-dependencies
+          su ubuntu -c "mkdir -p $GITHUB_WORKSPACE/.coverage"
           su ubuntu -c "make build"
 
       - name: Download dependencies
@@ -58,7 +59,6 @@ jobs:
           su ubuntu -c "python3-coverage xml -o py-coverage.xml"
           # The .coverage file is created by python3-coverage. Should be deleted by it, but just to make sure
           rm -f ./.coverage
-          su ubuntu -c "mkdir -p $GITHUB_WORKSPACE/.coverage"
           su ubuntu -c "cp py-coverage.xml $GITHUB_WORKSPACE/.coverage/py-coverage.xml"
 
       - name: Run Go tests with coverage
@@ -79,6 +79,7 @@ jobs:
         with:
           name: coverage-report
           path: ${{ github.workspace }}/.coverage
+          if-no-files-found: error
           retention-days: 7
 
   tics-analyzer:
