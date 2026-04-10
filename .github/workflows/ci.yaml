@@ -1,4 +1,4 @@
-name: run CI
+name: CI check
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -17,7 +17,8 @@ permissions:
 jobs:
   changes:
     runs-on: ubuntu-24.04
-
+ if: ${{ !github.event.pull_request.draft }}
+ 
     outputs:
       python: ${{ steps.filter.outputs.python }}
       go: ${{ steps.filter.outputs.go }}
@@ -114,6 +115,7 @@ jobs:
       - name: Test
         run: |
           su ubuntu -c "make test-go"
+
   test-docs:
     needs: changes
     runs-on: ubuntu-24.04
