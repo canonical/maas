@@ -90,7 +90,7 @@ src = [
   "src",
 ]
 extend-exclude = [
-  ".egg",
+".egg",
   ".git",
   ".mypy_cache",
   ".ve",
@@ -179,3 +179,14 @@ executionEnvironments = [
 [tool.bandit]
 exclude_dirs = [ "src/tests" ]
 skips = [ "B311", "B101" ]
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+source = ["src"]
+
+[tool.coverage.paths]
+source = [
+    "src",
+    "*/maas/src"
+]
