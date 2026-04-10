@@ -19,9 +19,12 @@ from maasservicelayer.db.repositories.usergroups_members import (
     UserGroupMembersRepository,
 )
 from maasservicelayer.db.tables import OpenFGATupleTable
-from maasservicelayer.models.base import MaasBaseModel
+from maasservicelayer.models.base import ListResult, MaasBaseModel
 from maasservicelayer.models.usergroup_members import UserGroupMember
-from maasservicelayer.models.usergroups import UserGroup
+from maasservicelayer.models.usergroups import (
+    UserGroup,
+    UserGroupWithUserCount,
+)
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
@@ -216,6 +219,46 @@ class TestUserGroupsService:
         result = await service.list_usergroup_members(1)
         assert result == members
         usergroup_members_repository.list_all.assert_awaited_once()
+
+    async def test_list_with_user_count(self) -> None:
+        usergroups_repository = Mock(UserGroupsRepository)
+        usergroups_repository.list_with_user_count.return_value = ListResult(
+            items=[
+                UserGroupWithUserCount(
+                    id=1,
+                    name="group1",
+                    description="desc1",
+                    created=utcnow(),
+                    updated=utcnow(),
+                    user_count=5,
+                ),
+                UserGroupWithUserCount(
+                    id=2,
+                    name="group2",
+                    description="desc2",
+                    created=utcnow(),
+                    updated=utcnow(),
+                    user_count=10,
+                ),
+            ],
+            total=2,
+        )
+
+        service = UserGroupsService(
+            context=Context(),
+            usergroups_repository=usergroups_repository,
+            usergroup_members_repository=Mock(UserGroupMembersRepository),
+            openfga_tuples_service=Mock(OpenFGATupleService),
+        )
+
+        result = await service.list_with_user_count(page=1, size=10)
+
+        usergroups_repository.list_with_user_count.assert_awaited_once_with(
+            page=1, size=10, query=None
+        )
+        assert result.total == 2
+        assert result.items[0].user_count == 5
+        assert result.items[1].user_count == 10
 
     async def test_remove_user_from_group(self) -> None:
         openfga_tuples_service = Mock(OpenFGATupleService)

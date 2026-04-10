@@ -13,3 +13,7 @@ from maasservicelayer.models.base import (
 class UserGroup(MaasTimestampedBaseModel):
     name: str
     description: Optional[str]
+
+
+class UserGroupWithUserCount(UserGroup):
+    user_count: int

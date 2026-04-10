@@ -15,8 +15,12 @@ from maasservicelayer.db.repositories.usergroups_members import (
     UserGroupMembersClauseFactory,
     UserGroupMembersRepository,
 )
+from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.usergroup_members import UserGroupMember
-from maasservicelayer.models.usergroups import UserGroup
+from maasservicelayer.models.usergroups import (
+    UserGroup,
+    UserGroupWithUserCount,
+)
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 
@@ -99,6 +103,16 @@ class UserGroupsService(
             QuerySpec(
                 where=UserGroupMembersClauseFactory.with_group_id(group_id)
             )
+        )
+
+    async def list_with_user_count(
+        self,
+        page: int,
+        size: int,
+        query: QuerySpec | None = None,
+    ) -> ListResult[UserGroupWithUserCount]:
+        return await self.repository.list_with_user_count(
+            page=page, size=size, query=query
         )
 
     async def remove_user_from_group(self, group_id: int, user_id: int):
