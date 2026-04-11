@@ -10,8 +10,8 @@ __all__ = [
     "Handler",
 ]
 
-import asyncio
 from functools import reduce, wraps
+import inspect
 from operator import attrgetter
 
 from django.contrib.auth.models import User
@@ -422,7 +422,7 @@ class Handler(metaclass=HandlerMetaclass):
                 # methods must out themselves explicitly.
                 if IAsynchronous.providedBy(
                     method
-                ) or asyncio.iscoroutinefunction(method):
+                ) or inspect.iscoroutinefunction(method):
                     # Running in the io thread so clear RBAC/openfga now.
                     clear_caches()
 

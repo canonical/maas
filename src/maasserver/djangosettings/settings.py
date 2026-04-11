@@ -367,6 +367,8 @@ DEB_MANIFEST_PATH = pathlib.Path(
 MAAS_UI_MANIFEST_PATH = (
     DEB_MANIFEST_PATH if DEB_MANIFEST_PATH.exists() else SNAP_MANIFEST_PATH
 )
+# The default value for assume_scheme in URLField will change from "http" to "https" in Django 6.0.
+FORMS_URLFIELD_ASSUME_HTTPS = False
 
 # Patch the get_script_prefix method to allow twisted to work with django.
 patch_get_script_prefix()

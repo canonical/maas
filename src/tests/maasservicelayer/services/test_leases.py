@@ -596,7 +596,7 @@ class TestIntegrationLeasesService:
 
 @pytest.mark.asyncio
 class TestLeasesService:
-    def setup(self):
+    def setup_method(self):
         self.mock_dns_resources_service = Mock(DNSResourcesService)
         self.mock_nodes_service = Mock(NodesService)
         self.mock_static_ip_address_service = Mock(StaticIPAddressService)
@@ -614,7 +614,6 @@ class TestLeasesService:
         )
 
     async def test_store_lease_info_no_subnet(self):
-        self.setup()
         self.mock_subnets_service.find_best_subnet_for_ip.return_value = None
         with pytest.raises(LeaseUpdateError):
             await self.leases_service.store_lease_info(
@@ -630,7 +629,6 @@ class TestLeasesService:
             )
 
     async def test_raises_for_ipv4_mismatch(self):
-        self.setup()
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
@@ -659,7 +657,6 @@ class TestLeasesService:
             )
 
     async def test_does_nothing_if_expiry_for_unknown_mac(self):
-        self.setup()
         subnet = Subnet(
             id=1,
             cidr="10.0.0.0/24",
@@ -714,7 +711,6 @@ class TestLeasesService:
             updated=utcnow(),
         )
 
-        self.setup()
         self.mock_static_ip_address_service.create_or_update.return_value = sip
         self.mock_subnets_service.find_best_subnet_for_ip.return_value = subnet
         # No known interfaces

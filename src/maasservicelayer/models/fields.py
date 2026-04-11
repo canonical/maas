@@ -1,50 +1,78 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import _BaseNetwork, IPv4Network, IPv6Network
+from ipaddress import IPv4Network, IPv6Network
 import re
-from typing import Any, Union
+from typing import Annotated, Any, Hashable, TypeVar
 
-from pydantic.networks import NetworkType
+from pydantic import (
+    AfterValidator,
+    BeforeValidator,
+    Field,
+    GetCoreSchemaHandler,
+)
+from pydantic_core import core_schema, PydanticCustomError
 
 from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
 
+_T = TypeVar("_T", bound=Hashable)
 
-class IPv4v6Network(_BaseNetwork):
-    """Re-implementation of pydantic's IPvAnyNetwork.
 
-    We need this because pydantic uses `strict=True` by default, but that doesn't
-    allow us to set host bits, resulting in all networks having /32.
+def _validate_unique_list(v: list[_T]) -> list[_T]:
+    if len(v) != len(set(v)):
+        raise PydanticCustomError("unique_list", "List must be unique")
+    return v
+
+
+# Drop-in replacement for pydantic v1's conlist(unique_items=True).
+# Rejects lists with duplicate elements; T must be hashable.
+UniqueList = Annotated[
+    list[_T],
+    AfterValidator(_validate_unique_list),
+    Field(json_schema_extra={"uniqueItems": True}),
+]
+
+
+def _validate_ipv4v6_network(value: Any) -> IPv4Network | IPv6Network:
+    """Validate an IPv4 or IPv6 network with strict=False.
+
+    Allows host bits in CIDR notation (e.g., 192.168.1.5/24 instead of
+    requiring 192.168.1.0/24). Validates that prefix length is greater than 0.
     """
-
-    @classmethod
-    def __modify_schema__(cls, field_schema: dict[str, Any]) -> None:
-        field_schema.update(type="string", format="ipvanynetwork")
-
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, value: NetworkType) -> Union[IPv4Network, IPv6Network]:
-        ip = None
-        try:
-            ip = IPv4Network(value, strict=False)
-        except ValueError:
-            pass
-
-        if ip is None:
-            try:
-                ip = IPv6Network(value, strict=False)
-            except ValueError:
-                raise ValueError("Value is not a valid IPv4 or IPv6 network.")  # noqa: B904
-
-        if ip.prefixlen == 0:
-            raise ValueError(
-                "The prefix length of the CIDR must be greater than 0."
+    if isinstance(value, (IPv4Network, IPv6Network)):
+        if value.prefixlen == 0:
+            raise PydanticCustomError(
+                "ip_any_network",
+                "The prefix length of the CIDR must be greater than 0.",
             )
+        return value
 
-        return ip
+    try:
+        network = IPv4Network(value, strict=False)
+    except ValueError:
+        try:
+            network = IPv6Network(value, strict=False)
+        except ValueError:
+            raise PydanticCustomError(
+                "ip_any_network",
+                "value is not a valid IPv4 or IPv6 network",
+            ) from None
+
+    if network.prefixlen == 0:
+        raise PydanticCustomError(
+            "ip_any_network",
+            "The prefix length of the CIDR must be greater than 0.",
+        )
+
+    return network
+
+
+# Type alias for IPv4 or IPv6 networks with strict=False behavior,
+# allowing host bits in CIDR notation (e.g., 192.168.1.5/24).
+IPv4v6Network = Annotated[
+    IPv4Network | IPv6Network,
+    BeforeValidator(_validate_ipv4v6_network),
+]
 
 
 class MacAddress(str):
@@ -53,12 +81,18 @@ class MacAddress(str):
         return str.__new__(cls, content)
 
     @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(pattern=MAC_FIELD_RE.pattern)
-
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        # Pydantic v2 requires explicit core schema definition for str subclasses.
+        # We use core_schema.no_info_after_validator_function instead of
+        # Annotated + BeforeValidator because str subclasses with custom __new__
+        # cannot be represented through the Annotated approach; they need to define
+        # their own validation via __get_pydantic_core_schema__.
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.str_schema(pattern=MAC_FIELD_RE.pattern),
+        )
 
     @classmethod
     def validate(cls, value: str) -> str:
@@ -86,8 +120,18 @@ class PackageRepoUrl(str):
         return str.__new__(cls, content)
 
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        # Pydantic v2 requires explicit core schema definition for str subclasses.
+        # We use core_schema.no_info_after_validator_function instead of
+        # Annotated + BeforeValidator because str subclasses with custom __new__
+        # cannot be represented through the Annotated approach; they need to define
+        # their own validation via __get_pydantic_core_schema__.
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.str_schema(pattern=cls.COMBINED_RE.pattern),
+        )
 
     @classmethod
     def validate(cls, value: str) -> str:

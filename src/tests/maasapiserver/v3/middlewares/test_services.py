@@ -1,7 +1,7 @@
 from typing import Any, AsyncIterator, Iterator
 
 from fastapi import FastAPI, Request
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.responses import Response
@@ -41,7 +41,9 @@ def services_app(
 
 @pytest.fixture
 async def services_client(services_app: FastAPI) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(app=services_app, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=services_app), base_url="http://test"
+    ) as client:
         yield client
 
 

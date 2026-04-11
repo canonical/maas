@@ -273,7 +273,7 @@ def _oapi_item_from_docstring(
         if paired == [] and content:
             paired.extend([content, content])
         paired = iter(paired)
-        return zip(paired, paired)
+        return zip(paired, paired, strict=True)
 
     oper_obj = {}
     body = {

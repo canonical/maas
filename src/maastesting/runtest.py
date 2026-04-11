@@ -12,12 +12,7 @@ import types
 from testtools import runtest, twistedsupport
 from twisted.internet import defer, interfaces, reactor
 from twisted.internet.base import DelayedCall
-from twisted.internet.defer import (
-    Deferred,
-    DeferredList,
-    inlineCallbacks,
-    returnValue,
-)
+from twisted.internet.defer import Deferred, DeferredList, inlineCallbacks
 from twisted.internet.process import reapAllProcesses
 from twisted.internet.task import deferLater, LoopingCall
 from twisted.internet.threads import blockingCallFromThread
@@ -300,7 +295,7 @@ class MAASCrochetRunTest(MAASRunTest):
             if self._isThreadpoolQuiet(pool):
                 # The pool is quiet. It's safe to move on. Return the pool so
                 # that it can still be reported.
-                returnValue(pool)
+                return pool
             else:
                 # Pause for a second to give it a chance to go quiet.
                 now = yield deferLater(reactor, 1.0, reactor.seconds)

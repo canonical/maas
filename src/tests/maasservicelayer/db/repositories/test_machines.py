@@ -222,7 +222,7 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         user = await create_test_user(fixture)
         machine = (
             await create_test_machine(fixture, bmc=bmc, user=user)
-        ).dict()
+        ).model_dump()
         config = await create_test_node_config_entry(fixture, node=machine)
         numa_node = await create_test_numa_node(fixture, node=machine)
         devices = [
@@ -266,7 +266,7 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         for i in range(3):
             machine = (
                 await create_test_machine(fixture, bmc=bmc, user=user)
-            ).dict()
+            ).model_dump()
             config = await create_test_node_config_entry(fixture, node=machine)
             numa_node = await create_test_numa_node(fixture, node=machine)
             devices = [
@@ -302,7 +302,7 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         user = await create_test_user(fixture)
         machine = (
             await create_test_machine(fixture, bmc=bmc, user=user)
-        ).dict()
+        ).model_dump()
         config = await create_test_node_config_entry(fixture, node=machine)
         numa_node = await create_test_numa_node(fixture, node=machine)
         devices = [
@@ -346,7 +346,7 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         for i in range(3):
             machine = (
                 await create_test_machine(fixture, bmc=bmc, user=user)
-            ).dict()
+            ).model_dump()
             config = await create_test_node_config_entry(fixture, node=machine)
             numa_node = await create_test_numa_node(fixture, node=machine)
             devices = [

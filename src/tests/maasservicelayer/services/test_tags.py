@@ -172,7 +172,7 @@ class TestTagsService:
         events_service: Mock,
         tags_service: TagsService,
     ) -> None:
-        new_tag = AUTOMATIC_TAG.copy()
+        new_tag = AUTOMATIC_TAG.model_copy()
         new_tag.definition = '//node[@class="system"]'
         tags_repository.get_by_id.return_value = AUTOMATIC_TAG
         tags_repository.update_by_id.return_value = new_tag
@@ -199,7 +199,7 @@ class TestTagsService:
         events_service: Mock,
         tags_service: TagsService,
     ) -> None:
-        new_tag = AUTOMATIC_TAG.copy()
+        new_tag = AUTOMATIC_TAG.model_copy()
         new_tag.name = "foo"
         tags_repository.get_by_id.return_value = AUTOMATIC_TAG
         tags_repository.update_by_id.return_value = new_tag

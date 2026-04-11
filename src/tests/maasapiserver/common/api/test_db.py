@@ -4,7 +4,7 @@
 from typing import AsyncIterator
 
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 import pytest
 from sqlalchemy import (
     Column,
@@ -68,7 +68,9 @@ async def insert_app(
 
 @pytest.fixture
 async def insert_client(insert_app: FastAPI) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(app=insert_app, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=insert_app), base_url="http://test"
+    ) as client:
         yield client
 
 

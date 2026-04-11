@@ -5,7 +5,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import Depends, Header, Query, Request, Response
-from pydantic import conlist
+from pydantic import Field
 from starlette import status
 import structlog
 
@@ -72,6 +72,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.buffer import ChunkBuffer
 from maasservicelayer.utils.date import utcnow
@@ -153,7 +154,7 @@ class CustomImagesHandler(Handler):
     )
     async def upload_custom_image(
         self,
-        create_request: Annotated[BootResourceCreateRequest, Depends()],
+        create_request: Annotated[BootResourceCreateRequest, Header()],
         request: Request,
         response: Response,
         services: Annotated[ServiceCollectionV3, Depends(services)],
@@ -452,7 +453,10 @@ class CustomImagesHandler(Handler):
     )
     async def bulk_delete_custom_images(
         self,
-        ids: conlist(int, min_items=1, unique_items=True) = Query(  # pyright: ignore[reportInvalidTypeForm] # noqa: B008
+        ids: Annotated[
+            UniqueList[int],
+            Field(min_length=1),
+        ] = Query(  # noqa: B008
             description="ids of custom images to delete", alias="id"
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008

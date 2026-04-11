@@ -3,6 +3,8 @@
 
 from typing import Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -13,7 +15,7 @@ from maasservicelayer.models.tags import Tag
 
 
 class TagResponse(HalResponse[BaseHal]):
-    kind = "Tag"
+    kind: str = Field(default="Tag")
     id: int
     name: str
     comment: str
@@ -37,4 +39,4 @@ class TagResponse(HalResponse[BaseHal]):
 
 
 class TagsListResponse(PaginatedResponse[TagResponse]):
-    kind = "TagsList"
+    kind: str = Field(default="TagsList")

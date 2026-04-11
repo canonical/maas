@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -23,26 +22,18 @@ class PackageRepositoryBuilder(ResourceBuilder):
     the generated code.
     """
 
-    arches: Union[set[KnownArchesEnum], Unset] = Field(
-        default=UNSET, required=False
+    arches: set[KnownArchesEnum] | Unset = Field(default=UNSET)
+    components: set[KnownComponentsEnum] | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    default: bool | Unset = Field(default=UNSET)
+    disable_sources: bool | Unset = Field(default=UNSET)
+    disabled_components: set[ComponentsToDisableEnum] | Unset = Field(
+        default=UNSET
     )
-    components: Union[set[KnownComponentsEnum], Unset] = Field(
-        default=UNSET, required=False
-    )
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    default: Union[bool, Unset] = Field(default=UNSET, required=False)
-    disable_sources: Union[bool, Unset] = Field(default=UNSET, required=False)
-    disabled_components: Union[set[ComponentsToDisableEnum], Unset] = Field(
-        default=UNSET, required=False
-    )
-    disabled_pockets: Union[set[PocketsToDisableEnum], Unset] = Field(
-        default=UNSET, required=False
-    )
-    distributions: Union[list[str], Unset] = Field(
-        default=UNSET, required=False
-    )
-    enabled: Union[bool, Unset] = Field(default=UNSET, required=False)
-    key: Union[str, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    url: Union[PackageRepoUrl, Unset] = Field(default=UNSET, required=False)
+    disabled_pockets: set[PocketsToDisableEnum] | Unset = Field(default=UNSET)
+    distributions: list[str] | Unset = Field(default=UNSET)
+    enabled: bool | Unset = Field(default=UNSET)
+    key: str | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    url: PackageRepoUrl | Unset = Field(default=UNSET)

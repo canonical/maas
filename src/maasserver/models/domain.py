@@ -282,6 +282,8 @@ class Domain(CleanSave, TimestampedModel):
         # avoid circular import
         from maasserver.models.forwarddnsserver import ForwardDNSServer
 
+        if self.pk is None:
+            return ForwardDNSServer.objects.none()
         return ForwardDNSServer.objects.filter(domains=self)
 
     def add_delegations(self, mapping, ns_host_name, dns_ip_list, default_ttl):

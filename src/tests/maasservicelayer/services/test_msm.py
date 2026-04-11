@@ -5,7 +5,8 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, call, Mock
 from urllib.parse import urlparse
 
-from jose import jwt
+from joserfc import jwt
+from joserfc.jwk import OctKey
 import pytest
 from temporalio.client import Client, WorkflowExecutionDescription
 from temporalio.common import WorkflowIDReusePolicy
@@ -88,8 +89,8 @@ def msm_enrol_payload(factory, msm_site):
 
 @pytest.fixture
 def jwt_key(factory):
-    key = factory.make_bytes(32)
-    yield key
+    key = factory.make_string(32)
+    yield OctKey.import_key(key)
 
 
 @pytest.fixture
@@ -107,7 +108,7 @@ async def msm_access(fixture: Fixture, factory, maasdb, msm_site, jwt_key):
     }
     secret = {
         "url": urlparse(msm_site)._replace(path="/site/v1/details").geturl(),
-        "jwt": jwt.encode(payload, jwt_key, algorithm=TOKEN_ALGORITHM),
+        "jwt": jwt.encode({"alg": TOKEN_ALGORITHM}, payload, jwt_key),
         "started": issued.strftime("%a %d %b %Y, %I:%M%p"),
     }
 
@@ -142,7 +143,7 @@ class TestMSMEnrol:
         )
 
         encoded = jwt.encode(
-            msm_enrol_payload, jwt_key, algorithm=TOKEN_ALGORITHM
+            {"alg": TOKEN_ALGORITHM}, msm_enrol_payload, jwt_key
         )
         await services.msm.enrol(encoded)
         temporal_client_mock.start_workflow.assert_awaited_once()
@@ -161,7 +162,7 @@ class TestMSMEnrol:
         temporal_client_mock: Mock,
     ):
         bad_payload = dict(msm_enrol_payload, aud="bad-audience")
-        encoded = jwt.encode(bad_payload, jwt_key, algorithm=TOKEN_ALGORITHM)
+        encoded = jwt.encode({"alg": TOKEN_ALGORITHM}, bad_payload, jwt_key)
         with pytest.raises(MSMException):
             await services.msm.enrol(encoded)
         temporal_client_mock.start_workflow.assert_not_awaited()
@@ -173,9 +174,9 @@ class TestMSMEnrol:
         services: ServiceCollectionV3,
         temporal_client_mock: Mock,
     ):
-        bad_payload = msm_enrol_payload.copy()
+        bad_payload = dict(msm_enrol_payload)
         bad_payload.pop("service-url")
-        encoded = jwt.encode(bad_payload, jwt_key, algorithm=TOKEN_ALGORITHM)
+        encoded = jwt.encode({"alg": TOKEN_ALGORITHM}, bad_payload, jwt_key)
         with pytest.raises(MSMException):
             await services.msm.enrol(encoded)
         temporal_client_mock.start_workflow.assert_not_awaited()
@@ -196,7 +197,7 @@ class TestMSMEnrol:
             )
         )
         encoded = jwt.encode(
-            msm_enrol_payload, jwt_key, algorithm=TOKEN_ALGORITHM
+            {"alg": TOKEN_ALGORITHM}, msm_enrol_payload, jwt_key
         )
         with pytest.raises(MSMException):
             await services.msm.enrol(encoded)

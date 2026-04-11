@@ -28,7 +28,7 @@ from provisioningserver.certificates import get_maas_cluster_cert_paths
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 
 with workflow.unsafe.imports_passed_through():
-    from maastemporalworker.converter import pydantic_data_converter
+    from temporalio.contrib.pydantic import pydantic_data_converter
 
 REGION_TASK_QUEUE = "region"
 TEMPORAL_HOST = "localhost"
@@ -59,7 +59,6 @@ async def get_client_async() -> Client:
         f"{TEMPORAL_HOST}:{TEMPORAL_PORT}",
         identity=f"{maas_id}@region:{pid}",
         data_converter=dataclasses.replace(
-            # TODO: Replace this when we switch to Pydantic 2.x
             pydantic_data_converter,
             payload_codec=EncryptionCodec(shared_secret.encode()),
         ),
