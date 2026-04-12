@@ -17,10 +17,7 @@ from maasservicelayer.db.repositories.usergroups_members import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.usergroup_members import UserGroupMember
-from maasservicelayer.models.usergroups import (
-    UserGroup,
-    UserGroupWithUserCount,
-)
+from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 
@@ -105,13 +102,13 @@ class UserGroupsService(
             )
         )
 
-    async def list_with_user_count(
+    async def list_groups_statistics(
         self,
         page: int,
         size: int,
         query: QuerySpec | None = None,
-    ) -> ListResult[UserGroupWithUserCount]:
-        return await self.repository.list_with_user_count(
+    ) -> ListResult[UserGroupStatistics]:
+        return await self.repository.list_groups_statistics(
             page=page, size=size, query=query
         )
 

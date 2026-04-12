@@ -129,15 +129,13 @@ class TestUserGroupsRepository(RepositoryCommonTests[UserGroup]):
         assert len(groups.items) == 2
         assert groups.total == 2
 
-    async def test_list_with_user_count(
+    async def test_list_groups_statistics(
         self,
         repository_instance: UserGroupsRepository,
         fixture: Fixture,
     ) -> None:
-        search_query = QuerySpec(
-            where=UserGroupsClauseFactory.with_name_like("admin")
-        )
-        groups = await repository_instance.list_with_user_count(
+        search_query = QuerySpec(where=UserGroupsClauseFactory.with_ids([1]))
+        groups = await repository_instance.list_groups_statistics(
             1, 20, search_query
         )
         assert len(groups.items) == 1

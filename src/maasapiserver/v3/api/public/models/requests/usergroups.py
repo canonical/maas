@@ -3,6 +3,7 @@
 
 from typing import Optional
 
+from fastapi import Query
 from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
@@ -12,17 +13,23 @@ from maasservicelayer.db.repositories.usergroups import UserGroupsClauseFactory
 
 
 class UserGroupsFiltersParam(BaseModel):
-    group_name: Optional[str] = Field(
-        default=None, title="Filter by group name"
+    ids: list[int] | None = Field(
+        Query(
+            default=None,
+            alias="id",
+            description="Filter by Group ID",
+        )
     )
 
-    def to_clause(self) -> Optional[Clause]:
-        if self.group_name:
-            return UserGroupsClauseFactory.with_name_like(self.group_name)
+    def to_clause(self) -> Clause | None:
+        if self.ids is not None:
+            return UserGroupsClauseFactory.with_ids(self.ids)
         return None
 
-    def to_href_format(self) -> str:
-        return f"&group_name={self.group_name}" if self.group_name else ""
+    def to_href_format(self) -> str | None:
+        if self.ids is not None:
+            return "&".join([f"id={id}" for id in self.ids])
+        return None
 
 
 class UserGroupRequest(NamedBaseModel):

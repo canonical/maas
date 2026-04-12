@@ -21,10 +21,7 @@ from maasservicelayer.db.repositories.usergroups_members import (
 from maasservicelayer.db.tables import OpenFGATupleTable
 from maasservicelayer.models.base import ListResult, MaasBaseModel
 from maasservicelayer.models.usergroup_members import UserGroupMember
-from maasservicelayer.models.usergroups import (
-    UserGroup,
-    UserGroupWithUserCount,
-)
+from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
@@ -220,24 +217,16 @@ class TestUserGroupsService:
         assert result == members
         usergroup_members_repository.list_all.assert_awaited_once()
 
-    async def test_list_with_user_count(self) -> None:
+    async def test_list_groups_statistics(self) -> None:
         usergroups_repository = Mock(UserGroupsRepository)
-        usergroups_repository.list_with_user_count.return_value = ListResult(
+        usergroups_repository.list_groups_statistics.return_value = ListResult(
             items=[
-                UserGroupWithUserCount(
+                UserGroupStatistics(
                     id=1,
-                    name="group1",
-                    description="desc1",
-                    created=utcnow(),
-                    updated=utcnow(),
                     user_count=5,
                 ),
-                UserGroupWithUserCount(
+                UserGroupStatistics(
                     id=2,
-                    name="group2",
-                    description="desc2",
-                    created=utcnow(),
-                    updated=utcnow(),
                     user_count=10,
                 ),
             ],
@@ -251,9 +240,9 @@ class TestUserGroupsService:
             openfga_tuples_service=Mock(OpenFGATupleService),
         )
 
-        result = await service.list_with_user_count(page=1, size=10)
+        result = await service.list_groups_statistics(page=1, size=10)
 
-        usergroups_repository.list_with_user_count.assert_awaited_once_with(
+        usergroups_repository.list_groups_statistics.assert_awaited_once_with(
             page=1, size=10, query=None
         )
         assert result.total == 2

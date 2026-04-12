@@ -5,6 +5,7 @@ from typing import Optional
 
 from maasservicelayer.models.base import (
     generate_builder,
+    MaasBaseModel,
     MaasTimestampedBaseModel,
 )
 
@@ -15,5 +16,6 @@ class UserGroup(MaasTimestampedBaseModel):
     description: Optional[str]
 
 
-class UserGroupWithUserCount(UserGroup):
+class UserGroupStatistics(MaasBaseModel):
+    id: int
     user_count: int
