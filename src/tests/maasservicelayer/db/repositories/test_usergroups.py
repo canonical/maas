@@ -134,10 +134,13 @@ class TestUserGroupsRepository(RepositoryCommonTests[UserGroup]):
         repository_instance: UserGroupsRepository,
         fixture: Fixture,
     ) -> None:
-        search_query = QuerySpec(where=UserGroupsClauseFactory.with_ids([1]))
+        search_query = QuerySpec(
+            where=UserGroupsClauseFactory.with_ids([1, 2])
+        )
         groups = await repository_instance.list_groups_statistics(
             1, 20, search_query
         )
-        assert len(groups.items) == 1
-        assert groups.total == 1
+        assert len(groups.items) == 2
+        assert groups.total == 2
         assert groups.items[0].user_count == 0
+        assert groups.items[1].user_count == 0

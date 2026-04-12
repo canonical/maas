@@ -22,10 +22,6 @@ class UserGroupsClauseFactory(ClauseFactory):
     def with_name(cls, name: str) -> Clause:
         return Clause(condition=UserGroupTable.c.name == name)
 
-    @classmethod
-    def with_name_like(cls, name: str) -> Clause:
-        return Clause(condition=UserGroupTable.c.name.ilike(f"%{name}%"))
-
 
 class UserGroupsRepository(BaseRepository[UserGroup]):
     def get_repository_table(self) -> Table:
@@ -48,7 +44,6 @@ class UserGroupsRepository(BaseRepository[UserGroup]):
 
         groups_stmt = select(
             UserGroupTable.c.id,
-            UserGroupTable.c.name,
         )
         if query and query.where:
             groups_stmt = QuerySpec(where=query.where).enrich_stmt(groups_stmt)
@@ -57,7 +52,6 @@ class UserGroupsRepository(BaseRepository[UserGroup]):
         stmt = (
             select(
                 groups_subq.c.id,
-                groups_subq.c.name,
                 func.count(UserGroupMembersView.c.id).label("user_count"),
             )
             .select_from(
@@ -66,7 +60,7 @@ class UserGroupsRepository(BaseRepository[UserGroup]):
                     UserGroupMembersView.c.group_id == groups_subq.c.id,
                 )
             )
-            .group_by(groups_subq.c.id, groups_subq.c.name)
+            .group_by(groups_subq.c.id)
             .order_by(desc(groups_subq.c.id))
             .offset((page - 1) * size)
             .limit(size)

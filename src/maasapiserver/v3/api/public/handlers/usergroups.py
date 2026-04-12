@@ -72,8 +72,6 @@ class UserGroupsHandler(Handler):
     TAGS = ["UserGroups"]
 
     def get_handlers(self):
-        # /groups/statistics must be registered before /groups/{group_id} to
-        # prevent FastAPI from matching "statistics" as the group_id parameter.
         return [
             "list_groups",
             "list_groups_statistics",
