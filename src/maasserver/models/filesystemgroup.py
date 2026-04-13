@@ -131,18 +131,12 @@ class BaseFilesystemGroupManager(Manager):
             | partition_query
         ).distinct()
 
-    def get_available_name_for(self, filesystem_group):
-        """Return an available name that can be used for a `VirtualBlockDevice`
-        based on the `filesystem_group`'s group_type and other block devices
-        on the node.
-        """
-        prefix = filesystem_group.get_name_prefix()
-        node = filesystem_group.get_node()
+    def get_available_name_for_node(self, group_type, node):
+        """Return an available name for the given group_type and node."""
+        prefix = FilesystemGroup.get_name_prefix(group_type)
         idx = -1
-        for filesystem_group in self.filter_by_node(node).filter(
-            name__startswith=prefix
-        ):
-            name = filesystem_group.name.replace(prefix, "")
+        for group in self.filter_by_node(node).filter(name__startswith=prefix):
+            name = group.name.replace(prefix, "")
             try:
                 name_idx = int(name)
             except ValueError:
@@ -150,6 +144,16 @@ class BaseFilesystemGroupManager(Manager):
             else:
                 idx = max(idx, name_idx)
         return f"{prefix}{idx + 1}"
+
+    def get_available_name_for(self, filesystem_group):
+        """Return an available name that can be used for a `VirtualBlockDevice`
+        based on the `filesystem_group`'s group_type and other block devices
+        on the node.
+        """
+        return self.get_available_name_for_node(
+            filesystem_group.group_type,
+            filesystem_group.get_node(),
+        )
 
 
 class FilesystemGroupManager(BaseFilesystemGroupManager):
@@ -208,10 +212,6 @@ class RAIDManager(BaseFilesystemGroupManager):
     ):
         from maasserver.models.filesystem import Filesystem
 
-        # Create a FilesystemGroup for this RAID
-        raid = RAID(group_type=level, name=name, uuid=uuid)
-        raid.save()
-
         if block_devices is None:
             block_devices = []
         if partitions is None:
@@ -226,11 +226,21 @@ class RAIDManager(BaseFilesystemGroupManager):
         elif spare_devices:
             bdev = spare_devices[0]
         elif partitions or spare_partitions:
-            bdev = partitions[0].partition_table.block_device
+            bdev = (partitions or spare_partitions)[
+                0
+            ].partition_table.block_device
         else:
             bdev = None  # this only happens if there are no devices at all, in
             # which case no filesystem is created
         node_config = bdev.node_config if bdev else None
+
+        if name is None and node_config is not None:
+            name = RAID.objects.get_available_name_for_node(
+                level, node_config.node
+            )
+        raid = RAID(group_type=level, name=name, uuid=uuid)
+        raid.save()
+
         for block_device in block_devices:
             Filesystem.objects.create(
                 node_config=node_config,
@@ -320,8 +330,9 @@ class BcacheManager(BaseFilesystemGroupManager):
         from maasserver.models.filesystem import Filesystem
 
         if backing_device is not None:
+            node_config = backing_device.node_config
             backing_filesystem = Filesystem(
-                node_config=backing_device.node_config,
+                node_config=node_config,
                 block_device=backing_device,
                 fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
             )
@@ -335,7 +346,11 @@ class BcacheManager(BaseFilesystemGroupManager):
                 fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
             )
 
-        # Setup the cache FilesystemGroup and attach the filesystems to it.
+        if name is None:
+            name = self.get_available_name_for_node(
+                FILESYSTEM_GROUP_TYPE.BCACHE, node_config.node
+            )
+
         bcache_filesystem_group = FilesystemGroup.objects.create(
             name=name,
             uuid=uuid,
@@ -784,10 +799,6 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 "Volume group cannot be smaller than its logical volumes."
             )
 
-        # Set the name correctly based on the type and generate a new UUID
-        # if needed.
-        if self.group_type is not None and self.name is None:
-            self.name = FilesystemGroup.objects.get_available_name_for(self)
         # XXX this is needed because tests pass uuid=None by default
         if not self.uuid:
             self.uuid = uuid4()
@@ -836,16 +847,16 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         else:
             raise ValueError("Unknown group_type.")
 
-    def get_name_prefix(self):
-        """Return the prefix that should be used when setting the name of
-        this FilesystemGroup."""
-        if self.is_lvm():
+    @staticmethod
+    def get_name_prefix(group_type):
+        """Return the name prefix for the given group_type."""
+        if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
             return "vg"
-        elif self.is_raid():
+        elif group_type in FILESYSTEM_GROUP_RAID_TYPES:
             return "md"
-        elif self.is_bcache():
+        elif group_type == FILESYSTEM_GROUP_TYPE.BCACHE:
             return "bcache"
-        elif self.is_vmfs():
+        elif group_type == FILESYSTEM_GROUP_TYPE.VMFS6:
             return "vmfs"
         else:
             raise ValidationError("Unknown group_type.")

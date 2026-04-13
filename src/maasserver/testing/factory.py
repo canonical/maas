@@ -3272,6 +3272,17 @@ class Factory(maastesting.factory.Factory):
                 cache_mode = self.pick_enum(CACHE_MODE_TYPE)
             if cache_set is None:
                 cache_set = self.make_CacheSet(node=node)
+        if node is None:
+            if filesystems:
+                node = filesystems[0].node_config.node
+            else:
+                node = self.make_Node()
+
+        if name is None and node is not None:
+            name = FilesystemGroup.objects.get_available_name_for_node(
+                group_type, node
+            )
+
         group = FilesystemGroup(
             uuid=uuid,
             group_type=group_type,
@@ -3282,8 +3293,6 @@ class Factory(maastesting.factory.Factory):
         )
         group.save()
         if filesystems is None:
-            if node is None:
-                node = self.make_Node()
             node_config = node.current_config
             if not node.physicalblockdevice_set.exists():
                 # Add the boot disk and leave it as is.
