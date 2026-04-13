@@ -1,0 +1,13 @@
+# list
+
+List remote APIs that have been logged-in to.
+
+```bash
+maas list [-h] 
+```
+
+## Command-line options
+
+| Option     | Effect                          |
+|------------|---------------------------------|
+| -h, --help | show this help message and exit |
