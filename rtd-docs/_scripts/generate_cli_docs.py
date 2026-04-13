@@ -168,7 +168,7 @@ def normalize_text(text):
     """Normalize text for Markdown output."""
     if not text:
         return ""
-    text = re.sub(r"\r\n|\r|\n", "<br>", text.strip()).replace("|", "\\|")
+    text = re.sub(r"\r\n|\r|\n", " ", text.strip()).replace("|", "\\|")
     return apply_all_text_fixes(text)
 
 
@@ -226,11 +226,11 @@ def collect_continuation_lines(lines, start_idx):
 
 
 def format_keyword_text(text):
-    """Format keyword text: escape markdown, replace sphinx-style references, convert newlines."""
+    """Format keyword text: escape markdown, replace sphinx-style references, join lines."""
     text = escape_md(text)
     text = re.sub(r"(?m)^:([a-z0-9_\-]+):", r"**:\1:**", text)
     text = apply_all_text_fixes(text)
-    return "<br>".join(text.splitlines()) if text else ""
+    return " ".join(text.splitlines()) if text else ""
 
 
 def bold_sphinx_directives(text):
