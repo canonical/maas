@@ -837,6 +837,7 @@ def generate_cli_docs():
     files_would_change = 0
 
     groups_to_skip = {"local", "admin"}
+    generated_entries = []
 
     for group_name, cmd_list in sorted(groups.items()):
         if group_name in groups_to_skip:
@@ -878,12 +879,29 @@ def generate_cli_docs():
             with open(filepath, "w", encoding="utf-8") as wf:
                 wf.write(markdown_content)
 
-    print("Documentation generation completed!")
-    print(f"Output directory: {output_dir}")
-    print(f"Files created: {files_created}")
-    print(f"Files updated: {files_updated}")
-    print(f"Files skipped: {files_skipped}")
-    print(f"Total commands processed: {len(unique_commands)}")
+        generated_entries.append(filename[: -len(".md")])
+
+    index_template = env.get_template("cli_index.md.j2")
+    index_content = index_template.render(entries=sorted(generated_entries))
+    index_path = output_dir / "index.md"
+    if index_path.exists():
+        with open(index_path, "r", encoding="utf-8") as f:
+            if f.read() != index_content:
+                files_updated += 1
+                with open(index_path, "w", encoding="utf-8") as wf:
+                    wf.write(index_content)
+            else:
+                files_skipped += 1
+    else:
+        files_created += 1
+        with open(index_path, "w", encoding="utf-8") as wf:
+            wf.write(index_content)
+
+    print(f"✓ Succesfully generated CLI Documentation at {output_dir}")
+    print(f"-- Files created: {files_created}")
+    print(f"-- Files updated: {files_updated}")
+    print(f"-- Files skipped: {files_skipped}")
+    print(f"-- Total commands processed: {len(unique_commands)}")
 
     return 0
 
