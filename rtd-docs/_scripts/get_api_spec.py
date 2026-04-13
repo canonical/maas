@@ -109,6 +109,24 @@ def _patch_tftp():
     sys.modules["tftp.backend"] = tftp.backend
 
 
+def _patch_simplestreams():
+    """Patch simplestreams module so imports succeed without the package installed."""
+    import sys
+    from unittest.mock import MagicMock
+
+    simplestreams = MagicMock()
+    simplestreams.util = MagicMock()
+    simplestreams.mirrors = MagicMock()
+    simplestreams.log = MagicMock()
+    simplestreams.objectstores = MagicMock()
+
+    sys.modules["simplestreams"] = simplestreams
+    sys.modules["simplestreams.util"] = simplestreams.util
+    sys.modules["simplestreams.mirrors"] = simplestreams.mirrors
+    sys.modules["simplestreams.log"] = simplestreams.log
+    sys.modules["simplestreams.objectstores"] = simplestreams.objectstores
+
+
 def generate_api_description_from_source():
     if "DJANGO_SETTINGS_MODULE" not in os.environ:
         os.environ.setdefault(
@@ -137,6 +155,7 @@ def get_openapi_spec() -> dict[str, str | Any]:
     _patch_seamicroclient()
     _patch_curtin()
     _patch_tftp()
+    _patch_simplestreams()
     return generate_api_description_from_source()
 
 
