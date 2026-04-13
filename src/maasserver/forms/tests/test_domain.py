@@ -161,3 +161,38 @@ class TestDomainForm(MAASServerTestCase):
             }
         )
         self.assertRaises(ValueError, form.save)
+
+    def test_default_authoritative_with_forward_dns_servers_is_not_valid(self):
+        name = factory.make_name("domain")
+        forward_dns_servers = [factory.make_ip_address() for _ in range(0, 2)]
+        form = DomainForm(
+            {
+                "name": name,
+                "forward_dns_servers": " ".join(forward_dns_servers),
+            }
+        )
+        self.assertFalse(form.is_valid(), form.errors)
+
+    def test_authoritative_with_forward_dns_servers_is_not_valid(self):
+        name = factory.make_name("domain")
+        forward_dns_servers = [factory.make_ip_address() for _ in range(0, 2)]
+        form = DomainForm(
+            {
+                "name": name,
+                "authoritative": "true",
+                "forward_dns_servers": " ".join(forward_dns_servers),
+            }
+        )
+        self.assertFalse(form.is_valid(), form.errors)
+
+    def test_non_authoritative_with_forward_dns_servers_is_valid(self):
+        name = factory.make_name("domain")
+        forward_dns_servers = [factory.make_ip_address() for _ in range(0, 2)]
+        form = DomainForm(
+            {
+                "name": name,
+                "authoritative": "false",
+                "forward_dns_servers": " ".join(forward_dns_servers),
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
