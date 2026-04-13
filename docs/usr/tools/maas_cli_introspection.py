@@ -986,7 +986,8 @@ def main():
 
     try:
         parser = build_parser()
-    except Exception:
+    except Exception as e:
+        print(f"could not build parser: {e}", file=sys.stderr)
         return 2
 
     try_register_api_profile(parser)
