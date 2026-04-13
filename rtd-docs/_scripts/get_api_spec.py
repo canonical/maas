@@ -127,6 +127,22 @@ def _patch_simplestreams():
     sys.modules["simplestreams.objectstores"] = simplestreams.objectstores
 
 
+def _patch_pypureomapi():
+    """Patch pypureomapi module so imports succeed without the package installed."""
+    import sys
+    from unittest.mock import MagicMock
+
+    pypureomapi = MagicMock()
+    pypureomapi.Omapi = MagicMock()
+    pypureomapi.OMAPI_OP_STATUS = MagicMock()
+    pypureomapi.OMAPI_OP_UPDATE = MagicMock()
+    pypureomapi.OmapiError = MagicMock()
+    pypureomapi.OmapiMessage = MagicMock()
+    pypureomapi.pack_ip = MagicMock()
+
+    sys.modules["pypureomapi"] = pypureomapi
+
+
 def generate_api_description_from_source():
     if "DJANGO_SETTINGS_MODULE" not in os.environ:
         os.environ.setdefault(
@@ -156,6 +172,7 @@ def get_openapi_spec() -> dict[str, str | Any]:
     _patch_curtin()
     _patch_tftp()
     _patch_simplestreams()
+    _patch_pypureomapi()
     return generate_api_description_from_source()
 
 
