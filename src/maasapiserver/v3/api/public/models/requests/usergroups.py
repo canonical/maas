@@ -21,14 +21,26 @@ class UserGroupsFiltersParam(BaseModel):
         )
     )
 
+    group_name: str | None = Field(
+        Query(
+            default=None,
+            alias="group_name",
+            description="Filter by Group Name",
+        )
+    )
+
     def to_clause(self) -> Clause | None:
         if self.ids is not None:
             return UserGroupsClauseFactory.with_ids(self.ids)
+        if self.group_name is not None:
+            return UserGroupsClauseFactory.with_name_like(self.group_name)
         return None
 
     def to_href_format(self) -> str | None:
         if self.ids is not None:
             return "&".join([f"id={id}" for id in self.ids])
+        if self.group_name is not None:
+            return f"group_name={self.group_name}"
         return None
 
 

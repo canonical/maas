@@ -109,11 +109,13 @@ class UserGroupsHandler(Handler):
     async def list_groups(
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
+        filters: UserGroupsFiltersParam = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserGroupsListResponse:
         groups = await services.usergroups.list(
             page=pagination_params.page,
             size=pagination_params.size,
+            query=QuerySpec(where=filters.to_clause()),
         )
         next_link = None
         if groups.has_next(pagination_params.page, pagination_params.size):

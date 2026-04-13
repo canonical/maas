@@ -183,7 +183,7 @@ class TestUserGroupsApi(ApiCommonTests):
             items=[TEST_GROUP],
             total=1,
         )
-        response = await client.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1&name=test")
         assert response.status_code == 200
         groups_response = UserGroupsListResponse(**response.json())
         assert len(groups_response.items) == 1

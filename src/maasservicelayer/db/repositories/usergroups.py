@@ -22,6 +22,10 @@ class UserGroupsClauseFactory(ClauseFactory):
     def with_name(cls, name: str) -> Clause:
         return Clause(condition=UserGroupTable.c.name == name)
 
+    @classmethod
+    def with_name_like(cls, name: str) -> Clause:
+        return Clause(condition=UserGroupTable.c.name.ilike(f"%{name}%"))
+
 
 class UserGroupsRepository(BaseRepository[UserGroup]):
     def get_repository_table(self) -> Table:
