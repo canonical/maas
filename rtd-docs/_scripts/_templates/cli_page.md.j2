@@ -1,6 +1,8 @@
 {# Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 #}
+## {{ title }}
+
 {% if overview %}{{ overview }}
 {% endif %}
 
@@ -10,7 +12,7 @@
 ```
 
 {% if positional_args %}
-#### **Positional arguments**
+### **Positional arguments**
 | Argument | Effect |
 |---|---|
 {% for arg in positional_args %}
@@ -20,7 +22,7 @@
 {% endif %}
 
 {% if options %}
-#### **Command-line options**
+### **Command-line options**
 | Option | Effect |
 |---|---|
 {% for row in options %}
@@ -30,7 +32,7 @@
 {% endif %}
 
 {% if keywords_text or (keywords and (keywords.lead or keywords.params)) %}
-#### **Keywords**
+### **Keywords**
 {% if keywords and keywords.lead %}{{ keywords.lead|safe }}
 
 {% elif keywords_text %}{{ keywords_text|safe }}
@@ -38,7 +40,7 @@
 {% endif %}
 {% if keywords and keywords.params %}
 {% for p in keywords.params %}
-##### Keyword "{{ p.name }}"
+#### Keyword "{{ p.name }}"
 {% set desc_trimmed = (p.desc|trim) if p.desc else '' %}
 {% if p.type %}Optional {{ p.type }}.{% else %}Optional.{% endif %}{% if desc_trimmed %} {{ desc_trimmed|safe }}{% endif %}
 
@@ -49,7 +51,7 @@
 {% if additional_sections %}
 {% for section in additional_sections %}
 {% if section.title == "run modes" %}
-#### **Run modes**
+### **Run modes**
 {% set lines = section.content.split('\n') %}
 {% set ns = namespace(started=false) %}
 {% for line in lines %}
@@ -81,7 +83,7 @@ If you want to set up PostgreSQL for a non-production deployment on this machine
 
 {% elif section.title == "positional arguments" %}
 
-#### **Positional arguments**
+### **Positional arguments**
 | Argument | Effect |
 |---|---|
 {% set lines = section.content.split('\n') %}
@@ -107,7 +109,7 @@ If you want to set up PostgreSQL for a non-production deployment on this machine
 {{ section.content|safe }}
 {% elif section.title == "drill down" %}
 
-#### **Drill down**
+### **Drill down**
 | Command | Effect |
 |---|---|
 {% for l in section.content.split('\n') %}
@@ -130,7 +132,7 @@ If you want to set up PostgreSQL for a non-production deployment on this machine
 
 {% else %}
 
-#### **{{ section.title|safe }}**
+### **{{ section.title|safe }}**
 {{ section.content|safe }}
 
 {% endif %}

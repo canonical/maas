@@ -591,7 +591,15 @@ def render_with_template(env, context):
     return template.render(**context)
 
 
-def generate_command_markdown(env, command, command_path):
+def extract_subcommand_title(command_path: str, group_name: str) -> str:
+    """Extract the subcommand action from a command path, stripping the group prefix."""
+    parts = command_path.split()
+    if len(parts) > 1 and parts[0] == group_name:
+        return " ".join(parts[1:])
+    return command_path
+
+
+def generate_command_markdown(env, command, command_path, group_name=""):
     """Generate Markdown content for a single command using Jinja2."""
     overview_raw = command.get("overview", "") or ""
     overview_lines = [
@@ -648,6 +656,7 @@ def generate_command_markdown(env, command, command_path):
     additional_sections = clean_additional_sections(additional_sections)
 
     context = {
+        "title": extract_subcommand_title(command_path, group_name),
         "overview": overview,
         "usage": usage,
         "positional_args": positional_args,
@@ -828,23 +837,16 @@ def generate_cli_docs():
             else path_to_filename(group_name)
         )
 
-        base_name = filename.replace(".md", "")
-        suffix, actual_base_name = find_existing_topic_number(
-            base_name, output_dir
-        )
-        if suffix and actual_base_name:
-            filename = f"{actual_base_name}-{suffix}.md"
-        else:
-            filename = f"{base_name}-tba.md"
-
         filepath = output_dir / filename
 
-        markdown_parts = []
+        markdown_parts = [f"# {group_name}\n"]
         for command, command_path in sorted(
             cmd_list, key=lambda t: (t[1], str(t[0].get("key", "")))
         ):
             markdown_parts.append(
-                generate_command_markdown(env, command, command_path)
+                generate_command_markdown(
+                    env, command, command_path, group_name
+                )
             )
             markdown_parts.append("")
         markdown_content = "\n".join(markdown_parts).rstrip() + "\n"
