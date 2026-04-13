@@ -31,11 +31,9 @@
 
 {% endif %}
 
-{% if keywords_text or (keywords and (keywords.lead or keywords.params)) %}
+{% if keywords_text or (keywords and keywords.params) %}
 ### **Keywords**
-{% if keywords and keywords.lead %}{{ keywords.lead|safe }}
-
-{% elif keywords_text %}{{ keywords_text|safe }}
+{% if keywords_text %}{{ keywords_text|safe }}
 
 {% endif %}
 {% if keywords and keywords.params %}

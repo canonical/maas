@@ -653,6 +653,17 @@ def generate_command_markdown(env, command, command_path, group_name=""):
     else:
         keywords_text = ""
 
+    # Use keywords.lead as main overview as it is more detailed
+    # and not really an overview of the keywords, but of the command
+    # subcommand instead.
+    keywords_lead = keywords.get("lead", "")
+    if keywords_lead:
+        overview = keywords_lead
+        keywords["lead"] = ""
+
+    if overview:
+        overview = re.sub(r"\s*<br>\s*", " ", overview).strip()
+
     additional_sections = clean_additional_sections(additional_sections)
 
     context = {
