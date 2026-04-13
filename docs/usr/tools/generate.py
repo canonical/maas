@@ -6,9 +6,9 @@
 
 import argparse
 import json
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
 
 try:
     from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -63,68 +63,94 @@ top_level = {
 
 def normalize_period_spacing(text):
     """Normalize spacing after periods to single space."""
-    return re.sub(r'\.\s{2,}', '. ', text)
+    return re.sub(r"\.\s{2,}", ". ", text)
 
 
 def fix_ellipsis(text):
     """Replace '...' with proper ellipsis symbol '…'."""
-    return re.sub(r'\.\.\.(?!\w)', '…', text)
+    return re.sub(r"\.\.\.(?!\w)", "…", text)
 
 
 def fix_lexical_illusions(text):
     """Remove repeated words (lexical illusions)."""
-    text = re.sub(r'(\d+)\*(\d+)\*(\d+)', r'\1 * \2 * \3', text)
-    if re.search(r'[*+\-=/]\s*\d+\s*[*+\-=/]', text):
+    text = re.sub(r"(\d+)\*(\d+)\*(\d+)", r"\1 * \2 * \3", text)
+    if re.search(r"[*+\-=/]\s*\d+\s*[*+\-=/]", text):
         return text
-    text = re.sub(r'\bOptional\s+\w+\.\s+Optional\.\s+Optional\s+', 
-                  lambda m: m.group(0).replace(' Optional. Optional ', ' '), text, flags=re.IGNORECASE)
-    text = re.sub(r'\bOptional\s+\w+\.\s+Optional\.\s+Optional\b', 
-                  lambda m: m.group(0).replace(' Optional. Optional', ''), text, flags=re.IGNORECASE)
-    text = re.sub(r'\bOptional\s+\w+\.\s+Optional\.', 
-                  lambda m: m.group(0).replace(' Optional.', ''), text, flags=re.IGNORECASE)
-    text = re.sub(r'\bOptional\.\s+Optional\.', 'Optional.', text, flags=re.IGNORECASE)
-    text = re.sub(r'\balso\s+also\b', 'also', text, flags=re.IGNORECASE)
-    text = re.sub(r'\band\s+and\b', 'and', text, flags=re.IGNORECASE)
-    text = re.sub(r'\b(the|a|an|is|are|was|were)\s+\1\b', r'\1', text, flags=re.IGNORECASE)
+    text = re.sub(
+        r"\bOptional\s+\w+\.\s+Optional\.\s+Optional\s+",
+        lambda m: m.group(0).replace(" Optional. Optional ", " "),
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bOptional\s+\w+\.\s+Optional\.\s+Optional\b",
+        lambda m: m.group(0).replace(" Optional. Optional", ""),
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bOptional\s+\w+\.\s+Optional\.",
+        lambda m: m.group(0).replace(" Optional.", ""),
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\bOptional\.\s+Optional\.", "Optional.", text, flags=re.IGNORECASE
+    )
+    text = re.sub(r"\balso\s+also\b", "also", text, flags=re.IGNORECASE)
+    text = re.sub(r"\band\s+and\b", "and", text, flags=re.IGNORECASE)
+    text = re.sub(
+        r"\b(the|a|an|is|are|was|were)\s+\1\b",
+        r"\1",
+        text,
+        flags=re.IGNORECASE,
+    )
     return text
 
 
 def fix_curly_quotes(text):
     """Replace straight quotes with curly quotes."""
-    if '<br>' in text or '`' not in text:
-        left_quote = "\u201C"
-        right_quote = "\u201D"
-        text = re.sub(r'"([a-zA-Z0-9\-]+)"', left_quote + r'\1' + right_quote, text)
-        text = re.sub(r'"(\d+-\w+)"', left_quote + r'\1' + right_quote, text)
+    if "<br>" in text or "`" not in text:
+        left_quote = "\u201c"
+        right_quote = "\u201d"
+        text = re.sub(
+            r'"([a-zA-Z0-9\-]+)"', left_quote + r"\1" + right_quote, text
+        )
+        text = re.sub(r'"(\d+-\w+)"', left_quote + r"\1" + right_quote, text)
     return text
 
 
 def fix_weasel_words(text):
     """Remove or replace weasel words like 'very'."""
-    return re.sub(r'\bvery\s+', '', text, flags=re.IGNORECASE)
+    return re.sub(r"\bvery\s+", "", text, flags=re.IGNORECASE)
 
 
 def fix_common_misspellings(text):
     """Fix common misspellings found in generated documentation."""
     misspellings = {
-        'intented': 'intended',
-        'sensative': 'sensitive',
-        'authorititative': 'authoritative',
-        'conntected': 'connected',
-        'freqeuncy': 'frequency',
-        'inteface': 'interface',
-        'adddress': 'address',
-        'contoller': 'controller',
-        'identifing': 'identifying',
-        'seperated': 'separated',
-        'specifed': 'specified',
-        'assoicated': 'associated',
-        'dimissing': 'dismissing',
-        'transfered': 'transferred',
+        "intented": "intended",
+        "sensative": "sensitive",
+        "authorititative": "authoritative",
+        "conntected": "connected",
+        "freqeuncy": "frequency",
+        "inteface": "interface",
+        "adddress": "address",
+        "contoller": "controller",
+        "identifing": "identifying",
+        "seperated": "separated",
+        "specifed": "specified",
+        "assoicated": "associated",
+        "dimissing": "dismissing",
+        "transfered": "transferred",
     }
 
     for wrong, correct in misspellings.items():
-        text = re.sub(r'\b' + re.escape(wrong) + r'\b', correct, text, flags=re.IGNORECASE)
+        text = re.sub(
+            r"\b" + re.escape(wrong) + r"\b",
+            correct,
+            text,
+            flags=re.IGNORECASE,
+        )
 
     return text
 
@@ -154,7 +180,7 @@ def escape_md(text):
     """Escape markdown pipe characters."""
     if not text:
         return ""
-    return text.replace('|', '\\|')
+    return text.replace("|", "\\|")
 
 
 def bold_list_leaders(text):
@@ -165,7 +191,7 @@ def bold_list_leaders(text):
     processed = []
     for ln in lines:
         stripped = ln.lstrip()
-        indent = (m.group(0) if (m := re.match(r"^\s+", ln)) else "")
+        indent = m.group(0) if (m := re.match(r"^\s+", ln)) else ""
         if stripped.startswith("- ") and ":" in stripped:
             head, rest = stripped[2:].split(":", 1)
             head = head.strip()
@@ -180,7 +206,7 @@ def parse_param_or_type_line(line, prefix):
     if not line.startswith(prefix):
         return None
     try:
-        after = line[len(prefix):]
+        after = line[len(prefix) :]
         name, value = after.split(":", 1)
         return name.strip(), value.strip()
     except ValueError:
@@ -194,7 +220,9 @@ def collect_continuation_lines(lines, start_idx):
     while j < len(lines):
         next_line = lines[j]
         next_stripped = next_line.strip()
-        if next_stripped.startswith(":param ") or next_stripped.startswith(":type "):
+        if next_stripped.startswith(":param ") or next_stripped.startswith(
+            ":type "
+        ):
             break
         collected.append(next_stripped)
         j += 1
@@ -238,14 +266,16 @@ def is_sentence_fragment(sent, prev_sentences, index):
             if abs(len(sent_lower) - len(prev_lower)) > 10:
                 return True
     if index > 0 and not sent[0].isupper():
-        if re.match(r'^(mode|and|or|the|a|an|to|for|with|in|on|at)\s+', sent_lower):
+        if re.match(
+            r"^(mode|and|or|the|a|an|to|for|with|in|on|at)\s+", sent_lower
+        ):
             return True
     return False
 
 
 def remove_duplicate_sentences(text):
     """Remove duplicate sentences and fragments from text."""
-    sentences = re.split(r'\.\s+', text)
+    sentences = re.split(r"\.\s+", text)
     seen = set()
     cleaned = []
     for i, sent in enumerate(sentences):
@@ -253,13 +283,15 @@ def remove_duplicate_sentences(text):
         if not sent:
             continue
         sent_lower = sent.lower()
-        if sent_lower not in seen and not is_sentence_fragment(sent, cleaned, i):
+        if sent_lower not in seen and not is_sentence_fragment(
+            sent, cleaned, i
+        ):
             seen.add(sent_lower)
             cleaned.append(sent)
     if cleaned:
-        result = '. '.join(cleaned)
-        if not result.endswith('.'):
-            result += '.'
+        result = ". ".join(cleaned)
+        if not result.endswith("."):
+            result += "."
         return result.strip()
     return text
 
@@ -276,7 +308,9 @@ def normalize_options_list(options):
             moved_notes.append(
                 "If credentials are not provided on the command-line, they will be prompted for interactively."
             )
-            eff_text = eff_text.split("If credentials are not provided", 1)[0].rstrip()
+            eff_text = eff_text.split("If credentials are not provided", 1)[
+                0
+            ].rstrip()
 
         if eff_text:
             eff_text = apply_all_text_fixes(eff_text)
@@ -290,9 +324,11 @@ def normalize_options_list(options):
 
 def remove_optional_prefix(text):
     """Remove leading Optional/Required prefixes from descriptions."""
-    while re.match(r'^(Optional|Required)\.\s+', text, flags=re.IGNORECASE):
-        text = re.sub(r'^(Optional|Required)\.\s+', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'^Optional\s+', '', text, flags=re.IGNORECASE)
+    while re.match(r"^(Optional|Required)\.\s+", text, flags=re.IGNORECASE):
+        text = re.sub(
+            r"^(Optional|Required)\.\s+", "", text, flags=re.IGNORECASE
+        )
+    text = re.sub(r"^Optional\s+", "", text, flags=re.IGNORECASE)
     return text
 
 
@@ -311,7 +347,12 @@ def clean_lead_text(lead_lines, parsed_param_names):
                 continue
         cleaned.append(line)
     lead = "\n".join(cleaned).strip()
-    lead = re.sub(r'(:param\s+\w+:\s+(?:Optional|Required))\.\s{2,}', r'\1. ', lead, flags=re.IGNORECASE)
+    lead = re.sub(
+        r"(:param\s+\w+:\s+(?:Optional|Required))\.\s{2,}",
+        r"\1. ",
+        lead,
+        flags=re.IGNORECASE,
+    )
     lead = apply_all_text_fixes(lead)
     return format_keyword_text(lead)
 
@@ -380,7 +421,9 @@ def parse_keywords_text(keywords_text):
         line = raw.strip()
 
         if line.startswith(":param "):
-            next_idx, param_name = parse_param_line(lines, i, params, param_order, parsed_param_names)
+            next_idx, param_name = parse_param_line(
+                lines, i, params, param_order, parsed_param_names
+            )
             if param_name:
                 current_param = param_name
                 i = next_idx
@@ -492,9 +535,7 @@ def extract_positional_args(usage, command_path):
     return [
         t.strip(",|")
         for t in tokens
-        if t not in {"...", "COMMAND", "|"}
-        and "{" not in t
-        and "}" not in t
+        if t not in {"...", "COMMAND", "|"} and "{" not in t and "}" not in t
     ]
 
 
@@ -520,9 +561,11 @@ def format_positional_args(args):
 
 def is_malformed_content(content):
     """Check if content looks like malformed concatenated text."""
-    if re.match(r'^\[--[\w-]+', content.strip()):
+    if re.match(r"^\[--[\w-]+", content.strip()):
         return True
-    if len(content) > 500 and not any(marker in content for marker in ['. ', '.\n', '<br>', '\n\n']):
+    if len(content) > 500 and not any(
+        marker in content for marker in [". ", ".\n", "<br>", "\n\n"]
+    ):
         return True
     return False
 
@@ -533,7 +576,9 @@ def clean_additional_sections(additional_sections):
     for sec in additional_sections:
         if isinstance(sec, dict) and isinstance(sec.get("content"), str):
             content = sec["content"]
-            if sec.get("title") == "additional_info" and is_malformed_content(content):
+            if sec.get("title") == "additional_info" and is_malformed_content(
+                content
+            ):
                 continue
             content = apply_all_text_fixes(content)
             sec["content"] = bold_list_leaders(content)
@@ -559,13 +604,17 @@ def generate_command_markdown(env, command, command_path):
         if not ln.strip().lower().startswith("cli help for:")
     ]
     overview = normalize_text("\n".join(overview_lines))
-    if overview and overview.endswith("<br>") and should_blank_overview(overview):
+    if (
+        overview
+        and overview.endswith("<br>")
+        and should_blank_overview(overview)
+    ):
         overview = ""
     usage_raw = command.get("usage", "")
     options = command.get("options", [])
     keywords_text = command.get("keywords_text", "")
     keywords = parse_keywords_text(keywords_text)
-    
+
     usage = format_usage(usage_raw, command_path)
     if overview_lines:
         ov_line = overview_lines[0].strip()
@@ -575,9 +624,7 @@ def generate_command_markdown(env, command, command_path):
     additional_sections = command.get("additional_sections", [])
     has_pos_section = has_positional_section(additional_sections)
     positional_args = (
-        []
-        if has_pos_section
-        else extract_positional_args(usage, command_path)
+        [] if has_pos_section else extract_positional_args(usage, command_path)
     )
 
     if (not has_pos_section) and not positional_args and overview:
@@ -629,11 +676,11 @@ def path_to_filename(path):
 def pluralize_for_filename(base_name):
     """Convert singular filename to plural form for lookup."""
     plural_map = {
-        'commissioning-script': 'commissioning-scripts',
-        'event': 'events',
-        'ipaddress': 'ipaddresses',
-        'node-result': 'node-results',
-        'vmfs-datastore': 'vmfs-datastores',
+        "commissioning-script": "commissioning-scripts",
+        "event": "events",
+        "ipaddress": "ipaddresses",
+        "node-result": "node-results",
+        "vmfs-datastore": "vmfs-datastores",
     }
     return plural_map.get(base_name, base_name)
 
@@ -727,9 +774,7 @@ def parse_key_to_group(key):
             return top, command_path
         if len(parts) == 2:
             return parts[1], parts[1]
-    fallback = (
-        " ".join(parts[1:]) if parts and parts[0] == "maas" else key
-    )
+    fallback = " ".join(parts[1:]) if parts and parts[0] == "maas" else key
     return fallback or key, fallback or key
 
 
@@ -792,7 +837,9 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if Environment is None:
-        print("Error: Jinja2 is required to render templates.", file=sys.stderr)
+        print(
+            "Error: Jinja2 is required to render templates.", file=sys.stderr
+        )
         return 1
     env = Environment(
         loader=FileSystemLoader(args.template_dir),
@@ -807,9 +854,7 @@ def main():
         if not k:
             continue
         seen_keys[k] = node
-    unique_commands = [
-        seen_keys[k] for k in sorted(seen_keys.keys())
-    ]
+    unique_commands = [seen_keys[k] for k in sorted(seen_keys.keys())]
 
     groups = group_commands_by_resource(unique_commands)
 
@@ -869,7 +914,7 @@ def main():
                 with open(filepath, "w", encoding="utf-8") as wf:
                     wf.write(markdown_content)
 
-    print(f"Documentation generation completed!")
+    print("Documentation generation completed!")
     print(f"Output directory: {output_dir}")
     print(f"Files created: {files_created}")
     print(f"Files updated: {files_updated}")
@@ -883,3 +928,4 @@ def main():
 
 if __name__ == "__main__":
     exit(main())
+
