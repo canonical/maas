@@ -9,6 +9,8 @@ from temporalio.client import (
     Schedule,
     ScheduleActionStartWorkflow,
     ScheduleIntervalSpec,
+    ScheduleOverlapPolicy,
+    SchedulePolicy,
     ScheduleSpec,
     ScheduleUpdate,
     ScheduleUpdateInput,
@@ -16,6 +18,7 @@ from temporalio.client import (
 
 from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+    MASTER_IMAGE_SYNC_WORKFLOW_NAME,
 )
 from maastemporalworker.worker import REGION_TASK_QUEUE
 
@@ -29,8 +32,55 @@ SCHEDULES: Final[dict[str, Schedule]] = {
         spec=ScheduleSpec(
             intervals=[ScheduleIntervalSpec(every=timedelta(minutes=10))]
         ),
-    )
+    ),
+    MASTER_IMAGE_SYNC_WORKFLOW_NAME: Schedule(
+        action=ScheduleActionStartWorkflow(
+            MASTER_IMAGE_SYNC_WORKFLOW_NAME,
+            id=MASTER_IMAGE_SYNC_WORKFLOW_NAME,
+            task_queue=REGION_TASK_QUEUE,
+        ),
+        spec=ScheduleSpec(
+            # Will be updated at startup with the value from the db
+            intervals=[ScheduleIntervalSpec(every=timedelta(minutes=60))]
+        ),
+        policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.CANCEL_OTHER),
+    ),
 }
+
+
+async def update_master_image_sync_schedule_interval(
+    client: Client, sync_interval_minutes_config: int
+):
+    async def do_update(input: ScheduleUpdateInput):
+        master_image_sync_schedule = SCHEDULES[MASTER_IMAGE_SYNC_WORKFLOW_NAME]
+        master_image_sync_schedule.spec = ScheduleSpec(
+            intervals=[
+                ScheduleIntervalSpec(
+                    every=timedelta(minutes=sync_interval_minutes_config)
+                )
+            ]
+        )
+        schedule_description = input.description
+        # When updating a schedule ALL the options must be specified again.
+        # Here we save the current state in order to avoid un-pausing the schedule
+        # when only changing the sync interval
+        current_state = schedule_description.schedule.state
+        schedule_description.schedule = master_image_sync_schedule
+        schedule_description.schedule.state = current_state
+        return ScheduleUpdate(schedule=schedule_description.schedule)
+
+    handle = client.get_schedule_handle(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
+    await handle.update(do_update)
+
+
+async def pause_or_unpause_master_image_sync_schedule(
+    client: Client, auto_import_enabled_config: bool
+):
+    handle = client.get_schedule_handle(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
+    if auto_import_enabled_config:
+        await handle.unpause()
+    else:
+        await handle.pause()
 
 
 async def update_schedule(input: ScheduleUpdateInput) -> ScheduleUpdate:
@@ -71,6 +121,8 @@ async def setup_schedules(client: Client):
         await client.create_schedule(schedule, SCHEDULES[schedule])
 
     schedules_to_update = registered_schedules - schedules_to_delete
+    # Handled with `update_master_image_sync_schedule` above
+    schedules_to_update.discard(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
     for schedule in schedules_to_update:
         handle = client.get_schedule_handle(schedule)
         await handle.update(update_schedule)

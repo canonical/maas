@@ -80,14 +80,6 @@ def get_maas_cache_path(path: str) -> str:
     return str(base_path / path)
 
 
-def get_maas_lock_path() -> Path:
-    """Return a path for lock files."""
-    path = Path("/run/lock")
-    if name := getenv("SNAP_INSTANCE_NAME"):
-        path = path / f"snap.{name}"
-    return path
-
-
 def get_maas_run_path() -> Path:
     """Return a path for run directory."""
     path = Path("/run/maas")

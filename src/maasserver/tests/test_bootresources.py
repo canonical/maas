@@ -2,9 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from django.db import transaction
 from twisted.application.internet import TimerService
-from twisted.internet.defer import fail, succeed
+from twisted.internet.defer import fail
 
 from maasserver import bootresources
 from maasserver.components import (
@@ -12,7 +11,6 @@ from maasserver.components import (
     register_persistent_error,
 )
 from maasserver.enum import COMPONENT
-from maasserver.models import Config
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -21,8 +19,7 @@ from maasserver.testing.testcase import (
 )
 from maastesting import get_testing_timeout
 from maastesting.crochet import wait_for
-from maastesting.testcase import MAASTestCase
-from maastesting.twisted import extract_result, TwistedLoggerFixture
+from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous
 
@@ -56,99 +53,6 @@ class TestStopImportResources(MAASTransactionServerTestCase):
         mock_cancel_workflow.assert_called_once_with(
             workflow_id="master-image-sync"
         )
-
-
-class TestImportResourcesService(MAASTestCase):
-    """Tests for `ImportResourcesService`."""
-
-    def test_is_a_TimerService(self):
-        service = bootresources.ImportResourcesService()
-        self.assertIsInstance(service, TimerService)
-
-    def test_runs_once_an_hour(self):
-        service = bootresources.ImportResourcesService()
-        self.assertEqual(3600, service.step)
-
-    def test_calls__maybe_import_resources(self):
-        service = bootresources.ImportResourcesService()
-        self.assertEqual(
-            (service.maybe_import_resources, (), {}), service.call
-        )
-
-    def test_maybe_import_resources_does_not_error(self):
-        retry_patch = self.patch(bootresources, "retry")
-        retry_patch.return_value = succeed(None)
-        service = bootresources.ImportResourcesService()
-        deferToDatabase = self.patch(bootresources, "deferToDatabase")
-        exception_type = factory.make_exception_type()
-        deferToDatabase.return_value = fail(exception_type())
-        d = service.maybe_import_resources()
-        self.assertIsNone(extract_result(d))
-        retry_patch.assert_any_call(service._fetch_manifest, timeout=60)
-
-
-class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
-    """Tests for the async parts of `ImportResourcesService`."""
-
-    def test_imports_resources_in_thread_if_auto(self):
-        self.patch(bootresources, "import_resources")
-        self.patch(bootresources, "is_dev_environment").return_value = False
-        self.patch(bootresources, "execute_workflow")
-
-        with transaction.atomic():
-            Config.objects.set_config("boot_images_auto_import", True)
-
-        service = bootresources.ImportResourcesService()
-        maybe_import_resources = asynchronous(service.maybe_import_resources)
-        maybe_import_resources().wait(TIMEOUT)
-
-        bootresources.import_resources.assert_called_once()
-
-    def test_no_auto_import_if_dev(self):
-        self.patch(bootresources, "import_resources")
-        self.patch(bootresources, "execute_workflow")
-
-        with transaction.atomic():
-            Config.objects.set_config("boot_images_auto_import", True)
-
-        service = bootresources.ImportResourcesService()
-        maybe_import_resources = asynchronous(service.maybe_import_resources)
-        maybe_import_resources().wait(TIMEOUT)
-
-        bootresources.import_resources.assert_not_called()
-
-    def test_does_not_import_resources_in_thread_if_not_auto(self):
-        self.patch(bootresources, "import_resources")
-        self.patch(bootresources, "execute_workflow")
-
-        with transaction.atomic():
-            Config.objects.set_config("boot_images_auto_import", False)
-
-        service = bootresources.ImportResourcesService()
-        maybe_import_resources = asynchronous(service.maybe_import_resources)
-        maybe_import_resources().wait(TIMEOUT)
-
-        bootresources.import_resources.assert_not_called()
-
-    def test_maybe_import_resources_logs_errback_on_failure(self):
-        self.patch(bootresources, "execute_workflow")
-        with transaction.atomic():
-            Config.objects.set_config("boot_images_auto_import", True)
-
-        service = bootresources.ImportResourcesService()
-
-        retry_patch = self.patch(bootresources, "retry")
-        retry_patch.return_value = fail(Exception("BOOM"))
-        log_mock = self.patch(bootresources.log, "err")
-
-        maybe_import_resources = asynchronous(service.maybe_import_resources)
-        maybe_import_resources().wait(TIMEOUT)
-
-        log_mock.assert_called()
-        called_message = log_mock.call_args[0][1]
-        expected_message = "Failure importing boot resources. Next automatic retry will be triggered in 1:00:00 hours."
-        self.assertEqual(called_message, expected_message)
-
 
 class TestImportResourcesProgressService(MAASServerTestCase):
     """Tests for `ImportResourcesProgressService`."""
