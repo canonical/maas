@@ -302,7 +302,6 @@ async def main() -> None:
         temporal_client, configs[BootImagesImportIntervalMinutesConfig.name]
     )
 
-
     log.info("temporal-worker started")
     await _start_temporal_workers(temporal_workers)
 

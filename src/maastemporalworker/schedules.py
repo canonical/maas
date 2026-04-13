@@ -48,15 +48,13 @@ SCHEDULES: Final[dict[str, Schedule]] = {
 }
 
 
-async def update_master_image_sync_schedule_interval(
-    client: Client, sync_interval_minutes_config: int
-):
-    async def do_update(input: ScheduleUpdateInput):
+def _master_image_sync_updater(sync_interval_minutes: int):
+    async def do_update(input: ScheduleUpdateInput) -> ScheduleUpdate:
         master_image_sync_schedule = SCHEDULES[MASTER_IMAGE_SYNC_WORKFLOW_NAME]
         master_image_sync_schedule.spec = ScheduleSpec(
             intervals=[
                 ScheduleIntervalSpec(
-                    every=timedelta(minutes=sync_interval_minutes_config)
+                    every=timedelta(minutes=sync_interval_minutes)
                 )
             ]
         )
@@ -69,8 +67,16 @@ async def update_master_image_sync_schedule_interval(
         schedule_description.schedule.state = current_state
         return ScheduleUpdate(schedule=schedule_description.schedule)
 
+    return do_update
+
+
+async def update_master_image_sync_schedule_interval(
+    client: Client, sync_interval_minutes_config: int
+):
     handle = client.get_schedule_handle(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
-    await handle.update(do_update)
+    await handle.update(
+        _master_image_sync_updater(sync_interval_minutes_config)
+    )
 
 
 async def pause_or_unpause_master_image_sync_schedule(

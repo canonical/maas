@@ -54,6 +54,7 @@ class TestStopImportResources(MAASTransactionServerTestCase):
             workflow_id="master-image-sync"
         )
 
+
 class TestImportResourcesProgressService(MAASServerTestCase):
     """Tests for `ImportResourcesProgressService`."""
 
