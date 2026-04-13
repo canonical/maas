@@ -2,9 +2,9 @@
 
 This page describes basic MAAS logging operations.
 
-## Logging updates in MAAS 3.5
+## Logging in MAAS
 
-Since 3.5, the MAAS snap uses the [Pebble](https://github.com/canonical/pebble) service manager instead of `supervisord`. This means that the `systemd` component was renamed to `snap.maas.pebble.service`.  It contains Pebble logs, as well as intercepted stdout of the services running under Pebble.  The region and rack logs are cached there, as well (i.e., `regiond.log` and `rackd.log` are no more -- supervisord was redirecting the stdout of the respective services).
+The MAAS snap uses the [Pebble](https://github.com/canonical/pebble) service manager, with the systemd component being named `snap.maas.pebble.service`.  It contains Pebble logs, as well as intercepted stdout of the services running under Pebble. The region and rack logs are cached there, as well.
 
 Here is a per-service breakdown how logging works in MAAS:
 
