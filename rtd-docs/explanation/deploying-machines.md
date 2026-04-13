@@ -47,9 +47,9 @@ Curtin supports preseed files, allowing administrators to influence how storage,
 
 Between curtin preseeds and cloud-init user-data, you can tailor deployments to a very fine level of detail.
 
-## Ephemeral OS deployments (MAAS 3.5+)
+## Ephemeral OS deployments
 
-Since MAAS 3.5, you can choose to deploy an ephemeral OS instance:
+You can choose to deploy an ephemeral OS instance:
 
 - The entire operating system runs from memory, with no disk installation.
 - This is useful for stateless workloads, temporary testing, or security-sensitive use cases.

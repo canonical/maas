@@ -1,8 +1,8 @@
 # Deploy DPUs
 
-A Data Processing Unit (DPU) is a specialized network interface card that offloads networking, storage, and security tasks from the CPU. MAAS 3.7 introduced BMC-based control for NVIDIA BlueField 3 DPUs, enabling them to be managed like standard machines in the MAAS infrastructure.
+A Data Processing Unit (DPU) is a specialized network interface card that offloads networking, storage, and security tasks from the CPU. MAAS supports BMC-based control for NVIDIA BlueField 3 DPUs, enabling them to be managed like standard machines in the MAAS infrastructure.
 
-This guide explains how to configure, add, commission, deploy, and release NVIDIA BlueField 3 DPUs in MAAS 3.7 and later.
+This guide explains how to configure, add, commission, deploy, and release NVIDIA BlueField 3 DPUs.
 
 **Note**: BlueField 2 DPUs can still be added and controlled using the manual approach described in previous [documentation](https://discourse.maas.io/t/maas-and-dpus/6390). This guide focuses on the BMC-enabled workflow for BlueField 3 devices.
 
@@ -12,7 +12,6 @@ Before deploying a DPU in MAAS, ensure you have the following:
 
 ### Infrastructure Requirements
 
-- **MAAS 3.7 or later** installed and configured  
 - **NVIDIA BlueField 3 DPU** with BMC support  
 - **Host machine** powered on (the DPU resides within this host)  
 - **Network infrastructure** configured for PXE boot on the OOB management interface  
