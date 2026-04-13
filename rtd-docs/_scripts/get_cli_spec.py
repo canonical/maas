@@ -973,8 +973,7 @@ def create_cli_items():
     try:
         parser = build_parser()
     except Exception as e:
-        print(f"could not build parser: {e}", file=sys.stderr)
-        return 2
+        raise Exception(f"could not build parser: {e}") from e
 
     try_register_api_profile(parser)
 
