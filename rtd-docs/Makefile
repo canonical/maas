@@ -57,7 +57,7 @@ full-help: $(VENVDIR)
 # If requirements are updated, venv should be rebuilt and timestamped.
 $(VENVDIR):
 	@echo "... setting up virtualenv"
-	python3 -m venv $(VENVDIR) || { echo "You must install python3-venv before you can build the documentation."; exit 1; }
+	python3 -m venv $(VENVDIR) || { echo "You must install python3-venv and python3-dev before you can build the documentation."; exit 1; }
 	. $(VENV); pip install $(PIPOPTS) --require-virtualenv \
 	    --upgrade -r requirements.txt \
             --log $(VENVDIR)/pip_install.log
