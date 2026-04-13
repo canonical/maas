@@ -811,11 +811,11 @@ def generate_cli_docs():
         print("Warning: No commands found in input", file=sys.stderr)
         return 0
 
-    output_dir = RTD_DOCS.joinpath("reference", "cli-reference")
+    output_dir = RTD_DOCS / "reference" / "cli-reference"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     env = Environment(
-        loader=FileSystemLoader(RTD_DOCS.joinpath("_scripts", "_templates")),
+        loader=FileSystemLoader(RTD_DOCS / "_scripts" / "_templates"),
         autoescape=select_autoescape(enabled_extensions=(".j2",)),
         trim_blocks=True,
         lstrip_blocks=True,
