@@ -54,12 +54,16 @@ def _patch_maas_metadata():
     if _ilm is not None:
         _orig = getattr(_ilm, "distribution", None)
         if _orig is not None:
+
             def _fake(name):
                 if name == "maas":
+
                     class _Dummy:
                         version = "0.0.0"
+
                     return _Dummy()
                 return _orig(name)
+
             _ilm.distribution = _fake
 
 
@@ -73,6 +77,7 @@ def build_parser(argv0="maas"):
         if not snap_env_was_set:
             try:
                 import maascli.snap
+
                 os.environ["SNAP"] = "/snap/maas/current"
                 os.environ["SNAP_DATA"] = "/var/snap/maas/current"
                 os.environ["SNAP_COMMON"] = "/var/snap/maas/common"
@@ -104,12 +109,14 @@ def generate_api_description_from_source():
 
         try:
             import django
+
             django.setup()
         except ImportError:
             return None
 
         try:
             from maasserver.api.doc import get_api_description
+
             return get_api_description()
         except ImportError:
             return None
@@ -181,15 +188,18 @@ def collect_optional_rows(parser):
         metavar = None
         if getattr(action, "metavar", None):
             metavar = action.metavar
-        elif getattr(action, "nargs", None) not in (0, None) and getattr(
-            action, "type", None
-        ) is not bool:
+        elif (
+            getattr(action, "nargs", None) not in (0, None)
+            and getattr(action, "type", None) is not bool
+        ):
             metavar = action.dest.upper().replace("-", "_")
         if metavar:
             option_sig = f"{option_sig} {metavar}"
         help_text = help_text or ""
         help_text = str(help_text).replace("|", r"\|")
-        help_text = "<br>".join(line.strip() for line in help_text.splitlines()).strip()
+        help_text = "<br>".join(
+            line.strip() for line in help_text.splitlines()
+        ).strip()
         rows.append(
             {
                 "option": option_sig,
@@ -286,10 +296,7 @@ def describe_parser(parser, path):
         "options": collect_optional_rows(parser),
         "children": [],
         "overview": description.strip()
-        or (
-            "CLI help for: "
-            + re.sub(r"^\s*usage\s*:?\s*", "", usage)
-        ),
+        or ("CLI help for: " + re.sub(r"^\s*usage\s*:?\s*", "", usage)),
         "example": "",
         "keywords_text": str(epilog).strip(),
         "accepts_json": accepts_json,
@@ -312,9 +319,7 @@ def walk(parser, path):
 
 def flatten(node):
     """Flatten a tree of nodes into a list."""
-    out = [
-        {k: v for k, v in node.items() if k != "children"}
-    ]
+    out = [{k: v for k, v in node.items() if k != "children"}]
     for c in node.get("children", []):
         out.extend(flatten(c))
     return out
@@ -356,7 +361,9 @@ def _parse_positional_args_compact(full_text, matches):
     for i, match in enumerate(matches):
         arg_name = match.group(1)
         desc_start = match.end()
-        desc_end = matches[i + 1].start() if i + 1 < len(matches) else len(full_text)
+        desc_end = (
+            matches[i + 1].start() if i + 1 < len(matches) else len(full_text)
+        )
         desc = full_text[desc_start:desc_end].strip()
         if desc.endswith(".") and i + 1 < len(matches):
             desc = desc[:-1].strip()
@@ -406,18 +413,19 @@ def _parse_positional_args_multiline(content):
 def normalize_positional_args(content):
     """Normalize positional arguments section by extracting argument names and descriptions."""
     full_text = " ".join(line.strip() for line in content if line.strip())
-    matches = list(re.finditer(r'(\S+)\s{2,}', full_text))
+    matches = list(re.finditer(r"(\S+)\s{2,}", full_text))
 
     if len(matches) > 1:
         entries = _parse_positional_args_compact(full_text, matches)
     else:
         entries = _parse_positional_args_multiline(content)
-    
+
     return "\n".join(entries)
 
 
 def extract_usage_and_overview(lines, command):
     """Extract usage string and overview description from help text lines."""
+
     def is_usage_line(s):
         return re_usage_line.match(s) is not None
 
@@ -429,8 +437,10 @@ def extract_usage_and_overview(lines, command):
             in_usage = True
             usage_lines.append(s)
             continue
-        elif in_usage and s and not s.startswith(
-            ("options:", "optional arguments:")
+        elif (
+            in_usage
+            and s
+            and not s.startswith(("options:", "optional arguments:"))
         ):
             usage_lines.append(s)
         elif in_usage and (
@@ -442,7 +452,9 @@ def extract_usage_and_overview(lines, command):
         elif in_usage:
             break
 
-    usage = " ".join(usage_lines) if usage_lines else f"usage: maas {command} [-h]"
+    usage = (
+        " ".join(usage_lines) if usage_lines else f"usage: maas {command} [-h]"
+    )
 
     in_usage_section = False
     overview = ""
@@ -451,8 +463,12 @@ def extract_usage_and_overview(lines, command):
         if is_usage_line(s):
             in_usage_section = True
             continue
-        if in_usage_section and s and not s.startswith(
-            ("usage", "options", "optional arguments", "[")
+        if (
+            in_usage_section
+            and s
+            and not s.startswith(
+                ("usage", "options", "optional arguments", "[")
+            )
         ):
             overview = s
             break
@@ -516,14 +532,18 @@ def collect_additional_text(lines, overview, section_raw_lines):
     return ""
 
 
-def handle_section_header(state, line_stripped, section_raw_lines, options, additional_sections):
+def handle_section_header(
+    state, line_stripped, section_raw_lines, options, additional_sections
+):
     """Handle transition to a new section header. Returns updated parsing state dict."""
     if state["current_section"] is not None:
         if state["current_section"] in ("options", "optional arguments"):
             if state["current_option"] is not None:
-                options.append(finalize_option(
-                    state["current_option"], state["current_desc_lines"]
-                ))
+                options.append(
+                    finalize_option(
+                        state["current_option"], state["current_desc_lines"]
+                    )
+                )
         elif state["current_section_content"]:
             additional_sections.append(
                 finalize_section(
@@ -534,7 +554,9 @@ def handle_section_header(state, line_stripped, section_raw_lines, options, addi
                 )
             )
 
-    section_raw_lines.update(rl.strip() for rl in state["current_section_content_raw"])
+    section_raw_lines.update(
+        rl.strip() for rl in state["current_section_content_raw"]
+    )
     new_section = line_stripped.rstrip(":")
     in_options = new_section in ("options", "optional arguments")
 
@@ -560,7 +582,9 @@ def process_option_line(line, s, current_option, current_desc_lines, options):
         if m := re_opt_desc.match(s):
             return m.group("opt").strip(), [m.group("desc").strip()]
         return s, []
-    elif current_option is not None and (line.startswith(" ") or line.startswith("\t")):
+    elif current_option is not None and (
+        line.startswith(" ") or line.startswith("\t")
+    ):
         current_desc_lines.append(s)
 
     return current_option, current_desc_lines
@@ -571,7 +595,7 @@ def parse_help_sections(lines, overview):
     options = []
     additional_sections = []
     section_raw_lines = set()
-    
+
     state = {
         "current_section": None,
         "current_section_content": [],
@@ -587,14 +611,23 @@ def parse_help_sections(lines, overview):
 
         if line_stripped.endswith(":") and not line_stripped.startswith("-"):
             state = handle_section_header(
-                state, line_stripped, section_raw_lines, options, additional_sections
+                state,
+                line_stripped,
+                section_raw_lines,
+                options,
+                additional_sections,
             )
             continue
 
         if state["in_options"]:
-            state["current_option"], state["current_desc_lines"] = process_option_line(
-                line, line_stripped, state["current_option"], 
-                state["current_desc_lines"], options
+            state["current_option"], state["current_desc_lines"] = (
+                process_option_line(
+                    line,
+                    line_stripped,
+                    state["current_option"],
+                    state["current_desc_lines"],
+                    options,
+                )
             )
         elif state["in_other_section"]:
             state["current_section_content"].append(line)
@@ -608,9 +641,11 @@ def parse_help_sections(lines, overview):
     if state["current_section"] is not None:
         if state["current_section"] in ("options", "optional arguments"):
             if state["current_option"] is not None:
-                options.append(finalize_option(
-                    state["current_option"], state["current_desc_lines"]
-                ))
+                options.append(
+                    finalize_option(
+                        state["current_option"], state["current_desc_lines"]
+                    )
+                )
         else:
             if state["current_section_content"]:
                 additional_sections.append(
@@ -622,9 +657,13 @@ def parse_help_sections(lines, overview):
                     )
                 )
 
-    additional_text = collect_additional_text(lines, overview, section_raw_lines)
+    additional_text = collect_additional_text(
+        lines, overview, section_raw_lines
+    )
     if additional_text:
-        additional_sections.append({"title": "additional_info", "content": additional_text})
+        additional_sections.append(
+            {"title": "additional_info", "content": additional_text}
+        )
 
     return options, additional_sections
 
@@ -827,7 +866,9 @@ def _collect_action_form_reports(handler_class, name, action_form_registry):
         if not issubclass(handler_class, base_class):
             continue
         form_fields = _get_form_field_names(action_form_class)
-        docstring_params = _get_action_docstring_params(handler_class, action_name)
+        docstring_params = _get_action_docstring_params(
+            handler_class, action_name
+        )
         missing = form_fields - docstring_params
         if not missing:
             continue
