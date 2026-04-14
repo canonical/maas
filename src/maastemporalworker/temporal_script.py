@@ -23,7 +23,6 @@ from maasservicelayer.services.temporal import (
     TemporalServiceCache,
 )
 from maastemporalworker.schedules import (
-    pause_or_unpause_master_image_sync_schedule,
     setup_schedules,
     update_master_image_sync_schedule_interval,
 )
@@ -294,12 +293,12 @@ async def main() -> None:
                 }
             )
 
-    await pause_or_unpause_master_image_sync_schedule(
-        temporal_client, configs[BootImagesAutoImportConfig.name]
-    )
-
     await update_master_image_sync_schedule_interval(
-        temporal_client, configs[BootImagesImportIntervalMinutesConfig.name]
+        temporal_client,
+        sync_interval_minutes_config=configs[
+            BootImagesImportIntervalMinutesConfig.name
+        ],
+        auto_import_enabled_config=configs[BootImagesAutoImportConfig.name],
     )
 
     log.info("temporal-worker started")

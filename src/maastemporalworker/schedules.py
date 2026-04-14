@@ -12,6 +12,7 @@ from temporalio.client import (
     ScheduleOverlapPolicy,
     SchedulePolicy,
     ScheduleSpec,
+    ScheduleState,
     ScheduleUpdate,
     ScheduleUpdateInput,
 )
@@ -43,12 +44,16 @@ SCHEDULES: Final[dict[str, Schedule]] = {
             # Will be updated at startup with the value from the db
             intervals=[ScheduleIntervalSpec(every=timedelta(minutes=60))]
         ),
+        # Will be updated at startup with the value from the db
+        state=ScheduleState(paused=True),
         policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.CANCEL_OTHER),
     ),
 }
 
 
-def _master_image_sync_updater(sync_interval_minutes: int):
+def _master_image_sync_updater(
+    sync_interval_minutes: int, auto_import_enabled_config: bool | None = None
+):
     async def do_update(input: ScheduleUpdateInput) -> ScheduleUpdate:
         master_image_sync_schedule = SCHEDULES[MASTER_IMAGE_SYNC_WORKFLOW_NAME]
         master_image_sync_schedule.spec = ScheduleSpec(
@@ -63,6 +68,9 @@ def _master_image_sync_updater(sync_interval_minutes: int):
         # Here we save the current state in order to avoid un-pausing the schedule
         # when only changing the sync interval
         current_state = schedule_description.schedule.state
+        if auto_import_enabled_config is not None:
+            # On startup, set the state based on the config
+            current_state.paused = not auto_import_enabled_config
         schedule_description.schedule = master_image_sync_schedule
         schedule_description.schedule.state = current_state
         return ScheduleUpdate(schedule=schedule_description.schedule)
@@ -71,11 +79,15 @@ def _master_image_sync_updater(sync_interval_minutes: int):
 
 
 async def update_master_image_sync_schedule_interval(
-    client: Client, sync_interval_minutes_config: int
+    client: Client,
+    sync_interval_minutes_config: int,
+    auto_import_enabled_config: bool | None = None,
 ):
     handle = client.get_schedule_handle(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
     await handle.update(
-        _master_image_sync_updater(sync_interval_minutes_config)
+        _master_image_sync_updater(
+            sync_interval_minutes_config, auto_import_enabled_config
+        )
     )
 
 

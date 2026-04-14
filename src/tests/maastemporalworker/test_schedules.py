@@ -125,12 +125,27 @@ class TestUpdateMasterImageSyncSchedule:
 
     async def test_preserves_current_state(self):
         mock_state = Mock()
+        mock_state.paused = False
         mock_input = Mock()
         mock_input.description.schedule.state = mock_state
 
         result = await _master_image_sync_updater(30)(mock_input)
 
         assert result.schedule.state is mock_state
+        assert result.schedule.state.paused is False
+
+    async def test_state_changes_based_on_config(self):
+        mock_state = Mock()
+        mock_state.paused = True
+        mock_input = Mock()
+        mock_input.description.schedule.state = mock_state
+
+        result = await _master_image_sync_updater(
+            sync_interval_minutes=30, auto_import_enabled_config=True
+        )(mock_input)
+
+        assert result.schedule.state is mock_state
+        assert result.schedule.state.paused is False
 
 
 @pytest.mark.asyncio
