@@ -1,49 +1,141 @@
-name: run CI
+name: CI check
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}-build-env:${{ github.base_ref }}
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
-  lint-and-test:
+  changes:
     runs-on: ubuntu-24.04
 
-    permissions:
-      contents: read
-      packages: read
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      go: ${{ steps.filter.outputs.go }}
+      docs: ${{ steps.filter.outputs.docs }}
+      lint: ${{ steps.filter.outputs.lint }}
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+      - uses: dorny/paths-filter@61f87a10cd2c304679af17bb73ef192addf33c1c
+        id: filter
+        with:
+          filters: |
+            lint:
+              - 'src/**/*.py'
+              - 'pyproject.toml'
+              - 'tox.ini'
+              - 'setup.py'
+              - 'openapi.yaml'
+              - 'Makefile'
+              - 'utilities/**'
+              - 'src/**/*.go'
+              - 'src/**/go.mod'
+              - 'src/**/go.sum'
+              - 'src/**/Makefile'
+            python:
+              - 'src/**/*.py'
+              - 'utilities/run-py-tests-ci'
+              - 'pyproject.toml'
+              - 'tox.ini'
+            go:
+              - 'src/**/*.go'
+              - 'src/**/go.mod'
+              - 'src/**/go.sum'
+            docs:
+              - 'rtd-docs/**'
+
+  lint:
+    runs-on: ubuntu-24.04
+    needs: changes
+    if: >-
+      ${{ !github.event.pull_request.draft && needs.changes.outputs.lint == 'true' }}
+    container:
+      image: ghcr.io/${{ github.repository }}-build-env:${{ github.base_ref }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      - uses: ./.github/actions/ci-setup
 
-      - name: Log in to the Container registry
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Prepare container, lint and test
+      - name: Run lint
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/work \
-            -w /work \
-            ghcr.io/${{ env.IMAGE_NAME }} \
-            sh -c "
-              git config --global --add safe.directory /work
-              useradd ubuntu || true
-              chown -R ubuntu:ubuntu /work
-              sudo -H -u ubuntu make install-dependencies
-              sudo -H -u ubuntu make build
-              sudo -H -u ubuntu make lint
-              sudo -H -u ubuntu make test
-            "
-      - name: Archive logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: |
-            /work/junit*.xml
+          su ubuntu -c "make lint"
 
+  test-python:
+    needs: changes
+    runs-on: ubuntu-24.04
+    if: >-
+      ${{ !github.event.pull_request.draft && needs.changes.outputs.python == 'true' }}
+
+    container:
+      image: ghcr.io/${{ github.repository }}-build-env:${{ github.base_ref }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      - uses: ./.github/actions/ci-setup
+
+      - name: Test
+        run: |
+          CACHE_DIR=/home/ubuntu/.cache/pip
+          su ubuntu -c "PIP_CACHE_DIR=$CACHE_DIR make test-py"
+
+  test-go:
+    needs: changes
+    runs-on: ubuntu-24.04
+    if: >-
+      ${{ !github.event.pull_request.draft && needs.changes.outputs.go == 'true' }}
+
+    container:
+      image: ghcr.io/${{ github.repository }}-build-env:${{ github.base_ref }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      - uses: ./.github/actions/ci-setup
+
+      - name: Test
+        run: |
+          su ubuntu -c "make test-go"
+
+  test-docs:
+    needs: changes
+    runs-on: ubuntu-24.04
+    if: >-
+      ${{ !github.event.pull_request.draft && needs.changes.outputs.docs == 'true' }}
+    steps:
+    - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      with:
+        fetch-depth: 0
+    - name: Create venv
+      working-directory: "rtd-docs"
+      run: make install
+    - name: Lint markdown
+      working-directory: "rtd-docs"
+      run: make lint-md
+    - name: Test build
+      working-directory: "rtd-docs"
+      run: make html
+
+  ci-check:
+    runs-on: ubuntu-slim
+    if: always()
+    needs: [lint, test-python, test-go, test-docs]
+    steps:
+      - name: Check job results
+        if: needs.*.result == 'failure'
+        run: exit 1
