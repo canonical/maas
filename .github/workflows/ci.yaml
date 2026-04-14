@@ -62,7 +62,7 @@ jobs:
               - 'src/**/go.mod'
               - 'src/**/go.sum'
             docs:
-              - 'rtd-docs/**'
+              - 'docs/**'
 
   lint:
     runs-on: ubuntu-24.04
@@ -133,16 +133,16 @@ jobs:
       with:
         fetch-depth: 0
     - name: Create venv
-      working-directory: "rtd-docs"
+      working-directory: "docs"
       run: make install
     - name: Lint markdown
-      working-directory: "rtd-docs"
+      working-directory: "docs"
       run: make lint-md
     - name: Test build
-      working-directory: "rtd-docs"
+      working-directory: "docs"
       run: make html
     - name: Run scripts tests
-      working-directory: "rtd-docs"
+      working-directory: "docs"
       run: |
         source .sphinx/venv/bin/activate
         pip install -r requirements-dev.txt
