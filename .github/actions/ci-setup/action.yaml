@@ -1,0 +1,44 @@
+name: CI setup
+description: Prepare workspace permissions, caches and dependencies
+
+runs:
+  using: composite
+  steps:
+    - name: Fix workspace permissions for ubuntu user (root)
+      shell: bash
+      run: |
+        # jammy doesn't have the ubuntu user by default
+        useradd -m ubuntu
+        mkdir -p /home/ubuntu
+        mkdir -p /home/ubuntu/.cache/pip /home/ubuntu/.cache/go-build /home/ubuntu/go
+        chown -R ubuntu:ubuntu "$GITHUB_WORKSPACE" /home/ubuntu
+
+    - name: Python pip cache
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+      with:
+        path: /home/ubuntu/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Go modules cache
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+      with:
+        path: |
+          /home/ubuntu/.cache/go-build
+          /home/ubuntu/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('src/**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        make install-dependencies
+
+    - name: Build
+      shell: bash
+      run: |
+        CACHE_DIR=/home/ubuntu/.cache/pip
+        su ubuntu -c "PIP_CACHE_DIR=$CACHE_DIR make build"
