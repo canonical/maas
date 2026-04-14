@@ -268,7 +268,7 @@ parts:
     prime:
       - usr/share/maas/web/static
 
-  rtd-docs:
+  offline-docs:
     plugin: make
     source: .
     build-packages:
