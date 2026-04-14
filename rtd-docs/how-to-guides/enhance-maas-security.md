@@ -1,0 +1,448 @@
+# Enhance MAAS security
+
+MAAS security depends on encryption, logging, and user access management.  This document describes how to keep all of these in reliable working order.
+
+## Use TLS termination (MAAS 3.3+)
+
+Learn more about [TLS termination](#use-tls-termination-maas-33).
+
+### Configure TLS (3.3+)
+
+Manage TLS settings in MAAS with `config-tls`.
+
+```text
+usage: maas config-tls [-h] COMMAND ...
+
+Configure MAAS Region TLS.
+
+optional arguments:
+  -h, --help  show this help message and exit
+
+drill down:
+  COMMAND
+    enable    Enable TLS and switch to a secured mode (https).
+    disable   Disable TLS and switch to a non-secured mode (http).
+
+the following arguments are required: COMMAND
+```
+
+### Enable TLS
+
+TLS requires both a private key and a corresponding X509 certificate, both in PEM format:
+
+```text
+usage: maas config-tls enable [-h] [--cacert CACERT] [-p PORT] key cert
+
+positional arguments:
+  key                   path to the private key
+  cert                  path to certificate in PEM format
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --cacert CACERT       path to CA certificates chain in PEM format (default: None)
+  -p PORT, --port PORT  HTTPS port (default: 5443)
+```
+
+The default HTTPS port is 5443; customize this with the `--port` option. Specify the full certificate change (e.g. when using a non-self-signed certificate) using the `--cacert` option.
+
+### Manage TLS with HA
+
+High availability requires that every MAAS instance use the same certificate.  Create one certificate with multiple domain names or IP addresses, for example:
+
+```text
+X509v3 Subject Alternative Name:
+                DNS:example.com, IP Address:10.211.55.9
+```
+
+### Disable TLS
+
+When you disable TLS, MAAS API and UI will use HTTP over port 5240:
+
+```text
+usage: maas config-tls disable [-h]
+
+optional arguments:
+  -h, --help  show this help message and exit
+```
+
+### Check TLS status
+
+Confirm TLS is active at *Settings* > *Configuration* > *Security*:
+
+- CN
+- Expiration date
+- Fingerprint
+- Certificate
+
+This section of the UI will warn you if TLS is disabled.
+
+### Login to the MAAS CLI with TLS
+
+Login to the MAAS API with an https URL when using TLS:
+
+```text
+maas login <profile_name> https://mymaas:5443/MAAS <api_key>
+
+usage: maas login [-h] [--cacerts CACERTS] [-k] profile-name url [credentials]
+
+Log in to a remote API, and remember its description and credentials.
+
+positional arguments:
+  profile-name       The name with which you will later refer to this remote server and credentials within this tool.
+  url                The URL of the remote API, e.g. http://example.com/MAAS/ or http://example.com/MAAS/api/2.0/ if you wish to specify the API
+                     version.
+  credentials        The credentials, also known as the API key, for the remote MAAS server. These can be found in the user preferences page in
+                     the web UI; they take the form of a long random-looking string composed of three parts, separated by colons.
+
+optional arguments:
+  -h, --help         show this help message and exit
+  --cacerts CACERTS  Certificate CA file in PEM format
+  -k, --insecure     Disable SSL certificate check
+
+If credentials are not provided on the command-line, they will be prompted for interactively.
+
+the following arguments are required: profile-name, url
+```
+
+Certificates provided via `--cacerts` will be stored in your profile for future CLI commands.
+
+### Renew certificates
+
+Renew a certificate the same way you enable TLS:
+
+```text
+​​sudo maas config-tls enable new-server-key.pem new-server.pem --port 5443
+```
+
+Place the certificate and key in an accessible directory, such as `/var/snap/maas/common` if you're using the MAAS snap.
+
+### Set up a local cert authority
+
+You can setup your own Certificate Authority (CA) server that supports the ACME protocol with these components:
+
+- [step-ca from Smallstep](https://smallstep.com/docs/step-ca)
+- [Caddy server with ACME support](https://caddyserver.com/docs/caddyfile/directives/acme_server)  (available since version 2.5)
+
+If you have a CA server with ACME protocol support, you can use any ACME client for an automated certificate renewal and use crontab to renew on a desired time interval. For example, [acme.sh](https://github.com/acmesh-official/acme.sh):
+
+```text
+$> acme.sh --issue -d mymaas.internal --standalone --server https://ca.internal/acme/acme/directory
+
+Your cert is in: /root/.acme.sh/mymaas.internal/mymaas.internal.cer
+Your cert key is in: /root/.acme.sh/mymaas.internal/mymaas.internal.key
+The intermediate CA cert is in: /root/.acme.sh/mymaas.internal/ca.cer
+And the full chain certs is there: /root/.acme.sh/foo/fullchain.cer
+```
+
+Once the certificate is issued, you can install it:
+
+```text
+$> sudo acme.sh --installcert -d maas.internal \
+   --certpath /var/snap/maas/certs/server.pem \
+   --keypath /var/snap/maas/certs/server-key.pem  \
+   --capath  /var/snap/maas/certs/cacerts.pem  \
+   --reloadcmd  "(echo y) | maas config-tls enable /var/snap/maas/certs/server-key.pem /var/snap/maas/certs/server.pem --port 5443"
+```
+
+### Use certbot
+
+[certbot](https://certbot.eff.org) can be used to renew certificates, using a post-renewal hook to update MAAS:
+
+```text
+#!/bin/bash -e
+
+DOMAIN="maas.internal"
+CERTSDIR="/etc/letsencrypt/live/$DOMAIN"
+
+cd /var/snap/maas/common
+
+# need to copy certs where the snap can read them
+cp "$CERTSDIR"/{privkey,cert,chain}.pem .
+yes | maas config-tls enable privkey.pem cert.pem --cacert chain.pem --port 5443
+
+# we don’t want to keep private key and certs around
+rm {privkey,cert,chain}.pem
+```
+
+Don’t forget to make the script executable:
+
+```text
+chmod +x /etc/letsencrypt/renewal-hooks/post/001-update-maas.sh
+```
+
+When obtaining a new certificate.
+
+```text
+sudo REQUESTS_CA_BUNDLE=ca.pem certbot certonly --standalone -d maas.internal     --server https://ca.internal/acme/acme/directory
+```
+
+Note that hooks are run only on renewal.  You can test the process with a `--dry-run` flag:
+
+```text
+sudo REQUESTS_CA_BUNDLE=ca.pem certbot renew --standalone --server https://ca.internal/acme/acme/directory --dry-run
+```
+
+Refer to the [certbot documentation](https://certbot.eff.org/instructions?ws=other&os=ubuntufocal) for more information.
+
+### Manage PEM files
+
+Combine SSL certificate (`mysite.com.crt`) and key pair (`mysite.com.key`) into a single PEM file:
+
+```text
+cat mysite.com.crt mysite.com.key > mysite.com.pem
+sudo cp mysite.com.pem /etc/ssl/private/
+```
+
+Include your root and intermediate CA certificates in the same PEM file, if required.
+
+## Use TLS termination (3.2-)
+
+MAAS versions 3.2 and below don't support native TLS encryption. If you are not interested in [setting up an HAProxy](/how-to-guides/manage-high-availability.md#highly-available-api-with-haproxy), you can still enable TLS.
+
+### Configure nginx
+
+```text
+    server {
+     listen 443 SQL;
+
+     server_name _;
+     ssl_certificate /etc/nginx/ssl/nginx.crt;
+     ssl_certificate_key /etc/nginx/ssl/nginx.key;
+
+     location / {
+      proxy_pass http://localhost:5240;
+      include /etc/nginx/proxy_params;
+     }
+
+     location /MAAS/ws {
+      proxy_pass http://localhost:5240/MAAS/ws;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "Upgrade";
+     }
+    }
+```
+
+Note that MAAS binds to port 5240, not 80.
+
+### Configure apache2
+
+```text
+    <VirtualHost *:443>
+     SSLEngine On
+
+     SSLCertificateFile /etc/apache2/ssl/apache2.crt
+     SSLCertificateKeyFile /etc/apache2/ssl/apache2.key
+
+     RewriteEngine On
+            RewriteCond %{REQUEST_URI} ^/MAAS/ws [NC]
+            RewriteRule /(.*) ws://localhost:5240/MAAS/ws [P,L]
+
+            ProxyPreserveHost On
+            ProxyPass / http://localhost:5240/
+            ProxyPassReverse / http://localhost:5240/
+    </VirtualHost>
+```
+
+## Manage network ports
+
+Regulate accessible network ports for stronger MAAS security. Consider configuring your [firewall](https://ubuntu.com/server/docs/security-firewall) to allow only the ports MAAS uses. Using the Ubuntu UncomplicatedFirewall:
+
+```text
+sudo ufw enable
+sudo ufw default deny incoming
+sudo ufw allow 5240
+sudo ufw allow 5248
+sudo ufw allow 5241:5247/tcp
+sudo ufw allow 5241:5247/udp
+sudo ufw allow 5250:5270/tcp
+sudo ufw allow 5250:5270/udp
+```
+
+Your specifics may vary, so refer to the relevant firewall documentation and the required MAAS controller port settings.
+
+See [MAAS network port reference table](/reference/configuration-guides/configuration-tables.md#controller-port-settings) for a complete active port listing.
+
+## Deploy HAProxy
+
+```text
+sudo apt-get update
+sudo apt-get install haproxy
+```
+
+Modify `/etc/haproxy/haproxy.cfg` to set the maximum number of concurrent connections in the global section:
+
+```text
+maxconn <number of concurrent connections>
+```
+
+Also configure temporary DHE key sizes:
+
+```text
+tune.ssl.default-dh-param 2048
+```
+
+In `defaults` (under `mode http`) add:
+
+```text
+option forwardfor
+option http-server-close
+```
+
+Specify frontend and backend settings to manage connections:
+
+```text
+frontend maas
+    bind *:443 ssl crt /etc/ssl/private/mysite.com.pem
+    reqadd X-Forwarded-Proto:\ https
+    retries 3
+    option redispatch
+    default_backend maas
+
+backend maas
+    timeout server 90s
+    balance source
+    hash-type consistent
+    server localhost localhost:5240 check
+    server maas-api-1 <ip-address-of-a-region-controller>:5240 check
+    server maas-api-2 <ip-address-of-another-region-controller>:5240 check
+```
+
+Apply these changes by restarting HAProxy:
+
+```text
+sudo systemctl restart haproxy
+```
+
+Enable [HAProxy logging](https://www.digitalocean.com/community/tutorials/how-to-implement-ssl-termination-with-haproxy-on-ubuntu-14-04) if desired.  Alternatively, bypass SSL without HAProxy.
+
+## Use logging
+
+Use MAAS log files to find potential security issues.
+
+See the [MAAS logging reference](/reference/configuration-guides/logging.md) for detailed examples & log file locations.
+
+## Manage users
+
+Manage users carefully to maintain strong, proactive security.
+
+### Add a user
+
+**UI**
+*Settings* > *Users* > *Add user*> [Fill fields] > *Save*.
+
+Check the appropriate box to grant administrative rights.
+
+**CLI**
+
+```text
+    maas $PROFILE users create username=$USERNAME \
+    email=$EMAIL_ADDRESS password=$PASSWORD is_superuser=0
+```
+
+### Edit users
+
+**UI**
+*[Select user]* > *Details* > *[Make changes]* > *Save*
+
+### Manage SSH keys
+
+**UI**
+*Settings* > *Users* > *[User]* > *Pencil* > *[Follow key import steps]*
+
+**CLI**
+
+```text
+    ubuntu@maas:~$ maas $PROFILE sshkeys create key="$(cat /home/ubuntu/.ssh/id_rsa.pub)"
+```
+
+### Manage API Keys
+
+*Settings* > *Users* > *[User]* > *Pencil* > *API keys*
+
+### Change passwords
+
+*Settings* > *Users* > *[User]* > *Pencil* > [Follow instructions]
+
+> *Note that administrators can change any user's password.  Learn more about [strong passwords](https://discourse.maas.io/t/how-to-use-maas-systemd-logs/8103).*
+
+## Manage Vault
+
+Learn more about [MAAS and Hashicorp Vault](/explanation/security.md).
+
+To ensure seamless integration between MAAS and Vault, you'll first need to obtain a `role_id` and `wrapped_token` through Vault's CLI. For detailed guidance, check [Hashicorp Vault's tutorial](https://learn.hashicorp.com/tutorials/vault/approle-best-practices?in=vault/auth-methods#approle-response-wrapping).
+
+Here's an illustrative example on how to set up this integration using the `vault` CLI:
+
+1. **Enable the `approle` engine**
+
+```text
+vault auth list
+```
+
+If `approle/` isn't mounted, enable it:
+
+```text
+vault auth enable approle
+```
+
+1. **Confirm or mount the KV v2 engine**
+
+```text
+vault secrets enable -path $SECRETS_MOUNT kv-v2
+```
+
+1. **Create a suitable policy**
+
+```text
+path "$SECRETS_MOUNT/metadata/$SECRETS_PATH/" {
+ capabilities = ["list"]
+}
+
+path "$SECRETS_MOUNT/metadata/$SECRETS_PATH/*" {
+ capabilities = ["read", "update", "delete", "list"]
+}
+
+path "$SECRETS_MOUNT/data/${SECRETS_PATH}/*" {
+ capabilities = ["read", "create", "update", "delete"]
+}
+```
+
+1. **Apply the policy in Vault**
+
+```text
+vault policy write $MAAS_POLICY $POLICY_FILE
+```
+
+1. **Associate each MAAS region controller with the policy**
+
+```text
+$ vault write auth/approle/role/$ROLE_NAME \
+policies=$MAAS_POLICY token_ttl=5m
+```
+
+Fetch the role ID:
+
+```text
+vault read auth/approle/role/$ROLE_NAME/role-id
+```
+
+1. **Generate a secret ID for each role**
+
+```text
+vault write -wrap-ttl=5m auth/approle/role/$ROLE_NAME/secret-id
+```
+
+Post-setup, you can integrate MAAS with Vault using:
+
+```text
+sudo maas config-vault configure $URL $APPROLE_ID $WRAPPED_TOKEN $SECRETS_PATH --mount $SECRET_MOUNT
+```
+
+Complete the integration by migrating the secrets:
+
+```text
+sudo maas config-vault migrate
+```
+
+For detailed information, it's recommended to refer to the [Vault documentation](https://developer.hashicorp.com/vault/docs) and consider [Vault certification](https://developer.hashicorp.com/vault/tutorials/associate-cert).
