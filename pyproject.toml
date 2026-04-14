@@ -108,7 +108,6 @@ extend-exclude = [
   "dist",
   "parts",
   "snap",
-  "src/maas-offline-docs",
   "src/maasui",
 ]
 # Like Black, indent with spaces, rather than tabs.
