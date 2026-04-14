@@ -14,6 +14,7 @@ from temporalio.service import RPCError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
+from maascommon.constants import NODE_TIMEOUT
 from maascommon.enums.node import NodeStatus
 from maascommon.workflows.deploy import (
     DEPLOY_MANY_WORKFLOW_NAME,
@@ -902,6 +903,114 @@ class TestDeployManyWorkflow:
                 assert len(calls["power_on"]) == 3
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 3
+
+    async def test_power_on_always_failing_marks_node_failed_deployment(
+        self,
+        fixture: Fixture,
+        db_connection: AsyncConnection,
+        db: Database,
+    ) -> None:
+        bmc = await create_test_bmc_entry(fixture)
+        machine = await create_test_machine_entry(fixture, bmc_id=bmc["id"])
+        subnet = await create_test_subnet_entry(fixture)
+        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        await create_test_interface_dict(fixture, node=machine, ips=[ip])
+        await create_test_blockdevice_entry(fixture, node=machine)
+
+        deploy_timeout_minutes = 2 * NODE_TIMEOUT
+        deploy_many_timeout_minutes = 2 * NODE_TIMEOUT + 10
+
+        calls = defaultdict(list)
+
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
+        async def set_node_status(params: SetNodeStatusParam) -> None:
+            calls["set_node_status"].append(params.status)
+
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
+        async def get_boot_order(
+            params: GetBootOrderParam,
+        ) -> GetBootOrderResult:
+            calls["get_boot_order"].append(True)
+            return GetBootOrderResult(system_id=params.system_id, order=[])
+
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
+        async def power_query(params: PowerQueryParam) -> PowerQueryResult:
+            calls["power_query"].append(True)
+            return PowerQueryResult(state="off")
+
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
+        async def power_on(params: PowerOnParam) -> PowerOnResult:
+            calls["power_on"].append(True)
+            raise RuntimeError("power on failed")
+
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
+        async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
+            calls["power_cycle"].append(True)
+            return PowerCycleResult(state="on")
+
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
+        async def power_off(params: PowerOffParam) -> PowerOffResult:
+            calls["power_off"].append(True)
+            return PowerOffResult(state="off")
+
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="region",
+                workflows=[DeployManyWorkflow, DeployWorkflow],
+                activities=[
+                    set_node_status,
+                    get_boot_order,
+                    power_query,
+                    power_cycle,
+                    power_on,
+                    power_off,
+                    set_power_state,
+                ],
+            ) as worker:
+                wf = await env.client.start_workflow(
+                    DEPLOY_MANY_WORKFLOW_NAME,
+                    DeployManyParam(
+                        params=[
+                            DeployParam(
+                                system_id=machine["system_id"],
+                                ephemeral_deploy=False,
+                                can_set_boot_order=False,
+                                task_queue=worker.task_queue,
+                                power_params=PowerParam(
+                                    system_id=machine["system_id"],
+                                    driver_type=bmc["power_type"],
+                                    driver_opts=bmc["power_parameters"],
+                                    task_queue=worker.task_queue,
+                                ),
+                                timeout=deploy_timeout_minutes,
+                            ),
+                        ],
+                    ),
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                    execution_timeout=timedelta(
+                        minutes=deploy_many_timeout_minutes
+                    ),
+                )
+
+                await env.sleep(
+                    duration=timedelta(minutes=deploy_many_timeout_minutes + 5)
+                )
+                await wf.result()
+
+                assert len(calls["set_node_status"]) == 1
+                assert (
+                    calls["set_node_status"][0] == NodeStatus.FAILED_DEPLOYMENT
+                )
+                assert len(calls["power_query"]) == 1
+                assert len(calls["power_on"]) == 3
+                assert len(calls["power_cycle"]) == 0
+                assert len(calls["set_power_state"]) == 0
 
 
 @pytest.mark.asyncio
