@@ -278,7 +278,7 @@ parts:
       - python3-dev    # netifaces requirement
       - git            # for git+https://git.launchpad.net/django-piston3 in requirements.txt
     override-build: |
-      cd $CRAFT_PART_SRC/rtd-docs
+      cd $CRAFT_PART_SRC/docs
       make html
       INSTALL_DIR="$CRAFT_PART_INSTALL/usr/share/maas/web/static/docs"
       mkdir -p "$INSTALL_DIR"

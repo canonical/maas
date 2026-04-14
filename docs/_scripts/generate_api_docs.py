@@ -8,7 +8,7 @@ This script generates API documentation by generating the OpenAPI spec from sour
 and converting it to Markdown suitable for inclusion in the RTD documentation.
 
 Usage:
-    python3 rtd-docs/_scripts/generate_api_docs.py
+    python3 docs/_scripts/generate_api_docs.py
 """
 
 from collections import defaultdict
@@ -150,18 +150,26 @@ def prepare_template_data(spec: dict[str, Any]) -> dict[str, Any]:
             # Format parameters
             formatted_params = []
             for param in all_params:
-                formatted_params.append(format_parameter(param, endpoint_params))
+                formatted_params.append(
+                    format_parameter(param, endpoint_params)
+                )
 
             # Format request body
             formatted_request_body = []
             if "requestBody" in operation:
-                formatted_request_body = format_request_body(operation["requestBody"])
+                formatted_request_body = format_request_body(
+                    operation["requestBody"]
+                )
 
             # Format responses
             formatted_responses = []
             if "responses" in operation:
-                for status_code, response in sorted(operation["responses"].items()):
-                    formatted_responses.append(format_response(status_code, response))
+                for status_code, response in sorted(
+                    operation["responses"].items()
+                ):
+                    formatted_responses.append(
+                        format_response(status_code, response)
+                    )
 
             endpoint_data = {
                 "path": path,
