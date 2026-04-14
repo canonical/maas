@@ -151,7 +151,6 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
             "status-worker",
             "web",
             "ipc-worker",
-            "import-resources",
             "import-resources-progress",
             "active-discovery",
         }
@@ -364,7 +363,6 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             "stats",
             "prometheus",
             "prometheus-exporter",
-            "import-resources",
             "import-resources-progress",
             "postgres-listener-master",
             "networks-monitor",
