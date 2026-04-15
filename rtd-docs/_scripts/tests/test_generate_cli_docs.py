@@ -20,20 +20,11 @@ from generate_cli_docs import (
     format_usage,
     generate_command_markdown,
     group_commands_by_resource,
-    normalize_text,
     parse_keywords_text,
 )
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 TEMPLATES_DIR = Path(__file__).parent.parent.joinpath("_templates")
-
-
-def test_normalize_text():
-    """Test text normalization for markdown output."""
-    txt = "\n- Name: description\n- Other: more\n  plain line\n"
-    normalized = normalize_text(txt)
-    assert "<br>" in normalized
-    assert "|" not in normalized or "\\|" in normalized
 
 
 def test_bold_list_leaders():
@@ -150,7 +141,8 @@ def test_generate_command_markdown():
         "accepts_json": False,
         "returns_json": False,
     }
+
     out = generate_command_markdown(env, command, "foo bar")
-    pos = out.find("#### **Command-line options**")
+    pos = out.find("### **Command-line options**")
     extra = out.find("Final paragraph text.")
     assert pos != -1 and extra != -1 and extra > pos
