@@ -897,7 +897,7 @@ def generate_cli_docs():
         with open(index_path, "w", encoding="utf-8") as wf:
             wf.write(index_content)
 
-    print(f"✓ Succesfully generated CLI Documentation at {output_dir}")
+    print(f"✓ Successfully generated CLI Documentation at {output_dir}")
     print(f"-- Files created: {files_created}")
     print(f"-- Files updated: {files_updated}")
     print(f"-- Files skipped: {files_skipped}")
