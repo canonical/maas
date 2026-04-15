@@ -411,6 +411,7 @@ CONFIG_ITEMS = {
             "label": HttpProxyConfig.description,
             "required": False,
             "help_text": HttpProxyConfig.help_text,
+            "assume_scheme": "http",
         },
     },
     DefaultDnsTtlConfig.name: {
