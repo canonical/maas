@@ -143,5 +143,5 @@ def test_get_action_form_registry():
 
     for entry in registry:
         assert len(entry) == 3
-        base_class, action_name, form_class = entry
+        _, action_name, _ = entry
         assert isinstance(action_name, str)
