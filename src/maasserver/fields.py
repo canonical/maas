@@ -569,6 +569,10 @@ class URLOrPPAFormField(forms.URLField):
     }
     default_validators = [URLOrPPAValidator()]
 
+    def __init__(self, **kwargs):
+        kwargs.setdefault("assume_scheme", "http")
+        super().__init__(**kwargs)
+
     def to_python(self, value):
         # Call grandparent method (CharField) to get string value.
         value = super(forms.URLField, self).to_python(value)
