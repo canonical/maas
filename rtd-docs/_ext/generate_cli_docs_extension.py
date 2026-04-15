@@ -5,11 +5,11 @@
 """Sphinx extension to automatically generate CLI documentation.
 
 This extension runs during the Sphinx build process and automatically
-generates the API documentation by calling generate_cli_docs.py, which
+generates the CLI documentation by calling generate_cli_docs.py, which
 in turn generates the CLI documentation markdown file.
 
 The generated file is created before Sphinx processes the markdown files,
-ensuring the API documentation is always up-to-date.
+ensuring the CLI documentation is always up-to-date.
 """
 
 from pathlib import Path
