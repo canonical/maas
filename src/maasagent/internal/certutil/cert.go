@@ -29,10 +29,6 @@ import (
 	"maas.io/core/src/maasagent/internal/atomicfile"
 )
 
-// WriteCertificate encodes the entire certificate chain from a tls.Certificate
-// into PEM format and writes it to the specified path. The certificates are
-// written in order, starting with the leaf. It uses an atomic write to
-// prevent file corruption.
 func WriteCertificate(fs afero.Fs, path string, cert tls.Certificate) error {
 	if len(cert.Certificate) == 0 {
 		return fmt.Errorf("certificate contains no data")

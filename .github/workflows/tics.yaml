@@ -86,7 +86,7 @@ jobs:
   tics-analyzer:
     name: TiCS Analyzer
     needs: test-coverage
-    runs-on: [ 2xlarge-tiobe ]
+    runs-on: [ 2xlarge-extra ]
     timeout-minutes: 300
     env:
       PROJECT: maas
@@ -98,7 +98,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actio2xlarge-tiobetup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: 'stable'
 
