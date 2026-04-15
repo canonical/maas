@@ -24,7 +24,7 @@ from maasservicelayer.services.temporal import (
 )
 from maastemporalworker.schedules import (
     setup_schedules,
-    update_master_image_sync_schedule_interval,
+    update_master_image_sync_schedule,
 )
 from maastemporalworker.worker import get_client_async, REGION_TASK_QUEUE
 from maastemporalworker.worker import Worker as TemporalWorker
@@ -293,7 +293,7 @@ async def main() -> None:
                 }
             )
 
-    await update_master_image_sync_schedule_interval(
+    await update_master_image_sync_schedule(
         temporal_client,
         sync_interval_minutes_config=configs[
             BootImagesImportIntervalMinutesConfig.name

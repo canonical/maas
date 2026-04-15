@@ -13,7 +13,7 @@ from maastemporalworker.schedules import (
     pause_or_unpause_master_image_sync_schedule,
     SCHEDULES,
     setup_schedules,
-    update_master_image_sync_schedule_interval,
+    update_master_image_sync_schedule,
     update_schedule,
 )
 from tests.fixtures import AsyncIteratorMock
@@ -106,7 +106,7 @@ class TestUpdateMasterImageSyncSchedule:
         mock_handle = AsyncMock()
         mock_client.get_schedule_handle.return_value = mock_handle
 
-        await update_master_image_sync_schedule_interval(mock_client, 30)
+        await update_master_image_sync_schedule(mock_client, 30)
 
         mock_client.get_schedule_handle.assert_called_once_with(
             MASTER_IMAGE_SYNC_WORKFLOW_NAME

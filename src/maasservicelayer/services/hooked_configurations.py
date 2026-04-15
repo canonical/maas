@@ -29,7 +29,7 @@ from maasservicelayer.services.users import UsersService
 from maasservicelayer.services.vlans import VlansService
 from maastemporalworker.schedules import (
     pause_or_unpause_master_image_sync_schedule,
-    update_master_image_sync_schedule_interval,
+    update_master_image_sync_schedule,
 )
 
 
@@ -67,7 +67,7 @@ class HookedConfigurationsService(Service):
                 )
             case BootImagesImportIntervalMinutesConfig.name:
                 client = await self.temporal_service.get_temporal_client()
-                await update_master_image_sync_schedule_interval(client, value)
+                await update_master_image_sync_schedule(client, value)
             case EnableHttpProxyConfig.name | HttpProxyConfig.name:
                 self.temporal_service.register_or_update_workflow_call(
                     workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,

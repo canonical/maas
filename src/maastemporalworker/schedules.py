@@ -78,7 +78,7 @@ def _master_image_sync_updater(
     return do_update
 
 
-async def update_master_image_sync_schedule_interval(
+async def update_master_image_sync_schedule(
     client: Client,
     sync_interval_minutes_config: int,
     auto_import_enabled_config: bool | None = None,
