@@ -23,7 +23,7 @@ _Description: Ubuntu MAAS PXE/Provisioning network address:
 
 Template: maas/username
 Type: string
-_Description: Ubuntu MAAS username
+_Description: Ubuntu MAAS username:
  The Ubuntu MAAS server requires the administrator to create a
  username and password combination.
  .
@@ -31,7 +31,7 @@ _Description: Ubuntu MAAS username
 
 Template: maas/password
 Type: password
-_Description: Ubuntu MAAS password
+_Description: Ubuntu MAAS password:
  The Ubuntu MAAS server requires the administrator to create a
  username and password combination.
  .
