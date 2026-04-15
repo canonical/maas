@@ -1,0 +1,11 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+The Ubuntu MAAS Server has been installed in your system. You can access the
+MAAS Web interface here:
+
+   http://<MAAS_URL>/MAAS
+
+If the automatically detected address above is not in the same network as the
+MAAS clients, you need to reconfigure it:
+
+   sudo dpkg-reconfigure maas-region-controller
