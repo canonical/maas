@@ -501,14 +501,14 @@ class BootImagesNoProxyConfig(Config[Optional[bool]]):
     value: Optional[bool] = Field(default=default, description=description)
 
 
-class BootImagesImportIntervalMinutesConfig(Config[Optional[int]]):
+class BootImagesImportIntervalMinutesConfig(Config[int]):
     name: ClassVar[str] = "boot_images_import_interval_minutes"
-    default: ClassVar[Optional[int]] = 60
+    default: ClassVar[int] = 60
     description: ClassVar[str] = (
         "Time interval in minutes at which the import of boot images runs."
     )
     help_text: ClassVar[Optional[str]] = ""
-    value: Optional[int] = Field(default=default, description=description)
+    value: int = Field(default=default, description=description)
 
 
 class CurtinVerboseConfig(Config[Optional[bool]]):
