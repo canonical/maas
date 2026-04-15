@@ -92,7 +92,7 @@ async def update_master_image_sync_schedule(
 
 
 async def pause_or_unpause_master_image_sync_schedule(
-    client: Client, auto_import_enabled_config: bool
+    client: Client, auto_import_enabled_config: bool | None
 ):
     handle = client.get_schedule_handle(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
     if auto_import_enabled_config:
