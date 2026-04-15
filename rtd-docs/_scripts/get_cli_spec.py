@@ -5,12 +5,14 @@
 """Discover MAAS CLI commands by constructing argparse tree from source."""
 
 import argparse
+from importlib.util import find_spec
 from inspect import getdoc
 import json
 import os
-from pathlib import Path
 import re
 import sys
+
+from utils import add_repo_src_to_path
 
 try:
     import importlib.metadata as _ilm
@@ -40,15 +42,6 @@ builtins = {
 }
 
 
-def add_repo_src_to_path():
-    """Add repository src directory to Python path."""
-    project_root = Path(__file__).parent.parent.parent
-
-    src_dir = project_root.joinpath("src")
-    if os.path.isdir(src_dir) and src_dir not in sys.path:
-        sys.path.insert(0, str(src_dir))
-
-
 def _patch_maas_metadata():
     """Patch importlib.metadata.distribution for 'maas' so imports succeed in-repo."""
     if _ilm is not None:
@@ -76,7 +69,9 @@ def build_parser(argv0="maas"):
         snap_env_was_set = "SNAP" in os.environ
         if not snap_env_was_set:
             try:
-                import maascli.snap
+                # Importing maascli.snap for its side effects
+                if find_spec("maascli.snap") is None:
+                    raise Exception("could not import maascli.snap")
 
                 os.environ["SNAP"] = "/snap/maas/current"
                 os.environ["SNAP_DATA"] = "/var/snap/maas/current"
