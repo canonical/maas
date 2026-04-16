@@ -145,16 +145,6 @@ class BaseFilesystemGroupManager(Manager):
                 idx = max(idx, name_idx)
         return f"{prefix}{idx + 1}"
 
-    def get_available_name_for(self, filesystem_group):
-        """Return an available name that can be used for a `VirtualBlockDevice`
-        based on the `filesystem_group`'s group_type and other block devices
-        on the node.
-        """
-        return self.get_available_name_for_node(
-            filesystem_group.group_type,
-            filesystem_group.get_node(),
-        )
-
 
 class FilesystemGroupManager(BaseFilesystemGroupManager):
     """All the FilesystemGroup objects together."""

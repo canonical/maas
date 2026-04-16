@@ -527,7 +527,10 @@ class TestFilesystemGroupManager(MAASServerTestCase):
         current_idx = int(filesystem_group.name.replace(prefix, ""))
         self.assertEqual(
             f"{prefix}{current_idx + 1}",
-            FilesystemGroup.objects.get_available_name_for(filesystem_group),
+            FilesystemGroup.objects.get_available_name_for_node(
+                filesystem_group.group_type,
+                filesystem_group.get_node(),
+            ),
         )
 
     def test_get_available_name_for_ignores_bad_int(self):
@@ -540,7 +543,10 @@ class TestFilesystemGroupManager(MAASServerTestCase):
         filesystem_group.save()
         self.assertEqual(
             "%s0" % prefix,
-            FilesystemGroup.objects.get_available_name_for(filesystem_group),
+            FilesystemGroup.objects.get_available_name_for_node(
+                filesystem_group.group_type,
+                filesystem_group.get_node(),
+            ),
         )
 
 
