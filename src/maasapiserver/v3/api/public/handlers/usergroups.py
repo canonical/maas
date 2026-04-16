@@ -137,7 +137,7 @@ class UserGroupsHandler(Handler):
         )
 
     @handler(
-        path="/groups/statistics",
+        path="/groups:statistics",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -169,7 +169,7 @@ class UserGroupsHandler(Handler):
         next_link = None
         if groups.has_next(pagination_params.page, pagination_params.size):
             next_link = (
-                f"{V3_API_PREFIX}/groups/statistics?"
+                f"{V3_API_PREFIX}/groups:statistics?"
                 f"{pagination_params.to_next_href_format()}"
                 f"&{filters.to_href_format()}"
             )
@@ -178,7 +178,7 @@ class UserGroupsHandler(Handler):
             items=[
                 UserGroupStatisticsResponse.from_model(
                     usergroup=group_statistics,
-                    self_base_hyperlink=f"{V3_API_PREFIX}/groups/statistics",
+                    self_base_hyperlink=f"{V3_API_PREFIX}/groups:statistics",
                 )
                 for group_statistics in groups.items
             ],
