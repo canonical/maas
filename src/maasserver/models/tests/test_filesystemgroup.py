@@ -523,11 +523,14 @@ class TestFilesystemGroupManager(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE
         )
         filesystem_group.save()
-        prefix = filesystem_group.get_name_prefix()
+        prefix = FilesystemGroup.get_name_prefix(filesystem_group.group_type)
         current_idx = int(filesystem_group.name.replace(prefix, ""))
         self.assertEqual(
             f"{prefix}{current_idx + 1}",
-            FilesystemGroup.objects.get_available_name_for(filesystem_group),
+            FilesystemGroup.objects.get_available_name_for_node(
+                filesystem_group.group_type,
+                filesystem_group.get_node(),
+            ),
         )
 
     def test_get_available_name_for_ignores_bad_int(self):
@@ -535,12 +538,15 @@ class TestFilesystemGroupManager(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE
         )
         filesystem_group.save()
-        prefix = filesystem_group.get_name_prefix()
+        prefix = FilesystemGroup.get_name_prefix(filesystem_group.group_type)
         filesystem_group.name = "{}{}".format(prefix, factory.make_name("bad"))
         filesystem_group.save()
         self.assertEqual(
             "%s0" % prefix,
-            FilesystemGroup.objects.get_available_name_for(filesystem_group),
+            FilesystemGroup.objects.get_available_name_for_node(
+                filesystem_group.group_type,
+                filesystem_group.get_node(),
+            ),
         )
 
 
@@ -1758,10 +1764,9 @@ class TestFilesystemGroupGetNamePrefix(MAASServerTestCase):
     ]
 
     def test_returns_prefix(self):
-        filesystem_group = factory.make_FilesystemGroup(
-            group_type=self.group_type
+        self.assertEqual(
+            self.prefix, FilesystemGroup.get_name_prefix(self.group_type)
         )
-        self.assertEqual(self.prefix, filesystem_group.get_name_prefix())
 
 
 class TestFilesystemGroupGetVirtualBlockDeviceBlockSize(MAASServerTestCase):
@@ -1944,6 +1949,32 @@ class TestRAID(MAASServerTestCase):
             2,
             raid.filesystems.filter(fstype=FILESYSTEM_TYPE.RAID_SPARE).count(),
         )
+
+    def test_create_raid_auto_name_with_multiple_nodes(self):
+        node_a = factory.make_Node()
+        node_b = factory.make_Node()
+        # Pre-occupy md0 on node_b — a buggy implementation would pick this
+        # up and incorrectly skip to md1 for node_a's first RAID.
+        RAID.objects.create_raid(
+            block_devices=[
+                factory.make_PhysicalBlockDevice(node=node_b) for _ in range(2)
+            ],
+            level=FILESYSTEM_GROUP_TYPE.RAID_1,
+        )
+        raid0 = RAID.objects.create_raid(
+            block_devices=[
+                factory.make_PhysicalBlockDevice(node=node_a) for _ in range(2)
+            ],
+            level=FILESYSTEM_GROUP_TYPE.RAID_1,
+        )
+        self.assertEqual("md0", raid0.virtual_device.name)
+        raid1 = RAID.objects.create_raid(
+            block_devices=[
+                factory.make_PhysicalBlockDevice(node=node_a) for _ in range(2)
+            ],
+            level=FILESYSTEM_GROUP_TYPE.RAID_1,
+        )
+        self.assertEqual("md1", raid1.virtual_device.name)
 
     def test_create_raid_0_with_a_spare_fails(self):
         node = factory.make_Node()
@@ -2622,6 +2653,7 @@ class TestBcache(MAASServerTestCase):
     def test_create_bcache_with_virtual_block_devices(self):
         """Checks creation of a Bcache with virtual block devices for caching
         and backing roles."""
+        factory.make_Node()
         node = factory.make_Node()
         backing_size = 10 * 1000**4
         cache_size = 1000**4
@@ -2666,6 +2698,31 @@ class TestBcache(MAASServerTestCase):
         self.assertEqual(
             bcache, backing_device.get_effective_filesystem().filesystem_group
         )
+        self.assertEqual("md0", cache_device.name)
+        self.assertEqual("md1", backing_device.name)
+
+    def test_create_bcache_auto_name_with_multiple_nodes(self):
+        node_a = factory.make_Node()
+        node_b = factory.make_Node()
+        # Pre-occupy bcache0 on node_b — a buggy implementation would pick
+        # this up and incorrectly skip to bcache1 for node_a's first Bcache.
+        Bcache.objects.create_bcache(
+            cache_set=factory.make_CacheSet(node=node_b),
+            backing_device=factory.make_PhysicalBlockDevice(node=node_b),
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK,
+        )
+        bcache0 = Bcache.objects.create_bcache(
+            cache_set=factory.make_CacheSet(node=node_a),
+            backing_device=factory.make_PhysicalBlockDevice(node=node_a),
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK,
+        )
+        self.assertEqual("bcache0", bcache0.virtual_device.name)
+        bcache1 = Bcache.objects.create_bcache(
+            cache_set=factory.make_CacheSet(node=node_a),
+            backing_device=factory.make_PhysicalBlockDevice(node=node_a),
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK,
+        )
+        self.assertEqual("bcache1", bcache1.virtual_device.name)
 
     def test_create_bcache_with_partitions(self):
         """Checks creation of a Bcache with partitions for caching and backing
