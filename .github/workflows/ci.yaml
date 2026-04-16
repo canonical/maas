@@ -134,6 +134,12 @@ jobs:
     - name: Test build
       working-directory: "rtd-docs"
       run: make html
+    - name: Run scripts tests
+      working-directory: "rtd-docs"
+      run: |
+        source .sphinx/venv/bin/activate
+        pip install -r requirements-dev.txt
+        cd _scripts && python -m pytest .
 
   ci-check:
     runs-on: ubuntu-slim

@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Discover MAAS CLI commands by constructing argparse tree from source."""
 
 import argparse
+from importlib.util import find_spec
+from inspect import getdoc
 import json
 import os
 import re
 import sys
-from inspect import getdoc
+
+from utils import add_repo_src_to_path
 
 try:
     import importlib.metadata as _ilm
@@ -39,16 +42,6 @@ builtins = {
 }
 
 
-def add_repo_src_to_path():
-    """Add repository src directory to Python path."""
-    repo_root = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..")
-    )
-    src_dir = os.path.join(repo_root, "src")
-    if os.path.isdir(src_dir) and src_dir not in sys.path:
-        sys.path.insert(0, src_dir)
-
-
 def _patch_maas_metadata():
     """Patch importlib.metadata.distribution for 'maas' so imports succeed in-repo."""
     if _ilm is not None:
@@ -76,7 +69,9 @@ def build_parser(argv0="maas"):
         snap_env_was_set = "SNAP" in os.environ
         if not snap_env_was_set:
             try:
-                import maascli.snap
+                # Importing maascli.snap for its side effects
+                if find_spec("maascli.snap") is None:
+                    raise Exception("could not import maascli.snap")
 
                 os.environ["SNAP"] = "/snap/maas/current"
                 os.environ["SNAP_DATA"] = "/var/snap/maas/current"
@@ -127,7 +122,7 @@ def generate_api_description_from_source():
 def try_register_api_profile(parser):
     """Register API profile from source-generated API description."""
     try:
-        from maascli.api import register_resources, profile_help
+        from maascli.api import profile_help, register_resources
 
         for action in parser._actions:
             if isinstance(action, argparse._SubParsersAction):
@@ -527,7 +522,7 @@ def collect_additional_text(lines, overview, section_raw_lines):
             additional_text.append(line)
 
     if additional_text:
-        extra = " ".join(l.strip() for l in additional_text if l.strip())
+        extra = " ".join(t.strip() for t in additional_text if t.strip())
         return extra.replace("|", r"\|")
     return ""
 
@@ -967,9 +962,31 @@ def check_docstring_sync():
     return _print_sync_report(reports, total_handlers)
 
 
+def create_cli_items():
+    add_repo_src_to_path()
+
+    try:
+        parser = build_parser()
+    except Exception as e:
+        raise Exception(f"could not build parser: {e}") from e
+
+    try_register_api_profile(parser)
+
+    root_path = ["maas"]
+    root = walk(parser, root_path)
+    items = flatten(root)
+
+    top_level_commands = discover_top_level_from_parser(parser)
+    items = [it for it in items if len(it.get("argv", [])) != 1]
+
+    for cmd in top_level_commands:
+        items.append(synthesize_top_level_node(cmd, parser))
+
+    return items
+
+
 def main():
     """Main entry point for CLI introspection."""
-    add_repo_src_to_path()
 
     arg_parser = argparse.ArgumentParser(
         description="Discover MAAS CLI commands or check docstring/form sync."
@@ -984,23 +1001,7 @@ def main():
     if args.check_docstring_sync:
         return check_docstring_sync()
 
-    try:
-        parser = build_parser()
-    except Exception as e:
-        print(f"could not build parser: {e}", file=sys.stderr)
-        return 2
-
-    try_register_api_profile(parser)
-
-    root_path = ["maas"]
-    root = walk(parser, root_path)
-    items = flatten(root)
-
-    top_level_commands = discover_top_level_from_parser(parser)
-    items = [it for it in items if len(it.get("argv", [])) != 1]
-
-    for cmd in top_level_commands:
-        items.append(synthesize_top_level_node(cmd, parser))
+    items = create_cli_items()
 
     json.dump(items, sys.stdout, indent=2)
     sys.stdout.write("\n")

@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generate MAAS CLI documentation from introspector JSON."""
 
-import argparse
-import json
 from pathlib import Path
 import re
 import sys
 
-try:
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
-except Exception:
-    Environment = None
-    FileSystemLoader = None
-    select_autoescape = None
+from get_cli_spec import create_cli_items
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+RTD_DOCS = Path(__file__).parent.parent
 
 
 positional_arg_descriptions = {
@@ -172,7 +168,7 @@ def normalize_text(text):
     """Normalize text for Markdown output."""
     if not text:
         return ""
-    text = re.sub(r"\r\n|\r|\n", "<br>", text.strip()).replace("|", "\\|")
+    text = re.sub(r"\r\n|\r|\n", " ", text.strip()).replace("|", "\\|")
     return apply_all_text_fixes(text)
 
 
@@ -230,11 +226,11 @@ def collect_continuation_lines(lines, start_idx):
 
 
 def format_keyword_text(text):
-    """Format keyword text: escape markdown, replace sphinx-style references, convert newlines."""
+    """Format keyword text: escape markdown, replace sphinx-style references, join lines."""
     text = escape_md(text)
     text = re.sub(r"(?m)^:([a-z0-9_\-]+):", r"**:\1:**", text)
     text = apply_all_text_fixes(text)
-    return "<br>".join(text.splitlines()) if text else ""
+    return " ".join(text.splitlines()) if text else ""
 
 
 def bold_sphinx_directives(text):
@@ -595,7 +591,15 @@ def render_with_template(env, context):
     return template.render(**context)
 
 
-def generate_command_markdown(env, command, command_path):
+def extract_subcommand_title(command_path: str, group_name: str) -> str:
+    """Extract the subcommand action from a command path, stripping the group prefix."""
+    parts = command_path.split()
+    if len(parts) > 1 and parts[0] == group_name:
+        return " ".join(parts[1:])
+    return command_path
+
+
+def generate_command_markdown(env, command, command_path, group_name=""):
     """Generate Markdown content for a single command using Jinja2."""
     overview_raw = command.get("overview", "") or ""
     overview_lines = [
@@ -649,9 +653,21 @@ def generate_command_markdown(env, command, command_path):
     else:
         keywords_text = ""
 
+    # Use keywords.lead as main overview as it is more detailed
+    # and not really an overview of the keywords, but of the command
+    # subcommand instead.
+    keywords_lead = keywords.get("lead", "")
+    if keywords_lead:
+        overview = keywords_lead
+        keywords["lead"] = ""
+
+    if overview:
+        overview = re.sub(r"\s*<br>\s*", " ", overview).strip()
+
     additional_sections = clean_additional_sections(additional_sections)
 
     context = {
+        "title": extract_subcommand_title(command_path, group_name),
         "overview": overview,
         "usage": usage,
         "positional_args": positional_args,
@@ -788,61 +804,18 @@ def group_commands_by_resource(commands):
     return groups
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Generate MAAS CLI documentation from introspector JSON"
-    )
-    parser.add_argument(
-        "--stdin",
-        action="store_true",
-        help="Read introspector JSON array from stdin",
-    )
-    parser.add_argument(
-        "--source", help="Optional path to JSON file (array of nodes)"
-    )
-    parser.add_argument(
-        "--out", required=True, help="Output directory for Markdown files"
-    )
-    parser.add_argument(
-        "--check-dirty",
-        action="store_true",
-        help="Exit nonzero if any file would change",
-    )
-    parser.add_argument(
-        "--template-dir",
-        default="docs/usr/tools",
-        help="Directory containing cli_page.md.j2",
-    )
-    args = parser.parse_args()
-
-    nodes = []
-    try:
-        if args.stdin:
-            nodes = json.load(sys.stdin)
-        elif args.source:
-            with open(args.source, "r", encoding="utf-8") as f:
-                nodes = json.load(f)
-        else:
-            print("Error: Provide --stdin or --source", file=sys.stderr)
-            return 2
-    except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON: {e}", file=sys.stderr)
-        return 1
+def generate_cli_docs():
+    nodes = create_cli_items()
 
     if not isinstance(nodes, list) or not nodes:
         print("Warning: No commands found in input", file=sys.stderr)
         return 0
 
-    output_dir = Path(args.out)
+    output_dir = RTD_DOCS / "reference" / "cli-reference"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if Environment is None:
-        print(
-            "Error: Jinja2 is required to render templates.", file=sys.stderr
-        )
-        return 1
     env = Environment(
-        loader=FileSystemLoader(args.template_dir),
+        loader=FileSystemLoader(RTD_DOCS / "_scripts" / "_templates"),
         autoescape=select_autoescape(enabled_extensions=(".j2",)),
         trim_blocks=True,
         lstrip_blocks=True,
@@ -864,6 +837,7 @@ def main():
     files_would_change = 0
 
     groups_to_skip = {"local", "admin"}
+    generated_entries = []
 
     for group_name, cmd_list in sorted(groups.items()):
         if group_name in groups_to_skip:
@@ -875,23 +849,16 @@ def main():
             else path_to_filename(group_name)
         )
 
-        base_name = filename.replace(".md", "")
-        suffix, actual_base_name = find_existing_topic_number(
-            base_name, output_dir
-        )
-        if suffix and actual_base_name:
-            filename = f"{actual_base_name}-{suffix}.md"
-        else:
-            filename = f"{base_name}-tba.md"
-
         filepath = output_dir / filename
 
-        markdown_parts = []
+        markdown_parts = [f"# {group_name}\n"]
         for command, command_path in sorted(
             cmd_list, key=lambda t: (t[1], str(t[0].get("key", "")))
         ):
             markdown_parts.append(
-                generate_command_markdown(env, command, command_path)
+                generate_command_markdown(
+                    env, command, command_path, group_name
+                )
             )
             markdown_parts.append("")
         markdown_content = "\n".join(markdown_parts).rstrip() + "\n"
@@ -904,28 +871,44 @@ def main():
             else:
                 files_updated += 1
                 files_would_change += 1
-                if not args.check_dirty:
-                    with open(filepath, "w", encoding="utf-8") as wf:
-                        wf.write(markdown_content)
+                with open(filepath, "w", encoding="utf-8") as wf:
+                    wf.write(markdown_content)
         else:
             files_created += 1
             files_would_change += 1
-            if not args.check_dirty:
-                with open(filepath, "w", encoding="utf-8") as wf:
-                    wf.write(markdown_content)
+            with open(filepath, "w", encoding="utf-8") as wf:
+                wf.write(markdown_content)
 
-    print("Documentation generation completed!")
-    print(f"Output directory: {output_dir}")
-    print(f"Files created: {files_created}")
-    print(f"Files updated: {files_updated}")
-    print(f"Files skipped: {files_skipped}")
-    print(f"Total commands processed: {len(unique_commands)}")
+        generated_entries.append(filename[: -len(".md")])
 
-    if args.check_dirty and files_would_change:
-        return 3
+    index_template = env.get_template("cli_index.md.j2")
+    index_content = index_template.render(entries=sorted(generated_entries))
+    index_path = output_dir / "index.md"
+    if index_path.exists():
+        with open(index_path, "r", encoding="utf-8") as f:
+            if f.read() != index_content:
+                files_updated += 1
+                with open(index_path, "w", encoding="utf-8") as wf:
+                    wf.write(index_content)
+            else:
+                files_skipped += 1
+    else:
+        files_created += 1
+        with open(index_path, "w", encoding="utf-8") as wf:
+            wf.write(index_content)
+
+    print(f"✓ Successfully generated CLI Documentation at {output_dir}")
+    print(f"-- Files created: {files_created}")
+    print(f"-- Files updated: {files_updated}")
+    print(f"-- Files skipped: {files_skipped}")
+    print(f"-- Total commands processed: {len(unique_commands)}")
+
     return 0
+
+
+def main():
+    return generate_cli_docs()
 
 
 if __name__ == "__main__":
     exit(main())
-

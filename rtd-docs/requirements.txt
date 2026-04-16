@@ -117,3 +117,6 @@ uvicorn==0.42.0
 watchfiles==1.1.1
 webencodings==0.5.1
 websockets==16.0
+
+# Other dependencies for CLI documentation generation
+httplib2==0.31.2

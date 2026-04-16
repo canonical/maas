@@ -18,6 +18,7 @@ _build
 
 # Generated Documentation
 reference/api-reference/api-v2-generated.md
+reference/cli-reference/*
 
 # Node.js
 package*.json
