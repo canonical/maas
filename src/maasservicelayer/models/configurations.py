@@ -10,7 +10,7 @@ from netaddr import AddrFormatError, IPAddress, IPNetwork
 from pydantic import AnyHttpUrl, Field, IPvAnyAddress, validator
 from pydantic.generics import GenericModel
 
-from maascommon.constants import IMPORT_RESOURCES_SERVICE_PERIOD, NODE_TIMEOUT
+from maascommon.constants import NODE_TIMEOUT
 from maascommon.enums.discovery import (
     ActiveDiscoveryIntervalEnum,
     NetworkDiscoveryEnum,
@@ -483,7 +483,7 @@ class BootImagesAutoImportConfig(Config[Optional[bool]]):
     name: ClassVar[str] = "boot_images_auto_import"
     default: ClassVar[Optional[bool]] = True
     description: ClassVar[str] = (
-        f"Automatically import/refresh the boot images every {IMPORT_RESOURCES_SERVICE_PERIOD.total_seconds() / 60.0} minutes"
+        "Automatically import/refresh the boot images periodically. The interval is defined by the configuration 'boot_images_sync_interval_minutes'."
     )
     help_text: ClassVar[Optional[str]] = ""
     value: Optional[bool] = Field(default=default, description=description)
@@ -499,6 +499,16 @@ class BootImagesNoProxyConfig(Config[Optional[bool]]):
         "By default, when MAAS is behind (and set with) a proxy, it is used to download images from the image repository. In some situations (e.g. when using a local image repository) it doesn't make sense for MAAS to use the proxy to download images because it can access them directly. Setting this option allows MAAS to access the (local) image repository directly by setting the no_proxy variable for the MAAS env with the address of the image repository."
     )
     value: Optional[bool] = Field(default=default, description=description)
+
+
+class BootImagesImportIntervalMinutesConfig(Config[int]):
+    name: ClassVar[str] = "boot_images_import_interval_minutes"
+    default: ClassVar[int] = 60
+    description: ClassVar[str] = (
+        "Time interval in minutes at which the import of boot images runs."
+    )
+    help_text: ClassVar[Optional[str]] = ""
+    value: int = Field(default=default, description=description)
 
 
 class CurtinVerboseConfig(Config[Optional[bool]]):
@@ -1155,6 +1165,7 @@ class ConfigFactory:
         DiskEraseWithQuickEraseConfig.name: DiskEraseWithQuickEraseConfig,
         BootImagesAutoImportConfig.name: BootImagesAutoImportConfig,
         BootImagesNoProxyConfig.name: BootImagesNoProxyConfig,
+        BootImagesImportIntervalMinutesConfig.name: BootImagesImportIntervalMinutesConfig,
         CurtinVerboseConfig.name: CurtinVerboseConfig,
         ForceV1NetworkYamlConfig.name: ForceV1NetworkYamlConfig,
         EnableAnalyticsConfig.name: EnableAnalyticsConfig,
