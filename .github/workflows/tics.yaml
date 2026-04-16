@@ -86,7 +86,7 @@ jobs:
   tics-analyzer:
     name: TiCS Analyzer
     needs: test-coverage
-    runs-on: [ 2xlarge-extra ]
+    runs-on: [ 2xlarge-tiobe ]
     timeout-minutes: 300
     env:
       PROJECT: maas
