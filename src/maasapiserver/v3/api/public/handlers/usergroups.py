@@ -71,22 +71,6 @@ class UserGroupsHandler(Handler):
 
     TAGS = ["UserGroups"]
 
-    def get_handlers(self):
-        return [
-            "list_groups",
-            "list_groups_statistics",
-            "create_group",
-            "get_group",
-            "update_group",
-            "delete_group",
-            "list_group_members",
-            "add_group_member",
-            "remove_group_member",
-            "list_group_entitlements",
-            "add_group_entitlement",
-            "remove_group_entitlement",
-        ]
-
     @handler(
         path="/groups",
         methods=["GET"],
