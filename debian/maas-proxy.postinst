@@ -4,11 +4,10 @@ set -e
 
 if [ "$1" = "configure" ]
 then
-    # Stop the squid3 instance that came with the squid3 package.
-    # We run our own squid3 instances.
-    # Handle both versions of the name, for safety.
-    systemctl stop squid >/dev/null 2>&1 || true
-    systemctl disable squid >/dev/null 2>&1 || true
+    # Stop the system squid instance; MAAS runs its own.
+    # Only the current squid.service is supported.
+    deb-systemd-invoke stop 'squid.service' >/dev/null 2>&1 || true
+    deb-systemd-helper disable 'squid.service' >/dev/null 2>&1 || true
 
     # Ensure log folder is created.
     install -d -o proxy -g proxy /var/log/maas/proxy

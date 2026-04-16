@@ -1,0 +1,12 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+[Unit]
+Description=Compress MAAS remote syslog logs
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+Unit=maas-remote-syslog-compress.service
+
+[Install]
+WantedBy=timers.target
