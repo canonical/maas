@@ -28,6 +28,7 @@ from maasapiserver.v3.api.public.models.responses.usergroup_members import (
 from maasapiserver.v3.api.public.models.responses.usergroups import (
     UserGroupResponse,
     UserGroupsListResponse,
+    UserGroupsStatisticsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
@@ -43,7 +44,7 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroup_members import UserGroupMember
-from maasservicelayer.models.usergroups import UserGroup
+from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
 from maasservicelayer.models.users import User
 from maasservicelayer.services import ServiceCollectionV3, UsersService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
@@ -159,7 +160,8 @@ class TestUserGroupsApi(ApiCommonTests):
         )
         services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.list.return_value = ListResult[UserGroup](
-            items=[TEST_GROUP], total=2
+            items=[TEST_GROUP],
+            total=2,
         )
         response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -178,13 +180,78 @@ class TestUserGroupsApi(ApiCommonTests):
         )
         services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.list.return_value = ListResult[UserGroup](
-            items=[TEST_GROUP], total=1
+            items=[TEST_GROUP],
+            total=1,
         )
-        response = await client.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1&name=test")
         assert response.status_code == 200
         groups_response = UserGroupsListResponse(**response.json())
         assert len(groups_response.items) == 1
         assert groups_response.total == 1
+        assert groups_response.next is None
+
+    # GET /groups/statistics
+    async def test_list_statistics_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.list_groups_statistics.return_value = (
+            ListResult[UserGroupStatistics](
+                items=[
+                    UserGroupStatistics(
+                        id=TEST_GROUP.id,
+                        user_count=5,
+                    )
+                ],
+                total=2,
+            )
+        )
+        response = await client.get(
+            f"{self.BASE_PATH}:statistics?size=1&page=1&id=1"
+        )
+        assert response.status_code == 200
+        groups_response = UserGroupsStatisticsListResponse(**response.json())
+        assert len(groups_response.items) == 1
+        assert groups_response.total == 2
+        assert groups_response.items[0].user_count == 5
+        assert (
+            groups_response.next
+            == f"{self.BASE_PATH}:statistics?page=2&size=1&id=1"
+        )
+
+    async def test_list_statistics_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.list_groups_statistics.return_value = (
+            ListResult[UserGroupStatistics](
+                items=[
+                    UserGroupStatistics(
+                        id=TEST_GROUP.id,
+                        user_count=5,
+                    )
+                ],
+                total=1,
+            )
+        )
+        response = await client.get(
+            f"{self.BASE_PATH}:statistics?size=1&page=1&id=1"
+        )
+        assert response.status_code == 200
+        groups_response = UserGroupsStatisticsListResponse(**response.json())
+        assert len(groups_response.items) == 1
+        assert groups_response.total == 1
+        assert groups_response.items[0].user_count == 5
         assert groups_response.next is None
 
     # GET /groups/{group_id}

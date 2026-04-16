@@ -22,6 +22,7 @@ from maasapiserver.v3.api.public.models.requests.usergroup_members import (
 )
 from maasapiserver.v3.api.public.models.requests.usergroups import (
     UserGroupRequest,
+    UserGroupsFiltersParam,
 )
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -37,6 +38,8 @@ from maasapiserver.v3.api.public.models.responses.usergroup_members import (
 from maasapiserver.v3.api.public.models.responses.usergroups import (
     UserGroupResponse,
     UserGroupsListResponse,
+    UserGroupsStatisticsListResponse,
+    UserGroupStatisticsResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -44,6 +47,7 @@ from maascommon.openfga.base import (
     MAASResourceEntitlement,
     OpenFGAEntitlementResourceType,
 )
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -89,11 +93,13 @@ class UserGroupsHandler(Handler):
     async def list_groups(
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
+        filters: UserGroupsFiltersParam = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserGroupsListResponse:
         groups = await services.usergroups.list(
             page=pagination_params.page,
             size=pagination_params.size,
+            query=QuerySpec(where=filters.to_clause()),
         )
         next_link = None
         if groups.has_next(pagination_params.page, pagination_params.size):
@@ -109,6 +115,56 @@ class UserGroupsHandler(Handler):
                     self_base_hyperlink=f"{V3_API_PREFIX}/groups",
                 )
                 for group in groups.items
+            ],
+            total=groups.total,
+            next=next_link,
+        )
+
+    @handler(
+        path="/groups:statistics",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": UserGroupsStatisticsListResponse,
+            },
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                )
+            )
+        ],
+    )
+    async def list_groups_statistics(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        filters: UserGroupsFiltersParam = Depends(),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> UserGroupsStatisticsListResponse:
+        groups = await services.usergroups.list_groups_statistics(
+            page=pagination_params.page,
+            size=pagination_params.size,
+            query=QuerySpec(where=filters.to_clause()),
+        )
+        next_link = None
+        if groups.has_next(pagination_params.page, pagination_params.size):
+            next_link = (
+                f"{V3_API_PREFIX}/groups:statistics?"
+                f"{pagination_params.to_next_href_format()}"
+                f"&{filters.to_href_format()}"
+            )
+
+        return UserGroupsStatisticsListResponse(
+            items=[
+                UserGroupStatisticsResponse.from_model(
+                    usergroup=group_statistics,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/groups:statistics",
+                )
+                for group_statistics in groups.items
             ],
             total=groups.total,
             next=next_link,
