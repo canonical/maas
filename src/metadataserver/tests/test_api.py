@@ -4330,13 +4330,34 @@ class TestStoreNodeParameters(APITestCase.ForUser):
     def test_power_type_set_with_parameters(self):
         # When power_type is valid, and power_parameters is valid JSON, both
         # fields are set on the node, and the node is saved.
-        power_type = factory.pick_power_type(but_not=[self.node.power_type])
+        power_type = factory.pick_power_type(
+            but_not=[self.node.power_type, "redfish"]
+        )
         power_parameters = {"foo": [1, 2, 3]}
         self.request.POST = {
             "power_type": power_type,
             "power_parameters": json.dumps(power_parameters),
         }
         store_node_power_parameters(self.node, self.request)
+        self.assertEqual(power_type, self.node.power_type)
+        self.assertEqual(power_parameters, self.node.get_power_parameters())
+        self.assertTrue(self.node.bmc.created_by_commissioning)
+        self.save.assert_called_once_with()
+
+    def test_power_type_set_with_parameters_redfish(self):
+        power_type = "redfish"
+        power_parameters = {
+            "node_id": 1,
+            "power_address": "10.0.0.1",
+            "power_pass": "test",
+            "power_user": "test",
+        }
+        self.request.POST = {
+            "power_type": power_type,
+            "power_parameters": json.dumps(power_parameters),
+        }
+        with post_commit_hooks:
+            store_node_power_parameters(self.node, self.request)
         self.assertEqual(power_type, self.node.power_type)
         self.assertEqual(power_parameters, self.node.get_power_parameters())
         self.assertTrue(self.node.bmc.created_by_commissioning)
