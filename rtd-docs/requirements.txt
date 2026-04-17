@@ -26,7 +26,7 @@ rst2html==2020.7.4
 vale==3.13.0.0
 
 # Bare minimum MAAS dependencies for API documentation generation
-django==6.0.4
+django==5.2.9
 git+https://git.launchpad.net/django-piston3
 aiofiles==25.1.0
 aiohttp==3.13.5
@@ -49,7 +49,7 @@ petname==2.9
 pexpect==4.9.0
 prometheus_client==0.24.1
 psycopg2-binary==2.9.11
-pydantic==2.13.2
+pydantic==2.12.5
 pylxd==2.4.1
 pymongo==4.16.0
 pyOpenSSL==26.0.0
