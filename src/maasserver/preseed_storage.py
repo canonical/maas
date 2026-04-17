@@ -229,6 +229,7 @@ class CurtinStorageGenerator:
             try:
                 partition_ids, block_devices_ids = zip(
                     *raid.filesystems.values_list("partition", "block_device"),
+                    strict=True,
                 )
             except ValueError as e:
                 # We could just continue here with perhaps a warning, but

@@ -1,6 +1,6 @@
 # Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-from typing import Annotated, Optional, Union
+from typing import Annotated
 from uuid import uuid4
 
 from fastapi import (
@@ -75,7 +75,7 @@ class FilesHandler(Handler):
     async def list_files(
         self,
         prefix: Annotated[
-            Optional[str],
+            str | None,
             Query(
                 description="An optional prefix used to filter matching files.",
             ),
@@ -297,9 +297,7 @@ class FilesHandler(Handler):
         authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
-        etag_if_match: Union[str, None] = Header(
-            alias="if-match", default=None
-        ),
+        etag_if_match: str | None = Header(alias="if-match", default=None),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         assert authenticated_user is not None

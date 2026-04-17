@@ -1,7 +1,7 @@
 #  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import List, Optional, Type
+from typing import Type
 
 from sqlalchemy import delete, insert, select, Table
 from sqlalchemy.sql.operators import eq
@@ -50,8 +50,8 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
         self,
         domain: Domain,
         ip: StaticIPAddress,
-        but_not_for: Optional[DNSResource] = None,
-    ) -> List[DNSResource]:
+        but_not_for: DNSResource | None = None,
+    ) -> list[DNSResource]:
         stmt = (
             select(DNSResourceTable)
             .select_from(DNSResourceTable)
@@ -75,9 +75,9 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
     async def get_ips_for_dnsresource(
         self,
         dnsrr_id: int,
-        discovered_only: Optional[bool] = False,
-        matching: Optional[StaticIPAddress] = None,
-    ) -> List[StaticIPAddress]:
+        discovered_only: bool | None = False,
+        matching: StaticIPAddress | None = None,
+    ) -> list[StaticIPAddress]:
         filters = [
             DNSResourceIPAddressTable.c.dnsresource_id == dnsrr_id,
         ]
@@ -153,7 +153,7 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
 
     async def get_dnsresources_for_ip(
         self, ip: StaticIPAddress
-    ) -> List[DNSResource]:
+    ) -> list[DNSResource]:
         """Get all DNS resources linked to a specific IP address.
 
         Args:
@@ -179,8 +179,8 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
         return [DNSResource(**row._asdict()) for row in result]
 
     async def get_dnsresources_without_ips(
-        self, dnsresource_ids: List[int]
-    ) -> List[int]:
+        self, dnsresource_ids: list[int]
+    ) -> list[int]:
         """Get DNS resources that have no associated IP addresses.
 
         Args:
@@ -211,8 +211,8 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
         ]
 
     async def get_dnsresources_without_dnsdata(
-        self, dnsresource_ids: List[int]
-    ) -> List[int]:
+        self, dnsresource_ids: list[int]
+    ) -> list[int]:
         """Get DNS resources that have no DNS data records.
 
         Args:

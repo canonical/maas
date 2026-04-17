@@ -11,7 +11,7 @@ from maasservicelayer.models.base import (
 
 @generate_builder()
 class MDNS(MaasTimestampedBaseModel):
-    ip: IPvAnyAddress | None
-    hostname: str | None
+    ip: IPvAnyAddress | None = None
+    hostname: str | None = None
     count: int
     interface_id: int

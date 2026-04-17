@@ -39,7 +39,7 @@ def fix_tftp_requests():
     from tftp.netascii import NetasciiReceiverProxy, NetasciiSenderProxy
     import tftp.protocol
     from twisted.internet import reactor
-    from twisted.internet.defer import inlineCallbacks, returnValue
+    from twisted.internet.defer import inlineCallbacks
     from twisted.python.context import call
 
     @inlineCallbacks
@@ -100,7 +100,7 @@ def fix_tftp_requests():
                     addr, fs_interface, datagram.options, _clock=self._clock
                 )
                 reactor.listenUDP(0, session, iface)
-                returnValue(session)
+                return session
             elif datagram.opcode == OP_RRQ:
                 if mode == b"netascii":
                     fs_interface = NetasciiSenderProxy(fs_interface)
@@ -108,7 +108,7 @@ def fix_tftp_requests():
                     addr, fs_interface, datagram.options, _clock=self._clock
                 )
                 reactor.listenUDP(0, session, iface)
-                returnValue(session)
+                return session
 
     tftp.protocol.TFTP._startSession = new_startSession
 

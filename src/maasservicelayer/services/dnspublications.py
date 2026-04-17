@@ -1,8 +1,7 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Optional
 
 from maascommon.enums.dns import DnsUpdateAction
 from maasservicelayer.builders.dnspublications import DNSPublicationBuilder
@@ -35,12 +34,12 @@ class DNSPublicationsService(
         self,
         source: str,
         action: DnsUpdateAction,
-        label: Optional[str] = None,
-        rtype: Optional[str] = None,
-        zone: Optional[str] = None,
-        ttl: Optional[int] = None,
-        answer: Optional[str] = None,
-        timestamp: Optional[datetime] = None,
+        label: str | None = None,
+        rtype: str | None = None,
+        zone: str | None = None,
+        ttl: int | None = None,
+        answer: str | None = None,
+        timestamp: datetime | None = None,
     ) -> DNSPublication:
         update = None
         if action == DnsUpdateAction.RELOAD:

@@ -2,9 +2,8 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections.abc import Sequence
-from typing import Any, Optional
 
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from maasservicelayer.auth.macaroons.models.base import Resource
 from maasservicelayer.enums.rbac import RbacPermission
@@ -12,8 +11,8 @@ from maasservicelayer.enums.rbac import RbacPermission
 
 class UserDetailsResponse(BaseModel):
     username: str
-    fullname: Optional[str] = Field(validation_alias="name")
-    email: Optional[str]
+    fullname: str | None = Field(default=None, validation_alias="name")
+    email: str | None = None
 
 
 class ValidateUserResponse(UserDetailsResponse):
@@ -47,19 +46,19 @@ class PermissionResourcesMapping(BaseModel):
     """
 
     permission: RbacPermission
-    resources: Optional[list[int]]
+    resources: list[int] | None = None
     access_all: bool = False
 
-    @validator("resources", pre=True)
-    def preprocess_resources(cls, data: Optional[list[str]]):
+    @field_validator("resources", mode="before")
+    @classmethod
+    def preprocess_resources(cls, data: list[str] | None) -> list[int] | None:
         if data == [""] or data is None:
             return None
         else:
             return [int(id) for id in data]
 
-    # TODO: switch to model_validator when we migrate to pydantic 2.x
-    @root_validator(pre=False)
-    def populate_access_all_property(cls, values: dict[str, Any]):
-        if values["resources"] is None:
-            values["access_all"] = True
-        return values
+    @model_validator(mode="after")
+    def populate_access_all_property(self) -> "PermissionResourcesMapping":
+        if self.resources is None:
+            self.access_all = True
+        return self

@@ -2,9 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import re
-from typing import Optional
 
-from pydantic import validator
+from pydantic import field_validator
 
 from maascommon.enums.node import HardwareDeviceTypeEnum
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
@@ -21,16 +20,16 @@ DEVICE_ID_REGEX = re.compile(r"^[\da-f]{4}$", re.I)
 @generate_builder()
 class Machine(Node):
     description: str
-    owner: Optional[str]
+    owner: str | None = None
     cpu_speed: int
     memory: int
     osystem: str
-    architecture: Optional[str]
+    architecture: str | None = None
     distro_series: str
-    hwe_kernel: Optional[str]
+    hwe_kernel: str | None = None
     locked: bool
     cpu_count: int
-    power_type: Optional[PowerTypeEnum]
+    power_type: PowerTypeEnum | None = None
     fqdn: str
 
 
@@ -44,11 +43,12 @@ class HardwareDevice(MaasTimestampedBaseModel):
     bus_number: int
     device_number: int
     # numa_node_id: int
-    # physical_interface_id: Optional[int]
-    # physical_blockdevice_id: Optional[int]
+    # physical_interface_id: int | None
+    # physical_blockdevice_id: int | None
     # node_config_id: int
 
-    @validator("vendor_id", "product_id")
+    @field_validator("vendor_id", "product_id", mode="after")
+    @classmethod
     def validate_hex_ids(cls, id):
         if not DEVICE_ID_REGEX.match(id):
             raise ValueError("Must be an 8 byte hex value")

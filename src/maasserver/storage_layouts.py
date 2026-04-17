@@ -885,7 +885,7 @@ class VMFS6StorageLayout(StorageLayoutBase):
                 if len(partitions) < len(layout):
                     continue
                 for i, (partition, base_partition) in enumerate(
-                    zip(partitions, layout)
+                    zip(partitions, layout, strict=False)
                 ):
                     if (i + 1) == len(layout):
                         return bd

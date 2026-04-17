@@ -1,7 +1,7 @@
 from typing import Any, AsyncIterator, Iterator
 
 from fastapi import FastAPI, Request
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -36,7 +36,7 @@ async def query_count_client(
     query_count_app: FastAPI,
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
-        app=query_count_app, base_url="http://test"
+        transport=ASGITransport(app=query_count_app), base_url="http://test"
     ) as client:
         yield client
 

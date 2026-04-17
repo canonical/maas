@@ -309,7 +309,7 @@ class TestIPRangesApi(ApiCommonTests):
             vlan_id=1,
         )
 
-        dynamic_iprange = TEST_IPRANGE.copy()
+        dynamic_iprange = TEST_IPRANGE.model_copy()
         dynamic_iprange.type = IPRangeType.DYNAMIC
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.create.return_value = dynamic_iprange
@@ -652,7 +652,7 @@ class TestIPRangesApi(ApiCommonTests):
     ) -> None:
         client = mocked_api_client_user_with_permissions(None)
         services_mock.ipranges = Mock(IPRangesService)
-        iprange = TEST_IPRANGE.copy()
+        iprange = TEST_IPRANGE.model_copy()
         iprange.user_id = 3
         services_mock.ipranges.get_one.return_value = iprange
         services_mock.ipranges.delete_by_id.return_value = iprange
@@ -729,7 +729,7 @@ class TestIPRangesApi(ApiCommonTests):
             ranges=[MAASIPRange(start="10.0.0.1", end="10.0.0.3")]
         )
 
-        updated_iprange = TEST_IPRANGE.copy()
+        updated_iprange = TEST_IPRANGE.model_copy()
         updated_iprange.comment = "comment"
         services_mock.ipranges.update_one.return_value = updated_iprange
         services_mock.subnets = Mock(SubnetsService)
@@ -766,7 +766,7 @@ class TestIPRangesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(None)
-        iprange = TEST_IPRANGE.copy()
+        iprange = TEST_IPRANGE.model_copy()
         iprange.user_id = 99
         services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_one.return_value = iprange

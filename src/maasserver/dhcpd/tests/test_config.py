@@ -166,7 +166,9 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
                     (
                         "> %3d  %s" % entry
                         for entry in zip(
-                            count(1), configuration.splitlines(keepends=True)
+                            count(1),
+                            configuration.splitlines(keepends=True),
+                            strict=False,
                         )
                     ),
                 ),

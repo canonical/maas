@@ -10,7 +10,7 @@ import typing
 from unittest.mock import call, Mock
 
 import pytest
-from twisted.internet.defer import inlineCallbacks, returnValue, succeed
+from twisted.internet.defer import inlineCallbacks, succeed
 from zhmcclient import StatusTimeout
 from zhmcclient_mock import FakedSession
 
@@ -707,7 +707,7 @@ class TestProbeHMCZAndEnlist(MAASTestCase):
     def create_fake_rpc_service(self):
         rpc = FakeRPCService(self)
         yield rpc.set_up()
-        returnValue(rpc)
+        return rpc
 
     def assertRPC(self, rpc, status, partition_names=None):
         if partition_names:
