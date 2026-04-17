@@ -301,10 +301,18 @@ extensions = [
     "sphinx_ubuntu_images",
     "sphinx_youtube_links",
     "sphinxcontrib.cairosvgconverter",
-    "sphinx_last_updated_by_git",
     "sphinx.ext.intersphinx",
     "sphinx_sitemap",
 ]
+
+# This is mainly intended when building a deb, so for offline docs.
+# Luckily, having information about when the docs were last updated
+# is not very relevant in this case.
+if (
+    len(Path(__file__).parents) >= 2
+    and (Path(__file__).parents[1] / ".git").exists()
+):
+    extensions.append("sphinx_last_updated_by_git")
 
 # Prevents MyST-Parser from flagging strikethrough as a non-portable feature.
 # Since Docutils lacks a universal 'strike' node, this warning persists for
