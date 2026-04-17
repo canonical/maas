@@ -15,17 +15,12 @@ def add_repo_src_to_path():
     Assumes the root of the repo is being tracked by git, and that it
     is the first parent that is so.
     """
-    project_root = next(
-        (
-            parent
-            for parent in Path(__file__).parents
-            if (parent / ".git").exists()
-        ),
-        None,
+    project_root = (
+        Path(__file__).parents[2] if len(Path(__file__).parents) >= 3 else None
     )
     if project_root is None:
         raise Exception(
-            "root of the project was not found... is your MAAS repo not being tracked by git?"
+            "root of the project was not found... check the path tree for docs scripts"
         )
 
     src_dir = project_root / "src"
