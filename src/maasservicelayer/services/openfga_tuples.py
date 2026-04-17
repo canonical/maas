@@ -12,6 +12,7 @@ from maasservicelayer.db.repositories.openfga_tuples import (
     OpenFGATuplesClauseFactory,
     OpenFGATuplesRepository,
 )
+from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.services.base import Service, ServiceCache
 
@@ -229,6 +230,31 @@ class OpenFGATupleService(Service):
         )
         await self.delete_many(query)
 
+    async def bulk_remove_users_from_group(
+        self, group_id: int, user_ids: list[int]
+    ) -> None:
+        users = [f"user:{user_id}" for user_id in user_ids]
+        query = QuerySpec(
+            where=OpenFGATuplesClauseFactory.and_clauses(
+                [
+                    OpenFGATuplesClauseFactory.with_users(users),
+                    OpenFGATuplesClauseFactory.with_relation("member"),
+                    OpenFGATuplesClauseFactory.with_object_type("group"),
+                    OpenFGATuplesClauseFactory.with_object_id(str(group_id)),
+                ]
+            )
+        )
+        await self.delete_many(query)
+
+    async def bulk_add_users_to_group(
+        self, group_id: int, user_ids: list[int]
+    ) -> None:
+        builders = [
+            OpenFGATupleBuilder.build_user_member_group(user_id, group_id)
+            for user_id in user_ids
+        ]
+        await self.openfga_tuple_repository.bulk_upsert(builders)
+
     async def list_entitlements(
         self,
         group_id: int,
@@ -243,6 +269,25 @@ class OpenFGATupleService(Service):
             )
         )
         return await self.get_many(query)
+
+    async def list_entitlements_page(
+        self,
+        group_id: int,
+        page: int,
+        size: int,
+    ) -> ListResult[OpenFGATuple]:
+        query = QuerySpec(
+            where=OpenFGATuplesClauseFactory.and_clauses(
+                [
+                    OpenFGATuplesClauseFactory.with_user(
+                        f"group:{group_id}#member"
+                    )
+                ]
+            )
+        )
+        return await self.openfga_tuple_repository.list_entitlements(
+            page, size, query
+        )
 
     async def delete_entitlement(
         self,
@@ -262,6 +307,27 @@ class OpenFGATupleService(Service):
                     OpenFGATuplesClauseFactory.with_object_id(
                         str(resource_id)
                     ),
+                ]
+            )
+        )
+        await self.delete_many(query)
+
+    async def bulk_delete_entitlements(
+        self,
+        group_id: int,
+        items: list[tuple[str, str, int]],
+    ) -> None:
+        tuples = [
+            (entitlement_name, resource_type, str(resource_id))
+            for entitlement_name, resource_type, resource_id in items
+        ]
+        query = QuerySpec(
+            where=OpenFGATuplesClauseFactory.and_clauses(
+                [
+                    OpenFGATuplesClauseFactory.with_user(
+                        f"group:{group_id}#member"
+                    ),
+                    OpenFGATuplesClauseFactory.with_entitlement_tuples(tuples),
                 ]
             )
         )

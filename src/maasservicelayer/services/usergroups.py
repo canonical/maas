@@ -102,6 +102,17 @@ class UserGroupsService(
             )
         )
 
+    async def list_usergroup_members_page(
+        self, group_id: int, page: int, size: int
+    ) -> ListResult[UserGroupMember]:
+        return await self.usergroup_members_repository.list(
+            page=page,
+            size=size,
+            query=QuerySpec(
+                where=UserGroupMembersClauseFactory.with_group_id(group_id)
+            ),
+        )
+
     async def list_groups_statistics(
         self,
         page: int,
@@ -115,4 +126,32 @@ class UserGroupsService(
     async def remove_user_from_group(self, group_id: int, user_id: int):
         await self.openfga_tuples_service.remove_user_from_group(
             group_id, user_id
+        )
+
+    async def bulk_add_users_to_group(
+        self, group_id: int, user_ids: List[int]
+    ) -> None:
+        already_member = await self.usergroup_members_repository.exists(
+            QuerySpec(
+                where=UserGroupMembersClauseFactory.and_clauses(
+                    [
+                        UserGroupMembersClauseFactory.with_group_id(group_id),
+                        UserGroupMembersClauseFactory.with_ids(user_ids),
+                    ]
+                )
+            )
+        )
+        if already_member:
+            raise UserAlreadyInGroup(
+                "One or more users are already members of the group."
+            )
+        await self.openfga_tuples_service.bulk_add_users_to_group(
+            group_id, user_ids
+        )
+
+    async def bulk_remove_users_from_group(
+        self, group_id: int, user_ids: List[int]
+    ) -> None:
+        await self.openfga_tuples_service.bulk_remove_users_from_group(
+            group_id, user_ids
         )
