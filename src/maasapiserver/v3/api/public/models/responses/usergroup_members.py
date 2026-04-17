@@ -5,6 +5,7 @@ from typing import Self
 
 from pydantic import BaseModel
 
+from maasapiserver.v3.api.public.models.responses.base import PaginatedResponse
 from maasservicelayer.models.usergroup_members import UserGroupMember
 
 
@@ -23,6 +24,5 @@ class UserGroupMemberResponse(BaseModel):
         )
 
 
-class UserGroupMembersListResponse(BaseModel):
+class UserGroupMembersListResponse(PaginatedResponse[UserGroupMemberResponse]):
     kind = "UserGroupMembersList"
-    items: list[UserGroupMemberResponse]

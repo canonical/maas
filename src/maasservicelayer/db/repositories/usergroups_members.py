@@ -25,6 +25,10 @@ class UserGroupMembersClauseFactory(ClauseFactory):
     def with_id(cls, user_id: int) -> Clause:
         return Clause(condition=eq(UserGroupMembersView.c.id, user_id))
 
+    @classmethod
+    def with_ids(cls, user_ids: list[int]) -> Clause:
+        return Clause(condition=UserGroupMembersView.c.id.in_(user_ids))
+
 
 class UserGroupMembersRepository(ReadOnlyRepository[UserGroupMember]):
     def get_repository_table(self) -> Table:

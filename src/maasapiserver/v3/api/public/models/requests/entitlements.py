@@ -1,7 +1,7 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, conlist, Field
 
 from maascommon.openfga.base import OpenFGAEntitlementResourceType
 from maasservicelayer.db.filters import QuerySpec
@@ -74,3 +74,15 @@ class EntitlementRequest(BaseModel):
                     ]
                 )
         return factory.build_tuple(group_id, self.resource_id)
+
+
+class BulkEntitlementDeleteItem(BaseModel):
+    resource_type: OpenFGAEntitlementResourceType = Field(
+        description="The resource type (e.g. 'maas', 'pool')."
+    )
+    resource_id: int = Field(description="The resource ID.")
+    entitlement: str = Field(description="The entitlement name.")
+
+
+class BulkEntitlementDeleteRequest(BaseModel):
+    items: conlist(BulkEntitlementDeleteItem, min_items=1)  # pyright: ignore[reportInvalidTypeForm]
