@@ -24,8 +24,8 @@ from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolPermission,
     ResourcePoolResponse,
     ResourcePoolsListResponse,
-    ResourcePoolsWithSummaryListResponse,
-    ResourcePoolWithSummaryResponse,
+    ResourcePoolStatisticsListResponse,
+    ResourcePoolStatisticsResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_permissions,
@@ -132,12 +132,12 @@ class ResourcePoolHandler(Handler):
         )
 
     @handler(
-        path="/resource_pools_with_summary",
+        path="/resource_pools:statistics",
         methods=["GET"],
         tags=TAGS,
         responses={
             200: {
-                "model": ResourcePoolsWithSummaryListResponse,
+                "model": ResourcePoolStatisticsListResponse,
             },
         },
         summary="List resource pools with a summary. ONLY FOR INTERNAL USAGE.",
@@ -157,12 +157,12 @@ class ResourcePoolHandler(Handler):
             )
         ],
     )
-    async def list_resource_pools_with_summary(
+    async def list_resource_pools_statistics(
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         authenticated_user=Depends(get_authenticated_user),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> ResourcePoolsWithSummaryListResponse:
+    ) -> ResourcePoolStatisticsListResponse:
         query = await self._get_visible_pools_query(
             authenticated_user, services
         )
@@ -197,18 +197,18 @@ class ResourcePoolHandler(Handler):
                     }
 
             resource_pools_with_summary_list_response_items.append(
-                ResourcePoolWithSummaryResponse.from_model_with_summary(
+                ResourcePoolStatisticsResponse.from_model_with_summary(
                     resource_pool_with_summary=resource_pool_with_summary,
                     permissions=permissions,
-                    self_base_hyperlink=f"{V3_API_PREFIX}/resource_pools",
+                    self_base_hyperlink=f"{V3_API_PREFIX}/resource_pools:statistics",
                 )
             )
 
-        return ResourcePoolsWithSummaryListResponse(
+        return ResourcePoolStatisticsListResponse(
             items=resource_pools_with_summary_list_response_items,
             total=resource_pools.total,
             next=(
-                f"{V3_API_PREFIX}/resource_pools_with_summary?"
+                f"{V3_API_PREFIX}/resource_pools:statistics?"
                 f"{pagination_params.to_next_href_format()}"
                 if resource_pools.has_next(
                     pagination_params.page, pagination_params.size

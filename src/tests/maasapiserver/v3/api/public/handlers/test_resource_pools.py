@@ -17,7 +17,7 @@ from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolPermission,
     ResourcePoolResponse,
     ResourcePoolsListResponse,
-    ResourcePoolsWithSummaryListResponse,
+    ResourcePoolStatisticsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.async_client import OpenFGAClient
@@ -109,7 +109,7 @@ class TestResourcePoolApi(ApiCommonTests):
             ),
             Endpoint(
                 method="GET",
-                path=f"{V3_API_PREFIX}/resource_pools_with_summary",
+                path=f"{V3_API_PREFIX}/resource_pools:statistics",
             ),
         ]
 
@@ -673,7 +673,7 @@ class TestResourcePoolApi(ApiCommonTests):
 
 
 class TestResourcePoolsWithSummary:
-    SUMMARY_ENDPOINT = f"{V3_API_PREFIX}/resource_pools_with_summary"
+    SUMMARY_ENDPOINT = f"{V3_API_PREFIX}/resource_pools:statistics"
 
     RESOURCE_POOL_WITH_SUMMARY_0 = ResourcePoolWithSummary(
         id=0,
@@ -714,7 +714,7 @@ class TestResourcePoolsWithSummary:
         )
         assert response.status_code == 200
         resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+            ResourcePoolStatisticsListResponse(**response.json())
         )
         assert len(resource_pools_with_summary_response.items) == 1
         assert resource_pools_with_summary_response.total == 1
@@ -776,7 +776,7 @@ class TestResourcePoolsWithSummary:
         )
         assert response.status_code == 200
         resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+            ResourcePoolStatisticsListResponse(**response.json())
         )
         assert len(resource_pools_with_summary_response.items) == 1
         assert resource_pools_with_summary_response.total == 2
@@ -808,7 +808,7 @@ class TestResourcePoolsWithSummary:
         )
         assert response.status_code == 200
         resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+            ResourcePoolStatisticsListResponse(**response.json())
         )
         assert len(resource_pools_with_summary_response.items) == 1
         assert resource_pools_with_summary_response.items[0].permissions == {
@@ -860,7 +860,7 @@ class TestResourcePoolsWithSummary:
         )
         assert response.status_code == 200
         resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+            ResourcePoolStatisticsListResponse(**response.json())
         )
         assert len(resource_pools_with_summary_response.items) == 2
 
@@ -939,7 +939,7 @@ class TestResourcePoolsWithSummary:
         )
         assert response.status_code == 200
         resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+            ResourcePoolStatisticsListResponse(**response.json())
         )
         assert len(resource_pools_with_summary_response.items) == 2
         assert resource_pools_with_summary_response.items[0].permissions == {
@@ -1002,7 +1002,7 @@ class TestResourcePoolsWithSummary:
         )
         assert response.status_code == 200
         resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+            ResourcePoolStatisticsListResponse(**response.json())
         )
         assert len(resource_pools_with_summary_response.items) == 2
         assert (
