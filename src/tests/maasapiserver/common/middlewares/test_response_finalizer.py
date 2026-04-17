@@ -5,7 +5,7 @@ from typing import AsyncIterator, Iterator, Optional
 from unittest.mock import Mock
 
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -20,7 +20,7 @@ from maasservicelayer.db import Database
 
 
 class DummyRequest(BaseModel):
-    optional_property: Optional[str]
+    optional_property: Optional[str] = None
     required_property: str
 
 
@@ -45,7 +45,9 @@ def app(
 
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         yield client
 
 
@@ -54,10 +56,10 @@ class TestResponseFinalizerMiddleware:
     async def test_response_finalizer_middleware(
         self, app: FastAPI, client: AsyncClient
     ) -> None:
+        client.cookies.set("test_cookie", "cookie_value")
         response = await client.post(
             "/validate",
             json={"required_property": "value"},
-            cookies={"test_cookie": "cookie_value"},
         )
         assert response.status_code == 200
         assert response.cookies.get("test_cookie") is None

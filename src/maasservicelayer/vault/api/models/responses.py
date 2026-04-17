@@ -7,14 +7,14 @@ The actual responses contain much more data, but here we just define the ones we
 """
 
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict
 
 from pydantic import BaseModel
 
 
 class BaseVaultResponse(BaseModel):
-    request_id: Optional[str]
-    warnings: Optional[str] = None
+    request_id: str | None = None
+    warnings: str | None = None
 
 
 class AppRoleLoginDetailResponse(BaseModel):
@@ -31,7 +31,7 @@ class TokenLookupSelfDetailResponse(BaseModel):
 
 
 class TokenLookupSelfResponse(BaseVaultResponse):
-    auth: Optional[str] = None
+    auth: str | None = None
     data: TokenLookupSelfDetailResponse
 
 
@@ -40,16 +40,16 @@ class KvV2ReadDetailResponse(BaseModel):
 
 
 class KvV2ReadResponse(BaseVaultResponse):
-    auth: Optional[str] = None
+    auth: str | None = None
     data: KvV2ReadDetailResponse
 
 
 class KvV2WriteDetailResponse(BaseModel):
-    created_time: Optional[datetime] = None
-    deletion_time: Optional[str] = None
-    version: Optional[int] = None
+    created_time: datetime | None = None
+    deletion_time: str | None = None
+    version: int | None = None
 
 
 class KvV2WriteResponse(BaseVaultResponse):
-    auth: Optional[str] = None
+    auth: str | None = None
     data: KvV2WriteDetailResponse

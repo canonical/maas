@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 import json
 
-from pydantic.json import pydantic_encoder
+from pydantic_core import to_jsonable_python
 from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -29,8 +29,8 @@ class DatabaseConfig:
         )
 
 
-def custom_json_serializer(*args, **kwargs):
-    return json.dumps(*args, default=pydantic_encoder, **kwargs)
+def custom_json_serializer(obj, *args, **kwargs):
+    return json.dumps(to_jsonable_python(obj), *args, **kwargs)
 
 
 class Database:

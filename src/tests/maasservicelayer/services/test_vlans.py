@@ -279,7 +279,7 @@ class TestVlansService:
             created=now,
             updated=now,
         )
-        default_vlan = vlan.copy()
+        default_vlan = vlan.model_copy()
         default_vlan.id = 2
 
         primary_rack = Node(
@@ -344,7 +344,7 @@ class TestVlansService:
             created=now,
             updated=now,
         )
-        default_vlan = vlan.copy()
+        default_vlan = vlan.model_copy()
         default_vlan.id = 2
 
         vlans_repository_mock = Mock(VlansRepository)
@@ -382,7 +382,7 @@ class TestVlansService:
             created=now,
             updated=now,
         )
-        default_vlan = vlan.copy()
+        default_vlan = vlan.model_copy()
         default_vlan.id = 2
 
         vlans_repository_mock = Mock(VlansRepository)
@@ -417,7 +417,7 @@ class TestVlansService:
             created=now,
             updated=now,
         )
-        default_vlan = vlan.copy()
+        default_vlan = vlan.model_copy()
         default_vlan.id = 2
 
         vlans_repository_mock = Mock(VlansRepository)

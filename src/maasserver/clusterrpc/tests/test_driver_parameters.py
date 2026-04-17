@@ -192,7 +192,10 @@ class TestMakeFormField(MAASServerTestCase):
         }
         django_field = make_form_field(json_field)
         self.assertIsInstance(django_field, forms.ChoiceField)
-        self.assertEqual(json_field["choices"], django_field.choices)
+        self.assertEqual(
+            [tuple(choice) for choice in json_field["choices"]],
+            django_field.choices,
+        )
         invalid_msg = compose_invalid_choice_text(
             json_field["name"], json_field["choices"]
         )

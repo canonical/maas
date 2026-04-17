@@ -14,6 +14,23 @@ from maasapiserver.main import craft_internal_app
 from maasapiserver.tls import TLSPatchedH11Protocol
 
 
+def _create_client_ssl_context(
+    ca_cert: Path,
+    client_cert: Path | None = None,
+    client_key: Path | None = None,
+) -> ssl.SSLContext:
+    """Create an SSL context for the client with optional client certificate.
+
+    This is the proper way to configure httpx with client certificates.
+    The deprecated string-based API (verify=str, cert=(str, str)) doesn't
+    send client certificates to servers configured with CERT_OPTIONAL.
+    """
+    ctx = ssl.create_default_context(cafile=str(ca_cert))
+    if client_cert and client_key:
+        ctx.load_cert_chain(str(client_cert), str(client_key))
+    return ctx
+
+
 def _get_test_file(filename: str) -> Path:
     return Path(__file__).parent / "data_test_main" / filename
 
@@ -68,10 +85,10 @@ class TestMTLSInternalServer:
         client_cert = _get_test_file("client.pem")
         client_key = _get_test_file("client.key")
 
-        async with httpx.AsyncClient(
-            verify=str(ca_cert),
-            cert=(str(client_cert), str(client_key)),
-        ) as client:
+        ssl_context = _create_client_ssl_context(
+            ca_cert, client_cert, client_key
+        )
+        async with httpx.AsyncClient(verify=ssl_context) as client:
             r1 = await client.get("https://localhost:9443/test")
         assert r1.status_code == 200
         data1 = r1.json()
@@ -82,7 +99,8 @@ class TestMTLSInternalServer:
         assert "tls_version" in tls_ext1
 
     async def test_mtls_agent_enrol_endpoint(self, server, ca_cert):
-        async with httpx.AsyncClient(verify=str(ca_cert)) as client:
+        ssl_context = _create_client_ssl_context(ca_cert)
+        async with httpx.AsyncClient(verify=ssl_context) as client:
             r2 = await client.post("https://localhost:9443/agents:enroll")
         assert r2.status_code == 200
         data2 = r2.json()
@@ -92,7 +110,8 @@ class TestMTLSInternalServer:
         assert "tls_version" in tls_ext2
 
     async def test_mtls_client_certificate_is_required(self, server, ca_cert):
-        async with httpx.AsyncClient(verify=str(ca_cert)) as client:
+        ssl_context = _create_client_ssl_context(ca_cert)
+        async with httpx.AsyncClient(verify=ssl_context) as client:
             r2 = await client.post("https://localhost:9443/test")
         assert r2.status_code == 403
 
@@ -101,13 +120,13 @@ class TestMTLSInternalServer:
         client_cert = _get_test_file("client.pem")
         client_key = _get_test_file("client.key")
 
+        ssl_context = _create_client_ssl_context(
+            fake_ca_cert, client_cert, client_key
+        )
         with pytest.raises(
             (httpx.ConnectError, ssl.SSLError, ssl.SSLCertVerificationError)
         ):
-            async with httpx.AsyncClient(
-                verify=str(fake_ca_cert),
-                cert=(str(client_cert), str(client_key)),
-            ) as client:
+            async with httpx.AsyncClient(verify=ssl_context) as client:
                 await client.get("https://localhost:9443/test")
 
     async def test_mtls_with_wrong_key(self, server, ca_cert):
@@ -115,30 +134,26 @@ class TestMTLSInternalServer:
         fake_client_key = _get_test_file("fake_client.key")
 
         with pytest.raises(ssl.SSLError):
-            async with httpx.AsyncClient(
-                verify=str(ca_cert),
-                cert=(str(client_cert), str(fake_client_key)),
-            ) as client:
-                await client.get("https://localhost:9443/test")
+            _create_client_ssl_context(ca_cert, client_cert, fake_client_key)
 
     async def test_mtls_with_wrong_cert(self, server, ca_cert):
         fake_client_cert = _get_test_file("fake_client.pem")
         client_key = _get_test_file("fake_client.key")
 
+        ssl_context = _create_client_ssl_context(
+            ca_cert, fake_client_cert, client_key
+        )
         with pytest.raises(httpx.ReadError):
-            async with httpx.AsyncClient(
-                verify=str(ca_cert),
-                cert=(str(fake_client_cert), str(client_key)),
-            ) as client:
+            async with httpx.AsyncClient(verify=ssl_context) as client:
                 await client.get("https://localhost:9443/test")
 
     async def test_mtls_with_fake_client_certificate(self, server, ca_cert):
         fake_client_cert = _get_test_file("fake_client.pem")
         fake_client_key = _get_test_file("fake_client.key")
 
+        ssl_context = _create_client_ssl_context(
+            ca_cert, fake_client_cert, fake_client_key
+        )
         with pytest.raises(httpx.ReadError):
-            async with httpx.AsyncClient(
-                verify=str(ca_cert),
-                cert=(str(fake_client_cert), str(fake_client_key)),
-            ) as client:
+            async with httpx.AsyncClient(verify=ssl_context) as client:
                 await client.get("https://localhost:9443/test")

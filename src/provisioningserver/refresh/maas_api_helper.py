@@ -4,6 +4,7 @@
 """Help functioners to send commissioning data to MAAS region."""
 
 from collections import OrderedDict
+from contextlib import closing
 from email.utils import parsedate
 import json
 import mimetypes
@@ -384,18 +385,20 @@ def signal(
     data, headers = encode_multipart_data(params, files=files)
 
     try:
-        ret = geturl(
-            url,
-            credentials=credentials,
-            headers=headers,
-            data=data,
-            retry=retry,
-        )
-        if ret.status != 200:
-            raise SignalException(
-                "Unexpected status(%d) sending region commissioning data: %s"
-                % (ret.status, ret.read().decode())
+        with closing(
+            geturl(
+                url,
+                credentials=credentials,
+                headers=headers,
+                data=data,
+                retry=retry,
             )
+        ) as ret:
+            if ret.status != 200:
+                raise SignalException(
+                    "Unexpected status(%d) sending region commissioning data: %s"
+                    % (ret.status, ret.read().decode())
+                )
     except urllib.error.HTTPError as exc:
         raise SignalException("HTTP error [%s]" % exc.code)  # noqa: B904
     except urllib.error.URLError as exc:

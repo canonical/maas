@@ -148,7 +148,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             error_description="my error",
         )
         parsed_result = self.get_json()
-        self.assertEquals(parsed_result[0]["error_description"], "my error")
+        self.assertEqual(parsed_result[0]["error_description"], "my error")
 
     def test_POST_creates_machine(self):
         # The API allows a non-admin logged-in user to create a Machine.

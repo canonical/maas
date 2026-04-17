@@ -533,7 +533,7 @@ class TestUsersService:
     async def test_post_create_hook_creates_warn_log(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        ADMIN_USER = TEST_USER.copy()
+        ADMIN_USER = TEST_USER.model_copy()
         ADMIN_USER.is_superuser = True
         with patch("maasservicelayer.services.users.logger") as mock_logger:
             await users_service.post_create_hook(ADMIN_USER)
@@ -544,7 +544,7 @@ class TestUsersService:
     async def test_post_update_hook_creates_log_on_password_change(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        UPDATED_TEST_USER = TEST_USER.copy()
+        UPDATED_TEST_USER = TEST_USER.model_copy()
         UPDATED_TEST_USER.password = "changed_password"
         with patch("maasservicelayer.services.users.logger") as mock_logger:
             await users_service.post_update_hook(TEST_USER, UPDATED_TEST_USER)
@@ -562,7 +562,7 @@ class TestUsersService:
     async def test_post_update_hook_creates_warn_log_when_user_becomes_admin(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        UPDATED_TEST_USER = TEST_USER.copy()
+        UPDATED_TEST_USER = TEST_USER.model_copy()
         UPDATED_TEST_USER.is_superuser = True
         with patch("maasservicelayer.services.users.logger") as mock_logger:
             await users_service.post_update_hook(TEST_USER, UPDATED_TEST_USER)
@@ -573,7 +573,7 @@ class TestUsersService:
     async def test_post_update_hook_creates_info_log_when_admin_becomes_user(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        ADMIN_TEST_USER = TEST_USER.copy()
+        ADMIN_TEST_USER = TEST_USER.model_copy()
         ADMIN_TEST_USER.is_superuser = True
         with patch("maasservicelayer.services.users.logger") as mock_logger:
             await users_service.post_update_hook(ADMIN_TEST_USER, TEST_USER)
@@ -584,7 +584,7 @@ class TestUsersService:
     async def test_transfer_resources(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        user2 = TEST_USER.copy()
+        user2 = TEST_USER.model_copy()
         user2.id = 2
         users_repository.get_by_id.return_value = user2
 
@@ -671,7 +671,7 @@ class TestUsersService:
     async def test_change_password_system_user(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        system_user = TEST_USER.copy()
+        system_user = TEST_USER.model_copy()
         system_user.username = "maas-init-node"
         users_repository.get_by_id.return_value = system_user
 
@@ -686,7 +686,7 @@ class TestUsersService:
     async def test_change_password_external_user(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        external_user_profile = TEST_USER_PROFILE.copy()
+        external_user_profile = TEST_USER_PROFILE.model_copy()
         external_user_profile.is_local = False
         users_repository.get_by_id.return_value = TEST_USER
         users_repository.get_user_profile.return_value = external_user_profile
@@ -750,7 +750,7 @@ class TestUsersService:
     async def test_is_oidc_user_has_provider_id(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        oidc_user_profile = TEST_USER_PROFILE.copy()
+        oidc_user_profile = TEST_USER_PROFILE.model_copy()
         oidc_user_profile.provider_id = 2
         users_repository.get_user_profile.return_value = oidc_user_profile
 

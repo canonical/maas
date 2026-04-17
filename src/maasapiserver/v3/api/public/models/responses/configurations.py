@@ -3,6 +3,8 @@
 
 from typing import Any, List
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     HalResponse,
@@ -10,11 +12,11 @@ from maasapiserver.v3.api.public.models.responses.base import (
 
 
 class ConfigurationResponse(HalResponse[BaseHal]):
-    kind = "Configuration"
+    kind: str = Field(default="Configuration")
     name: str
-    value: Any
+    value: Any | None = None
 
 
 class ConfigurationsListResponse(HalResponse[BaseHal]):
-    kind = "ConfigurationsList"
+    kind: str = Field(default="ConfigurationsList")
     items: List[ConfigurationResponse]

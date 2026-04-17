@@ -36,7 +36,7 @@ class TestNotificationRequest:
         with pytest.raises(ValidationError) as e:
             NotificationRequest()
 
-        assert len(e.value.errors()) == 2
+        assert len(e.value.errors()) == 1
         assert "message" in (e.value.errors()[0]["loc"][0])
 
     def test_missing_recipient(self):
@@ -44,5 +44,5 @@ class TestNotificationRequest:
             NotificationRequest(message="foo")
         assert (
             e.value.errors()[0]["msg"]
-            == "Either 'user_id', 'for_users' or 'for_admin' must be specified."
+            == "Value error, Either 'user_id', 'for_users' or 'for_admin' must be specified."
         )

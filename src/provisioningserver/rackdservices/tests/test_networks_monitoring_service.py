@@ -4,12 +4,7 @@
 
 from unittest.mock import call, Mock
 
-from twisted.internet.defer import (
-    inlineCallbacks,
-    maybeDeferred,
-    returnValue,
-    succeed,
-)
+from twisted.internet.defer import inlineCallbacks, maybeDeferred, succeed
 from twisted.internet.task import Clock
 
 from maastesting import get_testing_timeout
@@ -47,7 +42,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         protocol, connecting = fixture.makeEventLoop(region.RequestRackRefresh)
         self.addCleanup((yield connecting))
         protocol.RequestRackRefresh.return_value = self.metadata_creds
-        returnValue(protocol)
+        return protocol
 
     @inlineCallbacks
     def test_get_refresh_details_not_running(self):

@@ -38,7 +38,7 @@ ARTIFACTS := maas-agent maas-netmon
 build: $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
 
 $(BUILD_DIR)/maas-agent: export CGO_ENABLED = 1
-$(BUILD_DIR)/maas-agent: GO_LDFLAGS = -ldflags '-linkmode=external -extldflags "-static -fPIC -ldqlite -luv -llz4"'
+$(BUILD_DIR)/maas-agent: GO_LDFLAGS = -ldflags '-linkmode=external -extldflags "-static -fPIC -ldqlite -luv -llz4 -lxxhash"'
 $(BUILD_DIR)/maas-agent: $(generated)
 	$(GO) build $(GO_LDFLAGS) -o $@ ./cmd/maas-agent
 
@@ -48,8 +48,7 @@ $(BUILD_DIR)/maas-netmon:
 
 .PHONY: install
 install: build
-	install -d $(DESTDIR)/bin
-	install $(addprefix $(BUILD_DIR)/,$(ARTIFACTS)) $(DESTDIR)/bin
+	install -t $(DESTDIR)/usr/sbin -D $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
 
 .PHONY: test
 test: $(generated)

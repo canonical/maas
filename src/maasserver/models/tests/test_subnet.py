@@ -675,13 +675,13 @@ class TestSubnet(MAASServerTestCase):
 
     def test_allows_fe80_gateway(self):
         network = factory.make_ipv6_network(slash=64)
-        gateway_ip = factory.pick_ip_in_network(IPNetwork("fe80::/64"))
+        gateway_ip = factory.pick_ip_in_network(IPNetwork("fe80::/10"))
         subnet = factory.make_Subnet(cidr=str(network), gateway_ip=gateway_ip)
         self.assertEqual(subnet.gateway_ip, gateway_ip)
 
     def test_denies_fe80_gateway_for_ipv4(self):
         network = factory.make_ipv4_network(slash=22)
-        gateway_ip = factory.pick_ip_in_network(IPNetwork("fe80::/64"))
+        gateway_ip = factory.pick_ip_in_network(IPNetwork("fe80::/10"))
         error = self.assertRaises(
             ValidationError,
             factory.make_Subnet,

@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any, Union
+from typing import Any
 
 from pydantic import Field
 
@@ -15,5 +15,5 @@ class DatabaseConfigurationBuilder(ResourceBuilder):
     the generated code.
     """
 
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    value: Union[Any, Unset] = Field(default=UNSET, required=False)
+    name: str | Unset = Field(default=UNSET)
+    value: Any | Unset = Field(default=UNSET)

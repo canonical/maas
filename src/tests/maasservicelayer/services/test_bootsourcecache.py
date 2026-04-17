@@ -144,7 +144,15 @@ class TestBootSourceCacheService:
                                 BootloaderVersion(
                                     **{
                                         "version_name": "20251125",
-                                        "grub2-signed": None,
+                                        "grub2-signed": {
+                                            "ftype": "tar.gz",
+                                            "path": "pool/grub2-signed",
+                                            "sha256": "abc123def456",
+                                            "size": 12345,
+                                            "src_package": "grub2-signed",
+                                            "src_release": "noble",
+                                            "src_version": "2.12-1",
+                                        },
                                         "grub2": None,
                                         "syslinux": None,
                                         "shim-signed": None,

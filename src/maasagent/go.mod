@@ -1,6 +1,6 @@
 module maas.io/core/src/maasagent
 
-go 1.24.4
+go 1.26
 
 require (
 	github.com/canonical/go-dqlite/v2 v2.0.0

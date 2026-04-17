@@ -3,7 +3,7 @@
 
 from datetime import datetime
 import os
-from typing import Self, Union
+from typing import Self
 
 from pydantic import Field
 
@@ -23,22 +23,16 @@ class BootResourceFileBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    extra: Union[dict, Unset] = Field(default=UNSET, required=False)
-    filename: Union[str, Unset] = Field(default=UNSET, required=False)
-    filename_on_disk: Union[str, Unset] = Field(default=UNSET, required=False)
-    filetype: Union[BootResourceFileType, Unset] = Field(
-        default=UNSET, required=False
-    )
-    largefile_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    resource_set_id: Union[int, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    sha256: Union[str, Unset] = Field(default=UNSET, required=False)
-    size: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    extra: dict | Unset = Field(default=UNSET)
+    filename: str | Unset = Field(default=UNSET)
+    filename_on_disk: str | Unset = Field(default=UNSET)
+    filetype: BootResourceFileType | Unset = Field(default=UNSET)
+    largefile_id: int | None | Unset = Field(default=UNSET)
+    resource_set_id: int | None | Unset = Field(default=UNSET)
+    sha256: str | Unset = Field(default=UNSET)
+    size: int | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
 
     @classmethod
     def _from_simplestreams_file(
