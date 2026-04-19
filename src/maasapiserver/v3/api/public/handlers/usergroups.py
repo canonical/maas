@@ -1,10 +1,10 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Union
+from typing import Annotated, Union
 
 from fastapi import Depends, Header, Query, Response
-from pydantic import conlist
+from pydantic import Field
 from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
@@ -61,6 +61,7 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     USER_ALREADY_IN_GROUP,
 )
+from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.openfga_tuples import EntitlementsBuilderFactory
 from maasservicelayer.services.usergroups import (
@@ -527,7 +528,7 @@ class UserGroupsHandler(Handler):
     async def bulk_remove_group_members(
         self,
         group_id: int,
-        ids: conlist(int, min_items=1, unique_items=True) = Query(  # pyright: ignore[reportInvalidTypeForm] # noqa: B008
+        ids: Annotated[UniqueList[int], Field(min_length=1)] = Query(  # noqa: B008
             description="ids of users to remove from the group", alias="id"
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008

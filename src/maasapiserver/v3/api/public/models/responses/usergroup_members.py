@@ -25,4 +25,4 @@ class UserGroupMemberResponse(BaseModel):
 
 
 class UserGroupMembersListResponse(PaginatedResponse[UserGroupMemberResponse]):
-    kind = "UserGroupMembersList"
+    kind: str = Field(default="UserGroupMembersList")

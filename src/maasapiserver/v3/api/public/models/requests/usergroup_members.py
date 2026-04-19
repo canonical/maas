@@ -1,7 +1,11 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from pydantic import BaseModel, conlist, Field
+from typing import Annotated
+
+from pydantic import BaseModel, Field
+
+from maasservicelayer.models.fields import UniqueList
 
 
 class UserGroupMemberRequest(BaseModel):
@@ -9,6 +13,6 @@ class UserGroupMemberRequest(BaseModel):
 
 
 class BulkGroupMemberRequest(BaseModel):
-    user_ids: conlist(int, min_items=1) = Field(  # pyright: ignore[reportInvalidTypeForm]
+    user_ids: Annotated[UniqueList[int], Field(min_length=1)] = Field(  # pyright: ignore[reportInvalidTypeForm]
         description="The IDs of the users to add to the group."
     )

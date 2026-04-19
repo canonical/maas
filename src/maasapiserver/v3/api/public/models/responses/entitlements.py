@@ -25,4 +25,4 @@ class EntitlementResponse(BaseModel):
 
 
 class EntitlementsListResponse(PaginatedResponse[EntitlementResponse]):
-    kind = "EntitlementsList"
+    kind: str = Field(default="EntitlementsList")
