@@ -195,7 +195,7 @@ class ImageManifestsService(Service):
         # date of the last update
         last_update = products_list[0].updated
 
-        # TODO: MAASENG-XXXX remove this
+        # TODO: MAASENG-6418 remove this
         # Always update the db entry: If the user updates the URL of the boot source
         # the manifest might have the same updated field but different content.
         builder = ImageManifestBuilder(

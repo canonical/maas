@@ -25,5 +25,5 @@ class NotificationComponent(StrEnum):
     # v3 only
     FETCH_IMAGE_MANIFEST = "Image manifest fetcher (boot source {id})"
     SELECTION_SYNC = "Sync selection {id}"
-    # TODO: MAASENG-XXXX remove this
+    # TODO: MAASENG-6418 remove this
     SELECTION_AVAILABILITY = "Selection availability {id}"

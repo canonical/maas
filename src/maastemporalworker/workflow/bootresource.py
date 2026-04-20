@@ -343,7 +343,7 @@ class BootResourcesActivity(ActivityBase):
             await services.image_sync.ensure_boot_source_definition()
 
             where_clause = None
-            # TODO: MAASENG-XXXX remove this
+            # TODO: MAASENG-6418 remove this
             if boot_source_id:
                 where_clause = BootSourcesClauseFactory.with_id(boot_source_id)
 
@@ -407,7 +407,7 @@ class BootResourcesActivity(ActivityBase):
             )
 
     # v2 only
-    # TODO: MAASENG-XXXX remove this
+    # TODO: MAASENG-6418 remove this
     @activity_defn_with_context(
         name=GET_STILL_AVAILABLE_SELECTIONS_ACTIVITY_NAME
     )
@@ -667,7 +667,7 @@ class BootResourcesActivity(ActivityBase):
 
 
 # v2 only
-# TODO: MAASENG-XXXX remove this
+# TODO: MAASENG-6418 remove this
 @workflow.defn(name=POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME, sandboxed=False)
 class PostUpdateBootSourceUrlWorkflow:
     @workflow_run_with_context

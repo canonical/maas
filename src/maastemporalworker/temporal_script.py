@@ -176,7 +176,7 @@ async def main() -> None:
                 SyncSelectionWorkflow,
                 MasterImageSyncWorkflow,
                 FetchManifestWorkflow,
-                # TODO: MAASENG-XXXX remove this
+                # TODO: MAASENG-6418 remove this
                 PostUpdateBootSourceUrlWorkflow,
                 # Configuration workflows
                 ConfigureAgentWorkflow,
@@ -214,7 +214,7 @@ async def main() -> None:
                 boot_res_activity.cleanup_boot_resource_sets_for_selection,
                 boot_res_activity.register_notification,
                 boot_res_activity.delete_notification,
-                # TODO: MAASENG-XXXX remove this
+                # TODO: MAASENG-6418 remove this
                 boot_res_activity.get_still_available_selections,
                 # Configuration activities
                 configure_activity.get_rack_controller_vlans,

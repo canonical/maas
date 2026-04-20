@@ -280,7 +280,7 @@ class TestImageManifestsService:
         self.service.fetch_image_metadata_for_boot_source.assert_awaited_once_with(
             TEST_BOOT_SOURCE
         )
-        # TODO: MAASENG-XXXX remove this
+        # TODO: MAASENG-6418 remove this
         self.repository.update.assert_awaited()
 
     # Passthrough methods

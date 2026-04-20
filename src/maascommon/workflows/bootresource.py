@@ -98,7 +98,7 @@ class DeleteNotificationParam:
     ident: str
 
 
-# TODO: MAASENG-XXXX remove this
+# TODO: MAASENG-6418 remove this
 @dataclass
 class PostUpdateBootSourceUrlParam:
     boot_source_id: int
