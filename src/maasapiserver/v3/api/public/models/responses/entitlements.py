@@ -5,6 +5,7 @@ from typing import Self
 
 from pydantic import BaseModel, Field
 
+from maasapiserver.v3.api.public.models.responses.base import PaginatedResponse
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 
 
@@ -23,6 +24,5 @@ class EntitlementResponse(BaseModel):
         )
 
 
-class EntitlementsListResponse(BaseModel):
+class EntitlementsListResponse(PaginatedResponse[EntitlementResponse]):
     kind: str = Field(default="EntitlementsList")
-    items: list[EntitlementResponse]

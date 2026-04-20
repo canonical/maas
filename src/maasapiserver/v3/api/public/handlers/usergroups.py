@@ -1,9 +1,10 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Union
+from typing import Annotated, Union
 
 from fastapi import Depends, Header, Query, Response
+from pydantic import Field
 from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
@@ -14,10 +15,12 @@ from maasapiserver.common.api.models.responses.errors import (
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.entitlements import (
+    BulkEntitlementDeleteRequest,
     EntitlementRequest,
 )
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.usergroup_members import (
+    BulkGroupMemberRequest,
     UserGroupMemberRequest,
 )
 from maasapiserver.v3.api.public.models.requests.usergroups import (
@@ -58,6 +61,7 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     USER_ALREADY_IN_GROUP,
 )
+from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.openfga_tuples import EntitlementsBuilderFactory
 from maasservicelayer.services.usergroups import (
@@ -334,18 +338,31 @@ class UserGroupsHandler(Handler):
     async def list_group_members(
         self,
         group_id: int,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserGroupMembersListResponse:
         group = await services.usergroups.get_by_id(group_id)
         if not group:
             raise NotFoundException()
 
-        members = await services.usergroups.list_usergroup_members(group_id)
+        members = await services.usergroups.list_usergroup_members_page(
+            group_id,
+            page=pagination_params.page,
+            size=pagination_params.size,
+        )
+        next_link = None
+        if members.has_next(pagination_params.page, pagination_params.size):
+            next_link = (
+                f"{V3_API_PREFIX}/groups/{group_id}/members?"
+                f"{pagination_params.to_next_href_format()}"
+            )
         return UserGroupMembersListResponse(
             items=[
                 UserGroupMemberResponse.from_model(member)
-                for member in members
+                for member in members.items
             ],
+            total=members.total,
+            next=next_link,
         )
 
     @handler(
@@ -405,6 +422,63 @@ class UserGroupsHandler(Handler):
         return Response(status_code=200)
 
     @handler(
+        path="/groups/{group_id}/members:batch_create",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            200: {},
+            404: {"model": NotFoundBodyResponse},
+            409: {"model": ConflictBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
+        ],
+    )
+    async def bulk_add_group_members(
+        self,
+        group_id: int,
+        bulk_request: BulkGroupMemberRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        group = await services.usergroups.get_by_id(group_id)
+        if not group:
+            raise NotFoundException()
+
+        for user_id in bulk_request.user_ids:
+            user = await services.users.get_by_id(id=user_id)
+            if not user:
+                raise NotFoundException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                            message=f"User with ID `{user_id}` not found.",
+                        )
+                    ]
+                )
+
+        try:
+            await services.usergroups.bulk_add_users_to_group(
+                group_id, bulk_request.user_ids
+            )
+        except UserAlreadyInGroup as err:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=USER_ALREADY_IN_GROUP,
+                        message=str(err),
+                    )
+                ]
+            ) from err
+
+        return Response(status_code=200)
+
+    @handler(
         path="/groups/{group_id}/members/{user_id}",
         methods=["DELETE"],
         tags=TAGS,
@@ -434,6 +508,38 @@ class UserGroupsHandler(Handler):
         await services.usergroups.remove_user_from_group(group_id, user_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+    @handler(
+        path="/groups/{group_id}/members",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=204,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
+        ],
+    )
+    async def bulk_remove_group_members(
+        self,
+        group_id: int,
+        ids: Annotated[UniqueList[int], Field(min_length=1)] = Query(  # noqa: B008
+            description="ids of users to remove from the group", alias="id"
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ):
+        group = await services.usergroups.get_by_id(group_id)
+        if not group:
+            raise NotFoundException()
+
+        await services.usergroups.bulk_remove_users_from_group(group_id, ids)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
     # Entitlement endpoints
 
     @handler(
@@ -459,17 +565,32 @@ class UserGroupsHandler(Handler):
     async def list_group_entitlements(
         self,
         group_id: int,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> EntitlementsListResponse:
         group = await services.usergroups.get_by_id(group_id)
         if not group:
             raise NotFoundException()
 
-        entitlements = await services.openfga_tuples.list_entitlements(
-            group_id
+        entitlements = await services.openfga_tuples.list_entitlements_page(
+            group_id,
+            page=pagination_params.page,
+            size=pagination_params.size,
         )
+        next_link = None
+        if entitlements.has_next(
+            pagination_params.page, pagination_params.size
+        ):
+            next_link = (
+                f"{V3_API_PREFIX}/groups/{group_id}/entitlements?"
+                f"{pagination_params.to_next_href_format()}"
+            )
         return EntitlementsListResponse(
-            items=[EntitlementResponse.from_model(t) for t in entitlements],
+            items=[
+                EntitlementResponse.from_model(e) for e in entitlements.items
+            ],
+            total=entitlements.total,
+            next=next_link,
         )
 
     @handler(
@@ -554,5 +675,55 @@ class UserGroupsHandler(Handler):
 
         await services.openfga_tuples.delete_entitlement(
             group_id, entitlement, resource_type, resource_id
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/groups/{group_id}/entitlements:batch_delete",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            204: {},
+            400: {"model": BadRequestBodyResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=204,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                )
+            )
+        ],
+    )
+    async def bulk_remove_group_entitlements(
+        self,
+        group_id: int,
+        bulk_request: BulkEntitlementDeleteRequest,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        group = await services.usergroups.get_by_id(group_id)
+        if not group:
+            raise NotFoundException()
+
+        for item in bulk_request.items:
+            is_valid, error_message = (
+                EntitlementsBuilderFactory.validate_entitlement(
+                    item.entitlement, item.resource_type
+                )
+            )
+            if not is_valid:
+                raise BadRequestException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                            message=error_message,  # type: ignore[reportArgumentType]
+                        )
+                    ]
+                )
+
+        await services.openfga_tuples.bulk_delete_entitlements(
+            group_id,
+            items=[item.to_spec() for item in bulk_request.items],
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)

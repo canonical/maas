@@ -10,9 +10,12 @@ import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.entitlements import (
+    BulkEntitlementDeleteItem,
+    BulkEntitlementDeleteRequest,
     EntitlementRequest,
 )
 from maasapiserver.v3.api.public.models.requests.usergroup_members import (
+    BulkGroupMemberRequest,
     UserGroupMemberRequest,
 )
 from maasapiserver.v3.api.public.models.requests.usergroups import (
@@ -42,7 +45,10 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.openfga_tuple import OpenFGATuple
+from maasservicelayer.models.openfga_tuple import (
+    EntitlementDeleteSpec,
+    OpenFGATuple,
+)
 from maasservicelayer.models.usergroup_members import UserGroupMember
 from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
 from maasservicelayer.models.users import User
@@ -145,6 +151,21 @@ class TestUserGroupsApi(ApiCommonTests):
                 path=f"{self.BASE_PATH}/1/entitlements"
                 "?resource_type=maas&resource_id=0"
                 "&entitlement=can_edit_machines",
+                permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}/1/members:batch_create",
+                permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}/1/members?id=10",
+                permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}/1/entitlements:batch_delete",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
             ),
         ]
@@ -438,7 +459,7 @@ class TestUserGroupsApi(ApiCommonTests):
         assert response.status_code == 204
 
     # GET /groups/{group_id}/members
-    async def test_list_members(
+    async def test_list_members_other_page(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
@@ -448,42 +469,73 @@ class TestUserGroupsApi(ApiCommonTests):
         )
         services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.usergroups.list_usergroup_members.return_value = [
-            UserGroupMember(
-                id=10, group_id=1, username="user1", email="u1@test.com"
-            ),
-            UserGroupMember(
-                id=20, group_id=1, username="user2", email="u2@test.com"
-            ),
-        ]
+        services_mock.usergroups.list_usergroup_members_page = AsyncMock(
+            return_value=ListResult[UserGroupMember](
+                items=[
+                    UserGroupMember(
+                        id=10,
+                        group_id=1,
+                        username="user1",
+                        email="u1@test.com",
+                    ),
+                ],
+                total=2,
+            )
+        )
 
         response = await client.get(
-            f"{self.BASE_PATH}/{TEST_GROUP.id}/members"
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members?size=1"
+        )
+        assert response.status_code == 200
+        members_response = UserGroupMembersListResponse(**response.json())
+        assert len(members_response.items) == 1
+        assert members_response.total == 2
+        assert members_response.items[0].username == "user1"
+        assert (
+            members_response.next
+            == f"{self.BASE_PATH}/{TEST_GROUP.id}/members?page=2&size=1"
+        )
+
+    async def test_list_members_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.usergroups.list_usergroup_members_page = AsyncMock(
+            return_value=ListResult[UserGroupMember](
+                items=[
+                    UserGroupMember(
+                        id=10,
+                        group_id=1,
+                        username="user1",
+                        email="u1@test.com",
+                    ),
+                    UserGroupMember(
+                        id=20,
+                        group_id=1,
+                        username="user2",
+                        email="u2@test.com",
+                    ),
+                ],
+                total=2,
+            )
+        )
+
+        response = await client.get(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members?size=2"
         )
         assert response.status_code == 200
         members_response = UserGroupMembersListResponse(**response.json())
         assert len(members_response.items) == 2
+        assert members_response.total == 2
         assert members_response.items[0].username == "user1"
         assert members_response.items[1].username == "user2"
-
-    async def test_list_members_empty(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
-    ) -> None:
-        client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
-        )
-        services_mock.usergroups = Mock(UserGroupsService)
-        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.usergroups.list_usergroup_members.return_value = []
-
-        response = await client.get(
-            f"{self.BASE_PATH}/{TEST_GROUP.id}/members"
-        )
-        assert response.status_code == 200
-        members_response = UserGroupMembersListResponse(**response.json())
-        assert len(members_response.items) == 0
+        assert members_response.next is None
 
     async def test_list_members_404(
         self,
@@ -513,11 +565,6 @@ class TestUserGroupsApi(ApiCommonTests):
         services_mock.users.get_by_id.return_value = TEST_USER
         services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.add_user_to_group_by_id.return_value = None
-        services_mock.usergroups.list_usergroup_members.return_value = [
-            UserGroupMember(
-                id=10, group_id=1, username="user1", email="u1@test.com"
-            ),
-        ]
 
         response = await client.post(
             f"{self.BASE_PATH}/{TEST_GROUP.id}/members",
@@ -602,7 +649,7 @@ class TestUserGroupsApi(ApiCommonTests):
         assert response.status_code == 404
 
     # GET /groups/{group_id}/entitlements
-    async def test_list_entitlements(
+    async def test_list_entitlements_other_page(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
@@ -615,60 +662,83 @@ class TestUserGroupsApi(ApiCommonTests):
                 {MAASResourceEntitlement.CAN_VIEW_IDENTITIES}
             )
         )
-        services_mock.openfga_tuples.list_entitlements = AsyncMock(
-            return_value=[
-                OpenFGATuple(
-                    object_type="maas",
-                    object_id="0",
-                    relation="can_edit_machines",
-                    user="group:1#member",
-                    user_type="userset",
-                ),
-                OpenFGATuple(
-                    object_type="pool",
-                    object_id="5",
-                    relation="can_deploy_machines",
-                    user="group:1#member",
-                    user_type="userset",
-                ),
-            ]
+        services_mock.openfga_tuples.list_entitlements_page = AsyncMock(
+            return_value=ListResult[OpenFGATuple](
+                items=[
+                    OpenFGATuple(
+                        object_type="maas",
+                        object_id="0",
+                        relation="can_edit_machines",
+                        user="group:1#member",
+                        user_type="userset",
+                    ),
+                ],
+                total=2,
+            )
         )
 
         response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements"
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements?size=1"
+        )
+        assert response.status_code == 200
+        result = EntitlementsListResponse(**response.json())
+        assert len(result.items) == 1
+        assert result.total == 2
+        assert result.items[0].resource_type == "maas"
+        assert result.items[0].entitlement == "can_edit_machines"
+        assert (
+            result.next
+            == f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements?page=2&size=1"
+        )
+
+    async def test_list_entitlements_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            AsyncOpenFGAClientMock(
+                {MAASResourceEntitlement.CAN_VIEW_IDENTITIES}
+            )
+        )
+        services_mock.openfga_tuples.list_entitlements_page = AsyncMock(
+            return_value=ListResult[OpenFGATuple](
+                items=[
+                    OpenFGATuple(
+                        object_type="maas",
+                        object_id="0",
+                        relation="can_edit_machines",
+                        user="group:1#member",
+                        user_type="userset",
+                    ),
+                    OpenFGATuple(
+                        object_type="pool",
+                        object_id="5",
+                        relation="can_deploy_machines",
+                        user="group:1#member",
+                        user_type="userset",
+                    ),
+                ],
+                total=2,
+            )
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements?size=2"
         )
         assert response.status_code == 200
         result = EntitlementsListResponse(**response.json())
         assert len(result.items) == 2
+        assert result.total == 2
         assert result.items[0].resource_type == "maas"
         assert result.items[0].entitlement == "can_edit_machines"
         assert result.items[1].resource_type == "pool"
         assert result.items[1].resource_id == 5
         assert result.items[1].entitlement == "can_deploy_machines"
-
-    async def test_list_entitlements_empty(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
-    ) -> None:
-        services_mock.usergroups = Mock(UserGroupsService)
-        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
-        services_mock.openfga_tuples.get_client.return_value = (
-            AsyncOpenFGAClientMock(
-                {MAASResourceEntitlement.CAN_VIEW_IDENTITIES}
-            )
-        )
-        services_mock.openfga_tuples.list_entitlements = AsyncMock(
-            return_value=[]
-        )
-
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements"
-        )
-        assert response.status_code == 200
-        result = EntitlementsListResponse(**response.json())
-        assert len(result.items) == 0
+        assert result.next is None
 
     async def test_list_entitlements_group_not_found(
         self,
@@ -1002,6 +1072,232 @@ class TestUserGroupsApi(ApiCommonTests):
                 "resource_id": 0,
                 "entitlement": "nonexistent",
             },
+        )
+        assert response.status_code == 400
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.code == 400
+
+    # POST /groups/{group_id}/members:batch_create
+    async def test_bulk_add_members(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        bulk_request = BulkGroupMemberRequest(user_ids=[10, 20])
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.usergroups.bulk_add_users_to_group.return_value = None
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = TEST_USER
+
+        response = await client.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members:batch_create",
+            json=jsonable_encoder(bulk_request),
+        )
+        assert response.status_code == 200
+
+    async def test_bulk_add_members_group_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        bulk_request = BulkGroupMemberRequest(user_ids=[10])
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = None
+
+        response = await client.post(
+            f"{self.BASE_PATH}/999/members:batch_create",
+            json=jsonable_encoder(bulk_request),
+        )
+        assert response.status_code == 404
+
+    async def test_bulk_add_members_user_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        bulk_request = BulkGroupMemberRequest(user_ids=[999])
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = None
+
+        response = await client.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members:batch_create",
+            json=jsonable_encoder(bulk_request),
+        )
+        assert response.status_code == 404
+
+    async def test_bulk_add_members_already_in_group(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        bulk_request = BulkGroupMemberRequest(user_ids=[10])
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.usergroups.bulk_add_users_to_group.side_effect = (
+            UserAlreadyInGroup()
+        )
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = TEST_USER
+
+        response = await client.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members:batch_create",
+            json=jsonable_encoder(bulk_request),
+        )
+        assert response.status_code == 409
+
+    # DELETE /groups/{group_id}/members
+    async def test_bulk_remove_members(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.usergroups.bulk_remove_users_from_group.return_value = (
+            None
+        )
+
+        response = await client.delete(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members?id=10&id=20",
+        )
+        assert response.status_code == 204
+
+    async def test_bulk_remove_members_group_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = None
+
+        response = await client.delete(
+            f"{self.BASE_PATH}/999/members?id=10",
+        )
+        assert response.status_code == 404
+
+    # POST /groups/{group_id}/entitlements:batch_delete
+    async def test_bulk_remove_entitlements(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        bulk_request = BulkEntitlementDeleteRequest(
+            items=[
+                BulkEntitlementDeleteItem(
+                    resource_type="maas",
+                    resource_id=0,
+                    entitlement="can_edit_machines",
+                ),
+                BulkEntitlementDeleteItem(
+                    resource_type="pool",
+                    resource_id=5,
+                    entitlement="can_edit_machines",
+                ),
+            ]
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            AsyncOpenFGAClientMock(
+                {MAASResourceEntitlement.CAN_EDIT_IDENTITIES}
+            )
+        )
+        services_mock.openfga_tuples.bulk_delete_entitlements = AsyncMock(
+            return_value=None
+        )
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements:batch_delete",
+            json=jsonable_encoder(bulk_request.dict()),
+        )
+        assert response.status_code == 204
+        services_mock.openfga_tuples.bulk_delete_entitlements.assert_called_once_with(
+            TEST_GROUP.id,
+            items=[
+                EntitlementDeleteSpec(
+                    entitlement="can_edit_machines",
+                    resource_type="maas",
+                    resource_id=0,
+                ),
+                EntitlementDeleteSpec(
+                    entitlement="can_edit_machines",
+                    resource_type="pool",
+                    resource_id=5,
+                ),
+            ],
+        )
+
+    async def test_bulk_remove_entitlements_group_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        bulk_request = BulkEntitlementDeleteRequest(
+            items=[
+                BulkEntitlementDeleteItem(
+                    resource_type="maas",
+                    resource_id=0,
+                    entitlement="can_edit_machines",
+                )
+            ]
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = None
+
+        response = await client.post(
+            f"{self.BASE_PATH}/999/entitlements:batch_delete",
+            json=jsonable_encoder(bulk_request),
+        )
+        assert response.status_code == 404
+
+    async def test_bulk_remove_entitlements_invalid_entitlement(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        bulk_request = BulkEntitlementDeleteRequest(
+            items=[
+                BulkEntitlementDeleteItem(
+                    resource_type="maas",
+                    resource_id=0,
+                    entitlement="nonexistent_entitlement",
+                )
+            ]
+        )
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.get_by_id.return_value = TEST_GROUP
+
+        response = await client.post(
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements:batch_delete",
+            json=jsonable_encoder(bulk_request),
         )
         assert response.status_code == 400
         error_response = ErrorBodyResponse(**response.json())
