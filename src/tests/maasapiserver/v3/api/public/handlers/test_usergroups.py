@@ -152,7 +152,7 @@ class TestUserGroupsApi(ApiCommonTests):
             ),
             Endpoint(
                 method="POST",
-                path=f"{self.BASE_PATH}/1/members:batchCreate",
+                path=f"{self.BASE_PATH}/1/members:batch_create",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
             ),
             Endpoint(
@@ -162,7 +162,7 @@ class TestUserGroupsApi(ApiCommonTests):
             ),
             Endpoint(
                 method="POST",
-                path=f"{self.BASE_PATH}/1/entitlements:batchDelete",
+                path=f"{self.BASE_PATH}/1/entitlements:batch_delete",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
             ),
         ]
@@ -1074,7 +1074,7 @@ class TestUserGroupsApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.code == 400
 
-    # POST /groups/{group_id}/members:batchCreate
+    # POST /groups/{group_id}/members:batch_create
     async def test_bulk_add_members(
         self,
         services_mock: ServiceCollectionV3,
@@ -1091,7 +1091,7 @@ class TestUserGroupsApi(ApiCommonTests):
         services_mock.users.get_by_id.return_value = TEST_USER
 
         response = await client.post(
-            f"{self.BASE_PATH}/{TEST_GROUP.id}/members:batchCreate",
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members:batch_create",
             json=jsonable_encoder(bulk_request),
         )
         assert response.status_code == 200
@@ -1109,7 +1109,7 @@ class TestUserGroupsApi(ApiCommonTests):
         services_mock.usergroups.get_by_id.return_value = None
 
         response = await client.post(
-            f"{self.BASE_PATH}/999/members:batchCreate",
+            f"{self.BASE_PATH}/999/members:batch_create",
             json=jsonable_encoder(bulk_request),
         )
         assert response.status_code == 404
@@ -1129,7 +1129,7 @@ class TestUserGroupsApi(ApiCommonTests):
         services_mock.users.get_by_id.return_value = None
 
         response = await client.post(
-            f"{self.BASE_PATH}/{TEST_GROUP.id}/members:batchCreate",
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members:batch_create",
             json=jsonable_encoder(bulk_request),
         )
         assert response.status_code == 404
@@ -1152,7 +1152,7 @@ class TestUserGroupsApi(ApiCommonTests):
         services_mock.users.get_by_id.return_value = TEST_USER
 
         response = await client.post(
-            f"{self.BASE_PATH}/{TEST_GROUP.id}/members:batchCreate",
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/members:batch_create",
             json=jsonable_encoder(bulk_request),
         )
         assert response.status_code == 409
@@ -1193,7 +1193,7 @@ class TestUserGroupsApi(ApiCommonTests):
         )
         assert response.status_code == 404
 
-    # POST /groups/{group_id}/entitlements:batchDelete
+    # POST /groups/{group_id}/entitlements:batch_delete
     async def test_bulk_remove_entitlements(
         self,
         services_mock: ServiceCollectionV3,
@@ -1226,7 +1226,7 @@ class TestUserGroupsApi(ApiCommonTests):
         )
 
         response = await mocked_api_client_user.post(
-            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements:batchDelete",
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements:batch_delete",
             json=jsonable_encoder(bulk_request.dict()),
         )
         assert response.status_code == 204
@@ -1259,7 +1259,7 @@ class TestUserGroupsApi(ApiCommonTests):
         services_mock.usergroups.get_by_id.return_value = None
 
         response = await client.post(
-            f"{self.BASE_PATH}/999/entitlements:batchDelete",
+            f"{self.BASE_PATH}/999/entitlements:batch_delete",
             json=jsonable_encoder(bulk_request),
         )
         assert response.status_code == 404
@@ -1285,7 +1285,7 @@ class TestUserGroupsApi(ApiCommonTests):
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
 
         response = await client.post(
-            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements:batchDelete",
+            f"{self.BASE_PATH}/{TEST_GROUP.id}/entitlements:batch_delete",
             json=jsonable_encoder(bulk_request),
         )
         assert response.status_code == 400

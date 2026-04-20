@@ -422,7 +422,7 @@ class UserGroupsHandler(Handler):
         return Response(status_code=200)
 
     @handler(
-        path="/groups/{group_id}/members:batchCreate",
+        path="/groups/{group_id}/members:batch_create",
         methods=["POST"],
         tags=TAGS,
         responses={
@@ -679,7 +679,7 @@ class UserGroupsHandler(Handler):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
-        path="/groups/{group_id}/entitlements:batchDelete",
+        path="/groups/{group_id}/entitlements:batch_delete",
         methods=["POST"],
         tags=TAGS,
         responses={
