@@ -2275,7 +2275,15 @@ class BootSourceForm(MAASModelForm):
 
     class Meta:
         model = BootSource
-        fields = ("url", "keyring_filename", "keyring_data")
+        fields = (
+            "url",
+            "keyring_filename",
+            "keyring_data",
+            "name",
+            "priority",
+            "enabled",
+            "skip_keyring_verification",
+        )
 
     keyring_filename = forms.CharField(
         label="The path to the keyring file for this BootSource.",
@@ -2286,6 +2294,11 @@ class BootSourceForm(MAASModelForm):
         label="The GPG keyring for this BootSource, as a binary blob.",
         required=False,
     )
+
+    name = forms.CharField(required=False)
+    priority = forms.IntegerField(required=False)
+    enabled = forms.NullBooleanField(required=False)
+    skip_keyring_verification = forms.NullBooleanField(required=False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

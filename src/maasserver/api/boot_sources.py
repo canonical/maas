@@ -24,7 +24,9 @@ from provisioningserver.events import EVENT_TYPES
 
 DISPLAYED_BOOTSOURCE_FIELDS = (
     "id",
-    "url",
+    "nameurl",
+    "priority",
+    "enabled",
     "keyring_filename",
     "keyring_data",
     "created",
@@ -70,11 +72,18 @@ class BootSourceHandler(OperationsHandler):
 
         @param (string) "url" [required=false] The URL of the BootSource.
 
+        @param (string) "name" [required=false] The name of the BootSource.
+
         @param (string) "keyring_filename" [required=false] The path to the
         keyring file for this BootSource.
 
         @param (string) "keyring_data" [required=false] The GPG keyring for
         this BootSource, base64-encoded data.
+
+        @param (int) "priority" [required=false] The priority for this BootSource.
+
+        @param (boolean) "enabled" [required=false] Whether this BootSource is
+        enabled or not.
 
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the updated

@@ -8,6 +8,10 @@ from unittest.mock import Mock
 
 from django.core.exceptions import ValidationError
 
+from maascommon.constants import (
+    CANDIDATE_IMAGES_STREAM_URL,
+    STABLE_IMAGES_STREAM_URL,
+)
 from maasserver.models.bootsource import BootSource
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
@@ -168,7 +172,8 @@ class TestBootSource(MAASServerTestCase):
     def test_generate_priority_boot_source(self):
         # create a boot source
         boot_source_1 = make_BootSource()
-        assert boot_source_1.priority == 1
+        # Candidate and stable boot sources are created with priority 1 and 2 respectively, so the next priority is 3
+        assert boot_source_1.priority == 3
         # update boot source: _generate_priority() is called
         boot_source_1.url = "http://%s.com/" % factory.make_name("source-url")
         boot_source_1._generate_priority = Mock(
@@ -176,10 +181,10 @@ class TestBootSource(MAASServerTestCase):
         )
         boot_source_1.save()
         boot_source_1._generate_priority.assert_called()
-        assert boot_source_1.priority == 1
-        # create a new boot source (max priority == 1)
+        assert boot_source_1.priority == 3
+        # create a new boot source (max priority == 3)
         boot_source_2 = make_BootSource()
-        assert boot_source_2.priority == 2
+        assert boot_source_2.priority == 4
         # create a new boot source (max priority == 10)
         boot_source_1._generate_priority.return_value = 10
         boot_source_1.save()
@@ -202,3 +207,57 @@ class TestBootSource(MAASServerTestCase):
             url="https://images.maas.io/ephemeral-v3/candidate/streams/v1/index.sjson"
         )
         assert not boot_source_3.skip_keyring_verification
+
+    def test_name_defaults_to_url(self):
+        boot_source = BootSource(
+            url="http://example.com", keyring_filename="/path/to/something"
+        )
+        boot_source.save()
+        self.assertEqual(boot_source.name, "http://example.com")
+
+    def test_name_is_unique(self):
+        factory.make_BootSource(name="source1", url="http://foo.com")
+        self.assertRaises(
+            ValidationError,
+            factory.make_BootSource,
+            name="source1",
+            url="http://bar.com",
+        )
+
+    def test_url_trailing_slash_is_stripped(self):
+        boot_source = BootSource(
+            url="http://example.com/path/",
+            keyring_filename="/path/to/something",
+        )
+        boot_source.save()
+        self.assertEqual(boot_source.url, "http://example.com/path")
+
+    def test_enabled_defaults_to_true(self):
+        boot_source = BootSource(
+            url="http://example.com", keyring_filename="/path/to/something"
+        )
+        boot_source.save()
+        self.assertTrue(boot_source.enabled)
+
+    def test_to_dict_without_selections_includes_name_priority_enabled(self):
+        boot_source = factory.make_BootSource(
+            keyring_data=b"123445", keyring_filename=""
+        )
+        boot_source_dict = boot_source.to_dict_without_selections()
+        self.assertEqual(boot_source.name, boot_source_dict["name"])
+        self.assertEqual(boot_source.priority, boot_source_dict["priority"])
+        self.assertEqual(boot_source.enabled, boot_source_dict["enabled"])
+
+    def test_cannot_delete_stable_default_boot_source(self):
+        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
+        self.assertRaises(ValidationError, boot_source.delete)
+
+    def test_cannot_delete_candidate_default_boot_source(self):
+        boot_source = BootSource.objects.get(url=CANDIDATE_IMAGES_STREAM_URL)
+        self.assertRaises(ValidationError, boot_source.delete)
+
+    def test_can_delete_non_default_boot_source(self):
+        boot_source = factory.make_BootSource(url="http://custom.example.com")
+        boot_source_id = boot_source.id
+        boot_source.delete()
+        self.assertFalse(BootSource.objects.filter(id=boot_source_id).exists())

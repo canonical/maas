@@ -7,6 +7,10 @@ import http.client
 
 from django.urls import reverse
 
+from maascommon.constants import (
+    CANDIDATE_IMAGES_STREAM_URL,
+    STABLE_IMAGES_STREAM_URL,
+)
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.audit import Event
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
@@ -156,6 +160,73 @@ class TestBootSourceAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
+    def test_PUT_updates_name(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        new_values = {
+            "url": boot_source.url,
+            "name": "new-name",
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertEqual(boot_source.name, "new-name")
+
+    def test_PUT_updates_enabled(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        self.assertTrue(boot_source.enabled)
+        new_values = {
+            "url": boot_source.url,
+            "enabled": False,
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertFalse(boot_source.enabled)
+
+    def test_PUT_updates_priority(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        new_values = {
+            "url": boot_source.url,
+            "priority": 42,
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertEqual(boot_source.priority, 42)
+
+    def test_GET_returns_name_priority_enabled(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        response = self.client.get(get_boot_source_uri(boot_source))
+        self.assertEqual(http.client.OK, response.status_code)
+        result = json_load_bytes(response.content)
+        self.assertEqual(result["name"], boot_source.name)
+        self.assertEqual(result["priority"], boot_source.priority)
+        self.assertEqual(result["enabled"], boot_source.enabled)
+
+    def test_DELETE_rejects_stable_default_boot_source(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource(url=STABLE_IMAGES_STREAM_URL)
+        response = self.client.delete(get_boot_source_uri(boot_source))
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertIsNotNone(reload_object(boot_source))
+
+    def test_DELETE_rejects_candidate_default_boot_source(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource(url=CANDIDATE_IMAGES_STREAM_URL)
+        response = self.client.delete(get_boot_source_uri(boot_source))
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertIsNotNone(reload_object(boot_source))
+
 
 class TestBootSourcesAPI(APITestCase.ForUser):
     """Test the the boot source API."""
@@ -250,6 +321,32 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         params = {"url": "http://example.com/"}
         response = self.client.post(reverse("boot_sources_handler"), params)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
+    def test_POST_creates_boot_source_with_name(self):
+        self.become_admin()
+        params = {
+            "url": "http://example.com/",
+            "keyring_filename": factory.make_name("filename"),
+            "name": "custom-source",
+        }
+        response = self.client.post(reverse("boot_sources_handler"), params)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        boot_source = BootSource.objects.get(id=parsed_result["id"])
+        self.assertEqual(boot_source.name, "custom-source")
+
+    def test_POST_creates_boot_source_with_enabled_false(self):
+        self.become_admin()
+        params = {
+            "url": "http://example.com/",
+            "keyring_filename": factory.make_name("filename"),
+            "enabled": False,
+        }
+        response = self.client.post(reverse("boot_sources_handler"), params)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        boot_source = BootSource.objects.get(id=parsed_result["id"])
+        self.assertFalse(boot_source.enabled)
 
     def test_POST_requires_admin(self):
         params = {
