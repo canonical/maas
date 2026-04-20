@@ -14,6 +14,7 @@ from maasservicelayer.db.repositories.openfga_tuples import (
     OpenFGATuplesRepository,
 )
 from maasservicelayer.db.tables import OpenFGATupleTable
+from maasservicelayer.models.openfga_tuple import EntitlementDeleteSpec
 from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
 from maasservicelayer.services.openfga_tuples import (
     EntitlementsBuilderFactory,
@@ -312,8 +313,16 @@ class TestIntegrationOpenFGAService:
         await services.openfga_tuples.bulk_delete_entitlements(
             5000,
             [
-                ("can_edit_machines", "maas", 0),
-                ("can_view_machines", "pool", 99),
+                EntitlementDeleteSpec(
+                    entitlement="can_edit_machines",
+                    resource_type="maas",
+                    resource_id=0,
+                ),
+                EntitlementDeleteSpec(
+                    entitlement="can_view_machines",
+                    resource_type="pool",
+                    resource_id=99,
+                ),
             ],
         )
 
@@ -471,8 +480,16 @@ class TestOpenFGAService:
         await service.bulk_delete_entitlements(
             group_id=9,
             items=[
-                ("can_edit_machines", "maas", 0),
-                ("can_view_machines", "pool", 42),
+                EntitlementDeleteSpec(
+                    entitlement="can_edit_machines",
+                    resource_type="maas",
+                    resource_id=0,
+                ),
+                EntitlementDeleteSpec(
+                    entitlement="can_view_machines",
+                    resource_type="pool",
+                    resource_id=42,
+                ),
             ],
         )
 

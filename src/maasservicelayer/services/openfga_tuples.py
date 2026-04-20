@@ -13,7 +13,10 @@ from maasservicelayer.db.repositories.openfga_tuples import (
     OpenFGATuplesRepository,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.openfga_tuple import OpenFGATuple
+from maasservicelayer.models.openfga_tuple import (
+    EntitlementDeleteSpec,
+    OpenFGATuple,
+)
 from maasservicelayer.services.base import Service, ServiceCache
 
 
@@ -315,19 +318,15 @@ class OpenFGATupleService(Service):
     async def bulk_delete_entitlements(
         self,
         group_id: int,
-        items: list[tuple[str, str, int]],
+        items: list[EntitlementDeleteSpec],
     ) -> None:
-        tuples = [
-            (entitlement_name, resource_type, str(resource_id))
-            for entitlement_name, resource_type, resource_id in items
-        ]
         query = QuerySpec(
             where=OpenFGATuplesClauseFactory.and_clauses(
                 [
                     OpenFGATuplesClauseFactory.with_user(
                         f"group:{group_id}#member"
                     ),
-                    OpenFGATuplesClauseFactory.with_entitlement_tuples(tuples),
+                    OpenFGATuplesClauseFactory.with_entitlement_tuples(items),
                 ]
             )
         )

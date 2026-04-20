@@ -17,7 +17,10 @@ from maasservicelayer.db.mappers.base import (
 from maasservicelayer.db.repositories.base import Repository
 from maasservicelayer.db.tables import OpenFGATupleTable
 from maasservicelayer.models.base import ListResult, ResourceBuilder
-from maasservicelayer.models.openfga_tuple import OpenFGATuple
+from maasservicelayer.models.openfga_tuple import (
+    EntitlementDeleteSpec,
+    OpenFGATuple,
+)
 from maasservicelayer.utils.date import utcnow
 
 
@@ -46,18 +49,18 @@ class OpenFGATuplesClauseFactory(ClauseFactory):
 
     @classmethod
     def with_entitlement_tuples(
-        cls, tuples: list[tuple[str, str, str]]
+        cls, specs: list[EntitlementDeleteSpec]
     ) -> Clause:
         return cls.or_clauses(
             [
                 cls.and_clauses(
                     [
-                        cls.with_relation(relation),
-                        cls.with_object_type(object_type),
-                        cls.with_object_id(object_id),
+                        cls.with_relation(spec.entitlement),
+                        cls.with_object_type(spec.resource_type),
+                        cls.with_object_id(str(spec.resource_id)),
                     ]
                 )
-                for relation, object_type, object_id in tuples
+                for spec in specs
             ]
         )
 

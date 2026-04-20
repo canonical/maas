@@ -724,9 +724,6 @@ class UserGroupsHandler(Handler):
 
         await services.openfga_tuples.bulk_delete_entitlements(
             group_id,
-            [
-                (item.entitlement, item.resource_type, item.resource_id)
-                for item in bulk_request.items
-            ],
+            items=[item.to_spec() for item in bulk_request.items],
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)

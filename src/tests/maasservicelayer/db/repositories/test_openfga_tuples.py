@@ -15,6 +15,7 @@ from maasservicelayer.db.repositories.openfga_tuples import (
     OpenFGATuplesRepository,
 )
 from maasservicelayer.db.tables import OpenFGATupleTable
+from maasservicelayer.models.openfga_tuple import EntitlementDeleteSpec
 from tests.fixtures.factories.openfga_tuples import create_openfga_tuple
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.utils.ulid import is_ulid
@@ -56,8 +57,16 @@ class TestOpenFGATuplesClauseFactory:
     def test_with_entitlement_tuples(self) -> None:
         clause = OpenFGATuplesClauseFactory.with_entitlement_tuples(
             [
-                ("can_view_machines", "pool", "1"),
-                ("can_edit_machines", "pool", "2"),
+                EntitlementDeleteSpec(
+                    entitlement="can_view_machines",
+                    resource_type="pool",
+                    resource_id=1,
+                ),
+                EntitlementDeleteSpec(
+                    entitlement="can_edit_machines",
+                    resource_type="pool",
+                    resource_id=2,
+                ),
             ]
         )
         sql_str = str(

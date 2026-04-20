@@ -19,6 +19,7 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.fields import UniqueList
+from maasservicelayer.models.openfga_tuple import EntitlementDeleteSpec
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.openfga_tuples import (
     EntitlementsBuilderFactory,
@@ -87,6 +88,13 @@ class BulkEntitlementDeleteItem(BaseModel):
     )
     resource_id: int = Field(description="The resource ID.")
     entitlement: str = Field(description="The entitlement name.")
+
+    def to_spec(self) -> EntitlementDeleteSpec:
+        return EntitlementDeleteSpec(
+            entitlement=self.entitlement,
+            resource_type=self.resource_type,
+            resource_id=self.resource_id,
+        )
 
 
 class BulkEntitlementDeleteRequest(BaseModel):

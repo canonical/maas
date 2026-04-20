@@ -45,7 +45,10 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.openfga_tuple import OpenFGATuple
+from maasservicelayer.models.openfga_tuple import (
+    EntitlementDeleteSpec,
+    OpenFGATuple,
+)
 from maasservicelayer.models.usergroup_members import UserGroupMember
 from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
 from maasservicelayer.models.users import User
@@ -1232,9 +1235,17 @@ class TestUserGroupsApi(ApiCommonTests):
         assert response.status_code == 204
         services_mock.openfga_tuples.bulk_delete_entitlements.assert_called_once_with(
             TEST_GROUP.id,
-            [
-                ("can_edit_machines", "maas", 0),
-                ("can_edit_machines", "pool", 5),
+            items=[
+                EntitlementDeleteSpec(
+                    entitlement="can_edit_machines",
+                    resource_type="maas",
+                    resource_id=0,
+                ),
+                EntitlementDeleteSpec(
+                    entitlement="can_edit_machines",
+                    resource_type="pool",
+                    resource_id=5,
+                ),
             ],
         )
 
