@@ -1,12 +1,53 @@
 import datetime
+import importlib
 import os
 from pathlib import Path
 import sys
+import warnings
 
 import yaml
 
 # Add custom extensions directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "_ext"))
+
+from types import ModuleType
+
+extensions = []
+
+if (
+    len(Path(__file__).parents) >= 2
+    and not (Path(__file__).parents[1] / ".git").exists()
+):
+    # Some surgery in order to accomodate the fact that
+    # canonical_sphinx and sphinx_sitemap both require
+    # sphinx_last_updated_by_git in a way that is not possible
+    # to circumvent externally.
+    mock_git_ext = ModuleType("sphinx_last_updated_by_git")
+    mock_git_ext.__path__ = []
+    mock_git_ext.__file__ = "mock_sphinx_last_updated_by_git.py"
+    mock_git_ext.__spec__ = importlib.machinery.ModuleSpec(
+        name="sphinx_last_updated_by_git", loader=None, origin="mock"
+    )
+
+    def dummy_setup(app):
+        app.connect(
+            "env-updated",
+            lambda _, env: setattr(env, "git_last_updated", {}),
+        )
+        return {"version": "0.1", "parallel_read_safe": True}
+
+    mock_git_ext.setup = dummy_setup
+
+    sys.modules["sphinx_last_updated_by_git"] = mock_git_ext
+else:
+    extensions.append("sphinx_last_updated_by_git")
+
+
+# Suppress the specific warning message from sphinx_sitemap
+warnings.filterwarnings(
+    "ignore",
+    message=".*sphinx_last_updated_by_git.*",
+)
 
 # Configuration for the Sphinx documentation builder.
 # All configuration specific to your project should be done in this file.
@@ -282,7 +323,7 @@ myst_enable_extensions = {
 
 # NOTE: The canonical_sphinx extension is required for the starter pack.
 
-extensions = [
+extensions += [
     "generate_api_docs_extension",  # Auto-generate API docs during build
     "generate_cli_docs_extension",  # Auto-generate CLI docs during build
     "canonical_sphinx",
@@ -305,14 +346,6 @@ extensions = [
     "sphinx_sitemap",
 ]
 
-# This is mainly intended when building a deb, so for offline docs.
-# Luckily, having information about when the docs were last updated
-# is not very relevant in this case.
-if (
-    len(Path(__file__).parents) >= 2
-    and (Path(__file__).parents[1] / ".git").exists()
-):
-    extensions.append("sphinx_last_updated_by_git")
 
 # Prevents MyST-Parser from flagging strikethrough as a non-portable feature.
 # Since Docutils lacks a universal 'strike' node, this warning persists for
