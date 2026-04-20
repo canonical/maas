@@ -3,10 +3,11 @@
 
 
 from contextlib import suppress
+from typing import Annotated
 
 from fastapi import Depends, Query, Response
 from fastapi.exceptions import RequestValidationError
-from pydantic import conlist, ValidationError
+from pydantic import Field, ValidationError
 from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
@@ -43,6 +44,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.configurations import BootImagesAutoImportConfig
+from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.temporal import TemporalServiceException
 
@@ -218,7 +220,10 @@ class BootSourceSelectionsHandler(Handler):
     )
     async def bulk_delete_selections(
         self,
-        ids: conlist(int, min_items=1, unique_items=True) = Query(  # pyright: ignore[reportInvalidTypeForm] # noqa: B008
+        ids: Annotated[
+            UniqueList[int],
+            Field(min_length=1),
+        ] = Query(  # noqa: B008
             description="ids of selections to delete", alias="id"
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008

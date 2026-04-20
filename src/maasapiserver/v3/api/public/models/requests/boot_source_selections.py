@@ -3,7 +3,7 @@
 
 
 from fastapi import Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
@@ -14,6 +14,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionStatusClauseFactory,
 )
 from maasservicelayer.models.bootsources import BootSource
+from maasservicelayer.models.fields import UniqueList
 
 
 class BaseSelectionRequest(BaseModel):
@@ -41,9 +42,14 @@ class BootSourceSelectionRequest(BaseSelectionRequest):
 
 
 class SelectionRequest(BaseSelectionRequest):
+    model_config = ConfigDict(frozen=True)
+
     boot_source_id: int = Field(
         description="The id of the boot source that this selection refers to"
     )
+
+    def __hash__(self) -> int:
+        return hash((self.os, self.release, self.arch, self.boot_source_id))
 
     def to_builder(self) -> BootSourceSelectionBuilder:
         return BootSourceSelectionBuilder(
@@ -55,10 +61,9 @@ class SelectionRequest(BaseSelectionRequest):
 
 
 class BulkSelectionRequest(BaseModel):
-    selections: list[SelectionRequest] = Field(
+    selections: UniqueList[SelectionRequest] = Field(
         description="Boot source selections to create",
-        min_items=1,
-        unique_items=True,
+        min_length=1,
     )
 
     def get_builders(self) -> list[BootSourceSelectionBuilder]:

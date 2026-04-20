@@ -140,7 +140,7 @@ def get_rogue_database_activity():
         """
         )
         names = tuple(column.name for column in cursor.description)
-        return [dict(zip(names, row)) for row in cursor]
+        return [dict(zip(names, row, strict=False)) for row in cursor]
 
 
 def terminate_rogue_database_activity():

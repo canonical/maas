@@ -38,7 +38,7 @@ class ImageManifestsRepository(Repository):
 
         result = (await self.execute_stmt(stmt)).one_or_none()
         if result:
-            return ImageManifest(**result._asdict())
+            return ImageManifest.model_validate(result._asdict())
         return None
 
     async def create(self, builder: ImageManifestBuilder) -> ImageManifest:
@@ -50,7 +50,7 @@ class ImageManifestsRepository(Repository):
         )
         try:
             result = (await self.execute_stmt(stmt)).one()
-            return ImageManifest(**result._asdict())
+            return ImageManifest.model_validate(result._asdict())
         except IntegrityError as e:
             raise AlreadyExistsException(
                 details=[
@@ -81,7 +81,7 @@ class ImageManifestsRepository(Repository):
                     )
                 ]
             )
-        return ImageManifest(**result._asdict())
+        return ImageManifest.model_validate(result._asdict())
 
     async def delete_many_by_boot_source_ids(
         self, boot_source_ids: Iterable[int]

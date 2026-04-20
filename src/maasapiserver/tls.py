@@ -113,8 +113,7 @@ class TLSPatchedH11Protocol(H11Protocol):
                 self._include_tls(self.transport, self.scope)
                 ### END PATCH
 
-                upgrade = self._get_upgrade()
-                if upgrade == b"websocket" and self._should_upgrade_to_ws():
+                if self._should_upgrade():
                     self.handle_websocket_upgrade(event)
                     return
 
@@ -168,3 +167,5 @@ class TLSPatchedH11Protocol(H11Protocol):
                     continue
                 self.cycle.more_body = False
                 self.cycle.message_event.set()
+                if self.conn.their_state == h11.MUST_CLOSE:
+                    break

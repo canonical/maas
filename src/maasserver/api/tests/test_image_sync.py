@@ -173,13 +173,13 @@ class TestImagesSyncProgressHandler(APITestCase.ForInternalUser):
         self.assertEqual(
             partial_sync.sha256, status[str(partial_sync.id)]["sha256"]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             (str(partial_sync.id), str(complete.id)), set(status.keys())
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [r.system_id for r in regions], status[str(complete.id)]["sources"]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [r.system_id for r in regions[2:]],
             status[str(partial_sync.id)]["sources"],
         )

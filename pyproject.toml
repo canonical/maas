@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = [  ]
+requires = []
 
 [project]
 name = "maas"
@@ -8,10 +8,10 @@ version = "3.8.0a1"
 description = "Metal As A Service"
 readme = { file = "README.rst", content-type = "text/x-rst" }
 license = { file = "LICENSE" }
-
 authors = [
   { name = "MAAS Developers", email = "maas-devel@lists.launchpad.net" },
 ]
+requires-python = ">=3.14"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Information Technology",
@@ -20,36 +20,35 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Programming Language :: JavaScript",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: System :: Systems Administration",
 ]
 optional-dependencies.testing = [
   "aioresponses>=0.7,<0.8",
-  "fixtures>=4.1,<4.2",
-  "httpx>=0.27,<0.28",
-  "hypothesis>=6.116,<6.117",
+  "fixtures>=4.3,<4.4",
+  "httpx>=0.28,<0.29",
+  "hypothesis>=6.151,<6.152",
   "ipdb>=0.13,<0.14",
   "junitxml>=0.7,<0.8",
   "postgresfixture>=0.5,<0.6",
-  "pyright==1.1.407",           # pin until https://github.com/python/typeshed/pull/15190 is merged and added to pyright.
-  "pytest>=7.4,<8",
-  "pytest-asyncio>=0.23,<0.24",
-  "pytest-cov>=6,<6.1",
-  "pytest-mock>=3.14,<3.15",
-  "pytest-xdist>=3.6,<3.7",
-  "python-subunit>=1.4,<1.4.5", # pin to avoid 1.4.5 which breaks tests. Remove upper bound when fixed.
+  "pyright==1.1.407",          # pin until https://github.com/python/typeshed/pull/15190 is merged and added to pyright.
+  "pytest>=9,<10",
+  "pytest-asyncio>=1.3,<1.4",
+  "pytest-cov>=7,<7.1",
+  "pytest-mock>=3.15,<3.16",
+  "pytest-xdist>=3.8,<3.9",
+  "python-subunit>=1.4,<1.5",
   "testresources>=2,<2.1",
   "testscenarios>=0.5,<0.6",
-  "testtools>=2.7,<2.8",
+  "testtools>=2.8,<2.9",
 ]
 urls.Documentation = "https://maas.io/docs"
 urls.Homepage = "https://maas.io/"
 urls.Repository = "https://launchpad.net/maas"
-
+scripts."test.parallel" = "maastesting.scripts:run_parallel"
+scripts."test.rack" = "maastesting.scripts:run_rack"
+scripts."test.region" = "maastesting.scripts:run_region"
+scripts."test.region.legacy" = "maastesting.scripts:run_region_legacy"
 scripts.maas = "maascli:main"
 scripts.maas-apiserver = "maasapiserver.main:run"
 scripts.maas-common = "provisioningserver.rack_script:run"
@@ -60,10 +59,6 @@ scripts.maas-sampledata = "maasserver.testing.sampledata.main:main"
 scripts.maas-temporal-worker = "maastemporalworker.temporal_script:run"
 scripts.rackd = "provisioningserver.server:run"
 scripts.regiond = "maasserver.server:run"
-scripts."test.parallel" = "maastesting.scripts:run_parallel"
-scripts."test.rack" = "maastesting.scripts:run_rack"
-scripts."test.region" = "maastesting.scripts:run_region"
-scripts."test.region.legacy" = "maastesting.scripts:run_region_legacy"
 entry-points.pytest11.maas-database = "maastesting.pytest.database"
 entry-points.pytest11.maas-django = "maastesting.pytest.django"
 entry-points.pytest11.maas-environment = "maastesting.pytest.environment"
@@ -73,11 +68,10 @@ entry-points.pytest11.maas-sqlalchemy = "maastesting.pytest.sqlalchemy"
 
 [tool.setuptools]
 include-package-data = true
-
-[tool.setuptools.packages.find]
-where = [ "src" ]
-exclude = [ "*.testing", "*.tests" ]
-include = [
+package-data.maasservicelayer = [ "db/alembic/alembic.ini" ]
+packages.find.where = [ "src" ]
+packages.find.exclude = [ "*.testing", "*.tests" ]
+packages.find.include = [
   "apiclient*",
   "maasapiserver*",
   "maascli*",
@@ -89,13 +83,9 @@ include = [
   "provisioningserver*",
 ]
 
-[tool.setuptools.package-data]
-"maasservicelayer" = [ "db/alembic/alembic.ini" ]
-
 [tool.ruff]
 line-length = 79
 indent-width = 4
-
 src = [
   "src",
 ]
@@ -113,16 +103,12 @@ extend-exclude = [
 ]
 # Like Black, indent with spaces, rather than tabs.
 format.indent-style = "space"
-
 # Like Black, use double quotes for strings.
 format.quote-style = "double"
-
 # Like Black, automatically detect the appropriate line ending.
 format.line-ending = "auto"
-
 # Unlike Black, don't respect magic trailing commas.
 format.skip-magic-trailing-comma = false
-
 lint.select = [
   # flake8-bugbear
   "B",
@@ -133,11 +119,10 @@ lint.select = [
   # isort
   "I",
   # flake8-simplify - remove for now
-  #"SIM",
+  # "SIM",
   # pycodestyle
   "W",
 ]
-
 # recommended rules to avoid if you use ruff as a formatter
 lint.ignore = [
   "COM812",
@@ -162,11 +147,9 @@ lint.ignore = [
 lint.exclude = [
   "src/*/migrations/*",
 ]
-
 lint.isort.case-sensitive = false
 lint.isort.force-sort-within-sections = true
 lint.isort.from-first = false
-
 lint.isort.known-first-party = [
   "apiclient",
   "maasapiserver",
@@ -179,19 +162,17 @@ lint.isort.known-first-party = [
   "provisioningserver",
   "snippets",
 ]
-
 lint.isort.order-by-type = false
 lint.isort.split-on-trailing-comma = false
 
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-filterwarnings = "error::BytesWarning"
-testpaths = [ "src/tests" ]
+[tool.pytest]
+ini_options.asyncio_mode = "auto"
+ini_options.filterwarnings = "error::BytesWarning"
+ini_options.testpaths = [ "src/tests" ]
 
 [tool.pyright]
 include = [ "src/maascommon", "src/maasservicelayer", "src/maasapiserver", "src/maastemporalworker" ]
 exclude = [ "src/maasservicelayer/auth/macaroons", "src/maasservicelayer/services/machines_v2.py" ]
-
 executionEnvironments = [
   { root = "src", reportMissingImports = "none", reportMissingModuleSource = "none" },
 ]
