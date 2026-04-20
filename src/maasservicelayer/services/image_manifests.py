@@ -195,15 +195,15 @@ class ImageManifestsService(Service):
         # date of the last update
         last_update = products_list[0].updated
 
-        if last_update > current.last_update:
-            builder = ImageManifestBuilder(
-                boot_source_id=boot_source.id,
-                manifest=products_list,
-                last_update=last_update,
-            )
-            return await self.update(builder)
-
-        return current
+        # TODO: MAASENG-XXXX remove this
+        # Always update the db entry: If the user updates the URL of the boot source
+        # the manifest might have the same updated field but different content.
+        builder = ImageManifestBuilder(
+            boot_source_id=boot_source.id,
+            manifest=products_list,
+            last_update=last_update,
+        )
+        return await self.update(builder)
 
     async def get(self, boot_source_id: int) -> ImageManifest | None:
         return await self.repository.get(boot_source_id)

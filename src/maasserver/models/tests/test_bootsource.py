@@ -8,6 +8,11 @@ from unittest.mock import Mock
 
 from django.core.exceptions import ValidationError
 
+from maascommon.workflows.bootresource import (
+    POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
+    PostUpdateBootSourceUrlParam,
+)
+import maasserver.models.bootsource as boot_source_module
 from maasserver.models.bootsource import BootSource
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
@@ -202,3 +207,12 @@ class TestBootSource(MAASServerTestCase):
             url="https://images.maas.io/ephemeral-v3/candidate/streams/v1/index.sjson"
         )
         assert not boot_source_3.skip_keyring_verification
+
+    def test_verify_selection_after_url_update(self):
+        mock_start_workflow = self.patch(boot_source_module, "start_workflow")
+        boot_source = make_BootSource()
+        boot_source.verify_selections_after_url_update()
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
+            param=PostUpdateBootSourceUrlParam(boot_source.id),
+        )
