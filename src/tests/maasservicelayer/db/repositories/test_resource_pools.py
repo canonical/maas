@@ -149,7 +149,7 @@ class TestResourcePoolRepositoryListSummary:
     ) -> ResourcePoolRepository:
         return ResourcePoolRepository(Context(connection=db_connection))
 
-    async def test_list_with_summary_machine_count(
+    async def test_list_with_statistics_machine_count(
         self, repository_instance: ResourcePoolRepository, fixture: Fixture
     ) -> None:
         # Controllers and devices should not be taken into account
@@ -164,8 +164,10 @@ class TestResourcePoolRepositoryListSummary:
             fixture, pool_id=0, status=NodeStatus.READY
         )
 
-        retrieved_resource_pools = await repository_instance.list_with_summary(
-            page=1, size=20, query=None
+        retrieved_resource_pools = (
+            await repository_instance.list_with_statistics(
+                page=1, size=20, query=None
+            )
         )
         assert len(retrieved_resource_pools.items) == 1
         assert retrieved_resource_pools.total == 1
@@ -174,7 +176,7 @@ class TestResourcePoolRepositoryListSummary:
         assert retrieved_resource_pools.items[0].machine_total_count == 2
         assert retrieved_resource_pools.items[0].machine_ready_count == 1
 
-    async def test_list_with_summary_filters_for_resource_pool(
+    async def test_list_with_statistics_filters_for_resource_pool(
         self, repository_instance: ResourcePoolRepository, fixture: Fixture
     ) -> None:
         created_resource_pool = await create_test_resource_pool(
@@ -207,8 +209,10 @@ class TestResourcePoolRepositoryListSummary:
             for _ in range(2)
         ]
 
-        retrieved_resource_pools = await repository_instance.list_with_summary(
-            page=1, size=20, query=None
+        retrieved_resource_pools = (
+            await repository_instance.list_with_statistics(
+                page=1, size=20, query=None
+            )
         )
         assert len(retrieved_resource_pools.items) == 2
         assert retrieved_resource_pools.total == 2
@@ -226,7 +230,7 @@ class TestResourcePoolRepositoryListSummary:
         assert retrieved_resource_pools.items[1].machine_total_count == 2
         assert retrieved_resource_pools.items[1].machine_ready_count == 1
 
-    async def test_list_with_summary_filters_by_pool_id(
+    async def test_list_with_statistics_filters_by_pool_id(
         self, repository_instance: ResourcePoolRepository, fixture: Fixture
     ) -> None:
         created_resource_pool = await create_test_resource_pool(
@@ -254,12 +258,16 @@ class TestResourcePoolRepositoryListSummary:
             fixture, pool_id=created_resource_pool.id, status=NodeStatus.READY
         )
 
-        retrieved_resource_pools = await repository_instance.list_with_summary(
-            page=1,
-            size=20,
-            query=QuerySpec(
-                ResourcePoolClauseFactory.with_ids([created_resource_pool.id])
-            ),
+        retrieved_resource_pools = (
+            await repository_instance.list_with_statistics(
+                page=1,
+                size=20,
+                query=QuerySpec(
+                    ResourcePoolClauseFactory.with_ids(
+                        [created_resource_pool.id]
+                    )
+                ),
+            )
         )
         assert len(retrieved_resource_pools.items) == 1
         assert retrieved_resource_pools.total == 1
@@ -272,19 +280,23 @@ class TestResourcePoolRepositoryListSummary:
         assert retrieved_resource_pools.items[0].machine_total_count == 4
         assert retrieved_resource_pools.items[0].machine_ready_count == 1
 
-    async def test_list_with_summary_pagination(
+    async def test_list_with_statistics_pagination(
         self, repository_instance: ResourcePoolRepository, fixture: Fixture
     ) -> None:
         await create_n_test_resource_pools(fixture, size=6)
 
-        retrieved_resource_pools = await repository_instance.list_with_summary(
-            page=1, size=2, query=None
+        retrieved_resource_pools = (
+            await repository_instance.list_with_statistics(
+                page=1, size=2, query=None
+            )
         )
         assert len(retrieved_resource_pools.items) == 2
         assert retrieved_resource_pools.total == 7
 
-        retrieved_resource_pools = await repository_instance.list_with_summary(
-            page=4, size=2, query=None
+        retrieved_resource_pools = (
+            await repository_instance.list_with_statistics(
+                page=4, size=2, query=None
+            )
         )
         assert len(retrieved_resource_pools.items) == 1
         assert retrieved_resource_pools.total == 7
