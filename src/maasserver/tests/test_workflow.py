@@ -83,8 +83,10 @@ class TestStopWorkflow(MAASTestCase):
             AsyncMock(return_value=mock_client),
         )
 
-        with self.assertRaises(RPCError) as cm:
+        try:
             yield workflow_module.stop_workflow("deploy:test-id")
+            self.fail("Expected RPCError to be raised")
+        except RPCError as e:
+            self.assertIn("connection refused", str(e))
 
-        self.assertIn("connection refused", str(cm.exception))
         mock_handle.cancel.assert_called_once()
