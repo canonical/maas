@@ -211,14 +211,14 @@ class TestSettingConfig(MAASServerTestCase):
         post_commit_do = self.patch(bootsources_module, "post_commit_do")
         Config.objects.set_config("http_proxy", factory.make_url())
         post_commit_do.assert_called_once_with(
-            reactor.callLater, 0, cache_boot_sources
+            reactor.callLater, 0, cache_boot_sources, None
         )
 
     def test_arranges_for_update_on_Config_http_proxy_enable(self):
         post_commit_do = self.patch(bootsources_module, "post_commit_do")
         Config.objects.set_config("enable_http_proxy", False)
         post_commit_do.assert_called_once_with(
-            reactor.callLater, 0, cache_boot_sources
+            reactor.callLater, 0, cache_boot_sources, None
         )
 
     def test_setting_dns_param_creates_dnspublication(self):

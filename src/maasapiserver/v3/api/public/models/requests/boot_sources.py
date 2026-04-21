@@ -113,6 +113,7 @@ class BootSourceRequest(BaseModel):
 # Used mainly because of the 'url' being immutable.
 class BootSourceUpdateRequest(BootSourceRequest):
     model_config = ConfigDict(extra="forbid")
+    name: str = Field(description="Name of this boot source.")
     priority: int = Field(
         description="Priority value. Higher values mean higher priority. Must "
         "be non-negative.",

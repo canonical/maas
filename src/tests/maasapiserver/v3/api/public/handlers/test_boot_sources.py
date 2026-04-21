@@ -1299,7 +1299,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
-        disabled_boot_source = TEST_BOOTSOURCE_1.copy()
+        disabled_boot_source = TEST_BOOTSOURCE_1.model_copy()
         disabled_boot_source.enabled = False
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_by_id.return_value = (

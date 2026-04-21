@@ -345,7 +345,9 @@ class BootResourcesActivity(ActivityBase):
 
             # TODO: MAASENG-6418 remove this
             if boot_source_id:
-                where_clauses.append(BootSourcesClauseFactory.with_id(boot_source_id))
+                where_clauses.append(
+                    BootSourcesClauseFactory.with_id(boot_source_id)
+                )
 
             boot_sources = await services.boot_sources.get_many(
                 query=QuerySpec(where=ClauseFactory.and_clauses(where_clauses))
