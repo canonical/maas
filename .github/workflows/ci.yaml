@@ -31,7 +31,9 @@ jobs:
 
       - name: Set build env image tag
         id: image
-        run: echo "tag=${{ github.event.merge_group.base_ref || github.base_ref || github.ref_name }}" >> $GITHUB_OUTPUT
+        run: |
+          ref="${{ github.event.merge_group.base_ref || github.base_ref || github.ref_name }}"
+          echo "tag=${ref#refs/heads/}" >> $GITHUB_OUTPUT
 
       - uses: dorny/paths-filter@61f87a10cd2c304679af17bb73ef192addf33c1c
         id: filter
