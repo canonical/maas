@@ -12,6 +12,7 @@ from maascommon.constants import (
     STABLE_IMAGES_STREAM_URL,
 )
 from maasserver.forms import BootSourceForm
+from maasserver.models import BootSource
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -121,17 +122,17 @@ class TestBootSourceForm(MAASServerTestCase):
         self.assertFalse(boot_source.skip_keyring_verification)
 
     def test_update_default_boot_source_allows_priority(self):
-        boot_source = factory.make_BootSource(url=STABLE_IMAGES_STREAM_URL)
+        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
         form = BootSourceForm(instance=boot_source, data={"priority": 42})
         self.assertTrue(form.is_valid(), form._errors)
 
     def test_update_default_boot_source_allows_enabled(self):
-        boot_source = factory.make_BootSource(url=STABLE_IMAGES_STREAM_URL)
+        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
         form = BootSourceForm(instance=boot_source, data={"enabled": False})
         self.assertTrue(form.is_valid(), form._errors)
 
     def test_update_default_boot_source_rejects_url(self):
-        boot_source = factory.make_BootSource(url=STABLE_IMAGES_STREAM_URL)
+        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
         form = BootSourceForm(
             instance=boot_source,
             data={"url": "http://other.example.com"},
@@ -140,7 +141,7 @@ class TestBootSourceForm(MAASServerTestCase):
         self.assertIn("url", form.errors)
 
     def test_update_default_boot_source_rejects_name(self):
-        boot_source = factory.make_BootSource(url=CANDIDATE_IMAGES_STREAM_URL)
+        boot_source = BootSource.objects.get(url=CANDIDATE_IMAGES_STREAM_URL)
         form = BootSourceForm(
             instance=boot_source,
             data={"name": "new-name"},
@@ -149,7 +150,7 @@ class TestBootSourceForm(MAASServerTestCase):
         self.assertIn("name", form.errors)
 
     def test_update_default_boot_source_rejects_keyring_filename(self):
-        boot_source = factory.make_BootSource(url=STABLE_IMAGES_STREAM_URL)
+        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
         form = BootSourceForm(
             instance=boot_source,
             data={"keyring_filename": "/new/path"},
@@ -160,7 +161,7 @@ class TestBootSourceForm(MAASServerTestCase):
     def test_update_default_boot_source_rejects_skip_keyring_verification(
         self,
     ):
-        boot_source = factory.make_BootSource(url=STABLE_IMAGES_STREAM_URL)
+        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
         form = BootSourceForm(
             instance=boot_source,
             data={"skip_keyring_verification": True},
