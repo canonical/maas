@@ -44,19 +44,24 @@ def get_os_info_from_boot_sources(os):
     return os_sources, releases, arches
 
 
-def cache_boot_sources():
+def cache_boot_sources(boot_source_id: int | None = None):
     start_workflow(
         FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
         workflow_id="fetch-manifest",
+        param=boot_source_id,
         task_queue=REGION_TASK_QUEUE,
         id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
     )
 
 
-def update_boot_source_cache():
+def update_boot_source_cache(boot_source_id: int | None = None):
     """Update the `BootSourceCache` using the updated source.
 
     This only begins after a successful commit to the database, and is then
     run in a thread. Nothing waits for its completion.
+
+    Args:
+        boot_source_id (int | None): if specified, updates the cache only for this
+            specific boot source
     """
-    post_commit_do(reactor.callLater, 0, cache_boot_sources)
+    post_commit_do(reactor.callLater, 0, cache_boot_sources, boot_source_id)

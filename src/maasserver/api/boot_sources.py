@@ -24,7 +24,8 @@ from provisioningserver.events import EVENT_TYPES
 
 DISPLAYED_BOOTSOURCE_FIELDS = (
     "id",
-    "nameurl",
+    "name",
+    "url",
     "priority",
     "enabled",
     "keyring_filename",

@@ -104,7 +104,7 @@ class TestBootSourceAPI(APITestCase.ForUser):
         self.become_admin()
         boot_source = factory.make_BootSource()
         new_values = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
         }
         response = self.client.put(
@@ -152,7 +152,7 @@ class TestBootSourceAPI(APITestCase.ForUser):
     def test_PUT_requires_admin(self):
         boot_source = factory.make_BootSource()
         new_values = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
         }
         response = self.client.put(
@@ -215,14 +215,14 @@ class TestBootSourceAPI(APITestCase.ForUser):
 
     def test_DELETE_rejects_stable_default_boot_source(self):
         self.become_admin()
-        boot_source = factory.make_BootSource(url=STABLE_IMAGES_STREAM_URL)
+        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
         response = self.client.delete(get_boot_source_uri(boot_source))
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIsNotNone(reload_object(boot_source))
 
     def test_DELETE_rejects_candidate_default_boot_source(self):
         self.become_admin()
-        boot_source = factory.make_BootSource(url=CANDIDATE_IMAGES_STREAM_URL)
+        boot_source = BootSource.objects.get(url=CANDIDATE_IMAGES_STREAM_URL)
         response = self.client.delete(get_boot_source_uri(boot_source))
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIsNotNone(reload_object(boot_source))
@@ -244,7 +244,9 @@ class TestBootSourcesAPI(APITestCase.ForUser):
 
     def test_GET_returns_boot_source_list(self):
         self.become_admin()
-        sources = [factory.make_BootSource() for _ in range(3)]
+        # Stable and candidate are already there from the migration.
+        sources = list(BootSource.objects.all())
+        sources.extend([factory.make_BootSource() for _ in range(3)])
         response = self.client.get(reverse("boot_sources_handler"))
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -263,7 +265,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         self.become_admin()
 
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
             "keyring_data": b"",
         }
@@ -282,7 +284,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         self.become_admin()
 
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": "",
             "keyring_data": (
                 factory.make_file_upload(content=sample_binary_data)
@@ -305,7 +307,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         self.become_admin()
 
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
             "keyring_data": b"",
         }
@@ -318,14 +320,14 @@ class TestBootSourcesAPI(APITestCase.ForUser):
     def test_POST_validates_boot_source(self):
         self.become_admin()
 
-        params = {"url": "http://example.com/"}
+        params = {"url": "http://example.com"}
         response = self.client.post(reverse("boot_sources_handler"), params)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_POST_creates_boot_source_with_name(self):
         self.become_admin()
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
             "name": "custom-source",
         }
@@ -338,7 +340,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
     def test_POST_creates_boot_source_with_enabled_false(self):
         self.become_admin()
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
             "enabled": False,
         }
@@ -350,7 +352,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
 
     def test_POST_requires_admin(self):
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": "",
             "keyring_data": (
                 factory.make_file_upload(content=sample_binary_data)
@@ -374,7 +376,7 @@ class TestBootSourceOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
         self.openfga_client.can_edit_boot_entities.return_value = True
         boot_source = factory.make_BootSource()
         new_values = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
         }
         response = self.client.put(
@@ -407,7 +409,7 @@ class TestBootSourcesOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
     def test_POST_requires_can_edit_boot_entities(self):
         self.openfga_client.can_edit_boot_entities.return_value = True
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": "",
             "keyring_data": (
                 factory.make_file_upload(content=sample_binary_data)
