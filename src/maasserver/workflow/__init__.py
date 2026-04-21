@@ -7,7 +7,7 @@ from functools import wraps
 from typing import Any, Optional
 import uuid
 
-from temporalio.service import RPCError
+from temporalio.service import RPCError, RPCStatusCode
 from twisted.internet.defer import Deferred, succeed
 
 from maasserver.workflow.worker import get_client_async, REGION_TASK_QUEUE
@@ -140,4 +140,9 @@ async def signal_workflow(
 async def stop_workflow(workflow_id: str):
     client = await get_client_async()
     hdl = client.get_workflow_handle(workflow_id=workflow_id)
-    await hdl.cancel()
+    try:
+        await hdl.cancel()
+    except RPCError as e:
+        if e.status == RPCStatusCode.NOT_FOUND:
+            return
+        raise
