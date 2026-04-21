@@ -4,14 +4,14 @@
 import logging
 import sys
 
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger.json import JsonFormatter
 import structlog
 from structlog.contextvars import merge_contextvars
 
 from maasservicelayer.utils.date import utcnow
 
 
-class CustomJsonFormatter(jsonlogger.JsonFormatter):
+class CustomJsonFormatter(JsonFormatter):
     def add_fields(self, log_record, record: logging.LogRecord, message_dict):
         super(CustomJsonFormatter, self).add_fields(
             log_record, record, message_dict

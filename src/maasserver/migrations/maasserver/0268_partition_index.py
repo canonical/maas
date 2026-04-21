@@ -74,7 +74,7 @@ def populate_partition_index(apps, schema_editor):
                 indexes = VMFS7_INDEXES
             elif need_prep_partition or need_bios_grub:
                 indexes = [i + 1 for i in indexes]
-        for index, partition in zip(indexes, partitions):
+        for index, partition in zip(indexes, partitions, strict=True):
             partition.index = index
             partition.save()
 
@@ -134,7 +134,9 @@ def partitions_size_match(actual_sizes, expected_sizes):
         return
     return all(
         expected_size in (None, actual_size)
-        for expected_size, actual_size in zip(actual_sizes, expected_sizes)
+        for expected_size, actual_size in zip(
+            actual_sizes, expected_sizes, strict=True
+        )
     )
 
 

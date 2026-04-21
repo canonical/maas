@@ -284,6 +284,7 @@ myst_enable_extensions = {
 
 extensions = [
     "generate_api_docs_extension",  # Auto-generate API docs during build
+    "generate_cli_docs_extension",  # Auto-generate CLI docs during build
     "canonical_sphinx",
     "notfound.extension",
     "sphinx_design",

@@ -4,12 +4,13 @@
 
 \restrict jDB4gdI1N8dbUCAC3vcdCvWs48TBU3tT39yhtb0ijqwqYnAc3QoCur8LfK1MnsD
 
--- Dumped from database version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
--- Dumped by pg_dump version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
+-- Dumped from database version 18.3 (Ubuntu 18.3-1)
+-- Dumped by pg_dump version 18.3 (Ubuntu 18.3-1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -5055,11 +5056,11 @@ ALTER SEQUENCE public.maasserver_bmc_id_seq OWNED BY public.maasserver_bmc.id;
 
 CREATE TABLE public.maasserver_bmcroutablerackcontrollerrelationship (
     id bigint NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    routable boolean NOT NULL,
-    bmc_id bigint NOT NULL,
-    rack_controller_id bigint NOT NULL
+    created timestamp with time zone CONSTRAINT maasserver_bmcroutablerackcontrollerrelationsh_created_not_null NOT NULL,
+    updated timestamp with time zone CONSTRAINT maasserver_bmcroutablerackcontrollerrelationsh_updated_not_null NOT NULL,
+    routable boolean CONSTRAINT maasserver_bmcroutablerackcontrollerrelations_routable_not_null NOT NULL,
+    bmc_id bigint CONSTRAINT maasserver_bmcroutablerackcontrollerrelationshi_bmc_id_not_null NOT NULL,
+    rack_controller_id bigint CONSTRAINT maasserver_bmcroutablerackcontrolle_rack_controller_id_not_null NOT NULL
 );
 
 
@@ -6209,8 +6210,8 @@ CREATE TABLE public.maasserver_forwarddnsserver (
 --
 
 CREATE TABLE public.maasserver_forwarddnsserver_domains (
-    id integer NOT NULL,
-    forwarddnsserver_id bigint NOT NULL,
+    id bigint NOT NULL,
+    forwarddnsserver_id bigint CONSTRAINT maasserver_forwarddnsserver_domain_forwarddnsserver_id_not_null NOT NULL,
     domain_id integer NOT NULL
 );
 

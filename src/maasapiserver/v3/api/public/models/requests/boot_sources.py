@@ -2,9 +2,16 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64decode
+from typing import Self
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.db.filters import QuerySpec
@@ -60,11 +67,11 @@ class BootSourceRequest(BaseModel):
         default=False,
     )
 
-    @root_validator
-    def validate_keyring_fields(cls, values):
-        skip_verification = values.get("skip_keyring_verification")
-        keyring_filename = values.get("keyring_filename")
-        keyring_data = values.get("keyring_data")
+    @model_validator(mode="after")
+    def validate_keyring_fields(self) -> Self:
+        skip_verification = self.skip_keyring_verification
+        keyring_filename = self.keyring_filename
+        keyring_data = self.keyring_data
 
         has_filename = bool(keyring_filename)
         has_data = bool(keyring_data)
@@ -81,13 +88,15 @@ class BootSourceRequest(BaseModel):
                 message="One of keyring_filename or keyring_data must be specified.",
             )
 
-        return values
+        return self
 
-    @validator("keyring_filename")
+    @field_validator("keyring_filename")
+    @classmethod
     def validate_b64_keyring_filename(cls, value: str | None) -> str:
         return "" if value is None else value
 
-    @validator("keyring_data")
+    @field_validator("keyring_data")
+    @classmethod
     def validate_b64_keyring_data(cls, value: str) -> str:
         value = "" if value is None else value
         try:
@@ -100,10 +109,10 @@ class BootSourceRequest(BaseModel):
         return value
 
 
-# Extra.forbid will raise a validation error if the user passes fields not defined.
+# ConfigDict(extra="forbid") will raise a validation error if the user passes fields not defined.
 # Used mainly because of the 'url' being immutable.
-class BootSourceUpdateRequest(BootSourceRequest, extra=Extra.forbid):
-    name: str = Field(description="Name of this boot source.")
+class BootSourceUpdateRequest(BootSourceRequest):
+    model_config = ConfigDict(extra="forbid")
     priority: int = Field(
         description="Priority value. Higher values mean higher priority. Must "
         "be non-negative.",
@@ -141,10 +150,11 @@ class BootSourceCreateRequest(BootSourceRequest):
     enabled: bool = Field(
         description="Whether to enable downloads from this source or not."
     )
-    # TODO: switch to field_validator when we migrate to pydantic 2.x
-    _validate_url = validator("url", pre=True, allow_reuse=True)(
-        validate_url_format
-    )
+
+    @field_validator("url", mode="before")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        return validate_url_format(v)
 
     async def to_builder(
         self, services: ServiceCollectionV3
@@ -168,7 +178,8 @@ class BootSourceFetchRequest(BootSourceRequest):
     url: str = Field(
         description="URL of SimpleStreams server providing boot source information."
     )
-    # TODO: switch to field_validator when we migrate to pydantic 2.x
-    _validate_url = validator("url", pre=True, allow_reuse=True)(
-        validate_url_format
-    )
+
+    @field_validator("url", mode="before")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        return validate_url_format(v)

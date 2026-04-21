@@ -14,6 +14,7 @@ from maasservicelayer.db.repositories.openfga_tuples import (
     OpenFGATuplesRepository,
 )
 from maasservicelayer.db.tables import OpenFGATupleTable
+from maasservicelayer.models.openfga_tuple import EntitlementDeleteSpec
 from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
 from maasservicelayer.services.openfga_tuples import (
     EntitlementsBuilderFactory,
@@ -55,6 +56,53 @@ class TestIntegrationOpenFGAService:
         assert tuples[0].object_type == "pool"
         assert tuples[0].object_id == "0"
         assert tuples[0].user == "group:999#member"
+
+    async def test_list_entitlements_page(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ):
+        await create_openfga_tuple(
+            fixture,
+            "group:888#member",
+            "userset",
+            "can_edit_machines",
+            "maas",
+            "0",
+        )
+        await create_openfga_tuple(
+            fixture,
+            "group:888#member",
+            "userset",
+            "can_view_machines",
+            "pool",
+            "10",
+        )
+        # unrelated group that should not appear
+        await create_openfga_tuple(
+            fixture,
+            "group:889#member",
+            "userset",
+            "can_view_machines",
+            "pool",
+            "10",
+        )
+
+        first_page = await services.openfga_tuples.list_entitlements_page(
+            888, page=1, size=1
+        )
+        assert first_page.total == 2
+        assert len(first_page.items) == 1
+
+        second_page = await services.openfga_tuples.list_entitlements_page(
+            888, page=2, size=1
+        )
+        assert second_page.total == 2
+        assert len(second_page.items) == 1
+
+        all_relations = {
+            first_page.items[0].relation,
+            second_page.items[0].relation,
+        }
+        assert all_relations == {"can_edit_machines", "can_view_machines"}
 
     async def test_upsert(
         self,
@@ -174,6 +222,122 @@ class TestIntegrationOpenFGAService:
         )
         assert len(retrieved_tuple) == 0
 
+    async def test_bulk_remove_users_from_group(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ):
+        await create_openfga_tuple(
+            fixture, "user:1", "user", "member", "group", "10"
+        )
+        await create_openfga_tuple(
+            fixture, "user:2", "user", "member", "group", "10"
+        )
+        await create_openfga_tuple(
+            fixture, "user:3", "user", "member", "group", "10"
+        )
+        # unrelated group membership that should not be removed
+        await create_openfga_tuple(
+            fixture, "user:99", "user", "member", "group", "20"
+        )
+
+        await services.openfga_tuples.bulk_remove_users_from_group(
+            10, [1, 2, 3]
+        )
+
+        removed = await fixture.get(
+            OpenFGATupleTable.fullname,
+            and_(
+                eq(OpenFGATupleTable.c.object_type, "group"),
+                eq(OpenFGATupleTable.c.object_id, "10"),
+            ),
+        )
+        assert len(removed) == 0
+
+        unrelated = await fixture.get(
+            OpenFGATupleTable.fullname,
+            and_(
+                eq(OpenFGATupleTable.c.object_type, "group"),
+                eq(OpenFGATupleTable.c.object_id, "20"),
+                eq(OpenFGATupleTable.c._user, "user:99"),
+            ),
+        )
+        assert len(unrelated) == 1
+
+    async def test_bulk_add_users_to_group(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ):
+        await services.openfga_tuples.bulk_add_users_to_group(
+            4000, [10, 20, 30]
+        )
+
+        tuples = await fixture.get(
+            OpenFGATupleTable.fullname,
+            and_(
+                eq(OpenFGATupleTable.c.object_type, "group"),
+                eq(OpenFGATupleTable.c.object_id, "4000"),
+                eq(OpenFGATupleTable.c.relation, "member"),
+            ),
+        )
+        assert len(tuples) == 3
+        users = {t["_user"] for t in tuples}
+        assert users == {"user:10", "user:20", "user:30"}
+
+    async def test_bulk_delete_entitlements(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ):
+        await create_openfga_tuple(
+            fixture,
+            "group:5000#member",
+            "userset",
+            "can_edit_machines",
+            "maas",
+            "0",
+        )
+        await create_openfga_tuple(
+            fixture,
+            "group:5000#member",
+            "userset",
+            "can_view_machines",
+            "pool",
+            "99",
+        )
+        # unrelated group entitlement that should not be removed
+        await create_openfga_tuple(
+            fixture,
+            "group:6000#member",
+            "userset",
+            "can_edit_machines",
+            "maas",
+            "0",
+        )
+
+        await services.openfga_tuples.bulk_delete_entitlements(
+            5000,
+            [
+                EntitlementDeleteSpec(
+                    entitlement="can_edit_machines",
+                    resource_type="maas",
+                    resource_id=0,
+                ),
+                EntitlementDeleteSpec(
+                    entitlement="can_view_machines",
+                    resource_type="pool",
+                    resource_id=99,
+                ),
+            ],
+        )
+
+        deleted = await fixture.get(
+            OpenFGATupleTable.fullname,
+            eq(OpenFGATupleTable.c._user, "group:5000#member"),
+        )
+        assert len(deleted) == 0
+
+        unrelated = await fixture.get(
+            OpenFGATupleTable.fullname,
+            eq(OpenFGATupleTable.c._user, "group:6000#member"),
+        )
+        assert len(unrelated) == 1
+
 
 @pytest.mark.asyncio
 class TestOpenFGAService:
@@ -257,6 +421,113 @@ class TestOpenFGAService:
         assert "can_deploy_machines" in sql_str
         assert "'pool'" in sql_str
         assert "'42'" in sql_str
+
+    async def test_bulk_remove_users_from_group(self) -> None:
+        mock_repository = Mock(OpenFGATuplesRepository)
+        mock_repository.delete_many = AsyncMock(return_value=None)
+        service = OpenFGATupleService(
+            context=Context(),
+            openfga_tuple_repository=mock_repository,
+            cache=OpenFGAServiceCache(),
+        )
+
+        await service.bulk_remove_users_from_group(
+            group_id=7, user_ids=[10, 20, 30]
+        )
+
+        mock_repository.delete_many.assert_called_once()
+        query = mock_repository.delete_many.call_args[0][0]
+        compiled = query.where.condition.compile(
+            compile_kwargs={"literal_binds": True}
+        )
+        sql_str = str(compiled)
+        assert "user:10" in sql_str
+        assert "user:20" in sql_str
+        assert "user:30" in sql_str
+        assert "member" in sql_str
+        assert "'group'" in sql_str
+        assert "'7'" in sql_str
+
+    async def test_bulk_add_users_to_group(self) -> None:
+        mock_repository = Mock(OpenFGATuplesRepository)
+        mock_repository.bulk_upsert = AsyncMock(return_value=None)
+        service = OpenFGATupleService(
+            context=Context(),
+            openfga_tuple_repository=mock_repository,
+            cache=OpenFGAServiceCache(),
+        )
+
+        await service.bulk_add_users_to_group(group_id=8, user_ids=[1, 2, 3])
+
+        mock_repository.bulk_upsert.assert_called_once()
+        builders = mock_repository.bulk_upsert.call_args[0][0]
+        assert len(builders) == 3
+        users = {b.user for b in builders}
+        assert users == {"user:1", "user:2", "user:3"}
+        assert all(b.relation == "member" for b in builders)
+        assert all(b.object_type == "group" for b in builders)
+        assert all(b.object_id == "8" for b in builders)
+
+    async def test_bulk_delete_entitlements(self) -> None:
+        mock_repository = Mock(OpenFGATuplesRepository)
+        mock_repository.delete_many = AsyncMock(return_value=None)
+        service = OpenFGATupleService(
+            context=Context(),
+            openfga_tuple_repository=mock_repository,
+            cache=OpenFGAServiceCache(),
+        )
+
+        await service.bulk_delete_entitlements(
+            group_id=9,
+            items=[
+                EntitlementDeleteSpec(
+                    entitlement="can_edit_machines",
+                    resource_type="maas",
+                    resource_id=0,
+                ),
+                EntitlementDeleteSpec(
+                    entitlement="can_view_machines",
+                    resource_type="pool",
+                    resource_id=42,
+                ),
+            ],
+        )
+
+        mock_repository.delete_many.assert_called_once()
+        query = mock_repository.delete_many.call_args[0][0]
+        compiled = query.where.condition.compile(
+            compile_kwargs={"literal_binds": True}
+        )
+        sql_str = str(compiled)
+        assert "group:9#member" in sql_str
+        assert "can_edit_machines" in sql_str
+        assert "'maas'" in sql_str
+        assert "can_view_machines" in sql_str
+        assert "'pool'" in sql_str
+        assert "'42'" in sql_str
+
+    async def test_list_entitlements_page(self) -> None:
+        mock_repository = Mock(OpenFGATuplesRepository)
+        mock_repository.list_entitlements = AsyncMock(
+            return_value=Mock(items=[], total=0)
+        )
+        service = OpenFGATupleService(
+            context=Context(),
+            openfga_tuple_repository=mock_repository,
+            cache=OpenFGAServiceCache(),
+        )
+
+        await service.list_entitlements_page(group_id=3, page=2, size=10)
+
+        mock_repository.list_entitlements.assert_called_once()
+        call_args = mock_repository.list_entitlements.call_args[0]
+        page, size, query = call_args
+        assert page == 2
+        assert size == 10
+        compiled = query.where.condition.compile(
+            compile_kwargs={"literal_binds": True}
+        )
+        assert "group:3#member" in str(compiled)
 
 
 class TestMAASTupleBuilderFactory:

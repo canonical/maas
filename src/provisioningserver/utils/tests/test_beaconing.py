@@ -41,6 +41,9 @@ from provisioningserver.utils.script import ActionScriptError
 
 class TestUUIDToTimestamp(MAASTestCase):
     def test_round_trip_preserves_timestamp(self):
+        self.skipTest(
+            "UUID1 timestamps offset due to libuuid bug (LP#2145734)"
+        )
         expected_timestamp = time.time()
         uuid = str(uuid1())
         actual_timestamp = uuid_to_timestamp(uuid)
@@ -328,6 +331,9 @@ class TestAgeOutUUIDQueue(MAASTestCase):
     """Tests for `age_out_uuid_queue()` function."""
 
     def test_does_not_remove_fresh_entries(self):
+        self.skipTest(
+            "UUID1 timestamps offset due to libuuid bug (LP#2145734)"
+        )
         uuid_now = str(uuid1())
         queue = OrderedDict()
         queue[uuid_now] = {}

@@ -884,7 +884,7 @@ class TestGetConfig(MAASServerTestCase):
 
     def test_preseed_url_for_known_node_local_ip_no_subnet(self):
         rack_url = "http://%s" % factory.make_name("host")
-        network = IPNetwork("10.1.1/24")
+        network = IPNetwork("10.1.1.0/24")
         local_ip = factory.pick_ip_in_network(network)
         remote_ip = factory.make_ip_address()
         self.patch(server_address, "resolve_hostname").return_value = {
@@ -954,7 +954,7 @@ class TestGetConfig(MAASServerTestCase):
 
     def test_preseed_url_for_known_node_uses_rack_url(self):
         rack_url = "http://%s" % factory.make_name("host")
-        network = IPNetwork("10.1.1/24")
+        network = IPNetwork("10.1.1.0/24")
         local_ip = factory.pick_ip_in_network(network)
         remote_ip = factory.make_ip_address()
         self.patch(server_address, "resolve_hostname").return_value = {

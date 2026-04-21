@@ -1,7 +1,9 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -14,10 +16,10 @@ from maasservicelayer.models.spaces import Space
 
 
 class SpaceResponse(HalResponse[BaseHal]):
-    kind = "Space"
+    kind: str = Field(default="Space")
     id: int
-    name: Optional[str]
-    description: Optional[str]
+    name: str | None = None
+    description: str | None = None
     vlans: BaseHref
     subnets: BaseHref
 
@@ -42,4 +44,4 @@ class SpaceResponse(HalResponse[BaseHal]):
 
 
 class SpacesListResponse(PaginatedResponse[SpaceResponse]):
-    kind = "SpacesList"
+    kind: str = Field(default="SpacesList")

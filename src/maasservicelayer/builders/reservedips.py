@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 from pydantic.networks import IPvAnyAddress
@@ -18,11 +17,9 @@ class ReservedIPBuilder(ResourceBuilder):
     the generated code.
     """
 
-    comment: Union[str, None, Unset] = Field(default=UNSET, required=False)
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    ip: Union[IPvAnyAddress, Unset] = Field(default=UNSET, required=False)
-    mac_address: Union[MacAddress, Unset] = Field(
-        default=UNSET, required=False
-    )
-    subnet_id: Union[int, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    comment: str | None | Unset = Field(default=UNSET)
+    created: datetime | Unset = Field(default=UNSET)
+    ip: IPvAnyAddress | Unset = Field(default=UNSET)
+    mac_address: MacAddress | Unset = Field(default=UNSET)
+    subnet_id: int | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)

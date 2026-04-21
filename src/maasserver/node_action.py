@@ -1041,7 +1041,7 @@ class Clone(NodeAction):
         rich_json_data = []
         base_data = field_errors.as_data()
         field_json = field_errors.get_json_data()
-        for error, error_json in zip(base_data, field_json):
+        for error, error_json in zip(base_data, field_json, strict=True):
             # Annotate base JSON data with specifics
             if error.params and "system_id" in error.params:
                 error_json["system_id"] = error.params["system_id"]

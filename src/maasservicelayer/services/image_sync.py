@@ -359,7 +359,7 @@ class ImageSyncService(Service):
             that must be downloaded.
 
         """
-        filtered_manifest = [ss_list.copy() for ss_list in manifest]
+        filtered_manifest = [ss_list.model_copy() for ss_list in manifest]
         for product_list in filtered_manifest:
             new_product_list = []
             for product in product_list.products:

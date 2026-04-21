@@ -283,7 +283,7 @@ class TestBootSourceSelectionsService:
         legacy_selection: LegacyBootSourceSelection,
         selection_builder: BootSourceSelectionBuilder,
     ) -> None:
-        builder = selection_builder.copy()
+        builder = selection_builder.model_copy()
         builder.arch = "arm64"
 
         service.legacy_boot_source_selection_service.get_one.return_value = (
@@ -321,7 +321,7 @@ class TestBootSourceSelectionsService:
         legacy_selection: LegacyBootSourceSelection,
         selection_builder: BootSourceSelectionBuilder,
     ) -> None:
-        legacy_star_selection = legacy_selection.copy()
+        legacy_star_selection = legacy_selection.model_copy()
         legacy_star_selection.arches = ["*"]
         service.legacy_boot_source_selection_service.get_one.return_value = (
             legacy_star_selection
@@ -354,7 +354,7 @@ class TestBootSourceSelectionsService:
         legacy_selection: LegacyBootSourceSelection,
         selection: BootSourceSelection,
     ) -> None:
-        legacy_selection_multi_arch = legacy_selection.copy()
+        legacy_selection_multi_arch = legacy_selection.model_copy()
         legacy_selection_multi_arch.arches = ["amd64", "arm64"]
         service.legacy_boot_source_selection_service.get_many.return_value = [
             legacy_selection_multi_arch
@@ -375,7 +375,7 @@ class TestBootSourceSelectionsService:
         legacy_selection: LegacyBootSourceSelection,
         selection: BootSourceSelection,
     ) -> None:
-        legacy_star_selection = legacy_selection.copy()
+        legacy_star_selection = legacy_selection.model_copy()
         legacy_star_selection.arches = ["*"]
         service.legacy_boot_source_selection_service.get_many.return_value = [
             legacy_star_selection
@@ -392,7 +392,7 @@ class TestBootSourceSelectionsService:
         legacy_selection: LegacyBootSourceSelection,
         selection: BootSourceSelection,
     ) -> None:
-        legacy_star_selection = legacy_selection.copy()
+        legacy_star_selection = legacy_selection.model_copy()
         legacy_star_selection.arches = ["*"]
         service.legacy_boot_source_selection_service.get_many.return_value = [
             legacy_star_selection
@@ -434,7 +434,7 @@ class TestBootSourceSelectionsService:
         legacy_selection: LegacyBootSourceSelection,
     ) -> None:
         service._ensure_legacy_selection_exists = AsyncMock()
-        legacy_selection_multi_arch = legacy_selection.copy()
+        legacy_selection_multi_arch = legacy_selection.model_copy()
         arches = ["amd64", "arm64", "ppc64el"]
         legacy_selection_multi_arch.arches = arches
         service.legacy_boot_source_selection_service.get_many.return_value = [
@@ -475,7 +475,7 @@ class TestBootSourceSelectionsService:
         legacy_selection: LegacyBootSourceSelection,
     ) -> None:
         service._ensure_legacy_selection_exists = AsyncMock()
-        legacy_star_selection = legacy_selection.copy()
+        legacy_star_selection = legacy_selection.model_copy()
         legacy_star_selection.arches = ["*"]
         service.legacy_boot_source_selection_service.get_many.return_value = [
             legacy_star_selection

@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
+from twisted.internet import reactor
 
 from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maascommon.openfga.base import MAASResourceEntitlement
@@ -20,6 +21,7 @@ from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import BootSourceForm
 from maasserver.models import BootSource
+from maasserver.utils.orm import post_commit_do
 from provisioningserver.events import EVENT_TYPES
 
 DISPLAYED_BOOTSOURCE_FIELDS = (
@@ -106,6 +108,11 @@ class BootSourceHandler(OperationsHandler):
         if form.is_valid():
             updated_boot_source = form.save()
             if updated_boot_source.url != old_url:
+                post_commit_do(
+                    reactor.callLater,
+                    0,
+                    updated_boot_source.verify_selections_after_url_update,
+                )
                 description = f"Updated boot source url from {old_url} to {updated_boot_source.url}"
             else:
                 description = f"Updated boot source {updated_boot_source.url}"

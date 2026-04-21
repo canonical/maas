@@ -16,6 +16,6 @@ class ResourcePool(MaasTimestampedBaseModel):
         return self.id == 0
 
 
-class ResourcePoolWithSummary(ResourcePool):
+class ResourcePoolStatistics(ResourcePool):
     machine_total_count: int
     machine_ready_count: int

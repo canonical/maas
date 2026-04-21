@@ -11,6 +11,7 @@ from maascommon.constants import (
     CANDIDATE_IMAGES_STREAM_URL,
     STABLE_IMAGES_STREAM_URL,
 )
+import maasserver.api.boot_sources as boot_source_module
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.audit import Event
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
@@ -102,6 +103,7 @@ class TestBootSourceAPI(APITestCase.ForUser):
 
     def test_PUT_updates_boot_source(self):
         self.become_admin()
+        self.patch(boot_source_module, "post_commit_do")
         boot_source = factory.make_BootSource()
         new_values = {
             "url": "http://example.com",
@@ -116,6 +118,38 @@ class TestBootSourceAPI(APITestCase.ForUser):
         self.assertEqual(
             boot_source.keyring_filename, new_values["keyring_filename"]
         )
+
+    def test_PUT_calls_workflow_if_url_changed(self):
+        self.become_admin()
+        mock_post_commit_do = self.patch(boot_source_module, "post_commit_do")
+        boot_source = factory.make_BootSource()
+        new_values = {
+            "url": "http://example.com/",
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertEqual(boot_source.url, new_values["url"])
+        mock_post_commit_do.assert_called_once()
+
+    def test_PUT_doesnt_call_workflow_if_url_unchanged(self):
+        self.become_admin()
+        mock_post_commit_do = self.patch(boot_source_module, "post_commit_do")
+        boot_source = factory.make_BootSource()
+        new_values = {
+            "keyring_filename": factory.make_name("filename"),
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertEqual(
+            boot_source.keyring_filename, new_values["keyring_filename"]
+        )
+        mock_post_commit_do.assert_not_called()
 
     def test_PUT_creates_general_audit_event(self):
         self.become_admin()
@@ -135,6 +169,7 @@ class TestBootSourceAPI(APITestCase.ForUser):
 
     def test_PUT_creates_url_changed_audit_event(self):
         self.become_admin()
+        self.patch(boot_source_module, "post_commit_do")
         boot_source = factory.make_BootSource()
         new_url = "http://new-url.com"
         new_values = {"url": new_url}

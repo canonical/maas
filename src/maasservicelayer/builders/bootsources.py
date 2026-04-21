@@ -1,8 +1,7 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Union
 
 from pydantic import Field
 
@@ -16,18 +15,12 @@ class BootSourceBuilder(ResourceBuilder):
     the generated code.
     """
 
-    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    url: Union[str, Unset] = Field(default=UNSET, required=False)
-    keyring_filename: Union[str, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    keyring_data: Union[bytes, None, Unset] = Field(
-        default=UNSET, required=False
-    )
-    priority: Union[int, Unset] = Field(default=UNSET, required=False)
-    skip_keyring_verification: Union[bool, Unset] = Field(
-        default=UNSET, required=False
-    )
-    enabled: Union[bool, Unset] = Field(default=UNSET, required=False)
+    created: datetime | Unset = Field(default=UNSET)
+    enabled: bool | Unset = Field(default=UNSET)
+    keyring_data: bytes | None | Unset = Field(default=UNSET)
+    keyring_filename: str | None | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    priority: int | Unset = Field(default=UNSET)
+    skip_keyring_verification: bool | Unset = Field(default=UNSET)
+    updated: datetime | Unset = Field(default=UNSET)
+    url: str | Unset = Field(default=UNSET)

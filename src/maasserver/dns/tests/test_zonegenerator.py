@@ -296,7 +296,9 @@ def assertIsForwardZoneWithDomain(testcase, zone, domain):
 
 
 def assertIsReverseZoneWithDomain(testcase, zone, domain, network):
-    network = network if network is None else IPNetwork(network)
+    network = (
+        network if network is None else IPNetwork(network, expand_partial=True)
+    )
     testcase.assertIsInstance(zone, DNSReverseZoneConfig)
     testcase.assertEqual(zone.domain, domain)
     testcase.assertEqual(zone._network, network)
@@ -332,7 +334,7 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_yields_forward_and_reverse_zone(self):
         default_domain = Domain.objects.get_default_domain().name
         domain = factory.make_Domain(name="henry")
-        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10.0.0.0/29").cidr))
         fwd, rev1, rev2 = ZoneGenerator(
             domain, subnet, serial=random.randint(0, 65535)
         ).as_list()
@@ -415,7 +417,7 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_with_node_yields_fwd_and_rev_zone(self):
         default_domain = Domain.objects.get_default_domain().name
         domain = factory.make_Domain(name="henry")
-        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10.0.0.0/29").cidr))
         factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric
         )
@@ -430,7 +432,7 @@ class TestZoneGenerator(MAASServerTestCase):
         default_domain = Domain.objects.get_default_domain().name
         domain = factory.make_Domain(name="henry")
         factory.make_Domain(name="john.henry")
-        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10.0.0.0/29").cidr))
         factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric
         )
@@ -449,7 +451,7 @@ class TestZoneGenerator(MAASServerTestCase):
         default_domain = Domain.objects.get_default_domain().name
         domain = factory.make_Domain(name="henry")
         john = factory.make_Domain(name="john.henry")
-        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10.0.0.0/29").cidr))
         sip = factory.make_StaticIPAddress(subnet=subnet)
         factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric
@@ -475,7 +477,7 @@ class TestZoneGenerator(MAASServerTestCase):
 
     def test_glue_receives_correct_dynamic_updates(self):
         domain = factory.make_Domain()
-        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10.0.0.0/29").cidr))
         other_subnet = factory.make_Subnet()
         sip = factory.make_StaticIPAddress(subnet=subnet)
         other_sip = factory.make_StaticIPAddress(subnet=other_subnet)
@@ -512,7 +514,7 @@ class TestZoneGenerator(MAASServerTestCase):
             zones[1]._dynamic_updates,
             [
                 DynamicDNSUpdate.as_reverse_record_update(
-                    updates[0], IPNetwork("10/29")
+                    updates[0], IPNetwork("10.0.0.0/29")
                 )
             ],
         )
@@ -520,7 +522,7 @@ class TestZoneGenerator(MAASServerTestCase):
             zones[2]._dynamic_updates,
             [
                 DynamicDNSUpdate.as_reverse_record_update(
-                    updates[0], IPNetwork("10/24")
+                    updates[0], IPNetwork("10.0.0.0/24")
                 )
             ],
         )
@@ -534,7 +536,7 @@ class TestZoneGenerator(MAASServerTestCase):
         self.patch(zonegenerator, "get_dns_server_addresses").return_value = [
             IPAddress("5.5.5.5")
         ]
-        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10.0.0.0/29").cidr))
         factory.make_StaticIPAddress(subnet=subnet)
         factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric
@@ -567,7 +569,7 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_returns_interface_ips_but_no_nulls(self):
         default_domain = Domain.objects.get_default_domain().name
         domain = factory.make_Domain(name="henry")
-        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10.0.0.0/29").cidr))
         subnet.gateway_ip = str(IPAddress(IPNetwork(subnet.cidr).ip + 1))
         subnet.save()
         # Create a node with two interfaces, with NULL ips
@@ -693,7 +695,7 @@ class TestZoneGenerator(MAASServerTestCase):
 
     def test_yields_internal_forward_zones(self):
         default_domain = Domain.objects.get_default_domain()
-        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10.0.0.0/29").cidr))
         domains = []
         for _ in range(3):
             record = InternalDomainResourseRecord(

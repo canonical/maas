@@ -53,6 +53,7 @@ jobs:
       - name: Build MAAS snap
         run: |
           sudo snap install snapcraft --classic
+          sudo snap install --edge core26
           cd "$GITHUB_WORKSPACE"
           make snap
           make snap-clean

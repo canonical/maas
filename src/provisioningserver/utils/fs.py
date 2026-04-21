@@ -3,7 +3,6 @@
 
 """Generic utilities for dealing with files and the filesystem."""
 
-import codecs
 from contextlib import contextmanager
 import errno
 import filecmp
@@ -355,7 +354,7 @@ def sudo_delete_file(filename):
 
 def read_text_file(path, encoding="utf-8"):
     """Read and decode the text file at the given path."""
-    with codecs.open(path, encoding=encoding) as infile:
+    with open(path, encoding=encoding) as infile:
         return infile.read()
 
 

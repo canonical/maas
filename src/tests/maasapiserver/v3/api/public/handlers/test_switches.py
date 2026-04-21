@@ -220,7 +220,7 @@ class TestSwitchesApi(ApiCommonTests):
         services_mock.switches.create_new_switch_and_interface.return_value = (
             Switch(
                 **{
-                    **TEST_SWITCH.dict(),
+                    **TEST_SWITCH.model_dump(),
                     "target_image_id": TEST_NOS_IMAGE.id,
                     "target_image": TEST_NOS_IMAGE.name,
                 }
@@ -373,7 +373,7 @@ class TestSwitchesApi(ApiCommonTests):
         )
         updated_switch = Switch(
             **{
-                **TEST_SWITCH.dict(),
+                **TEST_SWITCH.model_dump(),
                 "target_image_id": TEST_NOS_IMAGE.id,
                 "target_image": TEST_NOS_IMAGE.name,
             }

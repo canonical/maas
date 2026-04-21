@@ -1,8 +1,6 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Union
-
 from pydantic import Field
 
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
@@ -15,9 +13,9 @@ class ConsumerBuilder(ResourceBuilder):
     the generated code.
     """
 
-    description: Union[str, Unset] = Field(default=UNSET, required=False)
-    key: Union[str, Unset] = Field(default=UNSET, required=False)
-    name: Union[str, Unset] = Field(default=UNSET, required=False)
-    secret: Union[str, Unset] = Field(default=UNSET, required=False)
-    status: Union[str, Unset] = Field(default=UNSET, required=False)
-    user_id: Union[int, None, Unset] = Field(default=UNSET, required=False)
+    description: str | Unset = Field(default=UNSET)
+    key: str | Unset = Field(default=UNSET)
+    name: str | Unset = Field(default=UNSET)
+    secret: str | Unset = Field(default=UNSET)
+    status: str | Unset = Field(default=UNSET)
+    user_id: int | None | Unset = Field(default=UNSET)

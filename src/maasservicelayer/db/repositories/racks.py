@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from sqlalchemy import func, select, Table
@@ -33,9 +33,9 @@ class RacksRepository(BaseRepository[Rack]):
             select(
                 RackTable.c.id,
                 RackTable.c.name,
-                func.array_agg(NodeTable.c.system_id).label(
-                    "registered_agents_system_ids"
-                ),
+                func.array_remove(
+                    func.array_agg(NodeTable.c.system_id), None
+                ).label("registered_agents_system_ids"),
             )
             .select_from(RackTable)
             .outerjoin(AgentTable, AgentTable.c.rack_id == RackTable.c.id)

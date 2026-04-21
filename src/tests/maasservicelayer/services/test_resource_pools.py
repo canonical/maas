@@ -187,3 +187,19 @@ class TestResourcePoolsService:
         openfga_tuples_service.upsert.assert_any_call(
             OpenFGATupleBuilder.build_pool(str(resource_pool_2.id))
         )
+
+    async def test_list_with_statistics(self) -> None:
+        resource_pools_repository = Mock(ResourcePoolRepository)
+        openfga_tuples_service = Mock(OpenFGATupleService)
+        resource_pools_service = ResourcePoolsService(
+            context=Context(),
+            resource_pools_repository=resource_pools_repository,
+            openfga_tuples_service=openfga_tuples_service,
+        )
+        page = 1
+        size = 10
+        query = QuerySpec()
+        await resource_pools_service.list_with_statistics(page, size, query)
+        resource_pools_repository.list_with_statistics.assert_called_once_with(
+            page=page, size=size, query=query
+        )

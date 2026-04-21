@@ -2,7 +2,6 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Type
 
 from sqlalchemy import func, Select, select, Table
 
@@ -31,7 +30,7 @@ class SwitchesRepository(BaseRepository[Switch]):
     def get_repository_table(self) -> Table:
         return SwitchTable
 
-    def get_model_factory(self) -> Type[Switch]:
+    def get_model_factory(self) -> type[Switch]:
         return Switch
 
     @property

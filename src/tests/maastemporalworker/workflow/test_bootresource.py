@@ -41,6 +41,7 @@ from maascommon.workflows.bootresource import (
     GetFilesToDownloadForSelectionParam,
     GetFilesToDownloadReturnValue,
     GetLocalBootResourcesParamReturnValue,
+    PostUpdateBootSourceUrlParam,
     RegisterNotificationParam,
     ResourceDeleteParam,
     ResourceDownloadParam,
@@ -67,6 +68,7 @@ from maasservicelayer.db.repositories.notifications import (
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootresourcesets import BootResourceSet
+from maasservicelayer.models.bootsourcecache import BootSourceCache
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.image_manifests import ImageManifest
@@ -120,8 +122,10 @@ from maastemporalworker.workflow.bootresource import (
     GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME,
     GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME,
     GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME,
+    GET_STILL_AVAILABLE_SELECTIONS_ACTIVITY_NAME,
     GET_SYNCED_REGIONS_ACTIVITY_NAME,
     MasterImageSyncWorkflow,
+    PostUpdateBootSourceUrlWorkflow,
     REGION_TASK_QUEUE,
     REGISTER_NOTIFICATION_ACTIVITY_NAME,
     SyncAllLocalBootResourcesWorkflow,
@@ -675,6 +679,7 @@ class TestFetchManifestAndUpdateCacheActivity:
         activity_env: ActivityEnvironment,
     ) -> None:
         mock_boot_source = Mock(BootSource)
+        mock_boot_source.id = 1
         mock_ss_products_list = Mock(SimpleStreamsProductListType)
         mock_ss_products_list.products = [Mock(BootloaderProduct)]
         services_mock.image_sync = Mock(ImageSyncService)
@@ -707,7 +712,7 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.notifications.delete_one.assert_awaited_once_with(
             query=QuerySpec(
                 where=NotificationsClauseFactory.with_ident(
-                    NotificationComponent.FETCH_IMAGE_MANIFEST
+                    NotificationComponent.FETCH_IMAGE_MANIFEST.format(id=1)
                 )
             ),
         )
@@ -747,11 +752,11 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.notifications.create_or_update.assert_awaited_once_with(
             query=QuerySpec(
                 where=NotificationsClauseFactory.with_ident(
-                    NotificationComponent.FETCH_IMAGE_MANIFEST
+                    NotificationComponent.FETCH_IMAGE_MANIFEST.format(id=1)
                 )
             ),
             builder=NotificationBuilder(
-                ident=NotificationComponent.FETCH_IMAGE_MANIFEST,
+                ident=NotificationComponent.FETCH_IMAGE_MANIFEST.format(id=1),
                 users=True,
                 admins=True,
                 message="Failed to fetch image manifest for boot source with url http://foo.com. Check the logs for more details.",
@@ -1077,6 +1082,116 @@ class TestDeleteNotificationErrorActivity:
         )
 
 
+class TestGetStillAvailableSelections:
+    async def test_available_selection_is_returned_and_notification_deleted(
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
+        activity_env: ActivityEnvironment,
+    ) -> None:
+        selection = BootSourceSelection(
+            id=1,
+            os="ubuntu",
+            arch="amd64",
+            release="noble",
+            boot_source_id=1,
+            legacyselection_id=1,
+        )
+        cache_entry = BootSourceCache(
+            id=1,
+            os="ubuntu",
+            arch="amd64",
+            release="noble",
+            subarch="generic",
+            label="stable",
+            boot_source_id=1,
+            extra={},
+        )
+
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_many.return_value = [
+            selection
+        ]
+        services_mock.boot_source_cache = Mock(BootSourceCacheService)
+        services_mock.boot_source_cache.get_many.return_value = [cache_entry]
+        services_mock.notifications = Mock(NotificationsService)
+
+        result = await activity_env.run(
+            boot_activities.get_still_available_selections, 1
+        )
+
+        assert result == [1]
+        services_mock.notifications.create_or_update.assert_not_awaited()
+        services_mock.notifications.delete_one.assert_awaited_once_with(
+            query=QuerySpec(
+                where=NotificationsClauseFactory.with_ident(
+                    NotificationComponent.SELECTION_AVAILABILITY.format(
+                        id=selection.id
+                    )
+                )
+            )
+        )
+
+    async def test_unavailable_selection_is_not_returned_and_notification_created(
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
+        activity_env: ActivityEnvironment,
+    ) -> None:
+        selection = BootSourceSelection(
+            id=2,
+            os="ubuntu",
+            arch="arm64",
+            release="jammy",
+            boot_source_id=1,
+            legacyselection_id=2,
+        )
+
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_many.return_value = [
+            selection
+        ]
+        services_mock.boot_source_cache = Mock(BootSourceCacheService)
+        services_mock.boot_source_cache.get_many.return_value = []
+        services_mock.notifications = Mock(NotificationsService)
+
+        result = await activity_env.run(
+            boot_activities.get_still_available_selections, 1
+        )
+
+        assert result == []
+        services_mock.notifications.delete_one.assert_not_awaited()
+        services_mock.notifications.create_or_update.assert_awaited_once_with(
+            query=QuerySpec(
+                where=NotificationsClauseFactory.with_ident(
+                    NotificationComponent.SELECTION_AVAILABILITY.format(
+                        id=selection.id
+                    )
+                )
+            ),
+            builder=NotificationBuilder(
+                ident=NotificationComponent.SELECTION_AVAILABILITY.format(
+                    id=selection.id
+                ),
+                users=True,
+                admins=True,
+                message=(
+                    f"After boot source (id={selection.boot_source_id}) updates, "
+                    f"the boot source selection for {selection.os}/{selection.release} "
+                    f"arch={selection.arch} is not available anymore."
+                ),
+                context={},
+                user_id=None,
+                category=NotificationCategoryEnum.WARNING,
+                dismissable=True,
+            ),
+        )
+
+
 @pytest.fixture
 async def env() -> AsyncGenerator[WorkflowEnvironment, None]:
     env = await WorkflowEnvironment.start_time_skipping()
@@ -1134,6 +1249,9 @@ class MockActivities:
             GET_SYNCED_REGIONS_ACTIVITY_NAME: ActivityResult(result=[]),
             FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME: ActivityResult(
                 result=None
+            ),
+            GET_STILL_AVAILABLE_SELECTIONS_ACTIVITY_NAME: ActivityResult(
+                result=[]
             ),
             GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME: ActivityResult(
                 result=[1, 2]
@@ -1228,6 +1346,9 @@ class MockActivities:
     delete_bootresourcefile = _mock_activity_method(
         DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME
     )
+    get_still_available_selections = _mock_activity_method(
+        GET_STILL_AVAILABLE_SELECTIONS_ACTIVITY_NAME
+    )
 
 
 @pytest.fixture
@@ -1302,6 +1423,7 @@ async def _shared_queue_worker(
             SyncAllLocalBootResourcesWorkflow,
             MasterImageSyncWorkflow,
             FetchManifestWorkflow,
+            PostUpdateBootSourceUrlWorkflow,
         ],
         activities=[
             mock_activities.fetch_manifest_and_update_cache,
@@ -1315,6 +1437,7 @@ async def _shared_queue_worker(
             mock_activities.cleanup_boot_resource_sets_for_selection,
             mock_activities.register_notification,
             mock_activities.delete_notification,
+            mock_activities.get_still_available_selections,
         ],
         workflow_runner=custom_sandbox_runner(),
         interceptors=[worker_test_interceptor],
@@ -1389,6 +1512,71 @@ async def three_regions_workers(
         ),
     ):
         yield
+
+
+@pytest.mark.asyncio
+class TestPostUpdateBootSourceUrlWorkflow:
+    async def test_syncs_selections_in_intersection_of_available_and_highest_priority(
+        self,
+        client: Client,
+        single_region_workers,
+        temporal_calls: TemporalCalls,
+        mock_activities: MockActivities,
+    ):
+        mock_activities.results[
+            GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME
+        ] = ActivityResult(result=[1, 2, 3])
+        mock_activities.results[
+            GET_STILL_AVAILABLE_SELECTIONS_ACTIVITY_NAME
+        ] = ActivityResult(result=[1, 3])
+        mock_activities.results[
+            GET_FILES_TO_DOWNLOAD_FOR_SELECTION_ACTIVITY_NAME
+        ] = ActivityResult(
+            result=GetFilesToDownloadReturnValue(resources=[]),
+        )
+
+        await client.execute_workflow(
+            PostUpdateBootSourceUrlWorkflow.run,
+            PostUpdateBootSourceUrlParam(boot_source_id=1),
+            id="test-post-update-boot-source-url",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        temporal_calls.assert_child_workflow_called_times(
+            SYNC_SELECTION_WORKFLOW_NAME, times=2
+        )
+        called_ids = {
+            call.id
+            for call in temporal_calls.child_workflows.get_by_name(
+                SYNC_SELECTION_WORKFLOW_NAME
+            )
+        }
+        assert called_ids == {"sync-selection:1", "sync-selection:3"}
+
+    async def test_no_sync_when_no_intersection(
+        self,
+        client: Client,
+        single_region_workers,
+        temporal_calls: TemporalCalls,
+        mock_activities: MockActivities,
+    ):
+        mock_activities.results[
+            GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME
+        ] = ActivityResult(result=[1, 2])
+        mock_activities.results[
+            GET_STILL_AVAILABLE_SELECTIONS_ACTIVITY_NAME
+        ] = ActivityResult(result=[3, 4])
+
+        await client.execute_workflow(
+            PostUpdateBootSourceUrlWorkflow.run,
+            PostUpdateBootSourceUrlParam(boot_source_id=1),
+            id="test-post-update-no-intersection",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        temporal_calls.assert_child_workflow_not_called(
+            SYNC_SELECTION_WORKFLOW_NAME
+        )
 
 
 class TestFetchManifestWorkflow:

@@ -2,6 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
+from contextlib import suppress
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Coroutine
@@ -48,6 +49,8 @@ from maascommon.workflows.bootresource import (
     HEARTBEAT_TIMEOUT,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
     MAX_SOURCES,
+    POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
+    PostUpdateBootSourceUrlParam,
     RegisterNotificationParam,
     REPORT_INTERVAL,
     ResourceDeleteParam,
@@ -61,12 +64,15 @@ from maascommon.workflows.bootresource import (
     SyncSelectionParam,
 )
 from maasservicelayer.builders.notifications import NotificationBuilder
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFileClauseFactory,
 )
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
+)
+from maasservicelayer.db.repositories.bootsourcecache import (
+    BootSourceCacheClauseFactory,
 )
 from maasservicelayer.db.repositories.bootsources import (
     BootSourcesClauseFactory,
@@ -102,6 +108,7 @@ DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME = "delete-bootresourcefile"
 FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME = (
     "fetch-manifest-and-update-cache"
 )
+GET_STILL_AVAILABLE_SELECTIONS_ACTIVITY_NAME = "get-still-available-selections"
 GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME = (
     "get-highest-priority-selections"
 )
@@ -321,21 +328,37 @@ class BootResourcesActivity(ActivityBase):
         name=FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME
     )
     async def fetch_manifest_and_update_cache(
-        self,
+        self, boot_source_id: int | None = None
     ):
         """Fetch the latest manifest for all the enabled boot sources and
         updates both the manifests and the boot source caches.
+
+        Args:
+            boot_source_id: if passed, the cache will be updated only for the
+                specified boot source.
         """
         async with self.start_transaction() as services:
             if not await services.image_sync.check_boot_source_enabled():
                 return
+
+            where_clauses = [BootSourcesClauseFactory.with_enabled(True)]
+
+            # TODO: MAASENG-6418 remove this
+            if boot_source_id:
+                where_clauses.append(BootSourcesClauseFactory.with_id(boot_source_id))
+
             boot_sources = await services.boot_sources.get_many(
-                query=QuerySpec(
-                    where=BootSourcesClauseFactory.with_enabled(True)
-                )
+                query=QuerySpec(where=ClauseFactory.and_clauses(where_clauses))
             )
 
             for boot_source in boot_sources:
+                query = QuerySpec(
+                    where=NotificationsClauseFactory.with_ident(
+                        NotificationComponent.FETCH_IMAGE_MANIFEST.format(
+                            id=boot_source.id
+                        )
+                    )
+                )
                 try:
                     image_manifest = (
                         await services.image_manifests.fetch_and_update(
@@ -353,13 +376,11 @@ class BootResourcesActivity(ActivityBase):
                         f"Could not fetch manifest for boot source with url {boot_source.url}: {ex}"
                     )
                     await services.notifications.create_or_update(
-                        query=QuerySpec(
-                            where=NotificationsClauseFactory.with_ident(
-                                NotificationComponent.FETCH_IMAGE_MANIFEST
-                            )
-                        ),
+                        query=query,
                         builder=NotificationBuilder(
-                            ident=NotificationComponent.FETCH_IMAGE_MANIFEST,
+                            ident=NotificationComponent.FETCH_IMAGE_MANIFEST.format(
+                                id=boot_source.id
+                            ),
                             users=True,
                             admins=True,
                             message=f"Failed to fetch image manifest for boot source with url {boot_source.url}. Check the logs for more details.",
@@ -370,16 +391,9 @@ class BootResourcesActivity(ActivityBase):
                         ),
                     )
                 else:
-                    try:
-                        await services.notifications.delete_one(
-                            query=QuerySpec(
-                                where=NotificationsClauseFactory.with_ident(
-                                    NotificationComponent.FETCH_IMAGE_MANIFEST
-                                )
-                            ),
-                        )
-                    except NotFoundException:
-                        pass
+                    with suppress(NotFoundException):
+                        await services.notifications.delete_one(query=query)
+
             await services.image_sync.sync_boot_source_selections_from_msm(
                 boot_sources
             )
@@ -391,6 +405,71 @@ class BootResourcesActivity(ActivityBase):
             await (
                 services.boot_source_selections.ensure_selections_from_legacy()
             )
+
+    # v2 only
+    # TODO: MAASENG-6418 remove this
+    @activity_defn_with_context(
+        name=GET_STILL_AVAILABLE_SELECTIONS_ACTIVITY_NAME
+    )
+    async def get_still_available_selections(
+        self, boot_source_id: int
+    ) -> list[int]:
+        """After changing the boot source URL and updating its manifest, the already present
+        selections might not be available anymore. In that case, create a notification in the UI.
+
+        Returns the ids of the selections that are still available.
+        """
+        async with self.start_transaction() as services:
+            available_selection_ids = []
+            selections = await services.boot_source_selections.get_many(
+                query=QuerySpec(
+                    where=BootSourceSelectionClauseFactory.with_boot_source_id(
+                        boot_source_id
+                    )
+                )
+            )
+            cache_list = await services.boot_source_cache.get_many(
+                query=QuerySpec(
+                    where=BootSourceCacheClauseFactory.with_boot_source_id(
+                        boot_source_id
+                    )
+                )
+            )
+            cache_key_list = [(c.os, c.arch, c.release) for c in cache_list]
+            for selection in selections:
+                query = QuerySpec(
+                    where=NotificationsClauseFactory.with_ident(
+                        NotificationComponent.SELECTION_AVAILABILITY.format(
+                            id=selection.id
+                        )
+                    )
+                )
+
+                key = (selection.os, selection.arch, selection.release)
+                if key not in cache_key_list:
+                    await services.notifications.create_or_update(
+                        query=query,
+                        builder=NotificationBuilder(
+                            ident=NotificationComponent.SELECTION_AVAILABILITY.format(
+                                id=selection.id
+                            ),
+                            users=True,
+                            admins=True,
+                            message=f"After boot source (id={selection.boot_source_id}) updates, "
+                            f"the boot source selection for {selection.os}/{selection.release} "
+                            f"arch={selection.arch} is not available anymore.",
+                            context={},
+                            user_id=None,
+                            category=NotificationCategoryEnum.WARNING,
+                            dismissable=True,
+                        ),
+                    )
+                else:
+                    with suppress(NotFoundException):
+                        await services.notifications.delete_one(query=query)
+                    available_selection_ids.append(selection.id)
+
+            return available_selection_ids
 
     @activity_defn_with_context(
         name=GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME
@@ -585,6 +664,47 @@ class BootResourcesActivity(ActivityBase):
                 )
             except NotFoundException:
                 pass
+
+
+# v2 only
+# TODO: MAASENG-6418 remove this
+@workflow.defn(name=POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME, sandboxed=False)
+class PostUpdateBootSourceUrlWorkflow:
+    @workflow_run_with_context
+    async def run(self, input: PostUpdateBootSourceUrlParam):
+        await workflow.execute_activity(
+            FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,
+            input.boot_source_id,
+            start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
+            heartbeat_timeout=timedelta(seconds=30),
+            retry_policy=RetryPolicy(maximum_attempts=3),
+        )
+
+        available_selection_ids = await workflow.execute_activity(
+            GET_STILL_AVAILABLE_SELECTIONS_ACTIVITY_NAME,
+            input.boot_source_id,
+            start_to_close_timeout=timedelta(seconds=60),
+        )
+
+        highest_priority_selection_ids = await workflow.execute_activity(
+            GET_HIGHEST_PRIORITY_SELECTIONS_ACTIVITY_NAME,
+            start_to_close_timeout=timedelta(seconds=60),
+        )
+
+        selection_ids_to_sync = set(highest_priority_selection_ids) & set(
+            available_selection_ids
+        )
+        for selection_id in selection_ids_to_sync:
+            await workflow.start_child_workflow(
+                SYNC_SELECTION_WORKFLOW_NAME,
+                SyncSelectionParam(selection_id),
+                id=f"sync-selection:{selection_id}",
+                execution_timeout=DOWNLOAD_TIMEOUT,
+                run_timeout=DOWNLOAD_TIMEOUT,
+                id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+                parent_close_policy=ParentClosePolicy.ABANDON,
+                task_queue=REGION_TASK_QUEUE,
+            )
 
 
 @workflow.defn(name=DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME, sandboxed=False)

@@ -23,6 +23,8 @@ class NotificationComponent(StrEnum):
     REGION_IMAGE_DB_EXPORT = "bootresources_export_from_db"
 
     # v3 only
-    FETCH_IMAGE_MANIFEST = "Image manifest fetcher"
+    FETCH_IMAGE_MANIFEST = "Image manifest fetcher (boot source {id})"
     SELECTION_SYNC = "Sync selection {id}"
     BOOT_SOURCES_AVAILABILITY = "Boot sources availability"
+    # TODO: MAASENG-6418 remove this
+    SELECTION_AVAILABILITY = "Selection availability {id}"

@@ -20,7 +20,6 @@ from twisted.internet.defer import (
     CancelledError,
     inlineCallbacks,
     maybeDeferred,
-    returnValue,
     succeed,
 )
 from twisted.internet.endpoints import TCP6ServerEndpoint
@@ -565,7 +564,7 @@ class RegionServer(Region):
         response = yield self.callRemote(cluster.Authenticate, message=message)
         salt, digest = response["salt"], response["digest"]
         digest_local = calculate_digest(secret, message, salt)
-        returnValue(digest == digest_local)
+        return digest == digest_local
 
     @region.RegisterRackController.responder
     @inlineCallbacks
@@ -682,7 +681,7 @@ class RegionServer(Region):
                 "dropping connection." % client
             )
             yield self.transport.loseConnection()
-        returnValue(authenticated)
+        return authenticated
 
     def handshakeFailed(self, failure):
         """The authenticate handshake failed."""
@@ -938,7 +937,7 @@ class RegionService(service.Service):
                 if index == last:
                     raise
             else:
-                returnValue(port)
+                return port
 
     @asynchronous
     def startService(self):

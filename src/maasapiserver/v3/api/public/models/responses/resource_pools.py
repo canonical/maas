@@ -1,7 +1,9 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from enum import StrEnum
 from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -11,12 +13,12 @@ from maasapiserver.v3.api.public.models.responses.base import (
 )
 from maasservicelayer.models.resource_pools import (
     ResourcePool,
-    ResourcePoolWithSummary,
+    ResourcePoolStatistics,
 )
 
 
 class ResourcePoolResponse(HalResponse[BaseHal]):
-    kind = "ResourcePool"
+    kind: str = Field(default="ResourcePool")
     id: int
     name: str
     description: str
@@ -38,7 +40,7 @@ class ResourcePoolResponse(HalResponse[BaseHal]):
 
 
 class ResourcePoolsListResponse(PaginatedResponse[ResourcePoolResponse]):
-    kind = "ResourcePoolList"
+    kind: str = Field(default="ResourcePoolList")
 
 
 class ResourcePoolPermission(StrEnum):
@@ -46,37 +48,37 @@ class ResourcePoolPermission(StrEnum):
     DELETE = "delete"
 
 
-class ResourcePoolWithSummaryResponse(ResourcePoolResponse):
-    kind = "ResourcePoolWithSummary"
+class ResourcePoolStatisticsResponse(ResourcePoolResponse):
+    kind: str = Field(default="ResourcePoolStatistics")
     machine_total_count: int
     machine_ready_count: int
     is_default: bool
     permissions: set[ResourcePoolPermission]
 
     @classmethod
-    def from_model_with_summary(
+    def from_model_with_statistics(
         cls,
-        resource_pool_with_summary: ResourcePoolWithSummary,
+        resource_pool_statistics: ResourcePoolStatistics,
         permissions: set[ResourcePoolPermission],
         self_base_hyperlink: str,
     ) -> Self:
         return cls(
-            id=resource_pool_with_summary.id,
-            name=resource_pool_with_summary.name,
-            description=resource_pool_with_summary.description,
-            machine_total_count=resource_pool_with_summary.machine_total_count,
-            machine_ready_count=resource_pool_with_summary.machine_ready_count,
-            is_default=resource_pool_with_summary.is_default(),
+            id=resource_pool_statistics.id,
+            name=resource_pool_statistics.name,
+            description=resource_pool_statistics.description,
+            machine_total_count=resource_pool_statistics.machine_total_count,
+            machine_ready_count=resource_pool_statistics.machine_ready_count,
+            is_default=resource_pool_statistics.is_default(),
             permissions=permissions,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
-                    href=f"{self_base_hyperlink.rstrip('/')}/{resource_pool_with_summary.id}"
+                    href=f"{self_base_hyperlink.rstrip('/')}/{resource_pool_statistics.id}"
                 )
             ),
         )
 
 
-class ResourcePoolsWithSummaryListResponse(
-    PaginatedResponse[ResourcePoolWithSummaryResponse]
+class ResourcePoolStatisticsListResponse(
+    PaginatedResponse[ResourcePoolStatisticsResponse]
 ):
-    kind = "ResourcePoolsWithSummaryList"
+    kind: str = Field(default="ResourcePoolStatisticsList")

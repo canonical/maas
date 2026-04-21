@@ -22,9 +22,14 @@ from maascommon.constants import (
     CANDIDATE_IMAGES_STREAM_URL,
     STABLE_IMAGES_STREAM_URL,
 )
+from maascommon.workflows.bootresource import (
+    POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
+    PostUpdateBootSourceUrlParam,
+)
 from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.workflow import start_workflow
 
 
 class ImageManifest(Model):
@@ -237,3 +242,9 @@ class BootSource(CleanSave, TimestampedModel):
             selection.delete()
 
         return super().delete(*args, **kwargs)
+
+    def verify_selections_after_url_update(self):
+        start_workflow(
+            workflow_name=POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
+            param=PostUpdateBootSourceUrlParam(self.id),
+        )

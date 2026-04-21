@@ -12,6 +12,11 @@ from maascommon.constants import (
     CANDIDATE_IMAGES_STREAM_URL,
     STABLE_IMAGES_STREAM_URL,
 )
+from maascommon.workflows.bootresource import (
+    POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
+    PostUpdateBootSourceUrlParam,
+)
+import maasserver.models.bootsource as boot_source_module
 from maasserver.models.bootsource import BootSource
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
@@ -261,3 +266,12 @@ class TestBootSource(MAASServerTestCase):
         boot_source_id = boot_source.id
         boot_source.delete()
         self.assertFalse(BootSource.objects.filter(id=boot_source_id).exists())
+
+    def test_verify_selection_after_url_update(self):
+        mock_start_workflow = self.patch(boot_source_module, "start_workflow")
+        boot_source = make_BootSource()
+        boot_source.verify_selections_after_url_update()
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
+            param=PostUpdateBootSourceUrlParam(boot_source.id),
+        )

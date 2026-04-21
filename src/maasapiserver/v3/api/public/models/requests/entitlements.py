@@ -1,7 +1,9 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from maascommon.openfga.base import OpenFGAEntitlementResourceType
 from maasservicelayer.db.filters import QuerySpec
@@ -16,6 +18,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.models.fields import UniqueList
+from maasservicelayer.models.openfga_tuple import EntitlementDeleteSpec
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.openfga_tuples import (
     EntitlementsBuilderFactory,
@@ -74,3 +78,26 @@ class EntitlementRequest(BaseModel):
                     ]
                 )
         return factory.build_tuple(group_id, self.resource_id)
+
+
+class BulkEntitlementDeleteItem(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    resource_type: OpenFGAEntitlementResourceType = Field(
+        description="The resource type (e.g. 'maas', 'pool')."
+    )
+    resource_id: int = Field(description="The resource ID.")
+    entitlement: str = Field(description="The entitlement name.")
+
+    def to_spec(self) -> EntitlementDeleteSpec:
+        return EntitlementDeleteSpec(
+            entitlement=self.entitlement,
+            resource_type=self.resource_type,
+            resource_id=self.resource_id,
+        )
+
+
+class BulkEntitlementDeleteRequest(BaseModel):
+    items: Annotated[
+        UniqueList[BulkEntitlementDeleteItem], Field(min_length=1)  # type: ignore[valid-type]
+    ]

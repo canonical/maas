@@ -14,6 +14,8 @@ from maasservicelayer.db.repositories.usergroups import (
 )
 from maasservicelayer.db.tables import UserGroupTable
 from maasservicelayer.models.usergroups import UserGroup
+from tests.fixtures.factories.openfga_tuples import create_openfga_tuple
+from tests.fixtures.factories.user import create_test_user
 from tests.fixtures.factories.usergroups import create_test_usergroup
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
@@ -40,6 +42,17 @@ class TestUserGroupsClauseFactory:
                 )
             )
             == "maasserver_usergroup.name = 'test-group'"
+        )
+
+    def test_with_name_like(self):
+        clause = UserGroupsClauseFactory.with_name_like("te")
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "lower(maasserver_usergroup.name) LIKE lower('%te%')"
         )
 
 
@@ -107,3 +120,55 @@ class TestUserGroupsRepository(RepositoryCommonTests[UserGroup]):
         groups = await repository_instance.list(1, 20, query)
         assert len(groups.items) == 2
         assert groups.total == 2
+
+    async def test_list_with_name_like_filter(
+        self,
+        repository_instance: UserGroupsRepository,
+        fixture: Fixture,
+    ) -> None:
+        await create_test_usergroup(fixture, name="group-a", description="a")
+        await create_test_usergroup(
+            fixture, name="other-group", description="b"
+        )
+
+        query = QuerySpec(
+            where=UserGroupsClauseFactory.with_name_like("group")
+        )
+        groups = await repository_instance.list(1, 20, query)
+        assert len(groups.items) == 2
+        assert groups.total == 2
+
+        query = QuerySpec(
+            where=UserGroupsClauseFactory.with_name_like("other")
+        )
+        groups = await repository_instance.list(1, 20, query)
+        assert len(groups.items) == 1
+        assert groups.total == 1
+
+    async def test_list_groups_statistics(
+        self,
+        repository_instance: UserGroupsRepository,
+        fixture: Fixture,
+    ) -> None:
+        user1 = await create_test_user(fixture)
+        user2 = await create_test_user(fixture)
+        user3 = await create_test_user(fixture)
+        await create_openfga_tuple(
+            fixture, f"user:{user1.id}", "user", "member", "group", "1"
+        )
+        await create_openfga_tuple(
+            fixture, f"user:{user2.id}", "user", "member", "group", "1"
+        )
+        await create_openfga_tuple(
+            fixture, f"user:{user3.id}", "user", "member", "group", "2"
+        )
+        search_query = QuerySpec(
+            where=UserGroupsClauseFactory.with_ids([1, 2])
+        )
+        groups = await repository_instance.list_groups_statistics(
+            1, 20, search_query
+        )
+        assert len(groups.items) == 2
+        assert groups.total == 2
+        assert groups.items[0].user_count == 1
+        assert groups.items[1].user_count == 2

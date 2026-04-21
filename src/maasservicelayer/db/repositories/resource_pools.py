@@ -14,7 +14,7 @@ from maasservicelayer.db.tables import NodeTable, ResourcePoolTable
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import (
     ResourcePool,
-    ResourcePoolWithSummary,
+    ResourcePoolStatistics,
 )
 
 
@@ -36,9 +36,9 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
         result = (await self.execute_stmt(stmt)).all()
         return {row.id for row in result}
 
-    async def list_with_summary(
+    async def list_with_statistics(
         self, page: int, size: int, query: QuerySpec | None
-    ) -> ListResult[ResourcePoolWithSummary]:
+    ) -> ListResult[ResourcePoolStatistics]:
         total_stmt = select(func.count()).select_from(
             self.get_repository_table()
         )
@@ -79,10 +79,9 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
             stmt = query.enrich_stmt(stmt)
 
         result = await self.execute_stmt(stmt)
-        return ListResult[ResourcePoolWithSummary](
+        return ListResult[ResourcePoolStatistics](
             items=[
-                ResourcePoolWithSummary(**row._asdict())
-                for row in result.all()
+                ResourcePoolStatistics(**row._asdict()) for row in result.all()
             ],
             total=total,
         )
