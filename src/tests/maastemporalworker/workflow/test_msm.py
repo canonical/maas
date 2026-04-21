@@ -690,7 +690,9 @@ class TestMSMHeartbeatWorkflow:
             input: MSMHeartbeatParam,
         ) -> tuple[int, bool]:
             calls["msm-send-heartbeat"].append(True)
-            return (-1, False)
+            if len(calls["msm-send-heartbeat"]) == 2:
+                return (-1, False)
+            return (1, True)
 
         @activity.defn(name=MSM_GET_ENROL_ACTIVITY_NAME)
         async def get_enrol() -> dict[str, Any]:
@@ -732,10 +734,10 @@ class TestMSMHeartbeatWorkflow:
                     task_queue=worker.task_queue,
                 )
 
-        assert len(calls["msm-get-heartbeat-data"]) == 1
-        assert len(calls["msm-send-heartbeat"]) == 1
-        assert len(calls["msm-get-enrol"]) == 1
-        assert len(calls["msm-get-version"]) == 1
+        assert len(calls["msm-get-heartbeat-data"]) == 2
+        assert len(calls["msm-send-heartbeat"]) == 2
+        assert len(calls["msm-get-enrol"]) == 2
+        assert len(calls["msm-get-version"]) == 2
         assert len(calls["msm-get-config-options"]) == 1
 
 
