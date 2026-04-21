@@ -9,6 +9,10 @@ from maascommon.constants import (
     CANDIDATE_IMAGES_STREAM_URL,
     STABLE_IMAGES_STREAM_URL,
 )
+from maascommon.enums.events import EventTypeEnum
+from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+)
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -31,6 +35,7 @@ from maasservicelayer.services.bootsourceselections import (
 )
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.image_manifests import ImageManifestsService
+from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
@@ -46,6 +51,7 @@ class TestBootSourcesService(ServiceCommonTests):
             boot_source_selections_service=Mock(BootSourceSelectionsService),
             image_manifests_service=Mock(ImageManifestsService),
             events_service=Mock(EventsService),
+            temporal_service=Mock(TemporalService),
         )
 
     @pytest.fixture
@@ -83,6 +89,7 @@ class TestBootSourcesService(ServiceCommonTests):
             boot_source_selections_service=boot_source_selections_service_mock,
             image_manifests_service=image_manifests_service,
             events_service=events_service_mock,
+            temporal_service=Mock(TemporalService),
         )
 
         query = Mock(QuerySpec)
@@ -260,4 +267,29 @@ class TestBootSourcesService(ServiceCommonTests):
         service_instance.repository.update_by_id.assert_called_once_with(
             id=1,
             builder=BootSourceBuilder(enabled=True),
+        )
+
+    async def test_post_create_hook_creates_event(
+        self, service_instance, test_instance
+    ):
+        service_instance.repository.create.return_value = test_instance
+
+        await service_instance.create(BootSourceBuilder())
+
+        service_instance.events_service.record_event.assert_called_once_with(
+            event_type=EventTypeEnum.BOOT_SOURCE,
+            event_description=f"Created boot source {test_instance.url}",
+        )
+
+    async def test_post_create_hook_starts_fetch_manifest(
+        self, service_instance, test_instance
+    ):
+        service_instance.repository.create.return_value = test_instance
+
+        await service_instance.create(BootSourceBuilder())
+
+        service_instance.temporal_service.register_workflow_call.assert_called_once_with(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            parameter=test_instance.id,
+            wait=False,
         )

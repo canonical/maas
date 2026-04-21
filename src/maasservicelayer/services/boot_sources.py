@@ -11,6 +11,9 @@ from maascommon.constants import (
     STABLE_IMAGES_STREAM_URL,
 )
 from maascommon.enums.events import EventTypeEnum
+from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+)
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -40,6 +43,7 @@ from maasservicelayer.services.bootsourceselections import (
 )
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.image_manifests import ImageManifestsService
+from maasservicelayer.services.temporal import TemporalService
 
 logger = structlog.getLogger()
 
@@ -56,6 +60,7 @@ class BootSourcesService(
         boot_source_cache_service: BootSourceCacheService,
         boot_source_selections_service: BootSourceSelectionsService,
         image_manifests_service: ImageManifestsService,
+        temporal_service: TemporalService,
         events_service: EventsService,
     ) -> None:
         super().__init__(context, repository)
@@ -63,6 +68,7 @@ class BootSourcesService(
         self.boot_source_selections_service = boot_source_selections_service
         self.events_service = events_service
         self.image_manifests_service = image_manifests_service
+        self.temporal_service = temporal_service
 
     async def _cascade_delete_dependents(
         self, resources: Sequence[BootSource]
@@ -93,14 +99,16 @@ class BootSourcesService(
             event_type=EventTypeEnum.BOOT_SOURCE,
             event_description=f"Created boot source {resource.url}",
         )
+        self.temporal_service.register_workflow_call(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            parameter=resource.id,
+            wait=False,
+        )
 
     async def post_update_hook(
         self, old_resource: BootSource, updated_resource: BootSource
     ) -> None:
-        if updated_resource.url != old_resource.url:
-            description = f"Updated boot source url from {old_resource.url} to {updated_resource.url}"
-        else:
-            description = f"Updated boot source {updated_resource.url}"
+        description = f"Updated boot source {updated_resource.url}"
         await self.events_service.record_event(
             event_type=EventTypeEnum.BOOT_SOURCE,
             event_description=description,
