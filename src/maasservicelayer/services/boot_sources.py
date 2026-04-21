@@ -17,7 +17,10 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
 )
-from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+    BootSourcesRepository,
+)
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
@@ -159,3 +162,18 @@ class BootSourcesService(
                     for field in denied_fields
                 ]
                 raise BadRequestException(details=details)
+
+    async def disable_all(self) -> None:
+        await self.update_many(
+            query=QuerySpec(), builder=BootSourceBuilder(enabled=False)
+        )
+
+    async def set_stable_enabled(self) -> None:
+        await self.update_one(
+            query=QuerySpec(
+                where=BootSourcesClauseFactory.with_url(
+                    STABLE_IMAGES_STREAM_URL
+                )
+            ),
+            builder=BootSourceBuilder(enabled=True),
+        )

@@ -15,7 +15,10 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
 )
-from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+    BootSourcesRepository,
+)
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
@@ -212,3 +215,49 @@ class TestBootSourcesService(ServiceCommonTests):
         self, service_instance, test_instance, builder
     ):
         await service_instance.pre_update_instance(test_instance, builder)
+
+    async def test_disable_all(self, service_instance):
+        service_instance.repository.update_many.return_value = []
+        await service_instance.disable_all()
+        service_instance.repository.update_many.assert_called_once_with(
+            query=QuerySpec(),
+            builder=BootSourceBuilder(enabled=False),
+        )
+
+    async def test_set_stable_enabled(self, service_instance):
+        service_instance.repository.get_one.return_value = BootSource(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="stable",
+            url=STABLE_IMAGES_STREAM_URL,
+            keyring_filename="",
+            keyring_data=b"",
+            priority=2,
+            skip_keyring_verification=False,
+            enabled=False,
+        )
+        service_instance.repository.update_by_id.return_value = BootSource(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="stable",
+            url=STABLE_IMAGES_STREAM_URL,
+            keyring_filename="",
+            keyring_data=b"",
+            priority=2,
+            skip_keyring_verification=False,
+            enabled=True,
+        )
+        await service_instance.set_stable_enabled()
+        service_instance.repository.get_one.assert_called_once_with(
+            query=QuerySpec(
+                where=BootSourcesClauseFactory.with_url(
+                    STABLE_IMAGES_STREAM_URL
+                )
+            )
+        )
+        service_instance.repository.update_by_id.assert_called_once_with(
+            id=1,
+            builder=BootSourceBuilder(enabled=True),
+        )

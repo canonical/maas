@@ -68,6 +68,9 @@ from maasservicelayer.db.repositories.bootresourcefiles import (
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
 )
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+)
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
@@ -320,13 +323,16 @@ class BootResourcesActivity(ActivityBase):
     async def fetch_manifest_and_update_cache(
         self,
     ):
-        """Fetch the latest manifest for all the boot sources and updates both
-        the manifests and the boot source caches.
+        """Fetch the latest manifest for all the enabled boot sources and
+        updates both the manifests and the boot source caches.
         """
         async with self.start_transaction() as services:
-            await services.image_sync.ensure_boot_source_definition()
+            if not await services.image_sync.check_boot_source_enabled():
+                return
             boot_sources = await services.boot_sources.get_many(
-                query=QuerySpec()
+                query=QuerySpec(
+                    where=BootSourcesClauseFactory.with_enabled(True)
+                )
             )
 
             for boot_source in boot_sources:

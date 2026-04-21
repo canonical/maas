@@ -697,7 +697,7 @@ class TestFetchManifestAndUpdateCacheActivity:
         await activity_env.run(boot_activities.fetch_manifest_and_update_cache)
 
         assert heartbeats == ["Downloaded images descriptions"]
-        services_mock.image_sync.ensure_boot_source_definition.assert_awaited_once()
+        services_mock.image_sync.check_boot_source_enabled.assert_awaited_once()
         services_mock.boot_sources.get_many.assert_awaited_once()
         services_mock.image_manifests.fetch_and_update.assert_awaited_once()
         services_mock.boot_source_cache.update_from_image_manifest.assert_awaited_once()
