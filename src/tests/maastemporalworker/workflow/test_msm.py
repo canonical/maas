@@ -36,7 +36,9 @@ from maastemporalworker.workflow.msm import (
     MSM_ENROL_EP,
     MSM_GET_ENROL_ACTIVITY_NAME,
     MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME,
+    MSM_GET_KNOWN_CONFIG_OPTIONS,
     MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME,
+    MSM_GET_VERSION_ACTIVITY_NAME,
     MSM_REFRESH_EP,
     MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME,
     MSM_SEND_ENROL_ACTIVITY_NAME,
@@ -116,6 +118,8 @@ def hb_param() -> MSMHeartbeatParam:
             allocated=1,
             deployed=2,
         ),
+        version="3.8.0",
+        known_config_options=None,
     )
 
 
@@ -356,15 +360,19 @@ class TestMSMActivities:
             True,
             200,
             "",
+            body={"config_options_requested": False},
             headers={
                 "MSM-Heartbeat-Interval-Seconds": 300,
             },
         )
 
         env = ActivityEnvironment()
-        intval = await env.run(msm_act.send_heartbeat, hb_param)
+        intval, send_config_opts = await env.run(
+            msm_act.send_heartbeat, hb_param
+        )
 
         assert intval == 300
+        assert send_config_opts is False
         mocked_session.post.assert_called_once()
         args = mocked_session.post.call_args.args
         kwargs = mocked_session.post.call_args.kwargs
@@ -373,14 +381,19 @@ class TestMSMActivities:
         assert kwargs["json"]["name"] == _MAAS_SITE_NAME
         assert kwargs["json"]["url"] == _MAAS_URL
         assert "machines_by_status" in kwargs["json"]
+        assert kwargs["json"]["version"] == hb_param.version
+        assert "known_config_options" not in kwargs["json"]
 
     async def test_send_heartbeat_cancel(self, mocker, msm_act, hb_param):
         mocked_session = msm_act._session
         self._mock_post(mocker, mocked_session, True, 401, "")
 
         env = ActivityEnvironment()
-        intval = await env.run(msm_act.send_heartbeat, hb_param)
+        intval, send_config_opts = await env.run(
+            msm_act.send_heartbeat, hb_param
+        )
         assert intval == -1
+        assert send_config_opts is False
 
     async def test_refresh_token(self, mocker, msm_act, hb_param):
         mocked_session = msm_act._session
@@ -496,6 +509,21 @@ class TestMSMActivities:
         env = ActivityEnvironment()
         await env.run(msm_act.restore_default_boot_source)
         services_mock.image_sync.ensure_boot_source_definition.assert_called_once()
+
+    async def test_get_known_config_options(self, msm_act):
+        env = ActivityEnvironment()
+        config_opts = await env.run(msm_act.get_known_config_options)
+        # TODO: update once config workflow is implemented
+        assert config_opts == []
+
+    async def test_get_running_version(self, msm_act):
+        env = ActivityEnvironment()
+        version = await env.run(msm_act.get_running_version)
+        # Verify version is in X.Y.Z format
+        parts = version.split(".")
+        assert len(parts) == 3
+        for part in parts:
+            assert part.isdigit()
 
 
 class TestMSMEnrolWorkflow:
@@ -658,9 +686,11 @@ class TestMSMHeartbeatWorkflow:
             return MachinesCountByStatus(allocated=1, deployed=1)
 
         @activity.defn(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
-        async def send_heartbeat(input: MSMHeartbeatParam) -> int:
+        async def send_heartbeat(
+            input: MSMHeartbeatParam,
+        ) -> tuple[int, bool]:
             calls["msm-send-heartbeat"].append(True)
-            return -1
+            return (-1, False)
 
         @activity.defn(name=MSM_GET_ENROL_ACTIVITY_NAME)
         async def get_enrol() -> dict[str, Any]:
@@ -672,6 +702,16 @@ class TestMSMHeartbeatWorkflow:
                 "jwt_refresh_url": _JWT_REFRESH_URL,
             }
 
+        @activity.defn(name=MSM_GET_VERSION_ACTIVITY_NAME)
+        async def get_version() -> str:
+            calls["msm-get-version"].append(True)
+            return "3.4.0"
+
+        @activity.defn(name=MSM_GET_KNOWN_CONFIG_OPTIONS)
+        async def get_config_options() -> list[str]:
+            calls["msm-get-config-options"].append(True)
+            return []
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -681,6 +721,8 @@ class TestMSMHeartbeatWorkflow:
                     get_heartbeat_data,
                     send_heartbeat,
                     get_enrol,
+                    get_version,
+                    get_config_options,
                 ],
             ) as worker:
                 await env.client.execute_workflow(
@@ -693,6 +735,8 @@ class TestMSMHeartbeatWorkflow:
         assert len(calls["msm-get-heartbeat-data"]) == 1
         assert len(calls["msm-send-heartbeat"]) == 1
         assert len(calls["msm-get-enrol"]) == 1
+        assert len(calls["msm-get-version"]) == 1
+        assert len(calls["msm-get-config-options"]) == 1
 
 
 class TestMSMTokenRefreshWorkflow:
