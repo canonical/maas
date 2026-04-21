@@ -6,6 +6,10 @@ from typing import List, Sequence
 
 import structlog
 
+from maascommon.constants import (
+    CANDIDATE_IMAGES_STREAM_URL,
+    STABLE_IMAGES_STREAM_URL,
+)
 from maascommon.enums.events import EventTypeEnum
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
@@ -16,6 +20,14 @@ from maasservicelayer.db.repositories.bootsourcecache import (
 from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
+)
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    BaseExceptionDetail,
+)
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_DEFAULT_BOOT_SOURCE_VIOLATION_TYPE,
+    INVALID_ARGUMENT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services.base import BaseService
@@ -108,3 +120,42 @@ class BootSourcesService(
                 event_type=EventTypeEnum.BOOT_SOURCE,
                 event_description=f"Deleted boot source {resource.url}",
             )
+
+    async def pre_delete_hook(
+        self, resource_to_be_deleted: BootSource
+    ) -> None:
+        if resource_to_be_deleted.url in (
+            STABLE_IMAGES_STREAM_URL,
+            CANDIDATE_IMAGES_STREAM_URL,
+        ):
+            raise BadRequestException(
+                details=BaseExceptionDetail(
+                    type=CANNOT_DELETE_DEFAULT_BOOT_SOURCE_VIOLATION_TYPE,
+                    message="The MAAS default boot sources can't be deleted.",
+                )
+            )
+
+    async def pre_update_instance(
+        self, existing_resource: BootSource, builder: BootSourceBuilder
+    ) -> None:
+        if existing_resource.url in (
+            STABLE_IMAGES_STREAM_URL,
+            CANDIDATE_IMAGES_STREAM_URL,
+        ):
+            allowed_fields = {"priority", "enabled"}
+            changed_fields = {
+                k
+                for k, v in builder.populated_fields().items()
+                if getattr(existing_resource, k) != v
+            }
+            denied_fields = changed_fields - allowed_fields
+            if denied_fields:
+                details = [
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message=f"'{field}' cannot be changed for MAAS default boot sources.",
+                        field=field,
+                    )
+                    for field in denied_fields
+                ]
+                raise BadRequestException(details=details)

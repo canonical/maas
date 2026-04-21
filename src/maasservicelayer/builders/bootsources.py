@@ -18,6 +18,7 @@ class BootSourceBuilder(ResourceBuilder):
 
     created: Union[datetime, Unset] = Field(default=UNSET, required=False)
     updated: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    name: Union[str, Unset] = Field(default=UNSET, required=False)
     url: Union[str, Unset] = Field(default=UNSET, required=False)
     keyring_filename: Union[str, None, Unset] = Field(
         default=UNSET, required=False
@@ -29,3 +30,4 @@ class BootSourceBuilder(ResourceBuilder):
     skip_keyring_verification: Union[bool, Unset] = Field(
         default=UNSET, required=False
     )
+    enabled: Union[bool, Unset] = Field(default=UNSET, required=False)

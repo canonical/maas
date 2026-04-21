@@ -21,11 +21,13 @@ from maasservicelayer.models.bootsources import (
 class BootSourceResponse(HalResponse[BaseHal]):
     kind = "BootSource"
     id: int
+    name: str
     url: str
     keyring_filename: Optional[str]
     keyring_data: Optional[str]
     priority: int
     skip_keyring_verification: bool
+    enabled: bool
 
     @classmethod
     def from_model(
@@ -35,11 +37,13 @@ class BootSourceResponse(HalResponse[BaseHal]):
         keyring_data = keyring_data.decode("utf-8")
         return cls(
             id=boot_source.id,
+            name=boot_source.name,
             url=boot_source.url,
             keyring_filename=boot_source.keyring_filename,
             keyring_data=keyring_data,
             priority=boot_source.priority,
             skip_keyring_verification=boot_source.skip_keyring_verification,
+            enabled=boot_source.enabled,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{boot_source.id}"

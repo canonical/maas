@@ -12,6 +12,7 @@ from temporalio.client import WorkflowExecutionStatus
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
 )
@@ -214,6 +215,7 @@ class BootSourcesHandler(Handler):
                 "model": BootSourceResponse,
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
+            400: {"model": BadRequestBodyResponse},
             404: {"model": NotFoundBodyResponse},
         },
         response_model_exclude_none=True,
@@ -249,6 +251,7 @@ class BootSourcesHandler(Handler):
         tags=TAGS,
         responses={
             204: {},
+            400: {"model": BadRequestBodyResponse},
             404: {"model": NotFoundBodyResponse},
         },
         response_model_exclude_none=True,

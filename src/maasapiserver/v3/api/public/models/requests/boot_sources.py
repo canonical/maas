@@ -22,7 +22,8 @@ def validate_url_format(value: str) -> str:
             field="url",
             message="URL must be a valid HTTP or HTTPS address.",
         )
-    return value
+    # Always strip the trailing slash
+    return value.rstrip("/")
 
 
 async def validate_priority(value: int, services: ServiceCollectionV3) -> int:
@@ -102,9 +103,13 @@ class BootSourceRequest(BaseModel):
 # Extra.forbid will raise a validation error if the user passes fields not defined.
 # Used mainly because of the 'url' being immutable.
 class BootSourceUpdateRequest(BootSourceRequest, extra=Extra.forbid):
+    name: str = Field(description="Name of this boot source.")
     priority: int = Field(
         description="Priority value. Higher values mean higher priority. Must "
         "be non-negative.",
+    )
+    enabled: bool = Field(
+        description="Whether to enable downloads from this source or not."
     )
 
     async def to_builder(
@@ -115,20 +120,26 @@ class BootSourceUpdateRequest(BootSourceRequest, extra=Extra.forbid):
         self.keyring_data = self.keyring_data or ""
         keyring_data = self.keyring_data.encode("utf-8")
         return BootSourceBuilder(
+            name=self.name,
             keyring_filename=self.keyring_filename,
             keyring_data=keyring_data,
             priority=priority,
             skip_keyring_verification=self.skip_keyring_verification,
+            enabled=self.enabled,
         )
 
 
 class BootSourceCreateRequest(BootSourceRequest):
+    name: str = Field(description="Name of this boot source.")
     priority: int = Field(
         description="Priority value. Higher values mean higher priority. Must "
         "be non-negative.",
     )
     url: str = Field(
         description="URL of SimpleStreams server providing boot source information."
+    )
+    enabled: bool = Field(
+        description="Whether to enable downloads from this source or not."
     )
     # TODO: switch to field_validator when we migrate to pydantic 2.x
     _validate_url = validator("url", pre=True, allow_reuse=True)(
@@ -143,11 +154,13 @@ class BootSourceCreateRequest(BootSourceRequest):
         self.keyring_data = self.keyring_data or ""
         keyring_data = self.keyring_data.encode("utf-8")
         return BootSourceBuilder(
+            name=self.name,
             url=self.url,
             keyring_filename=self.keyring_filename,
             keyring_data=keyring_data,
             priority=priority,
             skip_keyring_verification=self.skip_keyring_verification,
+            enabled=self.enabled,
         )
 
 

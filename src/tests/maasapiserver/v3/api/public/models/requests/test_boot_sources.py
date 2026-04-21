@@ -27,6 +27,17 @@ class TestValidators:
             == e.value.details[0].message
         )
 
+    @pytest.mark.parametrize(
+        "url,expected",
+        [
+            ("http://example.com/", "http://example.com"),
+            ("http://example.com///", "http://example.com"),
+            ("http://example.com", "http://example.com"),
+        ],
+    )
+    def test_url_trailing_slash_stripped(self, url, expected):
+        assert validate_url_format(url) == expected
+
     @pytest.mark.asyncio
     async def test_negative_priority_raises(self, services_mock):
         services_mock.boot_sources = Mock(BootSourcesService)
@@ -138,22 +149,26 @@ class TestBootSourceCreateRequest:
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.exists.return_value = False
         bootsource_request = BootSourceCreateRequest(
+            name="My Boot Source",
             url="http://example.com",
             keyring_filename="/path/to/file.gpg",
             priority=102,
             skip_keyring_verification=False,
+            enabled=True,
         )
         builder = await bootsource_request.to_builder(services_mock)
 
+        assert builder.name == "My Boot Source"
         assert builder.url == "http://example.com"
         assert builder.priority == 102
         assert not builder.skip_keyring_verification
+        assert builder.enabled is True
 
     def test_mandatory_params(self):
         with pytest.raises(ValidationError) as e:
             BootSourceCreateRequest(keyring_filename="/path/to/file.gpg")
-        assert len(e.value.errors()) == 2
-        assert {"url", "priority"} == set(
+        assert len(e.value.errors()) == 4
+        assert {"url", "priority", "name", "enabled"} == set(
             [f["loc"][0] for f in e.value.errors()]
         )
 
@@ -172,11 +187,15 @@ class TestBootSourceUpdateRequest:
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.exists.return_value = False
         bootsource_request = BootSourceUpdateRequest(
+            name="My Boot Source",
             keyring_filename="/path/to/file.gpg",
             priority=102,
             skip_keyring_verification=False,
+            enabled=False,
         )
         builder = await bootsource_request.to_builder(services_mock)
 
+        assert builder.name == "My Boot Source"
         assert builder.priority == 102
         assert not builder.skip_keyring_verification
+        assert builder.enabled is False

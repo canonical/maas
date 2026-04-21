@@ -724,11 +724,13 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.boot_sources.get_many.return_value = [
             BootSource(
                 id=1,
+                name="Test Boot Source",
                 url="http://foo.com",
                 keyring_filename="/tmp/foo",
                 keyring_data=None,
                 priority=1,
                 skip_keyring_verification=True,
+                enabled=True,
             )
         ]
         services_mock.image_manifests = Mock(ImageManifestsService)
@@ -773,11 +775,13 @@ class TestGetFilesToDownloadForSelectionActivity:
     ) -> None:
         boot_source = BootSource(
             id=1,
+            name="Test Boot Source",
             url="http://foo.com",
             keyring_filename="/tmp/foo",
             keyring_data=None,
             priority=1,
             skip_keyring_verification=True,
+            enabled=True,
         )
         boot_source_selection = BootSourceSelection(
             id=1,

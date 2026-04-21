@@ -41,11 +41,13 @@ LAST_UPDATE = MANIFEST.updated
 
 TEST_BOOT_SOURCE = BootSource(
     id=1,
+    name="Test boot source",
     url="http://source-1.com",
     keyring_filename="/foo/bar",
     keyring_data=b"data",
     priority=1,
     skip_keyring_verification=True,
+    enabled=True,
 )
 
 TEST_IMAGE_MANIFEST = ImageManifest(
@@ -322,7 +324,7 @@ class TestIntegrationImageManifestsService:
         return await create_test_bootsource_entry(
             fixture,
             url="http://source-1.com",
-            priority=1,
+            priority=100,
             skip_keyring_verification=True,
         )
 
