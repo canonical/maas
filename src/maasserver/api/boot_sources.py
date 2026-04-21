@@ -32,6 +32,7 @@ DISPLAYED_BOOTSOURCE_FIELDS = (
     "enabled",
     "keyring_filename",
     "keyring_data",
+    "skip_keyring_verification",
     "created",
     "updated",
 )
@@ -87,6 +88,9 @@ class BootSourceHandler(OperationsHandler):
 
         @param (boolean) "enabled" [required=false] Whether this BootSource is
         enabled or not.
+
+        @param (boolean) "skip_keyring_verification" [required=false] If true,
+        keyring signature verification will be skipped.
 
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the updated
@@ -205,6 +209,9 @@ class BootSourcesHandler(OperationsHandler):
 
         @param (string) "keyring_data" [required=false] The GPG keyring for
         this BootSource, base64-encoded.
+
+        @param (boolean) "skip_keyring_verification" [required=false] If true,
+        keyring signature verification will be skipped.
 
         @success (http-status-code) "server-success" 201
         @success (json) "success-json" A JSON object containing the new boot

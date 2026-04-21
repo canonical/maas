@@ -247,6 +247,25 @@ class TestBootSourceAPI(APITestCase.ForUser):
         self.assertEqual(result["name"], boot_source.name)
         self.assertEqual(result["priority"], boot_source.priority)
         self.assertEqual(result["enabled"], boot_source.enabled)
+        self.assertEqual(
+            result["skip_keyring_verification"],
+            boot_source.skip_keyring_verification,
+        )
+
+    def test_PUT_updates_skip_keyring_verification(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        self.assertFalse(boot_source.skip_keyring_verification)
+        new_values = {
+            "url": boot_source.url,
+            "skip_keyring_verification": True,
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertTrue(boot_source.skip_keyring_verification)
 
     def test_DELETE_rejects_stable_default_boot_source(self):
         self.become_admin()
@@ -261,6 +280,36 @@ class TestBootSourceAPI(APITestCase.ForUser):
         response = self.client.delete(get_boot_source_uri(boot_source))
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIsNotNone(reload_object(boot_source))
+
+    def test_PUT_default_boot_source_allows_priority_and_enabled(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource(url=STABLE_IMAGES_STREAM_URL)
+        new_values = {"priority": 42, "enabled": False}
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertEqual(boot_source.priority, 42)
+        self.assertFalse(boot_source.enabled)
+
+    def test_PUT_default_boot_source_rejects_url(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource(url=STABLE_IMAGES_STREAM_URL)
+        new_values = {"url": "http://other.example.com"}
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
+    def test_PUT_default_boot_source_rejects_name(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource(url=CANDIDATE_IMAGES_STREAM_URL)
+        new_values = {"name": "renamed"}
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
 
 class TestBootSourcesAPI(APITestCase.ForUser):
@@ -384,6 +433,18 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
         boot_source = BootSource.objects.get(id=parsed_result["id"])
         self.assertFalse(boot_source.enabled)
+
+    def test_POST_creates_boot_source_with_skip_keyring_verification(self):
+        self.become_admin()
+        params = {
+            "url": "http://example.com/",
+            "skip_keyring_verification": True,
+        }
+        response = self.client.post(reverse("boot_sources_handler"), params)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        boot_source = BootSource.objects.get(id=parsed_result["id"])
+        self.assertTrue(boot_source.skip_keyring_verification)
 
     def test_POST_requires_admin(self):
         params = {
