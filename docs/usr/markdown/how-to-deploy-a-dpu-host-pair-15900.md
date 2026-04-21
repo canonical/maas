@@ -10,36 +10,8 @@ The Terraform plan described here automates this sequencing: it provisions the h
 
 - **MAAS 3.7** or later (DPU support was introduced in 3.7)
 - **Terraform** 1.4.0 or later
-- **canonical/maas** Terraform provider `~> 2.0` with DPU support
-
-> **Note:** DPU support (`is_dpu`) is not yet available in a published release of the canonical/maas provider. Until it is, you need to build the provider from source, as described in [Build the provider from source](#build-the-provider-from-source).
-
-## Build the provider from source
-
-Until a release of the canonical/maas provider ships DPU support, follow these steps to build and install it locally.
-
-**1. Clone the repository and check out the correct branch:**
-
-```nohighlight
-git clone https://github.com/canonical/terraform-provider-maas.git
-cd terraform-provider-maas
-```
-
-**2. Build and install:**
-
-```nohighlight
-make build
-make install
-```
-
-**3. Configure Terraform to use the local build:**
-
-```nohighlight
-make create_dev_overrides
-export TF_CLI_CONFIG_FILE=$PWD/bin/developer_overrides.tfrc
-```
-
-Keep that environment variable set for the duration of your session. Leave it unset when you want Terraform to use the registry version instead.
+- **canonical/maas** Terraform provider `~> 2.7.3` with DPU support
+- Both the DPU and machine BMC must have Redfish enabled and the account you use must have sufficient permissions.
 
 ## The Terraform plan
 
@@ -52,44 +24,18 @@ terraform {
   required_providers {
     maas = {
       source  = "canonical/maas"
-      version = "~> 2.0"
+      version = "~> 2.7.3"
     }
   }
 }
 
-# == Provider ==================================================================
-
-variable "maas_api_url" {
-  description = "MAAS API URL, e.g. http://127.0.0.1:5240/MAAS"
-  type        = string
-}
-
-variable "maas_api_key" {
-  description = "MAAS API key"
-  type        = string
-  sensitive   = true
-}
-
-variable "maas_installation_method" {
-  description = "MAAS installation method ('snap' or 'deb')"
-  type        = string
-  default     = "snap"
-}
+# == Machine parameters ========================================================
 
 variable "maas_snap_channel" {
   description = "MAAS snap channel used by the local-exec power-cycle step"
   type        = string
   default     = "3.7/stable"
 }
-
-provider "maas" {
-  api_version         = "2.0"
-  api_url             = var.maas_api_url
-  api_key             = var.maas_api_key
-  installation_method = var.maas_installation_method
-}
-
-# == Machine parameters ========================================================
 
 variable "host_hostname" {
   description = "Hostname for the host machine"
@@ -206,7 +152,7 @@ resource "maas_instance" "dpu_deployment" {
   provisioner "local-exec" {
     command = <<-EOT
       snap install maas --channel=${var.maas_snap_channel}
-      maas login local-exec ${var.maas_api_url} ${var.maas_api_key}
+      maas login local-exec $MAAS_API_URL $MAAS_API_KEY
 
       maas local-exec machine power-cycle ${maas_machine.host.id}
       while [[ "$(maas local-exec machine query-power-state ${maas_machine.host.id} | jq -r '.state')" != "on" ]]; do
@@ -256,6 +202,13 @@ Before running the plan, collect the following for both machines:
 | BMC IP address | Your network inventory or BMC management interface |
 | BMC username/password | Your hardware credentials |
 
+Set the MAAS credentials as environment variables. The provider reads them automatically:
+
+```nohighlight
+export MAAS_API_URL="http://<MAAS>:5240/MAAS"
+export MAAS_API_KEY="<KEY>"
+```
+
 ## Deploy the host-DPU pair
 
 ### 1. Initialize Terraform
@@ -268,42 +221,47 @@ mkdir dpu-host-pair && cd dpu-host-pair
 terraform init
 ```
 
-### 2. Preview the changes
+### 2. Set variables
 
-Run `plan` to see what Terraform will create before committing:
+Create a `terraform.tfvars` file with the non-sensitive values:
+
+```hcl
+host_hostname      = "host-0"
+host_pxe_mac       = "<HOST MAC>"
+host_power_address = "<HOST BMC IP>"
+host_power_user    = "<HOST BMC user>"
+
+dpu_hostname      = "dpu-0"
+dpu_pxe_mac       = "<DPU MAC>"
+dpu_power_address = "<DPU BMC IP>"
+dpu_power_user    = "<DPU BMC user>"
+
+distro_series = "noble"
+```
+
+Export the sensitive credentials as environment variables so they never appear in shell history:
 
 ```nohighlight
-terraform plan \
-  -var 'maas_api_url=http://<MAAS>:5240/MAAS' \
-  -var 'maas_api_key=<KEY>'                    \
-  -var 'host_pxe_mac=<HOST MAC>'               \
-  -var 'host_power_address=<HOST BMC IP>'      \
-  -var 'host_power_user=<HOST BMC user>'       \
-  -var 'host_power_pass=<HOST BMC password>'   \
-  -var 'dpu_pxe_mac=<DPU MAC>'                 \
-  -var 'dpu_power_address=<DPU BMC IP>'        \
-  -var 'dpu_power_user=<DPU BMC user>'         \
-  -var 'dpu_power_pass=<DPU BMC password>'
+export TF_VAR_host_power_pass="<HOST BMC password>"
+export TF_VAR_dpu_power_pass="<DPU BMC password>"
+```
+
+### 3. Preview the changes
+
+Run `plan` to see what Terraform will create before committing. Terraform reads `terraform.tfvars` and the `TF_VAR_` environment variables automatically:
+
+```nohighlight
+terraform plan
 ```
 
 Review the output. Terraform will list four resources to be created.
 
-### 3. Apply
+### 4. Apply
 
-When satisfied, apply the plan using the same variables:
+When satisfied, apply the plan:
 
 ```nohighlight
-terraform apply \
-  -var 'maas_api_url=http://<MAAS>:5240/MAAS' \
-  -var 'maas_api_key=<KEY>'                    \
-  -var 'host_pxe_mac=<HOST MAC>'               \
-  -var 'host_power_address=<HOST BMC IP>'      \
-  -var 'host_power_user=<HOST BMC user>'       \
-  -var 'host_power_pass=<HOST BMC password>'   \
-  -var 'dpu_pxe_mac=<DPU MAC>'                 \
-  -var 'dpu_power_address=<DPU BMC IP>'        \
-  -var 'dpu_power_user=<DPU BMC user>'         \
-  -var 'dpu_power_pass=<DPU BMC password>'
+terraform apply
 ```
 
 Terraform will prompt for confirmation; type `yes` and press Enter.
@@ -349,35 +307,12 @@ The plan exposes additional variables with sensible defaults:
 | `host_hostname` | `host-0` | Hostname assigned to the host machine in MAAS |
 | `dpu_hostname` | `dpu-0` | Hostname assigned to the DPU in MAAS |
 | `distro_series` | `noble` | Ubuntu release deployed on both machines |
-| `maas_installation_method` | `snap` | How MAAS is installed (`snap` or `deb`) |
 | `maas_snap_channel` | `3.7/stable` | Snap channel used by the power-cycle post-provisioner |
 
-Override them by adding `-var` flags to the `plan` and `apply` commands, for example:
+Override any of these in `terraform.tfvars`, for example:
 
-```nohighlight
--var 'host_hostname=blade-01' \
--var 'dpu_hostname=dpu-blade-01' \
--var 'distro_series=jammy'
-```
-
-## Release the machines
-
-To return both machines to the **Ready** state (for example, before handing them to Juju), destroy the deployment instances without removing the machine enrollment:
-
-```nohighlight
-terraform destroy \
-  -target maas_instance.dpu_deployment \
-  -target maas_instance.host_deployment \
-  -var 'maas_api_url=...' \
-  -var 'maas_api_key=...'
-  # (include all other vars)
-```
-
-To remove both machines from MAAS entirely, run a full destroy:
-
-```nohighlight
-terraform destroy \
-  -var 'maas_api_url=...' \
-  -var 'maas_api_key=...'
-  # (include all other vars)
+```hcl
+host_hostname = "blade-01"
+dpu_hostname  = "dpu-blade-01"
+distro_series = "jammy"
 ```
