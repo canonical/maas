@@ -893,9 +893,10 @@ class DeleteBootResourceWorkflow:
 )
 class FetchManifestWorkflow:
     @workflow_run_with_context
-    async def run(self) -> None:
+    async def run(self, boot_source_id: int | None = None) -> None:
         return await workflow.execute_activity(
             FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,
+            boot_source_id,
             start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
             heartbeat_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=3),
