@@ -284,12 +284,12 @@ class TestBootSourcesApi(ApiCommonTests):
         services_mock.boot_sources.exists.return_value = False
         services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
         updated = TEST_BOOTSOURCE_1.model_copy()
-        updated.url = "http://example.com/v2/"
         updated.priority = 15
         services_mock.boot_sources.update_by_id.return_value = updated
 
         update_request = {
             "name": TEST_BOOTSOURCE_1.name,
+            "url": TEST_BOOTSOURCE_1.url,
             "keyring_filename": "/path/to/keyring.gpg",
             "keyring_data": "",
             "priority": 15,
@@ -318,18 +318,11 @@ class TestBootSourcesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
         services_mock.boot_sources = Mock(BootSourcesService)
-        services_mock.boot_sources.exists.return_value = False
-        services_mock.boot_sources.update_by_id.side_effect = NotFoundException(
-            details=[
-                BaseExceptionDetail(
-                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                    message="Resource with such identifiers does not exist.",
-                )
-            ]
-        )
+        services_mock.boot_sources.get_by_id.return_value = None
 
         update_request = {
             "name": "Some Boot Source",
+            "url": "http://example.com/v1/",
             "keyring_filename": "/path/to/keyring.gpg",
             "keyring_data": "",
             "priority": 15,
@@ -347,6 +340,33 @@ class TestBootSourcesApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 404
 
+    async def test_put_rejects_url_change(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
+
+        update_request = {
+            "name": TEST_BOOTSOURCE_1.name,
+            "url": "http://different.example.com",
+            "keyring_filename": "/path/to/keyring.gpg",
+            "keyring_data": "",
+            "priority": TEST_BOOTSOURCE_1.priority,
+            "skip_keyring_verification": False,
+            "enabled": True,
+        }
+        response = await client.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(update_request),
+        )
+        assert response.status_code == 422
+        services_mock.boot_sources.update_by_id.assert_not_called()
+
     async def test_put_default_boot_source_rejects_disallowed_fields(
         self,
         services_mock: ServiceCollectionV3,
@@ -359,6 +379,9 @@ class TestBootSourcesApi(ApiCommonTests):
         )
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.exists.return_value = False
+        services_mock.boot_sources.get_by_id.return_value = (
+            TEST_DEFAULT_BOOTSOURCE
+        )
         services_mock.boot_sources.update_by_id.side_effect = BadRequestException(
             details=[
                 BaseExceptionDetail(
@@ -371,6 +394,7 @@ class TestBootSourcesApi(ApiCommonTests):
 
         update_request = {
             "name": "new name",
+            "url": TEST_DEFAULT_BOOTSOURCE.url,
             "keyring_filename": "/path/to/keyring.gpg",
             "keyring_data": "",
             "priority": 15,

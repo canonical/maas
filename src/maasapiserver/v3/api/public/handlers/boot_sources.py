@@ -235,7 +235,10 @@ class BootSourcesHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> BootSourceResponse:
-        builder = await boot_source_request.to_builder(services)
+        boot_source = await services.boot_sources.get_by_id(boot_source_id)
+        if not boot_source:
+            raise NotFoundException()
+        builder = await boot_source_request.to_builder(services, boot_source)
         boot_source = await services.boot_sources.update_by_id(
             boot_source_id, builder
         )

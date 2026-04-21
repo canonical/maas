@@ -5,13 +5,7 @@ from base64 import b64decode
 from typing import Self
 from urllib.parse import urlparse
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.db.filters import QuerySpec
@@ -19,6 +13,7 @@ from maasservicelayer.db.repositories.bootsources import (
     BootSourcesClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -109,23 +104,32 @@ class BootSourceRequest(BaseModel):
         return value
 
 
-# ConfigDict(extra="forbid") will raise a validation error if the user passes fields not defined.
-# Used mainly because of the 'url' being immutable.
 class BootSourceUpdateRequest(BootSourceRequest):
-    model_config = ConfigDict(extra="forbid")
     name: str = Field(description="Name of this boot source.")
     priority: int = Field(
         description="Priority value. Higher values mean higher priority. Must "
         "be non-negative.",
+    )
+    url: str = Field(
+        description="URL of SimpleStreams server providing boot source information."
     )
     enabled: bool = Field(
         description="Whether to enable downloads from this source or not."
     )
 
     async def to_builder(
-        self, services: ServiceCollectionV3
+        self, services: ServiceCollectionV3, instance: BootSource
     ) -> BootSourceBuilder:
-        priority = await validate_priority(self.priority, services)
+        if instance.url != self.url:
+            raise ValidationException.build_for_field(
+                field="url",
+                message="URL of a boot source is immutable.",
+                location="body",
+            )
+        if instance.priority != self.priority:
+            priority = await validate_priority(self.priority, services)
+        else:
+            priority = self.priority
         self.keyring_filename = self.keyring_filename or ""
         self.keyring_data = self.keyring_data or ""
         keyring_data = self.keyring_data.encode("utf-8")
