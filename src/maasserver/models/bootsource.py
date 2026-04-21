@@ -234,6 +234,6 @@ class BootSource(CleanSave, TimestampedModel):
             boot_source=self
         )
         for selection in related_selections:
-            selection.force_delete()
+            selection.delete()
 
         return super().delete(*args, **kwargs)
