@@ -280,7 +280,8 @@ class TestImageManifestsService:
         self.service.fetch_image_metadata_for_boot_source.assert_awaited_once_with(
             TEST_BOOT_SOURCE
         )
-        self.repository.update.assert_not_awaited()
+        # TODO: MAASENG-6418 remove this
+        self.repository.update.assert_awaited()
 
     # Passthrough methods
     async def test_get(self) -> None:

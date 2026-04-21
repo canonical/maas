@@ -25,6 +25,7 @@ MASTER_IMAGE_SYNC_WORKFLOW_NAME = "master-image-sync"
 FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME = (
     "fetch-manifest-and-update-cache"
 )
+POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME = "post-update-boot-source-url"
 
 
 @dataclass
@@ -95,6 +96,12 @@ class RegisterNotificationParam:
 @dataclass
 class DeleteNotificationParam:
     ident: str
+
+
+# TODO: MAASENG-6418 remove this
+@dataclass
+class PostUpdateBootSourceUrlParam:
+    boot_source_id: int
 
 
 def merge_resource_delete_param(
