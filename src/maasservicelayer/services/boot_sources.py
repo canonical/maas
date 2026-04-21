@@ -102,6 +102,7 @@ class BootSourcesService(
         self.temporal_service.register_workflow_call(
             workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
             parameter=resource.id,
+            workflow_id=f"fetch-manifest-boot-source-{resource.id}",
             wait=False,
         )
 

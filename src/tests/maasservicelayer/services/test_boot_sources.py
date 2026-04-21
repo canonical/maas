@@ -290,6 +290,7 @@ class TestBootSourcesService(ServiceCommonTests):
 
         service_instance.temporal_service.register_workflow_call.assert_called_once_with(
             workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            workflow_id=f"fetch-manifest-boot-source-{test_instance.id}",
             parameter=test_instance.id,
             wait=False,
         )
