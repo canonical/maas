@@ -1169,6 +1169,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -1222,6 +1224,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -1281,6 +1285,40 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.temporal.workflow_status.assert_not_called()
         services_mock.temporal.register_workflow_call.assert_not_called()
 
+    async def test_sync_selection_disabled_boot_source(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+        disabled_boot_source = TEST_BOOTSOURCE_1.copy()
+        disabled_boot_source.enabled = False
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = (
+            disabled_boot_source
+        )
+        services_mock.temporal = Mock(TemporalService)
+
+        response = await client.post(
+            f"{self.BASE_PATH}/1:sync",
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.details[0].message == (
+            "Impossible to synchronize selections that are part of a disabled boot source. Set the boot source to enabled first."
+        )
+        services_mock.temporal.workflow_status.assert_not_called()
+        services_mock.temporal.register_workflow_call.assert_not_called()
+
     async def test_sync_selection_not_selected(
         self,
         services_mock: ServiceCollectionV3,
@@ -1295,6 +1333,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
 
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
@@ -1336,6 +1376,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
 
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService

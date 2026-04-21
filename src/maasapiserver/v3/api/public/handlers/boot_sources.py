@@ -744,6 +744,18 @@ class BootSourcesHandler(Handler):
         if not boot_source_selection:
             raise NotFoundException()
 
+        boot_source = await services.boot_sources.get_by_id(boot_source_id)
+        assert boot_source is not None
+        if not boot_source.enabled:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CONFLICT_VIOLATION_TYPE,
+                        message="Impossible to synchronize selections that are part of a disabled boot source. Set the boot source to enabled first.",
+                    )
+                ]
+            )
+
         selection_status = (
             await services.boot_source_selection_status.get_by_id(
                 boot_source_selection.id
