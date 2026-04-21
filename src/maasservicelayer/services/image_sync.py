@@ -11,9 +11,11 @@ from maascommon.enums.boot_resources import (
     BootResourceType,
 )
 from maascommon.enums.msm import MSMStatusEnum
-from maascommon.enums.notifications import NotificationCategoryEnum
+from maascommon.enums.notifications import (
+    NotificationCategoryEnum,
+    NotificationComponent,
+)
 from maascommon.workflows.bootresource import ResourceDownloadParam
-from maasserver.enum import NotificationComponent
 from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,

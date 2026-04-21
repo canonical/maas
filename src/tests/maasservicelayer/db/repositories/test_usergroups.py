@@ -1,7 +1,6 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -13,6 +12,7 @@ from maasservicelayer.db.repositories.usergroups import (
     UserGroupsClauseFactory,
     UserGroupsRepository,
 )
+from maasservicelayer.db.tables import UserGroupTable
 from maasservicelayer.models.usergroups import UserGroup
 from tests.fixtures.factories.usergroups import create_test_usergroup
 from tests.maasapiserver.fixtures.db import Fixture
@@ -54,30 +54,9 @@ class TestUserGroupsRepository(RepositoryCommonTests[UserGroup]):
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[UserGroup]:
-        # The default groups are created by the migrations, they have the following timestamp hardcoded in the test sql dump
+        # The default groups are created by the migrations
         created_resource_pools = [
-            UserGroup(
-                id=1,
-                name="Administrators",
-                description="Default administrators group",
-                created=datetime(
-                    2026, 2, 27, 12, 48, 12, 946997, tzinfo=timezone.utc
-                ),
-                updated=datetime(
-                    2026, 2, 27, 12, 48, 12, 946997, tzinfo=timezone.utc
-                ),
-            ),
-            UserGroup(
-                id=2,
-                name="Users",
-                description="Default users group",
-                created=datetime(
-                    2026, 2, 27, 12, 48, 12, 946997, tzinfo=timezone.utc
-                ),
-                updated=datetime(
-                    2026, 2, 27, 12, 48, 12, 946997, tzinfo=timezone.utc
-                ),
-            ),
+            UserGroup(**row) for row in await fixture.get(UserGroupTable.name)
         ]
 
         created_resource_pools.extend(

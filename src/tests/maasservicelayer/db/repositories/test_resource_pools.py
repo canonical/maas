@@ -1,7 +1,6 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -14,6 +13,7 @@ from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolClauseFactory,
     ResourcePoolRepository,
 )
+from maasservicelayer.db.tables import ResourcePoolTable
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     NotFoundException,
@@ -57,17 +57,9 @@ class TestResourcePoolRepository(RepositoryCommonTests[ResourcePool]):
         self, fixture: Fixture, num_objects: int
     ) -> list[ResourcePool]:
         # The default resource pool is created by the migrations
-        # and it has the following timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:9365
-        ts = datetime(2025, 10, 17, 10, 15, 20, 698940, tzinfo=timezone.utc)
         created_resource_pools = [
-            ResourcePool(
-                id=0,
-                name="default",
-                description="Default pool",
-                created=ts,
-                updated=ts,
-            )
+            ResourcePool(**row)
+            for row in await fixture.get(ResourcePoolTable.name)
         ]
         created_resource_pools.extend(
             await create_n_test_resource_pools(fixture, size=num_objects - 1)

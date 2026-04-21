@@ -14,6 +14,7 @@ from maasservicelayer.db.repositories.legacybootsourceselections import (
     LegacyBootSourceSelectionClauseFactory,
     LegacyBootSourceSelectionRepository,
 )
+from maasservicelayer.db.tables import BootSourceSelectionLegacyTable
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.legacybootsourceselections import (
     LegacyBootSourceSelection,
@@ -39,23 +40,32 @@ class TestLegacyBootSourceRepository(RepositoryCommonTests):
         self, fixture: Fixture
     ) -> LegacyBootSourceSelection:
         return await create_test_legacybootsourceselection_entry(
-            fixture, "ubuntu", "noble", ["amd64"], 1
+            fixture, "ubuntu", "jammy", ["amd64"], 1
         )
 
     @pytest.fixture
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> Sequence[LegacyBootSourceSelection]:
-        return [
-            await create_test_legacybootsourceselection_entry(
-                fixture,
-                "ubuntu",
-                "noble",
-                [f"arch-{i}"],
-                i,
-            )
-            for i in range(num_objects)
+        # The default selection is in the migrations
+        created_selections = [
+            LegacyBootSourceSelection(**row)
+            for row in await fixture.get(BootSourceSelectionLegacyTable.name)
         ]
+        created_selections.extend(
+            [
+                await create_test_legacybootsourceselection_entry(
+                    fixture,
+                    "ubuntu",
+                    "jammy",
+                    [f"arch-{i}"],
+                    i,
+                )
+                for i in range(num_objects - len(created_selections))
+            ]
+        )
+
+        return created_selections
 
     @pytest.fixture
     async def instance_builder_model(self) -> type[ResourceBuilder]:
@@ -65,7 +75,7 @@ class TestLegacyBootSourceRepository(RepositoryCommonTests):
     async def instance_builder(self, *args, **kwargs) -> ResourceBuilder:
         return LegacyBootSourceSelectionBuilder(
             os="ubuntu",
-            release="noble",
+            release="jammy",
             arches=["amd64"],
             subarches=["*"],
             labels=["*"],

@@ -12,21 +12,12 @@ Create Date: 2025-06-24 11:16:07.410600+00:00
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import auto, IntFlag
+import os
 from typing import Sequence
 
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import text
-
-from maascommon.constants import (
-    CANDIDATE_IMAGES_STREAM_NAME,
-    CANDIDATE_IMAGES_STREAM_URL,
-    KEYRINGS_PATH,
-    STABLE_IMAGES_STREAM_NAME,
-    STABLE_IMAGES_STREAM_URL,
-)
-from maascommon.osystem.ubuntu import UbuntuOS
-from provisioningserver.utils.arch import get_architecture
 
 # revision identifiers, used by Alembic.
 revision: str = "0005"
@@ -35,6 +26,19 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 now = datetime.now(timezone.utc)
+
+# Copied from src/maascommon/constants.py
+KEYRINGS_PATH = (
+    "/snap/maas/current/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+    if os.environ.get("SNAP")
+    else "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+)
+
+STABLE_IMAGES_STREAM_URL = "http://images.maas.io/ephemeral-v3/stable"
+STABLE_IMAGES_STREAM_NAME = "MAAS Stable"
+
+CANDIDATE_IMAGES_STREAM_URL = "http://images.maas.io/ephemeral-v3/candidate"
+CANDIDATE_IMAGES_STREAM_NAME = "MAAS Candidate"
 
 
 class BootSourceFlag(IntFlag):
@@ -92,14 +96,24 @@ class BootSourceCreateModel:
         )
 
 
+def get_architecture():
+    """Get the Debian architecture of the running system."""
+    arch = os.getenv("SNAP_ARCH")
+    if not arch:
+        # assume it's a deb environment
+        import apt_pkg
+
+        apt_pkg.init()
+        arch = apt_pkg.get_architectures()[0]
+    return arch
+
+
 def create_selection_stable(stable_boot_source_id: int):
     arch = get_architecture()
     if arch in ("", "amd64"):
         arches = ["amd64"]
     else:
         arches = [arch, "amd64"]
-
-    ubuntu = UbuntuOS()
 
     op.get_bind().execute(
         text("""
@@ -109,8 +123,8 @@ def create_selection_stable(stable_boot_source_id: int):
         {
             "created": now,
             "updated": now,
-            "os": ubuntu.name,
-            "release": ubuntu.get_default_commissioning_release(),
+            "os": "ubuntu",
+            "release": "noble",
             "arches": arches,
             "boot_source_id": stable_boot_source_id,
         },

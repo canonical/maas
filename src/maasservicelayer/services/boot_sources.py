@@ -132,10 +132,12 @@ class BootSourcesService(
             CANDIDATE_IMAGES_STREAM_URL,
         ):
             raise BadRequestException(
-                details=BaseExceptionDetail(
-                    type=CANNOT_DELETE_DEFAULT_BOOT_SOURCE_VIOLATION_TYPE,
-                    message="The MAAS default boot sources can't be deleted.",
-                )
+                details=[
+                    BaseExceptionDetail(
+                        type=CANNOT_DELETE_DEFAULT_BOOT_SOURCE_VIOLATION_TYPE,
+                        message="The MAAS default boot sources can't be deleted.",
+                    )
+                ]
             )
 
     async def pre_update_instance(

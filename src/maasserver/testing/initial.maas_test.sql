@@ -4933,18 +4933,6 @@ CREATE TABLE public.maasserver_sshkey (
 
 
 --
--- Name: maas_support__ssh_keys__by_user; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.maas_support__ssh_keys__by_user AS
- SELECT u.username,
-    sshkey.key
-   FROM (public.auth_user u
-     LEFT JOIN public.maasserver_sshkey sshkey ON ((u.id = sshkey.user_id)))
-  ORDER BY u.username, sshkey.key;
-
-
---
 -- Name: maasserver_agent; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -17641,20 +17629,6 @@ CREATE TRIGGER piston3_token_token_create_notify AFTER INSERT ON public.piston3_
 --
 
 CREATE TRIGGER piston3_token_token_delete_notify AFTER DELETE ON public.piston3_token FOR EACH ROW EXECUTE FUNCTION public.token_delete_notify();
-
-
---
--- Name: piston3_token piston3_token_user_token_link_notify; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER piston3_token_user_token_link_notify AFTER INSERT ON public.piston3_token FOR EACH ROW EXECUTE FUNCTION public.user_token_link_notify();
-
-
---
--- Name: piston3_token piston3_token_user_token_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER piston3_token_user_token_unlink_notify AFTER DELETE ON public.piston3_token FOR EACH ROW EXECUTE FUNCTION public.user_token_unlink_notify();
 
 
 --
