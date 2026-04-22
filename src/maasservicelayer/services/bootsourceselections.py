@@ -179,7 +179,7 @@ class BootSourceSelectionsService(
                 details=[
                     BaseExceptionDetail(
                         type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                        message=f"{os}, {release} was not found in any available boot source.",
+                        message=f"{os}/{release} arch={arch} was not found in this boot source.",
                     )
                 ]
             )
