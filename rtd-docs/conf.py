@@ -97,7 +97,7 @@ ogp_image = "https://assets.ubuntu.com/v1/cc828679-docs_illustration.svg"
 
 # TODO: To customise the favicon, uncomment and update as needed.
 
-# html_favicon = '.sphinx/_static/favicon.png'
+html_favicon = '_static/bdcff402-maas-2022-favicon-64.png'
 
 
 # Dictionary of values to pass into the Sphinx context for all pages:
@@ -116,7 +116,7 @@ html_context = {
     # Product tag image; the orange part of your logo, shown in the page header
     #
     # TODO: To add a tag image, uncomment and update as needed.
-    # 'product_tag': '_static/tag.png',
+    "product_tag": "_static/740dd401-MAAS logomark only.svg",
     # Your Discourse instance URL
     #
     # TODO: Change to your Discourse instance URL or leave empty.
@@ -212,7 +212,7 @@ sitemap_excludes = [
 # Template and asset locations
 #######################
 
-# html_static_path = ["_static"]
+html_static_path = ["_static"]
 # templates_path = ["_templates"]
 
 
