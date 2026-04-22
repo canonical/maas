@@ -25,7 +25,7 @@ class DomainForm(MAASModelForm):
 
     forward_dns_servers = IPPortListFormField(default_port=53, required=False)
 
-    def save(self):
+    def save(self, *args, **kwargs):
         super(MAASModelForm, self).save()
         fwd_srvrs = self.cleaned_data.get("forward_dns_servers")
         if fwd_srvrs is not None:
@@ -40,13 +40,21 @@ class DomainForm(MAASModelForm):
         return self.instance
 
     def clean(self):
-        if self.data.get("authoritative") and len(
-            self.data.get("forward_dns_servers", "")
-        ):
+        cleaned_data = super().clean()
+
+        authoritative = cleaned_data.get("authoritative")
+        authoritative = (
+            authoritative
+            if authoritative is not None
+            else self.instance.authoritative
+        )
+
+        if authoritative and cleaned_data.get("forward_dns_servers"):
             raise ValidationError(
                 "a domain cannot be both authoritative and have forward dns servers"
             )
-        super().clean()
+
+        return cleaned_data
 
     def _post_clean(self):
         # ttl=None needs to make it through.  See also APIEditMixin
