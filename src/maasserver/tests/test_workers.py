@@ -6,7 +6,7 @@
 import os
 import random
 import sys
-from unittest.mock import call
+from unittest.mock import call, Mock
 
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
@@ -152,26 +152,45 @@ class TestWorkersService(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_stopService_doesnt(self):
+    def test_stopService(self):
         set_max_workers_count(1)
-        service = WorkersService(reactor, worker_cmd="cat")
+
+        mock_worker = Mock(spec=WorkerProcess)
+        mock_worker.pid = 123
+        mock_worker.worker_id = "0"
+        mock_worker.runningImport = False
+        mock_worker.signal = Mock()
+
+        mock_reactor = Mock(reactor)
+
+        service = WorkersService(mock_reactor, worker_cmd="cat")
+        service.missing_worker_ids = ["0"]
+
+        def fake_spawnWorker(worker_id, runningImport=False):
+            service.registerWorker(mock_worker)
+
+        self.patch(service, "_spawnWorker").side_effect = fake_spawnWorker
+
+        service.startService()
+        # test that the worker was registered
+        self.assertEqual(len(service.workers), 1)
 
         dv = DeferredValue()
-        original_unregisterWorker = service.unregisterWorker
 
-        def mock_unregisterWorker(*args, **kwargs):
-            original_unregisterWorker(*args, **kwargs)
+        def fake_unregisterWorker(worker, status):
+            del service.workers[worker.pid]
+            service.missing_worker_ids.append(mock_worker.worker_id)
             dv.set(None)
 
         self.patch(
             service, "unregisterWorker"
-        ).side_effect = mock_unregisterWorker
+        ).side_effect = fake_unregisterWorker
+        mock_worker.processEnded = Mock(side_effect=service.unregisterWorker)
 
-        try:
-            service.startService()
-            assert len(service.workers) == 1
-        finally:
-            service.stopService()
+        service.stopService()
+        service.workers[mock_worker.pid].processEnded(mock_worker, status=0)
 
         yield dv.get(timeout=2)
-        assert len(service.workers) == 0
+
+        # test that the worker was unregistered
+        self.assertEqual(len(service.workers), 0)
