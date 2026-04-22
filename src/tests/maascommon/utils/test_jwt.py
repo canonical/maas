@@ -59,7 +59,7 @@ class TestDecodeUnverifiedJWT:
         decoded = decode_unverified_jwt(token, check_expiration=True)
         assert decoded["sub"] == "user123"
 
-    @pytest.mark.parameterize(
+    @pytest.mark.parametrize(
         "payload_aud, expected_aud",
         [
             ("expected-audience", "expected-audience"),
@@ -73,7 +73,7 @@ class TestDecodeUnverifiedJWT:
         decoded = decode_unverified_jwt(token, expected_audience=expected_aud)
         assert decoded["sub"] == "user123"
 
-    @pytest.mark.parameterize(
+    @pytest.mark.parametrize(
         "payload_aud, expected_aud",
         [
             ("expected-audience", "expected-aud"),
