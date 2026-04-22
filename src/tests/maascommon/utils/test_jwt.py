@@ -89,7 +89,7 @@ class TestDecodeUnverifiedJWT:
         token = create_test_jwt(payload)
         with pytest.raises(
             JWTDecodeError,
-            match=f"invalid audience",
+            match="invalid audience",
         ):
             decode_unverified_jwt(token, expected_audience=expected_aud)
 
