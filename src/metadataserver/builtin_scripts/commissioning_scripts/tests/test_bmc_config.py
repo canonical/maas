@@ -1499,14 +1499,14 @@ class TestRedfish(MAASTestCase):
             Connection: close"""
         ).encode()
 
-        managers_data = textwrap.dedent(
+        systems_data = textwrap.dedent(
             """\
             HTTP/1.1 200 OK
             Date: Thu, May  27 15:27:54 2022
             Content-Type: application/json; charset="utf-8"
             Connection: close
 
-            {"Members":[{"@odata.id":"/redfish/v1/System/1"}]}"""
+            {"Members":[{"@odata.id":"/redfish/v1/Systems/1"}]}"""
         ).encode()
 
         sock_response_token = self.FakeSocket(token_data)
@@ -1515,7 +1515,7 @@ class TestRedfish(MAASTestCase):
         )
         response_token.begin()
 
-        sock_response_nodes = self.FakeSocket(managers_data)
+        sock_response_nodes = self.FakeSocket(systems_data)
         response_nodes = urllib.request.http.client.HTTPResponse(
             sock_response_nodes
         )
@@ -1527,6 +1527,214 @@ class TestRedfish(MAASTestCase):
         )
 
         self.assertEqual("1", self.redfish.get_node_id())
+
+    def test_get_node_id_missing_token(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        token_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close"""
+        ).encode()
+
+        sock_response_token = self.FakeSocket(token_data)
+        response_token = urllib.request.http.client.HTTPResponse(
+            sock_response_token
+        )
+        response_token.begin()
+
+        mock_urlopen.return_value = response_token
+
+        self.assertIsNone(self.redfish.get_node_id())
+
+    def test_get_node_id_not_200(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        token_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            X-Auth-Token: token
+            Connection: close"""
+        ).encode()
+
+        nodes_data = textwrap.dedent(
+            """\
+            HTTP/1.1 404 Not Found
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close"""
+        ).encode()
+
+        sock_response_token = self.FakeSocket(token_data)
+        response_token = urllib.request.http.client.HTTPResponse(
+            sock_response_token
+        )
+        response_token.begin()
+
+        sock_response_nodes = self.FakeSocket(nodes_data)
+        response_nodes = urllib.request.http.client.HTTPResponse(
+            sock_response_nodes
+        )
+        response_nodes.begin()
+
+        mock_urlopen.side_effect = (
+            response_token,
+            response_nodes,
+        )
+
+        self.assertIsNone(self.redfish.get_node_id())
+
+    def test_get_node_id_missing_members(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        token_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            X-Auth-Token: token
+            Connection: close"""
+        ).encode()
+
+        nodes_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close
+
+            {}"""
+        ).encode()
+
+        sock_response_token = self.FakeSocket(token_data)
+        response_token = urllib.request.http.client.HTTPResponse(
+            sock_response_token
+        )
+        response_token.begin()
+
+        sock_response_nodes = self.FakeSocket(nodes_data)
+        response_nodes = urllib.request.http.client.HTTPResponse(
+            sock_response_nodes
+        )
+        response_nodes.begin()
+
+        mock_urlopen.side_effect = (
+            response_token,
+            response_nodes,
+        )
+
+        self.assertIsNone(self.redfish.get_node_id())
+
+    def test_get_node_id_empty_members(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        token_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            X-Auth-Token: token
+            Connection: close"""
+        ).encode()
+
+        nodes_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close
+
+            {"Members":[]}"""
+        ).encode()
+
+        sock_response_token = self.FakeSocket(token_data)
+        response_token = urllib.request.http.client.HTTPResponse(
+            sock_response_token
+        )
+        response_token.begin()
+
+        sock_response_nodes = self.FakeSocket(nodes_data)
+        response_nodes = urllib.request.http.client.HTTPResponse(
+            sock_response_nodes
+        )
+        response_nodes.begin()
+
+        mock_urlopen.side_effect = (
+            response_token,
+            response_nodes,
+        )
+
+        self.assertIsNone(self.redfish.get_node_id())
+
+    def test_get_node_id_missing_odata_id(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        token_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            X-Auth-Token: token
+            Connection: close"""
+        ).encode()
+
+        nodes_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close
+
+            {"Members":[{}]}"""
+        ).encode()
+
+        sock_response_token = self.FakeSocket(token_data)
+        response_token = urllib.request.http.client.HTTPResponse(
+            sock_response_token
+        )
+        response_token.begin()
+
+        sock_response_nodes = self.FakeSocket(nodes_data)
+        response_nodes = urllib.request.http.client.HTTPResponse(
+            sock_response_nodes
+        )
+        response_nodes.begin()
+
+        mock_urlopen.side_effect = (
+            response_token,
+            response_nodes,
+        )
+
+        self.assertIsNone(self.redfish.get_node_id())
 
     def test_get_bmc_ip_missing_token(self):
         self.redfish.username = "maas"

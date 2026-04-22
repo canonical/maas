@@ -963,6 +963,7 @@ class Redfish(IPMIBase):
     _node_id = None
     _redfish_ip = None
     _redfish_port = None
+    _session_token = None
 
     def __str__(self):
         return "Redfish"
@@ -1123,6 +1124,9 @@ class Redfish(IPMIBase):
             return False
 
     def _get_session_token(self):
+        if self._session_token is not None:
+            return self._session_token
+
         credentials = {
             "UserName": self.username,
             "Password": self.password,
@@ -1150,6 +1154,7 @@ class Redfish(IPMIBase):
             )
             return None
 
+        self._session_token = token
         return token
 
     def _get_first_collection_member_id(self, collection_name):
@@ -1177,7 +1182,14 @@ class Redfish(IPMIBase):
             )
             return None
 
-        member = members[0].get("@odata.id").rstrip("/")
+        member = members[0].get("@odata.id")
+        if not member:
+            print(
+                f"WARNING: Missing @odata.id in Redfish {collection_name} member. {members[0]}"
+            )
+            return None
+
+        member = member.rstrip("/")
         return basename(member)
 
     def _get_manager_id(self):
