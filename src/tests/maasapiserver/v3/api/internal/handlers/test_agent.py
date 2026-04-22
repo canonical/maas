@@ -14,6 +14,11 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from maasapiserver.v3.constants import V3_INTERNAL_API_PREFIX
+from maascommon.logging.security import (
+    AUTHN_TOKEN_REUSED,
+    hash_token_for_logging,
+    SECURITY,
+)
 from maasservicelayer.exceptions.constants import (
     INVALID_TOKEN_VIOLATION_TYPE,
     PRECONDITION_FAILED,
@@ -356,4 +361,36 @@ class TestAgentsApi:
         assert (
             response_json["details"][0]["message"]
             == "Bootstrap token invalid or expired."
+        )
+
+    @patch("maasapiserver.v3.api.internal.handlers.agent.logger")
+    async def test_agent_enrollment_token_reuse_logging(
+        self,
+        mock_logger,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_api_headers: dict,
+    ) -> None:
+        """Test that bootstrap token reuse is logged when token is expired."""
+        services_mock.bootstraptokens = Mock(BootstrapTokensService)
+        mock_token = BootstrapToken(
+            id=1,
+            secret="test-secret",
+            rack_id=1,
+            expires_at=utcnow() - timedelta(minutes=5),
+        )
+        services_mock.bootstraptokens.get_one.return_value = mock_token
+
+        request_data = {"secret": "test-secret", "csr": CSR}
+        response = await mocked_internal_api_client.post(
+            f"{self.BASE_PATH}:enroll",
+            json=request_data,
+            headers=internal_api_headers,
+        )
+        assert response.status_code == 401
+
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHN_TOKEN_REUSED}:bootstraptoken",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(mock_token.secret),
         )

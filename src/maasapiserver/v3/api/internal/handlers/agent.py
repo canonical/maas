@@ -1,10 +1,11 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
 
 from fastapi import Depends, Response
 from OpenSSL import crypto
+import structlog
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -24,6 +25,11 @@ from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
 from maasapiserver.v3.constants import V3_INTERNAL_API_PREFIX
+from maascommon.logging.security import (
+    AUTHN_TOKEN_REUSED,
+    hash_token_for_logging,
+    SECURITY,
+)
 from maasservicelayer.builders.agents import AgentBuilder
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.agents import AgentsClauseFactory
@@ -50,6 +56,8 @@ from maasservicelayer.models.secrets import (
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.certificates import Certificate, CertificateRequest
+
+logger = structlog.get_logger()
 
 
 async def fetch_maas_ca_cert(services: ServiceCollectionV3) -> Certificate:
@@ -205,6 +213,11 @@ class AgentHandler(Handler):
             query=query_bootstraptoken
         )
         if bootstraptoken is None or utcnow() >= bootstraptoken.expires_at:
+            logger.info(
+                f"{AUTHN_TOKEN_REUSED}:bootstraptoken",
+                type=SECURITY,
+                token_hash=hash_token_for_logging(agent_enroll_request.secret),
+            )
             raise UnauthorizedException(
                 details=[
                     BaseExceptionDetail(
