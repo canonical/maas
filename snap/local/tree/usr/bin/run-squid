@@ -14,11 +14,11 @@ if [ ! -e "$SNAP_DATA/proxy/maas-proxy.conf" ]; then
 fi
 
 # Ensure that the cache is initialized.
-$SNAP/usr/sbin/squid-gnutls -z -d 5 -N -f "$SNAP_DATA/proxy/maas-proxy.conf"
+"$SNAP"/usr/sbin/squid-gnutls -z -d 5 -N -f "$SNAP_DATA/proxy/maas-proxy.conf"
 
 # Start squid, force kill it when the script is terminated. Squid sometimes
 # (most of the time) just does not want to die.
 trap 'kill -9 $PID; wait $PID' TERM INT
-$SNAP/usr/sbin/squid-gnutls -N -d 5 -f "$SNAP_DATA/proxy/maas-proxy.conf" &
+"$SNAP"/usr/sbin/squid-gnutls -N -d 5 -f "$SNAP_DATA/proxy/maas-proxy.conf" &
 PID=$!
 wait "$PID"
