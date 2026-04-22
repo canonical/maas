@@ -1,9 +1,9 @@
 pre_start() {
-  if [ ! -x /usr/sbin/squid ]; then
+  if [ ! -x /usr/sbin/squid-gnutls ]; then
       echo "No squid binary found"
       exit 1
   fi
-  SQUID=/usr/sbin/squid
+  SQUID=/usr/sbin/squid-gnutls
 
   # ensure all cache dirs are there
   install -d -o proxy -g proxy -m 750 /var/cache/maas-proxy/

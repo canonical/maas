@@ -10,14 +10,11 @@
  nocreate
  sharedscripts
  postrotate
-  if [ -x /usr/sbin/squid ]; then
-      SQUID=/usr/sbin/squid
-  elif  [ -x /usr/sbin/squid3 ]; then
-      SQUID=/usr/sbin/squid3
-  else
+  if [ ! -x /usr/sbin/squid-gnutls ]; then
       echo "No squid binary found"
       exit 1
   fi
+  SQUID=/usr/sbin/squid-gnutls
 
   test ! -e /var/run/maas-proxy.pid || $SQUID -f /var/lib/maas/maas-proxy.conf -k rotate
  endscript
