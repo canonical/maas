@@ -15,7 +15,6 @@ from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
 )
-from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maascommon.workflows.bootresource import (
     DELETE_BOOTRESOURCE_WORKFLOW_NAME,
@@ -47,7 +46,6 @@ from maasservicelayer.db.tables import (
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootresourcesets import BootResourceSet
-from maasservicelayer.models.bootsourcecache import BootSourceCache
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.services import ServiceCollectionV3
@@ -63,7 +61,7 @@ from maasservicelayer.services.bootsourceselections import (
 )
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.image_sync import ImageSyncService
-from maasservicelayer.services.msm import MSMService, MSMStatus
+from maasservicelayer.services.msm import MSMService
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.simplestreams.models import (
@@ -486,77 +484,6 @@ class TestImageSyncService:
         assert not created
         self.boot_sources_service.create.assert_not_awaited()
         self.boot_sources_service.update_by_id.assert_not_awaited()
-
-    async def test_sync_boot_source_selections_from_msm(self) -> None:
-        self.msm_service.get_status.return_value = MSMStatus(
-            sm_url="http://maas-site-manager.io",
-            sm_jwt="some-token",
-            running=MSMStatusEnum.CONNECTED,
-            start_time=None,
-        )
-        boot_sources = [
-            BootSource(
-                id=100,
-                url=f"http://maas-site-manager.io/{MSM_SS_EP}",
-                keyring_filename="",
-                keyring_data=None,
-                priority=1,
-                skip_keyring_verification=True,
-            )
-        ]
-        self.boot_source_cache_service.get_many.return_value = [
-            BootSourceCache(
-                id=100,
-                os="ubuntu",
-                arch="amd64",
-                release="noble",
-                subarch="generic",
-                label="stable",
-                boot_source_id=100,
-                extra={},
-            )
-        ]
-        self.boot_source_selections_service.exists.return_value = False
-
-        await self.service.sync_boot_source_selections_from_msm(boot_sources)
-
-        self.boot_source_selections_service.create.assert_awaited_once_with(
-            BootSourceSelectionBuilder(
-                os="ubuntu",
-                release="noble",
-                boot_source_id=100,
-                arch="amd64",
-            )
-        )
-
-    @pytest.mark.parametrize(
-        "msm_status",
-        [
-            None,
-            MSMStatus(
-                sm_url="http://maas-site-manager.io",
-                sm_jwt="",
-                running=MSMStatusEnum.PENDING,
-                start_time=None,
-            ),
-            MSMStatus(
-                sm_url="http://maas-site-manager.io",
-                sm_jwt="",
-                running=MSMStatusEnum.NOT_CONNECTED,
-                start_time=None,
-            ),
-        ],
-    )
-    async def test_sync_boot_source_selections_from_msm__not_connected(
-        self, msm_status: MSMStatus | None
-    ) -> None:
-        self.msm_service.get_status.return_value = msm_status
-
-        await self.service.sync_boot_source_selections_from_msm([])
-
-        self.boot_source_cache_service.get_many.assert_not_awaited()
-        self.boot_source_selections_service.exists.assert_not_awaited()
-        self.boot_source_selections_service.create.assert_not_awaited()
 
     async def test_check_commissioning_series_selected__no_selection(
         self,

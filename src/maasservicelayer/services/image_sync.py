@@ -15,7 +15,6 @@ from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
 )
-from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maascommon.osystem.ubuntu import UbuntuOS
 from maascommon.workflows.bootresource import ResourceDownloadParam
@@ -192,51 +191,6 @@ class ImageSyncService(Service):
                         ),
                     )
             return False
-
-    async def sync_boot_source_selections_from_msm(
-        self, boot_sources: list[BootSource]
-    ):
-        msm_status = await self.msm_service.get_status()
-        if not msm_status or not msm_status.running == MSMStatusEnum.CONNECTED:
-            return
-
-        for boot_source in boot_sources:
-            if boot_source.url.startswith(msm_status.sm_url):
-                for cache in await self.boot_source_cache_service.get_many(
-                    query=QuerySpec(
-                        where=BootSourceCacheClauseFactory.with_boot_source_id(
-                            boot_source.id
-                        )
-                    )
-                ):
-                    if not await self.boot_source_selections_service.exists(
-                        query=QuerySpec(
-                            where=BootSourceSelectionClauseFactory.and_clauses(
-                                [
-                                    BootSourceSelectionClauseFactory.with_boot_source_id(
-                                        boot_source.id
-                                    ),
-                                    BootSourceSelectionClauseFactory.with_os(
-                                        cache.os
-                                    ),
-                                    BootSourceSelectionClauseFactory.with_release(
-                                        cache.release
-                                    ),
-                                    BootSourceSelectionClauseFactory.with_arch(
-                                        cache.arch
-                                    ),
-                                ]
-                            )
-                        )
-                    ):
-                        await self.boot_source_selections_service.create(
-                            BootSourceSelectionBuilder(
-                                os=cache.os,
-                                release=cache.release,
-                                boot_source_id=boot_source.id,
-                                arch=cache.arch,
-                            )
-                        )
 
     async def check_commissioning_series_selected(self) -> bool:
         """Creates an error notification if the commissioning os and the commissioning
