@@ -30,7 +30,7 @@ class JWTAudienceError(JWTDecodeError):
 def decode_unverified_jwt(
     token: str,
     check_expiration: bool = True,
-    expected_audience: str | list[str] | None = None,
+    expected_audience: str | None = None,
 ) -> dict[str, Any]:
     """Decode a JWT without verifying its signature to extract claims."""
     try:
@@ -45,11 +45,13 @@ def decode_unverified_jwt(
         if expected_audience is not None:
             aud = claims.get("aud")
             throw = False
-            match expected_audience:
+            match aud:
                 case str():
                     throw = aud != expected_audience
                 case list():
-                    throw = aud not in expected_audience
+                    throw = expected_audience not in aud
+                case None:
+                    throw = True
             if throw:
                 raise JWTAudienceError(
                     f"invalid audience: expected {expected_audience}, got {aud}"

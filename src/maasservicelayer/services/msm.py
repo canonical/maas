@@ -88,7 +88,7 @@ class MSMService(Service):
             claims = decode_unverified_jwt(
                 encoded,
                 check_expiration=False,
-                expected_audience=[SITE_AUDIENCE],
+                expected_audience=SITE_AUDIENCE,
             )
         except JWTDecodeError as ex:
             raise MSMException(str(ex)) from ex
