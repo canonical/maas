@@ -239,11 +239,11 @@ dpu_power_user    = "<DPU BMC user>"
 distro_series = "noble"
 ```
 
-Export the sensitive credentials as environment variables so they never appear in shell history:
+Export the sensitive credentials as environment variables. To avoid them being saved to your shell history, include a leading space before each command:
 
 ```nohighlight
-export TF_VAR_host_power_pass="<HOST BMC password>"
-export TF_VAR_dpu_power_pass="<DPU BMC password>"
+ export TF_VAR_host_power_pass="<HOST BMC password>"
+ export TF_VAR_dpu_power_pass="<DPU BMC password>"
 ```
 
 ### 3. Preview the changes
