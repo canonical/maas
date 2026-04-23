@@ -10,7 +10,7 @@ The Terraform plan described here automates this sequencing: it provisions the h
 
 - **MAAS 3.7** or later (DPU support was introduced in 3.7)
 - **Terraform** 1.4.0 or later
-- **canonical/maas** Terraform provider `~> 2.7.3` with DPU support
+- **canonical/maas** Terraform provider `~> 2.8` with DPU support
 - Both the DPU and machine BMC must have Redfish enabled and the account you use must have sufficient permissions.
 
 ## The Terraform plan
@@ -24,9 +24,28 @@ terraform {
   required_providers {
     maas = {
       source  = "canonical/maas"
-      version = "~> 2.7.3"
+      version = "~> 2.8"
     }
   }
+}
+
+# == Provider ==================================================================
+
+variable "maas_api_url" {
+  description = "MAAS API URL, e.g. http://127.0.0.1:5240/MAAS"
+  type        = string
+}
+
+variable "maas_api_key" {
+  description = "MAAS API key"
+  type        = string
+  sensitive   = true
+}
+
+provider "maas" {
+  api_version = "2.0"
+  api_url     = var.maas_api_url
+  api_key     = var.maas_api_key
 }
 
 # == Machine parameters ========================================================
@@ -163,6 +182,10 @@ resource "maas_instance" "dpu_deployment" {
       maas logout local-exec
       snap remove maas --purge
     EOT
+    environment = {
+      MAAS_API_URL = var.maas_api_url
+      MAAS_API_KEY = var.maas_api_key
+    }
   }
 }
 
@@ -202,13 +225,6 @@ Before running the plan, collect the following for both machines:
 | BMC IP address | Your network inventory or BMC management interface |
 | BMC username/password | Your hardware credentials |
 
-Set the MAAS credentials as environment variables. The provider reads them automatically:
-
-```nohighlight
-export MAAS_API_URL="http://<MAAS>:5240/MAAS"
-export MAAS_API_KEY="<KEY>"
-```
-
 ## Deploy the host-DPU pair
 
 ### 1. Initialize Terraform
@@ -226,6 +242,8 @@ terraform init
 Create a `terraform.tfvars` file with the non-sensitive values:
 
 ```hcl
+maas_api_url = "http://<MAAS>:5240/MAAS"
+
 host_hostname      = "host-0"
 host_pxe_mac       = "<HOST MAC>"
 host_power_address = "<HOST BMC IP>"
@@ -242,6 +260,7 @@ distro_series = "noble"
 Export the sensitive credentials as environment variables. To avoid them being saved to your shell history, include a leading space before each command:
 
 ```nohighlight
+ export TF_VAR_maas_api_key="<MAAS API key>"
  export TF_VAR_host_power_pass="<HOST BMC password>"
  export TF_VAR_dpu_power_pass="<DPU BMC password>"
 ```
