@@ -9,6 +9,9 @@ if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
       apparmor_parser --replace --write-cache --skip-read-cache "${dhcpd_prof}" || true
    fi
    if [ "$1" = "purge" ]; then
+      . /usr/share/debconf/confmodule
+      db_purge || true
+      db_stop || true
       rm -rf /var/lib/maas/dhcp
       rm -rf /run/maas-dhcp
    fi

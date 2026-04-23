@@ -48,6 +48,8 @@ case "$1" in
         
         # Remove Temporal configurations
         rm -rf /var/lib/maas/temporal
+
+        db_purge || true
         ;;
 esac
 

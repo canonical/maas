@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: maas\n"
 "Report-Msgid-Bugs-To: maas@packages.debian.org\n"
-"POT-Creation-Date: 2016-04-20 12:24-0400\n"
+"POT-Creation-Date: 2026-04-16 14:49+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,34 +17,68 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#. Type: string
+#. Type: note
 #. Description
 #: ../maas-region-controller.templates:1001
-msgid "Ubuntu MAAS PXE/Provisioning network address:"
+msgid "Ubuntu MAAS Server"
 msgstr ""
 
-#. Type: string
+#. Type: note
 #. Description
 #: ../maas-region-controller.templates:1001
 msgid ""
-"The Ubuntu MAAS Server automatically detects the IP address that is used for "
-"PXE and provisioning. However, it needs to be in the same network as the "
-"clients. If the automatically detected address is not in the same network as "
-"the clients, it must be changed."
+"The Ubuntu MAAS Server has been installed in your system. You can access the "
+"MAAS Web interface here:"
+msgstr ""
+
+#. Type: note
+#. Description
+#: ../maas-region-controller.templates:1001
+msgid "   http://${MAAS_URL}/MAAS"
+msgstr ""
+
+#. Type: note
+#. Description
+#: ../maas-region-controller.templates:1001
+msgid ""
+"If the automatically detected address above is not in the same network as "
+"the MAAS clients, you need to reconfigure it:"
+msgstr ""
+
+#. Type: note
+#. Description
+#: ../maas-region-controller.templates:1001
+msgid "   sudo dpkg-reconfigure maas-region-controller"
 msgstr ""
 
 #. Type: string
 #. Description
 #: ../maas-region-controller.templates:2001
-msgid "Ubuntu MAAS username"
+msgid "Ubuntu MAAS PXE/Provisioning network address:"
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../maas-region-controller.templates:2001
+msgid ""
+"The Ubuntu MAAS Server automatically detects the IP address that is used for "
+"PXE and provisioning. However, it needs to be reacheable by the clients (e.g "
+"L2 or L3 network). If the automatically detected address is not reacheable "
+"by the clients, it needs to be changed."
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../maas-region-controller.templates:3001
+msgid "Ubuntu MAAS username:"
 msgstr ""
 
 #. Type: string
 #. Description
 #. Type: password
 #. Description
-#: ../maas-region-controller.templates:2001
 #: ../maas-region-controller.templates:3001
+#: ../maas-region-controller.templates:4001
 msgid ""
 "The Ubuntu MAAS server requires the administrator to create a username and "
 "password combination."
@@ -52,18 +86,18 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../maas-region-controller.templates:2001
+#: ../maas-region-controller.templates:3001
 msgid "Please provide the username for the MAAS account."
 msgstr ""
 
 #. Type: password
 #. Description
-#: ../maas-region-controller.templates:3001
-msgid "Ubuntu MAAS password"
+#: ../maas-region-controller.templates:4001
+msgid "Ubuntu MAAS password:"
 msgstr ""
 
 #. Type: password
 #. Description
-#: ../maas-region-controller.templates:3001
+#: ../maas-region-controller.templates:4001
 msgid "Please provide the password for the MAAS account."
 msgstr ""

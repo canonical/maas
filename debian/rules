@@ -17,12 +17,17 @@ override_dh_installsystemd:
 	dh_installsystemd -p maas-region-api --no-start --restart-after-upgrade --name=maas-temporal maas-temporal.service
 	dh_installsystemd -p maas-region-api --no-start --restart-after-upgrade --name=maas-temporal-worker maas-temporal-worker.service
 	dh_installsystemd -p maas-region-api --no-start --restart-after-upgrade --name=maas-openfga maas-openfga.service
+	dh_installsystemd -p maas-region-api --no-start --restart-after-upgrade --name=maas-remote-syslog-compress maas-remote-syslog-compress.service maas-remote-syslog-compress.timer
 	dh_installsystemd -p maas-rack-controller --no-start --name=maas-rackd maas-rackd.service
 	dh_installsystemd -p maas-common --name=maas-http maas-http.service
 	dh_installsystemd -p maas-proxy --name=maas-proxy maas-proxy.service
 	dh_installsystemd -p maas-dhcp --name=maas-dhcpd maas-dhcpd.service
 	dh_installsystemd -p maas-dhcp --name=maas-dhcpd6 maas-dhcpd6.service
 	dh_installsystemd -p maas-agent --name=maas-agent maas-agent.service
+
+override_dh_installdocs:
+	dh_installdocs
+	dh_installdocs -p maas-region-controller README.rst
 
 override_dh_auto_install:
 	dh_auto_install
@@ -56,6 +61,9 @@ override_dh_auto_install:
 override_dh_dwz:
 	# We want to include debug symbols for our Go binaries, but dwz fails with:
 	# > Found compressed .debug_aranges section, not attempting dwz compression
+
+override_dh_strip:
+	dh_strip -Xmachine-resources
 
 override_dh_auto_clean:
 	dh_auto_clean
