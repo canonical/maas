@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
@@ -66,3 +66,31 @@ class TestRacksRepository(RepositoryCommonTests[Rack]):
         assert result.items[0].name == "rack-1"
         assert len(result.items[0].registered_agents_system_ids) == 1
         assert result.items[0].registered_agents_system_ids[0] == "abc123"
+
+    async def test_list_with_summary_no_agents(
+        self, repository_instance: RacksRepository, fixture: Fixture
+    ):
+        await create_test_rack_entry(fixture, "rack-1", id=1)
+
+        result = await repository_instance.list_with_summary(1, 20)
+
+        assert result.total == 1
+        assert result.items[0].name == "rack-1"
+        assert len(result.items[0].registered_agents_system_ids) == 0
+
+    async def test_list_with_summary_null_rackcontroller_ids_are_removed(
+        self, repository_instance: RacksRepository, fixture: Fixture
+    ):
+        await create_test_rack_entry(fixture, "rack-1", id=1)
+        await create_test_agents_entry(
+            fixture=fixture,
+            uuid="test_id",
+            rack_id=1,
+            rackcontroller_id=None,  # type: ignore
+        )
+
+        result = await repository_instance.list_with_summary(1, 20)
+
+        assert result.total == 1
+        assert result.items[0].name == "rack-1"
+        assert len(result.items[0].registered_agents_system_ids) == 0

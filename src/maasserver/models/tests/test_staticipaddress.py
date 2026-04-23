@@ -338,24 +338,27 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
         mutex = threading.Lock()
         results = []
 
-        @transactional
-        def allocate():
-            # service_layer is not initialized in these threads, so we have to
-            # manually do it.
-            with service_layer:
-                return StaticIPAddress.objects.allocate_new(subnet)
-
         def allocate_one():
-            try:
-                with concurrency:
-                    sip = allocate()
-            except Exception:
-                failure = Failure()
-                with mutex:
-                    results.append(failure)
-            else:
-                with mutex:
-                    results.append(sip)
+            # service_layer is not initialized in these threads, so we have to
+            # manually do it. Initialize it ONCE per thread outside the
+            # transactional block to ensure stable connection state throughout
+            # the lock lifecycle.
+            with service_layer:
+
+                @transactional
+                def allocate():
+                    return StaticIPAddress.objects.allocate_new(subnet)
+
+                try:
+                    with concurrency:
+                        sip = allocate()
+                except Exception:
+                    failure = Failure()
+                    with mutex:
+                        results.append(failure)
+                else:
+                    with mutex:
+                        results.append(sip)
 
         threads = [threading.Thread(target=allocate_one) for _ in range(count)]
 

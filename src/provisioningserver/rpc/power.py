@@ -11,7 +11,6 @@ from twisted.internet.defer import (
     DeferredList,
     DeferredSemaphore,
     inlineCallbacks,
-    returnValue,
     succeed,
 )
 
@@ -93,7 +92,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
         # Hold the error; it will be reported later.
         exc_info = sys.exc_info()
     else:
-        returnValue(power_state)
+        return power_state
 
     # Reaching here means that things have gone wrong.
     assert exc_info != (None, None, None)

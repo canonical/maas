@@ -3,11 +3,12 @@ adopt-info: maas
 summary: Metal as a Service
 description: |
   Total automation of your physical servers for amazing data center operational efficiency.
-grade: stable
+grade: devel
 confinement: strict
-base: core24
+base: core26
+build-base: devel
 assumes:
-  - snapd2.53
+  - snapd2.75
 system-usernames:
   snap_daemon: shared
 # epochs:
@@ -42,7 +43,7 @@ slots:
 apps:
   pebble:
     daemon: simple
-    command: bin/run-pebble-daemon
+    command: usr/bin/run-pebble-daemon
     plugs:
       - avahi-observe
       - hardware-observe
@@ -58,7 +59,7 @@ apps:
       - time-control
 
   maas:
-    command: bin/maas
+    command: usr/bin/maas
     plugs:
       - home
       - mount-observe  # to read /proc/*/mounts
@@ -66,7 +67,7 @@ apps:
       - network-observe # to get default URL
 
   power:
-    command: bin/maas-power
+    command: usr/bin/maas-power
     environment:
       MAAS_PATH: $SNAP
     plugs:
@@ -80,15 +81,19 @@ parts:
     source-type: git
     source: https://github.com/canonical/pebble
     source-tag: v1.10.2
+    organize:
+      bin: usr/sbin
 
   maas:
     plugin: python
     source: .
     build-packages:
       - build-essential
+      - cargo
       - git
       - libffi-dev
       - libpq-dev
+      - libssl-dev
       - libxml2-dev
       - libxslt1-dev
       - python3-setuptools
@@ -144,13 +149,13 @@ parts:
       - python3-httpx
       - python3-hvac
       - python3-idna # for macaroonbakery
-      - python3-jose
+      - python3-joserfc
       - python3-jsonschema
       - python3-lxml
       - python3-macaroonbakery
       - python3-markupsafe
       - python3-mimeparse
-      - python3-multipart
+      - python3-python-multipart
       - python3-nacl # for macaroonbakery
       - python3-netaddr
       - python3-netifaces
@@ -164,12 +169,14 @@ parts:
       - python3-prometheus-client
       - python3-protobuf # for macaroonbakery
       - python3-psycopg2
+      - python3-pydantic
       - python3-pylxd
       - python3-pymacaroons # for macaroonbakery
       - python3-pyparsing
       - python3-pyrsistent # for jsonschema
       - python3-pythonjsonlogger
       - python3-pyvmomi
+      - python3-referencing
       - python3-requests
       - python3-requests-toolbelt  # for pylxd
       - python3-requests-unixsocket
@@ -197,6 +204,8 @@ parts:
       - util-linux
       - wget # DLI
       - wsmancli # AMT
+    build-attributes:
+      - enable-usrmerge
     organize:
       lib/python3.*/site-packages/etc/*: etc/
       lib/python3.*/site-packages/usr/bin/*: usr/bin/
@@ -205,11 +214,9 @@ parts:
       lib/python3.*/site-packages/usr/share/*: usr/share/
       usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers/
       usr/lib/*-linux-gnu/blas/*: usr/lib/
+      usr/local/bin/*: usr/bin/
+      usr/local/lib/python3.14/*: usr/lib/python3.14/
     stage:
-      - bin
-      - -bin/activate*
-      - -bin/Activate*
-      - -bin/maas-sampledata
       - etc/bind
       - etc/chrony
       - etc/freeipmi
@@ -217,14 +224,12 @@ parts:
       - etc/maas
       - etc/nginx
       - etc/openwsman
-      - sbin
-      - lib
       - -lib/python3.*/site-packages/etc
       - -lib/python3.*/site-packages/usr
       - -lib/python3/dist-packages/maastesting
-      - pyvenv.cfg
       - usr/bin
       - -usr/bin/xdg-*
+      - -usr/bin/maas-sampledata
       - usr/lib
       - usr/sbin
       - usr/share/dns
@@ -238,10 +243,9 @@ parts:
       - var/lib/ieee-data
       - var/lib/temporal
     override-build: |
-      # Do not `craftctl default`: the python plugin would create an isolated venv and would need to install setuptools from pip.
-      python3 -m venv --system-site-packages $CRAFT_PART_INSTALL
-      VENV_PYTHON=$CRAFT_PART_INSTALL/bin/python3
-      $VENV_PYTHON -m pip install --no-build-isolation .
+      # Install MAAS package directly without venv to avoid symlink conflicts
+      # with staged packages on systems where /bin is a symlink to /usr/bin
+      /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
       find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#\!.*python3.*$|#!/usr/bin/env python3|' {} +
 
       cp -a package-files/* $CRAFT_PART_INSTALL
@@ -279,18 +283,8 @@ parts:
     source: src/host-info
     build-packages:
       - golang-go
-
-  maas-netmon:
-    plugin: make
-    source: src/maasagent
-    build-packages:
-      - golang-go
-    build-environment:
-      - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
-    organize:
-      bin/maas-netmon: usr/sbin/maas-netmon
     prime:
-      - usr/sbin/maas-netmon
+      - usr/share/maas/machine-resources
 
   maas-agent:
     plugin: make
@@ -303,10 +297,8 @@ parts:
       - llvm
     build-environment:
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
-    organize:
-      bin/maas-agent: usr/sbin/maas-agent
     prime:
-      - usr/sbin/maas-agent
+      - usr/sbin/
 
   maas-openfga:
     plugin: make
@@ -315,15 +307,9 @@ parts:
       - golang-go
     build-environment:
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
-    organize:
-      bin/maas-openfga: usr/sbin/maas-openfga
-      bin/maas-openfga-migrator: usr/sbin/maas-openfga-migrator
-      bin/maas-openfga-app-migrator: usr/sbin/maas-openfga-app-migrator
     prime:
-      - usr/sbin/maas-openfga
-      - usr/sbin/maas-openfga-migrator
-      - usr/sbin/maas-openfga-app-migrator
-  
+      - usr/sbin/
+
   tree:
     plugin: dump
     source: snap/local/tree

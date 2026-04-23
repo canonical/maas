@@ -120,7 +120,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        selection_2 = TEST_BOOTSOURCESELECTION.copy()
+        selection_2 = TEST_BOOTSOURCESELECTION.model_copy()
         selection_2.id = 2
 
         services_mock.boot_source_selections = Mock(
@@ -288,8 +288,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
-        s1 = TEST_BOOTSOURCESELECTION.copy()
-        s2 = TEST_BOOTSOURCESELECTION.copy()
+        s1 = TEST_BOOTSOURCESELECTION.model_copy()
+        s2 = TEST_BOOTSOURCESELECTION.model_copy()
         s2.id = 2
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
@@ -343,8 +343,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
-        s1 = TEST_BOOTSOURCESELECTION.copy()
-        s2 = TEST_BOOTSOURCESELECTION.copy()
+        s1 = TEST_BOOTSOURCESELECTION.model_copy()
+        s2 = TEST_BOOTSOURCESELECTION.model_copy()
         s2.id = 2
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService

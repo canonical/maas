@@ -66,7 +66,7 @@ class TestHttpProxyConfig:
     )
     def test_valid_http_proxy(self, proxy_url):
         config = HttpProxyConfig(value=proxy_url)
-        assert config.value == proxy_url
+        assert str(config.value) == proxy_url
 
     @pytest.mark.parametrize(
         "proxy_url",

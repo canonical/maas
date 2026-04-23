@@ -2,6 +2,8 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 from typing import Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     BaseHref,
@@ -12,7 +14,7 @@ from maasservicelayer.models.bootresources import BootResource
 
 
 class BootResourceResponse(HalResponse[BaseHal]):
-    kind = "BootResource"
+    kind: str = Field(default="BootResource")
     id: int
     os: str
     release: str
@@ -40,11 +42,11 @@ class BootResourceResponse(HalResponse[BaseHal]):
 
 
 class BootResourceListResponse(PaginatedResponse[BootResourceResponse]):
-    kind = "BootResourceList"
+    kind: str = Field(default="BootResourceList")
 
 
 class BootloaderResponse(HalResponse[BaseHal]):
-    kind = "Bootloader"
+    kind: str = Field(default="Bootloader")
     id: int
     name: str
     architecture: str
@@ -70,4 +72,4 @@ class BootloaderResponse(HalResponse[BaseHal]):
 
 
 class BootloaderListResponse(PaginatedResponse[BootloaderResponse]):
-    kind = "BootloaderList"
+    kind: str = Field(default="BootloaderList")

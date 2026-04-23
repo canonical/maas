@@ -3,6 +3,8 @@
 
 from typing import Self
 
+from pydantic import Field
+
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
     HalResponse,
@@ -13,7 +15,7 @@ from maasservicelayer.models.sslkeys import SSLKey
 
 
 class SSLKeyResponse(HalResponse[BaseHal]):
-    kind = "SSLKey"
+    kind: str = Field(default="SSLKey")
     id: int
     key: str
 
@@ -26,11 +28,11 @@ class SSLKeyResponse(HalResponse[BaseHal]):
 
 
 class SSLKeyListResponse(PaginatedResponse[SSLKeyResponse]):
-    kind = "SSLKeys"
+    kind: str = Field(default="SSLKeys")
 
 
 class SSLKeyWithSummaryResponse(SSLKeyResponse):
-    kind = "SSLKeyWithSummary"
+    kind: str = Field(default="SSLKeyWithSummary")
     display: str
 
     @classmethod
@@ -45,4 +47,4 @@ class SSLKeyWithSummaryResponse(SSLKeyResponse):
 class SSLKeysWithSummaryListResponse(
     PaginatedResponse[SSLKeyWithSummaryResponse]
 ):
-    kind = "SSLKeysWithSummary"
+    kind: str = Field(default="SSLKeysWithSummary")

@@ -2,7 +2,6 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import datetime
-from typing import Optional
 
 from pydantic import IPvAnyAddress
 
@@ -15,9 +14,9 @@ from maasservicelayer.models.base import (
 
 @generate_builder()
 class StaticIPAddress(MaasTimestampedBaseModel):
-    ip: Optional[IPvAnyAddress]
+    ip: IPvAnyAddress | None = None
     alloc_type: IpAddressType
     lease_time: int
-    temp_expires_on: Optional[datetime.datetime]
-    subnet_id: Optional[int]
-    user_id: Optional[int] = None
+    temp_expires_on: datetime.datetime | None = None
+    subnet_id: int | None = None
+    user_id: int | None = None

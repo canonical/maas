@@ -3,12 +3,12 @@ import datetime
 from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolPermission,
     ResourcePoolResponse,
-    ResourcePoolWithSummaryResponse,
+    ResourcePoolStatisticsResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.models.resource_pools import (
     ResourcePool,
-    ResourcePoolWithSummary,
+    ResourcePoolStatistics,
 )
 
 
@@ -50,7 +50,7 @@ class TestResourcePoolsResponse:
 class TestResourcePoolsWithSummaryResponse:
     def test_from_model_with_summary(self):
         now = datetime.datetime.now(datetime.timezone.utc)
-        resource_pool_with_summary = ResourcePoolWithSummary(
+        resource_pool_statistics = ResourcePoolStatistics(
             id=1,
             name="my resource_pools",
             description="my description",
@@ -60,20 +60,20 @@ class TestResourcePoolsWithSummaryResponse:
             machine_ready_count=10,
         )
 
-        response = ResourcePoolWithSummaryResponse.from_model_with_summary(
-            resource_pool_with_summary=resource_pool_with_summary,
+        response = ResourcePoolStatisticsResponse.from_model_with_statistics(
+            resource_pool_statistics=resource_pool_statistics,
             permissions={ResourcePoolPermission.DELETE},
             self_base_hyperlink=V3_API_PREFIX,
         )
-        assert resource_pool_with_summary.id == response.id
-        assert resource_pool_with_summary.name == response.name
-        assert resource_pool_with_summary.description == response.description
+        assert resource_pool_statistics.id == response.id
+        assert resource_pool_statistics.name == response.name
+        assert resource_pool_statistics.description == response.description
         assert (
-            resource_pool_with_summary.machine_total_count
+            resource_pool_statistics.machine_total_count
             == response.machine_total_count
         )
         assert (
-            resource_pool_with_summary.machine_ready_count
+            resource_pool_statistics.machine_ready_count
             == response.machine_ready_count
         )
         assert response.permissions == {ResourcePoolPermission.DELETE}

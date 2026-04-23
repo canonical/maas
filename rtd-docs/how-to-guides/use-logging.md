@@ -10,9 +10,9 @@ MAAS logs help you find issues, spot configuration mistakes, and audit the use o
 
 Each of these has a specific purpose, as described in this document.
 
-## Checking logs in systemd (MAAS 3.5 and Newer)
+## Checking logs in systemd
 
-Understanding what MAAS is doing under the hood is critical when troubleshooting unexpected behavior — whether a machine fails to deploy, a controller won’t respond, or an API call returns errors. Starting with version 3.5, MAAS uses `systemd` journal logs instead of log files written to disk. This change offers a more efficient and centralized way to inspect logs, in context, in real time.
+Understanding what MAAS is doing under the hood is critical when troubleshooting unexpected behavior — whether a machine fails to deploy, a controller won’t respond, or an API call returns errors. MAAS uses `systemd` to provide an efficient and centralized way to inspect logs, in context, in real time.
 
 ### Region controller logs
 
@@ -45,16 +45,6 @@ To search for logs by machine name (hostname):
 ```
 journalctl -u snap.maas.pebble -t maas-machine --since "-15m" MAAS_MACHINE_HOSTNAME=ace-cougar
 ```
-
-## Checking logs before MAAS 3.5
-
-Before version 3.5, MAAS saved logs in custom files. Here are some examples:
-
-- Region Controller: `/var/snap/maas/common/log/regiond.log` or `/var/log/maas/regiond.log`
-
-- Rack Controller: `/var/snap/maas/common/log/rackd.log` or `/var/log/maas/rackd.log`
-
-- Proxy: `/var/snap/maas/common/log/proxy/access.log`
 
 ### Using the less command to read logs
 

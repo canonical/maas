@@ -928,14 +928,14 @@ class MachineForm(NodeForm):
                 cleaned_data["min_hwe_kernel"] = min_hwe_kernel = "hwe-22.04"
             elif not release_a_newer_than_b(min_hwe_kernel, "hwe-22.04"):
                 raise ValidationError(
-                    "Invalid DPU kernel provided. Only 'hwe-22.04' or newer are supported."
+                    f"Invalid minimum {min_hwe_kernel} DPU kernel used. Only 'hwe-22.04' or newer are supported."
                 )
 
-            if hwe_kernel and release_a_newer_than_b(
-                min_hwe_kernel, hwe_kernel
+            if hwe_kernel and not release_a_newer_than_b(
+                hwe_kernel, min_hwe_kernel
             ):
                 raise ValidationError(
-                    "Invalid DPU kernel provided. Only 'hwe-22.04' or newer are supported."
+                    f"Invalid {hwe_kernel} DPU kernel used. Only 'hwe-22.04' or newer are supported."
                 )
 
         return cleaned_data
@@ -1919,6 +1919,7 @@ class UbuntuForm(Form):
             "Archive used by nodes to retrieve packages for Intel "
             "architectures, e.g. http://archive.ubuntu.com/ubuntu."
         ),
+        assume_scheme="http",
     )
     ports_archive = forms.URLField(
         label="Ports archive",
@@ -1927,6 +1928,7 @@ class UbuntuForm(Form):
             "Archive used by nodes to retrieve packages for non-Intel "
             "architectures, e.g. http://ports.ubuntu.com/ubuntu-ports."
         ),
+        assume_scheme="http",
     )
 
     def __init__(self, *args, **kwargs):
@@ -2349,7 +2351,7 @@ class BootSourceSelectionForm(MAASModelForm):
             return cleaned_data
 
         values = cache.values_list("arch", "subarch", "label")
-        arches, subarches, labels = zip(*values)
+        arches, subarches, labels = zip(*values, strict=True)
 
         # Validate architectures.
         required_arches_set = {arch for arch in cleaned_data["arches"]}

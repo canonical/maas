@@ -25,8 +25,15 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
       docs: ${{ steps.filter.outputs.docs }}
       lint: ${{ steps.filter.outputs.lint }}
+      image: ${{ steps.image.outputs.tag }}
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+      - name: Set build env image tag
+        id: image
+        run: |
+          ref="${{ github.event.merge_group.base_ref || github.base_ref || github.ref_name }}"
+          echo "tag=${ref#refs/heads/}" >> $GITHUB_OUTPUT
 
       - uses: dorny/paths-filter@61f87a10cd2c304679af17bb73ef192addf33c1c
         id: filter
@@ -63,7 +70,7 @@ jobs:
     if: >-
       ${{ !github.event.pull_request.draft && needs.changes.outputs.lint == 'true' }}
     container:
-      image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
+      image: ghcr.io/${{ github.repository }}-build-env:${{ needs.changes.outputs.image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -83,7 +90,7 @@ jobs:
       ${{ !github.event.pull_request.draft && needs.changes.outputs.python == 'true' }}
 
     container:
-      image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
+      image: ghcr.io/${{ github.repository }}-build-env:${{ needs.changes.outputs.image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -104,7 +111,7 @@ jobs:
       ${{ !github.event.pull_request.draft && needs.changes.outputs.go == 'true' }}
 
     container:
-      image: ghcr.io/${{ github.repository }}-build-env:${{ github.event_name == 'merge_group' && 'master' || github.base_ref }}
+      image: ghcr.io/${{ github.repository }}-build-env:${{ needs.changes.outputs.image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -134,6 +141,12 @@ jobs:
     - name: Test build
       working-directory: "rtd-docs"
       run: make html
+    - name: Run scripts tests
+      working-directory: "rtd-docs"
+      run: |
+        source .sphinx/venv/bin/activate
+        pip install -r requirements-dev.txt
+        cd _scripts && python -m pytest .
 
   ci-check:
     runs-on: ubuntu-slim
@@ -141,5 +154,5 @@ jobs:
     needs: [lint, test-python, test-go, test-docs]
     steps:
       - name: Check job results
-        if: needs.*.result == 'failure'
+        if: contains(needs.*.result, 'failure')
         run: exit 1

@@ -57,8 +57,8 @@ func NewProxy(targets []*url.URL, options ...ProxyOption) (*Proxy, error) {
 	if len(targets) == 0 {
 		return nil, errors.New("targets cannot be empty")
 	}
-	// Initialize using single target, but then pick a random one in Rewrite.
-	revproxy := httputil.NewSingleHostReverseProxy(targets[0])
+
+	revproxy := &httputil.ReverseProxy{}
 
 	tracker, err := urltracker.New(targets,
 		urltracker.WithMaxConsecutiveFailures(maxConsecutiveFailures),
@@ -89,8 +89,7 @@ type ProxyOption func(*Proxy)
 func WithRewriter(r *Rewriter) ProxyOption {
 	return func(p *Proxy) {
 		p.rewriter = r
-		// At most one of Rewrite or Director may be set. Set Director to nil.
-		p.revproxy.Director = nil
+		// Use Rewrite instead of deprecated Director
 		p.revproxy.Rewrite = p.rewriteRequest()
 		p.revproxy.ModifyResponse = p.modifyResponse()
 		p.revproxy.ErrorHandler = p.errorHandler()
@@ -101,6 +100,7 @@ func WithRewriter(r *Rewriter) ProxyOption {
 func WithCacher(c *Cacher) ProxyOption {
 	return func(p *Proxy) {
 		p.cacher = c
+		p.revproxy.ModifyResponse = p.modifyResponse()
 	}
 }
 
@@ -222,7 +222,10 @@ func (p *Proxy) modifyResponse() func(*http.Response) error {
 
 		pr, pw := io.Pipe()
 
+		done := make(chan struct{})
+
 		go func() {
+			defer close(done)
 			// If there is a pending Set() for the same key, we return an error
 			// so clients are not waiting for a cache write lock and fetch resource
 			// from the upstream.
@@ -241,7 +244,7 @@ func (p *Proxy) modifyResponse() func(*http.Response) error {
 
 		tee := io.TeeReader(resp.Body, pw)
 
-		resp.Body = &closer{tee, pw}
+		resp.Body = &closer{tee, pw, done}
 
 		return nil
 	}
@@ -427,6 +430,7 @@ func (p *Proxy) errorHandler() func(http.ResponseWriter, *http.Request, error) {
 type closer struct {
 	reader io.Reader
 	closer io.Closer
+	done   <-chan struct{}
 }
 
 func (c *closer) Read(data []byte) (int, error) {
@@ -434,7 +438,12 @@ func (c *closer) Read(data []byte) (int, error) {
 }
 
 func (c *closer) Close() error {
-	return c.closer.Close()
+	err := c.closer.Close()
+	if c.done != nil {
+		<-c.done
+	}
+
+	return err
 }
 
 // isSuccess checks if the HTTP status code represents a successful response (2xx)

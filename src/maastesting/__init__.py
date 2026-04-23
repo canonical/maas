@@ -3,7 +3,6 @@
 
 """Testing infrastructure for MAAS."""
 
-import copy
 from os import environ
 from os.path import abspath, dirname, join, pardir, realpath
 import re
@@ -55,8 +54,8 @@ filterwarnings("ignore", category=DeprecationWarning, module=r"^twisted\b")
 
 # Make sure that sentinel objects are not copied.
 sentinel_type = type(mock.sentinel.foo)
-copy._copy_dispatch[sentinel_type] = copy._copy_immutable
-copy._deepcopy_dispatch[sentinel_type] = copy._copy_immutable
+sentinel_type.__copy__ = lambda self: self
+sentinel_type.__deepcopy__ = lambda self, memo: self
 
 
 # This patches testtools.content.TracebackContent to fix LP:1188420

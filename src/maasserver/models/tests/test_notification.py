@@ -111,7 +111,7 @@ class TestFindingAndDismissingNotifications(MAASServerTestCase):
     def assertNotifications(self, user, notifications):
         notification = Notification.objects.find_for_user(user)
         self.assertIsInstance(notification, QuerySet)  # Not RawQuerySet
-        self.assertItemsEqual(notifications, notification)
+        self.assertCountEqual(notifications, notification)
 
     def test_find_and_dismiss_notifications_for_user(self):
         user = factory.make_User()

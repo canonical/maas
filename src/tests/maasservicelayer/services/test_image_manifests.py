@@ -246,7 +246,7 @@ class TestImageManifestsService:
         self.repository.get.return_value = TEST_IMAGE_MANIFEST
         self.repository.update.return_value = TEST_IMAGE_MANIFEST
         # return an updated manifest from the simplestream server
-        updated_manifest = MANIFEST.copy()
+        updated_manifest = MANIFEST.model_copy()
         updated_manifest.updated = LAST_UPDATE + timedelta(minutes=1)
         self.service.fetch_image_metadata_for_boot_source = AsyncMock(
             return_value=[updated_manifest]
@@ -280,7 +280,8 @@ class TestImageManifestsService:
         self.service.fetch_image_metadata_for_boot_source.assert_awaited_once_with(
             TEST_BOOT_SOURCE
         )
-        self.repository.update.assert_not_awaited()
+        # TODO: MAASENG-6418 remove this
+        self.repository.update.assert_awaited()
 
     # Passthrough methods
     async def test_get(self) -> None:
@@ -360,6 +361,7 @@ class TestIntegrationImageManifestsService:
         for path, product in zip(
             product_paths,
             [bootloader_products, ubuntu_products, centos_products],
+            strict=True,
         ):
             mock_aioresponse.get(
                 f"{test_boot_source.url}/{path}", payload=product

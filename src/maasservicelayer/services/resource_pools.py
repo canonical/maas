@@ -20,7 +20,7 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import (
     ResourcePool,
-    ResourcePoolWithSummary,
+    ResourcePoolStatistics,
 )
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
@@ -44,10 +44,10 @@ class ResourcePoolsService(
         """Returns all the ids of the resource pools in the db."""
         return await self.repository.list_ids()
 
-    async def list_with_summary(
+    async def list_with_statistics(
         self, page: int, size: int, query: QuerySpec | None
-    ) -> ListResult[ResourcePoolWithSummary]:
-        return await self.repository.list_with_summary(
+    ) -> ListResult[ResourcePoolStatistics]:
+        return await self.repository.list_with_statistics(
             page=page, size=size, query=query
         )
 

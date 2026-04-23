@@ -911,13 +911,13 @@ class TestWebSocketsResource(MAASTestCase):
                 (b"Connection", [b"Upgrade"]),
                 (b"Sec-Websocket-Accept", [b"oYBv54i42V5dw6KnZqOFroecUTc="]),
                 (b"Upgrade", [b"WebSocket"]),
+                (b"Transfer-Encoding", [b"chunked"]),
             ],
             request.responseHeaders.getAllRawHeaders(),
         )
         self.assertTrue(
             channel.transport.value().startswith(
                 b"HTTP/1.1 101 Switching Protocols\r\n"
-                b"Transfer-Encoding: chunked\r\n"
             )
         )
         self.assertEqual(101, request.code)

@@ -25,7 +25,6 @@ from twisted.internet.defer import (
     Deferred,
     inlineCallbacks,
     maybeDeferred,
-    returnValue,
     succeed,
 )
 from twisted.internet.error import ProcessDone
@@ -265,7 +264,7 @@ def retry(f, *args, timeout=30, intervals=1, clock=None, **kwargs):
         try:
             rv = f(*args, **kwargs)
             result = yield rv if isinstance(rv, Deferred) else succeed(rv)
-            returnValue(result)
+            return result
         except Exception as e:
             last_failure = e
         yield pause(wait, clock=clock)

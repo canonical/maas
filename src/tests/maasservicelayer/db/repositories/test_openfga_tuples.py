@@ -15,6 +15,7 @@ from maasservicelayer.db.repositories.openfga_tuples import (
     OpenFGATuplesRepository,
 )
 from maasservicelayer.db.tables import OpenFGATupleTable
+from maasservicelayer.models.openfga_tuple import EntitlementDeleteSpec
 from tests.fixtures.factories.openfga_tuples import create_openfga_tuple
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.utils.ulid import is_ulid
@@ -44,6 +45,38 @@ class TestOpenFGATuplesClauseFactory:
         assert str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("openfga.tuple._user = 'user:user'")
+
+    def test_with_users(self) -> None:
+        clause = OpenFGATuplesClauseFactory.with_users(
+            ["user:1", "user:2", "user:3"]
+        )
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("openfga.tuple._user IN ('user:1', 'user:2', 'user:3')")
+
+    def test_with_entitlement_tuples(self) -> None:
+        clause = OpenFGATuplesClauseFactory.with_entitlement_tuples(
+            [
+                EntitlementDeleteSpec(
+                    entitlement="can_view_machines",
+                    resource_type="pool",
+                    resource_id=1,
+                ),
+                EntitlementDeleteSpec(
+                    entitlement="can_edit_machines",
+                    resource_type="pool",
+                    resource_id=2,
+                ),
+            ]
+        )
+        sql_str = str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        )
+        assert "can_view_machines" in sql_str
+        assert "can_edit_machines" in sql_str
+        assert "'pool'" in sql_str
+        assert "'1'" in sql_str
+        assert "'2'" in sql_str
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
@@ -144,3 +177,86 @@ class TestOpenFGATuplesRepository:
             eq(OpenFGATupleTable.c.relation, "member"),
         )
         assert len(tuples) == 0
+
+    async def test_bulk_upsert(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        repository = OpenFGATuplesRepository(Context(connection=db_connection))
+
+        builders = [
+            OpenFGATupleBuilder(
+                user=f"user:{i}",
+                user_type="user",
+                relation="member",
+                object_type="group",
+                object_id="bulk-group",
+            )
+            for i in range(1, 4)
+        ]
+        await repository.bulk_upsert(builders)
+
+        tuples = await fixture.get(
+            OpenFGATupleTable.fullname,
+            eq(OpenFGATupleTable.c.object_id, "bulk-group"),
+        )
+        assert len(tuples) == 3
+        users = {t["_user"] for t in tuples}
+        assert users == {"user:1", "user:2", "user:3"}
+        assert all(t["store"] == OPENFGA_STORE_ID for t in tuples)
+        assert all(is_ulid(t["ulid"]) for t in tuples)
+
+    async def test_list_entitlements(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        repository = OpenFGATuplesRepository(Context(connection=db_connection))
+
+        await create_openfga_tuple(
+            fixture,
+            user="group:10#member",
+            user_type="userset",
+            relation="can_edit_machines",
+            object_type="maas",
+            object_id="0",
+        )
+        await create_openfga_tuple(
+            fixture,
+            user="group:10#member",
+            user_type="userset",
+            relation="can_view_machines",
+            object_type="pool",
+            object_id="5",
+        )
+        # unrelated group that should not appear
+        await create_openfga_tuple(
+            fixture,
+            user="group:20#member",
+            user_type="userset",
+            relation="can_edit_machines",
+            object_type="maas",
+            object_id="0",
+        )
+
+        query = QuerySpec(
+            where=OpenFGATuplesClauseFactory.with_user("group:10#member")
+        )
+        first_page = await repository.list_entitlements(
+            page=1, size=1, query=query
+        )
+        assert first_page.total == 2
+        assert len(first_page.items) == 1
+
+        second_page = await repository.list_entitlements(
+            page=2, size=1, query=query
+        )
+        assert second_page.total == 2
+        assert len(second_page.items) == 1
+
+        all_relations = {
+            first_page.items[0].relation,
+            second_page.items[0].relation,
+        }
+        assert all_relations == {"can_edit_machines", "can_view_machines"}
+        assert all(
+            t.user == "group:10#member"
+            for t in first_page.items + second_page.items
+        )

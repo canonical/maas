@@ -660,7 +660,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertFalse(architecture.required)
         self.assertEqual(
             architecture.choices,
-            list(zip(pod.architectures, pod.architectures)),
+            list(zip(pod.architectures, pod.architectures, strict=True)),
         )
 
         cpu_speed = form.fields["cpu_speed"]

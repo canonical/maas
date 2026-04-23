@@ -21,7 +21,7 @@ The  kernel FIPS kernel isn't directly integrated into MAAS. Instead, cloud-init
 ## What you'll need
 
 1. Valid Ubuntu Pro token (find yours at [Ubuntu Pro Dashboard](https://ubuntu.com/pro/dashboard)^^*^^).
-2. MAAS 3.2 or later with Ubuntu 22.04 LTS images.
+2. Ubuntu 22.04 LTS images.
 3. A host compatible with Ubuntu FIPS-compliant kernel.
 4. Internet connection.
 

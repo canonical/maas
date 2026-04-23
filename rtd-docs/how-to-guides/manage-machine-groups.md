@@ -385,8 +385,6 @@ maas $PROFILE machines read | jq -r '.[] | select(.description != null and .desc
 
 Dynamic annotations are ephemeral, key–value metadata attached to machines. They only exist during allocation or deployment and are lost when the machine is released.
 
-> **Note**: Dynamic annotations are not supported in MAAS 2.9 or earlier.
-
 ### Identify eligible machines
 
 **CLI only**

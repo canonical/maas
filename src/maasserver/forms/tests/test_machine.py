@@ -338,7 +338,9 @@ class TestMachineForm(MAASServerTestCase):
         machine = factory.make_Machine(owner=user)
         release_names = ("noble", "8", "8", "my-custom")
         osystem_names = ("ubuntu", "centos", "rhel", "custom")
-        for osystem_name, release_name in zip(osystem_names, release_names):
+        for osystem_name, release_name in zip(
+            osystem_names, release_names, strict=True
+        ):
             make_usable_osystem(
                 self, osystem_name=osystem_name, releases=[release_name]
             )
@@ -512,6 +514,56 @@ class TestMachineForm(MAASServerTestCase):
             instance=node,
         )
         self.assertTrue(form.is_valid(), form._errors)
+
+    @patch(
+        "maasserver.utils.osystems.BootResource.objects.get_supported_kernel_compatibility_levels"
+    )
+    def test_dpu_hwe_kernel_equal_to_min_hwe_kernel_is_valid(
+        self, mock_supported_kernels
+    ):
+        mock_supported_kernels.return_value = ["hwe-22.04", "hwe-24.04"]
+        arch = make_usable_architecture(self, arch_name="arm64")
+
+        node = factory.make_Node(
+            is_dpu=True,
+            min_hwe_kernel="hwe-22.04",
+            hwe_kernel="hwe-22.04",
+            architecture=arch,
+        )
+        form = MachineForm(
+            data={
+                "architecture": arch,
+                "is_dpu": "true",
+                "min_hwe_kernel": "hwe-22.04",
+            },
+            instance=node,
+        )
+        self.assertTrue(form.is_valid(), form._errors)
+
+    @patch(
+        "maasserver.utils.osystems.BootResource.objects.get_supported_kernel_compatibility_levels"
+    )
+    def test_dpu_hwe_kernel_older_than_min_hwe_kernel_is_invalid(
+        self, mock_supported_kernels
+    ):
+        mock_supported_kernels.return_value = ["hwe-22.04", "hwe-24.04"]
+        arch = make_usable_architecture(self, arch_name="arm64")
+        node = factory.make_Node(
+            is_dpu=True,
+            min_hwe_kernel="hwe-22.04",
+            hwe_kernel="hwe-20.04",
+            architecture=arch,
+        )
+        form = MachineForm(
+            data={
+                "architecture": arch,
+                "is_dpu": "true",
+                "min_hwe_kernel": "hwe-22.04",
+                "hwe_kernel": "hwe-20.04",
+            },
+            instance=node,
+        )
+        self.assertFalse(form.is_valid())
 
 
 class TestAdminMachineForm(MAASServerTestCase):

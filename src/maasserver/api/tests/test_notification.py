@@ -94,7 +94,7 @@ class TestNotificationsAPI(
         self.assertEqual(response.status_code, http.client.OK)
         parsed_notifications = response.json()
         for notification, parsed_notification in zip(
-            notifications, parsed_notifications
+            notifications, parsed_notifications, strict=False
         ):
             if notification.is_relevant_to(self.user):
                 self.assert_notification_matches(

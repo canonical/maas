@@ -17,7 +17,7 @@ from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolPermission,
     ResourcePoolResponse,
     ResourcePoolsListResponse,
-    ResourcePoolsWithSummaryListResponse,
+    ResourcePoolStatisticsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.async_client import OpenFGAClient
@@ -43,7 +43,7 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import (
     ResourcePool,
-    ResourcePoolWithSummary,
+    ResourcePoolStatistics,
 )
 from maasservicelayer.services import (
     ExternalAuthService,
@@ -109,7 +109,7 @@ class TestResourcePoolApi(ApiCommonTests):
             ),
             Endpoint(
                 method="GET",
-                path=f"{V3_API_PREFIX}/resource_pools_with_summary",
+                path=f"{V3_API_PREFIX}/resource_pools:statistics",
             ),
         ]
 
@@ -673,9 +673,9 @@ class TestResourcePoolApi(ApiCommonTests):
 
 
 class TestResourcePoolsWithSummary:
-    SUMMARY_ENDPOINT = f"{V3_API_PREFIX}/resource_pools_with_summary"
+    SUMMARY_ENDPOINT = f"{V3_API_PREFIX}/resource_pools:statistics"
 
-    RESOURCE_POOL_WITH_SUMMARY_0 = ResourcePoolWithSummary(
+    RESOURCE_POOL_WITH_STATISTICS_0 = ResourcePoolStatistics(
         id=0,
         name="default",
         description="description",
@@ -683,7 +683,7 @@ class TestResourcePoolsWithSummary:
         machine_ready_count=10,
     )
 
-    RESOURCE_POOL_WITH_SUMMARY_1 = ResourcePoolWithSummary(
+    RESOURCE_POOL_WITH_STATISTICS_1 = ResourcePoolStatistics(
         id=1,
         name="mypool",
         description="mypooldescription",
@@ -691,12 +691,12 @@ class TestResourcePoolsWithSummary:
         machine_ready_count=25,
     )
 
-    async def test_list_with_summary_no_other_page(
+    async def test_list_with_statistics_no_other_page(
         self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         openfga_client_mock = AsyncMock(OpenFGAClient)
         openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            self.RESOURCE_POOL_WITH_SUMMARY_0.id
+            self.RESOURCE_POOL_WITH_STATISTICS_0.id
         ]
         openfga_client_mock.can_edit_machines.return_value = False
         services_mock.openfga_tuples = Mock(OpenFGATupleService)
@@ -704,93 +704,93 @@ class TestResourcePoolsWithSummary:
             openfga_client_mock
         )
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.list_with_summary.return_value = (
-            ListResult[ResourcePoolWithSummary](
-                items=[self.RESOURCE_POOL_WITH_SUMMARY_0], total=1
+        services_mock.resource_pools.list_with_statistics.return_value = (
+            ListResult[ResourcePoolStatistics](
+                items=[self.RESOURCE_POOL_WITH_STATISTICS_0], total=1
             )
         )
         response = await mocked_api_client_user.get(
             f"{self.SUMMARY_ENDPOINT}?size=1"
         )
         assert response.status_code == 200
-        resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+        resource_pools_with_statistics_response = (
+            ResourcePoolStatisticsListResponse(**response.json())
         )
-        assert len(resource_pools_with_summary_response.items) == 1
-        assert resource_pools_with_summary_response.total == 1
-        assert resource_pools_with_summary_response.next is None
-        resource_pool_with_summary_response = (
-            resource_pools_with_summary_response.items[0]
-        )
-        assert (
-            resource_pool_with_summary_response.id
-            == self.RESOURCE_POOL_WITH_SUMMARY_0.id
+        assert len(resource_pools_with_statistics_response.items) == 1
+        assert resource_pools_with_statistics_response.total == 1
+        assert resource_pools_with_statistics_response.next is None
+        resource_pool_with_statistics_response = (
+            resource_pools_with_statistics_response.items[0]
         )
         assert (
-            resource_pool_with_summary_response.name
-            == self.RESOURCE_POOL_WITH_SUMMARY_0.name
+            resource_pool_with_statistics_response.id
+            == self.RESOURCE_POOL_WITH_STATISTICS_0.id
         )
         assert (
-            resource_pool_with_summary_response.description
-            == self.RESOURCE_POOL_WITH_SUMMARY_0.description
+            resource_pool_with_statistics_response.name
+            == self.RESOURCE_POOL_WITH_STATISTICS_0.name
         )
         assert (
-            resource_pool_with_summary_response.machine_total_count
-            == self.RESOURCE_POOL_WITH_SUMMARY_0.machine_total_count
+            resource_pool_with_statistics_response.description
+            == self.RESOURCE_POOL_WITH_STATISTICS_0.description
         )
         assert (
-            resource_pool_with_summary_response.machine_ready_count
-            == self.RESOURCE_POOL_WITH_SUMMARY_0.machine_ready_count
+            resource_pool_with_statistics_response.machine_total_count
+            == self.RESOURCE_POOL_WITH_STATISTICS_0.machine_total_count
         )
-        assert resource_pool_with_summary_response.is_default is True
-        assert resource_pool_with_summary_response.permissions == set()
-        services_mock.resource_pools.list_with_summary.assert_called_with(
+        assert (
+            resource_pool_with_statistics_response.machine_ready_count
+            == self.RESOURCE_POOL_WITH_STATISTICS_0.machine_ready_count
+        )
+        assert resource_pool_with_statistics_response.is_default is True
+        assert resource_pool_with_statistics_response.permissions == set()
+        services_mock.resource_pools.list_with_statistics.assert_called_with(
             page=1,
             size=1,
             query=QuerySpec(
                 where=ResourcePoolClauseFactory.with_ids(
-                    [self.RESOURCE_POOL_WITH_SUMMARY_0.id]
+                    [self.RESOURCE_POOL_WITH_STATISTICS_0.id]
                 )
             ),
         )
 
-    async def test_list_with_summary_other_page(
+    async def test_list_with_statistics_other_page(
         self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         openfga_client_mock = AsyncMock(OpenFGAClient)
         openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            self.RESOURCE_POOL_WITH_SUMMARY_0.id
+            self.RESOURCE_POOL_WITH_STATISTICS_0.id
         ]
         services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             openfga_client_mock
         )
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.list_with_summary.return_value = (
-            ListResult[ResourcePoolWithSummary](
-                items=[self.RESOURCE_POOL_WITH_SUMMARY_0], total=2
+        services_mock.resource_pools.list_with_statistics.return_value = (
+            ListResult[ResourcePoolStatistics](
+                items=[self.RESOURCE_POOL_WITH_STATISTICS_0], total=2
             )
         )
         response = await mocked_api_client_user.get(
             f"{self.SUMMARY_ENDPOINT}?size=1"
         )
         assert response.status_code == 200
-        resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+        resource_pools_with_statistics_response = (
+            ResourcePoolStatisticsListResponse(**response.json())
         )
-        assert len(resource_pools_with_summary_response.items) == 1
-        assert resource_pools_with_summary_response.total == 2
+        assert len(resource_pools_with_statistics_response.items) == 1
+        assert resource_pools_with_statistics_response.total == 2
         assert (
-            resource_pools_with_summary_response.next
+            resource_pools_with_statistics_response.next
             == f"{self.SUMMARY_ENDPOINT}?page=2&size=1"
         )
 
-    async def test_list_with_summary_admin_can_edit_and_delete(
+    async def test_list_with_statistics_admin_can_edit_and_delete(
         self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         openfga_client_mock = AsyncMock(OpenFGAClient)
         openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            self.RESOURCE_POOL_WITH_SUMMARY_0.id
+            self.RESOURCE_POOL_WITH_STATISTICS_0.id
         ]
         openfga_client_mock.can_edit_machines.return_value = True
         services_mock.openfga_tuples = Mock(OpenFGATupleService)
@@ -798,25 +798,27 @@ class TestResourcePoolsWithSummary:
             openfga_client_mock
         )
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.list_with_summary.return_value = (
-            ListResult[ResourcePoolWithSummary](
-                items=[self.RESOURCE_POOL_WITH_SUMMARY_0], total=1
+        services_mock.resource_pools.list_with_statistics.return_value = (
+            ListResult[ResourcePoolStatistics](
+                items=[self.RESOURCE_POOL_WITH_STATISTICS_0], total=1
             )
         )
         response = await mocked_api_client_user.get(
             f"{self.SUMMARY_ENDPOINT}?size=1"
         )
         assert response.status_code == 200
-        resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+        resource_pools_with_statistics_response = (
+            ResourcePoolStatisticsListResponse(**response.json())
         )
-        assert len(resource_pools_with_summary_response.items) == 1
-        assert resource_pools_with_summary_response.items[0].permissions == {
+        assert len(resource_pools_with_statistics_response.items) == 1
+        assert resource_pools_with_statistics_response.items[
+            0
+        ].permissions == {
             ResourcePoolPermission.EDIT,
             ResourcePoolPermission.DELETE,
         }
 
-    async def test_list_with_summary_with_rbac(
+    async def test_list_with_statistics_with_rbac(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user_rbac: AsyncClient,
@@ -829,13 +831,13 @@ class TestResourcePoolsWithSummary:
             PermissionResourcesMapping(
                 permission=RbacPermission.VIEW,
                 resources=[
-                    self.RESOURCE_POOL_WITH_SUMMARY_0.id,
-                    self.RESOURCE_POOL_WITH_SUMMARY_1.id,
+                    self.RESOURCE_POOL_WITH_STATISTICS_0.id,
+                    self.RESOURCE_POOL_WITH_STATISTICS_1.id,
                 ],
             ),
             PermissionResourcesMapping(
                 permission=RbacPermission.VIEW_ALL,
-                resources=[self.RESOURCE_POOL_WITH_SUMMARY_0.id],
+                resources=[self.RESOURCE_POOL_WITH_STATISTICS_0.id],
             ),
             PermissionResourcesMapping(
                 permission=RbacPermission.EDIT, resources=[]
@@ -846,11 +848,11 @@ class TestResourcePoolsWithSummary:
         )
 
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.list_with_summary.return_value = (
-            ListResult[ResourcePool](
+        services_mock.resource_pools.list_with_statistics.return_value = (
+            ListResult[ResourcePoolStatistics](
                 items=[
-                    self.RESOURCE_POOL_WITH_SUMMARY_1,
-                    self.RESOURCE_POOL_WITH_SUMMARY_0,
+                    self.RESOURCE_POOL_WITH_STATISTICS_1,
+                    self.RESOURCE_POOL_WITH_STATISTICS_0,
                 ],
                 total=2,
             )
@@ -859,10 +861,10 @@ class TestResourcePoolsWithSummary:
             f"{self.SUMMARY_ENDPOINT}"
         )
         assert response.status_code == 200
-        resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+        resource_pools_with_statistics_response = (
+            ResourcePoolStatisticsListResponse(**response.json())
         )
-        assert len(resource_pools_with_summary_response.items) == 2
+        assert len(resource_pools_with_statistics_response.items) == 2
 
         rbac_client_mock.get_resource_pool_ids.assert_called_once_with(
             user="username",
@@ -872,20 +874,20 @@ class TestResourcePoolsWithSummary:
                 RbacPermission.EDIT,
             },
         )
-        services_mock.resource_pools.list_with_summary.assert_called_once_with(
+        services_mock.resource_pools.list_with_statistics.assert_called_once_with(
             page=1,
             size=20,
             query=QuerySpec(
                 where=ResourcePoolClauseFactory.with_ids(
                     [
-                        self.RESOURCE_POOL_WITH_SUMMARY_0.id,
-                        self.RESOURCE_POOL_WITH_SUMMARY_1.id,
+                        self.RESOURCE_POOL_WITH_STATISTICS_0.id,
+                        self.RESOURCE_POOL_WITH_STATISTICS_1.id,
                     ]
                 )
             ),
         )
 
-    async def test_list_with_summary_with_rbac_access_all_permissions(
+    async def test_list_with_statistics_with_rbac_access_all_permissions(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user_rbac: AsyncClient,
@@ -898,19 +900,19 @@ class TestResourcePoolsWithSummary:
             PermissionResourcesMapping(
                 permission=RbacPermission.VIEW,
                 resources=[
-                    self.RESOURCE_POOL_WITH_SUMMARY_0.id,
-                    self.RESOURCE_POOL_WITH_SUMMARY_1.id,
+                    self.RESOURCE_POOL_WITH_STATISTICS_0.id,
+                    self.RESOURCE_POOL_WITH_STATISTICS_1.id,
                 ],
             ),
             PermissionResourcesMapping(
                 permission=RbacPermission.VIEW_ALL,
-                resources=[self.RESOURCE_POOL_WITH_SUMMARY_0.id],
+                resources=[self.RESOURCE_POOL_WITH_STATISTICS_0.id],
             ),
             PermissionResourcesMapping(
                 permission=RbacPermission.EDIT,
                 resources=[
-                    self.RESOURCE_POOL_WITH_SUMMARY_0.id,
-                    self.RESOURCE_POOL_WITH_SUMMARY_1.id,
+                    self.RESOURCE_POOL_WITH_STATISTICS_0.id,
+                    self.RESOURCE_POOL_WITH_STATISTICS_1.id,
                 ],
                 access_all=True,
             ),
@@ -920,39 +922,43 @@ class TestResourcePoolsWithSummary:
         )
 
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.list_with_summary.return_value = (
+        services_mock.resource_pools.list_with_statistics.return_value = (
             ListResult[ResourcePool](
                 items=[
-                    self.RESOURCE_POOL_WITH_SUMMARY_1,
-                    self.RESOURCE_POOL_WITH_SUMMARY_0,
+                    self.RESOURCE_POOL_WITH_STATISTICS_1,
+                    self.RESOURCE_POOL_WITH_STATISTICS_0,
                 ],
                 total=2,
             )
         )
         services_mock.resource_pools.list_ids.return_value = [
-            self.RESOURCE_POOL_WITH_SUMMARY_0.id,
-            self.RESOURCE_POOL_WITH_SUMMARY_1.id,
+            self.RESOURCE_POOL_WITH_STATISTICS_0.id,
+            self.RESOURCE_POOL_WITH_STATISTICS_1.id,
         ]
 
         response = await mocked_api_client_user_rbac.get(
             f"{self.SUMMARY_ENDPOINT}"
         )
         assert response.status_code == 200
-        resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+        resource_pools_with_statistics_response = (
+            ResourcePoolStatisticsListResponse(**response.json())
         )
-        assert len(resource_pools_with_summary_response.items) == 2
-        assert resource_pools_with_summary_response.items[0].permissions == {
+        assert len(resource_pools_with_statistics_response.items) == 2
+        assert resource_pools_with_statistics_response.items[
+            0
+        ].permissions == {
             ResourcePoolPermission.EDIT,
             ResourcePoolPermission.DELETE,
         }
 
-        assert resource_pools_with_summary_response.items[1].permissions == {
+        assert resource_pools_with_statistics_response.items[
+            1
+        ].permissions == {
             ResourcePoolPermission.EDIT,
             ResourcePoolPermission.DELETE,
         }
 
-    async def test_list_with_summary_with_rbac_edit_permissions(
+    async def test_list_with_statistics_with_rbac_edit_permissions(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user_rbac: AsyncClient,
@@ -965,17 +971,17 @@ class TestResourcePoolsWithSummary:
             PermissionResourcesMapping(
                 permission=RbacPermission.VIEW,
                 resources=[
-                    self.RESOURCE_POOL_WITH_SUMMARY_0.id,
-                    self.RESOURCE_POOL_WITH_SUMMARY_1.id,
+                    self.RESOURCE_POOL_WITH_STATISTICS_0.id,
+                    self.RESOURCE_POOL_WITH_STATISTICS_1.id,
                 ],
             ),
             PermissionResourcesMapping(
                 permission=RbacPermission.VIEW_ALL,
-                resources=[self.RESOURCE_POOL_WITH_SUMMARY_0.id],
+                resources=[self.RESOURCE_POOL_WITH_STATISTICS_0.id],
             ),
             PermissionResourcesMapping(
                 permission=RbacPermission.EDIT,
-                resources=[self.RESOURCE_POOL_WITH_SUMMARY_0.id],
+                resources=[self.RESOURCE_POOL_WITH_STATISTICS_0.id],
             ),
         ]
         services_mock.external_auth.get_rbac_client.return_value = (
@@ -983,31 +989,32 @@ class TestResourcePoolsWithSummary:
         )
 
         services_mock.resource_pools = Mock(ResourcePoolsService)
-        services_mock.resource_pools.list_with_summary.return_value = (
+        services_mock.resource_pools.list_with_statistics.return_value = (
             ListResult[ResourcePool](
                 items=[
-                    self.RESOURCE_POOL_WITH_SUMMARY_1,
-                    self.RESOURCE_POOL_WITH_SUMMARY_0,
+                    self.RESOURCE_POOL_WITH_STATISTICS_1,
+                    self.RESOURCE_POOL_WITH_STATISTICS_0,
                 ],
                 total=2,
             )
         )
         services_mock.resource_pools.list_ids.return_value = [
-            self.RESOURCE_POOL_WITH_SUMMARY_0.id,
-            self.RESOURCE_POOL_WITH_SUMMARY_1.id,
+            self.RESOURCE_POOL_WITH_STATISTICS_0.id,
+            self.RESOURCE_POOL_WITH_STATISTICS_1.id,
         ]
 
         response = await mocked_api_client_user_rbac.get(
             f"{self.SUMMARY_ENDPOINT}"
         )
         assert response.status_code == 200
-        resource_pools_with_summary_response = (
-            ResourcePoolsWithSummaryListResponse(**response.json())
+        resource_pools_with_statistics_response = (
+            ResourcePoolStatisticsListResponse(**response.json())
         )
-        assert len(resource_pools_with_summary_response.items) == 2
+        assert len(resource_pools_with_statistics_response.items) == 2
         assert (
-            resource_pools_with_summary_response.items[0].permissions == set()
+            resource_pools_with_statistics_response.items[0].permissions
+            == set()
         )
-        assert resource_pools_with_summary_response.items[1].permissions == {
-            ResourcePoolPermission.EDIT
-        }
+        assert resource_pools_with_statistics_response.items[
+            1
+        ].permissions == {ResourcePoolPermission.EDIT}

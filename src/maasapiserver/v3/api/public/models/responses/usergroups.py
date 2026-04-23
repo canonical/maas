@@ -1,7 +1,9 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Optional, Self
+from typing import Self
+
+from pydantic import Field
 
 from maasapiserver.v3.api.public.models.responses.base import (
     BaseHal,
@@ -9,14 +11,14 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maasservicelayer.models.usergroups import UserGroup
+from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
 
 
 class UserGroupResponse(HalResponse[BaseHal]):
-    kind = "UserGroup"
+    kind: str = Field(default="UserGroup")
     id: int
     name: str
-    description: Optional[str]
+    description: str | None = None
 
     @classmethod
     def from_model(
@@ -34,5 +36,31 @@ class UserGroupResponse(HalResponse[BaseHal]):
         )
 
 
+class UserGroupStatisticsResponse(HalResponse[BaseHal]):
+    kind: str = Field(default="UserGroupStatistics")
+    id: int
+    user_count: int
+
+    @classmethod
+    def from_model(
+        cls, usergroup: UserGroupStatistics, self_base_hyperlink: str
+    ) -> Self:
+        return cls(
+            id=usergroup.id,
+            user_count=usergroup.user_count,
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+                self=BaseHref(
+                    href=f"{self_base_hyperlink.rstrip('/')}/{usergroup.id}"
+                )
+            ),
+        )
+
+
 class UserGroupsListResponse(PaginatedResponse[UserGroupResponse]):
-    kind = "UserGroupsList"
+    kind: str = Field(default="UserGroupsList")
+
+
+class UserGroupsStatisticsListResponse(
+    PaginatedResponse[UserGroupStatisticsResponse]
+):
+    kind: str = Field(default="UserGroupsStatisticsList")

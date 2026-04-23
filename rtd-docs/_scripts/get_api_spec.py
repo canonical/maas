@@ -5,23 +5,14 @@
 """Discover MAAS CLI commands by constructing argparse tree from source."""
 
 import os
-import sys
 from typing import Any
+
+from utils import add_repo_src_to_path
 
 try:
     import importlib.metadata as _ilm
 except ImportError:
     _ilm = None
-
-
-def add_repo_src_to_path():
-    """Add repository src directory to Python path."""
-    repo_root = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..")
-    )
-    src_dir = os.path.join(repo_root, "src")
-    if os.path.isdir(src_dir) and src_dir not in sys.path:
-        sys.path.insert(0, src_dir)
 
 
 def _patch_maas_metadata():

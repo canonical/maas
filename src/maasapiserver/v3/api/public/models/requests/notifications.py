@@ -1,9 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any
-
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, model_validator
 
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maasservicelayer.builders.notifications import NotificationBuilder
@@ -21,11 +19,13 @@ class NotificationRequest(BaseModel):
         default=NotificationCategoryEnum.INFO,
     )
     ident: str | None = Field(
-        description="Unique identifier for this notification."
+        default=None,
+        description="Unique identifier for this notification.",
     )
     user_id: int | None = Field(
+        default=None,
         description="User ID this notification is intended for."
-        "By default it will not be targeted to any individual user."
+        "By default it will not be targeted to any individual user.",
     )
     for_users: bool = Field(
         description="True to notify all users,"
@@ -48,17 +48,17 @@ class NotificationRequest(BaseModel):
         default=True,
     )
 
-    @root_validator
-    def validate_recipient(cls, values: dict[str, Any]):
+    @model_validator(mode="after")
+    def validate_recipient(self) -> "NotificationRequest":
         if (
-            values["user_id"] is None
-            and values["for_users"] is False
-            and values["for_admins"] is False
+            self.user_id is None
+            and self.for_users is False
+            and self.for_admins is False
         ):
             raise ValueError(
                 "Either 'user_id', 'for_users' or 'for_admin' must be specified."
             )
-        return values
+        return self
 
     def to_builder(self) -> NotificationBuilder:
         return NotificationBuilder(
