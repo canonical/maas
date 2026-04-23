@@ -3,6 +3,7 @@
 
 from collections import defaultdict
 from dataclasses import replace
+import re
 from typing import Any
 from unittest.mock import Mock, PropertyMock
 import uuid
@@ -384,6 +385,42 @@ class TestMSMActivities:
         assert kwargs["json"]["version"] == hb_param.version
         assert "known_config_options" not in kwargs["json"]
 
+    async def test_send_heartbeat_with_cfg_options(
+        self, mocker, msm_act, hb_param
+    ):
+        mocked_session = msm_act._session
+        self._mock_post(
+            mocker,
+            mocked_session,
+            True,
+            200,
+            "",
+            body={"config_options_requested": True},
+            headers={
+                "MSM-Heartbeat-Interval-Seconds": 300,
+            },
+        )
+
+        env = ActivityEnvironment()
+        hb_param.known_config_options = []
+        intval, send_config_opts = await env.run(
+            msm_act.send_heartbeat, hb_param
+        )
+
+        assert intval == 300
+        assert send_config_opts is True
+        mocked_session.post.assert_called_once()
+        args = mocked_session.post.call_args.args
+        kwargs = mocked_session.post.call_args.kwargs
+        assert args[0] == _MSM_DETAIL_URL
+        assert kwargs["headers"]["Authorization"] is not None
+        assert kwargs["json"]["name"] == _MAAS_SITE_NAME
+        assert kwargs["json"]["url"] == _MAAS_URL
+        assert "machines_by_status" in kwargs["json"]
+        assert kwargs["json"]["version"] == hb_param.version
+        # TODO: update once config workflow is implemented
+        assert kwargs["json"]["known_config_options"] == []
+
     async def test_send_heartbeat_cancel(self, mocker, msm_act, hb_param):
         mocked_session = msm_act._session
         self._mock_post(mocker, mocked_session, True, 401, "")
@@ -520,10 +557,7 @@ class TestMSMActivities:
         env = ActivityEnvironment()
         version = await env.run(msm_act.get_running_version)
         # Verify version is in X.Y.Z format
-        parts = version.split(".")
-        assert len(parts) == 3
-        for part in parts:
-            assert part.isdigit()
+        assert re.match(r"^\d+\.\d+\.\d+$", version)
 
 
 class TestMSMEnrolWorkflow:
