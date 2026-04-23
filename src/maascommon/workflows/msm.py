@@ -48,6 +48,8 @@ class MSMHeartbeatParam:
     site_name: str
     site_url: str
     rotation_interval_minutes: int
+    version: str | None = None
+    known_config_options: list[str] | None = None
     status: MachinesCountByStatus | None = None
 
 

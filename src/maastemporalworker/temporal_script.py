@@ -233,6 +233,8 @@ async def main() -> None:
                 msm_activity.check_enrol,
                 msm_activity.get_enrol,
                 msm_activity.get_heartbeat_data,
+                msm_activity.get_running_version,
+                msm_activity.get_known_config_options,
                 msm_activity.refresh_token,
                 msm_activity.send_enrol,
                 msm_activity.send_heartbeat,
