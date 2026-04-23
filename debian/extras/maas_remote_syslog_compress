@@ -1,2 +1,0 @@
-# Compress log files not changed in more than 48 hours:
-30 4 * * * root find /var/log/maas/rsyslog -type f -not -name '*.bz2' -mtime +2 -exec bzip2 '{}' \;
