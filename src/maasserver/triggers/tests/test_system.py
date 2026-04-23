@@ -423,21 +423,24 @@ class TestSysDNSUpdates(
             self.create_rack_controller,
             params={"vlan": vlan, "subnet": subnet},
         )
+        node = yield deferToDatabase(
+            self.create_node_with_interface,
+            params={
+                "subnet": subnet,
+                "status": NODE_STATUS.DEPLOYED,
+                "node_type": NODE_TYPE.MACHINE,
+                "primary_rack": rack_controller,
+            },
+        )
+        domain = yield deferToDatabase(Domain.objects.get_default_domain)
+        expected_iface = yield deferToDatabase(
+            lambda: node.current_config.interface_set.first()
+        )
+        # Start reading only after node/interface bootstrap so that
+        # side-effect RELOAD notifications (node UPDATE / subnet UPDATE
+        # during save-chain) do not land ahead of the INSERT we assert on.
         self.start_reading()
         try:
-            node = yield deferToDatabase(
-                self.create_node_with_interface,
-                params={
-                    "subnet": subnet,
-                    "status": NODE_STATUS.DEPLOYED,
-                    "node_type": NODE_TYPE.MACHINE,
-                    "primary_rack": rack_controller,
-                },
-            )
-            domain = yield deferToDatabase(Domain.objects.get_default_domain)
-            expected_iface = yield deferToDatabase(
-                lambda: node.current_config.interface_set.first()
-            )
             expected_ip = yield deferToDatabase(
                 lambda: self.create_staticipaddress(
                     params={
