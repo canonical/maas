@@ -87,6 +87,10 @@ from formencode.validators import StringBool
 from lxml import etree
 from netaddr import IPNetwork, valid_ipv6
 
+from maascommon.constants import (
+    CANDIDATE_IMAGES_STREAM_URL,
+    STABLE_IMAGES_STREAM_URL,
+)
 from maascommon.logging.security import CREATED
 from maascommon.osystem import (
     LINUX_OSYSTEMS,
@@ -2277,7 +2281,15 @@ class BootSourceForm(MAASModelForm):
 
     class Meta:
         model = BootSource
-        fields = ("url", "keyring_filename", "keyring_data")
+        fields = (
+            "url",
+            "keyring_filename",
+            "keyring_data",
+            "name",
+            "priority",
+            "enabled",
+            "skip_keyring_verification",
+        )
 
     keyring_filename = forms.CharField(
         label="The path to the keyring file for this BootSource.",
@@ -2289,8 +2301,37 @@ class BootSourceForm(MAASModelForm):
         required=False,
     )
 
+    name = forms.CharField(required=False)
+    priority = forms.IntegerField(required=False)
+    enabled = forms.NullBooleanField(required=False)
+    skip_keyring_verification = forms.NullBooleanField(required=False)
+
+    _DEFAULT_BOOT_SOURCE_URLS = frozenset(
+        {STABLE_IMAGES_STREAM_URL, CANDIDATE_IMAGES_STREAM_URL}
+    )
+    _ALLOWED_FIELDS_FOR_DEFAULTS = {"priority", "enabled"}
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if (
+            self.instance
+            and self.instance.pk
+            and self.instance.url in self._DEFAULT_BOOT_SOURCE_URLS
+        ):
+            denied_fields = (
+                set(self.changed_data) - self._ALLOWED_FIELDS_FOR_DEFAULTS
+            )
+            if denied_fields:
+                raise ValidationError(
+                    {
+                        field: f"'{field}' cannot be changed for MAAS default boot sources."
+                        for field in denied_fields
+                    }
+                )
+        return cleaned_data
 
     def clean_keyring_data(self):
         """Process 'keyring_data' field.

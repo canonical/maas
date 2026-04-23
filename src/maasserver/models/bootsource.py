@@ -18,6 +18,10 @@ from django.db.models import (
     URLField,
 )
 
+from maascommon.constants import (
+    CANDIDATE_IMAGES_STREAM_URL,
+    STABLE_IMAGES_STREAM_URL,
+)
 from maascommon.workflows.bootresource import (
     POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
     PostUpdateBootSourceUrlParam,
@@ -39,6 +43,14 @@ class ImageManifest(Model):
 
 class BootSource(CleanSave, TimestampedModel):
     """A source for boot resources."""
+
+    name = CharField(
+        null=False,
+        blank=True,
+        unique=True,
+        max_length=255,
+        help_text="Name of this BootSource.",
+    )
 
     url = URLField(
         blank=False, unique=True, help_text="The URL of the BootSource."
@@ -68,6 +80,13 @@ class BootSource(CleanSave, TimestampedModel):
         help_text="If true, keyring signature verification will be skipped.",
     )
 
+    enabled = BooleanField(
+        null=False,
+        blank=True,
+        default=True,
+        help_text="Whether to download boot images from this source or not.",
+    )
+
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)
 
@@ -90,10 +109,16 @@ class BootSource(CleanSave, TimestampedModel):
             )
 
     def clean_fields(self, exclude=None):
+        # Always strip the traling slash
+        self.url = self.url.rstrip("/")
+        if not self.name:
+            self.name = self.url
         self.priority = self._generate_priority()
         self.skip_keyring_verification = (
             self._generate_skip_keyring_verification()
         )
+        if self.enabled is None:
+            self.enabled = True
         super().clean_fields(exclude)
 
     def _generate_priority(self):
@@ -139,7 +164,10 @@ class BootSource(CleanSave, TimestampedModel):
             with open(self.keyring_filename, "rb") as keyring_file:
                 keyring_data = keyring_file.read()
         return {
+            "name": self.name,
             "url": self.url,
+            "priority": self.priority,
+            "enabled": self.enabled,
             "keyring_data": bytes(keyring_data),
             "selections": [],
         }
@@ -202,11 +230,16 @@ class BootSource(CleanSave, TimestampedModel):
         return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
+        if self.url in (STABLE_IMAGES_STREAM_URL, CANDIDATE_IMAGES_STREAM_URL):
+            raise ValidationError(
+                "The MAAS default boot sources can't be deleted."
+            )
+
         related_selections = BootSourceSelection.objects.filter(
             boot_source=self
         )
         for selection in related_selections:
-            selection.force_delete()
+            selection.delete()
 
         return super().delete(*args, **kwargs)
 

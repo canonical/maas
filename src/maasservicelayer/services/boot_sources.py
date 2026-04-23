@@ -6,16 +6,34 @@ from typing import List, Sequence
 
 import structlog
 
+from maascommon.constants import (
+    CANDIDATE_IMAGES_STREAM_URL,
+    STABLE_IMAGES_STREAM_URL,
+)
 from maascommon.enums.events import EventTypeEnum
+from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+)
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
 )
-from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+    BootSourcesRepository,
+)
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
+)
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    BaseExceptionDetail,
+)
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_DEFAULT_BOOT_SOURCE_VIOLATION_TYPE,
+    INVALID_ARGUMENT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services.base import BaseService
@@ -25,6 +43,7 @@ from maasservicelayer.services.bootsourceselections import (
 )
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.image_manifests import ImageManifestsService
+from maasservicelayer.services.temporal import TemporalService
 
 logger = structlog.getLogger()
 
@@ -41,6 +60,7 @@ class BootSourcesService(
         boot_source_cache_service: BootSourceCacheService,
         boot_source_selections_service: BootSourceSelectionsService,
         image_manifests_service: ImageManifestsService,
+        temporal_service: TemporalService,
         events_service: EventsService,
     ) -> None:
         super().__init__(context, repository)
@@ -48,6 +68,7 @@ class BootSourcesService(
         self.boot_source_selections_service = boot_source_selections_service
         self.events_service = events_service
         self.image_manifests_service = image_manifests_service
+        self.temporal_service = temporal_service
 
     async def _cascade_delete_dependents(
         self, resources: Sequence[BootSource]
@@ -78,14 +99,17 @@ class BootSourcesService(
             event_type=EventTypeEnum.BOOT_SOURCE,
             event_description=f"Created boot source {resource.url}",
         )
+        self.temporal_service.register_workflow_call(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            parameter=resource.id,
+            workflow_id=f"fetch-manifest-boot-source-{resource.id}",
+            wait=False,
+        )
 
     async def post_update_hook(
         self, old_resource: BootSource, updated_resource: BootSource
     ) -> None:
-        if updated_resource.url != old_resource.url:
-            description = f"Updated boot source url from {old_resource.url} to {updated_resource.url}"
-        else:
-            description = f"Updated boot source {updated_resource.url}"
+        description = f"Updated boot source {updated_resource.url}"
         await self.events_service.record_event(
             event_type=EventTypeEnum.BOOT_SOURCE,
             event_description=description,
@@ -108,3 +132,59 @@ class BootSourcesService(
                 event_type=EventTypeEnum.BOOT_SOURCE,
                 event_description=f"Deleted boot source {resource.url}",
             )
+
+    async def pre_delete_hook(
+        self, resource_to_be_deleted: BootSource
+    ) -> None:
+        if resource_to_be_deleted.url in (
+            STABLE_IMAGES_STREAM_URL,
+            CANDIDATE_IMAGES_STREAM_URL,
+        ):
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CANNOT_DELETE_DEFAULT_BOOT_SOURCE_VIOLATION_TYPE,
+                        message="The MAAS default boot sources can't be deleted.",
+                    )
+                ]
+            )
+
+    async def pre_update_instance(
+        self, existing_resource: BootSource, builder: BootSourceBuilder
+    ) -> None:
+        if existing_resource.url in (
+            STABLE_IMAGES_STREAM_URL,
+            CANDIDATE_IMAGES_STREAM_URL,
+        ):
+            allowed_fields = {"priority", "enabled"}
+            changed_fields = {
+                k
+                for k, v in builder.populated_fields().items()
+                if getattr(existing_resource, k) != v
+            }
+            denied_fields = changed_fields - allowed_fields
+            if denied_fields:
+                details = [
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message=f"'{field}' cannot be changed for MAAS default boot sources.",
+                        field=field,
+                    )
+                    for field in denied_fields
+                ]
+                raise BadRequestException(details=details)
+
+    async def disable_all(self) -> None:
+        await self.update_many(
+            query=QuerySpec(), builder=BootSourceBuilder(enabled=False)
+        )
+
+    async def set_stable_enabled(self) -> None:
+        await self.update_one(
+            query=QuerySpec(
+                where=BootSourcesClauseFactory.with_url(
+                    STABLE_IMAGES_STREAM_URL
+                )
+            ),
+            builder=BootSourceBuilder(enabled=True),
+        )

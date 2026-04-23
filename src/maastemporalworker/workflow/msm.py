@@ -37,7 +37,6 @@ from maascommon.workflows.msm import (
 )
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.db import Database
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.worker import REGION_TASK_QUEUE
@@ -55,6 +54,7 @@ MSM_REFRESH_RETRY_INTERVAL = timedelta(minutes=1)
 MSM_POLL_INTERVAL = timedelta(minutes=1)
 MSM_SECRET = "msm-connector"
 
+MSM_BOOT_SOURCE_NAME = "MAAS Site Manager"
 MSM_ENROL_EP = "/site/v1/enroll"
 MSM_DETAIL_EP = "/site/v1/details"
 MSM_REFRESH_EP = "/site/v1/enroll/refresh"
@@ -72,7 +72,7 @@ MSM_SEND_HEARTBEAT_ACTIVITY_NAME = "msm-send-heartbeat"
 MSM_SEND_ENROL_ACTIVITY_NAME = "msm-send-enrol"
 MSM_SET_BOOT_SOURCE_ACTIVITY_NAME = "msm-set-bootsource"
 
-MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME = "msm-delete-bootsources"
+MSM_DISABLE_BOOT_SOURCES_ACTIVITY_NAME = "msm-disable-bootsources"
 MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME = (
     "msm-restore-default-bootsource"
 )
@@ -240,22 +240,24 @@ class MSMConnectorActivity(ActivityBase):
     async def restore_default_boot_source(self) -> None:
         """Restore the boot source and selections data to the default value."""
         async with self.start_transaction() as services:
-            await services.image_sync.ensure_boot_source_definition()
+            await services.boot_sources.set_stable_enabled()
 
-    @activity_defn_with_context(name=MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME)
-    async def delete_bootsources(self) -> None:
-        """Delete all existing boot sources."""
+    @activity_defn_with_context(name=MSM_DISABLE_BOOT_SOURCES_ACTIVITY_NAME)
+    async def disable_bootsources(self) -> None:
+        """Disable all existing boot sources."""
         async with self.start_transaction() as services:
-            await services.boot_sources.delete_many(QuerySpec())
+            await services.boot_sources.disable_all()
 
     @activity_defn_with_context(name=MSM_SET_BOOT_SOURCE_ACTIVITY_NAME)
     async def set_bootsource(self, input: MSMSetBootSourceParam) -> None:
         async with self.start_transaction() as services:
             builder = BootSourceBuilder(
+                name=MSM_BOOT_SOURCE_NAME,
                 url=input.sm_url + MSM_SS_EP,
                 keyring_filename="",
                 keyring_data=b"",
-                priority=1,
+                priority=100,
+                enabled=True,
                 skip_keyring_verification=True,
             )
             await services.boot_sources.create(builder)
@@ -434,7 +436,7 @@ class MSMEnrolSiteWorkflow:
         )
 
         await workflow.execute_activity(
-            MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME,
+            MSM_DISABLE_BOOT_SOURCES_ACTIVITY_NAME,
             start_to_close_timeout=MSM_TIMEOUT,
         )
 
@@ -491,7 +493,7 @@ class MSMRestoreDefaultBootSourceWorkflow:
     @workflow_run_with_context
     async def run(self, input: MSMRestoreDefaultBootSourceParam) -> None:
         await workflow.execute_activity(
-            MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME,
+            MSM_DISABLE_BOOT_SOURCES_ACTIVITY_NAME,
             start_to_close_timeout=MSM_TIMEOUT,
         )
         await workflow.execute_activity(

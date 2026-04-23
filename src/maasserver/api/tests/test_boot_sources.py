@@ -7,6 +7,10 @@ import http.client
 
 from django.urls import reverse
 
+from maascommon.constants import (
+    CANDIDATE_IMAGES_STREAM_URL,
+    STABLE_IMAGES_STREAM_URL,
+)
 import maasserver.api.boot_sources as boot_source_module
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.audit import Event
@@ -74,6 +78,20 @@ class TestBootSourceAPI(APITestCase.ForUser):
         response = self.client.get(get_boot_source_uri(boot_source))
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
+    def test_GET_returns_name_priority_enabled(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        response = self.client.get(get_boot_source_uri(boot_source))
+        self.assertEqual(http.client.OK, response.status_code)
+        result = json_load_bytes(response.content)
+        self.assertEqual(result["name"], boot_source.name)
+        self.assertEqual(result["priority"], boot_source.priority)
+        self.assertEqual(result["enabled"], boot_source.enabled)
+        self.assertEqual(
+            result["skip_keyring_verification"],
+            boot_source.skip_keyring_verification,
+        )
+
     def test_DELETE_deletes_boot_source(self):
         self.become_admin()
         boot_source = factory.make_BootSource()
@@ -102,7 +120,7 @@ class TestBootSourceAPI(APITestCase.ForUser):
         self.patch(boot_source_module, "post_commit_do")
         boot_source = factory.make_BootSource()
         new_values = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
         }
         response = self.client.put(
@@ -120,7 +138,7 @@ class TestBootSourceAPI(APITestCase.ForUser):
         mock_post_commit_do = self.patch(boot_source_module, "post_commit_do")
         boot_source = factory.make_BootSource()
         new_values = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
         }
         response = self.client.put(
             get_boot_source_uri(boot_source), new_values
@@ -183,13 +201,110 @@ class TestBootSourceAPI(APITestCase.ForUser):
     def test_PUT_requires_admin(self):
         boot_source = factory.make_BootSource()
         new_values = {
-            "url": "http://example.com/",
             "keyring_filename": factory.make_name("filename"),
         }
         response = self.client.put(
             get_boot_source_uri(boot_source), new_values
         )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_PUT_updates_name(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        new_values = {
+            "name": "new-name",
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertEqual(boot_source.name, "new-name")
+
+    def test_PUT_updates_enabled(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        self.assertTrue(boot_source.enabled)
+        new_values = {
+            "enabled": False,
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertFalse(boot_source.enabled)
+
+    def test_PUT_updates_priority(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        new_values = {
+            "priority": 42,
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertEqual(boot_source.priority, 42)
+
+    def test_PUT_updates_skip_keyring_verification(self):
+        self.become_admin()
+        boot_source = factory.make_BootSource()
+        self.assertFalse(boot_source.skip_keyring_verification)
+        new_values = {
+            "skip_keyring_verification": True,
+        }
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertTrue(boot_source.skip_keyring_verification)
+
+    def test_PUT_default_boot_source_allows_priority_and_enabled(self):
+        self.become_admin()
+        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
+        new_values = {"priority": 42, "enabled": False}
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        boot_source = reload_object(boot_source)
+        self.assertEqual(boot_source.priority, 42)
+        self.assertFalse(boot_source.enabled)
+
+    def test_PUT_default_boot_source_rejects_url(self):
+        self.become_admin()
+        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
+        new_values = {"url": "http://other.example.com"}
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
+    def test_PUT_default_boot_source_rejects_name(self):
+        self.become_admin()
+        boot_source = BootSource.objects.get(url=CANDIDATE_IMAGES_STREAM_URL)
+        new_values = {"name": "renamed"}
+        response = self.client.put(
+            get_boot_source_uri(boot_source), new_values
+        )
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
+    def test_DELETE_rejects_stable_default_boot_source(self):
+        self.become_admin()
+        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
+        response = self.client.delete(get_boot_source_uri(boot_source))
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertIsNotNone(reload_object(boot_source))
+
+    def test_DELETE_rejects_candidate_default_boot_source(self):
+        self.become_admin()
+        boot_source = BootSource.objects.get(url=CANDIDATE_IMAGES_STREAM_URL)
+        response = self.client.delete(get_boot_source_uri(boot_source))
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertIsNotNone(reload_object(boot_source))
 
 
 class TestBootSourcesAPI(APITestCase.ForUser):
@@ -208,7 +323,9 @@ class TestBootSourcesAPI(APITestCase.ForUser):
 
     def test_GET_returns_boot_source_list(self):
         self.become_admin()
-        sources = [factory.make_BootSource() for _ in range(3)]
+        # Stable and candidate are already there from the migration.
+        sources = list(BootSource.objects.all())
+        sources.extend([factory.make_BootSource() for _ in range(3)])
         response = self.client.get(reverse("boot_sources_handler"))
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -227,7 +344,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         self.become_admin()
 
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
             "keyring_data": b"",
         }
@@ -246,7 +363,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         self.become_admin()
 
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": "",
             "keyring_data": (
                 factory.make_file_upload(content=sample_binary_data)
@@ -269,7 +386,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         self.become_admin()
 
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
             "keyring_data": b"",
         }
@@ -282,13 +399,51 @@ class TestBootSourcesAPI(APITestCase.ForUser):
     def test_POST_validates_boot_source(self):
         self.become_admin()
 
-        params = {"url": "http://example.com/"}
+        params = {"url": "http://example.com"}
         response = self.client.post(reverse("boot_sources_handler"), params)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
-    def test_POST_requires_admin(self):
+    def test_POST_creates_boot_source_with_name(self):
+        self.become_admin()
+        params = {
+            "url": "http://example.com",
+            "keyring_filename": factory.make_name("filename"),
+            "name": "custom-source",
+        }
+        response = self.client.post(reverse("boot_sources_handler"), params)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        boot_source = BootSource.objects.get(id=parsed_result["id"])
+        self.assertEqual(boot_source.name, "custom-source")
+
+    def test_POST_creates_boot_source_with_enabled_false(self):
+        self.become_admin()
+        params = {
+            "url": "http://example.com",
+            "keyring_filename": factory.make_name("filename"),
+            "enabled": False,
+        }
+        response = self.client.post(reverse("boot_sources_handler"), params)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        boot_source = BootSource.objects.get(id=parsed_result["id"])
+        self.assertFalse(boot_source.enabled)
+
+    def test_POST_creates_boot_source_with_skip_keyring_verification(self):
+        self.become_admin()
         params = {
             "url": "http://example.com/",
+            "skip_keyring_verification": True,
+        }
+        response = self.client.post(reverse("boot_sources_handler"), params)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        boot_source = BootSource.objects.get(id=parsed_result["id"])
+        self.assertTrue(boot_source.skip_keyring_verification)
+
+    def test_POST_requires_admin(self):
+        params = {
+            "url": "http://example.com",
             "keyring_filename": "",
             "keyring_data": (
                 factory.make_file_upload(content=sample_binary_data)
@@ -309,10 +464,11 @@ class TestBootSourceOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
         )
 
     def test_PUT_requires_can_view_boot_entities(self):
+        self.patch(boot_source_module, "post_commit_do")
         self.openfga_client.can_edit_boot_entities.return_value = True
         boot_source = factory.make_BootSource()
         new_values = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": factory.make_name("filename"),
         }
         response = self.client.put(
@@ -345,7 +501,7 @@ class TestBootSourcesOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
     def test_POST_requires_can_edit_boot_entities(self):
         self.openfga_client.can_edit_boot_entities.return_value = True
         params = {
-            "url": "http://example.com/",
+            "url": "http://example.com",
             "keyring_filename": "",
             "keyring_data": (
                 factory.make_file_upload(content=sample_binary_data)

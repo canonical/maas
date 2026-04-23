@@ -5,15 +5,28 @@ from unittest.mock import Mock
 
 import pytest
 
+from maascommon.constants import (
+    CANDIDATE_IMAGES_STREAM_URL,
+    STABLE_IMAGES_STREAM_URL,
+)
+from maascommon.enums.events import EventTypeEnum
+from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+)
+from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourcecache import (
     BootSourceCacheClauseFactory,
 )
-from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+    BootSourcesRepository,
+)
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
+from maasservicelayer.exceptions.catalog import BadRequestException
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
@@ -22,6 +35,7 @@ from maasservicelayer.services.bootsourceselections import (
 )
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.image_manifests import ImageManifestsService
+from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
@@ -37,6 +51,7 @@ class TestBootSourcesService(ServiceCommonTests):
             boot_source_selections_service=Mock(BootSourceSelectionsService),
             image_manifests_service=Mock(ImageManifestsService),
             events_service=Mock(EventsService),
+            temporal_service=Mock(TemporalService),
         )
 
     @pytest.fixture
@@ -46,11 +61,13 @@ class TestBootSourcesService(ServiceCommonTests):
             id=1,
             created=now,
             updated=now,
+            name="Test Boot Source",
             url="http://example.com",
             keyring_filename="/path/to/keyring_file.gpg",
             keyring_data=b"",
             priority=10,
             skip_keyring_verification=False,
+            enabled=True,
         )
 
     async def test_delete(self, test_instance):
@@ -72,6 +89,7 @@ class TestBootSourcesService(ServiceCommonTests):
             boot_source_selections_service=boot_source_selections_service_mock,
             image_manifests_service=image_manifests_service,
             events_service=events_service_mock,
+            temporal_service=Mock(TemporalService),
         )
 
         query = Mock(QuerySpec)
@@ -95,4 +113,184 @@ class TestBootSourcesService(ServiceCommonTests):
         )
         image_manifests_service.delete_many.assert_called_once_with(
             {boot_source.id}
+        )
+
+    @pytest.mark.parametrize(
+        "url",
+        [STABLE_IMAGES_STREAM_URL, CANDIDATE_IMAGES_STREAM_URL],
+    )
+    async def test_pre_delete_hook_rejects_default_boot_source(
+        self, service_instance, url
+    ):
+        now = utcnow()
+        boot_source = BootSource(
+            id=1,
+            created=now,
+            updated=now,
+            name="default",
+            url=url,
+            keyring_filename="",
+            keyring_data=b"",
+            priority=1,
+            skip_keyring_verification=False,
+            enabled=True,
+        )
+        with pytest.raises(BadRequestException):
+            await service_instance.pre_delete_hook(boot_source)
+
+    async def test_pre_delete_hook_allows_non_default_boot_source(
+        self, service_instance, test_instance
+    ):
+        await service_instance.pre_delete_hook(test_instance)
+
+    @pytest.fixture
+    def default_boot_source(self) -> BootSource:
+        now = utcnow()
+        return BootSource(
+            id=1,
+            created=now,
+            updated=now,
+            name="default",
+            url=STABLE_IMAGES_STREAM_URL,
+            keyring_filename="",
+            keyring_data=b"",
+            priority=1,
+            skip_keyring_verification=False,
+            enabled=True,
+        )
+
+    @pytest.mark.parametrize(
+        "builder",
+        [
+            BootSourceBuilder(priority=5),
+            BootSourceBuilder(enabled=False),
+            BootSourceBuilder(priority=5, enabled=False),
+        ],
+    )
+    async def test_pre_update_instance_allows_priority_and_enabled(
+        self, service_instance, default_boot_source, builder
+    ):
+        await service_instance.pre_update_instance(
+            default_boot_source, builder
+        )
+
+    @pytest.mark.parametrize(
+        "builder",
+        [
+            BootSourceBuilder(name="new-name"),
+            BootSourceBuilder(url="http://other.example.com"),
+            BootSourceBuilder(keyring_filename="/new/path"),
+            BootSourceBuilder(keyring_data=b"new-data"),
+            BootSourceBuilder(skip_keyring_verification=True),
+        ],
+    )
+    async def test_pre_update_instance_rejects_disallowed_fields(
+        self, service_instance, default_boot_source, builder
+    ):
+        with pytest.raises(BadRequestException):
+            await service_instance.pre_update_instance(
+                default_boot_source, builder
+            )
+
+    async def test_pre_update_instance_allows_unchanged_disallowed_fields(
+        self, service_instance, default_boot_source
+    ):
+        builder = BootSourceBuilder(
+            name=default_boot_source.name,
+            keyring_filename=default_boot_source.keyring_filename,
+            keyring_data=default_boot_source.keyring_data,
+            skip_keyring_verification=default_boot_source.skip_keyring_verification,
+            priority=5,
+        )
+        await service_instance.pre_update_instance(
+            default_boot_source, builder
+        )
+
+    @pytest.mark.parametrize(
+        "builder",
+        [
+            BootSourceBuilder(name="new-name"),
+            BootSourceBuilder(url="http://other.example.com"),
+            BootSourceBuilder(keyring_filename="/new/path"),
+            BootSourceBuilder(keyring_data=b"new-data"),
+            BootSourceBuilder(skip_keyring_verification=True),
+            BootSourceBuilder(priority=5),
+            BootSourceBuilder(enabled=False),
+        ],
+    )
+    async def test_pre_update_instance_allows_any_field_for_non_default(
+        self, service_instance, test_instance, builder
+    ):
+        await service_instance.pre_update_instance(test_instance, builder)
+
+    async def test_disable_all(self, service_instance):
+        service_instance.repository.update_many.return_value = []
+        await service_instance.disable_all()
+        service_instance.repository.update_many.assert_called_once_with(
+            query=QuerySpec(),
+            builder=BootSourceBuilder(enabled=False),
+        )
+
+    async def test_set_stable_enabled(self, service_instance):
+        service_instance.repository.get_one.return_value = BootSource(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="stable",
+            url=STABLE_IMAGES_STREAM_URL,
+            keyring_filename="",
+            keyring_data=b"",
+            priority=2,
+            skip_keyring_verification=False,
+            enabled=False,
+        )
+        service_instance.repository.update_by_id.return_value = BootSource(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="stable",
+            url=STABLE_IMAGES_STREAM_URL,
+            keyring_filename="",
+            keyring_data=b"",
+            priority=2,
+            skip_keyring_verification=False,
+            enabled=True,
+        )
+        await service_instance.set_stable_enabled()
+        service_instance.repository.get_one.assert_called_once_with(
+            query=QuerySpec(
+                where=BootSourcesClauseFactory.with_url(
+                    STABLE_IMAGES_STREAM_URL
+                )
+            )
+        )
+        service_instance.repository.update_by_id.assert_called_once_with(
+            id=1,
+            builder=BootSourceBuilder(enabled=True),
+        )
+
+    async def test_post_create_hook_creates_event(
+        self, service_instance, test_instance
+    ):
+        service_instance.repository.create.return_value = test_instance
+
+        await service_instance.create(BootSourceBuilder())
+
+        service_instance.events_service.record_event.assert_called_once_with(
+            event_type=EventTypeEnum.BOOT_SOURCE,
+            event_description=f"Created boot source {test_instance.url}",
+        )
+
+    async def test_post_create_hook_starts_fetch_manifest(
+        self, service_instance, test_instance
+    ):
+        service_instance.repository.create.return_value = test_instance
+
+        await service_instance.create(BootSourceBuilder())
+
+        service_instance.temporal_service.register_workflow_call.assert_called_once_with(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            workflow_id=f"fetch-manifest-boot-source-{test_instance.id}",
+            parameter=test_instance.id,
+            wait=False,
         )

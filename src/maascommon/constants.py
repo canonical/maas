@@ -22,13 +22,15 @@ MAAS_USER_EMAIL = "maas@localhost"
 
 BOOTLOADERS_DIR = "bootloaders"
 
-# Default images URL can be overridden by the environment.
-DEFAULT_IMAGES_URL = os.getenv(
-    "MAAS_DEFAULT_IMAGES_URL", "http://images.maas.io/ephemeral-v3/stable/"
+KEYRINGS_PATH = (
+    "/snap/maas/current/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+    if os.environ.get("SNAP")
+    else "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 )
 
-# Default images keyring filepath can be overridden by the environment.
-DEFAULT_KEYRINGS_PATH = os.getenv(
-    "MAAS_IMAGES_KEYRING_FILEPATH",
-    "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
-)
+
+STABLE_IMAGES_STREAM_URL = "http://images.maas.io/ephemeral-v3/stable"
+STABLE_IMAGES_STREAM_NAME = "MAAS Stable"
+
+CANDIDATE_IMAGES_STREAM_URL = "http://images.maas.io/ephemeral-v3/candidate"
+CANDIDATE_IMAGES_STREAM_NAME = "MAAS Candidate"

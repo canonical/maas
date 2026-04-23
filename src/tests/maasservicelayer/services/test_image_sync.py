@@ -2,15 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import json
-from unittest.mock import ANY, AsyncMock, call, Mock
+from unittest.mock import ANY, AsyncMock, Mock
 
 import pytest
 
-from maascommon.constants import (
-    BOOTLOADERS_DIR,
-    DEFAULT_IMAGES_URL,
-    DEFAULT_KEYRINGS_PATH,
-)
+from maascommon.constants import BOOTLOADERS_DIR
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
@@ -23,7 +19,7 @@ from maascommon.workflows.bootresource import (
     ResourceDownloadParam,
     ResourceIdentifier,
 )
-from maasservicelayer.builders.bootsources import BootSourceBuilder
+from maasserver.enum import NotificationComponent
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
@@ -44,6 +40,7 @@ from maasservicelayer.db.tables import (
     BootResourceSetTable,
     BootResourceTable,
 )
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootresourcesets import BootResourceSet
@@ -104,27 +101,33 @@ MSM_SS_EP = "site/v1/images/latest/stable/streams/v1/index.json"
 
 BOOT_SOURCE_1 = BootSource(
     id=1,
+    name="Source 1",
     url="http://source-1.com",
     keyring_filename="/foo/bar",
     keyring_data=None,
     priority=1,
     skip_keyring_verification=True,
+    enabled=True,
 )
 BOOT_SOURCE_2 = BootSource(
     id=2,
+    name="Source 2",
     url="http://source-2.com",
     keyring_filename=None,
     keyring_data=b"some bytes",
     priority=2,
     skip_keyring_verification=True,
+    enabled=True,
 )
 BOOT_SOURCE_MSM = BootSource(
     id=2,
+    name="MSM Boot Source",
     url=f"http://maas-site-manager.io/{MSM_SS_EP}",
     keyring_filename=None,
     keyring_data=b"some bytes",
     priority=2,
     skip_keyring_verification=True,
+    enabled=True,
 )
 
 BOOT_SELECTION_NOBLE_SOURCE_1 = BootSourceSelection(
@@ -339,153 +342,65 @@ class TestImageSyncService:
             notifications_service=self.notifications_service,
         )
 
-    async def test_ensure_boot_source_definition_creates_default_source(
-        self, mocker
-    ):
-        self.boot_sources_service.exists.return_value = False
-        self.boot_sources_service.create.return_value = BootSource(
-            id=1,
-            url=DEFAULT_IMAGES_URL,
-            keyring_filename=DEFAULT_KEYRINGS_PATH,
-            keyring_data=b"",
-            priority=1,
-            skip_keyring_verification=False,
-        )
-
-        arch = "test-arch"
-        mocker.patch(
-            "maasservicelayer.services.image_sync.get_architecture"
-        ).return_value = arch
-
-        created = await self.service.ensure_boot_source_definition()
-        assert created
-
-        self.boot_sources_service.create.assert_awaited_once_with(
-            BootSourceBuilder(
-                url=DEFAULT_IMAGES_URL,
-                keyring_filename=DEFAULT_KEYRINGS_PATH,
-                keyring_data=b"",
-                priority=1,
-                skip_keyring_verification=False,
-            )
-        )
-        self.boot_source_selections_service.create_without_boot_source_cache.assert_has_awaits(
-            [
-                call(
-                    BootSourceSelectionBuilder(
-                        boot_source_id=1,
-                        os="ubuntu",
-                        release="noble",
-                        arch=arch,
-                    )
-                ),
-                call(
-                    BootSourceSelectionBuilder(
-                        boot_source_id=1,
-                        os="ubuntu",
-                        release="noble",
-                        arch="amd64",
-                    )
-                ),
-            ]
-        )
-
-    async def test_ensure_boot_source_definition_creates_with_default_arch(
-        self, mocker
-    ):
-        self.boot_sources_service.exists.return_value = False
-        self.boot_sources_service.create.return_value = BootSource(
-            id=1,
-            url=DEFAULT_IMAGES_URL,
-            keyring_filename=DEFAULT_KEYRINGS_PATH,
-            keyring_data=b"",
-            priority=1,
-            skip_keyring_verification=False,
-        )
-
-        mocker.patch(
-            "maasservicelayer.services.image_sync.get_architecture"
-        ).return_value = ""
-
-        created = await self.service.ensure_boot_source_definition()
-
-        assert created
-        self.boot_sources_service.create.assert_awaited_once_with(
-            BootSourceBuilder(
-                url=DEFAULT_IMAGES_URL,
-                keyring_filename=DEFAULT_KEYRINGS_PATH,
-                keyring_data=b"",
-                priority=1,
-                skip_keyring_verification=False,
-            )
-        )
-        self.boot_source_selections_service.create_without_boot_source_cache.assert_awaited_once_with(
-            BootSourceSelectionBuilder(
-                boot_source_id=1,
-                os="ubuntu",
-                release="noble",
-                arch="amd64",
-            )
-        )
-
-    async def test_ensure_boot_source_definition_updates_default_source_snap(
-        self, mocker, monkeypatch
-    ):
+    async def test_check_boot_source_enabled_returns_true_and_deletes_notification(
+        self,
+    ) -> None:
         self.boot_sources_service.exists.return_value = True
-        self.boot_sources_service.get_one.return_value = BootSource(
-            id=1,
-            url=DEFAULT_IMAGES_URL,
-            keyring_filename=DEFAULT_KEYRINGS_PATH,
-            keyring_data=b"",
-            priority=1,
-            skip_keyring_verification=False,
-        )
-        mocker.patch(
-            "maasservicelayer.services.image_sync.DEFAULT_KEYRINGS_PATH",
-            "/some/other/path/keyring.gpg",
-        )
-        monkeypatch.setenv("SNAP", "/snap/maas/current")
+        self.notifications_service.delete_one.return_value = None
 
-        created = await self.service.ensure_boot_source_definition()
+        result = await self.service.check_boot_source_enabled()
 
-        assert not created
-        self.boot_sources_service.create.assert_not_awaited()
-        self.boot_sources_service.get_one.assert_awaited_once_with(
+        assert result is True
+        self.boot_sources_service.exists.assert_awaited_once_with(
+            query=QuerySpec(where=BootSourcesClauseFactory.with_enabled(True))
+        )
+        self.notifications_service.delete_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootSourcesClauseFactory.with_url(DEFAULT_IMAGES_URL)
+                where=NotificationsClauseFactory.with_ident(
+                    NotificationComponent.BOOT_SOURCES_AVAILABILITY
+                )
             )
         )
-        self.boot_sources_service.update_by_id.assert_awaited_once_with(
-            id=1,
-            builder=BootSourceBuilder(
-                keyring_filename="/some/other/path/keyring.gpg"
+
+    async def test_check_boot_source_enabled_returns_true_when_no_notification_exists(
+        self,
+    ) -> None:
+        self.boot_sources_service.exists.return_value = True
+        self.notifications_service.delete_one.side_effect = NotFoundException(
+            details=[]
+        )
+
+        result = await self.service.check_boot_source_enabled()
+
+        assert result is True
+        self.notifications_service.get_or_create.assert_not_awaited()
+
+    async def test_check_boot_source_enabled_returns_false_and_creates_notification(
+        self,
+    ) -> None:
+        self.boot_sources_service.exists.return_value = False
+
+        result = await self.service.check_boot_source_enabled()
+
+        assert result is False
+        self.notifications_service.get_or_create.assert_awaited_once_with(
+            query=QuerySpec(
+                where=NotificationsClauseFactory.with_ident(
+                    NotificationComponent.BOOT_SOURCES_AVAILABILITY
+                )
+            ),
+            builder=NotificationBuilder(
+                ident=NotificationComponent.BOOT_SOURCES_AVAILABILITY,
+                users=True,
+                admins=True,
+                message="All the boot sources are disabled. It will not be possible to download new boot resources.",
+                context={},
+                user_id=None,
+                category=NotificationCategoryEnum.WARNING,
+                dismissable=False,
             ),
         )
-
-    async def test_ensure_boot_source_definition_skips_if_already_present(
-        self, monkeypatch
-    ):
-        self.boot_sources_service.exists.return_value = True
-        monkeypatch.delenv("SNAP", raising=False)
-
-        created = await self.service.ensure_boot_source_definition()
-
-        assert not created
-        self.boot_sources_service.create.assert_not_awaited()
-        self.boot_sources_service.update_by_id.assert_not_awaited()
-
-    async def test_ensure_boot_source_definition_does_nothing_if_default_source_not_present(
-        self, monkeypatch
-    ):
-        self.boot_sources_service.exists.return_value = True
-        self.boot_sources_service.get_one.return_value = None
-        monkeypatch.setenv("SNAP", "/snap/maas/current")
-
-        created = await self.service.ensure_boot_source_definition()
-
-        assert not created
-        self.boot_sources_service.create.assert_not_awaited()
-        self.boot_sources_service.update_by_id.assert_not_awaited()
+        self.notifications_service.delete_one.assert_not_awaited()
 
     async def test_sync_boot_source_selections_from_msm(self) -> None:
         self.msm_service.get_status.return_value = MSMStatus(
@@ -497,11 +412,13 @@ class TestImageSyncService:
         boot_sources = [
             BootSource(
                 id=100,
+                name="MSM Source",
                 url=f"http://maas-site-manager.io/{MSM_SS_EP}",
                 keyring_filename="",
                 keyring_data=None,
                 priority=1,
                 skip_keyring_verification=True,
+                enabled=True,
             )
         ]
         self.boot_source_cache_service.get_many.return_value = [
@@ -1014,7 +931,7 @@ class TestIntegrationImageSyncService:
         return await create_test_bootsource_entry(
             fixture,
             url="http://source-1.com",
-            priority=1,
+            priority=100,
             skip_keyring_verification=True,
         )
 
@@ -1023,7 +940,7 @@ class TestIntegrationImageSyncService:
         return await create_test_bootsource_entry(
             fixture,
             url="http://source-2.com",
-            priority=2,
+            priority=101,
             skip_keyring_verification=True,
         )
 

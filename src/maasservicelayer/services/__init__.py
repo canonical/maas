@@ -469,6 +469,7 @@ class ServiceCollectionV3:
             boot_source_selections_service=services.boot_source_selections,
             image_manifests_service=services.image_manifests,
             events_service=services.events,
+            temporal_service=services.temporal,
         )
         services.image_sync = ImageSyncService(
             context=context,
