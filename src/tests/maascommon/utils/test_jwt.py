@@ -59,22 +59,39 @@ class TestDecodeUnverifiedJWT:
         decoded = decode_unverified_jwt(token, check_expiration=True)
         assert decoded["sub"] == "user123"
 
-    def test_decode_token_with_valid_audience(self):
-        payload = {"sub": "user123", "aud": "expected-audience"}
+    @pytest.mark.parametrize(
+        "payload_aud, expected_aud",
+        [
+            ("expected-audience", "expected-audience"),
+            (["expected-audience"], "expected-audience"),
+            (["expected-audience", "other-audience"], "expected-audience"),
+        ],
+    )
+    def test_decode_token_with_valid_audience(self, payload_aud, expected_aud):
+        payload = {"sub": "user123", "aud": payload_aud}
         token = create_test_jwt(payload)
-        decoded = decode_unverified_jwt(
-            token, expected_audience="expected-audience"
-        )
+        decoded = decode_unverified_jwt(token, expected_audience=expected_aud)
         assert decoded["sub"] == "user123"
 
-    def test_decode_token_with_invalid_audience(self):
-        payload = {"sub": "user123", "aud": "wrong-audience"}
+    @pytest.mark.parametrize(
+        "payload_aud, expected_aud",
+        [
+            ("expected-audience", "expected-aud"),
+            (["expected-audience"], "expected-aud"),
+            (["expected-audience", "other-audience"], "expected-aud"),
+            ([], "expected-aud"),
+        ],
+    )
+    def test_decode_token_with_invalid_audience(
+        self, payload_aud, expected_aud
+    ):
+        payload = {"sub": "user123", "aud": payload_aud}
         token = create_test_jwt(payload)
         with pytest.raises(
             JWTDecodeError,
-            match="invalid audience: expected expected-audience, got wrong-audience",
+            match="invalid audience",
         ):
-            decode_unverified_jwt(token, expected_audience="expected-audience")
+            decode_unverified_jwt(token, expected_audience=expected_aud)
 
     def test_decode_token_missing_audience(self):
         payload = {"sub": "user123"}
