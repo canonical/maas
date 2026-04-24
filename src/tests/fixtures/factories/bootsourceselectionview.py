@@ -41,7 +41,7 @@ async def create_test_selection_status_entry(
     arch: str = "amd64",
     subarch: str = "generic",
     boot_source: BootSource | None = None,
-    region_controller: dict | None = None,
+    region_controllers: list[dict] | None = None,
     cache_version: str = "1",
     set_version: str = "1",
     file_size: int = 1024,
@@ -97,15 +97,18 @@ async def create_test_selection_status_entry(
         resource_set_id=boot_resource_set.id,
     )
 
-    if region_controller is None:
-        region_controller = await create_test_region_controller_entry(fixture)
+    if region_controllers is None:
+        region_controllers = [
+            await create_test_region_controller_entry(fixture)
+        ]
 
-    await create_test_bootresourcefilesync_entry(
-        fixture,
-        size=sync_size,
-        file_id=boot_resource_file.id,
-        region_id=region_controller["id"],
-    )
+    for region in region_controllers:
+        await create_test_bootresourcefilesync_entry(
+            fixture,
+            size=sync_size,
+            file_id=boot_resource_file.id,
+            region_id=region["id"],
+        )
 
     if sync_size == 0:
         status = ImageStatus.WAITING_FOR_DOWNLOAD

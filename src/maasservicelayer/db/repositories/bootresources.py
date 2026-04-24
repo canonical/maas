@@ -146,10 +146,20 @@ class BootResourcesRepository(BaseRepository[BootResource]):
             .scalar_subquery()
         )
 
+        # Aggregate sync size across all regions per file
+        file_sync_subq = (
+            select(
+                BootResourceFileSyncTable.c.file_id,
+                func.sum(BootResourceFileSyncTable.c.size).label(
+                    "total_synced"
+                ),
+            ).group_by(BootResourceFileSyncTable.c.file_id)
+        ).subquery()
+
         sync_percentage_expr = (
-            func.sum(BootResourceFileSyncTable.c.size)
+            func.sum(file_sync_subq.c.total_synced)
             * 100.0
-            / func.sum(BootResourceFileTable.c.size)
+            / func.nullif(func.sum(BootResourceFileTable.c.size), 0)
             / node_count_subq
         )
 
@@ -178,9 +188,8 @@ class BootResourcesRepository(BaseRepository[BootResource]):
                 isouter=True,
             )
             .join(
-                BootResourceFileSyncTable,
-                BootResourceFileTable.c.id
-                == BootResourceFileSyncTable.c.file_id,
+                file_sync_subq,
+                BootResourceFileTable.c.id == file_sync_subq.c.file_id,
                 isouter=True,
             )
             .where(BootResourceTable.c.rtype == BootResourceType.UPLOADED)
