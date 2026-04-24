@@ -71,6 +71,8 @@ jobs:
           lxc exec maas-ui-tester-backend -- apt-get update
           lxc exec maas-ui-tester-backend -- apt-get install -y snapd
           lxc exec maas-ui-tester-backend -- snap wait system seed.loaded
+          lxc exec maas-ui-tester-backend -- snap refresh snapd
+          lxc exec maas-ui-tester-backend -- snap wait system seed.loaded
           lxc file push *.snap maas-ui-tester-backend/maas-snap
           lxc file push utilities/connect-snap-interfaces maas-ui-tester-backend/connect-snap-interfaces
           lxc exec maas-ui-tester-backend -- snap install maas-test-db --channel=latest/edge
