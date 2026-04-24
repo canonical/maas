@@ -3,8 +3,7 @@
 
 """Utilities for working with beaconing packets."""
 
-from collections import OrderedDict, namedtuple
-from typing import Any
+from collections import namedtuple, OrderedDict
 from gzip import compress, decompress
 import json
 import math
@@ -15,6 +14,7 @@ import subprocess
 import sys
 from textwrap import dedent
 import time
+from typing import Any
 
 from bson import BSON
 from bson.errors import BSONError
