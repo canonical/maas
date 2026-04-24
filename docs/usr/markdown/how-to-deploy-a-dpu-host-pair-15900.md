@@ -1,19 +1,19 @@
 This guide explains how to use Terraform to enlist, commission, and deploy a host-DPU pair in MAAS. By the end, you will have a host machine and its attached DPU running Ubuntu, with the DPU properly initialized and ready for workloads.
 
-## What is a host-DPU pair?
+# What is a host-DPU pair?
 
 A data processing unit (DPU) is a PCIe-attached device that offloads networking, storage, and security tasks from the host CPU. From MAAS's perspective, the host and the DPU are two separate machines that must be provisioned in order. The DPU is powered by the host, so the host must be running before MAAS can commission the DPU.
 
 The Terraform plan described here automates this sequencing: it provisions the host first, waits for deployment to complete, then commissions and deploys the DPU. After the DPU is deployed, the plan power-cycles the host to complete DPU initialization.
 
-## Requirements
+# Requirements
 
 - **MAAS 3.7** or later (DPU support was introduced in 3.7)
 - **Terraform** 1.4.0 or later
 - **canonical/maas** Terraform provider `~> 2.8` with DPU support
 - Both the DPU and machine BMC must have Redfish enabled and the account you use must have sufficient permissions.
 
-## The Terraform plan
+# The Terraform plan
 
 Save the following as `main.tf` in a new directory, then follow the steps in [Deploy the host-DPU pair](#deploy-the-host-dpu-pair).
 
@@ -213,7 +213,7 @@ The plan declares four resources:
 
 All machine-specific values are variables, so the plan works for any host-DPU pair without editing the file.
 
-## Gather the required information
+# Gather the required information
 
 Before running the plan, collect the following for both machines:
 
@@ -225,19 +225,19 @@ Before running the plan, collect the following for both machines:
 | BMC IP address | Your network inventory or BMC management interface |
 | BMC username/password | Your hardware credentials |
 
-## Deploy the host-DPU pair
+# Deploy the host-DPU pair
 
-### 1. Initialize Terraform
+## 1. Initialize Terraform
 
 Create a directory for your plan, save the `main.tf` content from above into it, then initialize:
 
-```nohighlight
+```
 mkdir dpu-host-pair && cd dpu-host-pair
 # save main.tf here
 terraform init
 ```
 
-### 2. Set variables
+## 2. Set variables
 
 Create a `terraform.tfvars` file with the non-sensitive values:
 
@@ -259,33 +259,33 @@ distro_series = "noble"
 
 Export the sensitive credentials as environment variables. To avoid them being saved to your shell history, include a leading space before each command:
 
-```nohighlight
+```
  export TF_VAR_maas_api_key="<MAAS API key>"
  export TF_VAR_host_power_pass="<HOST BMC password>"
  export TF_VAR_dpu_power_pass="<DPU BMC password>"
 ```
 
-### 3. Preview the changes
+## 3. Preview the changes
 
 Run `plan` to see what Terraform will create before committing. Terraform reads `terraform.tfvars` and the `TF_VAR_` environment variables automatically:
 
-```nohighlight
+```
 terraform plan
 ```
 
 Review the output. Terraform will list four resources to be created.
 
-### 4. Apply
+## 4. Apply
 
 When satisfied, apply the plan:
 
-```nohighlight
+```
 terraform apply
 ```
 
 Terraform will prompt for confirmation; type `yes` and press Enter.
 
-### What happens during apply
+## What happens during apply
 
 Terraform works through the four resources in dependency order:
 
@@ -296,7 +296,7 @@ Terraform works through the four resources in dependency order:
 
 You can follow progress in the terminal output:
 
-```nohighlight
+```
 maas_machine.host: Creating...
 maas_machine.host: Still creating... [10m00s elapsed]
 maas_machine.host: Creation complete after 12m30s [id=abc123]
@@ -309,7 +309,7 @@ Apply complete! Resources: 4 added, 0 changed, 0 destroyed.
 
 Total provisioning time is typically 25–40 minutes, depending on your hardware and network speed.
 
-### Verify the deployment
+## Verify the deployment
 
 Once `terraform apply` completes:
 
@@ -317,7 +317,7 @@ Once `terraform apply` completes:
 2. Confirm that both `host-0` (or your custom hostname) and `dpu-0` appear with status **Deployed**.
 3. To inspect commissioning and deployment logs for either machine, click on its name and open the **Logs** tab.
 
-## Optional variables
+# Optional variables
 
 The plan exposes additional variables with sensible defaults:
 
