@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = [  ]
+requires = []
 
 [project]
 name = "maas"
@@ -70,8 +70,8 @@ entry-points.pytest11.maas-seeds = "maastesting.pytest.seeds"
 entry-points.pytest11.maas-sqlalchemy = "maastesting.pytest.sqlalchemy"
 
 [tool.setuptools.packages.find]
-where = [ "src" ]
-exclude = [ "*.testing", "*.tests" ]
+where = ["src"]
+exclude = ["*.testing", "*.tests"]
 include = [
   "apiclient*",
   "maasapiserver*",
@@ -96,7 +96,6 @@ exclude = """
 /parts
 /snap
 /src/maasui
-/src/maas-offline-docs
 """
 
 [tool.isort]
@@ -119,14 +118,14 @@ snippets
 order_by_type = false
 
 [tool.flake8]
-ignore = [ "E203", "E266", "E501", "W503", "W504" ]
-exclude = [ "src/*/migrations/*" ]
+ignore = ["E203", "E266", "E501", "W503", "W504"]
+exclude = ["src/*/migrations/*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 filterwarnings = "error::BytesWarning"
-testpaths = [ "src/tests" ]
+testpaths = ["src/tests"]
 
 [tool.bandit]
-exclude_dirs = [ "src/tests" ]
-skips = [ "B311", "B101" ]
+exclude_dirs = ["src/tests"]
+skips = ["B311", "B101"]
