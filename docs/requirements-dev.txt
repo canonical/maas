@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Necessary to run our tests for the scripts
+pytest==9.0.3
