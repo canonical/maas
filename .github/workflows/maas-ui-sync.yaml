@@ -60,7 +60,7 @@ jobs:
           sudo snap install --edge core26
           cd "$GITHUB_WORKSPACE"
           make snap
-          make snap-clean
+          # make snap-clean  # temporarily disabled for debugging
 
       - name: Setup LXD container
         id: setup-lxd
@@ -72,6 +72,7 @@ jobs:
           lxc exec maas-ui-tester-backend -- snap wait system seed.loaded
           lxc exec maas-ui-tester-backend -- snap install --edge core26
           lxc file push *.snap maas-ui-tester-backend/maas-snap
+          lxc exec maas-ui-tester-backend -- snap info /maas-snap
           lxc file push utilities/connect-snap-interfaces maas-ui-tester-backend/connect-snap-interfaces
           lxc exec maas-ui-tester-backend -- snap install maas-test-db --channel=latest/edge
           lxc exec maas-ui-tester-backend -- snap install /maas-snap --dangerous
