@@ -3,7 +3,8 @@
 
 """Utilities for working with beaconing packets."""
 
-from collections import namedtuple
+from collections import OrderedDict, namedtuple
+from typing import Any
 from gzip import compress, decompress
 import json
 import math
@@ -14,12 +15,11 @@ import subprocess
 import sys
 from textwrap import dedent
 import time
-import uuid
-from uuid import UUID
 
 from bson import BSON
 from bson.errors import BSONError
 from cryptography.fernet import InvalidToken
+from ulid import ULID
 
 from provisioningserver.path import get_path
 from provisioningserver.security import fernet_decrypt_psk, fernet_encrypt_psk
@@ -41,7 +41,7 @@ BEACON_TYPES = {"solicitation": 1, "advertisement": 2}
 
 BEACON_TYPE_VALUES = {value: name for name, value in BEACON_TYPES.items()}
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 BEACON_HEADER_FORMAT_V1 = "!BBH"
 BEACON_HEADER_LENGTH_V1 = 4
 
@@ -52,7 +52,7 @@ BeaconPayload = namedtuple(
 
 ReceivedBeacon = namedtuple(
     "ReceivedBeacon",
-    ("uuid", "json", "ifname", "ifinfo", "vid", "reply_address", "multicast"),
+    ("ulid", "json", "ifname", "ifinfo", "vid", "reply_address", "multicast"),
 )
 
 TopologyHint = namedtuple(
@@ -61,34 +61,33 @@ TopologyHint = namedtuple(
 )
 
 
-def uuid_to_timestamp(uuid_str):
-    """Given the specified UUID string, returns the timestamp.
+def ulid_to_timestamp(ulid_str: str) -> float:
+    """Extract timestamp (seconds since epoch) from a ULID string.
 
-    The timestamp returned should be comparable to what would be returned
-    from `import time; time.time()`.
+    The ULID's 48-bit timestamp provides millisecond precision; the returned
+    float (seconds) is compatible with time.time().
 
-    :param uuid_str: a UUID in string format
-    :return: float
+    :param ulid_str: A 26-character ULID string.
+    :return: float seconds since Unix epoch.
     """
-    uuid_time = UUID(uuid_str).time
-    # Reverse the algorithm in uuid.py.
-    timestamp = (uuid_time - 0x01B21DD213814000) * 100 / 1e9
-    return timestamp
+    return ULID.from_str(ulid_str).timestamp
 
 
-def age_out_uuid_queue(queue, threshold=120.0):
-    """Ages out a ordered dictionary (using UUID-based keys) based on time.
+def age_out_ulid_queue(
+    queue: OrderedDict[str, Any], threshold: float = 120.0
+) -> None:
+    """Ages out an ordered dictionary (using ULID-based keys) based on time.
 
     The given threshold (in seconds) indicates how old an entry can be
     before it will be removed from the queue.
 
-    :param queue: An `OrderedDict` with UUID strings as keys.
+    :param queue: An `OrderedDict` with ULID strings as keys.
     :param threshold: The maximum time an entry can remain in the queue.
     """
     removals = []
     current_time = time.time()
     for key in queue:
-        beacon_timestamp = uuid_to_timestamp(key)
+        beacon_timestamp = ulid_to_timestamp(key)
         # Don't leave beacons from the future in the queue if the clock
         # suddenly changes. (This shouldn't happen, since the Fernet TTL
         # should not have allowed them through. But just in case.)
@@ -103,8 +102,8 @@ def age_out_uuid_queue(queue, threshold=120.0):
             # clock skew could be an issue here, but after a couple of minutes,
             # it won't matter.)
             break
-    for uuid_to_remove in removals:
-        queue.pop(uuid_to_remove, None)
+    for ulid_to_remove in removals:
+        queue.pop(ulid_to_remove, None)
 
 
 def beacon_to_json(beacon_payload):
@@ -131,7 +130,7 @@ def create_beacon_payload(beacon_type, payload=None, version=PROTOCOL_VERSION):
     beacon_type_code = BEACON_TYPES[beacon_type]
     if payload is not None:
         payload = payload.copy()
-        payload["uuid"] = str(uuid.uuid1())
+        payload["ulid"] = str(ULID())
         payload["type"] = beacon_type_code
         data_bytes = BSON.encode(payload)
         compressed_bytes = compress(data_bytes, compresslevel=9)
@@ -177,7 +176,7 @@ def read_beacon_payload(beacon_bytes):
     payload_end = BEACON_HEADER_LENGTH_V1 + expected_payload_length
     payload_bytes = beacon_bytes[payload_start:payload_end]
     payload = None
-    if version == 1:
+    if version in (1, 2):
         if len(payload_bytes) == 0:
             # No encrypted inner payload; nothing to do.
             pass
