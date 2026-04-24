@@ -5,7 +5,6 @@
 
 __all__ = [
     "ImportResourcesProgressService",
-    "ImportResourcesService",
     "is_import_resources_running",
 ]
 
@@ -21,10 +20,7 @@ from temporalio.common import WorkflowIDReusePolicy
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
 
-from maascommon.constants import (
-    BOOTLOADERS_DIR,
-    IMPORT_RESOURCES_SERVICE_PERIOD,
-)
+from maascommon.constants import BOOTLOADERS_DIR
 from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
@@ -38,8 +34,6 @@ from maasserver.models import (
     BootResource,
     BootResourceFile,
     BootResourceFileSync,
-    BootResourceSet,
-    Config,
     RegionController,
 )
 from maasserver.sqlalchemy import service_layer
@@ -54,10 +48,7 @@ from maasserver.workflow import (
 from maasservicelayer.utils.image_local_files import (
     get_bootresource_store_path,
 )
-from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.path import get_maas_lock_path
-from provisioningserver.utils.twisted import retry
 
 maaslog = get_maas_logger("bootresources")
 log = LegacyLogger()
@@ -93,70 +84,6 @@ def stop_import_resources():
     running = is_import_resources_running()
     if running:
         cancel_workflow(workflow_id="master-image-sync")
-
-
-class ImportResourcesService(TimerService):
-    """Service to periodically import boot resources.
-
-    This will run immediately when it's started, then once again every hour,
-    though the interval can be overridden by passing it to the constructor.
-    """
-
-    def __init__(self, interval=IMPORT_RESOURCES_SERVICE_PERIOD):
-        super().__init__(interval.total_seconds(), self.maybe_import_resources)
-        for p in [get_maas_lock_path(), get_bootresource_store_path()]:
-            p.mkdir(parents=True, exist_ok=True)
-        self._initialized = False
-
-    @inlineCallbacks
-    def _fetch_manifest(self):
-        """Fetch the simplestream manifest only the first time the service is started.
-
-        Start a fetch manifest workflow regardless of the schedule. This is
-        needed to ensure that we have fetched the manifest at least once
-        before starting the image sync workflow.
-        """
-        if not self._initialized:
-            yield execute_workflow(
-                workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
-                workflow_id=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
-                id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-            )
-            self._initialized = True
-
-    def maybe_import_resources(self):
-        def determine_auto():
-            auto = Config.objects.get_config("boot_images_auto_import")
-            if not auto:
-                return auto
-            dev_without_images = (
-                is_dev_environment() and not BootResourceSet.objects.exists()
-            )
-            if dev_without_images:
-                return False
-            else:
-                return auto
-
-        d = retry(self._fetch_manifest, timeout=60)
-        d.addCallback(lambda _: deferToDatabase(transactional(determine_auto)))
-        d.addCallback(
-            lambda x: retry(self.import_resources_if_configured, x, timeout=60)
-        )
-        d.addErrback(
-            log.err,
-            f"Failure importing boot resources. Next automatic retry will be triggered in "
-            f"{str(IMPORT_RESOURCES_SERVICE_PERIOD)} hours.",
-        )
-        return d
-
-    def import_resources_if_configured(self, auto):
-        if auto:
-            return import_resources()
-        else:
-            maaslog.info(
-                "Skipping periodic import of boot resources; "
-                "it has been disabled."
-            )
 
 
 class ImportResourcesProgressService(TimerService):

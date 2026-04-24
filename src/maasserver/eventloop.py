@@ -111,12 +111,6 @@ def make_PrometheusService():
     return stats.PrometheusService()
 
 
-def make_ImportResourcesService():
-    from maasserver import bootresources
-
-    return bootresources.ImportResourcesService()
-
-
 def make_ImportResourcesProgressService():
     from maasserver import bootresources
 
@@ -332,12 +326,6 @@ class RegionEventLoop:
         "prometheus": {
             "only_on_master": True,
             "factory": make_PrometheusService,
-            "requires": [],
-        },
-        "import-resources": {
-            "only_on_master": False,
-            "import_service": True,
-            "factory": make_ImportResourcesService,
             "requires": [],
         },
         "import-resources-progress": {
