@@ -5,6 +5,7 @@ from ipaddress import ip_address
 import random
 
 from django.urls import reverse
+from packaging.version import parse
 import yaml
 
 from maascommon.osystem import BOOT_IMAGE_PURPOSE, NoSuchOperatingSystem
@@ -13,11 +14,15 @@ from maasserver.compose_preseed import (
     build_metadata_url,
     compose_enlistment_preseed,
     compose_preseed,
+    generate_deb822_for_sources,
+    generate_urls_for_sources_list,
     get_apt_proxy,
+    get_ubuntu_version,
 )
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES, PRESEED_TYPE
 from maasserver.models import NodeKey, PackageRepository
 from maasserver.models.config import Config
+from maasserver.models.node import Node
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -388,43 +393,25 @@ class TestComposePreseed(MAASServerTestCase):
             expected_package_mirrors,
         )
 
-    def assertAptConfig(self, config, apt_proxy):
+    def assertAptConfig(self, config, apt_proxy, node: Node | None = None):
         archive = PackageRepository.objects.get_default_archive("amd64")
-        components = set(archive.KNOWN_COMPONENTS)
 
-        if archive.disabled_components:
-            for comp in archive.COMPONENTS_TO_DISABLE:
-                if comp in archive.disabled_components:
-                    components.remove(comp)
-
-        components = " ".join(components)
-        sources_list = f"deb {archive.url} $RELEASE {components}\n"
-        if archive.disable_sources:
-            sources_list += "# "
-        sources_list += f"deb-src {archive.url} $RELEASE {components}\n"
-
-        for pocket in archive.POCKETS_TO_DISABLE:
-            if pocket in archive.disabled_pockets:
-                continue
-            sources_list += "deb {} $RELEASE-{} {}\n".format(
-                archive.url,
-                pocket,
-                components,
-            )
-            if archive.disable_sources:
-                sources_list += "# "
-            sources_list += "deb-src {} $RELEASE-{} {}\n".format(
-                archive.url,
-                pocket,
-                components,
-            )
+        if (
+            node is not None
+            and node.get_osystem() == "ubuntu"
+            and get_ubuntu_version(node.get_distro_series()) >= parse("24.04")
+        ):
+            expected_sources_list = generate_deb822_for_sources(archive)
+        else:
+            expected_sources_list = generate_urls_for_sources_list(archive)
 
         self.assertEqual(
             config.get("apt", {}),
             {
                 "preserve_sources_list": False,
                 "proxy": apt_proxy,
-                "sources_list": sources_list,
+                "sources_list": expected_sources_list,
+                "sources": {},
             },
         )
         self.assertEqual(
@@ -435,6 +422,13 @@ class TestComposePreseed(MAASServerTestCase):
                 ],
             },
         )
+
+    def test_get_ubuntu_version(self):
+        self.assertEqual(get_ubuntu_version("precise"), parse("12.04"))
+        self.assertEqual(get_ubuntu_version("jammy"), parse("22.04"))
+        self.assertEqual(get_ubuntu_version("noble"), parse("24.04"))
+        self.assertEqual(get_ubuntu_version("oracular"), parse("24.10"))
+        self.assertEqual(get_ubuntu_version("resolute"), parse("26.04"))
 
     def test_compose_preseed_for_commissioning_node_skips_apt_proxy(self):
         rack_controller = factory.make_RackController()
@@ -481,7 +475,7 @@ class TestComposePreseed(MAASServerTestCase):
             {"consumer_key", "endpoint", "token_key", "token_secret", "type"},
         )
         self.assertEqual(preseed["rsyslog"]["remotes"].keys(), {"maas"})
-        self.assertAptConfig(preseed, apt_proxy)
+        self.assertAptConfig(preseed, apt_proxy, node)
         self.assertEqual(
             preseed["snap"],
             {
@@ -874,7 +868,7 @@ class TestComposePreseed(MAASServerTestCase):
             f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('curtin-metadata')}",
             preseed["datasource"]["MAAS"]["metadata_url"],
         )
-        self.assertAptConfig(preseed, expected_apt_proxy)
+        self.assertAptConfig(preseed, expected_apt_proxy, node)
         self.assertEqual(
             preseed["snap"],
             {
