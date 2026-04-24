@@ -49,7 +49,7 @@ jobs:
               [legacy]=".ve/bin/python -m coverage run bin/test.region.legacy"
               [region]=".ve/bin/python -m coverage run bin/test.region"
               [rack]=".ve/bin/python -m coverage run bin/test.rack"
-              [pytest]=".ve/bin/pytest -n auto --dist=load"
+              [pytest]=".ve/bin/coverage run -m pytest -n auto --dist=load"
           )
 
           # Run all suites and generate per-suite XML
