@@ -1,3 +1,5 @@
+# Deploy a host-DPU pair
+
 This guide explains how to use Terraform to enlist, commission, and deploy a host-DPU pair in MAAS. By the end, you will have a host machine and its attached DPU running Ubuntu, with the DPU properly initialized and ready for workloads.
 
 # What is a host-DPU pair?
