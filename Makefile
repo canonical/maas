@@ -60,8 +60,6 @@ endef
 
 UI_BUILD := src/maasui/build
 
-OFFLINE_DOCS := src/maas-offline-docs/src
-
 swagger-dist := src/maasserver/templates/dist/
 swagger-js: file := src/maasserver/templates/dist/swagger-ui-bundle.js
 swagger-js: url := "https://unpkg.com/swagger-ui-dist@latest/swagger-ui-bundle.js"
@@ -123,9 +121,6 @@ ui: $(UI_BUILD)
 
 $(UI_BUILD):
 	$(MAKE) --no-print-directory -C src/maasui build
-
-$(OFFLINE_DOCS):
-	$(MAKE) --no-print-directory -C src/maas-offline-docs
 
 $(swagger-dist):
 	mkdir $@
