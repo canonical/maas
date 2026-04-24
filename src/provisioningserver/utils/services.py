@@ -36,12 +36,13 @@ from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
 from provisioningserver.utils.beaconing import (
-    age_out_uuid_queue,
+    age_out_ulid_queue,
     BEACON_IPV4_MULTICAST,
     BEACON_IPV6_MULTICAST,
     BEACON_PORT,
     beacon_to_json,
     create_beacon_payload,
+    PROTOCOL_VERSION,
     read_beacon_payload,
     ReceivedBeacon,
     TopologyHint,
@@ -534,7 +535,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         """Send a beacon to the specified destination.
 
         :param beacon: The `BeaconPayload` namedtuple to send. Must have a
-            `payload` ivar containing a 'uuid' element.
+            `payload` ivar containing a 'ulid' element.
         :param destination_address: The UDP/IP (destination, port) tuple. IPv4
             addresses must be in IPv4-mapped IPv6 format.
         :return: True if the beacon was sent, False otherwise.
@@ -544,9 +545,9 @@ class BeaconingSocketProtocol(DatagramProtocol):
             # If the packet cannot be sent for whatever reason, OSError will
             # be raised, and we won't record sending a beacon we didn't
             # actually send.
-            uuid = beacon.payload["uuid"]
-            self.tx_queue[uuid] = beacon
-            age_out_uuid_queue(self.tx_queue)
+            ulid = beacon.payload["ulid"]
+            self.tx_queue[ulid] = beacon
+            age_out_ulid_queue(self.tx_queue)
             return True
         except OSError as e:
             if self.debug:
@@ -641,7 +642,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
             beacon.ifname, beacon.ifinfo, rx_vid=beacon.vid
         )
         # Construct the reply payload.
-        payload = {"remote": remote, "acks": beacon.uuid}
+        payload = {"remote": remote, "acks": beacon.ulid}
         reply = create_beacon_payload("advertisement", payload)
         self.send_beacon(reply, beacon.reply_address)
         if len(self.interfaces) > 0:
@@ -695,8 +696,8 @@ class BeaconingSocketProtocol(DatagramProtocol):
 
         :param rx: The `ReceivedBeacon` namedtuple.
         """
-        age_out_uuid_queue(self.topology_hints)
-        hints = self.topology_hints.get(rx.uuid, set())
+        age_out_ulid_queue(self.topology_hints)
+        hints = self.topology_hints.get(rx.ulid, set())
         # From what we know so far, we can infer some facts about the network,
         # assuming we received a multicast beacon. (Unicast beacons cannot
         # be used to infer fabric connectivity, since they could have been
@@ -716,7 +717,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         if remote_ifinfo is not None and not own_beacon:
             self._add_remote_fabric_hints(hints, remote_ifinfo, rx)
         if hints:
-            self.topology_hints[rx.uuid] = hints
+            self.topology_hints[rx.ulid] = hints
             if self.debug:
                 all_hints = self.getAllTopologyHints()
                 log.msg("Topology hint summary:\n%s" % pformat(all_hints))
@@ -751,7 +752,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         that received the beacon is on the same fabric.
         """
         if rx.ifname is not None:
-            received_beacons = self.rx_queue.get(rx.uuid, [])
+            received_beacons = self.rx_queue.get(rx.ulid, [])
             duplicate_interfaces = set()
             for beacon in received_beacons:
                 if beacon.ifname is not None:
@@ -781,7 +782,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         """
         if rx.ifname is not None:
             # We received our own solicitation.
-            sent_beacon = self.tx_queue.get(rx.uuid, None)
+            sent_beacon = self.tx_queue.get(rx.ulid, None)
             if sent_beacon is not None:
                 sent_ifname = sent_beacon.payload.get("remote", {}).get("name")
                 if sent_ifname == rx.ifname:
@@ -825,16 +826,19 @@ class BeaconingSocketProtocol(DatagramProtocol):
             from the external tcpdump-based process, or from the sockets layer
             (with less information about the received packet).
         """
+        # Silently drop v1 (UUID-based) packets; v2 nodes do not process them.
+        if beacon_json.get("version", 1) < PROTOCOL_VERSION:
+            return
         beacon = self.make_ReceivedBeacon(beacon_json)
-        if beacon.uuid is None:
+        if beacon.ulid is None:
             if self.debug:
                 log.msg(
-                    "Rejecting incoming beacon: no UUID found: \n%s"
+                    "Rejecting incoming beacon: no ULID found: \n%s"
                     % (pformat(beacon_json))
                 )
             return
         own_beacon = False
-        if beacon.uuid in self.tx_queue:
+        if beacon.ulid in self.tx_queue:
             own_beacon = True
         beacon_json["own_beacon"] = own_beacon
         is_dup = self.remember_beacon_and_check_duplicate(beacon)
@@ -878,20 +882,20 @@ class BeaconingSocketProtocol(DatagramProtocol):
         if destination_ip is not None:
             ip = IPAddress(destination_ip)
             multicast = ip.is_multicast()
-        uuid = beacon_json.get("payload", {}).get("uuid")
+        ulid = beacon_json.get("payload", {}).get("ulid")
         ifname = beacon_json.get("interface")
         ifinfo = self.interfaces.get(ifname, {})
         vid = beacon_json.get("vid")
         beacon = ReceivedBeacon(
-            uuid, beacon_json, ifname, ifinfo, vid, reply_address, multicast
+            ulid, beacon_json, ifname, ifinfo, vid, reply_address, multicast
         )
         return beacon
 
     def remember_beacon_and_check_duplicate(self, beacon: ReceivedBeacon):
-        """Records an incoming beacon based on its UUID and JSON.
+        """Records an incoming beacon based on its ULID and JSON.
 
         Organizes incoming beacons in the `rx_queue` by creating a list of
-        beacons received [on different interfaces] per UUID.
+        beacons received [on different interfaces] per ULID.
 
         :param beacon: The incoming beacon (a ReceivedBeacon namedtuple).
         :return: True if the beacon was a duplicate, otherwise False.
@@ -899,12 +903,12 @@ class BeaconingSocketProtocol(DatagramProtocol):
         duplicate_received = False
         # Need to age out before doing anything else; we don't want to match
         # a duplicate packet and then delete it immediately after.
-        age_out_uuid_queue(self.rx_queue)
-        rx_packets_for_uuid = self.rx_queue.get(beacon.uuid, [])
-        if len(rx_packets_for_uuid) > 0:
+        age_out_ulid_queue(self.rx_queue)
+        rx_packets_for_ulid = self.rx_queue.get(beacon.ulid, [])
+        if len(rx_packets_for_ulid) > 0:
             duplicate_received = True
-        rx_packets_for_uuid.append(beacon)
-        self.rx_queue[beacon.uuid] = rx_packets_for_uuid
+        rx_packets_for_ulid.append(beacon)
+        self.rx_queue[beacon.ulid] = rx_packets_for_ulid
         return duplicate_received
 
     def get_receive_interface_info(self, context):
