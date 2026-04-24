@@ -139,3 +139,72 @@ class TestProductListFactory:
             str(e.value)
             == "Data does not match any known SimpleStreams model."
         )
+
+
+class TestMissingOptionalFields:
+    """Test to ensure model validation doesn't break when optional fields are not passed."""
+
+    def test_image_file_with_missing_kpackage(self):
+        file_data = {
+            "ftype": "tar.gz",
+            "path": "ubuntu/20.04/squashfs",
+            "sha256": "def456",
+            "size": 2048,
+        }
+        image_file = ImageFile(**file_data)
+        assert image_file.kpackage is None
+
+    def test_multifile_version_with_missing_optional_fields(self):
+        version_data = {
+            "version_name": "20240101",
+            "items": {
+                "boot-initrd": {
+                    "ftype": "tar.gz",
+                    "path": "ubuntu/initrd",
+                    "sha256": "aaa111",
+                    "size": 512,
+                },
+                "boot-kernel": {
+                    "ftype": "tar.gz",
+                    "path": "ubuntu/kernel",
+                    "sha256": "bbb222",
+                    "size": 1024,
+                },
+                "manifest": {
+                    "ftype": "json",
+                    "path": "ubuntu/manifest.json",
+                    "sha256": "ccc333",
+                    "size": 256,
+                },
+                "squashfs": {
+                    "ftype": "squashfs",
+                    "path": "ubuntu/squashfs",
+                    "sha256": "ddd444",
+                    "size": 4096,
+                },
+            },
+        }
+        version = MultiFileImageVersion(**version_data)
+        assert version.support_eol is None
+        assert version.support_esm_eol is None
+        assert version.root_image_gz is None
+        assert version.squashfs is not None
+
+    def test_multifile_product_with_missing_optional_fields(self):
+        product_data = {
+            "product_name": "com.ubuntu.maas:v3:ubuntu:20.04:amd64",
+            "arch": "amd64",
+            "label": "Ubuntu 20.04",
+            "os": "ubuntu",
+            "release": "focal",
+            "release_title": "Ubuntu 20.04 LTS",
+            "subarch": "generic",
+            "subarches": "generic",
+            "version": "20.04",
+            "versions": [],
+        }
+        product = MultiFileProduct(**product_data)
+        assert product.kflavor is None
+        assert product.krel is None
+        assert product.release_codename is None
+        assert product.support_eol is None
