@@ -46,4 +46,4 @@ for preseed in "${PRESEEDS[@]}"; do
 done
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
-"$SNAP/bin/maas" migrate --configure
+"$SNAP/usr/bin/maas" migrate --configure

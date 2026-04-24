@@ -5,16 +5,16 @@
 SNAP_MODE=$(cat "$SNAP_COMMON/snap_mode")
 
 if [ "$SNAP_MODE" = 'all' ] && [ ! -e "$SNAP_DATA/rackd.conf" ]; then
-    cat <<EOF >"$SNAP_DATA/rackd.conf"
+  cat <<EOF >"$SNAP_DATA/rackd.conf"
 maas_url: http://localhost:5240/MAAS
 EOF
 fi
 
 # Remove the dhcp configuration so its not started unless needed.
 rm -f \
-   "$SNAP_COMMON/maas/dhcpd.sock" \
-   "$SNAP_COMMON/maas/dhcpd.conf" \
-   "$SNAP_COMMON/maas/dhcpd6.conf"
+  "$SNAP_COMMON/maas/dhcpd.sock" \
+  "$SNAP_COMMON/maas/dhcpd.conf" \
+  "$SNAP_COMMON/maas/dhcpd6.conf"
 
 # Configure MAAS to work in a snap.
 export MAAS_PATH="$SNAP"
@@ -38,4 +38,4 @@ PERL5LIB="$SNAP/usr/share/perl5:$SNAP/usr/share/perl/${PERLVER}:$SNAP/usr/lib/$(
 
 mkdir -p "$MAAS_CACHE"
 
-exec "$SNAP/bin/rackd"
+exec "$SNAP/usr/bin/rackd"
