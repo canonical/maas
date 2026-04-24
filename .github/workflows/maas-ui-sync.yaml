@@ -62,6 +62,10 @@ jobs:
           make snap
           # make snap-clean  # temporarily disabled for debugging
 
+      - name: Inspect snap contents
+        run: |
+          unsquashfs -l *.snap | grep "bin/maas" | head -20
+
       - name: Setup LXD container
         id: setup-lxd
         run: |
