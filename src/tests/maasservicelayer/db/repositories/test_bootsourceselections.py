@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
+    BootResourceType,
     ImageStatus,
     ImageUpdateStatus,
 )
@@ -35,6 +36,9 @@ from tests.fixtures.factories.bootresourcefiles import (
 )
 from tests.fixtures.factories.bootresourcefilesync import (
     create_test_bootresourcefilesync_entry,
+)
+from tests.fixtures.factories.bootresources import (
+    create_test_bootresource_entry,
 )
 from tests.fixtures.factories.bootresourcesets import (
     create_test_bootresourceset_entry,
@@ -232,7 +236,7 @@ class TestBootSourceSelectionRepository:
         )
         created = await create_test_selection_status_entry(
             fixture,
-            region_controller=region_controller,
+            region_controllers=[region_controller],
             os="ubuntu",
             release="jammy",
             arch="amd64",
@@ -294,7 +298,7 @@ class TestBootSourceSelectionRepository:
         )
         await create_test_selection_status_entry(
             fixture,
-            region_controller=region_controller,
+            region_controllers=[region_controller],
             os="ubuntu",
             release="jammy",
             arch="amd64",
@@ -358,7 +362,7 @@ class TestCommonBootSourceSelectionStatusRepository(
                 release=f"noble-{i}",
                 arch="amd64",
                 boot_source=boot_source,
-                region_controller=region,
+                region_controllers=[region],
             )
             for i in range(num_objects)
         ]
@@ -440,7 +444,7 @@ class TestBootSourceSelectionStatusRepository:
             fixture,
             cache_version="2",
             set_version="1",
-            region_controller=region_controller,
+            region_controllers=[region_controller],
         )
         boot_resource = (
             await fixture.get_typed(
@@ -501,3 +505,79 @@ class TestBootSourceSelectionStatusRepository:
 
         assert selected.selected is True
         assert not_selected.selected is False
+
+    async def test_multiple_regions(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        boot_source_1 = await create_test_bootsource_entry(
+            fixture, name="source-1", url="http://example.com/1", priority=1
+        )
+        regions = [
+            await create_test_region_controller_entry(fixture)
+            for _ in range(3)
+        ]
+        s1 = await create_test_selection_status_entry(
+            fixture, boot_source=boot_source_1, region_controllers=regions
+        )
+
+        fetched = await repository.get_by_id(s1.id)
+
+        assert fetched is not None
+        assert fetched.sync_percentage == 100.0
+        assert fetched.status == ImageStatus.READY
+
+    async def test_selection_without_boot_source_cache_is_shown(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        os = "ubuntu"
+        release = "jammy"
+        arch = "amd64"
+        boot_source = await create_test_bootsource_entry(
+            fixture, name="source-1", url="http://example.com/1", priority=1
+        )
+        region = await create_test_region_controller_entry(fixture)
+        selection = await create_test_bootsourceselection_entry(
+            fixture,
+            os=os,
+            release=release,
+            arch=arch,
+            boot_source_id=boot_source.id,
+        )
+        boot_resource = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.SYNCED,
+            name=f"{os}/{release}",
+            architecture=f"{arch}/generic",
+            selection_id=selection.id,
+            kflavor="generic",
+        )
+
+        boot_resource_set = await create_test_bootresourceset_entry(
+            fixture,
+            version="20260424",
+            label="stable",
+            resource_id=boot_resource.id,
+        )
+
+        boot_resource_file = await create_test_bootresourcefile_entry(
+            fixture,
+            filename="file",
+            filetype=BootResourceFileType.SQUASHFS_IMAGE,
+            sha256="abc123",
+            size=100,
+            filename_on_disk="file",
+            resource_set_id=boot_resource_set.id,
+        )
+
+        await create_test_bootresourcefilesync_entry(
+            fixture,
+            size=100,
+            file_id=boot_resource_file.id,
+            region_id=region["id"],
+        )
+
+        fetched = await repository.get_by_id(selection.id)
+
+        assert fetched is not None
+        assert fetched.sync_percentage == 100.0
+        assert fetched.status == ImageStatus.READY

@@ -20,16 +20,28 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     sql = dedent("""\
+        -- group all the file sync records by file id
+        WITH sync_subq AS (
+          SELECT
+            file.id AS file_id,
+            file.size AS file_size,
+            sum(file_sync.size) AS total_size
+          FROM
+            maasserver_bootresourcefilesync file_sync
+          JOIN
+            maasserver_bootresourcefile file ON file.id = file_sync.file_id
+          GROUP BY file.id, file.size
+        ),
         -- get the version and download percentage for each resource set
-        WITH sync_stats AS (
+        sync_stats AS (
           SELECT
             rset.resource_id,
             rset.id as set_id,
             rset.version,
             -- node_type: 3=region, 4=region+rack
-            COALESCE(sum(filesync.size) * 100 / sum(file.size) / NULLIF((select count(*) from maasserver_node where node_type in (3,4)),0), 0) as sync_percentage
-          FROM maasserver_bootresourcefilesync filesync
-          JOIN maasserver_bootresourcefile file ON file.id = filesync.file_id
+            COALESCE(sum(sync_subq.total_size) * 100 / SUM(sync_subq.file_size) / NULLIF((select count(*) from maasserver_node where node_type in (3,4)),0), 0) as sync_percentage
+          FROM sync_subq
+          JOIN maasserver_bootresourcefile file ON file.id = sync_subq.file_id
           JOIN maasserver_bootresourceset rset ON rset.id = file.resource_set_id
           GROUP BY rset.resource_id, rset.id, rset.version
         ),
@@ -96,8 +108,10 @@ def upgrade() -> None:
               ELSE 'No updates available'
             END as update_status
           FROM sync_stats ss
-          JOIN latest_versions lv ON lv.resource_id = ss.resource_id
           JOIN resource_set_counts rsc ON rsc.resource_id = ss.resource_id
+          -- handle the case where the selection exists but there is no cache for it
+          -- (happens in v2 when the boot source URL is updated)
+          LEFT JOIN latest_versions lv ON lv.resource_id = ss.resource_id
           ORDER BY ss.resource_id, ss.set_id DESC
         ),
         -- relate each selection to the corresponding boot resources

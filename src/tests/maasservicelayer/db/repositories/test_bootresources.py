@@ -179,7 +179,7 @@ class TestBootResourceRepository:
             fixture,
             name="custom-image-1",
             architecture="amd64/generic",
-            region_controller=region_controller,
+            region_controllers=[region_controller],
         )
         fetched = await repository.get_custom_image_status_by_id(
             resource_ready.id
@@ -212,6 +212,26 @@ class TestBootResourceRepository:
         fetched = await repository.get_custom_image_status_by_id(0)
         assert fetched is None
 
+    async def test_get_custom_image_status_by_id__multiple_regions(
+        self,
+        repository: BootResourcesRepository,
+        fixture: Fixture,
+    ):
+        region_controllers = [
+            await create_test_region_controller_entry(fixture)
+            for _ in range(3)
+        ]
+        resource_ready = await create_test_custom_bootresource_status_entry(
+            fixture,
+            name="custom-image-1",
+            architecture="amd64/generic",
+            region_controllers=region_controllers,
+        )
+        fetched = await repository.get_custom_image_status_by_id(
+            resource_ready.id
+        )
+        assert fetched == resource_ready
+
     async def test_list_get_custom_images_status(
         self,
         repository: BootResourcesRepository,
@@ -224,7 +244,7 @@ class TestBootResourceRepository:
             fixture,
             name="custom-image-1",
             architecture="amd64/generic",
-            region_controller=region_controller,
+            region_controllers=[region_controller],
         )
 
         resource_downloading = (
@@ -232,7 +252,7 @@ class TestBootResourceRepository:
                 fixture,
                 name="custom-image-2",
                 architecture="amd64/generic",
-                region_controller=region_controller,
+                region_controllers=[region_controller],
                 sync_size=512,
             )
         )
@@ -241,7 +261,7 @@ class TestBootResourceRepository:
             fixture,
             name="custom-image-3",
             architecture="amd64/generic",
-            region_controller=region_controller,
+            region_controllers=[region_controller],
             sync_size=0,
         )
 
@@ -269,7 +289,7 @@ class TestBootResourceRepository:
             fixture,
             name=f"{osystem}/{release}",
             architecture=arch,
-            region_controller=region_controller,
+            region_controllers=[region_controller],
         )
 
         for status in (
@@ -319,7 +339,7 @@ class TestBootResourceRepository:
             fixture,
             name=f"{osystem}/{release}",
             architecture=arch,
-            region_controller=region_controller,
+            region_controllers=[region_controller],
         )
 
         for status in (
