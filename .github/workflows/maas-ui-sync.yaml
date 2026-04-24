@@ -66,10 +66,8 @@ jobs:
         id: setup-lxd
         run: |
           cd "$GITHUB_WORKSPACE"
-          lxc launch ubuntu:24.04 maas-ui-tester-backend
+          lxc launch ubuntu:26.04 maas-ui-tester-backend
           lxc exec maas-ui-tester-backend -- cloud-init status --wait
-          lxc exec maas-ui-tester-backend -- snap refresh snapd
-          lxc exec maas-ui-tester-backend -- snap install --edge core26
           lxc file push *.snap maas-ui-tester-backend/maas-snap
           lxc file push utilities/connect-snap-interfaces maas-ui-tester-backend/connect-snap-interfaces
           lxc exec maas-ui-tester-backend -- snap install maas-test-db --channel=latest/edge
