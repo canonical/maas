@@ -4,7 +4,7 @@ A Data Processing Unit (DPU) is a specialized network interface card that offloa
 
 This guide explains how to configure, add, commission, deploy, and release NVIDIA BlueField 3 DPUs.
 
-**Note**: BlueField 2 DPUs can still be added and controlled using the manual approach described in previous [documentation](https://discourse.maas.io/t/maas-and-dpus/6390). This guide focuses on the BMC-enabled workflow for BlueField 3 devices.
+**Note**: BlueField 2 DPUs can still be added and controlled using the manual approach described in [Deploy DPUs without BMC](/how-to-guides/deploy-dpus-without-bmc.md). This guide focuses on the BMC-enabled workflow for BlueField 3 devices.
 
 ## Prerequisites
 
