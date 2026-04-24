@@ -3,6 +3,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 0 * * *"
+  push:
+    branches:
+      - "maas-ui-sync-debug-*"
 
 permissions:
   contents: write
