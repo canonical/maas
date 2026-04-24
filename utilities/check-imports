@@ -511,6 +511,7 @@ ServiceLayerRule = Rule(
     Allow("pymacaroons|pymacaroons.**"),
     Allow("pythonjsonlogger|pythonjsonlogger.**"),
     Allow("sqlalchemy|sqlalchemy.**"),
+    Allow("ulid|ulid.**"),
     Allow("structlog|structlog.**"),
     Allow("starlette.datastructures.Headers"),
     Allow("temporalio.client.*"),
