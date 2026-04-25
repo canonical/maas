@@ -1,9 +1,7 @@
-name: Update Launchpad Bug on Merge
+name: Update Launchpad Bug
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - master
       - '[0-9]+.[0-9]+'
@@ -13,23 +11,23 @@ permissions:
 
 jobs:
   update-launchpad-bug:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-slim
 
     steps:
       - name: Extract Launchpad bug ID
         id: extract-bug
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          BUG_ID=$(echo "$PR_BODY" | grep -oP 'Resolves: LP:\K[0-9]+' | head -1 || true)
+          MESSAGES=$(jq -r '.commits[].message' <<< '${{ toJson(github.event) }}')
+          BUG_ID=$(echo "$MESSAGES" \
+            | grep -oP 'Resolves:\s*LP:\K[0-9]+' \
+            | head -1 || true)
 
           if [ -z "$BUG_ID" ]; then
-            echo "No Launchpad bug reference found."
+            echo "No Launchpad bug ID found."
             exit 0
           fi
 
-          echo "Bug ID found: $BUG_ID"
+          echo "Launchpad bug ID found: $BUG_ID"
           echo "bug_id=$BUG_ID" >> "$GITHUB_OUTPUT"
 
       - name: Checkout code
