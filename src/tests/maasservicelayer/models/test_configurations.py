@@ -6,6 +6,7 @@ from pydantic import ValidationError
 import pytest
 
 from maasservicelayer.models.configurations import (
+    BootImagesImportIntervalMinutesConfig,
     ConfigFactory,
     DNSTrustedAclConfig,
     HttpProxyConfig,
@@ -336,7 +337,11 @@ class TestConfigFactory:
         assert name not in ConfigFactory.PUBLIC_CONFIGS.keys()
 
     def test_parse_config_none_values(self):
-        for config in ConfigFactory.ALL_CONFIGS:
+        configs = ConfigFactory.ALL_CONFIGS.copy()
+        # New configs, don't need to adhere to the convention that they can be set to None
+        for new_config in [BootImagesImportIntervalMinutesConfig.name]:
+            del configs[new_config]
+        for config in configs:
             ConfigFactory.parse(name=config, value=None)
 
     def test_parse_config_unknown_config(self):

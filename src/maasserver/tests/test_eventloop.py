@@ -450,21 +450,6 @@ class TestFactories(MAASServerTestCase):
             eventloop.loop.factories["prometheus"]["only_on_master"]
         )
 
-    def test_make_ImportResourcesService(self):
-        service = eventloop.make_ImportResourcesService()
-        self.assertIsInstance(service, bootresources.ImportResourcesService)
-        # It is registered as a factory in RegionEventLoop.
-        self.assertIs(
-            eventloop.make_ImportResourcesService,
-            eventloop.loop.factories["import-resources"]["factory"],
-        )
-        self.assertFalse(
-            eventloop.loop.factories["import-resources"]["only_on_master"]
-        )
-        self.assertTrue(
-            eventloop.loop.factories["import-resources"]["import_service"]
-        )
-
     def test_make_ImportResourcesProgressService(self):
         service = eventloop.make_ImportResourcesProgressService()
         self.assertIsInstance(

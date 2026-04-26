@@ -10,6 +10,8 @@ from maascommon.workflows.bootresource import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.models.configurations import (
+    BootImagesAutoImportConfig,
+    BootImagesImportIntervalMinutesConfig,
     EnableHttpProxyConfig,
     HttpProxyConfig,
     NTPExternalOnlyConfig,
@@ -25,6 +27,10 @@ from maasservicelayer.services.dnsresourcerecordsets import (
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.services.vlans import VlansService
+from maastemporalworker.schedules import (
+    pause_or_unpause_master_image_sync_schedule,
+    update_master_image_sync_schedule,
+)
 
 
 class HookedConfigurationsService(Service):
@@ -54,6 +60,14 @@ class HookedConfigurationsService(Service):
         )
 
         match name:
+            case BootImagesAutoImportConfig.name:
+                client = await self.temporal_service.get_temporal_client()
+                await pause_or_unpause_master_image_sync_schedule(
+                    client, value
+                )
+            case BootImagesImportIntervalMinutesConfig.name:
+                client = await self.temporal_service.get_temporal_client()
+                await update_master_image_sync_schedule(client, value)
             case EnableHttpProxyConfig.name | HttpProxyConfig.name:
                 self.temporal_service.register_or_update_workflow_call(
                     workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,

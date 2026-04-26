@@ -315,7 +315,7 @@ class ImageProduct(Product[VersionT], metaclass=ABCMeta):
     release_title: str
     subarch: str
     subarches: str
-    support_eol: date | None
+    support_eol: date | None = None
     version: str
 
     @field_validator("support_eol", mode="before")
@@ -328,9 +328,9 @@ class ImageProduct(Product[VersionT], metaclass=ABCMeta):
 
 
 class MultiFileProduct(ImageProduct[MultiFileImageVersion]):
-    kflavor: str
-    krel: str  # seems to not be used
-    release_codename: str
+    kflavor: str | None = None
+    krel: str | None = None  # seems to not be used
+    release_codename: str | None = None
 
     @override
     @staticmethod

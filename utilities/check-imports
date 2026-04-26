@@ -491,6 +491,7 @@ ServiceLayerRule = Rule(
     Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
     Allow("maasserver.macaroons._IDClient"),
     Allow("maasservicelayer|maasservicelayer.**"),
+    Allow("maastemporalworker.schedules.**"),
     Allow("maastemporalworker.workflow.**"),
     Allow("maastemporalworker.worker.**"),
     Allow("metadataserver.enum.*"),

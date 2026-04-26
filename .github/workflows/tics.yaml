@@ -1,7 +1,9 @@
 name: Test coverage and TiCS Report
 on:
+  workflow_dispatch:
   schedule:
-    - cron: "30 0 * * 6" # Weekly full analysis
+    # At 00:30 on Saturday
+    - cron: "30 0 * * 6"
   push:
     branches:
       - "tics-debug-*"
@@ -15,10 +17,10 @@ permissions:
   packages: read
 
 jobs:
-  test-coverage-tics:
-    name: Run tests with coverage and generate TiCS report
-    runs-on: [ self-hosted, linux, amd64, large-tiobe ]
-    timeout-minutes: 720
+  test-coverage:
+    name: Run tests with coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
     container:
       image: ghcr.io/${{ github.repository }}-build-env:master
       credentials:
@@ -26,66 +28,149 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
-          fetch-depth: 0  # Important for TICS to analyze history
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: ./.github/actions/ci-setup
 
       - name: Prepare container
         run: |
-          chown -R ubuntu:ubuntu /home/ubuntu
-          chown -R ubuntu:ubuntu $(pwd)
-          git config --global --add safe.directory $(pwd)
-          make install-dependencies
-          su ubuntu -c "make build"
-
-      - name: Download dependencies
-        run: |
-          apt update
-          apt install -y python3-coverage
-          su ubuntu -c "go install github.com/axw/gocov/gocov@v1.1.0"
-          su ubuntu -c "go install github.com/AlekSi/gocov-xml@v1.1.0"
+          mkdir -p "$GITHUB_WORKSPACE/.coverage"
+          chown -R ubuntu:ubuntu "$GITHUB_WORKSPACE/.coverage"
 
       - name: Run Python tests with coverage
         run: |
-          COVERAGE_FILE=.coverage.legacy su ubuntu -c "bin/test.region.legacy --with-coverage --cover-branches || true"
-          COVERAGE_FILE=.coverage.region su ubuntu -c "bin/test.region --with-coverage --cover-branches || true"
-          COVERAGE_FILE=.coverage.rack su ubuntu -c "bin/test.rack --with-coverage --cover-branches || true"
-          COVERAGE_FILE=.coverage.pytest su ubuntu -c "bin/pytest --cov=src --cov-branch -n auto --dist=load || true"
-          su ubuntu -c "python3-coverage combine .coverage.legacy .coverage.region .coverage.rack .coverage.pytest"
-          su ubuntu -c "python3-coverage report"
-          su ubuntu -c "python3-coverage xml -o py-coverage.xml"
-          # The .coverage file is created by python3-coverage. Should be deleted by it, but just to make sure
-          rm -f ./.coverage
-          su ubuntu -c "mkdir -p $GITHUB_WORKSPACE/.coverage"
-          su ubuntu -c "cp py-coverage.xml $GITHUB_WORKSPACE/.coverage/py-coverage.xml"
+          apt update
+          apt install -y python3-coverage
+
+          declare -A py_tests=(
+              [legacy]=".ve/bin/python -m coverage run bin/test.region.legacy"
+              [region]=".ve/bin/python -m coverage run bin/test.region"
+              [rack]=".ve/bin/python -m coverage run bin/test.rack"
+              [pytest]=".ve/bin/coverage run -m pytest -n auto --dist=load"
+          )
+
+          # Run all suites and generate per-suite XML
+          for mod in "${!py_tests[@]}"; do
+              sudo -u ubuntu bash -lc \
+              "COVERAGE_FILE=$GITHUB_WORKSPACE/.coverage/coverage-$mod.py.cover ${py_tests[$mod]}"
+          done
+
+          ls -lah "$GITHUB_WORKSPACE/.coverage"
 
       - name: Run Go tests with coverage
         run: |
-          su ubuntu -c "make test-go-cover || true"
+          su ubuntu -c "cd '$GITHUB_WORKSPACE' && make test-go-cover"
 
-          cd $GITHUB_WORKSPACE/src/maasagent/
-          su ubuntu -c "/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > $GITHUB_WORKSPACE/.coverage/coverage-maasagent.xml"
+          mapfile -t covers < <(find "$GITHUB_WORKSPACE/src" -type f -name cover.out | sort)
 
-          cd $GITHUB_WORKSPACE/src/host-info/
-          su ubuntu -c "/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > $GITHUB_WORKSPACE/.coverage/coverage-host-info.xml"
+          shopt -s nullglob
 
-          cd $GITHUB_WORKSPACE/src/maasopenfga/
-          su ubuntu -c "/home/ubuntu/go/bin/gocov convert cover.out | /home/ubuntu/go/bin/gocov-xml > $GITHUB_WORKSPACE/.coverage/coverage-maasopenfga.xml"
+          for cover in "${covers[@]}"; do
+            mod_dir="$(dirname "$cover")"
+            mod_name="$(basename "$mod_dir")"
+            out="$GITHUB_WORKSPACE/.coverage/coverage-$mod_name.go.cover"
 
-      - name: Upload coverage report
-        if: always()
+            mv "$mod_dir/cover.out" "$out"
+          done
+
+          ls -lah "$GITHUB_WORKSPACE/.coverage"
+
+      - name: Upload coverage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-report
-          path: .coverage
+          path: .coverage/*
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 7
 
-      - name: Run TICS Analyzer
+  tics-analyzer:
+    name: TiCS Analyzer
+    needs: test-coverage
+    runs-on: [ 2xlarge-tiobe ]
+    timeout-minutes: 300
+    env:
+      PROJECT: maas
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: 'stable'
+
+      - name: Download coverage
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: coverage-report
+          path: .coverage
+
+      - name: Convert Python coverage reports
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-coverage
+          PY_COVERAGE="$GITHUB_WORKSPACE/.coverage/coverage.py.cover"
+
+          python3-coverage combine \
+            --data-file="$PY_COVERAGE" \
+            $(find "$GITHUB_WORKSPACE/.coverage" -name "coverage-*.py.cover")
+          python3-coverage report --data-file="$PY_COVERAGE"
+          python3-coverage xml --data-file="$PY_COVERAGE" -o "$GITHUB_WORKSPACE/.coverage/coverage-py.xml"
+
+      - name: Convert Go coverage reports
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm clang libbpf-dev
+
+          go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
+          go install github.com/axw/gocov/gocov@v1.1.0
+          go install github.com/AlekSi/gocov-xml@v1.1.0
+
+          cd "$GITHUB_WORKSPACE" && make generate-go
+
+          shopt -s nullglob
+
+          for out in "$GITHUB_WORKSPACE"/.coverage/coverage-*.go.cover; do
+            file="$(basename "$out")"
+
+            mod="${file#coverage-}"
+            mod="${mod%.go.cover}"
+
+            module_dir="$GITHUB_WORKSPACE/src/$mod"
+
+            if [ -d "$module_dir" ]; then
+              (
+                  cd "$module_dir"
+                  gocov convert "$out" | gocov-xml > "$GITHUB_WORKSPACE/.coverage/coverage-$mod.xml"
+              )
+            fi
+          done
+
+      - name: Append TICS to PATH
+        run: |
+          echo "/home/ubuntu/TICS/Wrapper/Util" >> $GITHUB_PATH
+          echo "/home/ubuntu/TICS/Wrapper/Client" >> $GITHUB_PATH
+          echo "/home/ubuntu/TICS/Wrapper/BuildServer" >> $GITHUB_PATH
+
+      - name: Detach TICS QServer to prevent "project already connected" issue
+        env:
+          TICSAUTHTOKEN: ${{ secrets.TICSAUTHTOKEN }}
+          TICS: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=GoProjects
+        run: |
+          TICSMaintenance -project ${{ env.PROJECT }} -detach
+
+      - name: Run TiCS Analyzer
         uses: tiobe/tics-github-action@a53037a6bb9f71b6a97cdeb0ac41632266804b9e # v3.8.0
         with:
-          mode: ${{ github.event_name == 'pull_request' && 'client' || 'qserver' }}
-          project: maas
+          mode: qserver
+          project: ${{ env.PROJECT }}
           viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=GoProjects
           ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
           installTics: true

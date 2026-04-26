@@ -25,7 +25,10 @@ from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
-from maasservicelayer.models.configurations import ConfigFactory
+from maasservicelayer.models.configurations import (
+    BootImagesImportIntervalMinutesConfig,
+    ConfigFactory,
+)
 from provisioningserver.utils.testing import MAASIDFixture
 
 
@@ -146,6 +149,8 @@ class TestSettingConfig(MAASServerTestCase):
     scenarios = tuple(
         (name, {"name": name, "value": value})
         for name, value in _get_default_config().items()
+        # New configs, don't need to adhere to the convention that they can be set to None
+        if name not in (BootImagesImportIntervalMinutesConfig.name)
     )
 
     def setUp(self):
