@@ -31,6 +31,7 @@ Quick reference:
 - Ticket reference mandatory for `fix`: `Resolves LP:2066936` (Launchpad), `Resolves GH:123` (GitHub)
 - Description: high-level summary only, 72 chars or less; no implementation detail lists
 - Body: explain the *why*, not the *what*
+- **No Co-authored-by footers for AI tools or bots** — credit actual humans only
 
 ## Collaboration Practices
 
@@ -215,46 +216,60 @@ Do not read or modify:
 
 ## Running Checks
 
-### Formatting
+Formatting, linting, and testing targets are documented in the language instruction files:
 
-Prefer the specialized format target that matches the files you changed.
+- **Python**: `.github/instructions/python.instructions.md`
+- **Go**: `.github/instructions/go.instructions.md`
 
-| Target | When to use |
-|--------|-------------|
-| `make format` | Full format pass — when multiple categories are affected |
-| `make format-py` | Any Python change |
-| `make format-go` | Any Go change |
+Quick reference for the most common targets:
 
-### Linting
-
-Prefer the specialized lint target that matches the files you changed — it is faster and gives more focused output. Fall back to `make lint` when multiple categories are affected.
-
-| Target | When to use |
-|--------|-------------|
-| `make lint` | Full lint pass — run before submitting a PR or when multiple categories are affected |
-| `make lint-py` | Any Python change (runs Ruff linter + formatter check) |
-| `make lint-py-imports` | After adding, removing, or reordering imports in Python files |
-| `make lint-py-builders` | After modifying builder classes or Pydantic create/update models |
-| `make lint-py-linefeeds` | If you suspect mixed or incorrect line endings in Python files |
-| `make lint-go` | Any Go change |
-| `make lint-go-fix` | Go change where you want auto-fix applied (runs `gofmt`/`golangci-lint --fix`) |
-| `make lint-oapi` | After modifying any OpenAPI spec file (e.g. in `src/maasapiserver`) |
-| `make lint-shell` | After modifying any shell script |
+| Action | Command |
+|--------|---------|
+| Format Python | `make format-py` |
+| Format Go | `make format-go` |
+| Lint Python | `make lint-py` (add `make lint-py-imports` when imports changed) |
+| Lint Go | `make lint-go` |
+| Full lint | `make lint` |
 
 ### Tests
 
-Prefer the specialized test target that matches the files you changed.
+Use the narrowest runner for your subdirectory. Full routing rules are in the language instruction files; quick reference:
 
-| Target | When to use |
-|--------|-------------|
-| `make test` | Full test suite — run before submitting a PR or when multiple components are affected |
-| `make test-py` | Any Python change |
-| `make test-go` | Any Go change |
+**Python** — pick the runner for your subdirectory:
 
-```bash
-cd src/maasagent && make test    # Go agent tests (alternative)
-cd src/host-info && go test ./...  # host-info tests
-```
+| Subdirectory | Test runner |
+|---|---|
+| `src/provisioningserver` | `bin/test.rack` |
+| `src/maasserver`, `src/metadataserver` | `bin/test.region` |
+| `src/tests` | `bin/pytest` |
+| everything else | `make test-py` |
+
+**Go** — run `make test` from within the subdirectory:
+
+| Subdirectory | Command |
+|---|---|
+| `src/maasagent` | `cd src/maasagent && make test` |
+| `src/host-info` | `cd src/host-info && make test` |
+
+Use `make test` (repo root) only when changes span multiple languages or components.
+
+**Python** — pick the runner for your subdirectory:
+
+| Subdirectory | Test runner |
+|---|---|
+| `src/provisioningserver` | `bin/test.rack` |
+| `src/maasserver`, `src/metadataserver` | `bin/test.region` |
+| `src/tests` | `bin/pytest` |
+| everything else | `make test-py` |
+
+**Go** — run `make test` from within the subdirectory:
+
+| Subdirectory | Command |
+|---|---|
+| `src/maasagent` | `cd src/maasagent && make test` |
+| `src/host-info` | `cd src/host-info && make test` |
+
+Use `make test` (repo root) only when changes span multiple languages or components.
 
 ## Additional Resources
 

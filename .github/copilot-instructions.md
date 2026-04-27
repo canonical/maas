@@ -86,6 +86,16 @@ Do not read or modify:
 - `src/maas-offline-docs`
 - `src/maasui`
 
+## Commit messages
+
+All commits must follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Full spec with types, scopes, and examples: `.github/prompts/commit-message.prompt.md`.
+
+Quick reference:
+- Format: `<type>[(scope)][!]: <description>` (72 chars or less)
+- Body: explain the *why*, not the *what*; omit if self-evident
+- Ticket reference mandatory for `fix`: `Resolves LP:2066936` (Launchpad), `Resolves GH:123` (GitHub)
+- **No Co-authored-by footers for AI tools or bots** — credit actual humans only
+
 ## Pre-submission checks
 
 ```
