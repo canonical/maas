@@ -18,6 +18,8 @@ import structlog
 from maascommon.logging.security import (
     ADMIN,
     AUTHN_LOGIN_SUCCESSFUL,
+    AUTHN_TOKEN_REVOKED,
+    hash_token_for_logging,
     SECURITY,
     USER,
 )
@@ -550,6 +552,12 @@ class ExternalOAuthService(
             email=id_token_object.email,
         )
         await client.revoke_token(token=refresh_token)
+
+        logger.info(
+            f"{AUTHN_TOKEN_REVOKED}:OIDC:refresh_token",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(refresh_token),
+        )
 
     async def validate_access_token(self, access_token: str) -> None:
         client = await self.get_client()

@@ -15,7 +15,12 @@ from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
 from pymacaroons import Macaroon
 import pytest
 
-from maascommon.logging.security import AUTHN_LOGIN_SUCCESSFUL, SECURITY
+from maascommon.logging.security import (
+    AUTHN_LOGIN_SUCCESSFUL,
+    AUTHN_TOKEN_REVOKED,
+    hash_token_for_logging,
+    SECURITY,
+)
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.external_auth import ExternalAuthType
 from maasservicelayer.auth.external_oauth import (
@@ -1485,6 +1490,42 @@ class TestExternalOAuthService(ServiceCommonTests):
             email="test@example.com",
         )
         mock_client.revoke_token.assert_awaited_once_with(token="abc123")
+
+    async def test_revoke_token_logging(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        """Test that OIDC token revocation is logged."""
+        service_instance.cache = service_instance.build_cache_object()
+        mock_client = OAuth2Client(provider=test_instance)
+        mock_client.parse_raw_id_token = AsyncMock(
+            return_value=OAuthIDToken(
+                claims=JWTClaims(
+                    header=Mock(), payload={"email": "test@example.com"}
+                ),
+                encoded="id123",
+                provider=test_instance,
+            )
+        )
+        mock_client.revoke_token = AsyncMock(return_value=None)
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+        service_instance.revoked_tokens_service.create_revoked_token = (
+            AsyncMock()
+        )
+
+        with patch(
+            "maasservicelayer.services.external_auth.logger"
+        ) as mock_logger:
+            await service_instance.revoke_token(
+                id_token="id123", refresh_token="abc123"
+            )
+
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHN_TOKEN_REVOKED}:OIDC:refresh_token",
+            type=SECURITY,
+            token_hash=hash_token_for_logging("abc123"),
+        )
 
     async def test_validate_access_token(
         self,
