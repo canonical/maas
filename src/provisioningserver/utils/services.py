@@ -6,6 +6,7 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from datetime import timedelta
+import errno
 import functools
 import json
 from json.decoder import JSONDecodeError
@@ -387,6 +388,28 @@ def set_ipv6_multicast_source_ifindex(sock, ifindex):
     )
 
 
+def join_ipv4_beacon_group(sock, interface_address):
+    """Joins the MAAS IPv4 multicast group using the specified UDP socket.
+
+    Uses raw setsockopt to join on a dual-stack IPv6 socket, since Twisted's
+    joinGroup doesn't work for IPv4 addresses on AF_INET6 sockets.
+
+    :param sock: An opened dual-stack IPv6 UDP socket.
+    :param interface_address: The IPv4 address of the interface to join on.
+    """
+    ipv4_join_sockopt_args = socket.inet_aton(
+        BEACON_IPV4_MULTICAST
+    ) + socket.inet_aton(interface_address)
+    try:
+        sock.setsockopt(
+            socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, ipv4_join_sockopt_args
+        )
+    except OSError as e:
+        # Suppress "Address already in use" if the group is already joined.
+        if e.errno != errno.EADDRINUSE:
+            raise
+
+
 def join_ipv6_beacon_group(sock, ifindex):
     """Joins the MAAS IPv6 multicast group using the specified UDP socket.
 
@@ -489,11 +512,9 @@ class BeaconingSocketProtocol(DatagramProtocol):
             # This is only necessary for testing.
             self.transport.setLoopbackMode(self.loopback)
             set_ipv6_multicast_loopback(sock, self.loopback)
-            # Only join IPv4 multicast group if not using IPv6 interface.
-            if not self._is_ipv6_interface():
-                self.transport.joinGroup(
-                    BEACON_IPV4_MULTICAST, interface="127.0.0.1"
-                )
+            # Join the IPv4 multicast group via raw setsockopt so it works
+            # on both pure IPv4 and dual-stack (::) sockets.
+            join_ipv4_beacon_group(sock, "127.0.0.1")
             # Loopback interface always has index 1.
             join_ipv6_beacon_group(sock, 1)
         for ifname, ifdata in self.interfaces.items():
@@ -826,8 +847,18 @@ class BeaconingSocketProtocol(DatagramProtocol):
             from the external tcpdump-based process, or from the sockets layer
             (with less information about the received packet).
         """
-        # Silently drop v1 (UUID-based) packets; v2 nodes do not process them.
+        # Drop packets with an unsupported protocol version.
         if beacon_json.get("version", 1) < PROTOCOL_VERSION:
+            if self.debug:
+                log.msg(
+                    "Dropping beacon with unsupported protocol version %r "
+                    "(minimum supported: %d):\n%s"
+                    % (
+                        beacon_json.get("version"),
+                        PROTOCOL_VERSION,
+                        pformat(beacon_json),
+                    )
+                )
             return
         beacon = self.make_ReceivedBeacon(beacon_json)
         if beacon.ulid is None:

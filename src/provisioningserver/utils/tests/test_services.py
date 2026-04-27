@@ -1155,7 +1155,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         beacon_json = {
             "version": 1,
             "type": "solicitation",
-            "payload": {"uuid": str(ULID()), "type": 1},
+            "payload": {"uuid": factory.make_string(), "type": 1},
             "source_ip": "10.0.0.1",
             "source_port": 5240,
         }
