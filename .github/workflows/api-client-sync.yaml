@@ -143,12 +143,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: fe-repo/package-lock.json
+          cache: yarn
+          cache-dependency-path: fe-repo/yarn.lock
 
       - name: Install MAAS UI dependencies
         working-directory: fe-repo
-        run: npm ci
+        run: yarn install --frozen-lockfile
 
       - name: Generate API client
         working-directory: fe-repo
@@ -156,7 +156,7 @@ jobs:
           # Point heyAPI at the live demo instance.
           # Adjust the env var name to match what your openapi-ts config reads.
           MAAS_BASE_URL: "http://${{ steps.setup-lxd.outputs.maas_ip }}:5240/MAAS"
-        run: npm run generate-api-client
+        run: yarn generate-api-client
 
       # -----------------------------------------------------------------------
       # Commit the regenerated client and open a PR.
