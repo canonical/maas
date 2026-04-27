@@ -1,9 +1,7 @@
-name: Update Launchpad Bug on Merge
+name: Update Launchpad Bug
 
 on:
-  pull_request:
-    types: 
-      - closed
+  push:
     branches:
       - master
       - '[0-9]+.[0-9]+'
@@ -13,44 +11,41 @@ permissions:
 
 jobs:
   update-launchpad-bug:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-slim
 
     steps:
       - name: Extract Launchpad bug ID
         id: extract-bug
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          IS_FIX_COMMIT=$(echo "$PR_TITLE" | grep -cP '^fix')
-          BUG_ID=$(echo "$PR_BODY" | grep -oP 'Resolves: LP:\K[0-9]+' | head -1)
-          
-          if [ "$IS_FIX_COMMIT" -eq 0 ] || [ -z "$BUG_ID" ]; then
-            echo "No Launchpad bug reference found in PR title or body."
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Bug ID found: $BUG_ID"
-            echo "bug_id=$BUG_ID" >> "$GITHUB_OUTPUT"
-            echo "found=true" >> "$GITHUB_OUTPUT"
+          MESSAGES=$(jq -r '.commits[].message' <<< '${{ toJson(github.event) }}')
+          BUG_ID=$(echo "$MESSAGES" \
+            | grep -oP 'Resolves:\s*LP:\K[0-9]+' \
+            | head -1 || true)
+
+          if [ -z "$BUG_ID" ]; then
+            echo "No Launchpad bug ID found."
+            exit 0
           fi
 
+          echo "Launchpad bug ID found: $BUG_ID"
+          echo "bug_id=$BUG_ID" >> "$GITHUB_OUTPUT"
+
       - name: Checkout code
-        if: steps.extract-bug.outputs.found == 'true'
+        if: steps.extract-bug.outputs.bug_id != ''
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Set up Python
-        if: steps.extract-bug.outputs.found == 'true'
+        if: steps.extract-bug.outputs.bug_id != ''
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v.5.6.0
         with:
           python-version: '3.12'
 
       - name: Install dependencies
-        if: steps.extract-bug.outputs.found == 'true'
+        if: steps.extract-bug.outputs.bug_id != ''
         run: pip install launchpadlib
 
       - name: Update bug status to Fix Committed
-        if: steps.extract-bug.outputs.found == 'true'
+        if: steps.extract-bug.outputs.bug_id != ''
         env:
           LANDER_LP_CONSUMER_KEY: ${{ secrets.LANDER_LP_CONSUMER_KEY }}
           LANDER_LP_ACCESS_TOKEN: ${{ secrets.LANDER_LP_ACCESS_TOKEN }}
