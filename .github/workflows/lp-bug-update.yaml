@@ -16,8 +16,10 @@ jobs:
     steps:
       - name: Extract Launchpad bug ID
         id: extract-bug
+        env:
+          GITHUB_EVENT_JSON: ${{ toJson(github.event) }}
         run: |
-          MESSAGES=$(jq -r '.commits[].message' <<< '${{ toJson(github.event) }}')
+          MESSAGES=$(jq -r '.commits[].message' <<< "$GITHUB_EVENT_JSON")
           BUG_ID=$(echo "$MESSAGES" \
             | grep -oP 'Resolves:\s*LP:\K[0-9]+' \
             | head -1 || true)
@@ -51,5 +53,5 @@ jobs:
           LANDER_LP_ACCESS_TOKEN: ${{ secrets.LANDER_LP_ACCESS_TOKEN }}
           LANDER_LP_ACCESS_TOKEN_SECRET: ${{ secrets.LANDER_LP_ACCESS_TOKEN_SECRET }}
           BUG_ID: ${{ steps.extract-bug.outputs.bug_id }}
-          BRANCH: ${{ github.base_ref }}
+          BRANCH: ${{ github.ref_name }}
         run: python3 utilities/mark_lp_bug_fix_committed.py
