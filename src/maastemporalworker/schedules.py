@@ -136,11 +136,15 @@ async def setup_schedules(client: Client):
 
     schedules_to_add = expected_schedules - registered_schedules
     for schedule in schedules_to_add:
-        await client.create_schedule(schedule, SCHEDULES[schedule])
+        await client.create_schedule(
+            id=schedule, schedule=SCHEDULES[schedule], trigger_immediately=True
+        )
 
     schedules_to_update = registered_schedules - schedules_to_delete
-    # Handled with `update_master_image_sync_schedule` above
-    schedules_to_update.discard(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
     for schedule in schedules_to_update:
         handle = client.get_schedule_handle(schedule)
-        await handle.update(update_schedule)
+        # Handled with `update_master_image_sync_schedule` above
+        if schedule != MASTER_IMAGE_SYNC_WORKFLOW_NAME:
+            await handle.update(update_schedule)
+
+        await handle.trigger()

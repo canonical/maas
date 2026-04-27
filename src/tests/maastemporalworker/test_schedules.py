@@ -40,7 +40,9 @@ class TestSetupSchedules:
         assert mock_client.create_schedule.call_count == len(SCHEDULES)
         for schedule_id in SCHEDULES:
             mock_client.create_schedule.assert_any_call(
-                schedule_id, SCHEDULES[schedule_id]
+                id=schedule_id,
+                schedule=SCHEDULES[schedule_id],
+                trigger_immediately=True,
             )
 
         mock_client.get_schedule_handle.assert_not_called()
@@ -70,7 +72,7 @@ class TestSetupSchedules:
         assert mock_client.create_schedule.call_count == len(SCHEDULES)
         for schedule_id, schedule_def in SCHEDULES.items():
             mock_client.create_schedule.assert_any_call(
-                schedule_id, schedule_def
+                id=schedule_id, schedule=schedule_def, trigger_immediately=True
             )
 
     async def test_updates_existing_schedules(self, mock_client: Mock):
@@ -96,6 +98,27 @@ class TestSetupSchedules:
 
         assert mock_handle.update.call_count == len(SCHEDULES) - 1
         mock_handle.update.assert_called_with(update_schedule)
+
+    async def test_updated_schedules_are_triggered(self, mock_client: Mock):
+        registered = [
+            self.mock_schedule_info(schedule_id)
+            for schedule_id in SCHEDULES.keys()
+        ]
+        mock_client.list_schedules.return_value = AsyncIteratorMock(registered)
+
+        mock_handle = AsyncMock()
+        mock_client.get_schedule_handle.return_value = mock_handle
+
+        await setup_schedules(mock_client)
+
+        mock_client.create_schedule.assert_not_called()
+
+        schedules = set(SCHEDULES.keys())
+
+        for schedule_id in schedules:
+            mock_client.get_schedule_handle.assert_any_call(schedule_id)
+
+        assert mock_handle.trigger.call_count == len(SCHEDULES)
 
 
 @pytest.mark.asyncio
