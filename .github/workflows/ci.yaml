@@ -51,6 +51,7 @@ jobs:
               - 'src/**/go.mod'
               - 'src/**/go.sum'
               - 'src/**/Makefile'
+              - 'snap/local/tree/usr/bin/*'
             python:
               - 'src/**/*.py'
               - 'utilities/generate_builders.py'
