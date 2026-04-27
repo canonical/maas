@@ -66,5 +66,11 @@ class MSMSetBootSourceParam:
 
 
 @dataclasses.dataclass
+class MSMSetSelectionsParam:
+    selections: list[str]
+    sm_url: str
+
+
+@dataclasses.dataclass
 class MSMRestoreDefaultBootSourceParam:
     sm_url: str
