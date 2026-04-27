@@ -251,6 +251,7 @@ async def main() -> None:
                 msm_activity.set_bootsource,
                 msm_activity.delete_bootsources,
                 msm_activity.restore_default_boot_source,
+                msm_activity.set_selections,
                 # Tag evaluation activities
                 tag_evaluation_activity.evaluate_tag,
                 # Power state activities

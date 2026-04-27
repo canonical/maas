@@ -21,12 +21,22 @@ import yaml
 from maascommon.enums.node import NodeStatus
 from maascommon.workflows.msm import MSMRestoreDefaultBootSourceParam
 from maasservicelayer.builders.bootsources import BootSourceBuilder
+from maasservicelayer.builders.bootsourceselections import (
+    BootSourceSelectionBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
+)
+from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
-from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.services.boot_sources import (
+    BootSourceSelectionsService,
+    BootSourcesService,
+)
 from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maastemporalworker.workflow.msm import (
@@ -57,6 +67,7 @@ from maastemporalworker.workflow.msm import (
     MSMHeartbeatWorkflow,
     MSMRestoreDefaultBootSourceWorkflow,
     MSMSetBootSourceParam,
+    MSMSetSelectionsParam,
     MSMTokenRefreshParam,
     MSMTokenRefreshWorkflow,
     MSMTokenVerifyParam,
@@ -519,6 +530,109 @@ class TestMSMActivities:
         assert builder.keyring_data == b""
         assert builder.priority == 1
         assert builder.skip_keyring_verification
+
+    async def test_set_selections_activity(
+        self, mocker, msm_act, services_mock
+    ):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_one.return_value = BootSource(
+            id=1,
+            url=_MSM_BOOT_SOURCE_URL,
+            priority=1,
+            skip_keyring_verification=True,
+        )
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        await env.run(
+            msm_act.set_selections,
+            MSMSetSelectionsParam(
+                selections=["ubuntu/noble/amd64", "ubuntu/resolute/arm64"],
+                sm_url=_MSM_BOOT_SOURCE_URL,
+            ),
+        )
+        services_mock.boot_source_selections.delete_many.assert_called_once_with(
+            QuerySpec(
+                where=BootSourceSelectionClauseFactory.with_boot_source_id(1)
+            )
+        )
+        # order of builders is not guaranteed, so cant do assert_called_with
+        builders_arg = (
+            services_mock.boot_source_selections.create_many.call_args.args[0]
+        )
+        assert (
+            BootSourceSelectionBuilder(
+                boot_source_id=1,
+                os="ubuntu",
+                release="noble",
+                arch="amd64",
+            )
+            in builders_arg
+        )
+        assert (
+            BootSourceSelectionBuilder(
+                boot_source_id=1,
+                os="ubuntu",
+                release="resolute",
+                arch="arm64",
+            )
+            in builders_arg
+        )
+
+    async def test_set_selections_activity_no_source(
+        self, mocker, msm_act, services_mock
+    ):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_one.return_value = None
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        with pytest.raises(
+            ApplicationError, match="Site Manager boot source does not exist"
+        ):
+            await env.run(
+                msm_act.set_selections,
+                MSMSetSelectionsParam(
+                    selections=["ubuntu/noble/amd64", "ubuntu/resolute/arm64"],
+                    sm_url=_MSM_BOOT_SOURCE_URL,
+                ),
+            )
+
+    async def test_set_selections_activity_bad_selection_format(
+        self, mocker, msm_act, services_mock
+    ):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_one.return_value = BootSource(
+            id=1,
+            url=_MSM_BOOT_SOURCE_URL,
+            priority=1,
+            skip_keyring_verification=True,
+        )
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        with pytest.raises(
+            ApplicationError, match="Unexpected selection format"
+        ):
+            await env.run(
+                msm_act.set_selections,
+                MSMSetSelectionsParam(
+                    selections=[
+                        "ubuntu/noble/amd64/somethingelse",
+                        "ubuntu/resolute",
+                    ],
+                    sm_url=_MSM_BOOT_SOURCE_URL,
+                ),
+            )
 
     async def test_delete_bootsources_activity(
         self, mocker, msm_act, services_mock

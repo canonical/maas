@@ -33,11 +33,21 @@ from maascommon.workflows.msm import (
     MSMHeartbeatParam,
     MSMRestoreDefaultBootSourceParam,
     MSMSetBootSourceParam,
+    MSMSetSelectionsParam,
     MSMTokenRefreshParam,
 )
 from maasservicelayer.builders.bootsources import BootSourceBuilder
+from maasservicelayer.builders.bootsourceselections import (
+    BootSourceSelectionBuilder,
+)
 from maasservicelayer.db import Database
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+)
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
+)
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.worker import REGION_TASK_QUEUE
@@ -74,6 +84,7 @@ MSM_GET_VERSION_ACTIVITY_NAME = "msm-get-version"
 MSM_SEND_HEARTBEAT_ACTIVITY_NAME = "msm-send-heartbeat"
 MSM_SEND_ENROL_ACTIVITY_NAME = "msm-send-enrol"
 MSM_SET_BOOT_SOURCE_ACTIVITY_NAME = "msm-set-bootsource"
+MSM_SET_SELECTIONS_ACTIVITY_NAME = "msm-set-selections"
 
 MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME = "msm-delete-bootsources"
 MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME = (
@@ -262,6 +273,45 @@ class MSMConnectorActivity(ActivityBase):
                 skip_keyring_verification=True,
             )
             await services.boot_sources.create(builder)
+
+    @activity_defn_with_context(name=MSM_SET_SELECTIONS_ACTIVITY_NAME)
+    async def set_selections(self, input: MSMSetSelectionsParam) -> None:
+        async with self.start_transaction() as services:
+            source = await services.boot_sources.get_one(
+                QuerySpec(
+                    where=BootSourcesClauseFactory.with_url(
+                        input.sm_url + MSM_SS_EP
+                    )
+                )
+            )
+            if source is None:
+                raise ApplicationError(
+                    "Site Manager boot source does not exist"
+                )
+            try:
+                builders = [
+                    BootSourceSelectionBuilder(
+                        boot_source_id=source.id,
+                        os=os,
+                        release=release,
+                        arch=arch,
+                    )
+                    for (os, release, arch) in map(
+                        lambda s: s.split("/"), set(input.selections)
+                    )
+                ]
+            except ValueError as err:
+                raise ApplicationError(
+                    f"Unexpected selection format in {input.selections}. Must be in the form of os/release/arch"
+                ) from err
+            await services.boot_source_selections.delete_many(
+                QuerySpec(
+                    where=BootSourceSelectionClauseFactory.with_boot_source_id(
+                        source.id
+                    )
+                )
+            )
+            await services.boot_source_selections.create_many(builders)
 
     @activity_defn_with_context(name=MSM_GET_ENROL_ACTIVITY_NAME)
     async def get_enrol(self) -> dict[str, Any]:
