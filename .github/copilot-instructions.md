@@ -89,10 +89,17 @@ Do not read or modify:
 ## Pre-submission checks
 
 ```
-make lint        # Python linting and formatting
-make test        # Python tests
+make lint                    # Python linting and formatting
+
+# Python tests — use the narrowest runner for your subdirectory:
+bin/test.rack                # src/provisioningserver
+bin/test.region              # src/maasserver, src/metadataserver
+bin/pytest                   # src/tests
+make test-py                 # everything else
+
+# Go tests — run from within the subdirectory:
 cd src/maasagent && make test
-cd src/host-info && go test ./...
+cd src/host-info && make test
 ```
 
 ## When in doubt

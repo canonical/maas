@@ -59,7 +59,17 @@ Prefer `make lint-py` for routine Python edits; add `make lint-py-imports` whene
 
 ## Testing
 
-- Use `make test-py` to run the Python test suite; use `make test` only when multiple languages are affected
+Use the narrowest runner that covers your changes:
+
+| Subdirectory | Test runner |
+|---|---|
+| `src/provisioningserver` | `bin/test.rack` |
+| `src/maasserver`, `src/metadataserver` | `bin/test.region` |
+| `src/tests` | `bin/pytest` |
+| everything else | `make test-py` |
+
+Use `make test` only when changes span multiple languages or components.
+
 - Use `pytest` for new code; follow existing patterns in the subdirectory
 - Use appropriate fixtures (`db_connection`, `services_mock`, etc.)
 - Mock external dependencies

@@ -28,6 +28,15 @@ See the subdirectory reference table in `copilot-instructions.md` for detailed c
 
 ## Testing
 
+Each Go subdirectory has its own Makefile — run `make test` from within the subdirectory:
+
+| Subdirectory | Command |
+|---|---|
+| `src/maasagent` | `cd src/maasagent && make test` |
+| `src/host-info` | `cd src/host-info && make test` |
+
+Use `make test-go` from the repo root only when you need to run both together.
+
 - Prefer table-driven tests
 - Use `testify` in `src/maasagent`
 - Standard `testing` package in `src/host-info`
