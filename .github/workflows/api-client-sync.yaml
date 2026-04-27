@@ -1,0 +1,207 @@
+name: Update maas-ui API client on contract change
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+  push:
+    branches:
+      - "api-client-sync-debug-*"
+
+permissions:
+  contents: read
+
+jobs:
+  check-api-contract-change:
+    runs-on: ubuntu-latest
+    outputs:
+      has_update: ${{ steps.compare.outputs.has_update }}
+      latest_schema_hash: ${{ steps.compare.outputs.latest_schema_hash }}
+    steps:
+      - name: Checkout MAAS repo
+        uses: actions/checkout@v5
+
+      - name: Checkout MAAS UI repo
+        uses: actions/checkout@v5
+        with:
+          repository: canonical/maas-ui
+          token: ${{ secrets.LANDER_GH_TOKEN }}
+          path: fe-repo
+
+      # This step compares a hash of the BE's API source files against
+      # the hash that was recorded in the FE repo when the client was last generated.
+      # Since MAAS generates its OpenAPI spec dynamically from Python source code,
+      # we hash the API handler files and OpenAPI generation logic.
+      - name: Compare schema hash with last generated hash
+        id: compare
+        run: |
+          latest_schema_hash=$(find src/maasserver/api src/maasapiserver \
+            -type f -name "*.py" \
+            | sort | xargs sha256sum | sha256sum | awk '{print $1}')
+
+          recorded_hash_file="fe-repo/.api-schema-hash"
+          if [[ -f "$recorded_hash_file" ]]; then
+            recorded_hash=$(cat "$recorded_hash_file")
+          else
+            recorded_hash=""
+          fi
+
+          echo "Latest schema hash:   $latest_schema_hash"
+          echo "Recorded schema hash: $recorded_hash"
+
+          if [[ "$latest_schema_hash" == "$recorded_hash" ]]; then
+            echo "has_update=false" >> "$GITHUB_OUTPUT"
+            echo "No API contract change detected."
+          else
+            echo "has_update=true" >> "$GITHUB_OUTPUT"
+            echo "latest_schema_hash=$latest_schema_hash" >> "$GITHUB_OUTPUT"
+            echo "API contract change detected — client regeneration needed."
+          fi
+
+  regenerate-client-and-open-pr:
+    needs: check-api-contract-change
+    if: needs.check-api-contract-change.outputs.has_update == 'true'
+    runs-on: ubuntu-latest
+    # Allow this job to open PRs against the FE repo
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout MAAS repo
+        uses: actions/checkout@v5
+
+      - name: Checkout MAAS UI repo
+        uses: actions/checkout@v5
+        with:
+          repository: canonical/maas-ui
+          token: ${{ secrets.LANDER_GH_TOKEN }}
+          path: fe-repo
+          fetch-depth: 0
+
+      # -----------------------------------------------------------------------
+      # Stand up the MAAS demo instance — adapted from the maas-ui sync workflow.
+      # -----------------------------------------------------------------------
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v1
+        with:
+          channel: 5.21/stable
+
+      - name: Build MAAS snap
+        run: |
+          sudo snap install snapcraft --classic
+          sudo snap refresh snapd
+          sudo snap install --edge core26
+          cd "$GITHUB_WORKSPACE"
+          make snap
+          make snap-clean
+
+      - name: Launch and configure LXD container
+        id: setup-lxd
+        run: |
+          lxc launch ubuntu-daily:resolute maas-api-client-gen
+          lxc exec maas-api-client-gen -- cloud-init status --wait
+          lxc exec maas-api-client-gen -- snap install snapd --beta
+          lxc exec maas-api-client-gen -- snap wait system seed.loaded
+          lxc exec maas-api-client-gen -- snap install --edge core26
+          lxc file push *.snap maas-api-client-gen/maas.snap
+          lxc file push utilities/connect-snap-interfaces maas-api-client-gen/connect-snap-interfaces
+          lxc exec maas-api-client-gen -- snap install maas-test-db --channel=latest/edge
+          lxc exec maas-api-client-gen -- snap install /maas.snap --dangerous
+          lxc exec maas-api-client-gen -- /connect-snap-interfaces
+          export MAAS_IP=$(lxc query /1.0/containers/maas-api-client-gen/state \
+            | jq -r '.network.eth0.addresses[0].address')
+          echo "maas_ip=$MAAS_IP" >> "$GITHUB_OUTPUT"
+
+      - name: Initialize MAAS and wait for API readiness
+        run: |
+          export MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
+          lxc exec maas-api-client-gen -- maas init region+rack \
+            --maas-url="http://${MAAS_IP}:5240/MAAS" \
+            --database-uri maas-test-db:///
+          sleep 30
+          # Poll until the API is healthy (up to ~2 min)
+          for i in $(seq 1 8); do
+            status_code=$(curl --noproxy "${MAAS_IP}" -L \
+              "http://${MAAS_IP}:5240/MAAS/api/2.0/version/" \
+              -o /dev/null -w "%{http_code}" -s)
+            if [[ "$status_code" -eq 200 ]]; then
+              echo "API is ready."
+              exit 0
+            fi
+            echo "Attempt $i: API not ready yet (HTTP $status_code). Retrying in 15s..."
+            sleep 15
+          done
+          echo "API failed to become ready in time."
+          exit 1
+
+      # -----------------------------------------------------------------------
+      # Run the FE client generation script against the live demo instance.
+      # -----------------------------------------------------------------------
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: fe-repo/package-lock.json
+
+      - name: Install MAAS UI dependencies
+        working-directory: fe-repo
+        run: npm ci
+
+      - name: Generate API client
+        working-directory: fe-repo
+        env:
+          # Point heyAPI at the live demo instance.
+          # Adjust the env var name to match what your openapi-ts config reads.
+          MAAS_BASE_URL: "http://${{ steps.setup-lxd.outputs.maas_ip }}:5240/MAAS"
+        run: npm run generate-api-client
+
+      # -----------------------------------------------------------------------
+      # Commit the regenerated client and open a PR.
+      # -----------------------------------------------------------------------
+      - name: Record schema hash in MAAS UI repo
+        working-directory: fe-repo
+        run: |
+          echo "${{ needs.check-api-contract-change.outputs.latest_schema_hash }}" \
+            > .api-schema-hash
+
+      - name: Create PR branch and push
+        id: push-branch
+        working-directory: fe-repo
+        run: |
+          git config user.name "${{ vars.LANDER_USERNAME }}"
+          git config user.email "${{ vars.LANDER_EMAIL }}"
+
+          BRANCH="chore/update-api-client-${{ needs.check-api-contract-change.outputs.latest_schema_hash }}"
+          git checkout -b "$BRANCH"
+          git add src/app/apiclient/ .api-schema-hash
+          git commit -m "chore: regenerate API client from updated contract
+
+          Schema hash: ${{ needs.check-api-contract-change.outputs.latest_schema_hash }}
+          Triggered by: ${{ github.repository }}@${{ github.sha }}"
+          git push origin "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR on MAAS UI repo
+        env:
+          GH_TOKEN: ${{ secrets.LANDER_GH_TOKEN }}
+        run: |
+          gh pr create \
+            --repo "canonical/maas-ui" \
+            --head "${{ steps.push-branch.outputs.branch }}" \
+            --base main \
+            --title "chore: regenerate API client from updated contract" \
+            --body "$(cat <<'EOF'
+          ## Automated API client update
+
+          The OpenAPI contract on the MAAS repo has changed. This PR contains a
+          freshly regenerated client produced by running \`generate-api-client\`
+          against a live demo instance of the updated BE.
+
+          **MAAS repo:** \`${{ github.repository }}\`
+          **MAAS commit:** \`${{ github.sha }}\`
+          **Schema hash:** \`${{ needs.check-api-contract-change.outputs.latest_schema_hash }}\`
+
+          Please review the diff in \`src/app/apiclient/\` and merge when ready.
+          EOF
+          )"
