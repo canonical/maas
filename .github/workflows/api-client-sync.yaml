@@ -1,4 +1,4 @@
-name: Update maas-ui API client on contract change
+name: Update FE API client on contract change
 
 on:
   workflow_dispatch:
@@ -18,10 +18,10 @@ jobs:
       has_update: ${{ steps.compare.outputs.has_update }}
       latest_schema_hash: ${{ steps.compare.outputs.latest_schema_hash }}
     steps:
-      - name: Checkout MAAS repo
+      - name: Checkout canonical/maas
         uses: actions/checkout@v5
 
-      - name: Checkout MAAS UI repo
+      - name: Checkout canonical/maas-ui
         uses: actions/checkout@v5
         with:
           repository: canonical/maas-ui
@@ -67,10 +67,12 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Checkout MAAS repo
+      - name: Checkout canonical/maas
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # snapcraft needs full history to generate docs
 
-      - name: Checkout MAAS UI repo
+      - name: Checkout canonical/maas-ui
         uses: actions/checkout@v5
         with:
           repository: canonical/maas-ui
