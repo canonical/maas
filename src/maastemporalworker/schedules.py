@@ -89,6 +89,8 @@ async def update_master_image_sync_schedule(
             sync_interval_minutes_config, auto_import_enabled_config
         )
     )
+    if auto_import_enabled_config:
+        await handle.trigger()
 
 
 async def pause_or_unpause_master_image_sync_schedule(
@@ -97,6 +99,7 @@ async def pause_or_unpause_master_image_sync_schedule(
     handle = client.get_schedule_handle(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
     if auto_import_enabled_config:
         await handle.unpause()
+        await handle.trigger()
     else:
         await handle.pause()
 
@@ -136,15 +139,20 @@ async def setup_schedules(client: Client):
 
     schedules_to_add = expected_schedules - registered_schedules
     for schedule in schedules_to_add:
+        schedule_def = SCHEDULES[schedule]
+        is_paused = (
+            schedule_def.state is not None and schedule_def.state.paused
+        )
         await client.create_schedule(
-            id=schedule, schedule=SCHEDULES[schedule], trigger_immediately=True
+            id=schedule,
+            schedule=schedule_def,
+            trigger_immediately=not is_paused,
         )
 
     schedules_to_update = registered_schedules - schedules_to_delete
+    # Handled with `update_master_image_sync_schedule` above
+    schedules_to_update.discard(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
     for schedule in schedules_to_update:
         handle = client.get_schedule_handle(schedule)
-        # Handled with `update_master_image_sync_schedule` above
-        if schedule != MASTER_IMAGE_SYNC_WORKFLOW_NAME:
-            await handle.update(update_schedule)
-
+        await handle.update(update_schedule)
         await handle.trigger()

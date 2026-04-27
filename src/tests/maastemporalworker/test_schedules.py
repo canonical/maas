@@ -38,11 +38,14 @@ class TestSetupSchedules:
         await setup_schedules(mock_client)
 
         assert mock_client.create_schedule.call_count == len(SCHEDULES)
-        for schedule_id in SCHEDULES:
+        for schedule_id, schedule_def in SCHEDULES.items():
+            is_paused = (
+                schedule_def.state is not None and schedule_def.state.paused
+            )
             mock_client.create_schedule.assert_any_call(
                 id=schedule_id,
-                schedule=SCHEDULES[schedule_id],
-                trigger_immediately=True,
+                schedule=schedule_def,
+                trigger_immediately=not is_paused,
             )
 
         mock_client.get_schedule_handle.assert_not_called()
@@ -71,8 +74,13 @@ class TestSetupSchedules:
 
         assert mock_client.create_schedule.call_count == len(SCHEDULES)
         for schedule_id, schedule_def in SCHEDULES.items():
+            is_paused = (
+                schedule_def.state is not None and schedule_def.state.paused
+            )
             mock_client.create_schedule.assert_any_call(
-                id=schedule_id, schedule=schedule_def, trigger_immediately=True
+                id=schedule_id,
+                schedule=schedule_def,
+                trigger_immediately=not is_paused,
             )
 
     async def test_updates_existing_schedules(self, mock_client: Mock):
@@ -89,14 +97,14 @@ class TestSetupSchedules:
 
         mock_client.create_schedule.assert_not_called()
 
-        schedules = set(SCHEDULES.keys())
-        # The master image sync must be updated separately
-        schedules.discard(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
-
-        for schedule_id in schedules:
+        # master_image_sync is handled by update_master_image_sync_schedule
+        schedules_to_update = set(SCHEDULES.keys()) - {
+            MASTER_IMAGE_SYNC_WORKFLOW_NAME
+        }
+        for schedule_id in schedules_to_update:
             mock_client.get_schedule_handle.assert_any_call(schedule_id)
 
-        assert mock_handle.update.call_count == len(SCHEDULES) - 1
+        assert mock_handle.update.call_count == len(schedules_to_update)
         mock_handle.update.assert_called_with(update_schedule)
 
     async def test_updated_schedules_are_triggered(self, mock_client: Mock):
@@ -113,12 +121,14 @@ class TestSetupSchedules:
 
         mock_client.create_schedule.assert_not_called()
 
-        schedules = set(SCHEDULES.keys())
-
-        for schedule_id in schedules:
+        # master_image_sync is handled by update_master_image_sync_schedule
+        schedules_to_update = set(SCHEDULES.keys()) - {
+            MASTER_IMAGE_SYNC_WORKFLOW_NAME
+        }
+        for schedule_id in schedules_to_update:
             mock_client.get_schedule_handle.assert_any_call(schedule_id)
 
-        assert mock_handle.trigger.call_count == len(SCHEDULES)
+        assert mock_handle.trigger.call_count == len(schedules_to_update)
 
 
 @pytest.mark.asyncio
@@ -135,6 +145,31 @@ class TestUpdateMasterImageSyncSchedule:
             MASTER_IMAGE_SYNC_WORKFLOW_NAME
         )
         mock_handle.update.assert_called_once()
+
+    async def test_triggers_when_auto_import_enabled(self, mock_client: Mock):
+        mock_handle = AsyncMock()
+        mock_client.get_schedule_handle.return_value = mock_handle
+
+        await update_master_image_sync_schedule(
+            mock_client, 30, auto_import_enabled_config=True
+        )
+
+        mock_handle.trigger.assert_called_once()
+
+    @pytest.mark.parametrize("auto_import_enabled_config", [False, None])
+    async def test_does_not_trigger_when_auto_import_disabled_or_unset(
+        self, mock_client: Mock, auto_import_enabled_config: bool | None
+    ):
+        mock_handle = AsyncMock()
+        mock_client.get_schedule_handle.return_value = mock_handle
+
+        await update_master_image_sync_schedule(
+            mock_client,
+            30,
+            auto_import_enabled_config=auto_import_enabled_config,
+        )
+
+        mock_handle.trigger.assert_not_called()
 
     async def test_updates_sync_interval(self):
         mock_input = Mock()
@@ -173,21 +208,31 @@ class TestUpdateMasterImageSyncSchedule:
 
 @pytest.mark.asyncio
 class TestPauseUnpauseMasterImageSyncSchedule:
-    @pytest.mark.parametrize("auto_import_enabled", [True, False])
-    async def test_calls_the_right_method(
-        self, mock_client: Client, auto_import_enabled: bool
+    async def test_unpause_and_trigger(self, mock_client: Mock):
+        mock_handle = AsyncMock()
+        mock_client.get_schedule_handle.return_value = mock_handle
+
+        await pause_or_unpause_master_image_sync_schedule(mock_client, True)
+
+        mock_client.get_schedule_handle.assert_called_once_with(
+            MASTER_IMAGE_SYNC_WORKFLOW_NAME
+        )
+        mock_handle.unpause.assert_called_once()
+        mock_handle.trigger.assert_called_once()
+
+    @pytest.mark.parametrize("auto_import_enabled_config", [False, None])
+    async def test_pause_does_not_trigger(
+        self, mock_client: Mock, auto_import_enabled_config
     ):
         mock_handle = AsyncMock()
         mock_client.get_schedule_handle.return_value = mock_handle
 
         await pause_or_unpause_master_image_sync_schedule(
-            mock_client, auto_import_enabled
+            mock_client, auto_import_enabled_config
         )
+
         mock_client.get_schedule_handle.assert_called_once_with(
             MASTER_IMAGE_SYNC_WORKFLOW_NAME
         )
-
-        if auto_import_enabled:
-            mock_handle.unpause.assert_called_once()
-        else:
-            mock_handle.pause.assert_called_once()
+        mock_handle.pause.assert_called_once()
+        mock_handle.trigger.assert_not_called()
