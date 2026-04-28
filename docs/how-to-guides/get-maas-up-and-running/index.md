@@ -2,95 +2,7 @@
 
 This guide shows you how to install MAAS, set it up for either a Proof-of-Concept (POC) or a production environment, and verify that it is working.
 
-## Prerequisites
-
-- A host running Ubuntu 22.04 LTS (Jammy) or newer.
-- Administrative privileges (sudo) on the host.
-- Network access to download snaps or packages.
-- (Production only) A PostgreSQL server (version 14 or newer recommended).
-- (Production only) A plan for DNS forwarder and DHCP scope.
-
-## Install MAAS
-
-### Option 1 – Snap (recommended)
-
-```bash
-sudo snap install --channel=<version>/stable maas
-```
-
-Replace `<version>` with the desired MAAS version (for example, `3.6`).
-
-### Option 2 – Debian packages
-
-```bash
-sudo apt-add-repository ppa:maas/<version>
-sudo apt update
-sudo apt -y install maas
-```
-
-## Post-install setup
-
-### POC setup
-
-Install the test database and initialize MAAS:
-
-```bash
-sudo snap install maas-test-db
-maas init --help
-```
-
-Follow the prompts to configure the POC environment.
-
-### Production setup
-
-1. Disable conflicting NTP services:
-
-   ```bash
-   sudo systemctl disable --now systemd-timesyncd
-   ```
-
-2. Install and configure PostgreSQL:
-
-   ```bash
-   sudo apt install -y postgresql
-   sudo -i -u postgres psql -c "CREATE USER \"$DBUSER\" WITH ENCRYPTED PASSWORD '$DBPASS'"
-   sudo -i -u postgres createdb -O "$DBUSER" "$DBNAME"
-   ```
-
-3. Edit PostgreSQL authentication:
-   Add this line to `/etc/postgresql/14/main/pg_hba.conf`:
-
-   ```
-   host    $DBNAME    $DBUSER    0/0     md5
-   ```
-
-4. Initialize MAAS with the database:
-
-   ```bash
-   sudo maas init region+rack --database-uri "postgres://$DBUSER:$DBPASS@$HOSTNAME/$DBNAME"
-   ```
-
-5. Create an admin user:
-
-   ```bash
-   sudo maas createadmin --username=$PROFILE --email=$EMAIL_ADDRESS
-   ```
-
 ## Configure and start MAAS
-
-### Check MAAS service status
-
-```bash
-sudo maas status
-```
-
-Example:
-
-```
-bind9        RUNNING
-dhcpd        STOPPED
-postgresql   RUNNING
-```
 
 ### Web UI setup
 
@@ -101,58 +13,6 @@ postgresql   RUNNING
    - At least one Ubuntu LTS image
    - SSH key (Launchpad, GitHub, or upload from `~/.ssh/id_rsa.pub`)
 
-### CLI setup
-
-1. Log in:
-
-   ```bash
-   maas login $PROFILE $MAAS_URL $(cat api-key-file)
-   ```
-
-2. Configure DNS:
-
-   ```bash
-   maas $PROFILE maas set-config name=upstream_dns value="8.8.8.8"
-   ```
-
-3. Add an SSH key (`$SSH_KEY` must be set to a valid SSH key):
-
-   ```bash
-   maas $PROFILE sshkeys create "key=$SSH_KEY"
-   ```
-
-## Enable DHCP
-
-### Web UI
-
-- Go to Subnets > VLAN > Configure DHCP
-- Select options
-- Save and apply
-
-### CLI
-
-Find the subnet CIDR and fabric you want using this expression:
-
-```bash
-maas $PROFILE subnets read | jq -r '
-  ["subnet", "|", "fabric ID", "|", "gateway IP"],          # header
-  (.[] | [ .cidr, "|", (.vlan.fabric_id|tostring), "|", .gateway_ip ]) #rows
-  | @tsv
-' | column -t
-```
-
-Find the precise name of the primary rack controller with this expression, which always finds the primary rack, regardless of how many racks are active:
-
-```bash
-maas $PROFILE rack-controllers read | jq -r '.[] | .interface_set[] | .vlan?.primary_rack // empty'
-```
-
-Plug those values into the following commands to configure DHCP:
-
-```bash
-maas $PROFILE vlan update $FABRIC_ID untagged dhcp_on=True primary_rack=$PRIMARY_RACK_CONTROLLER
-maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
-```
 
 ## Upgrading MAAS
 
@@ -217,4 +77,5 @@ sudo maas status # Verify services running
 :hidden:
 
 install-maas
+configure-maas
 ```

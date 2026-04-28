@@ -78,7 +78,7 @@ Specify the password for your new administrator user when prompted. Store it sec
 
 ## Verify your installation
 
-Verify the installation by logging in to MAAS:
+Verify the installation by creating a profile and logging in:
 
 ```bash
 maas login admin "http://localhost:5240/MAAS/api/2.0/" $(sudo maas apikey --username=admin)
@@ -98,4 +98,10 @@ For help with the available commands, try:
   maas admin --help
 
 ubuntu@host-system:~$
+```
+
+```{admonition} Profiles
+:class: note
+
+You have just created a profile in the MAAS CLI called `admin`, logged in using the credentials created in the previous step for your admin user. The rest of these docs will refer to this profile as `$PROFILE`.
 ```
