@@ -23,16 +23,19 @@ maas $PROFILE subnets read | jq -r '
   | @tsv
 ' | column -t -s $'\t'
 ```
-Set the variables `FABRIC_ID` and `VID` to the fabric ID and VID of the subnet you want to configure DHCP for:
+Set variables from your chosen subnet's output:
 
 ```bash
-FABRIC_ID=<FABRIC_ID>
-VID=<VLAN_VID>
+FABRIC_ID=<fabric_id>
+VID=<vlan_vid>
+SUBNET_CIDR=<subnet_cidr>
 ```
 
 Assign a dynamic IP range to the subnet if one does not already exist:
 
 ```bash
+START_IP=<start_ip>
+END_IP=<end_ip>
 maas $PROFILE ipranges create subnet=$SUBNET_CIDR type=dynamic start_ip=$START_IP end_ip=$END_IP
 ```
 
@@ -46,15 +49,22 @@ maas $PROFILE rack-controllers read | jq -r --argjson f "$FABRIC_ID" --argjson v
 ' | column -t -s $'\t'
 ```
 
+Set the system ID of the rack controller you want to use:
+
+```bash
+PRIMARY_RACK_CONTROLLER=<system_id>
+```
+
 Enable DHCP on the VLAN you selected:
 
 ```bash
 maas $PROFILE vlan update $FABRIC_ID $VID dhcp_on=True primary_rack=$PRIMARY_RACK_CONTROLLER
 ```
 
-Set the gateway IP for the subnet you selected, where `MY_GATEWAY` is the intended gateway IP address for the subnet:
+Set the gateway IP for the subnet you selected, which can be any IP address in the subet, typically the first IP address in the range:
 
 ```bash
+MY_GATEWAY=<gateway_ip>
 maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
 ```
 
