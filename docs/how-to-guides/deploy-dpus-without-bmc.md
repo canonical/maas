@@ -2,7 +2,7 @@
 
 With MAAS 3.3, we've made it possible to deploy workloads to DPUs. A DPU is a Data Processing Unit, which consists of its own set of ARM cores that can be used to offload data processing from the main host. We've tested it with a NVIDIA Bluefield-2 DPU, and here you will find instructions for how to get started deploying workloads to such a DPU.
 
-# Initial setup
+## Initial setup
 
 This guide assumes that the DPU host machine is not yet enlisted into MAAS. Before we enlist it, we're going to do a one-time setup to make things easier.
 
@@ -13,7 +13,7 @@ sudo snap install maas
 maas login admin $maas_url $api_token
 ```
 
-## Tags
+### Tags
 
 To make it easier to see which machines are DPUs and which are DPU hosts, we're going to set up a couple of [automatic tags](https://maas.io/docs/how-to-work-with-tags#heading--automatic-tags):
 
@@ -26,7 +26,7 @@ maas admin tags create name=dpu-host \
 
 This makes sure that any machine in MAAS that is a Bluefield-2 DPU has the `dpu` tag, and any machine that contains a Bluefield-2 DPU has the `dpu-host` tag.
 
-## Commissioning image
+### Commissioning image
 
 In order for all the hardware to be detected properly, we need to use Ubuntu 22.04 as the commissioning image. Ensure that's the case with this command:
 
@@ -34,7 +34,7 @@ In order for all the hardware to be detected properly, we need to use Ubuntu 22.
 maas admin maas set-config name=name=commissioning_distro_series value=jammy
 ```
 
-## Deploy image
+### Deploy image
 
 The Bluefield-2 DPU needs a special kernel and drivers for the network interfaces to work. We'll build a custom Ubuntu image with the necessary kernel and drivers, which we can use when deploying workloads to the DPU. We'll include a subset of what's in the [image that NVIDIA provides](https://github.com/Mellanox/bfb-build/blob/master/ubuntu/20.04/Dockerfile).
 
@@ -85,7 +85,7 @@ maas admin boot-resources create name="custom/ubuntu-bluefield" \
       architecture=arm64/generic filetype=tgz content@=custom-cloudimg.tar.gz
 ```
 
-# Enlist host and DPU
+## Enlist host and DPU
 
 Now when everything is set up, it's time to enlist both the host and DPU into MAAS. We assume here that the host is connected to a VLAN where MAAS is providing DHCP.
 
@@ -129,7 +129,7 @@ When you exit, the DPU should restart and you can see it booting off the network
 
 You also need to set the power configuration to Manual, unless your DPU has a BMC.
 
-# Power management
+## Power management
 
 When working with a DPU, especially one without a BMC, it's important to know that the DPU's power is tightly coupled with the host power. If the host gets turned off, so does the DPU. This works both ways: if the host turns on, so does the DPU.
 
@@ -152,7 +152,7 @@ maas admin machine commission $HOSTID enable_ssh=true
 
 You can try it out by choosing to commission the DPU now and issue the `power-off` and `power-on` commands. You should then see the DPU being commissioned and put into a `Ready` state.
 
-# Deploying workloads
+## Deploying workloads
 
 Now you're ready to deploy workloads to the DPU and the host. We're not going to tell you in what ways you can configure the DPU and interact with it from the host. Rather we're going to go over how you deploy Ubuntu to it. It's up to you to choose workloads that you want to run and configure.
 
@@ -167,7 +167,7 @@ maas admin machine deploy $DPUID osystem=custom distro_series=ubuntu-bluefield
 
 And now, if you power cycle the DPU, you should see it deploying.
 
-# Host and DPU dependencies
+## Host and DPU dependencies
 
 As mentioned before, the host is tightly coupled with the DPU. It's advised that you first deploy the DPU and configure it as much as you can. After that, it might even be required to recommission the host, since it might see other network interfaces, depending on how you configured the DPU.
 
