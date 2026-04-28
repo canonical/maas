@@ -262,7 +262,7 @@ class MachinesV2Service(Service, Repository):
             error_description=record["error_description"],
             zone=ModelRef(id=record["zone_id"], name=record["zone_name"]),
             cpu_count=record["cpu_count"],
-            memory=record["memory"],
+            memory=int(record["memory"]),
             power_state=record["power_state"],
             locked=record["locked"],
             permissions=[],
