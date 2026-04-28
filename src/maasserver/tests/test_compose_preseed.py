@@ -951,7 +951,7 @@ class TestComposePreseed(MAASServerTestCase):
 
         self.assertNotIn("apt_sources", preseed)
 
-    def test_compose_preseed_for_curtin_not_packages(self):
+    def test_compose_preseed_for_curtin_packages_python3_packaging_only(self):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True,
@@ -972,7 +972,10 @@ class TestComposePreseed(MAASServerTestCase):
             compose_preseed(request, PRESEED_TYPE.CURTIN, node)
         )
 
-        self.assertNotIn("packages", preseed)
+        self.assertIn("packages", preseed)
+        # This is a dependency from curtin, and should be the only one.
+        # It comes by default in some ubuntu images, but not all.
+        self.assertEqual(preseed["packages"], ["python3-packaging"])
 
     def test_compose_preseed_with_osystem_compose_preseed(self):
         os_name = factory.make_name("os")
