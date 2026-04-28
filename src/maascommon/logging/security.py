@@ -15,8 +15,19 @@ def hash_token_for_logging(token: str) -> str:
         token: The token string to hash
 
     Returns:
-        The SHA-256 hash of the token as a hexadecimal string
+        The SHA-256 hash of the token as a 64-character hexadecimal string,
+        or an error message string if the token is invalid
+
+    Note:
+        This function is designed for logging and correlation, not
+        cryptographic security. The same token always produces the
+        same hash, enabling log analysis while protecting token values.
+
+        Returns "<empty_token>" if the token is empty or only whitespace
+        to avoid disrupting logging flow.
     """
+    if not token or not token.strip():
+        return "<empty_token>"
     return hashlib.sha256(token.encode()).hexdigest()
 
 
