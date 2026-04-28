@@ -117,7 +117,7 @@ Finally, make MAAS part of your larger automation pipeline. Learn how to use the
 :maxdepth: 2
 :hidden:
 
-get-maas-up-and-running
+get-maas-up-and-running/index
 back-up-maas
 manage-networks
 manage-network-services

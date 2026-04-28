@@ -135,7 +135,7 @@ Find the subnet CIDR and fabric you want using this expression:
 
 ```bash
 maas $PROFILE subnets read | jq -r '
-  ["subnet", "|", "fabric ID", "|", "gateway IP"],          # header                                    
+  ["subnet", "|", "fabric ID", "|", "gateway IP"],          # header
   (.[] | [ .cidr, "|", (.vlan.fabric_id|tostring), "|", .gateway_ip ]) #rows
   | @tsv
 ' | column -t
@@ -210,3 +210,11 @@ sudo maas status # Verify services running
 - [About controllers](/explanation/controllers.md)
 - [Back up MAAS](/how-to-guides/back-up-maas.md)
 - [Networking in MAAS](/explanation/networking.md)
+
+```{toctree}
+:titlesonly:
+:maxdepth: 2
+:hidden:
+
+install-maas
+```
