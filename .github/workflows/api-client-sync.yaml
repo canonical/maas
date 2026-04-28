@@ -116,3 +116,52 @@ jobs:
       - name: Generate API client
         working-directory: fe-repo
         run: yarn generate-api-client
+
+      - name: Restore openapi-ts config
+        working-directory: fe-repo
+        run: git checkout openapi-ts.config.ts
+
+      - name: Create PR branch and push
+        id: push-branch
+        working-directory: fe-repo
+        run: |
+          git config user.name "${{ vars.LANDER_USERNAME }}"
+          git config user.email "${{ vars.LANDER_EMAIL }}"
+
+          BRANCH="chore/update-api-client-${{ github.sha }}"
+          git checkout -b "$BRANCH"
+
+          git add src/app/apiclient/
+          
+          if git diff --cached --quiet; then
+            echo "No changes detected in the API client files, skipping PR."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m "chore: regenerate API client
+
+          Triggered by: ${{ github.repository }}@${{ github.sha }}"
+          git push origin "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR on MAAS UI repo
+        if: steps.push-branch.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.LANDER_GH_TOKEN }}
+        run: |
+          gh pr create \
+            --repo "canonical/maas-ui" \
+            --head "${{ steps.push-branch.outputs.branch }}" \
+            --base main \
+            --title "chore: regenerate API client" \
+            --body "$(cat <<'EOF'
+          ## Automated API client update
+
+          **MAAS repo:** \`${{ github.repository }}\`
+          **MAAS commit:** \`${{ github.sha }}\`
+
+          Please review the diff in \`src/app/apiclient/\` and merge when ready.
+          EOF
+          )"
