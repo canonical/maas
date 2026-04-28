@@ -51,8 +51,11 @@ def upgrade() -> None:
             res.id as resource_id,
             cache.latest_version
           FROM maasserver_bootsourcecache cache
+          JOIN maasserver_bootsource source ON source.id = cache.boot_source_id
+          JOIN maasserver_bootsourceselection sel ON sel.boot_source_id = source.id
           JOIN maasserver_bootresource res ON
-            res.name = cache.os || '/' || cache.release
+            res.selection_id = sel.id
+            AND res.name = cache.os || '/' || cache.release
             AND res.kflavor = cache.kflavor
             AND res.architecture IN (
               -- arch/subarch

@@ -5162,8 +5162,10 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
         ), latest_versions AS (
          SELECT res.id AS resource_id,
             cache.latest_version
-           FROM (public.maasserver_bootsourcecache cache
-             JOIN public.maasserver_bootresource res ON ((((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND ((((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text))) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
+           FROM (((public.maasserver_bootsourcecache cache
+             JOIN public.maasserver_bootsource source ON ((source.id = cache.boot_source_id)))
+             JOIN public.maasserver_bootsourceselection sel ON ((sel.boot_source_id = source.id)))
+             JOIN public.maasserver_bootresource res ON (((res.selection_id = sel.id) AND ((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND ((((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text))) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
         ), resource_set_counts AS (
          SELECT sync_stats.resource_id,
             count(*) AS set_count
