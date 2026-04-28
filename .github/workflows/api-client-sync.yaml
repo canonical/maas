@@ -150,20 +150,20 @@ jobs:
           if [[ -n "$existing_branch" ]]; then
             echo "Found existing PR branch: $existing_branch — pushing to it."
             git checkout -b "$existing_branch"
-            echo "branch=$existing_branch" >> "$GITHUB_OUTPUT"
+            BRANCH="$existing_branch"
             echo "is_new_pr=false" >> "$GITHUB_OUTPUT"
           else
             BRANCH="chore/update-api-client-${{ github.sha }}"
             echo "No existing PR found — creating new branch: $BRANCH"
             git checkout -b "$BRANCH"
-            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
             echo "is_new_pr=true" >> "$GITHUB_OUTPUT"
           fi
 
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           git commit -m "chore: regenerate API client
 
           Triggered by: ${{ github.repository }}@${{ github.sha }}"
-          git push origin "${{ steps.push-branch.outputs.branch }}"
+          git push origin "$BRANCH"
 
       - name: Open PR on MAAS UI repo
         if: steps.push-branch.outputs.has_changes == 'true' && steps.push-branch.outputs.is_new_pr == 'true'
