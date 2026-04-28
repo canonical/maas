@@ -40,6 +40,8 @@ STABLE_IMAGES_STREAM_NAME = "MAAS Stable"
 CANDIDATE_IMAGES_STREAM_URL = "http://images.maas.io/ephemeral-v3/candidate"
 CANDIDATE_IMAGES_STREAM_NAME = "MAAS Candidate"
 
+LATEST_UBUNTU_LTS = "noble"
+
 
 class BootSourceFlag(IntFlag):
     NO_BOOT_SOURCE = auto()
@@ -124,7 +126,7 @@ def create_selection_stable(stable_boot_source_id: int):
             "created": now,
             "updated": now,
             "os": "ubuntu",
-            "release": "noble",
+            "release": LATEST_UBUNTU_LTS,
             "arches": arches,
             "boot_source_id": stable_boot_source_id,
         },
