@@ -11,7 +11,7 @@ from maasapiserver.v3.api.public.models.requests.sslkeys import SSLKeyRequest
 from maasapiserver.v3.api.public.models.responses.sslkey import (
     SSLKeyListResponse,
     SSLKeyResponse,
-    SSLKeysWithSummaryListResponse,
+    SSLKeysStatisticsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.db.filters import QuerySpec
@@ -67,7 +67,7 @@ class TestSSLKeysApi(ApiCommonTests):
             ),
             Endpoint(
                 method="GET",
-                path=f"{V3_API_PREFIX}/users/me/sslkeys_with_summary",
+                path=f"{V3_API_PREFIX}/users/me/sslkeys:statistics",
             ),
             Endpoint(
                 method="GET",
@@ -118,8 +118,8 @@ class TestSSLKeysApi(ApiCommonTests):
         assert sslkeys_response.total == 2
         assert sslkeys_response.next is None
 
-    # GET /users/me/sslkeys_with_summary
-    async def test_list_with_summary_no_other_page(
+    # GET /users/me/sslkeys:statistics
+    async def test_list_statistics_no_other_page(
         self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sslkeys = Mock(SSLKeysService)
@@ -127,23 +127,21 @@ class TestSSLKeysApi(ApiCommonTests):
             items=[SSLKEY_1, SSLKEY_2], total=2
         )
         response = await mocked_api_client_user.get(
-            f"{V3_API_PREFIX}/users/me/sslkeys_with_summary?size=2"
+            f"{self.BASE_PATH}:statistics?size=2"
         )
         assert response.status_code == 200
-        sslkeys_with_summary_response = SSLKeysWithSummaryListResponse(
-            **response.json()
-        )
-        assert len(sslkeys_with_summary_response.items) == 2
-        assert sslkeys_with_summary_response.total == 2
-        assert sslkeys_with_summary_response.next is None
-        assert sslkeys_with_summary_response.items[0].key == SSLKEY_1.key
+        statistics_response = SSLKeysStatisticsListResponse(**response.json())
+        assert len(statistics_response.items) == 2
+        assert statistics_response.total == 2
+        assert statistics_response.next is None
+        assert statistics_response.items[0].key == SSLKEY_1.key
         assert (
-            sslkeys_with_summary_response.items[0].display
+            statistics_response.items[0].display
             == "blake F6:2D:B4:FF:B8:27:C0:5D:26:32:43:F2:DE:37:EE:6E"
         )
-        assert sslkeys_with_summary_response.items[1].key == SSLKEY_2.key
+        assert statistics_response.items[1].key == SSLKEY_2.key
         assert (
-            sslkeys_with_summary_response.items[1].display
+            statistics_response.items[1].display
             == "blake F0:A0:7B:FD:D8:2B:B7:D1:1A:77:FF:22:C9:90:EA:55"
         )
         services_mock.sslkeys.list.assert_called_with(
@@ -158,7 +156,7 @@ class TestSSLKeysApi(ApiCommonTests):
             ),
         )
 
-    async def test_list_with_summary_other_page(
+    async def test_list_statistics_other_page(
         self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.sslkeys = Mock(SSLKeysService)
@@ -166,17 +164,15 @@ class TestSSLKeysApi(ApiCommonTests):
             items=[SSLKEY_1], total=2
         )
         response = await mocked_api_client_user.get(
-            f"{V3_API_PREFIX}/users/me/sslkeys_with_summary?size=1"
+            f"{self.BASE_PATH}:statistics?size=1"
         )
         assert response.status_code == 200
-        sslkeys_with_summary_response = SSLKeysWithSummaryListResponse(
-            **response.json()
-        )
-        assert len(sslkeys_with_summary_response.items) == 1
-        assert sslkeys_with_summary_response.total == 2
+        statistics_response = SSLKeysStatisticsListResponse(**response.json())
+        assert len(statistics_response.items) == 1
+        assert statistics_response.total == 2
         assert (
-            sslkeys_with_summary_response.next
-            == f"{V3_API_PREFIX}/users/me/sslkeys_with_summary?page=2&size=1"
+            statistics_response.next
+            == f"{self.BASE_PATH}:statistics?page=2&size=1"
         )
 
     # GET /users/me/sslkeys/{id}
