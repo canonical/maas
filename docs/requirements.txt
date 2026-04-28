@@ -58,6 +58,7 @@ SQLAlchemy==2.0.49
 structlog==25.5.0
 Tempita==0.6.0
 temporalio==1.24.0
+python-ulid==3.1.0
 
 # Other dependencies, possibly dependencies of the above
 # due to this being an output of pip freeze.
