@@ -113,7 +113,8 @@ class BootSource(CleanSave, TimestampedModel):
         self.url = self.url.rstrip("/")
         if not self.name:
             self.name = self.url
-        self.priority = self._generate_priority()
+        if self.priority is None:
+            self.priority = self._generate_priority()
         self.skip_keyring_verification = (
             self._generate_skip_keyring_verification()
         )
