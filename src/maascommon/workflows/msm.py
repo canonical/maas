@@ -2,6 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import dataclasses
+from typing import Any
 
 # Workflows names
 MSM_ENROL_SITE_WORKFLOW_NAME = "msm-enrol-site"
@@ -69,6 +70,11 @@ class MSMSetBootSourceParam:
 class MSMSetSelectionsParam:
     selections: list[str]
     sm_url: str
+
+
+@dataclasses.dataclass
+class MSMSetGlobalConfigParam:
+    configuration: dict[str, Any]
 
 
 @dataclasses.dataclass

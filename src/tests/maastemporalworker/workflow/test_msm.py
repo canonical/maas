@@ -37,6 +37,7 @@ from maasservicelayer.services.boot_sources import (
     BootSourceSelectionsService,
     BootSourcesService,
 )
+from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maastemporalworker.workflow.msm import (
@@ -67,6 +68,7 @@ from maastemporalworker.workflow.msm import (
     MSMHeartbeatWorkflow,
     MSMRestoreDefaultBootSourceWorkflow,
     MSMSetBootSourceParam,
+    MSMSetGlobalConfigParam,
     MSMSetSelectionsParam,
     MSMTokenRefreshParam,
     MSMTokenRefreshWorkflow,
@@ -633,6 +635,19 @@ class TestMSMActivities:
                     sm_url=_MSM_BOOT_SOURCE_URL,
                 ),
             )
+
+    async def test_set_global_config(self, mocker, msm_act, services_mock):
+        services_mock.configurations = Mock(ConfigurationsService)
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        test_cfg = {"theme": "dark"}
+        param = MSMSetGlobalConfigParam(configuration=test_cfg)
+        await env.run(msm_act.set_global_config, param)
+        services_mock.configurations.clear_and_set_many.assert_called_once_with(
+            test_cfg
+        )
 
     async def test_delete_bootsources_activity(
         self, mocker, msm_act, services_mock

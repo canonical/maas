@@ -184,10 +184,12 @@ class ConfigurationsService(Service):
     async def clear_and_set_many(self, configuration: dict[str, Any]) -> None:
         """Clear the currently stored configuration and set it again. Does not support secrets."""
         try:
-            if any([
-                ConfigFactory.parse(name, value).stored_as_secret
-                for name, value in configuration.items()
-            ]):
+            if any(
+                [
+                    ConfigFactory.parse(name, value).stored_as_secret
+                    for name, value in configuration.items()
+                ]
+            ):
                 raise RuntimeError(
                     "clear_and_set_many does not support setting secrets."
                 )

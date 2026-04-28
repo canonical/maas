@@ -33,6 +33,7 @@ from maascommon.workflows.msm import (
     MSMHeartbeatParam,
     MSMRestoreDefaultBootSourceParam,
     MSMSetBootSourceParam,
+    MSMSetGlobalConfigParam,
     MSMSetSelectionsParam,
     MSMTokenRefreshParam,
 )
@@ -84,6 +85,7 @@ MSM_GET_VERSION_ACTIVITY_NAME = "msm-get-version"
 MSM_SEND_HEARTBEAT_ACTIVITY_NAME = "msm-send-heartbeat"
 MSM_SEND_ENROL_ACTIVITY_NAME = "msm-send-enrol"
 MSM_SET_BOOT_SOURCE_ACTIVITY_NAME = "msm-set-bootsource"
+MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME = "msm-set-global-config"
 MSM_SET_SELECTIONS_ACTIVITY_NAME = "msm-set-selections"
 
 MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME = "msm-delete-bootsources"
@@ -312,6 +314,13 @@ class MSMConnectorActivity(ActivityBase):
                 )
             )
             await services.boot_source_selections.create_many(builders)
+
+    @activity_defn_with_context(name=MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME)
+    async def set_global_config(self, input: MSMSetGlobalConfigParam) -> None:
+        async with self.start_transaction() as services:
+            await services.configurations.clear_and_set_many(
+                input.configuration
+            )
 
     @activity_defn_with_context(name=MSM_GET_ENROL_ACTIVITY_NAME)
     async def get_enrol(self) -> dict[str, Any]:
