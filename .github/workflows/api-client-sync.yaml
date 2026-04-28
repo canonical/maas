@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: Checkout canonical/maas
         uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - name: Checkout canonical/maas-ui
         uses: actions/checkout@v5
@@ -24,7 +22,6 @@ jobs:
           repository: canonical/maas-ui
           token: ${{ secrets.LANDER_GH_TOKEN }}
           path: fe-repo
-          fetch-depth: 0
 
       - name: Setup LXD
         uses: canonical/setup-lxd@v1
@@ -37,7 +34,6 @@ jobs:
           sudo snap refresh snapd
           sudo snap install --edge core26
           make snap
-          make snap-clean
 
       - name: Launch and configure LXD container
         id: setup-lxd
@@ -82,13 +78,13 @@ jobs:
           MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
           curl --noproxy "${MAAS_IP}" -L \
             "http://${MAAS_IP}:5240/MAAS/a/openapi.json" \
-            -o openapi-spec.json
+            -o fe-repo/openapi-spec.json
 
       - name: Upload OpenAPI spec artifact
         uses: actions/upload-artifact@v4
         with:
           name: openapi-spec
-          path: openapi-spec.json
+          path: fe-repo/openapi-spec.json
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -100,9 +96,6 @@ jobs:
       - name: Install MAAS UI dependencies
         working-directory: fe-repo
         run: yarn install --frozen-lockfile
-
-      - name: Copy OpenAPI spec to MAAS UI repo
-        run: cp openapi-spec.json fe-repo/
 
       - name: Update openapi-ts config to use local spec
         working-directory: fe-repo
@@ -117,16 +110,13 @@ jobs:
         working-directory: fe-repo
         run: yarn generate-api-client
 
-      - name: Restore openapi-ts config
-        working-directory: fe-repo
-        run: git checkout openapi-ts.config.ts
-
       - name: Create PR branch and push
         id: push-branch
         working-directory: fe-repo
         env:
           GH_TOKEN: ${{ secrets.LANDER_GH_TOKEN }}
         run: |
+          git checkout openapi-ts.config.ts
           git config user.name "${{ vars.LANDER_USERNAME }}"
           git config user.email "${{ vars.LANDER_EMAIL }}"
           git remote set-url origin "https://x-access-token:${{ secrets.LANDER_GH_TOKEN }}@github.com/canonical/maas-ui.git"
@@ -140,7 +130,6 @@ jobs:
           fi
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
 
-          # Check for an existing open PR from a previous run
           existing_branch=$(gh pr list \
             --repo canonical/maas-ui \
             --state open \
@@ -149,8 +138,8 @@ jobs:
 
           if [[ -n "$existing_branch" ]]; then
             echo "Found existing PR branch: $existing_branch — pushing to it."
-            git checkout -b "$existing_branch"
             BRANCH="$existing_branch"
+            git checkout -b "$BRANCH"
             echo "is_new_pr=false" >> "$GITHUB_OUTPUT"
           else
             BRANCH="chore/update-api-client-${{ github.sha }}"
@@ -160,7 +149,7 @@ jobs:
           fi
 
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-          git commit -m "chore: regenerate API client
+          git commit -m "chore(api): regenerated API client
 
           Triggered by: ${{ github.repository }}@${{ github.sha }}"
           git push origin "$BRANCH"
@@ -170,17 +159,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.LANDER_GH_TOKEN }}
         run: |
-          gh pr create \
+          PR_URL=$(gh pr create \
             --repo "canonical/maas-ui" \
             --head "${{ steps.push-branch.outputs.branch }}" \
             --base main \
-            --title "chore: regenerate API client" \
+            --title "chore(api): regenerated API client" \
             --body "$(cat <<'EOF'
-          ## Automated API client update
+          ## Done
 
-          **MAAS repo:** \`${{ github.repository }}\`
-          **MAAS commit:** \`${{ github.sha }}\`
+          - Regenerated the API client
 
-          Please review the diff in \`src/app/apiclient/\` and merge when ready.
+          ## Note
+
+          This is an auto-generated PR, make sure to review the changes.
           EOF
-          )"
+          )")
+
+          gh pr edit "$PR_URL" \
+            --repo "canonical/maas-ui" \
+            --add-label "Review: Code needed"
