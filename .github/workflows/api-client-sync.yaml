@@ -139,6 +139,15 @@ jobs:
       # -----------------------------------------------------------------------
       # Run the FE client generation script against the live demo instance.
       # -----------------------------------------------------------------------
+      - name: Download OpenAPI spec from live MAAS instance
+        run: |
+          export MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
+          curl --noproxy "${MAAS_IP}" -L \
+            "http://${MAAS_IP}:5240/MAAS/a/openapi.json" \
+            -o openapi-spec.json
+          echo "Downloaded OpenAPI spec:"
+          ls -lh openapi-spec.json
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -150,13 +159,47 @@ jobs:
         working-directory: fe-repo
         run: yarn install --frozen-lockfile
 
+      - name: Copy OpenAPI spec to MAAS UI repo
+        run: cp openapi-spec.json fe-repo/
+
+      - name: Update openapi-ts config to use local spec
+        working-directory: fe-repo
+        run: |
+          # Find and update the openapi-ts config file to use the local spec
+          if [[ -f "openapi-ts.config.ts" ]]; then
+            CONFIG_FILE="openapi-ts.config.ts"
+          elif [[ -f "openapi-ts.config.js" ]]; then
+            CONFIG_FILE="openapi-ts.config.js"
+          else
+            echo "ERROR: Could not find openapi-ts config file"
+            exit 1
+          fi
+          
+          # Backup the original config
+          cp "$CONFIG_FILE" "${CONFIG_FILE}.backup"
+          
+          # Replace the input URL with the local file
+          # This handles both single quotes and double quotes
+          sed -i "s|input:.*https://[^'\"]*|input: './openapi-spec.json'|g" "$CONFIG_FILE"
+          sed -i "s|'https://[^']*'|'./openapi-spec.json'|g" "$CONFIG_FILE"
+          sed -i 's|"https://[^"]*"|"./openapi-spec.json"|g' "$CONFIG_FILE"
+          
+          echo "Updated config file:"
+          cat "$CONFIG_FILE"
+
       - name: Generate API client
         working-directory: fe-repo
-        env:
-          # Point heyAPI at the live demo instance.
-          # Adjust the env var name to match what your openapi-ts config reads.
-          MAAS_BASE_URL: "http://${{ steps.setup-lxd.outputs.maas_ip }}:5240/MAAS"
         run: yarn generate-api-client
+
+      - name: Restore original openapi-ts config
+        working-directory: fe-repo
+        if: always()
+        run: |
+          if [[ -f "openapi-ts.config.ts.backup" ]]; then
+            mv openapi-ts.config.ts.backup openapi-ts.config.ts
+          elif [[ -f "openapi-ts.config.js.backup" ]]; then
+            mv openapi-ts.config.js.backup openapi-ts.config.js
+          fi
 
       # -----------------------------------------------------------------------
       # Commit the regenerated client and open a PR.
@@ -176,7 +219,20 @@ jobs:
 
           BRANCH="chore/update-api-client-${{ needs.check-api-contract-change.outputs.latest_schema_hash }}"
           git checkout -b "$BRANCH"
+          
+          # Show what changed
+          echo "Files modified:"
+          git status --short
+          
+          # Add only the generated client and hash file, not the config or spec
           git add src/app/apiclient/ .api-schema-hash
+          
+          # Verify there are changes to commit
+          if git diff --cached --quiet; then
+            echo "ERROR: No changes detected in the API client files"
+            exit 1
+          fi
+          
           git commit -m "chore: regenerate API client from updated contract
 
           Schema hash: ${{ needs.check-api-contract-change.outputs.latest_schema_hash }}
