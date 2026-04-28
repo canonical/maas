@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout canonical/maas
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Checkout canonical/maas-ui
         uses: actions/checkout@v5
@@ -34,6 +36,7 @@ jobs:
           sudo snap refresh snapd
           sudo snap install --edge core26
           make snap
+          make snap-clean
 
       - name: Launch and configure LXD container
         id: setup-lxd
