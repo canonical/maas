@@ -109,7 +109,7 @@ class BootSource(CleanSave, TimestampedModel):
             )
 
     def clean_fields(self, exclude=None):
-        # Always strip the traling slash
+        # Always strip the trailing slash
         self.url = self.url.rstrip("/")
         if not self.name:
             self.name = self.url
