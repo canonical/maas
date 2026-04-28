@@ -45,9 +45,12 @@ def get_os_info_from_boot_sources(os):
 
 
 def cache_boot_sources(boot_source_id: int | None = None):
+    workflow_id = "fetch-manifest"
+    if boot_source_id is not None:
+        workflow_id += f"-{boot_source_id}"
     start_workflow(
         FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
-        workflow_id="fetch-manifest",
+        workflow_id=workflow_id,
         param=boot_source_id,
         task_queue=REGION_TASK_QUEUE,
         id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
