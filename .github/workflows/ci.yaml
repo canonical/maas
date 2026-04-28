@@ -64,6 +64,11 @@ jobs:
               - 'src/**/go.sum'
             docs:
               - 'docs/**'
+              - 'src/**/*.py'
+              - 'utilities/generate_builders.py'
+              - 'utilities/run-py-tests-ci'
+              - 'pyproject.toml'
+              - 'tox.ini'
 
   lint:
     runs-on: ubuntu-24.04
