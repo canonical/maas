@@ -61,14 +61,14 @@ class BootSourceSelection(CleanSave, TimestampedModel):
             "labels": self.labels,
         }
 
-    def delete(self):
+    def delete(self, *args, **kwargs):
         """Delete without checking if this selection is the one used for commissioning."""
         selections_to_delete = BootSourceSelectionNew.objects.filter(
             legacy_selection=self
         )
         for selection in selections_to_delete:
             selection.delete()
-        return super().delete()
+        return super().delete(*args, **kwargs)
 
     def create_new_selections(self):
         """Create the `BootSourceSelectionNew`s from this legacy selection."""
