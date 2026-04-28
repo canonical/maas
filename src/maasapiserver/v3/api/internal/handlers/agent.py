@@ -213,11 +213,14 @@ class AgentHandler(Handler):
             query=query_bootstraptoken
         )
         if bootstraptoken is None or utcnow() >= bootstraptoken.expires_at:
-            logger.info(
-                f"{AUTHN_TOKEN_REUSED}:bootstraptoken",
-                type=SECURITY,
-                token_hash=hash_token_for_logging(agent_enroll_request.secret),
-            )
+            if bootstraptoken:
+                logger.info(
+                    f"{AUTHN_TOKEN_REUSED}:bootstraptoken",
+                    type=SECURITY,
+                    token_hash=hash_token_for_logging(
+                        agent_enroll_request.secret
+                    ),
+                )
             raise UnauthorizedException(
                 details=[
                     BaseExceptionDetail(
