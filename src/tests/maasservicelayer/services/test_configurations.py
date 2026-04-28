@@ -369,3 +369,66 @@ class TestConfigurationsService:
             VCenterPasswordConfig.secret_model, "bar"
         )
         service.database_configurations_service.create_or_update.assert_not_called()
+
+    async def test_clear_and_set_many(self) -> None:
+        service = ConfigurationsService(
+            context=Context(),
+            database_configurations_service=Mock(
+                DatabaseConfigurationsService
+            ),
+            secrets_service=Mock(SecretsService),
+            events_service=Mock(EventsService),
+        )
+        test_cfg = {"theme": "dark"}
+        await service.clear_and_set_many(test_cfg)
+        service.database_configurations_service.clear_and_set_many.assert_called_once_with(
+            test_cfg
+        )
+
+    async def test_clear_and_set_many_fails_unknown_cfg(self):
+        service = ConfigurationsService(
+            context=Context(),
+            database_configurations_service=Mock(
+                DatabaseConfigurationsService
+            ),
+            secrets_service=Mock(SecretsService),
+            events_service=Mock(EventsService),
+        )
+        test_cfg = {"notasetting": "notavalue"}
+        with pytest.raises(
+            RuntimeError,
+            match="Some configuration options are unknown or invalid.",
+        ):
+            await service.clear_and_set_many(test_cfg)
+
+    async def test_clear_and_set_many_fails_invalid_value(self):
+        service = ConfigurationsService(
+            context=Context(),
+            database_configurations_service=Mock(
+                DatabaseConfigurationsService
+            ),
+            secrets_service=Mock(SecretsService),
+            events_service=Mock(EventsService),
+        )
+        test_cfg = {"theme": 2}
+        with pytest.raises(
+            RuntimeError,
+            match="Some configuration options are unknown or invalid.",
+        ):
+            await service.clear_and_set_many(test_cfg)
+
+    async def test_clear_and_set_many_fails_secret(self):
+        service = ConfigurationsService(
+            context=Context(),
+            database_configurations_service=Mock(
+                DatabaseConfigurationsService
+            ),
+            secrets_service=Mock(SecretsService),
+            events_service=Mock(EventsService),
+        )
+        test_cfg = {"vcenter_password": "superawesomepassword9000"}
+        with pytest.raises(
+            RuntimeError,
+            match="clear_and_set_many does not support setting secrets.",
+        ):
+            await service.clear_and_set_many(test_cfg)

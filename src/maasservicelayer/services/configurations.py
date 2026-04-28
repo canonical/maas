@@ -181,6 +181,24 @@ class ConfigurationsService(Service):
                 DatabaseConfigurationBuilder(name=name, value=value)
             )
 
+    async def clear_and_set_many(self, configuration: dict[str, Any]) -> None:
+        """Clear the currently stored configuration and set it again. Does not support secrets."""
+        try:
+            if any([
+                ConfigFactory.parse(name, value).stored_as_secret
+                for name, value in configuration.items()
+            ]):
+                raise RuntimeError(
+                    "clear_and_set_many does not support setting secrets."
+                )
+        except ValueError as err:
+            raise RuntimeError(
+                "Some configuration options are unknown or invalid."
+            ) from err
+        await self.database_configurations_service.clear_and_set_many(
+            configuration
+        )
+
     async def get_maas_user_agent(self):
         # TODO: move get_running_version to maascommon.
         version = get_running_version()

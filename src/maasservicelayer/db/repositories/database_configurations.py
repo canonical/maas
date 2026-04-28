@@ -1,7 +1,9 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from sqlalchemy import select
+from typing import Any
+
+from sqlalchemy import Connection, delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.operators import eq
 
@@ -60,3 +62,29 @@ class DatabaseConfigurationsRepository(Repository):
         )
         result = (await self.execute_stmt(upsert_stmt)).one()
         return DatabaseConfiguration(**result._asdict())
+
+    async def clear(self) -> None:
+        await self.execute_stmt(delete(ConfigTable))
+
+    async def set_many(
+        self, configuration: dict[str, Any]
+    ) -> list[DatabaseConfiguration]:
+        """
+        Set many configuration items at once. This method cannot be called when
+        the database connection is a psycopg2 connection handled by Django.
+        Args:
+            configuration: The configuration to set in the database. Keys of
+            this dict are the names of the configuration items.
+        """
+        connection = self.context.get_connection()
+        if isinstance(connection, Connection):
+            raise RuntimeError(
+                "DatabaseConfigurationsRepository.set_many cannot be called when the database connection is a psycopg2 connection handled by Django."
+            )
+        stmt = pg_insert(ConfigTable).returning(ConfigTable)
+        data = [
+            {"name": key, "value": value}
+            for key, value in configuration.items()
+        ]
+        result = await connection.execute(stmt, data)
+        return [DatabaseConfiguration(**row._asdict()) for row in result.all()]
