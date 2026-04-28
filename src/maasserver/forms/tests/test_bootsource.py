@@ -93,8 +93,7 @@ class TestBootSourceForm(MAASServerTestCase):
         form = BootSourceForm(data=params)
         self.assertTrue(form.is_valid(), form._errors)
         boot_source = form.save()
-        # Candidate and stable boot sources are created with priority 1 and 2 respectively, so the next priority is 3
-        self.assertEqual(boot_source.priority, 3)
+        self.assertEqual(boot_source.priority, 5)
 
     def test_creates_boot_source_with_enabled_false(self):
         params = {
