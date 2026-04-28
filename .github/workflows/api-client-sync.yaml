@@ -124,30 +124,49 @@ jobs:
       - name: Create PR branch and push
         id: push-branch
         working-directory: fe-repo
+        env:
+          GH_TOKEN: ${{ secrets.LANDER_GH_TOKEN }}
         run: |
           git config user.name "${{ vars.LANDER_USERNAME }}"
           git config user.email "${{ vars.LANDER_EMAIL }}"
-
-          BRANCH="chore/update-api-client-${{ github.sha }}"
-          git checkout -b "$BRANCH"
+          git remote set-url origin "https://x-access-token:${{ secrets.LANDER_GH_TOKEN }}@github.com/canonical/maas-ui.git"
 
           git add src/app/apiclient/
-          
+
           if git diff --cached --quiet; then
             echo "No changes detected in the API client files, skipping PR."
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+          # Check for an existing open PR from a previous run
+          existing_branch=$(gh pr list \
+            --repo canonical/maas-ui \
+            --state open \
+            --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("chore/update-api-client-"))] | first | .headRefName')
+
+          if [[ -n "$existing_branch" ]]; then
+            echo "Found existing PR branch: $existing_branch — pushing to it."
+            git checkout -b "$existing_branch"
+            echo "branch=$existing_branch" >> "$GITHUB_OUTPUT"
+            echo "is_new_pr=false" >> "$GITHUB_OUTPUT"
+          else
+            BRANCH="chore/update-api-client-${{ github.sha }}"
+            echo "No existing PR found — creating new branch: $BRANCH"
+            git checkout -b "$BRANCH"
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+            echo "is_new_pr=true" >> "$GITHUB_OUTPUT"
+          fi
 
           git commit -m "chore: regenerate API client
 
           Triggered by: ${{ github.repository }}@${{ github.sha }}"
-          git push origin "$BRANCH"
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          git push origin "${{ steps.push-branch.outputs.branch }}"
 
       - name: Open PR on MAAS UI repo
-        if: steps.push-branch.outputs.has_changes == 'true'
+        if: steps.push-branch.outputs.has_changes == 'true' && steps.push-branch.outputs.is_new_pr == 'true'
         env:
           GH_TOKEN: ${{ secrets.LANDER_GH_TOKEN }}
         run: |
