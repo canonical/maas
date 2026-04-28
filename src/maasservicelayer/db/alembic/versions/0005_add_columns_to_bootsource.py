@@ -234,7 +234,9 @@ def upgrade() -> None:
     op.alter_column("maasserver_bootsource", "name", nullable=False)
     op.alter_column("maasserver_bootsource", "priority", nullable=False)
 
-    op.alter_column("maasserver_bootsource", "enabled", server_default=None)
+    op.alter_column(
+        "maasserver_bootsource", "enabled", nullable=False, server_default=None
+    )
 
     op.alter_column(
         "maasserver_bootsource",
