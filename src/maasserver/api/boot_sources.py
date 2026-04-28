@@ -204,11 +204,18 @@ class BootSourcesHandler(OperationsHandler):
 
         @param (string) "url" [required=true] The URL of the BootSource.
 
+        @param (string) "name" [required=false] The name of the BootSource.
+
         @param (string) "keyring_filename" [required=false] The path to the
         keyring file for this BootSource.
 
         @param (string) "keyring_data" [required=false] The GPG keyring for
         this BootSource, base64-encoded.
+
+        @param (int) "priority" [required=false] The priority for this BootSource.
+
+        @param (boolean) "enabled" [required=false] Whether this BootSource is
+        enabled or not.
 
         @param (boolean) "skip_keyring_verification" [required=false] If true,
         keyring signature verification will be skipped.
