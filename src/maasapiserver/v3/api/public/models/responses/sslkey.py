@@ -31,8 +31,8 @@ class SSLKeyListResponse(PaginatedResponse[SSLKeyResponse]):
     kind: str = Field(default="SSLKeys")
 
 
-class SSLKeyWithSummaryResponse(SSLKeyResponse):
-    kind: str = Field(default="SSLKeyWithSummary")
+class SSLKeyStatisticsResponse(SSLKeyResponse):
+    kind: str = Field(default="SSLKeyStatistics")
     display: str
 
     @classmethod
@@ -44,7 +44,7 @@ class SSLKeyWithSummaryResponse(SSLKeyResponse):
         )
 
 
-class SSLKeysWithSummaryListResponse(
-    PaginatedResponse[SSLKeyWithSummaryResponse]
+class SSLKeysStatisticsListResponse(
+    PaginatedResponse[SSLKeyStatisticsResponse]
 ):
-    kind: str = Field(default="SSLKeysWithSummary")
+    kind: str = Field(default="SSLKeysStatisticsList")
