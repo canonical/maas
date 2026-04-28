@@ -11,4 +11,4 @@ export MAAS_INTERNALAPISERVER_HTTP_SOCKET_PATH="$SNAP_DATA/internalapiserver-htt
 export MAAS_REGION_CONFIG="$SNAP_DATA/regiond.conf"
 export MAAS_OPENFGA_HTTP_SOCKET_PATH="$SNAP_DATA/openfga-http.sock"
 
-exec "$SNAP/bin/maas-apiserver"
+exec "$SNAP/usr/bin/maas-apiserver"

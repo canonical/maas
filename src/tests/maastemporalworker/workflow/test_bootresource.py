@@ -706,7 +706,6 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.boot_sources.get_many.assert_awaited_once()
         services_mock.image_manifests.fetch_and_update.assert_awaited_once()
         services_mock.boot_source_cache.update_from_image_manifest.assert_awaited_once()
-        services_mock.image_sync.sync_boot_source_selections_from_msm.assert_awaited_once()
         services_mock.image_sync.check_commissioning_series_selected.assert_awaited_once()
         services_mock.boot_source_selections.ensure_selections_from_legacy.assert_awaited_once()
         services_mock.notifications.delete_one.assert_awaited_once_with(

@@ -3,20 +3,25 @@ Section: net
 Priority: optional
 Maintainer: MAAS developers <maas-devel@lists.ubuntu.com>
 Build-Depends: clang,
-               debhelper (>= 13),
+               debhelper-compat (= 13),
                dh-apport,
                dh-exec,
                dh-python,
                fakeroot,
+               git,
                golang-go (>= 2:1.24~),
                libbpf-dev,
+               libcairo2-dev,
                libdqlite1.17-dev,
                llvm,
                po-debconf,
                python3-all,
+               python3-dev,
                python3-django,
+               python3-pip,
                python3-setuptools,
-               python3-twisted
+               python3-twisted,
+               python3-venv
 Standards-Version: 4.1.3
 X-Python3-Version: >= 3.14
 Homepage: http://maas.io/
@@ -62,9 +67,11 @@ Description: "Metal as a Service" is a physical cloud and IPAM
 
 Package: maas-common
 Architecture: all
+Pre-Depends: debconf
 Depends: avahi-utils,
          nginx-core,
          rsyslog,
+         maas-machine-resources (= ${binary:Version}),
          ${misc:Depends},
          ${python3:Depends},
          python3-maas-provisioningserver
@@ -73,8 +80,16 @@ Replaces: maas ( <= 0.1+bzr1048+dfsg-0ubuntu1 )
 Description: MAAS server common files
  This package contains the common files for any MAAS installation.
 
+Package: maas-machine-resources
+Architecture: any
+Depends: ${misc:Depends}
+Description: Machine resource binaries for MAAS
+ Contains architecture-specific binary blobs that are served by MAAS
+ to provisioning machines during deployment.
+
 Package: maas-region-api
-Architecture: all
+Architecture: any
+Pre-Depends: debconf
 Depends: bind9 (>= 1:9.18),
          bind9utils,
          chrony,
@@ -131,7 +146,7 @@ Depends: dbconfig-pgsql,
          maas-region-api (= ${binary:Version}),
          postgresql (>= 16),
          tcpdump,
-         ${misc:Depends},
+         ${misc:Depends}
 Recommends: openssh-server
 Suggests: nmap
 Description: Region Controller for MAAS
@@ -155,7 +170,7 @@ Depends: lshw,
          python3-attr,
          python3-bson,
          python3-crochet,
-         python3-curtin (>= 2.13),
+         python3-curtin (>= 23.1.1),
          python3-distro-info,
          python3-formencode,
          python3-jsonschema,
@@ -223,6 +238,7 @@ Description: MAAS python API client (Python 3)
 
 Package: maas-rack-controller
 Architecture: all
+Pre-Depends: debconf
 Depends: avahi-utils,
          bind9 (>= 1:9.18),
          bind9utils,
@@ -279,7 +295,8 @@ Architecture: all
 Depends: python3-apt,
          python3-attr,
          python3-crochet,
-         python3-curtin (>= 2.13),
+         python3-curtin (>= 23.1.1),
+         python3-django,
          python3-lxml,
          python3-maas-client (= ${binary:Version}),
          python3-markupsafe,
@@ -301,14 +318,17 @@ Description: MAAS server Django web framework (Python 3)
 
 Package: maas-dhcp
 Architecture: all
-Depends: isc-dhcp-server (>= 4.4.3-P1-1), ${misc:Depends}
+Pre-Depends: debconf
+Depends: isc-dhcp-server (>= 4.4.3-P1-1),
+         ${misc:Depends}
 Description: MAAS DHCP server
  This package installs and configures a DHCP server that can be used by
  MAAS, and enhances the overall MAAS user experience.
 
 Package: maas-dns
+Section: oldlibs
 Architecture: all
-Depends: maas-region-api (>= 2.4.0~beta1~), ${misc:Depends}
+Depends: maas-region-api (= ${binary:Version}), ${misc:Depends}
 Description: dummy transitional package for MAAS DNS server
  This package can be safely removed, as the configuration this package
  performed is now integrated in 'maas-region-api'.
@@ -323,12 +343,15 @@ Description: MAAS Caching Proxy
 
 Package: maas-netmon
 Architecture: any
+Depends: ${misc:Depends}
 Description: MAAS Network Monitor
  This package provides MAAS Network Monitor binary that is used by MAAS.
 
 Package: maas-agent
 Architecture: any
 Pre-Depends: maas-common (=${binary:Version})
-Description: MAAS Agent
- This package provides the MAAS Agent binary that is used by MAAS to
- gradually replace the Rack Controller.
+Depends: ${misc:Depends}
+Description: MAAS agent replacing rack controller functionality
+ The MAAS Agent is progressively replacing the MAAS rack controller and
+ assimilating its services, including DHCP/TFTP, power management, and
+ hardware inventory used for provisioning and lifecycle operations.

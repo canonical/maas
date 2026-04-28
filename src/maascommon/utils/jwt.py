@@ -44,11 +44,18 @@ def decode_unverified_jwt(
 
         if expected_audience is not None:
             aud = claims.get("aud")
-            if aud != expected_audience:
+            throw = False
+            match aud:
+                case str():
+                    throw = aud != expected_audience
+                case list():
+                    throw = expected_audience not in aud
+                case None:
+                    throw = True
+            if throw:
                 raise JWTAudienceError(
                     f"invalid audience: expected {expected_audience}, got {aud}"
                 )
-
         return claims
 
     except (

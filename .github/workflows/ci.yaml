@@ -31,7 +31,9 @@ jobs:
 
       - name: Set build env image tag
         id: image
-        run: echo "tag=${{ github.event.merge_group.base_ref || github.base_ref || github.ref_name }}" >> $GITHUB_OUTPUT
+        run: |
+          ref="${{ github.event.merge_group.base_ref || github.base_ref || github.ref_name }}"
+          echo "tag=${ref#refs/heads/}" >> $GITHUB_OUTPUT
 
       - uses: dorny/paths-filter@61f87a10cd2c304679af17bb73ef192addf33c1c
         id: filter
@@ -49,6 +51,7 @@ jobs:
               - 'src/**/go.mod'
               - 'src/**/go.sum'
               - 'src/**/Makefile'
+              - 'snap/local/tree/usr/bin/*'
             python:
               - 'src/**/*.py'
               - 'utilities/generate_builders.py'
@@ -60,7 +63,7 @@ jobs:
               - 'src/**/go.mod'
               - 'src/**/go.sum'
             docs:
-              - 'rtd-docs/**'
+              - 'docs/**'
 
   lint:
     runs-on: ubuntu-24.04
@@ -131,16 +134,16 @@ jobs:
       with:
         fetch-depth: 0
     - name: Create venv
-      working-directory: "rtd-docs"
+      working-directory: "docs"
       run: make install
     - name: Lint markdown
-      working-directory: "rtd-docs"
+      working-directory: "docs"
       run: make lint-md
     - name: Test build
-      working-directory: "rtd-docs"
+      working-directory: "docs"
       run: make html
     - name: Run scripts tests
-      working-directory: "rtd-docs"
+      working-directory: "docs"
       run: |
         source .sphinx/venv/bin/activate
         pip install -r requirements-dev.txt
@@ -152,5 +155,5 @@ jobs:
     needs: [lint, test-python, test-go, test-docs]
     steps:
       - name: Check job results
-        if: needs.*.result == 'failure'
+        if: contains(needs.*.result, 'failure')
         run: exit 1

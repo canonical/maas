@@ -9,13 +9,17 @@ from temporalio.client import (
     Schedule,
     ScheduleActionStartWorkflow,
     ScheduleIntervalSpec,
+    ScheduleOverlapPolicy,
+    SchedulePolicy,
     ScheduleSpec,
+    ScheduleState,
     ScheduleUpdate,
     ScheduleUpdateInput,
 )
 
 from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+    MASTER_IMAGE_SYNC_WORKFLOW_NAME,
 )
 from maastemporalworker.worker import REGION_TASK_QUEUE
 
@@ -29,8 +33,75 @@ SCHEDULES: Final[dict[str, Schedule]] = {
         spec=ScheduleSpec(
             intervals=[ScheduleIntervalSpec(every=timedelta(minutes=10))]
         ),
-    )
+    ),
+    MASTER_IMAGE_SYNC_WORKFLOW_NAME: Schedule(
+        action=ScheduleActionStartWorkflow(
+            MASTER_IMAGE_SYNC_WORKFLOW_NAME,
+            id=MASTER_IMAGE_SYNC_WORKFLOW_NAME,
+            task_queue=REGION_TASK_QUEUE,
+        ),
+        spec=ScheduleSpec(
+            # Will be updated at startup with the value from the db
+            intervals=[ScheduleIntervalSpec(every=timedelta(minutes=60))]
+        ),
+        # Will be updated at startup with the value from the db
+        state=ScheduleState(paused=True),
+        policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.CANCEL_OTHER),
+    ),
 }
+
+
+def _master_image_sync_updater(
+    sync_interval_minutes: int, auto_import_enabled_config: bool | None = None
+):
+    async def do_update(input: ScheduleUpdateInput) -> ScheduleUpdate:
+        master_image_sync_schedule = SCHEDULES[MASTER_IMAGE_SYNC_WORKFLOW_NAME]
+        master_image_sync_schedule.spec = ScheduleSpec(
+            intervals=[
+                ScheduleIntervalSpec(
+                    every=timedelta(minutes=sync_interval_minutes)
+                )
+            ]
+        )
+        schedule_description = input.description
+        # When updating a schedule ALL the options must be specified again.
+        # Here we save the current state in order to avoid un-pausing the schedule
+        # when only changing the sync interval
+        current_state = schedule_description.schedule.state
+        if auto_import_enabled_config is not None:
+            # On startup, set the state based on the config
+            current_state.paused = not auto_import_enabled_config
+        schedule_description.schedule = master_image_sync_schedule
+        schedule_description.schedule.state = current_state
+        return ScheduleUpdate(schedule=schedule_description.schedule)
+
+    return do_update
+
+
+async def update_master_image_sync_schedule(
+    client: Client,
+    sync_interval_minutes_config: int,
+    auto_import_enabled_config: bool | None = None,
+):
+    handle = client.get_schedule_handle(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
+    await handle.update(
+        _master_image_sync_updater(
+            sync_interval_minutes_config, auto_import_enabled_config
+        )
+    )
+    if auto_import_enabled_config:
+        await handle.trigger()
+
+
+async def pause_or_unpause_master_image_sync_schedule(
+    client: Client, auto_import_enabled_config: bool | None
+):
+    handle = client.get_schedule_handle(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
+    if auto_import_enabled_config:
+        await handle.unpause()
+        await handle.trigger()
+    else:
+        await handle.pause()
 
 
 async def update_schedule(input: ScheduleUpdateInput) -> ScheduleUpdate:
@@ -68,9 +139,20 @@ async def setup_schedules(client: Client):
 
     schedules_to_add = expected_schedules - registered_schedules
     for schedule in schedules_to_add:
-        await client.create_schedule(schedule, SCHEDULES[schedule])
+        schedule_def = SCHEDULES[schedule]
+        is_paused = (
+            schedule_def.state is not None and schedule_def.state.paused
+        )
+        await client.create_schedule(
+            id=schedule,
+            schedule=schedule_def,
+            trigger_immediately=not is_paused,
+        )
 
     schedules_to_update = registered_schedules - schedules_to_delete
+    # Handled with `update_master_image_sync_schedule` above
+    schedules_to_update.discard(MASTER_IMAGE_SYNC_WORKFLOW_NAME)
     for schedule in schedules_to_update:
         handle = client.get_schedule_handle(schedule)
         await handle.update(update_schedule)
+        await handle.trigger()

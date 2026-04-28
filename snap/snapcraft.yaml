@@ -8,7 +8,7 @@ confinement: strict
 base: core26
 build-base: devel
 assumes:
-  - snapd2.53
+  - snapd2.75
 system-usernames:
   snap_daemon: shared
 # epochs:
@@ -204,6 +204,8 @@ parts:
       - util-linux
       - wget # DLI
       - wsmancli # AMT
+    build-attributes:
+      - enable-usrmerge
     organize:
       lib/python3.*/site-packages/etc/*: etc/
       lib/python3.*/site-packages/usr/bin/*: usr/bin/
@@ -215,7 +217,6 @@ parts:
       usr/local/bin/*: usr/bin/
       usr/local/lib/python3.14/*: usr/lib/python3.14/
     stage:
-      - bin
       - etc/bind
       - etc/chrony
       - etc/freeipmi
@@ -223,8 +224,6 @@ parts:
       - etc/maas
       - etc/nginx
       - etc/openwsman
-      - sbin
-      - lib
       - -lib/python3.*/site-packages/etc
       - -lib/python3.*/site-packages/usr
       - -lib/python3/dist-packages/maastesting
@@ -275,9 +274,21 @@ parts:
 
   offline-docs:
     plugin: make
-    source: src/maas-offline-docs
-    make-parameters:
-      - BUILD_TYPE=snap
+    source: .
+    build-packages:
+      - python3-venv
+      - python3-pip
+      - libcairo2
+      - python3-dev    # netifaces requirement
+      - git            # for git+https://git.launchpad.net/django-piston3 in requirements.txt
+    override-build: |
+      cd $CRAFT_PART_SRC/docs
+      make html
+      INSTALL_DIR="$CRAFT_PART_INSTALL/usr/share/maas/web/static/docs"
+      mkdir -p "$INSTALL_DIR"
+      cp -a _build/* "$INSTALL_DIR/"
+    prime:
+      - usr/share/maas/web/static/docs
 
   host-info:
     plugin: make
