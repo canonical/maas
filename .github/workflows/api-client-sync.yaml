@@ -107,17 +107,11 @@ jobs:
       - name: Update openapi-ts config to use local spec
         working-directory: fe-repo
         run: |
-          if [[ -f "openapi-ts.config.ts" ]]; then
-            CONFIG_FILE="openapi-ts.config.ts"
-          elif [[ -f "openapi-ts.config.js" ]]; then
-            CONFIG_FILE="openapi-ts.config.js"
-          else
-            echo "ERROR: Could not find openapi-ts config file"
-            exit 1
-          fi
-          sed -i "s|input:.*https://[^'\"]*|input: './openapi-spec.json'|g" "$CONFIG_FILE"
-          sed -i "s|'https://[^']*'|'./openapi-spec.json'|g" "$CONFIG_FILE"
-          sed -i 's|"https://[^"]*"|"./openapi-spec.json"|g' "$CONFIG_FILE"
+          python3 -c "
+          import re, pathlib
+          p = pathlib.Path('openapi-ts.config.ts')
+          p.write_text(re.sub(r'input:.*', \"input: './openapi-spec.json',\", p.read_text()))
+          "
 
       - name: Generate API client
         working-directory: fe-repo
