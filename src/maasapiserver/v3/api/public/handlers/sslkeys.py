@@ -1,11 +1,10 @@
 # Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Sequence, Union
+from typing import Union
 
 from fastapi import Depends, Header, Response
 from starlette import status
-from starlette.concurrency import run_in_threadpool
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -22,8 +21,8 @@ from maasapiserver.v3.api.public.models.responses.base import (
 from maasapiserver.v3.api.public.models.responses.sslkey import (
     SSLKeyListResponse,
     SSLKeyResponse,
-    SSLKeysWithSummaryListResponse,
-    SSLKeyWithSummaryResponse,
+    SSLKeysStatisticsListResponse,
+    SSLKeyStatisticsResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_authentication,
@@ -34,7 +33,6 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.auth import AuthenticatedUser
-from maasservicelayer.models.sslkeys import SSLKey
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -94,30 +92,27 @@ class SSLKeysHandler(Handler):
         )
 
     @handler(
-        path="/users/me/sslkeys_with_summary",
+        path="/users/me/sslkeys:statistics",
         methods=["GET"],
         tags=TAGS,
         responses={
             200: {
-                "model": SSLKeysWithSummaryListResponse,
+                "model": SSLKeysStatisticsListResponse,
             },
             401: {"model": UnauthorizedBodyResponse},
         },
-        summary="List sslkeys with a summary. ONLY FOR INTERNAL USAGE.",
-        description="List sslkeys with a summary. This endpoint is only for internal usage and might be changed or removed "
-        "without notice.",
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[Depends(check_authentication())],
     )
-    async def get_user_sslkeys_with_summary(
+    async def list_user_sslkeys_statistics(
         self,
         authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> SSLKeysWithSummaryListResponse:
+    ) -> SSLKeysStatisticsListResponse:
         assert authenticated_user is not None
 
         sslkeys = await services.sslkeys.list(
@@ -128,20 +123,16 @@ class SSLKeysHandler(Handler):
             ),
         )
 
-        def _build_items(items: Sequence[SSLKey]):
-            return [
-                SSLKeyWithSummaryResponse.from_model(
+        return SSLKeysStatisticsListResponse(
+            items=[
+                SSLKeyStatisticsResponse.from_model(
                     sslkey=sslkey,
                 )
-                for sslkey in items
-            ]
-
-        items = await run_in_threadpool(_build_items, sslkeys.items)
-        return SSLKeysWithSummaryListResponse(
-            items=items,
+                for sslkey in sslkeys.items
+            ],
             total=sslkeys.total,
             next=(
-                f"{V3_API_PREFIX}/users/me/sslkeys_with_summary?"
+                f"{V3_API_PREFIX}/users/me/sslkeys:statistics?"
                 f"{pagination_params.to_next_href_format()}"
                 if sslkeys.has_next(
                     pagination_params.page, pagination_params.size
