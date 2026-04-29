@@ -15,6 +15,14 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsClauseFactory,
 )
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.configurations import (
     Config,
     ConfigFactory,
@@ -190,12 +198,22 @@ class ConfigurationsService(Service):
                     for name, value in configuration.items()
                 ]
             ):
-                raise RuntimeError(
-                    "clear_and_set_many does not support setting secrets."
+                raise ValidationException(
+                    [
+                        BaseExceptionDetail(
+                            type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                            message="clear_and_set_many does not support setting secrets.",
+                        )
+                    ]
                 )
         except ValueError as err:
-            raise RuntimeError(
-                "Some configuration options are unknown or invalid."
+            raise ValidationException(
+                [
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message="Some configuration options are unknown or invalid.",
+                    )
+                ]
             ) from err
         await self.database_configurations_service.clear_and_set_many(
             configuration

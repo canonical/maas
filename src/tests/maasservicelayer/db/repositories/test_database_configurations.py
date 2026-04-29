@@ -112,16 +112,3 @@ class TestDatabaseConfigurationsRepository:
         assert configuration[0].value == "value1"
         assert configuration[1].name == "test2"
         assert configuration[1].value == 2
-
-    async def test_set_many_errors_with_sync_connection(
-        self, db_connection_sync: Connection
-    ) -> None:
-        database_configuration_repository = DatabaseConfigurationsRepository(
-            Context(connection=db_connection_sync)
-        )
-        test_cfg = {"test1": "value1", "test2": 2}
-        with pytest.raises(
-            RuntimeError,
-            match="set_many cannot be called when the database connection is a psycopg2 connection",
-        ):
-            await database_configuration_repository.set_many(test_cfg)

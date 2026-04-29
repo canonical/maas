@@ -70,21 +70,19 @@ class DatabaseConfigurationsRepository(Repository):
         self, configuration: dict[str, Any]
     ) -> list[DatabaseConfiguration]:
         """
-        Set many configuration items at once. This method cannot be called when
-        the database connection is a psycopg2 connection handled by Django.
+        Set many configuration items at once.
         Args:
             configuration: The configuration to set in the database. Keys of
             this dict are the names of the configuration items.
         """
         connection = self.context.get_connection()
-        if isinstance(connection, Connection):
-            raise RuntimeError(
-                "DatabaseConfigurationsRepository.set_many cannot be called when the database connection is a psycopg2 connection handled by Django."
-            )
         stmt = pg_insert(ConfigTable).returning(ConfigTable)
         data = [
             {"name": key, "value": value}
             for key, value in configuration.items()
         ]
-        result = await connection.execute(stmt, data)
+        if isinstance(connection, Connection):
+            result = connection.execute(stmt, data)
+        else:
+            result = await connection.execute(stmt, data)
         return [DatabaseConfiguration(**row._asdict()) for row in result.all()]
