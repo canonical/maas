@@ -5,9 +5,9 @@ from sqlalchemy import delete, desc, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq
+from ulid import ULID
 
 from maascommon.enums.openfga import OPENFGA_STORE_ID
-from maascommon.utils.ulid import generate_ulid
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.mappers.base import (
@@ -103,7 +103,7 @@ class OpenFGATuplesRepository(Repository):
         resource = self.get_mapper().build_resource(builder)
 
         new_timestamp = utcnow()
-        new_ulid = generate_ulid()
+        new_ulid = str(ULID())
 
         values = {
             **resource.get_values(),
@@ -143,7 +143,7 @@ class OpenFGATuplesRepository(Repository):
                 **self.get_mapper().build_resource(builder).get_values(),
                 "store": OPENFGA_STORE_ID,
                 "inserted_at": new_timestamp,
-                "ulid": generate_ulid(),
+                "ulid": str(ULID()),
             }
             for builder in builders
         ]

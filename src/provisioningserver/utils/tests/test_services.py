@@ -10,7 +10,6 @@ import random
 import socket
 import threading
 from unittest.mock import ANY, call, Mock
-from uuid import uuid1
 
 from twisted.application.service import MultiService
 from twisted.internet import reactor
@@ -30,6 +29,7 @@ from twisted.internet.task import Clock
 from twisted.logger import formatEvent, LogLevel
 from twisted.python import threadable
 from twisted.python.failure import Failure
+from ulid import ULID
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
@@ -1109,12 +1109,12 @@ def wait_for_rx_packets(beacon_protocol, count, deferred=None):
 class FakeBeaconPayload(BeaconPayload):
     def __new__(
         cls,
-        uuid,
+        ulid,
         payload=None,
         ifname="eth0",
         mac=None,
         vid=None,
-        version=1,
+        version=2,
         beacon_type="solicitation",
     ):
         if payload is None:
@@ -1123,7 +1123,7 @@ class FakeBeaconPayload(BeaconPayload):
                 remote["mac_address"] = mac
             if vid is not None:
                 remote["vid"] = vid
-            payload = {"uuid": uuid, "remote": remote}
+            payload = {"ulid": ulid, "remote": remote}
         return super().__new__(cls, b"", version, beacon_type, payload)
 
 
@@ -1149,11 +1149,23 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         result = protocol.stopProtocol()
         self.assertIsNone(result)
 
+    def test_beaconReceived_drops_v1_packet(self):
+        """beaconReceived() must silently return for version-1 (UUID-based) packets."""
+        protocol = BeaconingSocketProtocol(Clock(), port=0)
+        beacon_json = {
+            "version": 1,
+            "type": "solicitation",
+            "payload": {"uuid": factory.make_string(), "type": 1},
+            "source_ip": "10.0.0.1",
+            "source_port": 5240,
+        }
+        # Must return None without raising and without adding to rx_queue
+        result = protocol.beaconReceived(beacon_json)
+        self.assertIsNone(result)
+        self.assertEqual(len(protocol.rx_queue), 0)
+
     @inlineCallbacks
     def test_sends_and_receives_unicast_beacons(self):
-        self.skipTest(
-            "UUID1 timestamps offset due to libuuid bug (LP#2145734)"
-        )
         # Note: Always use a random port for testing. (port=0)
         logger = self.useFixture(TwistedLoggerFixture())
         protocol = BeaconingSocketProtocol(
@@ -1168,26 +1180,26 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         listen_port = protocol.listen_port._realPortNumber
         MAAS_SECRET.set(factory.make_bytes())
         beacon = create_beacon_payload("solicitation", {})
-        rx_uuid = beacon.payload["uuid"]
+        rx_ulid = beacon.payload["ulid"]
         destination = random.choice(["::ffff:127.0.0.1", "::1"])
         protocol.send_beacon(beacon, (destination, listen_port))
         # Pretend we didn't send this packet. Otherwise we won't reply to it.
         # We have to do this now, before the reactor runs again.
-        transmitted = protocol.tx_queue.pop(rx_uuid, None)
+        transmitted = protocol.tx_queue.pop(rx_ulid, None)
         # Since we've instructed the protocol to loop back packets for testing,
         # it should have sent a multicast solicitation, received it back, sent
         # an advertisement, then received it back. So we'll wait for two
         # packets to be sent.
         yield wait_for_rx_packets(protocol, 2)
         # Grab the beacon we know we transmitted and then received.
-        received = protocol.rx_queue.pop(rx_uuid, None)
+        received = protocol.rx_queue.pop(rx_ulid, None)
         self.assertEqual(transmitted, beacon)
-        self.assertEqual(received[0].json["payload"]["uuid"], rx_uuid)
+        self.assertEqual(received[0].json["payload"]["ulid"], rx_ulid)
         # Grab the subsequent packets from the queues.
         transmitted = protocol.tx_queue.popitem()[1]
         received = protocol.rx_queue.popitem()[1]
         # We should have received a second packet to ack the first beacon.
-        self.assertEqual(received[0].json["payload"]["acks"], rx_uuid)
+        self.assertEqual(received[0].json["payload"]["acks"], rx_ulid)
         # We should have transmitted an advertisement in response to the
         # solicitation.
         self.assertEqual(transmitted.type, "advertisement")
@@ -1200,9 +1212,6 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
 
     @inlineCallbacks
     def test_send_multicast_beacon_sets_ipv4_source(self):
-        self.skipTest(
-            "UUID1 timestamps offset due to libuuid bug (LP#2145734)"
-        )
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,
@@ -1253,24 +1262,25 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             interface="::",
             debug=True,
         )
-        # Need to generate a real UUID with the current time, so it doesn't
+        # Need to generate a real ULID with the current time, so it doesn't
         # get aged out.
-        uuid = str(uuid1())
-        # Make the protocol think we sent a beacon with this UUID already.
-        fake_tx_beacon = FakeBeaconPayload(uuid, ifname="eth0")
-        protocol.tx_queue[uuid] = fake_tx_beacon
+        ulid = str(ULID())
+        # Make the protocol think we sent a beacon with this ULID already.
+        fake_tx_beacon = FakeBeaconPayload(ulid, ifname="eth0")
+        protocol.tx_queue[ulid] = fake_tx_beacon
         fake_rx_beacon = {
             "source_ip": "127.0.0.1",
             "source_port": 5240,
             "destination_ip": "224.0.0.118",
             # Note the different receive interface.
             "interface": "eth1",
+            "version": 2,
             "type": "solicitation",
             "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon)
         # Should only have created one hint.
-        hint = protocol.topology_hints[uuid].pop()
+        hint = protocol.topology_hints[ulid].pop()
         self.assertEqual(hint.hint, "rx_own_beacon_on_other_interface")
         yield protocol.stopProtocol()
 
@@ -1285,31 +1295,29 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             interface="::",
             debug=True,
         )
-        # Need to generate a real UUID with the current time, so it doesn't
+        # Need to generate a real ULID with the current time, so it doesn't
         # get aged out.
-        uuid = str(uuid1())
-        # Make the protocol think we sent a beacon with this UUID already.
-        fake_tx_beacon = FakeBeaconPayload(uuid, ifname="eth0")
-        protocol.tx_queue[uuid] = fake_tx_beacon
+        ulid = str(ULID())
+        # Make the protocol think we sent a beacon with this ULID already.
+        fake_tx_beacon = FakeBeaconPayload(ulid, ifname="eth0")
+        protocol.tx_queue[ulid] = fake_tx_beacon
         fake_rx_beacon = {
             "source_ip": "127.0.0.1",
             "source_port": 5240,
             "destination_ip": "224.0.0.118",
             "interface": "eth0",
+            "version": 2,
             "type": "solicitation",
             "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon)
         # Should only have created one hint.
-        hint = protocol.topology_hints[uuid].pop()
+        hint = protocol.topology_hints[ulid].pop()
         self.assertEqual(hint.hint, "rx_own_beacon_on_tx_interface")
         yield protocol.stopProtocol()
 
     @inlineCallbacks
     def test_hints_for_same_beacon_seen_on_multiple_interfaces(self):
-        self.skipTest(
-            "UUID1 timestamps offset due to libuuid bug (LP#2145734)"
-        )
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(
             reactor,
@@ -1322,16 +1330,17 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         # Don't try to send out any replies.
         self.patch(services, "create_beacon_payload")
         self.patch(protocol, "send_beacon")
-        # Need to generate a real UUID with the current time, so it doesn't
+        # Need to generate a real ULID with the current time, so it doesn't
         # get aged out.
-        uuid = str(uuid1())
-        # Make the protocol think we sent a beacon with this UUID already.
-        fake_tx_beacon = FakeBeaconPayload(uuid, ifname="eth0")
+        ulid = str(ULID())
+        # Make the protocol think we sent a beacon with this ULID already.
+        fake_tx_beacon = FakeBeaconPayload(ulid, ifname="eth0")
         fake_rx_beacon_eth0 = {
             "source_ip": "127.0.0.1",
             "source_port": 5240,
             "destination_ip": "224.0.0.118",
             "interface": "eth0",
+            "version": 2,
             "type": "solicitation",
             "payload": fake_tx_beacon.payload,
         }
@@ -1341,12 +1350,13 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             "destination_ip": "224.0.0.118",
             "interface": "eth1",
             "vid": 100,
+            "version": 2,
             "type": "solicitation",
             "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon_eth0)
         protocol.beaconReceived(fake_rx_beacon_eth1)
-        hints = protocol.topology_hints[uuid]
+        hints = protocol.topology_hints[ulid]
         expected_hints = {
             TopologyHint(
                 ifname="eth0",
@@ -1382,24 +1392,25 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         # Don't try to send out any replies.
         self.patch(services, "create_beacon_payload")
         self.patch(protocol, "send_beacon")
-        # Need to generate a real UUID with the current time, so it doesn't
+        # Need to generate a real ULID with the current time, so it doesn't
         # get aged out.
-        uuid = str(uuid1())
-        # Make the protocol think we sent a beacon with this UUID already.
+        ulid = str(ULID())
+        # Make the protocol think we sent a beacon with this ULID already.
         tx_mac = factory.make_mac_address()
         fake_tx_beacon = FakeBeaconPayload(
-            uuid, ifname="eth1", mac=tx_mac, vid=100
+            ulid, ifname="eth1", mac=tx_mac, vid=100
         )
         fake_rx_beacon = {
             "source_ip": "127.0.0.1",
             "source_port": 5240,
             "destination_ip": "127.0.0.1",
             "interface": "eth0",
+            "version": 2,
             "type": "solicitation",
             "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon)
-        hints = protocol.topology_hints[uuid]
+        hints = protocol.topology_hints[ulid]
         expected_hints = {
             TopologyHint(
                 ifname="eth0",
@@ -1427,13 +1438,13 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         # Don't try to send out any replies.
         self.patch(services, "create_beacon_payload")
         self.patch(protocol, "send_beacon")
-        # Need to generate a real UUID with the current time, so it doesn't
+        # Need to generate a real ULID with the current time, so it doesn't
         # get aged out.
-        uuid = str(uuid1())
-        # Make the protocol think we sent a beacon with this UUID already.
+        ulid = str(ULID())
+        # Make the protocol think we sent a beacon with this ULID already.
         tx_mac = factory.make_mac_address()
         fake_tx_beacon = FakeBeaconPayload(
-            uuid, ifname="eth1", mac=tx_mac, vid=100
+            ulid, ifname="eth1", mac=tx_mac, vid=100
         )
         fake_rx_beacon = {
             "source_ip": "127.0.0.1",
@@ -1441,11 +1452,12 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             "destination_ip": "224.0.0.118",
             "interface": "eth0",
             "vid": 200,
+            "version": 2,
             "type": "solicitation",
             "payload": fake_tx_beacon.payload,
         }
         protocol.beaconReceived(fake_rx_beacon)
-        hints = protocol.topology_hints[uuid]
+        hints = protocol.topology_hints[ulid]
         expected_hints = {
             TopologyHint(
                 ifname="eth0",
