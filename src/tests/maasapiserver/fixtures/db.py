@@ -133,15 +133,6 @@ class Fixture:
     def random_string(self, length: int = 10) -> str:
         return "".join(random.choices(string.ascii_letters, k=length))
 
-
-@pytest.fixture
-async def db_connection_sync(
-    db_connection: AsyncConnection,
-) -> AsyncIterator[Connection]:
-    """A synchronous database connection backed by the async db_connection fixture."""
-    yield db_connection.sync_connection
-
-
 @pytest.fixture
 def fixture(db_connection: AsyncConnection) -> Iterator[Fixture]:
     yield Fixture(db_connection)
