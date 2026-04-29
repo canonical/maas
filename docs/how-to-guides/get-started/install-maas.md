@@ -16,6 +16,7 @@ In production environments, it is recommended to disable conflicting NTP service
   ```bash
   sudo systemctl disable --now systemd-timesyncd
   ```
+
 ```{admonition} Older MAAS versions
 :class: note
 
@@ -78,7 +79,6 @@ Specify the password for your new administrator user when prompted. Store it sec
 
 <!--- do we need them to store this securely or can it be obtained later? --->
 
-
 ## Verify your installation
 
 Verify the installation by creating a profile and logging in:
@@ -107,3 +107,9 @@ For help with the available commands, try:
 
 You have just created a profile in the MAAS CLI called `admin`, logged in using the credentials created in the previous step for your admin user. The rest of these docs will refer to this profile as `$PROFILE`.
 ```
+
+## Access the MAAS UI
+
+Open a browser and navigate to `http://<maas-ip>:5240/MAAS`, replacing `<maas-ip>` with the IP address of your MAAS machine. If you are on the same machine as the machine running MAAS, use `http://localhost:5240/MAAS`.
+
+Log in with the administrator credentials you created in the previous steps.

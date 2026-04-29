@@ -25,7 +25,6 @@ An alternative approach is to use [Juju](https://canonical.com/juju) to deploy h
 
 - BMC migration (3.3+): Ensure unique BMC IP/username/password combinations.
 
-
 ## Related documentation
 
 - [About controllers](/explanation/controllers.md)
