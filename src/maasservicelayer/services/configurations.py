@@ -21,7 +21,6 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
-    UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.configurations import (
     Config,

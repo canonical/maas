@@ -30,6 +30,7 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
+from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
@@ -648,6 +649,23 @@ class TestMSMActivities:
         services_mock.configurations.clear_and_set_many.assert_called_once_with(
             test_cfg
         )
+
+    async def test_set_global_config_err_non_retryable(
+        self, mocker, msm_act, services_mock
+    ):
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.clear_and_set_many.side_effect = (
+            ValidationException
+        )
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        test_cfg = {"theme": 2}
+        param = MSMSetGlobalConfigParam(configuration=test_cfg)
+        with pytest.raises(ApplicationError) as err:
+            await env.run(msm_act.set_global_config, param)
+        assert err.value.non_retryable
 
     async def test_delete_bootsources_activity(
         self, mocker, msm_act, services_mock

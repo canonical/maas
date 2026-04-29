@@ -4,7 +4,6 @@
 from typing import Any
 
 import pytest
-from sqlalchemy import Connection
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.configurations import (

@@ -3,7 +3,7 @@
 
 from typing import Any
 
-from sqlalchemy import Connection, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.operators import eq
 
@@ -75,14 +75,10 @@ class DatabaseConfigurationsRepository(Repository):
             configuration: The configuration to set in the database. Keys of
             this dict are the names of the configuration items.
         """
-        connection = self.context.get_connection()
-        stmt = pg_insert(ConfigTable).returning(ConfigTable)
         data = [
             {"name": key, "value": value}
             for key, value in configuration.items()
         ]
-        if isinstance(connection, Connection):
-            result = connection.execute(stmt, data)
-        else:
-            result = await connection.execute(stmt, data)
+        stmt = pg_insert(ConfigTable).values(data).returning(ConfigTable)
+        result = await self.execute_stmt(stmt)
         return [DatabaseConfiguration(**row._asdict()) for row in result.all()]
