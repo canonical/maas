@@ -55,7 +55,12 @@ UPDATED = "updated"
 DELETED = "deleted"
 
 # Tokens
+# Notes the creation of a new JWT access or freshtoken, a Rack Controller V2 (Agent) Bootstrap token, or a MSM JWT enrollment token
 AUTHN_TOKEN_CREATED = "AUTHN_token_created"
+# Notes the deletion of any of the above mention tokens
 AUTHN_TOKEN_DELETED = "AUTHN_token_deleted"
+# Notes the revoking of any of the above mention tokens
 AUTHN_TOKEN_REVOKED = "AUTHN_token_revoked"
+# Notes the usage of any invalid version of the above tokens.
+# This could be because the token is expired, is in the wrong format, or simply does not exist in the database.
 AUTHN_TOKEN_REUSED = "AUTHN_token_reused"
