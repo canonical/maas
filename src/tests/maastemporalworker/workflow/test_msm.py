@@ -19,6 +19,13 @@ from temporalio.worker import Worker
 import yaml
 
 from maascommon.enums.node import NodeStatus
+from maascommon.logging.security import (
+    AUTHN_TOKEN_CREATED,
+    AUTHN_TOKEN_DELETED,
+    AUTHN_TOKEN_REUSED,
+    hash_token_for_logging,
+    SECURITY,
+)
 from maascommon.workflows.msm import MSMRestoreDefaultBootSourceParam
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.builders.bootsourceselections import (
@@ -672,6 +679,118 @@ class TestMSMActivities:
         version = await env.run(msm_act.get_running_version)
         # Verify version is in X.Y.Z format
         assert re.match(r"^\d+\.\d+\.\d+$", version)
+
+    async def test_check_enroll_complete_token_logging(
+        self, mocker, msm_act, enrol_param
+    ):
+        """Test that access token creation is logged during enrollment completion."""
+        mock_logger = mocker.patch("maastemporalworker.workflow.msm.logger")
+        mocked_session = msm_act._session
+        body = {
+            "access_token": _JWT_ACCESS,
+            "token_type": "bearer",
+            "rotation_interval_minutes": _JWT_ROTATION_INTERVAL,
+        }
+        self._mock_get(mocker, mocked_session, 200, body)
+
+        env = ActivityEnvironment()
+        await env.run(msm_act.check_enrol, enrol_param)
+
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHN_TOKEN_CREATED}:MSM:accesstoken",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(_JWT_ACCESS),
+            msm_url=enrol_param.url,
+        )
+
+    async def test_check_enroll_cancel_token_logging(
+        self, mocker, msm_act, enrol_param
+    ):
+        """Test that enrollment token reuse is logged when MSM cancels enrollment."""
+        mock_logger = mocker.patch("maastemporalworker.workflow.msm.logger")
+        mocked_session = msm_act._session
+        self._mock_get(mocker, mocked_session, 401, None)
+
+        env = ActivityEnvironment()
+        await env.run(msm_act.check_enrol, enrol_param)
+
+        assert mock_logger.info.called
+        mock_logger.info.assert_called_with(
+            f"{AUTHN_TOKEN_REUSED}:MSM:enrollmenttoken",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(enrol_param.jwt),
+            msm_url=enrol_param.url,
+        )
+
+    async def test_refresh_token_logging(self, mocker, msm_act, refresh_param):
+        """Test that token refresh logs both new token creation and old token deletion."""
+        mock_logger = mocker.patch("maastemporalworker.workflow.msm.logger")
+        mocked_session = msm_act._session
+        new_token = "new.refreshed.token"
+        self._mock_get(
+            mocker,
+            mocked_session,
+            200,
+            {
+                "access_token": new_token,
+                "rotation_interval_minutes": 5,
+            },
+        )
+
+        env = ActivityEnvironment()
+        await env.run(msm_act.refresh_token, refresh_param)
+
+        assert mock_logger.info.call_count == 2
+        mock_logger.info.assert_any_call(
+            f"{AUTHN_TOKEN_CREATED}:MSM:accesstoken",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(new_token),
+            msm_url=refresh_param.sm_url,
+        )
+        mock_logger.info.assert_any_call(
+            f"{AUTHN_TOKEN_DELETED}:MSM:accesstoken",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(refresh_param.jwt),
+            msm_url=refresh_param.sm_url,
+        )
+
+    async def test_refresh_token_cancel_logging(
+        self, mocker, msm_act, refresh_param
+    ):
+        """Test that access token reuse is logged when token refresh fails."""
+        mock_logger = mocker.patch("maastemporalworker.workflow.msm.logger")
+        mocked_session = msm_act._session
+        self._mock_get(mocker, mocked_session, 401, None)
+
+        env = ActivityEnvironment()
+        await env.run(msm_act.refresh_token, refresh_param)
+
+        assert mock_logger.info.called
+        mock_logger.info.assert_called_with(
+            f"{AUTHN_TOKEN_REUSED}:MSM:accesstoken",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(refresh_param.jwt),
+            msm_url=refresh_param.sm_url,
+        )
+
+    async def test_send_heartbeat_cancel_token_logging(
+        self, mocker, msm_act, hb_param
+    ):
+        """Test that access token reuse is logged when heartbeat fails."""
+        mock_logger = mocker.patch("maastemporalworker.workflow.msm.logger")
+        mocked_session = msm_act._session
+        self._mock_post(mocker, mocked_session, True, 401, "")
+
+        env = ActivityEnvironment()
+        await env.run(msm_act.send_heartbeat, hb_param)
+
+        assert mock_logger.info.called
+        mock_logger.info.assert_called_with(
+            f"{AUTHN_TOKEN_REUSED}:MSM:accesstoken",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(hb_param.jwt),
+            msm_url=hb_param.sm_url,
+        )
 
 
 class TestMSMEnrolWorkflow:

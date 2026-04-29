@@ -12,6 +12,11 @@ from temporalio.client import Client, WorkflowExecutionDescription
 from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.enums.msm import MSMStatusEnum
+from maascommon.logging.security import (
+    AUTHN_TOKEN_REVOKED,
+    hash_token_for_logging,
+    SECURITY,
+)
 from maascommon.workflows.msm import (
     MSM_ENROL_SITE_WORKFLOW_NAME,
     MSM_HEARTBEAT_WORKFLOW_NAME,
@@ -284,6 +289,7 @@ class TestMSMWithdraw:
         expected_url = "http://test-msm.dev"
         secret = {
             "url": expected_url,
+            "jwt": "test.access.token",
         }
         services.msm.secrets_service = Mock(SecretsService)
         services.msm.secrets_service.get_composite_secret = AsyncMock(
@@ -312,4 +318,33 @@ class TestMSMWithdraw:
             id=f"{MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
             task_queue=REGION_TASK_QUEUE,
             id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
+        )
+
+    async def test_withdraw_token_logging(
+        self, mocker, services, temporal_client_mock
+    ):
+        """Test that MSM withdrawal logs token revocation."""
+        mock_logger = mocker.patch("maasservicelayer.services.msm.logger")
+        expected_url = "http://test-msm.dev"
+        test_jwt = "test.jwt.token"
+        secret = {
+            "url": expected_url,
+            "jwt": test_jwt,
+        }
+        services.msm.secrets_service = Mock(SecretsService)
+        services.msm.secrets_service.get_composite_secret = AsyncMock(
+            return_value=secret
+        )
+        services.msm.temporal_service.get_temporal_client = AsyncMock(
+            return_value=temporal_client_mock
+        )
+        services.msm.temporal_service.cancel_workflow = AsyncMock()
+
+        await services.msm.withdraw()
+
+        mock_logger.info.assert_called_with(
+            f"{AUTHN_TOKEN_REVOKED}:MSM:accesstoken",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(test_jwt),
+            msm_url=expected_url,
         )

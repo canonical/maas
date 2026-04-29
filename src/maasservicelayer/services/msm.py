@@ -9,6 +9,11 @@ import structlog
 from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.enums.msm import MSMStatusEnum
+from maascommon.logging.security import (
+    AUTHN_TOKEN_REVOKED,
+    hash_token_for_logging,
+    SECURITY,
+)
 from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
 from maascommon.workflows.msm import (
     MSM_ENROL_SITE_WORKFLOW_NAME,
@@ -236,6 +241,14 @@ class MSMService(Service):
         )
         if not msm_creds:
             return None
+
+        logger.info(
+            f"{AUTHN_TOKEN_REVOKED}:MSM:accesstoken",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(msm_creds["jwt"]),
+            msm_url=msm_creds["url"],
+        )
+
         client = await self.temporal_service.get_temporal_client()
         param = MSMRestoreDefaultBootSourceParam(sm_url=msm_creds["url"])
         await client.start_workflow(

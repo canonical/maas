@@ -22,6 +22,13 @@ from temporalio.workflow import ParentClosePolicy
 import yaml
 
 from maascommon.constants import SYSTEM_CA_FILE
+from maascommon.logging.security import (
+    AUTHN_TOKEN_CREATED,
+    AUTHN_TOKEN_DELETED,
+    AUTHN_TOKEN_REUSED,
+    hash_token_for_logging,
+    SECURITY,
+)
 from maascommon.workflows.msm import (
     MachinesCountByStatus,
     MSM_ENROL_SITE_WORKFLOW_NAME,
@@ -191,11 +198,24 @@ class MSMConnectorActivity(ActivityBase):
                     raise ApplicationError("waiting for MSM enrolment")
                 case 200:
                     data = await response.json()
+                    access_token = data["access_token"]
+                    logger.info(
+                        f"{AUTHN_TOKEN_CREATED}:MSM:accesstoken",
+                        type=SECURITY,
+                        token_hash=hash_token_for_logging(access_token),
+                        msm_url=input.url,
+                    )
                     return (
-                        data["access_token"],
+                        access_token,
                         data["rotation_interval_minutes"],
                     )
                 case 401 | 404:
+                    logger.info(
+                        f"{AUTHN_TOKEN_REUSED}:MSM:enrollmenttoken",
+                        type=SECURITY,
+                        token_hash=hash_token_for_logging(input.jwt),
+                        msm_url=input.url,
+                    )
                     logger.error("Enrolment cancelled by MSM, aborting")
                     return (None, -1)
                 case _:
@@ -397,6 +417,12 @@ class MSMConnectorActivity(ActivityBase):
                         body.get("config_options_requested", False),
                     )
                 case 401 | 404:
+                    logger.info(
+                        f"{AUTHN_TOKEN_REUSED}:MSM:accesstoken",
+                        type=SECURITY,
+                        token_hash=hash_token_for_logging(input.jwt),
+                        msm_url=input.sm_url,
+                    )
                     logger.error("Enrolment cancelled by MSM, aborting")
                     return -1, False
                 case _:
@@ -425,11 +451,30 @@ class MSMConnectorActivity(ActivityBase):
             match response.status:
                 case 200:
                     data = await response.json()
+                    new_token = data["access_token"]
+                    logger.info(
+                        f"{AUTHN_TOKEN_CREATED}:MSM:accesstoken",
+                        type=SECURITY,
+                        token_hash=hash_token_for_logging(new_token),
+                        msm_url=input.sm_url,
+                    )
+                    logger.info(
+                        f"{AUTHN_TOKEN_DELETED}:MSM:accesstoken",
+                        type=SECURITY,
+                        token_hash=hash_token_for_logging(input.jwt),
+                        msm_url=input.sm_url,
+                    )
                     return (
-                        data["access_token"],
+                        new_token,
                         data["rotation_interval_minutes"],
                     )
                 case 401 | 404:
+                    logger.info(
+                        f"{AUTHN_TOKEN_REUSED}:MSM:accesstoken",
+                        type=SECURITY,
+                        token_hash=hash_token_for_logging(input.jwt),
+                        msm_url=input.sm_url,
+                    )
                     logger.error("Enrolment cancelled by MSM, aborting")
                     return (None, -1)
                 case _:
