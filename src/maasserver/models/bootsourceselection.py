@@ -4,14 +4,12 @@
 """Model for filtering a selection of boot resources."""
 
 from django.contrib.postgres.fields import ArrayField
-from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
 
 from maasserver.models.bootresource import BootResource
 from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -63,32 +61,14 @@ class BootSourceSelection(CleanSave, TimestampedModel):
             "labels": self.labels,
         }
 
-    def force_delete(self):
+    def delete(self, *args, **kwargs):
         """Delete without checking if this selection is the one used for commissioning."""
         selections_to_delete = BootSourceSelectionNew.objects.filter(
             legacy_selection=self
         )
         for selection in selections_to_delete:
-            selection.force_delete()
-        return super().delete()
-
-    def delete(self, *args, **kwargs):
-        commissioning_osystem = Config.objects.get_config(
-            name="commissioning_osystem"
-        )
-        commissioning_series = Config.objects.get_config(
-            name="commissioning_distro_series"
-        )
-        if (
-            commissioning_osystem == self.os
-            and commissioning_series == self.release
-        ):
-            raise ValidationError(
-                f"Unable to delete {self.os} {self.release}. "
-                "It is the operating system used for commissioning."
-            )
-        else:
-            return self.force_delete()
+            selection.delete()
+        return super().delete(*args, **kwargs)
 
     def create_new_selections(self):
         """Create the `BootSourceSelectionNew`s from this legacy selection."""
@@ -176,7 +156,7 @@ class BootSourceSelectionNew(CleanSave, TimestampedModel):
             "arch": self.arch,
         }
 
-    def force_delete(self):
+    def delete(self):
         """Delete without checking if this selection is the one used for commissioning."""
         boot_resources_to_delete = BootResource.objects.filter(
             boot_source_selection=self
@@ -186,21 +166,3 @@ class BootSourceSelectionNew(CleanSave, TimestampedModel):
         )
         boot_resources_to_delete.delete()
         return super().delete()
-
-    def delete(self, *args, **kwargs):
-        commissioning_osystem = Config.objects.get_config(
-            name="commissioning_osystem"
-        )
-        commissioning_series = Config.objects.get_config(
-            name="commissioning_distro_series"
-        )
-        if (
-            commissioning_osystem == self.os
-            and commissioning_series == self.release
-        ):
-            raise ValidationError(
-                f"Unable to delete {self.os} {self.release}. "
-                "It is the operating system used for commissioning."
-            )
-        else:
-            return self.force_delete()

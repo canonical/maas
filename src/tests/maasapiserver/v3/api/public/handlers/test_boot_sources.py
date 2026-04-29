@@ -29,6 +29,7 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
     UISourceAvailableImageListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.constants import STABLE_IMAGES_STREAM_URL
 from maascommon.enums.boot_resources import (
     BootResourceType,
     ImageStatus,
@@ -49,10 +50,12 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 )
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
+    BadRequestException,
     BaseExceptionDetail,
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
@@ -86,22 +89,39 @@ TEST_BOOTSOURCE_1 = BootSource(
     id=1,
     created=utcnow(),
     updated=utcnow(),
+    name="Test Boot Source 1",
     url="http://example.com/v1/",
     keyring_filename="/path/to/keyring.gpg",
     keyring_data="",
     priority=10,
     skip_keyring_verification=False,
+    enabled=True,
 )
 
 TEST_BOOTSOURCE_2 = BootSource(
     id=2,
     created=utcnow(),
     updated=utcnow(),
+    name="Test Boot Source 2",
     url="http://example.com/v2/",
     keyring_filename="/path/to/keyring.gpg",
     keyring_data="",
-    priority=10,
+    priority=11,
     skip_keyring_verification=False,
+    enabled=True,
+)
+
+TEST_DEFAULT_BOOTSOURCE = BootSource(
+    id=3,
+    created=utcnow(),
+    updated=utcnow(),
+    name="default",
+    url=STABLE_IMAGES_STREAM_URL,
+    keyring_filename="/path/to/keyring.gpg",
+    keyring_data="",
+    priority=1,
+    skip_keyring_verification=False,
+    enabled=True,
 )
 
 TEST_BOOTSOURCESELECTION = BootSourceSelection(
@@ -264,15 +284,17 @@ class TestBootSourcesApi(ApiCommonTests):
         services_mock.boot_sources.exists.return_value = False
         services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
         updated = TEST_BOOTSOURCE_1.model_copy()
-        updated.url = "http://example.com/v2/"
         updated.priority = 15
         services_mock.boot_sources.update_by_id.return_value = updated
 
         update_request = {
+            "name": TEST_BOOTSOURCE_1.name,
+            "url": TEST_BOOTSOURCE_1.url,
             "keyring_filename": "/path/to/keyring.gpg",
             "keyring_data": "",
             "priority": 15,
             "skip_keyring_verification": False,
+            "enabled": True,
         }
         response = await client.put(
             f"{self.BASE_PATH}/1",
@@ -296,21 +318,16 @@ class TestBootSourcesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
         services_mock.boot_sources = Mock(BootSourcesService)
-        services_mock.boot_sources.exists.return_value = False
-        services_mock.boot_sources.update_by_id.side_effect = NotFoundException(
-            details=[
-                BaseExceptionDetail(
-                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                    message="Resource with such identifiers does not exist.",
-                )
-            ]
-        )
+        services_mock.boot_sources.get_by_id.return_value = None
 
         update_request = {
+            "name": "Some Boot Source",
+            "url": "http://example.com/v1/",
             "keyring_filename": "/path/to/keyring.gpg",
             "keyring_data": "",
             "priority": 15,
             "skip_keyring_verification": False,
+            "enabled": True,
         }
         response = await client.put(
             f"{self.BASE_PATH}/1",
@@ -322,6 +339,77 @@ class TestBootSourcesApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 404
+
+    async def test_put_rejects_url_change(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
+
+        update_request = {
+            "name": TEST_BOOTSOURCE_1.name,
+            "url": "http://different.example.com",
+            "keyring_filename": "/path/to/keyring.gpg",
+            "keyring_data": "",
+            "priority": TEST_BOOTSOURCE_1.priority,
+            "skip_keyring_verification": False,
+            "enabled": True,
+        }
+        response = await client.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(update_request),
+        )
+        assert response.status_code == 422
+        services_mock.boot_sources.update_by_id.assert_not_called()
+
+    async def test_put_default_boot_source_rejects_disallowed_fields(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        """Updating a default boot source with a changed disallowed field
+        (e.g. name) returns 400."""
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.exists.return_value = False
+        services_mock.boot_sources.get_by_id.return_value = (
+            TEST_DEFAULT_BOOTSOURCE
+        )
+        services_mock.boot_sources.update_by_id.side_effect = BadRequestException(
+            details=[
+                BaseExceptionDetail(
+                    type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                    message="'name' cannot be changed for MAAS default boot sources.",
+                    field="name",
+                )
+            ]
+        )
+
+        update_request = {
+            "name": "new name",
+            "url": TEST_DEFAULT_BOOTSOURCE.url,
+            "keyring_filename": "/path/to/keyring.gpg",
+            "keyring_data": "",
+            "priority": 15,
+            "skip_keyring_verification": False,
+            "enabled": True,
+        }
+        response = await client.put(
+            f"{self.BASE_PATH}/{TEST_DEFAULT_BOOTSOURCE.id}",
+            json=jsonable_encoder(update_request),
+        )
+        assert response.status_code == 400
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 400
 
     async def test_post_200(
         self,
@@ -336,10 +424,12 @@ class TestBootSourcesApi(ApiCommonTests):
         services_mock.boot_sources.create.return_value = TEST_BOOTSOURCE_1
 
         create_request = {
+            "name": TEST_BOOTSOURCE_1.name,
             "url": TEST_BOOTSOURCE_1.url,
             "keyring_filename": TEST_BOOTSOURCE_1.keyring_filename,
             "priority": TEST_BOOTSOURCE_1.priority,
             "skip_keyring_verification": TEST_BOOTSOURCE_1.skip_keyring_verification,
+            "enabled": TEST_BOOTSOURCE_1.enabled,
         }
         response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_request)
@@ -379,10 +469,12 @@ class TestBootSourcesApi(ApiCommonTests):
             ]
         )
         create_request = {
+            "name": TEST_BOOTSOURCE_1.name,
             "url": TEST_BOOTSOURCE_1.url,
             "keyring_filename": TEST_BOOTSOURCE_1.keyring_filename,
             "priority": TEST_BOOTSOURCE_1.priority,
             "skip_keyring_verification": TEST_BOOTSOURCE_1.skip_keyring_verification,
+            "enabled": TEST_BOOTSOURCE_1.enabled,
         }
         response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_request)
@@ -1101,6 +1193,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -1154,6 +1248,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
         )
@@ -1213,6 +1309,40 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.temporal.workflow_status.assert_not_called()
         services_mock.temporal.register_workflow_call.assert_not_called()
 
+    async def test_sync_selection_disabled_boot_source(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+        )
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_one.return_value = (
+            TEST_BOOTSOURCESELECTION
+        )
+        disabled_boot_source = TEST_BOOTSOURCE_1.model_copy()
+        disabled_boot_source.enabled = False
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = (
+            disabled_boot_source
+        )
+        services_mock.temporal = Mock(TemporalService)
+
+        response = await client.post(
+            f"{self.BASE_PATH}/1:sync",
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.details[0].message == (
+            "Impossible to synchronize selections that are part of a disabled boot source. Set the boot source to enabled first."
+        )
+        services_mock.temporal.workflow_status.assert_not_called()
+        services_mock.temporal.register_workflow_call.assert_not_called()
+
     async def test_sync_selection_not_selected(
         self,
         services_mock: ServiceCollectionV3,
@@ -1227,6 +1357,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
 
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService
@@ -1268,6 +1400,8 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         services_mock.boot_source_selections.get_one.return_value = (
             TEST_BOOTSOURCESELECTION
         )
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
 
         services_mock.boot_source_selection_status = Mock(
             BootSourceSelectionStatusService

@@ -43,10 +43,6 @@ def run_django(is_snap, is_devenv):
                 "MAAS_PROXY_CONFIG_DIR": os.path.join(snap_data, "proxy"),
                 "MAAS_SYSLOG_CONFIG_DIR": os.path.join(snap_data, "syslog"),
                 "MAAS_ZONE_FILE_CONFIG_DIR": os.path.join(snap_data, "bind"),
-                "MAAS_IMAGES_KEYRING_FILEPATH": (
-                    "/snap/maas/current/usr/share/keyrings/"
-                    "ubuntu-cloudimage-keyring.gpg"
-                ),
                 "MAAS_THIRD_PARTY_DRIVER_SETTINGS": os.path.join(
                     os.environ["SNAP"], "etc/maas/drivers.yaml"
                 ),

@@ -15,7 +15,9 @@ from maasapiserver.v3.api.public.models.requests.boot_sources import (
     validate_url_format,
 )
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.utils.date import utcnow
 
 
 class TestValidators:
@@ -26,6 +28,17 @@ class TestValidators:
             "URL must be a valid HTTP or HTTPS address."
             == e.value.details[0].message
         )
+
+    @pytest.mark.parametrize(
+        "url,expected",
+        [
+            ("http://example.com/", "http://example.com"),
+            ("http://example.com///", "http://example.com"),
+            ("http://example.com", "http://example.com"),
+        ],
+    )
+    def test_url_trailing_slash_stripped(self, url, expected):
+        assert validate_url_format(url) == expected
 
     @pytest.mark.asyncio
     async def test_negative_priority_raises(self, services_mock):
@@ -138,45 +151,123 @@ class TestBootSourceCreateRequest:
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.exists.return_value = False
         bootsource_request = BootSourceCreateRequest(
+            name="My Boot Source",
             url="http://example.com",
             keyring_filename="/path/to/file.gpg",
             priority=102,
             skip_keyring_verification=False,
+            enabled=True,
         )
         builder = await bootsource_request.to_builder(services_mock)
 
+        assert builder.name == "My Boot Source"
         assert builder.url == "http://example.com"
         assert builder.priority == 102
         assert not builder.skip_keyring_verification
+        assert builder.enabled is True
 
     def test_mandatory_params(self):
         with pytest.raises(ValidationError) as e:
             BootSourceCreateRequest(keyring_filename="/path/to/file.gpg")
-        assert len(e.value.errors()) == 2
-        assert {"url", "priority"} == set(
+        assert len(e.value.errors()) == 4
+        assert {"url", "priority", "name", "enabled"} == set(
             [f["loc"][0] for f in e.value.errors()]
         )
 
 
 class TestBootSourceUpdateRequest:
-    def test_doesnt_accept_url(self):
-        with pytest.raises(ValidationError):
-            BootSourceUpdateRequest(
-                priority=100,
-                skip_keyring_verification=True,
-                url="http://foo.bar",  # pyright: ignore[reportCallIssue]
-            )
+    def test_mandatory_params(self):
+        with pytest.raises(ValidationError) as e:
+            BootSourceUpdateRequest(keyring_filename="/path/to/file.gpg")
+        assert {"url", "priority", "name", "enabled"} == set(
+            [f["loc"][0] for f in e.value.errors()]
+        )
 
     @pytest.mark.asyncio
     async def test_to_builder(self, services_mock) -> None:
         services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.exists.return_value = False
+        instance = BootSource(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="Old Name",
+            url="http://example.com",
+            keyring_filename="/path/to/file.gpg",
+            keyring_data=b"",
+            priority=50,
+            skip_keyring_verification=False,
+            enabled=True,
+        )
         bootsource_request = BootSourceUpdateRequest(
+            name="My Boot Source",
+            url="http://example.com",
             keyring_filename="/path/to/file.gpg",
             priority=102,
             skip_keyring_verification=False,
+            enabled=False,
         )
-        builder = await bootsource_request.to_builder(services_mock)
+        builder = await bootsource_request.to_builder(services_mock, instance)
 
+        assert builder.name == "My Boot Source"
         assert builder.priority == 102
         assert not builder.skip_keyring_verification
+        assert builder.enabled is False
+
+    @pytest.mark.asyncio
+    async def test_to_builder_rejects_url_change(self, services_mock) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        instance = BootSource(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="Source",
+            url="http://original.example.com",
+            keyring_filename="/path/to/file.gpg",
+            keyring_data=b"",
+            priority=10,
+            skip_keyring_verification=False,
+            enabled=True,
+        )
+        bootsource_request = BootSourceUpdateRequest(
+            name="Source",
+            url="http://different.example.com",
+            keyring_filename="/path/to/file.gpg",
+            priority=10,
+            skip_keyring_verification=False,
+            enabled=True,
+        )
+        with pytest.raises(ValidationException) as e:
+            await bootsource_request.to_builder(services_mock, instance)
+        assert (
+            "URL of a boot source is immutable." == e.value.details[0].message
+        )
+
+    @pytest.mark.asyncio
+    async def test_to_builder_skips_priority_validation_when_unchanged(
+        self, services_mock
+    ) -> None:
+        services_mock.boot_sources = Mock(BootSourcesService)
+        instance = BootSource(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            name="Source",
+            url="http://example.com",
+            keyring_filename="/path/to/file.gpg",
+            keyring_data=b"",
+            priority=10,
+            skip_keyring_verification=False,
+            enabled=True,
+        )
+        bootsource_request = BootSourceUpdateRequest(
+            name="Source",
+            url="http://example.com",
+            keyring_filename="/path/to/file.gpg",
+            priority=10,
+            skip_keyring_verification=False,
+            enabled=True,
+        )
+        builder = await bootsource_request.to_builder(services_mock, instance)
+        assert builder.priority == 10
+        services_mock.boot_sources.exists.assert_not_called()

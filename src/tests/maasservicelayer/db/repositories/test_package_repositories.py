@@ -1,15 +1,10 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maascommon.enums.package_repositories import (
-    PACKAGE_REPO_MAIN_ARCHES,
-    PACKAGE_REPO_PORTS_ARCHES,
-)
 from maasservicelayer.builders.package_repositories import (
     PackageRepositoryBuilder,
 )
@@ -17,6 +12,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
 )
+from maasservicelayer.db.tables import PackageRepositoryTable
 from maasservicelayer.models.fields import PackageRepoUrl
 from maasservicelayer.models.package_repositories import PackageRepository
 from tests.fixtures.factories.package_repositories import (
@@ -41,43 +37,10 @@ class TestCommonPackageRepositoriesRepository(
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[PackageRepository]:
-        # The default package repositories are created by the migration and it
-        # has the following timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:9243
-        ts = datetime(2025, 10, 17, 10, 15, 20, 698940, tzinfo=timezone.utc)
+        # The default package repositories are created by the migrations
         created_package_repositories = [
-            PackageRepository(
-                id=1,
-                created=ts,
-                updated=ts,
-                name="main_archive",
-                url=PackageRepoUrl("http://archive.ubuntu.com/ubuntu"),
-                components=set(),
-                arches=PACKAGE_REPO_MAIN_ARCHES,
-                key="",
-                default=True,
-                enabled=True,
-                disabled_pockets=set(),
-                distributions=[],
-                disabled_components=set(),
-                disable_sources=True,
-            ),
-            PackageRepository(
-                id=2,
-                created=ts,
-                updated=ts,
-                name="ports_archive",
-                url=PackageRepoUrl("http://ports.ubuntu.com/ubuntu-ports"),
-                components=set(),
-                arches=PACKAGE_REPO_PORTS_ARCHES,
-                key="",
-                default=True,
-                enabled=True,
-                disabled_pockets=set(),
-                distributions=[],
-                disabled_components=set(),
-                disable_sources=True,
-            ),
+            PackageRepository(**row)
+            for row in await fixture.get(PackageRepositoryTable.name)
         ]
         created_package_repositories.extend(
             [

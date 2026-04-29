@@ -179,7 +179,7 @@ class BootSourceSelectionsService(
                 details=[
                     BaseExceptionDetail(
                         type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                        message=f"{os}, {release} was not found in any available boot source.",
+                        message=f"{os}/{release} arch={arch} was not found in this boot source.",
                     )
                 ]
             )
@@ -348,22 +348,6 @@ class BootSourceSelectionsService(
                     )
                 ):
                     await self.create(builder=builder)
-
-    async def create_without_boot_source_cache(
-        self, builder: BootSourceSelectionBuilder
-    ) -> BootSourceSelection:
-        """Create a selection without checking if the boot source cache exists.
-
-        NOTE: Only to use in the ImageSyncService. That is because when we create
-        the boot source for the first time, we also want to add the selection for
-        the commissioning release, but at this point we don't have anything in
-        the boot source cache yet.
-
-        See `ensure_boot_source_definition` in the ImageSyncService for the details.
-        """
-        # TODO: MAASENG-5738 remove this
-        await self._ensure_legacy_selection_exists(builder)
-        return await self.repository.create(builder)
 
     async def _create_event_for_deletion(
         self, resource: BootSourceSelection

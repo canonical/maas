@@ -1,28 +1,22 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-import os
+from contextlib import suppress
 import re
 from urllib.parse import urljoin
 
 from structlog import get_logger
 
-from maascommon.constants import (
-    BOOTLOADERS_DIR,
-    DEFAULT_IMAGES_URL,
-    DEFAULT_KEYRINGS_PATH,
-)
+from maascommon.constants import BOOTLOADERS_DIR
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
 )
-from maascommon.enums.notifications import NotificationCategoryEnum
-from maascommon.osystem.ubuntu import UbuntuOS
+from maascommon.enums.notifications import (
+    NotificationCategoryEnum,
+    NotificationComponent,
+)
 from maascommon.workflows.bootresource import ResourceDownloadParam
 from maasservicelayer.builders.bootresources import BootResourceBuilder
-from maasservicelayer.builders.bootsources import BootSourceBuilder
-from maasservicelayer.builders.bootsourceselections import (
-    BootSourceSelectionBuilder,
-)
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import OrderByClauseFactory, QuerySpec
@@ -48,6 +42,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.configurations import (
@@ -76,7 +71,6 @@ from maasservicelayer.simplestreams.models import (
     SimpleStreamsManifest,
     SingleFileProduct,
 )
-from provisioningserver.utils.arch import get_architecture
 
 logger = get_logger()
 
@@ -125,71 +119,36 @@ class ImageSyncService(Service):
 
         super().__init__(context, cache)
 
-    async def ensure_boot_source_definition(self) -> bool:
-        """Ensure that at least a boot source exists.
+    async def check_boot_source_enabled(self) -> bool:
+        """Check if at least a boot source is enabled.
 
-        If no boot source is defined, the default one will be created alongside
-        with a selection.
-
-        Originally defined in src/maasserver/bootsources.py
+        If not, it creates a warning notification.
         """
-        if not await self.boot_sources_service.exists(query=QuerySpec()):
-            bootsource_builder = BootSourceBuilder(
-                url=DEFAULT_IMAGES_URL,
-                keyring_filename=DEFAULT_KEYRINGS_PATH,
-                keyring_data=b"",
-                priority=1,
-                skip_keyring_verification=False,
+        query = QuerySpec(
+            where=NotificationsClauseFactory.with_ident(
+                NotificationComponent.BOOT_SOURCES_AVAILABILITY
             )
-            boot_source = await self.boot_sources_service.create(
-                bootsource_builder
-            )
-            # Default is to import newest Ubuntu LTS release, for the current
-            # architecture.
-            arch = get_architecture()
-            # amd64 is the primary architecture for MAAS uses. Make sure its always
-            # selected. If MAAS is running on another architecture select that as
-            # well.
-            if arch in ("", "amd64"):
-                arches = ["amd64"]
-            else:
-                arches = [arch, "amd64"]
-
-            ubuntu = UbuntuOS()
-            for arch in arches:
-                selection_builder = BootSourceSelectionBuilder(
-                    boot_source_id=boot_source.id,
-                    os=ubuntu.name,
-                    release=ubuntu.get_default_commissioning_release(),
-                    arch=arch,
-                )
-                await self.boot_source_selections_service.create_without_boot_source_cache(
-                    selection_builder
-                )
+        )
+        if await self.boot_sources_service.exists(
+            query=QuerySpec(where=BootSourcesClauseFactory.with_enabled(True))
+        ):
+            with suppress(NotFoundException):
+                await self.notifications_service.delete_one(query=query)
             return True
         else:
-            # XXX ensure the default keyrings path in the database points to the
-            # right file when running in a snap. (see LP: #1890468) The
-            # DEFAULT_KEYRINGS_PATH points to the right file whether running from
-            # deb or snap, but the path stored in the DB might be wrong if a
-            # snap-to-deb transition happened with a script without the fix.
-            if os.environ.get("SNAP"):
-                if (
-                    default_boot_source
-                    := await self.boot_sources_service.get_one(
-                        query=QuerySpec(
-                            where=BootSourcesClauseFactory.with_url(
-                                DEFAULT_IMAGES_URL
-                            )
-                        )
-                    )
-                ):
-                    await self.boot_sources_service.update_by_id(
-                        id=default_boot_source.id,
-                        builder=BootSourceBuilder(
-                            keyring_filename=DEFAULT_KEYRINGS_PATH
-                        ),
-                    )
+            await self.notifications_service.get_or_create(
+                query=query,
+                builder=NotificationBuilder(
+                    ident=NotificationComponent.BOOT_SOURCES_AVAILABILITY,
+                    users=True,
+                    admins=True,
+                    message="All the boot sources are disabled. It will not be possible to download new boot resources.",
+                    context={},
+                    user_id=None,
+                    category=NotificationCategoryEnum.WARNING,
+                    dismissable=False,
+                ),
+            )
             return False
 
     async def check_commissioning_series_selected(self) -> bool:
@@ -547,7 +506,7 @@ class ImageSyncService(Service):
                 ResourceDownloadParam(
                     rfile_ids=[resource_file.id],
                     source_list=[
-                        urljoin(boot_source.get_base_url(), file.path)
+                        urljoin(boot_source.get_base_url() + "/", file.path)
                     ],
                     sha256=resource_file.sha256,
                     filename_on_disk=resource_file.filename_on_disk,

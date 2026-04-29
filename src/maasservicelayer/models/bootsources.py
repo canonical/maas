@@ -18,11 +18,13 @@ from maasservicelayer.simplestreams.models import (
 
 @generate_builder()
 class BootSource(MaasTimestampedBaseModel):
+    name: str
     url: str
     keyring_filename: str | None = None
     keyring_data: bytes | None = None
     priority: int
     skip_keyring_verification: bool
+    enabled: bool
 
     def __hash__(self):
         return hash(self.url)

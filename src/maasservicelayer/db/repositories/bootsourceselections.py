@@ -112,6 +112,7 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
                     BootSourceTable.c.id,
                 ),
             )
+            .where(eq(BootSourceTable.c.enabled, True))
             .subquery()
         )
         stmt = (
