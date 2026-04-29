@@ -3,6 +3,7 @@
 
 from collections import defaultdict
 from dataclasses import replace
+import re
 from typing import Any
 from unittest.mock import Mock, PropertyMock
 import uuid
@@ -20,12 +21,22 @@ import yaml
 from maascommon.enums.node import NodeStatus
 from maascommon.workflows.msm import MSMRestoreDefaultBootSourceParam
 from maasservicelayer.builders.bootsources import BootSourceBuilder
+from maasservicelayer.builders.bootsourceselections import (
+    BootSourceSelectionBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
+)
+from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
-from maasservicelayer.services.boot_sources import BootSourcesService
+from maasservicelayer.services.boot_sources import (
+    BootSourceSelectionsService,
+    BootSourcesService,
+)
 from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maastemporalworker.workflow.msm import (
@@ -36,7 +47,9 @@ from maastemporalworker.workflow.msm import (
     MSM_ENROL_EP,
     MSM_GET_ENROL_ACTIVITY_NAME,
     MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME,
+    MSM_GET_KNOWN_CONFIG_OPTIONS,
     MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME,
+    MSM_GET_VERSION_ACTIVITY_NAME,
     MSM_REFRESH_EP,
     MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME,
     MSM_SEND_ENROL_ACTIVITY_NAME,
@@ -54,6 +67,7 @@ from maastemporalworker.workflow.msm import (
     MSMHeartbeatWorkflow,
     MSMRestoreDefaultBootSourceWorkflow,
     MSMSetBootSourceParam,
+    MSMSetSelectionsParam,
     MSMTokenRefreshParam,
     MSMTokenRefreshWorkflow,
     MSMTokenVerifyParam,
@@ -116,6 +130,8 @@ def hb_param() -> MSMHeartbeatParam:
             allocated=1,
             deployed=2,
         ),
+        version="3.8.0",
+        known_config_options=None,
     )
 
 
@@ -356,15 +372,19 @@ class TestMSMActivities:
             True,
             200,
             "",
+            body={"config_options_requested": False},
             headers={
                 "MSM-Heartbeat-Interval-Seconds": 300,
             },
         )
 
         env = ActivityEnvironment()
-        intval = await env.run(msm_act.send_heartbeat, hb_param)
+        intval, send_config_opts = await env.run(
+            msm_act.send_heartbeat, hb_param
+        )
 
         assert intval == 300
+        assert send_config_opts is False
         mocked_session.post.assert_called_once()
         args = mocked_session.post.call_args.args
         kwargs = mocked_session.post.call_args.kwargs
@@ -373,14 +393,55 @@ class TestMSMActivities:
         assert kwargs["json"]["name"] == _MAAS_SITE_NAME
         assert kwargs["json"]["url"] == _MAAS_URL
         assert "machines_by_status" in kwargs["json"]
+        assert kwargs["json"]["version"] == hb_param.version
+        assert "known_config_options" not in kwargs["json"]
+
+    async def test_send_heartbeat_with_cfg_options(
+        self, mocker, msm_act, hb_param
+    ):
+        mocked_session = msm_act._session
+        self._mock_post(
+            mocker,
+            mocked_session,
+            True,
+            200,
+            "",
+            body={"config_options_requested": True},
+            headers={
+                "MSM-Heartbeat-Interval-Seconds": 300,
+            },
+        )
+
+        env = ActivityEnvironment()
+        hb_param.known_config_options = []
+        intval, send_config_opts = await env.run(
+            msm_act.send_heartbeat, hb_param
+        )
+
+        assert intval == 300
+        assert send_config_opts is True
+        mocked_session.post.assert_called_once()
+        args = mocked_session.post.call_args.args
+        kwargs = mocked_session.post.call_args.kwargs
+        assert args[0] == _MSM_DETAIL_URL
+        assert kwargs["headers"]["Authorization"] is not None
+        assert kwargs["json"]["name"] == _MAAS_SITE_NAME
+        assert kwargs["json"]["url"] == _MAAS_URL
+        assert "machines_by_status" in kwargs["json"]
+        assert kwargs["json"]["version"] == hb_param.version
+        # TODO: update once config workflow is implemented
+        assert kwargs["json"]["known_config_options"] == []
 
     async def test_send_heartbeat_cancel(self, mocker, msm_act, hb_param):
         mocked_session = msm_act._session
         self._mock_post(mocker, mocked_session, True, 401, "")
 
         env = ActivityEnvironment()
-        intval = await env.run(msm_act.send_heartbeat, hb_param)
+        intval, send_config_opts = await env.run(
+            msm_act.send_heartbeat, hb_param
+        )
         assert intval == -1
+        assert send_config_opts is False
 
     async def test_refresh_token(self, mocker, msm_act, hb_param):
         mocked_session = msm_act._session
@@ -470,6 +531,109 @@ class TestMSMActivities:
         assert builder.priority == 1
         assert builder.skip_keyring_verification
 
+    async def test_set_selections_activity(
+        self, mocker, msm_act, services_mock
+    ):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_one.return_value = BootSource(
+            id=1,
+            url=_MSM_BOOT_SOURCE_URL,
+            priority=1,
+            skip_keyring_verification=True,
+        )
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        await env.run(
+            msm_act.set_selections,
+            MSMSetSelectionsParam(
+                selections=["ubuntu/noble/amd64", "ubuntu/resolute/arm64"],
+                sm_url=_MSM_BOOT_SOURCE_URL,
+            ),
+        )
+        services_mock.boot_source_selections.delete_many.assert_called_once_with(
+            QuerySpec(
+                where=BootSourceSelectionClauseFactory.with_boot_source_id(1)
+            )
+        )
+        # order of builders is not guaranteed, so cant do assert_called_with
+        builders_arg = (
+            services_mock.boot_source_selections.create_many.call_args.args[0]
+        )
+        assert (
+            BootSourceSelectionBuilder(
+                boot_source_id=1,
+                os="ubuntu",
+                release="noble",
+                arch="amd64",
+            )
+            in builders_arg
+        )
+        assert (
+            BootSourceSelectionBuilder(
+                boot_source_id=1,
+                os="ubuntu",
+                release="resolute",
+                arch="arm64",
+            )
+            in builders_arg
+        )
+
+    async def test_set_selections_activity_no_source(
+        self, mocker, msm_act, services_mock
+    ):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_one.return_value = None
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        with pytest.raises(
+            ApplicationError, match="Site Manager boot source does not exist"
+        ):
+            await env.run(
+                msm_act.set_selections,
+                MSMSetSelectionsParam(
+                    selections=["ubuntu/noble/amd64", "ubuntu/resolute/arm64"],
+                    sm_url=_MSM_BOOT_SOURCE_URL,
+                ),
+            )
+
+    async def test_set_selections_activity_bad_selection_format(
+        self, mocker, msm_act, services_mock
+    ):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        services_mock.boot_sources.get_one.return_value = BootSource(
+            id=1,
+            url=_MSM_BOOT_SOURCE_URL,
+            priority=1,
+            skip_keyring_verification=True,
+        )
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        with pytest.raises(
+            ApplicationError, match="Unexpected selection format"
+        ):
+            await env.run(
+                msm_act.set_selections,
+                MSMSetSelectionsParam(
+                    selections=[
+                        "ubuntu/noble/amd64/somethingelse",
+                        "ubuntu/resolute",
+                    ],
+                    sm_url=_MSM_BOOT_SOURCE_URL,
+                ),
+            )
+
     async def test_delete_bootsources_activity(
         self, mocker, msm_act, services_mock
     ):
@@ -496,6 +660,18 @@ class TestMSMActivities:
         env = ActivityEnvironment()
         await env.run(msm_act.restore_default_boot_source)
         services_mock.image_sync.ensure_boot_source_definition.assert_called_once()
+
+    async def test_get_known_config_options(self, msm_act):
+        env = ActivityEnvironment()
+        config_opts = await env.run(msm_act.get_known_config_options)
+        # TODO: update once config workflow is implemented
+        assert config_opts == []
+
+    async def test_get_running_version(self, msm_act):
+        env = ActivityEnvironment()
+        version = await env.run(msm_act.get_running_version)
+        # Verify version is in X.Y.Z format
+        assert re.match(r"^\d+\.\d+\.\d+$", version)
 
 
 class TestMSMEnrolWorkflow:
@@ -658,9 +834,13 @@ class TestMSMHeartbeatWorkflow:
             return MachinesCountByStatus(allocated=1, deployed=1)
 
         @activity.defn(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
-        async def send_heartbeat(input: MSMHeartbeatParam) -> int:
+        async def send_heartbeat(
+            input: MSMHeartbeatParam,
+        ) -> tuple[int, bool]:
             calls["msm-send-heartbeat"].append(True)
-            return -1
+            if len(calls["msm-send-heartbeat"]) == 2:
+                return (-1, False)
+            return (1, True)
 
         @activity.defn(name=MSM_GET_ENROL_ACTIVITY_NAME)
         async def get_enrol() -> dict[str, Any]:
@@ -672,6 +852,16 @@ class TestMSMHeartbeatWorkflow:
                 "jwt_refresh_url": _JWT_REFRESH_URL,
             }
 
+        @activity.defn(name=MSM_GET_VERSION_ACTIVITY_NAME)
+        async def get_version() -> str:
+            calls["msm-get-version"].append(True)
+            return "3.4.0"
+
+        @activity.defn(name=MSM_GET_KNOWN_CONFIG_OPTIONS)
+        async def get_config_options() -> list[str]:
+            calls["msm-get-config-options"].append(True)
+            return []
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -681,6 +871,8 @@ class TestMSMHeartbeatWorkflow:
                     get_heartbeat_data,
                     send_heartbeat,
                     get_enrol,
+                    get_version,
+                    get_config_options,
                 ],
             ) as worker:
                 await env.client.execute_workflow(
@@ -690,9 +882,11 @@ class TestMSMHeartbeatWorkflow:
                     task_queue=worker.task_queue,
                 )
 
-        assert len(calls["msm-get-heartbeat-data"]) == 1
-        assert len(calls["msm-send-heartbeat"]) == 1
-        assert len(calls["msm-get-enrol"]) == 1
+        assert len(calls["msm-get-heartbeat-data"]) == 2
+        assert len(calls["msm-send-heartbeat"]) == 2
+        assert len(calls["msm-get-enrol"]) == 2
+        assert len(calls["msm-get-version"]) == 2
+        assert len(calls["msm-get-config-options"]) == 1
 
 
 class TestMSMTokenRefreshWorkflow:

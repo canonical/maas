@@ -301,6 +301,23 @@ class Factory:
         )
         return str(UUID(fields=fields, version=1))
 
+    def make_ULID(self) -> str:
+        """Return a fresh ULID string (26-char Crockford base32)."""
+        from ulid import ULID
+
+        return str(ULID())
+
+    def make_ULID_with_timestamp(self, timestamp: float) -> str:
+        """Encode a Unix timestamp as a ULID string."""
+        import datetime
+
+        from ulid import ULID
+
+        dt = datetime.datetime.fromtimestamp(
+            timestamp, tz=datetime.timezone.utc
+        )
+        return str(ULID.from_datetime(dt))
+
     def _make_random_network(
         self,
         slash=None,

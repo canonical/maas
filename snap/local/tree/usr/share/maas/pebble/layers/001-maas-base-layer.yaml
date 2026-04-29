@@ -7,25 +7,25 @@ services:
   bind9:
     override: replace
     # Note: we use `sh -c` to expand the `$SNAP` environment variable
-    command: sh -c "exec systemd-cat -t named $SNAP/bin/run-named"
+    command: sh -c "exec systemd-cat -t named $SNAP/usr/bin/run-named"
     startup: disabled
 
   http:
     override: replace
-    command: sh -c "exec systemd-cat -t maas-http $SNAP/bin/run-nginx"
+    command: sh -c "exec systemd-cat -t maas-http $SNAP/usr/bin/run-nginx"
     startup: disabled
 
   ntp:
     override: replace
-    command: sh -c "exec systemd-cat -t chronyd $SNAP/bin/run-chronyd"
+    command: sh -c "exec systemd-cat -t chronyd $SNAP/usr/bin/run-chronyd"
     startup: disabled
 
   proxy:
     override: replace
-    command: sh -c "exec systemd-cat -t maas-proxy $SNAP/bin/run-squid"
+    command: sh -c "exec systemd-cat -t maas-proxy $SNAP/usr/bin/run-squid"
     startup: disabled
 
   syslog:
     override: replace
-    command: sh -c "exec $SNAP/bin/run-rsyslog"
+    command: sh -c "exec $SNAP/usr/bin/run-rsyslog"
     startup: disabled

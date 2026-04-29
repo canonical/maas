@@ -33,11 +33,21 @@ from maascommon.workflows.msm import (
     MSMHeartbeatParam,
     MSMRestoreDefaultBootSourceParam,
     MSMSetBootSourceParam,
+    MSMSetSelectionsParam,
     MSMTokenRefreshParam,
 )
 from maasservicelayer.builders.bootsources import BootSourceBuilder
+from maasservicelayer.builders.bootsourceselections import (
+    BootSourceSelectionBuilder,
+)
 from maasservicelayer.db import Database
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+)
+from maasservicelayer.db.repositories.bootsourceselections import (
+    BootSourceSelectionClauseFactory,
+)
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.worker import REGION_TASK_QUEUE
@@ -46,6 +56,7 @@ from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
     workflow_run_with_context,
 )
+from provisioningserver.utils.version import get_running_version
 
 logger = structlog.getLogger()
 
@@ -68,9 +79,12 @@ MSM_SET_ENROL_ACTIVITY_NAME = "msm-set-enrol"
 MSM_VERIFY_TOKEN_ACTIVITY_NAME = "msm-verify-token"
 MSM_GET_ENROL_ACTIVITY_NAME = "msm-get-enrol"
 MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME = "msm-get-heartbeat-data"
+MSM_GET_KNOWN_CONFIG_OPTIONS = "msm-get-known-config-options"
+MSM_GET_VERSION_ACTIVITY_NAME = "msm-get-version"
 MSM_SEND_HEARTBEAT_ACTIVITY_NAME = "msm-send-heartbeat"
 MSM_SEND_ENROL_ACTIVITY_NAME = "msm-send-enrol"
 MSM_SET_BOOT_SOURCE_ACTIVITY_NAME = "msm-set-bootsource"
+MSM_SET_SELECTIONS_ACTIVITY_NAME = "msm-set-selections"
 
 MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME = "msm-delete-bootsources"
 MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME = (
@@ -260,6 +274,45 @@ class MSMConnectorActivity(ActivityBase):
             )
             await services.boot_sources.create(builder)
 
+    @activity_defn_with_context(name=MSM_SET_SELECTIONS_ACTIVITY_NAME)
+    async def set_selections(self, input: MSMSetSelectionsParam) -> None:
+        async with self.start_transaction() as services:
+            source = await services.boot_sources.get_one(
+                QuerySpec(
+                    where=BootSourcesClauseFactory.with_url(
+                        input.sm_url + MSM_SS_EP
+                    )
+                )
+            )
+            if source is None:
+                raise ApplicationError(
+                    "Site Manager boot source does not exist"
+                )
+            try:
+                builders = [
+                    BootSourceSelectionBuilder(
+                        boot_source_id=source.id,
+                        os=os,
+                        release=release,
+                        arch=arch,
+                    )
+                    for (os, release, arch) in map(
+                        lambda s: s.split("/"), set(input.selections)
+                    )
+                ]
+            except ValueError as err:
+                raise ApplicationError(
+                    f"Unexpected selection format in {input.selections}. Must be in the form of os/release/arch"
+                ) from err
+            await services.boot_source_selections.delete_many(
+                QuerySpec(
+                    where=BootSourceSelectionClauseFactory.with_boot_source_id(
+                        source.id
+                    )
+                )
+            )
+            await services.boot_source_selections.create_many(builders)
+
     @activity_defn_with_context(name=MSM_GET_ENROL_ACTIVITY_NAME)
     async def get_enrol(self) -> dict[str, Any]:
         """Get enrolment data in the DB.
@@ -282,15 +335,39 @@ class MSMConnectorActivity(ActivityBase):
         async with self.start_transaction() as services:
             return await services.machines.count_machines_by_statuses()
 
+    @activity_defn_with_context(name=MSM_GET_VERSION_ACTIVITY_NAME)
+    async def get_running_version(self) -> str:
+        """Get the current version of this MAAS
+
+        Returns:
+            str: the simple X.Y.Z version string
+        """
+        version = get_running_version()
+        return f"{version.major}.{version.minor}.{version.point}"
+
+    @activity_defn_with_context(name=MSM_GET_KNOWN_CONFIG_OPTIONS)
+    async def get_known_config_options(self) -> list[str]:
+        """Get the configuration changes that this MAAS knows
+        how to handle.
+
+        Returns:
+            list[str]: the list of configuration option keys supported
+        """
+        # TODO: return the actual options when they're implemented
+        return []
+
     @activity_defn_with_context(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
-    async def send_heartbeat(self, input: MSMHeartbeatParam) -> int:
+    async def send_heartbeat(
+        self, input: MSMHeartbeatParam
+    ) -> tuple[int, bool]:
         """Send heartbeat data to MSM.
 
         Args:
             input (MSMHeartbeatParam): MSM heartbeat data
 
         Returns:
-            int: interval for the next update
+            tuple[int,bool]: interval for the next update and whether
+            the next heartbeat should send the known configuration options
         """
         headers = {
             "Authorization": f"bearer {input.jwt}",
@@ -300,7 +377,10 @@ class MSMConnectorActivity(ActivityBase):
             "name": input.site_name,
             "url": input.site_url,
             "machines_by_status": dataclasses.asdict(input.status),
+            "version": input.version,
         }
+        if input.known_config_options is not None:
+            data["known_config_options"] = input.known_config_options
 
         heartbeat_url = input.sm_url + MSM_DETAIL_EP
 
@@ -309,12 +389,16 @@ class MSMConnectorActivity(ActivityBase):
         ) as response:
             match response.status:
                 case 200:
-                    return int(
-                        response.headers["MSM-Heartbeat-Interval-Seconds"]
+                    body = await response.json()
+                    return (
+                        int(
+                            response.headers["MSM-Heartbeat-Interval-Seconds"]
+                        ),
+                        body.get("config_options_requested", False),
                     )
                 case 401 | 404:
                     logger.error("Enrolment cancelled by MSM, aborting")
-                    return -1
+                    return -1, False
                 case _:
                     raise ApplicationError(
                         f"got unexpected return code: HTTP {response.status}"
@@ -516,6 +600,7 @@ class MSMHeartbeatWorkflow:
         """
         self._running = True
         next_update = 0
+        send_config_opts = False
         while next_update >= 0:
             secret = await workflow.execute_activity(
                 MSM_GET_ENROL_ACTIVITY_NAME,
@@ -525,9 +610,27 @@ class MSMHeartbeatWorkflow:
                 MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME,
                 start_to_close_timeout=MSM_TIMEOUT,
             )
-            next_update = await workflow.execute_activity(
+            version = await workflow.execute_activity(
+                MSM_GET_VERSION_ACTIVITY_NAME,
+                start_to_close_timeout=MSM_TIMEOUT,
+            )
+            config_opts = (
+                await workflow.execute_activity(
+                    MSM_GET_KNOWN_CONFIG_OPTIONS,
+                    start_to_close_timeout=MSM_TIMEOUT,
+                )
+                if send_config_opts
+                else None
+            )
+            next_update, send_config_opts = await workflow.execute_activity(
                 MSM_SEND_HEARTBEAT_ACTIVITY_NAME,
-                dataclasses.replace(input, status=data, jwt=secret["jwt"]),
+                dataclasses.replace(
+                    input,
+                    status=data,
+                    jwt=secret["jwt"],
+                    version=version,
+                    known_config_options=config_opts,
+                ),
                 start_to_close_timeout=MSM_TIMEOUT,
                 retry_policy=RetryPolicy(
                     backoff_coefficient=1.0,

@@ -98,7 +98,6 @@ extend-exclude = [
   "dist",
   "parts",
   "snap",
-  "src/maas-offline-docs",
   "src/maasui",
 ]
 # Like Black, indent with spaces, rather than tabs.
@@ -169,6 +168,12 @@ lint.isort.split-on-trailing-comma = false
 ini_options.asyncio_mode = "auto"
 ini_options.filterwarnings = "error::BytesWarning"
 ini_options.testpaths = [ "src/tests" ]
+
+[tool.coverage]
+run.branch = true
+run.relative_files = true
+run.source = [ "src" ]
+paths.source = [ "src", "*/maas/src" ]
 
 [tool.pyright]
 include = [ "src/maascommon", "src/maasservicelayer", "src/maasapiserver", "src/maastemporalworker" ]

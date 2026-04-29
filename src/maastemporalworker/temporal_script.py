@@ -9,15 +9,23 @@ import structlog
 
 from maasapiserver.settings import read_config
 from maascommon.worker import set_max_workers_count
+from maasservicelayer.context import Context
 from maasservicelayer.db import Database
 from maasservicelayer.db.locks import wait_for_startup
 from maasservicelayer.logging.configure import configure_logging
-from maasservicelayer.services import CacheForServices
+from maasservicelayer.models.configurations import (
+    BootImagesAutoImportConfig,
+    BootImagesImportIntervalMinutesConfig,
+)
+from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.temporal import (
     TemporalService,
     TemporalServiceCache,
 )
-from maastemporalworker.schedules import setup_schedules
+from maastemporalworker.schedules import (
+    setup_schedules,
+    update_master_image_sync_schedule,
+)
 from maastemporalworker.worker import get_client_async, REGION_TASK_QUEUE
 from maastemporalworker.worker import Worker as TemporalWorker
 from maastemporalworker.workflow.bootresource import (
@@ -233,6 +241,8 @@ async def main() -> None:
                 msm_activity.check_enrol,
                 msm_activity.get_enrol,
                 msm_activity.get_heartbeat_data,
+                msm_activity.get_running_version,
+                msm_activity.get_known_config_options,
                 msm_activity.refresh_token,
                 msm_activity.send_enrol,
                 msm_activity.send_heartbeat,
@@ -241,6 +251,7 @@ async def main() -> None:
                 msm_activity.set_bootsource,
                 msm_activity.delete_bootsources,
                 msm_activity.restore_default_boot_source,
+                msm_activity.set_selections,
                 # Tag evaluation activities
                 tag_evaluation_activity.evaluate_tag,
                 # Power state activities
@@ -277,6 +288,26 @@ async def main() -> None:
 
     log.info("Setting up schedules")
     await setup_schedules(temporal_client)
+
+    async with db.engine.connect() as conn:
+        async with conn.begin():
+            services = await ServiceCollectionV3.produce(
+                context=Context(connection=conn), cache=services_cache
+            )
+            configs = await services.configurations.get_many(
+                {
+                    BootImagesImportIntervalMinutesConfig.name,
+                    BootImagesAutoImportConfig.name,
+                }
+            )
+
+    await update_master_image_sync_schedule(
+        temporal_client,
+        sync_interval_minutes_config=configs[
+            BootImagesImportIntervalMinutesConfig.name
+        ],
+        auto_import_enabled_config=configs[BootImagesAutoImportConfig.name],
+    )
 
     log.info("temporal-worker started")
     await _start_temporal_workers(temporal_workers)

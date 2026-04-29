@@ -1,0 +1,10 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+[Unit]
+Description=MAAS remote syslog compression
+ConditionPathExists=/var/log/maas/rsyslog
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/find /var/log/maas/rsyslog -type f -not -name *.bz2 -mtime +2 -exec /usr/bin/bzip2 {} +
+Nice=10

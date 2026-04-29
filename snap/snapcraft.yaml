@@ -190,6 +190,7 @@ parts:
       - python3-twisted
       - python3-txtftp
       - python3-tz
+      - python3-ulid
       - python3-urllib3 # for macaroonbakery
       - python3-uvicorn
       - python3-yaml
@@ -274,9 +275,21 @@ parts:
 
   offline-docs:
     plugin: make
-    source: src/maas-offline-docs
-    make-parameters:
-      - BUILD_TYPE=snap
+    source: .
+    build-packages:
+      - python3-venv
+      - python3-pip
+      - libcairo2
+      - python3-dev    # netifaces requirement
+      - git            # for git+https://git.launchpad.net/django-piston3 in requirements.txt
+    override-build: |
+      cd $CRAFT_PART_SRC/docs
+      make html
+      INSTALL_DIR="$CRAFT_PART_INSTALL/usr/share/maas/web/static/docs"
+      mkdir -p "$INSTALL_DIR"
+      cp -a _build/* "$INSTALL_DIR/"
+    prime:
+      - usr/share/maas/web/static/docs
 
   host-info:
     plugin: make

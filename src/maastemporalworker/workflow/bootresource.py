@@ -394,10 +394,6 @@ class BootResourcesActivity(ActivityBase):
                     with suppress(NotFoundException):
                         await services.notifications.delete_one(query=query)
 
-            await services.image_sync.sync_boot_source_selections_from_msm(
-                boot_sources
-            )
-
             # don't raise an exception, just create the notification
             await services.image_sync.check_commissioning_series_selected()
 

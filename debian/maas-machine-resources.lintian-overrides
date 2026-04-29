@@ -1,0 +1,7 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+#
+# These are served to provisioning clients, not executed on the MAAS host.
+maas-machine-resources: arch-dependent-file-in-usr-share
+maas-machine-resources: binary-from-other-architecture
+maas-machine-resources: package-has-long-file-name
