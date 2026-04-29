@@ -940,8 +940,10 @@ class Redfish(IPMIBase):
 
     _bmc_ip = None
     _manager_id = None
+    _node_id = None
     _redfish_ip = None
     _redfish_port = None
+    _session_token = None
 
     def __str__(self):
         return "Redfish"
@@ -1077,7 +1079,10 @@ class Redfish(IPMIBase):
             print(f"ERROR: Redfish configuration failed. {err}")
             return False
 
-    def _get_manager_id(self):
+    def _get_session_token(self):
+        if self._session_token is not None:
+            return self._session_token
+
         credentials = {
             "UserName": self.username,
             "Password": self.password,
@@ -1096,16 +1101,24 @@ class Redfish(IPMIBase):
             print(
                 f"WARNING: Failed to get token. {response.status} {response.getheaders()} {response.read()}"
             )
-            return
+            return None
 
         token = response.getheader("X-Auth-Token")
         if token is None:
             print(
                 f"WARNING: Missing X-Auth-Token header. {response.getheaders()}"
             )
-            return
+            return None
 
-        url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/Managers"
+        self._session_token = token
+        return token
+
+    def _get_first_collection_member_id(self, collection_name):
+        token = self._get_session_token()
+        if token is None:
+            return None
+
+        url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/{collection_name}"
         req = urllib.request.Request(url)
         req.add_header("X-Auth-Token", token)
         response = urllib.request.urlopen(
@@ -1113,52 +1126,48 @@ class Redfish(IPMIBase):
         )
         if response.status != 200:
             print(
-                f"WARNING: Failed to read Managers info. {response.status} {response.getheaders()} {response.read()}"
+                f"WARNING: Failed to read {collection_name} info. {response.status} {response.getheaders()} {response.read()}"
             )
-            return
+            return None
 
-        response = json.loads(response.read().decode())
-        managers = response.get("Members")
-        if not managers or len(managers) == 0:
+        data = json.loads(response.read().decode())
+        members = data.get("Members")
+        if not members or len(members) == 0:
             print(
-                f"WARNING: Missing Redfish Managers Collection. {response.read()}"
+                f"WARNING: Missing Redfish {collection_name} Collection. {data}"
             )
-            return
-        manager = managers[0].get("@odata.id").rstrip("/")
-        return basename(manager)
+            return None
+
+        member = members[0].get("@odata.id")
+        if not member:
+            print(
+                f"WARNING: Missing @odata.id in Redfish {collection_name} member. {members[0]}"
+            )
+            return None
+
+        member = member.rstrip("/")
+        return basename(member)
+
+    def _get_manager_id(self):
+        return self._get_first_collection_member_id("Managers")
 
     def get_manager_id(self):
         if self._manager_id is None:
             self._manager_id = self._get_manager_id()
         return self._manager_id
 
+    def _get_node_id(self):
+        return self._get_first_collection_member_id("Systems")
+
+    def get_node_id(self):
+        if self._node_id is None:
+            self._node_id = self._get_node_id()
+        return self._node_id
+
     def _get_bmc_ip(self):
-        credentials = {
-            "UserName": self.username,
-            "Password": self.password,
-        }
-
-        url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/SessionService/Sessions"
-        req = urllib.request.Request(
-            url,
-            json.dumps(credentials).encode(),
-            headers={"Content-Type": "application/json"},
-        )
-        response = urllib.request.urlopen(
-            req, context=ssl._create_unverified_context()
-        )
-        if response.status not in [200, 201]:
-            print(
-                f"WARNING: Failed to get token. {response.status} {response.getheaders()} {response.read()}"
-            )
-            return
-
-        token = response.getheader("X-Auth-Token")
+        token = self._get_session_token()
         if token is None:
-            print(
-                f"WARNING: Missing X-Auth-Token header. {response.getheaders()}"
-            )
-            return
+            return None
 
         url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/Managers/{self._manager_id}/EthernetInterfaces"
         req = urllib.request.Request(url)
@@ -1170,15 +1179,13 @@ class Redfish(IPMIBase):
             print(
                 f"WARNING: Failed to read Interfaces info. {response.status} {response.getheaders()} {response.read()}"
             )
-            return
+            return None
 
-        response = json.loads(response.read().decode())
-        interfaces = response.get("Members")
+        data = json.loads(response.read().decode())
+        interfaces = data.get("Members")
         if not interfaces or len(interfaces) == 0:
-            print(
-                f"WARNING: Missing Redfish Manager Interfaces. {response.read()}"
-            )
-            return
+            print(f"WARNING: Missing Redfish Manager Interfaces. {data}")
+            return None
 
         for interface in interfaces:
             url = f"https://{self._redfish_ip}:{self._redfish_port}{interface['@odata.id']}"
@@ -1193,12 +1200,10 @@ class Redfish(IPMIBase):
                 )
                 return
 
-            response = json.loads(response.read().decode())
-            addresses = response.get("IPv4Addresses")
+            iface_data = json.loads(response.read().decode())
+            addresses = iface_data.get("IPv4Addresses")
             if not addresses or len(addresses) == 0:
-                print(
-                    f"WARNING: Missing Redfish IPv4 Address. {response.read()}"
-                )
+                print(f"WARNING: Missing Redfish IPv4 Address. {iface_data}")
                 return
 
             for ip in addresses:
@@ -1223,7 +1228,7 @@ class Redfish(IPMIBase):
             "power_address": self.get_bmc_ip(),
             "power_user": self.username if self.username else "",
             "power_pass": self.password if self.password else "",
-            "node_id": self.get_manager_id(),
+            "node_id": self.get_node_id(),
         }
 
 
