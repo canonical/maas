@@ -4,10 +4,10 @@ The following how-to guides cover the initial steps for installing and configuri
 
 There are a number of different ways to install MAAS with different requirements and use cases. Provided in this section is the simplest way to install MAAS: on a single machine, in region+rack mode. This is a good starting point for setting up a homelab, a small proof of concept, or a small production environment.
 
-- [Install MAAS](/how-to-guides/get-maas-up-and-running/install-maas.md)
-- [Configure MAAS](/how-to-guides/get-maas-up-and-running/configure-maas.md)
+- [Install MAAS](/how-to-guides/get-started/install-maas.md)
+- [Configure MAAS](/how-to-guides/get-started/configure-maas.md)
 
-A more complex installation might include deploying the MAAS region on a separate machine to the database. See [Configure PostgreSQL for remote connections](/how-to-guides/get-maas-up-and-running/configure-postgresql-for-remote-connections.md) for more information.
+A more complex installation might include deploying the MAAS region on a separate machine to the database. See [Configure PostgreSQL for remote connections](/how-to-guides/get-started/configure-postgresql-for-remote-connections.md) for more information.
 
 ## Get started with high availability
 
