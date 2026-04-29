@@ -74,7 +74,9 @@ sudo maas createadmin \
   --ssh-import gh:<github-username>  # optional
 ```
 
-Specify the password for your new administrator user when prompted. Store it securely. <!--- do we need them to store this securely or can it be obtained later? --->
+Specify the password for your new administrator user when prompted. Store it securely. 
+
+<!--- do we need them to store this securely or can it be obtained later? --->
 
 
 ## Verify your installation
@@ -98,7 +100,6 @@ For help with the available commands, try:
 
   maas admin --help
 
-ubuntu@host-system:~$
 ```
 
 ```{admonition} Profiles

@@ -46,7 +46,7 @@ sudo postgresql.psql -U postgres -c "SHOW listen_addresses;"
 
 An example output of the process is shown below:
 
-```{ terminal }
+```{terminal}
 ubuntu@host-system:~$ echo "host    $DBNAME    $DBUSER    0/0    scram-sha-256" | sudo tee -a /var/snap/postgresql/common/etc/postgresql/16/main/pg_hba.conf
 CREATE ROLE
 host    maas    maas    0/0    scram-sha-256
