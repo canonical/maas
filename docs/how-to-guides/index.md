@@ -78,7 +78,7 @@ Once your systems are running, it's time to manage them effectively. Learn how t
 <!--  * Integrating with corporate systems -->
 <!--  * Fabrics -->
 <!--  * Spaces -->
-  
+
 ## Monitor and troubleshoot
 
 This section helps you observe and debug your MAAS deployment using tools like Prometheus and Loki. Learn to identify issues with logs, performance, or machine behavior—and get strategies for fixing common problems across your infrastructure.
@@ -119,6 +119,7 @@ Finally, make MAAS part of your larger automation pipeline. Learn how to use the
 
 get-maas-up-and-running/index
 back-up-maas
+upgrading-maas
 manage-networks
 manage-network-services
 manage-switches

@@ -1,49 +1,19 @@
-# Get MAAS up and running
+# Get started
 
-This guide shows you how to install MAAS, set it up for either a Proof-of-Concept (POC) or a production environment, and verify that it is working.
+The following how-to guides cover the initial steps for installing and configuring MAAS.
 
-## Configure and start MAAS
+There are a number of different ways to install MAAS with different requirements and use cases. Provided in this section is the simplest way to install MAAS: on a single machine, in region+rack mode. This is a good starting point for setting up a homelab, a small proof of concept, or a small production environment.
 
-### Web UI setup
+- [Install MAAS](/how-to-guides/get-maas-up-and-running/install-maas.md)
+- [Configure MAAS](/how-to-guides/get-maas-up-and-running/configure-maas.md)
 
-1. Open: `http://<API_HOST>:5240/MAAS`
-2. Log in with your admin credentials.
-3. Configure:
-   - DNS forwarder (e.g., `8.8.8.8`)
-   - At least one Ubuntu LTS image
-   - SSH key (Launchpad, GitHub, or upload from `~/.ssh/id_rsa.pub`)
+A more complex installation might include deploying the MAAS region on a separate machine to the database. See [Configure PostgreSQL for remote connections](/how-to-guides/get-maas-up-and-running/configure-postgresql-for-remote-connections.md) for more information.
 
+## Get started with high availability
 
-## Upgrading MAAS
+For more advanced use cases, you may want to deploy multiple region controllers separately to rack controllers for high availability. This can be achieved with manual installation of MAAS snaps onto each machine and configuring them as region or rack controllers respectively. See [Manage high availability](/how-to-guides/manage-high-availability.md) for more information.
 
-### General steps
-
-1. Backup your system and database.
-2. Verify Ubuntu release (`lsb_release -a`). Upgrade to 22.04 Jammy or 24.04 Noble as required.
-3. Verify PostgreSQL version (14 required, 16 recommended).
-4. Upgrade rack nodes first, then region nodes.
-
-### Upgrade commands
-
-- Snap
-
-  ```bash
-  sudo snap refresh maas --channel=<version>/stable
-  ```
-
-- Debian package (PPA)
-
-  ```bash
-  sudo apt-add-repository ppa:maas/<version>
-  sudo apt update && sudo apt upgrade maas
-  ```
-
-### Version-specific notes
-
-- MAAS 3.6: PostgreSQL 14+ supported; PostgreSQL 16 recommended.
-- MAAS 3.5: Requires PostgreSQL 14.
-- MAAS 3.3: PostgreSQL 12 deprecated. Upgrade to 14 before proceeding.
-- MAAS 2.8 or earlier: Full backup required. Fresh install recommended if upgrade fails.
+An alternative approach is to use [Juju](https://canonical.com/juju) to deploy high availability Charmed MAAS. This simplifies the installation process and provides a consistent and repeatable way to deploy MAAS at scale. See the [GitHub repository](https://github.com/canonical/maas-terraform-modules) for more information.
 
 ## Troubleshooting notes
 
@@ -55,15 +25,6 @@ This guide shows you how to install MAAS, set it up for either a Proof-of-Concep
 
 - BMC migration (3.3+): Ensure unique BMC IP/username/password combinations.
 
-## Verification
-
-After installation or upgrade:
-
-```bash
-lsb_release -a   # Verify Ubuntu release
-maas --version   # Verify MAAS version
-sudo maas status # Verify services running
-```
 
 ## Related documentation
 
@@ -78,4 +39,5 @@ sudo maas status # Verify services running
 
 install-maas
 configure-maas
+configure-postgresql-for-remote-connections
 ```

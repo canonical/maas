@@ -9,6 +9,13 @@ A physical or virtual machine intended to run MAAS must meet the following requi
 - Ubuntu 22.04 LTS (Jammy) or newer.
 - `sudo` privileges.
 
+```{admonition} Disable conflicting NTP services
+:class: warning
+
+In production environments, it is recommended to disable conflicting NTP services as MAAS will handle time synchronization of machines:
+  ```bash
+  sudo systemctl disable --now systemd-timesyncd
+  ```
 ```{admonition} Older MAAS versions
 :class: note
 
@@ -21,12 +28,6 @@ Install the MAAS snap with:
 
 ```bash
 sudo snap install maas --channel=3.7/stable
-```
-
-MAAS will handle time synchronization of machines, so disable conflicting NTP services with:
-
-```bash
-sudo systemctl disable --now systemd-timesyncd
 ```
 
 ## Install PostgreSQL
