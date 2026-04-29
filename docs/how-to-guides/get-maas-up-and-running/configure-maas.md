@@ -12,9 +12,11 @@ maas $PROFILE maas set-config name=upstream_dns value="8.8.8.8"
 
 ## Configure DHCP
 
-In MAAS, rack controllers are responsible for serving DHCP leases to machines. To enable DHCP in MAAS, you need need to pick a rack controller that will serve it. This rack controller must have a network interface that is connected to the VLAN of the subnet you want to boot machines from.
+In MAAS, rack controllers are responsible for serving DHCP leases to machines. To enable DHCP in MAAS, you need to pick a rack controller that will serve it. This rack controller must have a network interface that is connected to the VLAN of the subnet you want to boot machines from.
 
-First, identify the subnet you would like to configure DHCP for, its corresponding fabric ID, and its VLAN VID from all available subnets in MAAS:
+### Gather information
+
+List all subnets in MAAS and identify the one you want to configure DHCP for:
 
 ```bash
 maas $PROFILE subnets read | jq -r '
@@ -23,6 +25,7 @@ maas $PROFILE subnets read | jq -r '
   | @tsv
 ' | column -t -s $'\t'
 ```
+
 Set variables from your chosen subnet's output:
 
 ```bash
@@ -31,15 +34,7 @@ VID=<vlan_vid>
 SUBNET_CIDR=<subnet_cidr>
 ```
 
-Assign a dynamic IP range to the subnet if one does not already exist:
-
-```bash
-START_IP=<start_ip>
-END_IP=<end_ip>
-maas $PROFILE ipranges create subnet=$SUBNET_CIDR type=dynamic start_ip=$START_IP end_ip=$END_IP
-```
-
-Identify the system ID of the rack controller that has an interface connected to the VLAN of your desired subnet:
+List the rack controllers that have an interface connected to the VLAN of your chosen subnet:
 
 ```bash
 maas $PROFILE rack-controllers read | jq -r --argjson f "$FABRIC_ID" --argjson v "$VID" '
@@ -55,17 +50,24 @@ Set the system ID of the rack controller you want to use:
 PRIMARY_RACK_CONTROLLER=<system_id>
 ```
 
+### Apply configuration
+
+Assign a dynamic IP range to the subnet. Choose a start and end IP address within the subnet for MAAS to use for DHCP:
+
+```bash
+maas $PROFILE ipranges create subnet=$SUBNET_CIDR type=dynamic start_ip=<start_ip> end_ip=<end_ip>
+```
+
 Enable DHCP on the VLAN you selected:
 
 ```bash
 maas $PROFILE vlan update $FABRIC_ID $VID dhcp_on=True primary_rack=$PRIMARY_RACK_CONTROLLER
 ```
 
-Set the gateway IP for the subnet you selected, which can be any IP address in the subet, typically the first IP address in the range:
+Set the gateway IP for the subnet. This can be any IP address in the subnet, typically the first IP address in the range:
 
 ```bash
-MY_GATEWAY=<gateway_ip>
-maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=$MY_GATEWAY
+maas $PROFILE subnet update $SUBNET_CIDR gateway_ip=<gateway_ip>
 ```
 
-You can now boot machines from the subnet you have configured DHCP and a gateway IP for.
+DHCP and gateway configuration is now complete for your subnet. Machines connected to this subnet will be able to automatically obtain IP addresses and network configuration via DHCP.
