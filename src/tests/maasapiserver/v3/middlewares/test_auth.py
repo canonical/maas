@@ -3,7 +3,7 @@
 
 from datetime import timedelta
 from typing import Any, AsyncIterator, Callable, Iterator
-from unittest.mock import AsyncMock, Mock, call
+from unittest.mock import AsyncMock, call, Mock
 
 from fastapi import FastAPI, Request
 from httpx import ASGITransport, AsyncClient
