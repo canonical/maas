@@ -154,7 +154,7 @@ Backs up PostgreSQL and key MAAS files.
    sudo -u postgres psql -f <backup-path>/<dump.sql> postgres
    ```
 
-4. Install [MAAS from packages](/how-to-guides/get-maas-up-and-running.md#install-maas).
+4. Install [MAAS from packages](/how-to-guides/get-started/install-maas.md).
 5. Stop MAAS services:
 
    ```sh
