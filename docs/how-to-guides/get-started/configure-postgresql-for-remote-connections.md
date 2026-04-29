@@ -4,10 +4,10 @@ This guide covers how to configure PostgreSQL for remote connections. This is us
 
 ## Requirements
 
-You will need two machines:
+You will need two machines with the following already in place:
 
-- **MAAS Machine**: Install the MAAS snap on this machine by following [Install MAAS](/how-to-guides/get-started/install-maas.md#install-the-maas-snap), ensuring the requirements outlined in the guide are met.
-- **Database Machine**: Install the PostgreSQL snap on this machine by following [Install PostgreSQL](/how-to-guides/get-started/install-maas.md#install-postgresql).
+- **MAAS machine**: The MAAS snap is installed. See [Install the MAAS snap](/how-to-guides/get-started/install-maas.md#install-the-maas-snap) if you have not done this yet.
+- **Database machine**: The PostgreSQL snap is installed and a MAAS database role and database have been created. See [Install PostgreSQL](/how-to-guides/get-started/install-maas.md#install-postgresql) if you have not done this yet.
 - Network connectivity between the two machines.
 
 ## Configure PostgreSQL
