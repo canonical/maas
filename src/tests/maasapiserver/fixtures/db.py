@@ -8,7 +8,6 @@ import string
 from typing import Any, AsyncIterator, Iterator, Type, TypeVar
 
 import pytest
-from sqlalchemy import Connection
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import ColumnOperators
 
@@ -132,6 +131,7 @@ class Fixture:
 
     def random_string(self, length: int = 10) -> str:
         return "".join(random.choices(string.ascii_letters, k=length))
+
 
 @pytest.fixture
 def fixture(db_connection: AsyncConnection) -> Iterator[Fixture]:
