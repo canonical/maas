@@ -36,14 +36,9 @@ class UserProfile(MaasBaseModel):
     provider_id: int | None = None
 
 
-class UserWithSummary(BaseModel):
+class UserStatistics(BaseModel):
     id: int
     completed_intro: bool
-    email: str | None = None  # it's a string in the UI
     is_local: bool
-    is_superuser: bool
-    last_name: str | None = None  # it's a string in the UI
-    last_login: datetime | None = None
     machines_count: int
     sshkeys_count: int
-    username: str

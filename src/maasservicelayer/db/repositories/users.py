@@ -41,7 +41,7 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.users import User, UserProfile, UserWithSummary
+from maasservicelayer.models.users import User, UserProfile, UserStatistics
 from maasservicelayer.utils.date import utcnow
 
 
@@ -249,7 +249,7 @@ class UsersRepository(BaseRepository[User]):
         count = (await self.execute_stmt(stmt)).scalar_one()
         return count
 
-    def _user_with_summary_stmt(self) -> Select:
+    def _user_statistics_stmt(self) -> Select:
         return (
             select(
                 UserTable.c.id,
@@ -297,9 +297,9 @@ class UsersRepository(BaseRepository[User]):
             .order_by(desc(UserTable.c.id))
         )
 
-    async def list_with_summary(
+    async def list_statistics(
         self, page: int, size: int, query: QuerySpec
-    ) -> ListResult[UserWithSummary]:
+    ) -> ListResult[UserStatistics]:
         total_stmt = (
             select(func.count())
             .select_from(UserTable)
@@ -313,24 +313,24 @@ class UsersRepository(BaseRepository[User]):
         total_stmt = query.enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
         stmt = (
-            self._user_with_summary_stmt()
+            self._user_statistics_stmt()
             .offset((page - 1) * size)
             .limit(size)
         )
         stmt = query.enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
-        return ListResult[UserWithSummary](
-            items=[UserWithSummary(**row._asdict()) for row in result],
+        return ListResult[UserStatistics](
+            items=[UserStatistics(**row._asdict()) for row in result],
             total=total,
         )
 
-    async def get_by_id_with_summary(self, id: int) -> UserWithSummary | None:
-        stmt = self._user_with_summary_stmt().where(eq(UserTable.c.id, id))
+    async def get_by_id_statistics(self, id: int) -> UserStatistics | None:
+        stmt = self._user_statistics_stmt().where(eq(UserTable.c.id, id))
         result = (await self.execute_stmt(stmt)).one_or_none()
         if not result:
             return None
-        return UserWithSummary(**result._asdict())
+        return UserStatistics(**result._asdict())
 
     async def has_users(self) -> bool:
         stmt = (
