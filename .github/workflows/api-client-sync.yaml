@@ -180,6 +180,11 @@ jobs:
           EOF
           )")
 
-          gh pr edit "$PR_URL" \
-            --repo "canonical/maas-ui" \
-            --add-label "Review: Code needed"
+          PR_NUMBER=$(echo "$PR_URL" | grep -oP '\d+$')
+
+          curl -L \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.LANDER_GH_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/canonical/maas-ui/issues/${PR_NUMBER}/labels" \
+            -d '{"labels":["Review: Code needed"]}'
