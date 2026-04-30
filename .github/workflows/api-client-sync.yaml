@@ -1,0 +1,181 @@
+name: Update FE API client on contract change
+
+on:
+  push:
+    branches:
+      - "api-client-sync-debug-*"
+      - "master"
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate-client:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout canonical/maas
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Checkout canonical/maas-ui
+        uses: actions/checkout@v5
+        with:
+          repository: canonical/maas-ui
+          token: ${{ secrets.LANDER_GH_TOKEN }}
+          path: fe-repo
+
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v1
+        with:
+          channel: 5.21/stable
+
+      - name: Build MAAS snap
+        run: |
+          sudo snap install snapcraft --classic
+          sudo snap refresh snapd
+          sudo snap install --candidate core26
+          make snap
+          make snap-clean
+
+      - name: Launch and configure LXD container
+        id: setup-lxd
+        run: |
+          lxc launch ubuntu:resolute maas-api-client-gen
+          lxc exec maas-api-client-gen -- cloud-init status --wait
+          lxc exec maas-api-client-gen -- snap install snapd --beta
+          lxc exec maas-api-client-gen -- snap wait system seed.loaded
+          lxc exec maas-api-client-gen -- snap install --candidate core26
+          lxc file push *.snap maas-api-client-gen/maas.snap
+          lxc file push utilities/connect-snap-interfaces maas-api-client-gen/connect-snap-interfaces
+          lxc exec maas-api-client-gen -- snap install maas-test-db --channel=latest/edge
+          lxc exec maas-api-client-gen -- snap install /maas.snap --dangerous
+          lxc exec maas-api-client-gen -- /connect-snap-interfaces
+          MAAS_IP=$(lxc query /1.0/containers/maas-api-client-gen/state \
+            | jq -r '.network.eth0.addresses[0].address')
+          echo "maas_ip=$MAAS_IP" >> "$GITHUB_OUTPUT"
+
+      - name: Initialize MAAS and wait for API readiness
+        run: |
+          MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
+          lxc exec maas-api-client-gen -- maas init region+rack \
+            --maas-url="http://${MAAS_IP}:5240/MAAS" \
+            --database-uri maas-test-db:///
+          sleep 30
+          for i in $(seq 1 8); do
+            status_code=$(curl --noproxy "${MAAS_IP}" -L \
+              "http://${MAAS_IP}:5240/MAAS/api/2.0/version/" \
+              -o /dev/null -w "%{http_code}" -s)
+            if [[ "$status_code" -eq 200 ]]; then
+              echo "API is ready."
+              exit 0
+            fi
+            echo "Attempt $i: API not ready yet (HTTP $status_code). Retrying in 15s..."
+            sleep 15
+          done
+          echo "API failed to become ready in time."
+          exit 1
+
+      - name: Download OpenAPI spec from live MAAS instance
+        run: |
+          MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
+          curl --noproxy "${MAAS_IP}" -L \
+            "http://${MAAS_IP}:5240/MAAS/a/openapi.json" \
+            -o fe-repo/openapi-spec.json
+
+      - name: Upload OpenAPI spec artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: fe-repo/openapi-spec.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: fe-repo/yarn.lock
+
+      - name: Install MAAS UI dependencies
+        working-directory: fe-repo
+        run: yarn install --frozen-lockfile
+
+      - name: Update openapi-ts config to use local spec
+        working-directory: fe-repo
+        run: |
+          python3 -c "
+          import re, pathlib
+          p = pathlib.Path('openapi-ts.config.ts')
+          p.write_text(re.sub(r'input:.*', \"input: './openapi-spec.json',\", p.read_text()))
+          "
+
+      - name: Generate API client
+        working-directory: fe-repo
+        run: yarn generate-api-client
+
+      - name: Create PR branch and push
+        id: push-branch
+        working-directory: fe-repo
+        env:
+          GH_TOKEN: ${{ secrets.LANDER_GH_TOKEN }}
+        run: |
+          git checkout openapi-ts.config.ts
+          git config user.name "${{ vars.LANDER_USERNAME }}"
+          git config user.email "${{ vars.LANDER_EMAIL }}"
+          git remote set-url origin "https://x-access-token:${{ secrets.LANDER_GH_TOKEN }}@github.com/canonical/maas-ui.git"
+
+          git add src/app/apiclient/
+
+          existing_branch=$(gh pr list \
+            --repo canonical/maas-ui \
+            --state open \
+            --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("chore/update-api-client-"))] | first | .headRefName')
+
+          if [[ -n "$existing_branch" ]]; then
+            echo "Found existing PR branch: $existing_branch — pushing to it."
+            BRANCH="$existing_branch"
+            git fetch origin "$BRANCH"
+            git checkout -b "$BRANCH" "origin/$BRANCH"
+            echo "is_new_pr=false" >> "$GITHUB_OUTPUT"
+          else
+            BRANCH="chore/update-api-client-${{ github.sha }}"
+            echo "No existing PR found — creating new branch: $BRANCH"
+            git checkout -b "$BRANCH"
+            echo "is_new_pr=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+          if git diff --cached --quiet; then
+            echo "No changes detected in the API client files, skipping."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+          git commit -m "chore(api): regenerated API client
+
+          Triggered by: ${{ github.repository }}@${{ github.sha }}"
+          git push origin "$BRANCH"
+
+      - name: Open PR on MAAS UI repo
+        if: steps.push-branch.outputs.has_changes == 'true' && steps.push-branch.outputs.is_new_pr == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.LANDER_GH_TOKEN }}
+        run: |
+          PR_URL=$(gh pr create \
+            --repo "canonical/maas-ui" \
+            --head "${{ steps.push-branch.outputs.branch }}" \
+            --base main \
+            --title "chore(api): regenerated API client" \
+            --body "$(cat <<'EOF'
+          ## Done
+
+          - Regenerated the API client
+
+          ## Note
+
+          This is an auto-generated PR, make sure to review the changes.
+          EOF
+          )")
