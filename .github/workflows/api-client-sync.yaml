@@ -34,18 +34,18 @@ jobs:
         run: |
           sudo snap install snapcraft --classic
           sudo snap refresh snapd
-          sudo snap install --edge core26
+          sudo snap install --candidate core26
           make snap
           make snap-clean
 
       - name: Launch and configure LXD container
         id: setup-lxd
         run: |
-          lxc launch ubuntu-daily:resolute maas-api-client-gen
+          lxc launch ubuntu:resolute maas-api-client-gen
           lxc exec maas-api-client-gen -- cloud-init status --wait
           lxc exec maas-api-client-gen -- snap install snapd --beta
           lxc exec maas-api-client-gen -- snap wait system seed.loaded
-          lxc exec maas-api-client-gen -- snap install --edge core26
+          lxc exec maas-api-client-gen -- snap install --candidate core26
           lxc file push *.snap maas-api-client-gen/maas.snap
           lxc file push utilities/connect-snap-interfaces maas-api-client-gen/connect-snap-interfaces
           lxc exec maas-api-client-gen -- snap install maas-test-db --channel=latest/edge
