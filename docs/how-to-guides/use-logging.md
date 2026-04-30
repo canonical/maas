@@ -232,3 +232,20 @@ maas $PROFILE events query level=AUDIT hostname=your-hostname limit=1000 > /tmp/
 This command will retrieve a substantial number of audit events for the specified hostname and store them in a file named `audit-data`.
 
 Next, you can analyze this data to track changes, actions, and events related to the machine's life cycle. This can help in troubleshooting and monitoring machine behavior over time.
+
+## Advanced Logging Features
+
+MAAS provides advanced logging capabilities for request tracing and security auditing:
+
+### Contextual Logging
+
+MAAS uses trace IDs to correlate all log statements for a single request across different components. This enables you to track the complete flow of a request through the system, making debugging and performance analysis much easier.
+
+See [Contextual Logging](contextual-logging.md) for detailed information on using trace IDs to correlate logs.
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+contextual-logging
+```
