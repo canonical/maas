@@ -70,9 +70,9 @@ fi
 # Accepted keywords: close, closes, closed, fix, fixes, fixed, resolve, resolves, resolved
 # An optional colon may follow the keyword.
 # Example valid footers:
-#   Resolves LP: #1234567
-#   fixes: LP: #1234567
-#   Closed LP: #1234567
+#   Resolves LP: 1234567
+#   fixes: LP: 1234567
+#   Closed LP: 1234567
 BUG_REF_KEYWORDS="close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved"
 BUG_REF_RE="^(${BUG_REF_KEYWORDS}):?[[:space:]]+LP:[[:space:]]?[0-9]+$"
 
