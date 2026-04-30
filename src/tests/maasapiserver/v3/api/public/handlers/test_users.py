@@ -101,7 +101,7 @@ class TestUsersApi(ApiCommonTests):
             ),
             Endpoint(
                 method="GET",
-                path=f"{V3_API_PREFIX}/users_statistics",
+                path=f"{V3_API_PREFIX}/users/statistics",
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
             ),
             Endpoint(
@@ -717,12 +717,8 @@ class TestUsersApi(ApiCommonTests):
             items=[
                 UserStatistics(
                     id=1,
-                    username="foo",
                     completed_intro=True,
-                    email="foo@example.com",
                     is_local=True,
-                    is_superuser=False,
-                    last_name="foo",
                     machines_count=2,
                     sshkeys_count=3,
                 )
@@ -740,11 +736,8 @@ class TestUsersApi(ApiCommonTests):
         assert users_statistics.next is None
         user = users_statistics.items[0]
         assert user.id == 1
-        assert user.username == "foo"
         assert user.completed_intro is True
         assert user.is_local is True
-        assert user.is_superuser is False
-        assert user.last_name == "foo"
         assert user.machines_count == 2
         assert user.sshkeys_count == 3
         services_mock.users.list_statistics.assert_called_once_with(
@@ -766,12 +759,8 @@ class TestUsersApi(ApiCommonTests):
             items=[
                 UserStatistics(
                     id=1,
-                    username="foo",
                     completed_intro=True,
-                    email="foo@example.com",
                     is_local=True,
-                    is_superuser=False,
-                    last_name="foo",
                     machines_count=2,
                     sshkeys_count=3,
                 )
@@ -780,7 +769,7 @@ class TestUsersApi(ApiCommonTests):
         )
 
         response = await client.get(
-            f"{V3_API_PREFIX}/users_statistics?size=1&username_or_email=example",
+            f"{V3_API_PREFIX}/users/statistics?size=1&username_or_email=example",
         )
         assert response.status_code == 200
         users_statistics = UsersStatisticsListResponse(**response.json())
@@ -788,7 +777,7 @@ class TestUsersApi(ApiCommonTests):
         assert len(users_statistics.items) == 1
         assert (
             users_statistics.next
-            == f"{V3_API_PREFIX}/users_statistics?page=2&size=1&username_or_email=example"
+            == f"{V3_API_PREFIX}/users/statistics?page=2&size=1&username_or_email=example"
         )
         services_mock.users.list_statistics.assert_called_once_with(
             page=1,
