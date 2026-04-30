@@ -167,11 +167,17 @@ def generate_urls_for_sources_list(archive: PackageRepository) -> str:
     # having it enabled.
     urls = ""
 
+    disabled_components = (
+        archive.disabled_components
+        if archive.disabled_components is not None
+        else ""
+    )
+
     components = [
         component
         for component in archive.KNOWN_COMPONENTS
         if not (
-            component in archive.disabled_components
+            component in disabled_components
             and component in archive.COMPONENTS_TO_DISABLE
         )
     ]
@@ -205,11 +211,17 @@ def generate_urls_for_sources_list(archive: PackageRepository) -> str:
 
 
 def generate_deb822_for_sources(archive: PackageRepository) -> str:
+    disabled_components = (
+        archive.disabled_components
+        if archive.disabled_components is not None
+        else ""
+    )
+
     components = [
         component
         for component in archive.KNOWN_COMPONENTS
         if not (
-            component in archive.disabled_components
+            component in disabled_components
             and component in archive.COMPONENTS_TO_DISABLE
         )
     ]
