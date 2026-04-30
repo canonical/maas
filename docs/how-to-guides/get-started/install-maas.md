@@ -8,7 +8,7 @@ A physical or virtual machine intended to run MAAS must meet the following requi
 
 - Ubuntu 22.04 LTS (Jammy) or newer.
 - `sudo` privileges.
-- `systemd-timesyncd` disabled — MAAS manages time synchronisation via `chrony` and the two conflict:
+- `systemd-timesyncd` disabled for Ubuntu versions older than 25.10 — MAAS manages time synchronisation via `chrony` and the two conflict:
     ```bash
     sudo systemctl disable --now systemd-timesyncd
     ```
