@@ -35,7 +35,7 @@ If you already have a PostgreSQL database installed and configured, you can skip
 sudo snap install postgresql --channel=16/stable
 ```
 
-Create a MAAS database role and database. Pick a strong password for the database user when prompted, and store it securely:
+Create a MAAS database user named `maas` and database named `maas`. Pick a strong password for the database user when prompted, and store it securely:
 
 ```bash
 postgresql.createuser -U postgres -h /tmp -P maas

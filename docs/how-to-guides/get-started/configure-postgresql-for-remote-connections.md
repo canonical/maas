@@ -6,16 +6,15 @@ This guide covers how to configure PostgreSQL for remote connections. This is us
 
 You will need two machines with the following already in place:
 
-- **MAAS machine**: The MAAS snap is installed. See [Install the MAAS snap](/how-to-guides/get-started/install-maas.md#install-the-maas-snap) if you have not done this yet.
+- **MAAS machine**: The MAAS snap is installed. See [Install the MAAS snap](/how-to-guides/get-started/install-maas.md#install-maas) if you have not done this yet.
 - **Database machine**: The PostgreSQL snap is installed and a MAAS database role and database have been created. See [Install PostgreSQL](/how-to-guides/get-started/install-maas.md#install-postgresql) if you have not done this yet.
 - Network connectivity between the two machines.
 
 ## Configure PostgreSQL
 
-On the database machine, ensure the following environment variables are set to the same values used to set up the PostgreSQL database:
+On the database machine, ensure the following environment variables are set to the same values used to set up the PostgreSQL database. After following the [Install PostgreSQL](/how-to-guides/get-started/install-maas.md#install-postgresql) guide, these variables will be:
 
 ```bash
-export DBPASS=<strong-password>
 export DBUSER=maas
 export DBNAME=maas
 ```
@@ -70,10 +69,10 @@ ubuntu@host-system:~$ sudo postgresql.psql -U postgres -c "SHOW listen_addresses
 
 ## Initialize MAAS
 
-You can now initialize MAAS on your other machine with the remote database credentials, specifying the IP address of the database machine:
+You can now initialize MAAS on your other machine with the remote database credentials, specifying the IP address of the database machine and the database user password:
 
 ```bash
-sudo maas init region+rack --database-uri "postgres://$DBUSER:$DBPASS@<database-machine-ip>/$DBNAME"
+sudo maas init region+rack --database-uri "postgres://$DBUSER:<password>@<database-machine-ip>/$DBNAME"
 ```
 
 Press Enter when prompted to accept the default MAAS URL, or specify your own.
