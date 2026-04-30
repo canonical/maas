@@ -254,6 +254,8 @@ async def main() -> None:
                 msm_activity.set_selections,
                 msm_activity.set_global_config,
                 msm_activity.start_image_sync,
+                msm_activity.get_full_profile_config,
+                msm_activity.report_config_progress,
                 # Tag evaluation activities
                 tag_evaluation_activity.evaluate_tag,
                 # Power state activities

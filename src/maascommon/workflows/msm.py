@@ -11,6 +11,7 @@ MSM_HEARTBEAT_WORKFLOW_NAME = "msm-heartbeat"
 MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME = (
     "msm-restore-default-boot-source"
 )
+MSM_CONFIGURE_PROFILE_WORKFLOW = "msm-configure-profile"
 
 
 # Workflows parameters
@@ -80,3 +81,9 @@ class MSMSetGlobalConfigParam:
 @dataclasses.dataclass
 class MSMRestoreDefaultBootSourceParam:
     sm_url: str
+
+
+@dataclasses.dataclass
+class MSMConfigureProfileParam:
+    sm_url: str
+    jwt: str
