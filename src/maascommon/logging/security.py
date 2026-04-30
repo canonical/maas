@@ -1,8 +1,35 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+
+import hashlib
 
 # Security Log Type
 SECURITY = "security"
+
+
+def hash_token_for_logging(token: str) -> str:
+    """
+    Hash a token using SHA-256 for secure logging.
+
+    Args:
+        token: The token string to hash
+
+    Returns:
+        The SHA-256 hash of the token as a 64-character hexadecimal string,
+        or an error message string if the token is invalid
+
+    Note:
+        This function is designed for logging and correlation, not
+        cryptographic security. The same token always produces the
+        same hash, enabling log analysis while protecting token values.
+
+        Returns "<empty_token>" if the token is empty or only whitespace
+        to avoid disrupting logging flow.
+    """
+    if not token or not token.strip():
+        return "<empty_token>"
+    return hashlib.sha256(token.encode()).hexdigest()
+
 
 # Authentication
 AUTHN_LOGIN_SUCCESSFUL = "AUTHN_login_successful"
@@ -26,3 +53,14 @@ USER = "User"
 CREATED = "created"
 UPDATED = "updated"
 DELETED = "deleted"
+
+# Tokens
+# Notes the creation of a new JWT access or freshtoken, a Rack Controller V2 (Agent) Bootstrap token, or a MSM JWT enrollment token
+AUTHN_TOKEN_CREATED = "AUTHN_token_created"
+# Notes the deletion of any of the above mention tokens
+AUTHN_TOKEN_DELETED = "AUTHN_token_deleted"
+# Notes the revoking of any of the above mention tokens
+AUTHN_TOKEN_REVOKED = "AUTHN_token_revoked"
+# Notes the usage of any invalid version of the above tokens.
+# This could be because the token is expired, is in the wrong format, or simply does not exist in the database.
+AUTHN_TOKEN_REUSED = "AUTHN_token_reused"
