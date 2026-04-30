@@ -214,7 +214,7 @@ def generate_deb822_for_sources(archive: PackageRepository) -> str:
     disabled_components = (
         archive.disabled_components
         if archive.disabled_components is not None
-        else ""
+        else []
     )
 
     components = [
