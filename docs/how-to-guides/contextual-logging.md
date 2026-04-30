@@ -139,6 +139,5 @@ For security and compliance purposes, trace IDs make it possible to reconstruct 
 
 ## Related Documentation
 
-- [Security Logging](security-logging.md) - Learn about security-specific logging with trace IDs
 - [Use Logging](use-logging.md) - General MAAS logging guide
 - [OWASP Logging Vocabulary](https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Logging_Vocabulary_Cheat_Sheet.md) - Industry standards for log fields

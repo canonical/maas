@@ -235,7 +235,7 @@ Next, you can analyze this data to track changes, actions, and events related to
 
 ## Advanced Logging Features
 
-MAAS provides advanced logging capabilities for request tracing and security auditing:
+MAAS provides advanced logging capabilities for request tracing:
 
 ### Contextual Logging
 
