@@ -46,25 +46,57 @@ sudo postgresql.psql -U postgres -c "SHOW listen_addresses;"
 An example output of the process is shown below:
 
 ```{terminal}
-ubuntu@host-system:~$ echo "host    $DBNAME    $DBUSER    0/0    scram-sha-256" | sudo tee -a /var/snap/postgresql/common/etc/postgresql/16/main/pg_hba.conf
-CREATE ROLE
+:user: ubuntu
+:host: host-system
+:scroll:
+
+echo "host    $DBNAME    $DBUSER    0/0    scram-sha-256" | sudo tee -a /var/snap/postgresql/common/etc/postgresql/16/main/pg_hba.conf
+
 host    maas    maas    0/0    scram-sha-256
-ubuntu@host-system:~$ sudo postgresql.psql -U postgres -c "SHOW listen_addresses;"
+```
+
+```{terminal}
+:user: ubuntu
+:host: host-system
+:scroll:
+
+sudo postgresql.psql -U postgres -c "SHOW listen_addresses;"
+
  listen_addresses
 ------------------
  localhost
 (1 row)
+```
 
-ubuntu@host-system:~$ echo "listen_addresses = '*'" | sudo tee -a /var/snap/postgresql/common/etc/postgresql/16/main/postgresql.conf
+```{terminal}
+:user: ubuntu
+:host: host-system
+:scroll:
+
+echo "listen_addresses = '*'" | sudo tee -a /var/snap/postgresql/common/etc/postgresql/16/main/postgresql.conf
+
 listen_addresses = '*'
-ubuntu@host-system:~$ sudo snap restart postgresql
+```
+
+```{terminal}
+:user: ubuntu
+:host: host-system
+
+sudo snap restart postgresql
+
 Restarted.
-ubuntu@host-system:~$ sudo postgresql.psql -U postgres -c "SHOW listen_addresses;"
+```
+
+```{terminal}
+:user: ubuntu
+:host: host-system
+
+sudo postgresql.psql -U postgres -c "SHOW listen_addresses;"
+
  listen_addresses
 ------------------
  *
 (1 row)
-
 ```
 
 ## Initialize MAAS
