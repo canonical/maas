@@ -929,14 +929,14 @@ class MachineForm(NodeForm):
                 cleaned_data["min_hwe_kernel"] = min_hwe_kernel = "hwe-22.04"
             elif not release_a_newer_than_b(min_hwe_kernel, "hwe-22.04"):
                 raise ValidationError(
-                    "Invalid DPU kernel provided. Only 'hwe-22.04' or newer are supported."
+                    f"Invalid minimum {min_hwe_kernel} DPU kernel used. Only 'hwe-22.04' or newer are supported."
                 )
 
-            if hwe_kernel and release_a_newer_than_b(
-                min_hwe_kernel, hwe_kernel
+            if hwe_kernel and not release_a_newer_than_b(
+                hwe_kernel, min_hwe_kernel
             ):
                 raise ValidationError(
-                    "Invalid DPU kernel provided. Only 'hwe-22.04' or newer are supported."
+                    f"Invalid {hwe_kernel} DPU kernel used. Only 'hwe-22.04' or newer are supported."
                 )
 
         return cleaned_data
