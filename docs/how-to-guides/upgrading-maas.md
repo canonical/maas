@@ -6,7 +6,7 @@ This guide outlines the steps to upgrade MAAS to the latest version
 
 1. Backup your system and database.
 2. Verify Ubuntu release (`lsb_release -a`) and upgrade to the newer one if required.
-3. Verify PostgreSQL version (14 required, 16 recommended).
+3. Verify PostgreSQL version compatibility and upgrade it if required.
 4. Upgrade rack nodes first, then region nodes.
 
 ## Upgrade commands
