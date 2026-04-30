@@ -243,9 +243,16 @@ MAAS uses trace IDs to correlate all log statements for a single request across 
 
 See [Contextual Logging](contextual-logging.md) for detailed information on using trace IDs to correlate logs.
 
+### Security Logging
+
+MAAS logs all security-related events in a structured format compliant with industry standards. Security logs capture authentication, authorization, user management, and token lifecycle events, all marked with `type=security` for easy filtering.
+
+See [Security Logging](security-logging.md) for comprehensive documentation on security event types and monitoring best practices.
+
 ```{toctree}
 :maxdepth: 1
 :hidden:
 
 contextual-logging
+security-logging
 ```
