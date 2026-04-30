@@ -1,21 +1,17 @@
 # Install MAAS
 
-There are multiple approaches to installing MAAS, depending on your needs, use case, and operating system. This document outlines how to install MAAS on a single machine in region+rack mode. As MAAS is packaged without a database, both the MAAS snap and the PostgreSQL snap are required.
+There are multiple approaches to installing MAAS, depending on your needs, use case, and operating system. This document outlines how to install MAAS on a single machine in region+rack mode.
 
-## Requirements
+## Prerequisites
 
 A physical or virtual machine intended to run MAAS must meet the following requirements:
 
 - Ubuntu 22.04 LTS (Jammy) or newer.
 - `sudo` privileges.
-
-```{admonition} Disable conflicting NTP services
-:class: warning
-
-In production environments, it is recommended to disable conflicting NTP services as MAAS will handle time synchronization of machines:
-  ```bash
-  sudo systemctl disable --now systemd-timesyncd
-  ```
+- `systemd-timesyncd` disabled — MAAS manages time synchronisation via `chrony` and the two conflict:
+    ```bash
+    sudo systemctl disable --now systemd-timesyncd
+    ```
 
 ```{admonition} Older MAAS versions
 :class: note
@@ -23,23 +19,23 @@ In production environments, it is recommended to disable conflicting NTP service
 To install older versions of MAAS, see [Supported MAAS versions](/reference/supported-maas-versions.md) for compatible PostgreSQL channels and operating system versions. For this guide, we will use the latest version of MAAS.
 ```
 
-## Install the MAAS snap
+## Install MAAS
 
 Install the MAAS snap with:
 
 ```bash
-sudo snap install maas --channel=3.7/stable
+sudo snap install maas --channel=3.8/stable
 ```
 
 ## Install PostgreSQL
 
-Install the PostgreSQL snap:
+If you already have a PostgreSQL database installed and configured, you can skip to [Initialize MAAS](#initialize-maas). Otherwise, install the PostgreSQL snap:
 
 ```bash
 sudo snap install postgresql --channel=16/stable
 ```
 
-Configure credentials for the PostgreSQL database. Pick a strong password and store it securely:
+Select credentials for the PostgreSQL database. Pick a strong password and store it securely:
 
 ```bash
 export DBPASS=<strong-password>
@@ -77,8 +73,6 @@ sudo maas createadmin \
 
 Specify the password for your new administrator user when prompted. Store it securely. 
 
-<!--- do we need them to store this securely or can it be obtained later? --->
-
 ## Verify your installation
 
 Verify the installation by creating a profile and logging in:
@@ -113,3 +107,15 @@ You have just created a profile in the MAAS CLI called `admin`, logged in using 
 Open a browser and navigate to `http://<maas-ip>:5240/MAAS`, replacing `<maas-ip>` with the IP address of your MAAS machine. If you are on the same machine as the machine running MAAS, use `http://localhost:5240/MAAS`.
 
 Log in with the administrator credentials you created in the previous steps.
+
+## Alternative installation methods
+
+An alternative to installing the MAAS snap is to install the MAAS deb package. Install it with the following commands:
+
+```bash
+sudo apt-add-repository ppa:maas/3.8
+sudo apt update
+sudo apt -y install maas
+```
+
+Once installed, [install PostgreSQL](#install-postgresql) and [initialize MAAS](#initialize-maas) as described in the previous sections.

@@ -2,6 +2,8 @@
 
 This guide configures MAAS to enable the deployment of Machines. It assumes you have run the [install-maas](install-maas.md) guide previously and have the shell variable `PROFILE=<profile-name>` set.
 
+The following sections can also be completed using the MAAS UI.
+
 ## Configure DNS
 
 Point MAAS to an upstream DNS server to resolve external hostnames. Use `8.8.8.8` for Google's public DNS server:
