@@ -99,7 +99,7 @@ For help with the available commands, try:
 ```{admonition} Profiles
 :class: note
 
-You have just created a profile in the MAAS CLI called `admin`, logged in using the credentials created in the previous step for your admin user. The rest of these docs will refer to this profile as `$PROFILE`.
+You have just created a profile in the MAAS CLI called `admin`, logged in using the API key created in the previous step for your admin user. The rest of these docs will refer to this profile as `$PROFILE`.
 ```
 
 ## Access the MAAS UI
