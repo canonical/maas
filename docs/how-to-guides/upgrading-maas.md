@@ -36,7 +36,5 @@ This guide outlines the steps to upgrade MAAS to the latest version
 After upgrade:
 
 ```bash
-lsb_release -a   # Verify Ubuntu release
-maas --version   # Verify MAAS version
 sudo maas status # Verify services running
 ```

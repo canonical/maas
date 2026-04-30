@@ -35,27 +35,19 @@ If you already have a PostgreSQL database installed and configured, you can skip
 sudo snap install postgresql --channel=16/stable
 ```
 
-Select credentials for the PostgreSQL database. Pick a strong password and store it securely:
+Create a MAAS database role and database. Pick a strong password for the database user when prompted, and store it securely:
 
 ```bash
-export DBPASS=<strong-password>
-export DBUSER=maas
-export DBNAME=maas
-```
-
-Create a MAAS database role and database:
-
-```bash
-sudo postgresql.psql -U postgres -c "CREATE USER \"$DBUSER\" WITH ENCRYPTED PASSWORD '$DBPASS'"
-sudo postgresql.createdb -U postgres -O "$DBUSER" "$DBNAME"
+postgresql.createuser -U postgres -h /tmp -P maas
+postgresql.createdb -U postgres -h /tmp -O maas maas
 ```
 
 ## Initialize MAAS
 
-Initialize MAAS in region+rack mode with the PostgreSQL database credentials:
+Initialize MAAS in region+rack mode. Specify the password you created in the previous step in the `--database-uri`:
 
 ```bash
-sudo maas init region+rack --database-uri "postgres://$DBUSER:$DBPASS@localhost/$DBNAME"
+sudo maas init region+rack --database-uri "postgres://maas:<password>@localhost/maas"
 ```
 
 Press Enter when prompted to accept the default MAAS URL, or specify your own.
