@@ -12,7 +12,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maasservicelayer.models.users import User, UserWithSummary
+from maasservicelayer.models.users import User, UserStatistics
 
 
 class UserInfoResponse(BaseModel):
@@ -55,41 +55,31 @@ class UsersListResponse(PaginatedResponse[UserResponse]):
     kind: str = Field(default="UsersList")
 
 
-class UserWithSummaryResponse(HalResponse[BaseHal]):
-    kind: str = Field(default="UserWithSummary")
+class UserStatisticsResponse(HalResponse[BaseHal]):
+    kind: str = Field(default="UserStatistics")
     id: int
     completed_intro: bool
-    email: str | None = None
     is_local: bool
-    is_superuser: bool
-    last_name: str | None = None
-    last_login: datetime | None = None
     machines_count: int
     sshkeys_count: int
-    username: str
 
     @classmethod
     def from_model(
-        cls, user_with_summary: UserWithSummary, self_base_hyperlink: str
+        cls, user_statistics: UserStatistics, self_base_hyperlink: str
     ) -> Self:
         return cls(
-            id=user_with_summary.id,
-            completed_intro=user_with_summary.completed_intro,
-            email=user_with_summary.email,
-            is_local=user_with_summary.is_local,
-            is_superuser=user_with_summary.is_superuser,
-            last_name=user_with_summary.last_name,
-            last_login=user_with_summary.last_login,
-            machines_count=user_with_summary.machines_count,
-            sshkeys_count=user_with_summary.sshkeys_count,
-            username=user_with_summary.username,
+            id=user_statistics.id,
+            completed_intro=user_statistics.completed_intro,
+            is_local=user_statistics.is_local,
+            machines_count=user_statistics.machines_count,
+            sshkeys_count=user_statistics.sshkeys_count,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
-                    href=f"{self_base_hyperlink.rstrip('/')}/{user_with_summary.id}"
+                    href=f"{self_base_hyperlink.rstrip('/')}/{user_statistics.id}"
                 )
             ),
         )
 
 
-class UsersWithSummaryListResponse(PaginatedResponse[UserWithSummaryResponse]):
-    kind: str = Field(default="UserWithSummaryList")
+class UsersStatisticsListResponse(PaginatedResponse[UserStatisticsResponse]):
+    kind: str = Field(default="UserStatisticsList")

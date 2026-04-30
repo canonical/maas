@@ -63,7 +63,7 @@ from maasservicelayer.exceptions.constants import (
     PRECONDITION_FAILED,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.users import User, UserProfile, UserWithSummary
+from maasservicelayer.models.users import User, UserProfile, UserStatistics
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.filestorage import FileStorageService
@@ -338,18 +338,18 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
             builder=NodeBuilder(owner_id=to_user_id),
         )
 
-    async def get_by_id_with_summary(self, id: int) -> UserWithSummary | None:
-        return await self.repository.get_by_id_with_summary(id=id)
+    async def get_by_id_statistics(self, id: int) -> UserStatistics | None:
+        return await self.repository.get_by_id_statistics(id=id)
 
     async def get_by_username(self, username: str) -> User | None:
         return await self.repository.get_one(
             query=QuerySpec(where=UserClauseFactory.with_username(username))
         )
 
-    async def list_with_summary(
+    async def list_statistics(
         self, page: int, size: int, query: QuerySpec
-    ) -> ListResult[UserWithSummary]:
-        return await self.repository.list_with_summary(
+    ) -> ListResult[UserStatistics]:
+        return await self.repository.list_statistics(
             page=page, size=size, query=query
         )
 
