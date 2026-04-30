@@ -126,13 +126,6 @@ jobs:
 
           git add src/app/apiclient/
 
-          if git diff --cached --quiet; then
-            echo "No changes detected in the API client files, skipping PR."
-            echo "has_changes=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "has_changes=true" >> "$GITHUB_OUTPUT"
-
           existing_branch=$(gh pr list \
             --repo canonical/maas-ui \
             --state open \
@@ -142,7 +135,8 @@ jobs:
           if [[ -n "$existing_branch" ]]; then
             echo "Found existing PR branch: $existing_branch — pushing to it."
             BRANCH="$existing_branch"
-            git checkout -b "$BRANCH"
+            git fetch origin "$BRANCH"
+            git checkout -b "$BRANCH" "origin/$BRANCH"
             echo "is_new_pr=false" >> "$GITHUB_OUTPUT"
           else
             BRANCH="chore/update-api-client-${{ github.sha }}"
@@ -152,6 +146,14 @@ jobs:
           fi
 
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+          if git diff --cached --quiet; then
+            echo "No changes detected in the API client files, skipping."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
           git commit -m "chore(api): regenerated API client
 
           Triggered by: ${{ github.repository }}@${{ github.sha }}"
