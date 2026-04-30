@@ -78,7 +78,7 @@ Specify the password for your new administrator user when prompted. Store it sec
 Verify the installation by creating a profile and logging in:
 
 ```bash
-maas login admin "http://localhost:5240/MAAS/api/2.0/" $(sudo maas apikey --username=admin)
+maas login admin "http://localhost:5240/MAAS" $(sudo maas apikey --username=admin)
 ```
 
 You should see the following message:
