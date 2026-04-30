@@ -21,7 +21,7 @@ jobs:
         run: |
           MESSAGES=$(jq -r '.commits[].message' <<< "$GITHUB_EVENT_JSON")
           BUG_ID=$(echo "$MESSAGES" \
-            | grep -oP 'Resolves:\s*LP:\K[0-9]+' \
+            | grep -oiP '\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b.*LP:\s*\K[0-9]+' \
             | head -1 || true)
 
           if [ -z "$BUG_ID" ]; then
