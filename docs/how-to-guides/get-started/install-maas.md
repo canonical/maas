@@ -104,7 +104,7 @@ You have just created a profile in the MAAS CLI called `admin`, logged in using 
 
 ## Access the MAAS UI
 
-Open a browser and navigate to `http://<maas-ip>:5240/MAAS`, replacing `<maas-ip>` with the IP address of your MAAS machine. If you are on the same machine as the machine running MAAS, use `http://localhost:5240/MAAS`.
+Open a browser and navigate to `http://<maas-ip>:5240/MAAS`, replacing `<maas-ip>` with the IP address of your MAAS region controller. If you are on the same machine as the machine running MAAS, use `http://localhost:5240/MAAS`.
 
 Log in with the administrator credentials you created in the previous steps.
 
