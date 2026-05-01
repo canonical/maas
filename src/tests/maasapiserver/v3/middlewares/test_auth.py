@@ -526,7 +526,7 @@ class TestLocalAuthenticationProvider:
             await provider.authenticate(request, test_token)
 
         mock_logger.info.assert_called_once_with(
-            f"{AUTHN_TOKEN_REUSED}:JWT",
+            f"{AUTHN_TOKEN_REUSED}:JWT:access_token",
             type=SECURITY,
             token_hash=hash_token_for_logging(test_token),
         )

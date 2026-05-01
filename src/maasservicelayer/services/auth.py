@@ -90,13 +90,13 @@ class AuthService(Service):
         )
 
         logger.info(
-            f"{AUTHN_TOKEN_CREATED}:JWT:accesstoken",
+            f"{AUTHN_TOKEN_CREATED}:JWT:access_token",
             type=SECURITY,
             token_hash=hash_token_for_logging(access_token.encoded),
         )
 
         logger.info(
-            f"{AUTHN_TOKEN_CREATED}:JWT:refreshtoken",
+            f"{AUTHN_TOKEN_CREATED}:JWT:refresh_token",
             type=SECURITY,
             token_hash=hash_token_for_logging(refresh_token),
         )
@@ -112,7 +112,7 @@ class AuthService(Service):
         )
 
         logger.info(
-            f"{AUTHN_TOKEN_CREATED}:JWT:accesstoken",
+            f"{AUTHN_TOKEN_CREATED}:JWT:access_token",
             type=SECURITY,
             token_hash=hash_token_for_logging(token.encoded),
         )

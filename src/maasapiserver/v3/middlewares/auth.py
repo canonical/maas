@@ -113,7 +113,7 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
             # Use refresh token to get a new JWT if the JWT is expired.
             if not refresh_token:
                 logger.info(
-                    f"{AUTHN_TOKEN_REUSED}:JWT",
+                    f"{AUTHN_TOKEN_REUSED}:JWT:access_token",
                     type=SECURITY,
                     token_hash=hash_token_for_logging(token),
                 )
@@ -130,7 +130,7 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
             )
             new_token = await self._get_new_jwt(request, user)
             logger.info(
-                f"{AUTHN_TOKEN_CREATED}:JWT",
+                f"{AUTHN_TOKEN_CREATED}:JWT:access_token",
                 type=SECURITY,
                 token_hash=hash_token_for_logging(new_token.encoded),
             )
@@ -152,7 +152,7 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
         )
         if not user:
             logger.info(
-                f"{AUTHN_TOKEN_REUSED}:refreshtoken",
+                f"{AUTHN_TOKEN_REUSED}:JWT:refreshtoken",
                 type=SECURITY,
                 token_hash=hash_token_for_logging(refresh_token),
             )

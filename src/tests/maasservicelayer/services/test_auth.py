@@ -111,12 +111,12 @@ class TestAuthService:
             [
                 call(AUTHN_LOGIN_SUCCESSFUL, type=SECURITY),
                 call(
-                    f"{AUTHN_TOKEN_CREATED}:JWT:accesstoken",
+                    f"{AUTHN_TOKEN_CREATED}:JWT:access_token",
                     type=SECURITY,
                     token_hash=hash_token_for_logging(mock_jwt_token.encoded),
                 ),
                 call(
-                    f"{AUTHN_TOKEN_CREATED}:JWT:refreshtoken",
+                    f"{AUTHN_TOKEN_CREATED}:JWT:refresh_token",
                     type=SECURITY,
                     token_hash=hash_token_for_logging("refresh_token_value"),
                 ),
