@@ -35,7 +35,6 @@ def configure_logging(level=logging.INFO, query_level=logging.WARNING):
     """
     structlog.configure(
         processors=[
-            structlog.stdlib.filter_by_level,
             merge_contextvars,
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.processors.StackInfoRenderer(),
@@ -50,9 +49,7 @@ def configure_logging(level=logging.INFO, query_level=logging.WARNING):
         ],
         context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.stdlib.BoundLogger,
-        # TODO BEFORE 3.6 RELEASE: in noble we have a newer version of the structlog library and we have this available
-        # wrapper_class=structlog.make_filtering_bound_logger(level),
+        wrapper_class=structlog.make_filtering_bound_logger(level),
         cache_logger_on_first_use=True,
     )
 
