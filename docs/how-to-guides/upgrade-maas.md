@@ -1,4 +1,4 @@
-# Upgrading MAAS
+# Upgrade MAAS
 
 This guide outlines the steps to upgrade MAAS to the latest version
 
@@ -38,3 +38,7 @@ After upgrade:
 ```bash
 sudo maas status # Verify services running
 ```
+
+## Troubleshooting
+
+- BMC migration (3.3+): Ensure unique BMC IP/username/password combinations.

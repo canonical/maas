@@ -15,16 +15,6 @@ For more advanced use cases, you may want to deploy multiple region controllers 
 
 An alternative approach is to use [Juju](https://canonical.com/juju) to deploy high availability Charmed MAAS. This simplifies the installation process and provides a consistent and repeatable way to deploy MAAS at scale. See the [GitHub repository](https://github.com/canonical/maas-terraform-modules) for more information.
 
-## Troubleshooting notes
-
-- NTP conflicts:
-
-  ```bash
-  sudo systemctl disable --now systemd-timesyncd
-  ```
-
-- BMC migration (3.3+): Ensure unique BMC IP/username/password combinations.
-
 ## Related documentation
 
 - [About controllers](/explanation/controllers.md)

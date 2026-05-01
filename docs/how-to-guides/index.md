@@ -119,7 +119,7 @@ Finally, make MAAS part of your larger automation pipeline. Learn how to use the
 
 get-started/index
 back-up-maas
-upgrading-maas
+upgrade-maas
 manage-networks
 manage-network-services
 manage-switches
