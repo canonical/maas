@@ -22,6 +22,7 @@ from temporalio.workflow import ParentClosePolicy
 import yaml
 
 from maascommon.constants import SYSTEM_CA_FILE
+from maascommon.workflows.bootresource import MASTER_IMAGE_SYNC_WORKFLOW_NAME
 from maascommon.workflows.msm import (
     MachinesCountByStatus,
     MSM_ENROL_SITE_WORKFLOW_NAME,
@@ -88,6 +89,7 @@ MSM_SEND_ENROL_ACTIVITY_NAME = "msm-send-enrol"
 MSM_SET_BOOT_SOURCE_ACTIVITY_NAME = "msm-set-bootsource"
 MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME = "msm-set-global-config"
 MSM_SET_SELECTIONS_ACTIVITY_NAME = "msm-set-selections"
+MSM_START_IMAGE_SYNC_ACTIVITY_NAME = "msm-start-image-sync"
 
 MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME = "msm-delete-bootsources"
 MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME = (
@@ -327,6 +329,15 @@ class MSMConnectorActivity(ActivityBase):
                 raise ApplicationError(
                     "Failed to set global configuration", non_retryable=True
                 ) from err
+
+    @activity_defn_with_context(name=MSM_START_IMAGE_SYNC_ACTIVITY_NAME)
+    async def start_image_sync(self) -> None:
+        async with self.start_transaction() as services:
+            client = await services.temporal.get_temporal_client()
+            handle = client.get_schedule_handle(
+                MASTER_IMAGE_SYNC_WORKFLOW_NAME
+            )
+            await handle.trigger()
 
     @activity_defn_with_context(name=MSM_GET_ENROL_ACTIVITY_NAME)
     async def get_enrol(self) -> dict[str, Any]:

@@ -253,6 +253,7 @@ async def main() -> None:
                 msm_activity.restore_default_boot_source,
                 msm_activity.set_selections,
                 msm_activity.set_global_config,
+                msm_activity.start_image_sync,
                 # Tag evaluation activities
                 tag_evaluation_activity.evaluate_tag,
                 # Power state activities
