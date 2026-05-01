@@ -21,8 +21,8 @@ from maasapiserver.v3.api.public.models.responses.users import (
     UserInfoResponse,
     UserResponse,
     UsersListResponse,
-    UsersWithSummaryListResponse,
-    UserWithSummaryResponse,
+    UsersStatisticsListResponse,
+    UserStatisticsResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
@@ -43,7 +43,7 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.users import User, UserProfile, UserWithSummary
+from maasservicelayer.models.users import User, UserProfile, UserStatistics
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.users import UsersService
@@ -101,7 +101,7 @@ class TestUsersApi(ApiCommonTests):
             ),
             Endpoint(
                 method="GET",
-                path=f"{V3_API_PREFIX}/users_with_summary",
+                path=f"{V3_API_PREFIX}/users/statistics",
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
             ),
             Endpoint(
@@ -702,7 +702,7 @@ class TestUsersApi(ApiCommonTests):
         assert response.status_code == 400
         services_mock.users.transfer_resources.assert_called_once_with(1, 2)
 
-    async def test_list_with_summary(
+    async def test_list_statistics(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
@@ -711,18 +711,14 @@ class TestUsersApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
         services_mock.users = Mock(UsersService)
-        services_mock.users.list_with_summary.return_value = ListResult[
-            UserWithSummary
+        services_mock.users.list_statistics.return_value = ListResult[
+            UserStatistics
         ](
             items=[
-                UserWithSummary(
+                UserStatistics(
                     id=1,
-                    username="foo",
                     completed_intro=True,
-                    email="foo@example.com",
                     is_local=True,
-                    is_superuser=False,
-                    last_name="foo",
                     machines_count=2,
                     sshkeys_count=3,
                 )
@@ -731,27 +727,24 @@ class TestUsersApi(ApiCommonTests):
         )
 
         response = await client.get(
-            f"{V3_API_PREFIX}/users_with_summary?size=1",
+            f"{V3_API_PREFIX}/users_statistics?size=1",
         )
         assert response.status_code == 200
-        users_with_summary = UsersWithSummaryListResponse(**response.json())
-        assert users_with_summary.total == 1
-        assert len(users_with_summary.items) == 1
-        assert users_with_summary.next is None
-        user = users_with_summary.items[0]
+        users_statistics = UsersStatisticsListResponse(**response.json())
+        assert users_statistics.total == 1
+        assert len(users_statistics.items) == 1
+        assert users_statistics.next is None
+        user = users_statistics.items[0]
         assert user.id == 1
-        assert user.username == "foo"
         assert user.completed_intro is True
         assert user.is_local is True
-        assert user.is_superuser is False
-        assert user.last_name == "foo"
         assert user.machines_count == 2
         assert user.sshkeys_count == 3
-        services_mock.users.list_with_summary.assert_called_once_with(
+        services_mock.users.list_statistics.assert_called_once_with(
             page=1, size=1, query=QuerySpec(where=None)
         )
 
-    async def test_list_with_summary_filters(
+    async def test_list_statistics_filters(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
@@ -760,18 +753,14 @@ class TestUsersApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
         services_mock.users = Mock(UsersService)
-        services_mock.users.list_with_summary.return_value = ListResult[
-            UserWithSummary
+        services_mock.users.list_statistics.return_value = ListResult[
+            UserStatistics
         ](
             items=[
-                UserWithSummary(
+                UserStatistics(
                     id=1,
-                    username="foo",
                     completed_intro=True,
-                    email="foo@example.com",
                     is_local=True,
-                    is_superuser=False,
-                    last_name="foo",
                     machines_count=2,
                     sshkeys_count=3,
                 )
@@ -780,17 +769,17 @@ class TestUsersApi(ApiCommonTests):
         )
 
         response = await client.get(
-            f"{V3_API_PREFIX}/users_with_summary?size=1&username_or_email=example",
+            f"{V3_API_PREFIX}/users/statistics?size=1&username_or_email=example",
         )
         assert response.status_code == 200
-        users_with_summary = UsersWithSummaryListResponse(**response.json())
-        assert users_with_summary.total == 2
-        assert len(users_with_summary.items) == 1
+        users_statistics = UsersStatisticsListResponse(**response.json())
+        assert users_statistics.total == 2
+        assert len(users_statistics.items) == 1
         assert (
-            users_with_summary.next
-            == f"{V3_API_PREFIX}/users_with_summary?page=2&size=1&username_or_email=example"
+            users_statistics.next
+            == f"{V3_API_PREFIX}/users/statistics?page=2&size=1&username_or_email=example"
         )
-        services_mock.users.list_with_summary.assert_called_once_with(
+        services_mock.users.list_statistics.assert_called_once_with(
             page=1,
             size=1,
             query=QuerySpec(
@@ -852,31 +841,27 @@ class TestUsersApi(ApiCommonTests):
             user_id=1, password="foo"
         )
 
-    async def test_user_with_summary(
+    async def test_user_statistics(
         self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id_with_summary.return_value = (
-            UserWithSummary(
+        services_mock.users.get_by_id_statistics.return_value = (
+            UserStatistics(
                 id=0,
-                username="foo",
                 completed_intro=True,
-                email="foo@example.com",
                 is_local=True,
-                is_superuser=False,
-                last_name="foo",
                 machines_count=2,
                 sshkeys_count=3,
             )
         )
 
         response = await mocked_api_client_user.get(
-            f"{V3_API_PREFIX}/users/me_with_summary"
+            f"{V3_API_PREFIX}/users/me/statistics"
         )
         assert response.status_code == 200
-        user_with_summary = UserWithSummaryResponse(**response.json())
-        assert user_with_summary.id == 0
-        assert user_with_summary.username == "foo"
-        services_mock.users.get_by_id_with_summary.assert_called_once_with(
+        user_statistics = UserStatisticsResponse(**response.json())
+        assert user_statistics.id == 0
+        assert user_statistics.machines_count == 2
+        services_mock.users.get_by_id_statistics.assert_called_once_with(
             id=0
         )

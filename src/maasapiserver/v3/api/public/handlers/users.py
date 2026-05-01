@@ -29,8 +29,8 @@ from maasapiserver.v3.api.public.models.responses.users import (
     UserInfoResponse,
     UserResponse,
     UsersListResponse,
-    UsersWithSummaryListResponse,
-    UserWithSummaryResponse,
+    UsersStatisticsListResponse,
+    UserStatisticsResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_authentication,
@@ -68,7 +68,7 @@ class UsersHandler(Handler):
         # /users/{user_id}. Therefore we need to specify a custom registration
         # order to disambiguate these paths.
         return [
-            "get_me_with_summary",
+            "get_me_statistics",
             "get_user_info",
             "complete_intro",
             "change_password_user",
@@ -78,7 +78,7 @@ class UsersHandler(Handler):
             "update_user",
             "delete_user",
             "change_password_admin",
-            "list_users_with_summary",
+            "list_users_statistics",
         ]
 
     @handler(
@@ -419,14 +419,13 @@ class UsersHandler(Handler):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
-        path="/users_with_summary",
+        path="/users/statistics",
         methods=["GET"],
         tags=TAGS,
         responses={
-            200: {"model": UsersWithSummaryListResponse},
+            200: {"model": UsersStatisticsListResponse},
         },
-        summary="List users with a summary. ONLY FOR INTERNAL USAGE.",
-        description="List users with a summary. This endpoint is only for internal usage and might be changed or removed without notice.",
+        summary="List additional statistics of users, e.g. machine count.",
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
@@ -437,28 +436,28 @@ class UsersHandler(Handler):
             )
         ],
     )
-    async def list_users_with_summary(
+    async def list_users_statistics(
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         filters: UsersFiltersParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> UsersWithSummaryListResponse:
-        users = await services.users.list_with_summary(
+    ) -> UsersStatisticsListResponse:
+        users = await services.users.list_statistics(
             page=pagination_params.page,
             size=pagination_params.size,
             query=QuerySpec(where=filters.to_clause()),
         )
-        return UsersWithSummaryListResponse(
+        return UsersStatisticsListResponse(
             items=[
-                UserWithSummaryResponse.from_model(
-                    user_with_summary=user,
+                UserStatisticsResponse.from_model(
+                    user_statistics=user,
                     self_base_hyperlink=f"{V3_API_PREFIX}/users",
                 )
                 for user in users.items
             ],
             total=users.total,
             next=(
-                f"{V3_API_PREFIX}/users_with_summary?"
+                f"{V3_API_PREFIX}/users_statistics?"
                 f"{pagination_params.to_next_href_format()}"
                 f"{filters.to_href_format()}"
                 if users.has_next(
@@ -469,31 +468,30 @@ class UsersHandler(Handler):
         )
 
     @handler(
-        path="/users/me_with_summary",
+        path="/users/me/statistics",
         methods=["GET"],
         tags=TAGS,
-        responses={200: {"model": UserWithSummaryResponse}},
-        summary="Get user with a summary. ONLY FOR INTERNAL USAGE.",
-        description="Get user with a summary. This endpoint is only for internal usage and might be changed or removed without notice.",
+        responses={200: {"model": UserStatisticsResponse}},
+        summary="Get additional statistics for the logged-in user, e.g. machine count.",
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[Depends(check_authentication())],
     )
-    async def get_me_with_summary(
+    async def get_me_statistics(
         self,
         authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> UserWithSummaryResponse:
+    ) -> UserStatisticsResponse:
         assert authenticated_user is not None
-        user = await services.users.get_by_id_with_summary(
+        user = await services.users.get_by_id_statistics(
             id=authenticated_user.id
         )
         if user is None:
             # only happens for system users
             raise BadRequestException()
-        return UserWithSummaryResponse.from_model(
-            user_with_summary=user,
+        return UserStatisticsResponse.from_model(
+            user_statistics=user,
             self_base_hyperlink=f"{V3_API_PREFIX}/users",
         )
