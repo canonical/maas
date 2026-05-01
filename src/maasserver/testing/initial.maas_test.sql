@@ -5141,22 +5141,31 @@ ALTER TABLE public.maasserver_bootsourceselection ALTER COLUMN id ADD GENERATED 
 --
 
 CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
- WITH sync_stats AS (
+ WITH sync_subq AS (
+         SELECT file.id AS file_id,
+            file.size AS file_size,
+            sum(file_sync.size) AS total_size
+           FROM (public.maasserver_bootresourcefilesync file_sync
+             JOIN public.maasserver_bootresourcefile file ON ((file.id = file_sync.file_id)))
+          GROUP BY file.id, file.size
+        ), sync_stats AS (
          SELECT rset.resource_id,
             rset.id AS set_id,
             rset.version,
-            COALESCE((((sum(filesync.size) * (100)::numeric) / sum(file.size)) / (NULLIF(( SELECT count(*) AS count
+            COALESCE((((sum(sync_subq.total_size) * (100)::numeric) / sum(sync_subq.file_size)) / (NULLIF(( SELECT count(*) AS count
                    FROM public.maasserver_node
                   WHERE (maasserver_node.node_type = ANY (ARRAY[3, 4]))), 0))::numeric), (0)::numeric) AS sync_percentage
-           FROM ((public.maasserver_bootresourcefilesync filesync
-             JOIN public.maasserver_bootresourcefile file ON ((file.id = filesync.file_id)))
+           FROM ((sync_subq
+             JOIN public.maasserver_bootresourcefile file ON ((file.id = sync_subq.file_id)))
              JOIN public.maasserver_bootresourceset rset ON ((rset.id = file.resource_set_id)))
           GROUP BY rset.resource_id, rset.id, rset.version
         ), latest_versions AS (
          SELECT res.id AS resource_id,
             cache.latest_version
-           FROM (public.maasserver_bootsourcecache cache
-             JOIN public.maasserver_bootresource res ON ((((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND (((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text)) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
+           FROM (((public.maasserver_bootsourcecache cache
+             JOIN public.maasserver_bootsource source ON ((source.id = cache.boot_source_id)))
+             JOIN public.maasserver_bootsourceselection sel ON ((sel.boot_source_id = source.id)))
+             JOIN public.maasserver_bootresource res ON (((res.selection_id = sel.id) AND ((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND ((((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text))) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
         ), resource_set_counts AS (
          SELECT sync_stats.resource_id,
             count(*) AS set_count
@@ -5183,8 +5192,8 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
                     ELSE 'No updates available'::text
                 END AS update_status
            FROM ((sync_stats ss
-             JOIN latest_versions lv ON ((lv.resource_id = ss.resource_id)))
              JOIN resource_set_counts rsc ON ((rsc.resource_id = ss.resource_id)))
+             LEFT JOIN latest_versions lv ON ((lv.resource_id = ss.resource_id)))
           ORDER BY ss.resource_id, ss.set_id DESC
         ), selection_resources AS (
          SELECT sel.id AS selection_id,
