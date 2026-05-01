@@ -46,29 +46,39 @@ from maasservicelayer.services.temporal import TemporalService
 from maastemporalworker.workflow.msm import (
     MachinesCountByStatus,
     MSM_CHECK_ENROL_ACTIVITY_NAME,
+    MSM_CONFIG_EP,
     MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME,
     MSM_DETAIL_EP,
     MSM_ENROL_EP,
     MSM_GET_ENROL_ACTIVITY_NAME,
+    MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME,
     MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME,
     MSM_GET_KNOWN_CONFIG_OPTIONS,
     MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME,
     MSM_GET_VERSION_ACTIVITY_NAME,
     MSM_REFRESH_EP,
+    MSM_REPORT_CONFIG_PROGRESS_ACTIVITY_NAME,
+    MSM_REPORT_PROGRESS_EP,
     MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME,
     MSM_SEND_ENROL_ACTIVITY_NAME,
     MSM_SEND_HEARTBEAT_ACTIVITY_NAME,
     MSM_SET_BOOT_SOURCE_ACTIVITY_NAME,
     MSM_SET_ENROL_ACTIVITY_NAME,
+    MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME,
+    MSM_SET_SELECTIONS_ACTIVITY_NAME,
+    MSM_START_IMAGE_SYNC_ACTIVITY_NAME,
     MSM_SS_EP,
     MSM_VERIFY_EP,
     MSM_VERIFY_TOKEN_ACTIVITY_NAME,
+    MSMConfigureProfileParam,
+    MSMConfigureProfileWorkflow,
     MSMConnectorActivity,
     MSMConnectorParam,
     MSMEnrolParam,
     MSMEnrolSiteWorkflow,
     MSMHeartbeatParam,
     MSMHeartbeatWorkflow,
+    MSMReportConfigProgressParam,
     MSMRestoreDefaultBootSourceWorkflow,
     MSMSetBootSourceParam,
     MSMSetGlobalConfigParam,
@@ -76,6 +86,8 @@ from maastemporalworker.workflow.msm import (
     MSMTokenRefreshParam,
     MSMTokenRefreshWorkflow,
     MSMTokenVerifyParam,
+    SiteStatus,
+    TaskStatus,
 )
 from tests.fixtures import AsyncContextManagerMock
 from tests.fixtures.factories.node import create_test_machine_entry
@@ -87,6 +99,8 @@ _MSM_BASE_URL = "http://msm.local/ingress"
 _MSM_BOOT_SOURCE_URL = f"{_MSM_BASE_URL}{MSM_SS_EP}"
 _MSM_ENROL_URL = f"{_MSM_BASE_URL}{MSM_ENROL_EP}"
 _MSM_DETAIL_URL = f"{_MSM_BASE_URL}{MSM_DETAIL_EP}"
+_MSM_CONFIG_URL = f"{_MSM_BASE_URL}{MSM_CONFIG_EP}"
+_MSM_REPORT_PROGRESS_URL = f"{_MSM_BASE_URL}{MSM_REPORT_PROGRESS_EP}"
 _JWT_ENROL = "headers.claims.signature"
 _JWT_ACCESS = "headers.new-claims.signature"
 _CLUSTER_UUID = "abc-def"
@@ -137,6 +151,30 @@ def hb_param() -> MSMHeartbeatParam:
         ),
         version="3.8.0",
         known_config_options=None,
+    )
+
+
+@pytest.fixture
+def config_profile_param() -> MSMConfigureProfileParam:
+    return MSMConfigureProfileParam(
+        sm_url=_MSM_BASE_URL,
+        jwt=_JWT_ACCESS,
+    )
+
+
+@pytest.fixture
+def report_progress_param() -> MSMReportConfigProgressParam:
+    return MSMReportConfigProgressParam(
+        sm_url=_MSM_BASE_URL,
+        jwt=_JWT_ACCESS,
+        site_status=SiteStatus(
+            status=TaskStatus.STARTED,
+            selections_status=TaskStatus.STARTED,
+            global_config_status=TaskStatus.STARTED,
+            image_sync_status=TaskStatus.STARTED,
+            errors=[],
+            clear_errors=False,
+        ),
     )
 
 
@@ -207,6 +245,14 @@ class TestMSMActivities:
         mock_response = mocker.create_autospec(ClientResponse)
         type(mock_response).status = PropertyMock(return_value=status)
         mocked_session.delete.return_value.__aenter__.return_value = (
+            mock_response
+        )
+        return mock_response
+
+    def _mock_patch(self, mocker, mocked_session, status: int) -> Mock:
+        mock_response = mocker.create_autospec(ClientResponse)
+        type(mock_response).status = PropertyMock(return_value=status)
+        mocked_session.patch.return_value.__aenter__.return_value = (
             mock_response
         )
         return mock_response
@@ -726,6 +772,92 @@ class TestMSMActivities:
         # Verify version is in X.Y.Z format
         assert re.match(r"^\d+\.\d+\.\d+$", version)
 
+    async def test_get_full_profile_config(
+        self, mocker, msm_act, config_profile_param
+    ):
+        mocked_session = msm_act._session
+        test_profile = {
+            "global_config": {"theme": "dark"},
+            "selections": ["ubuntu/resolute/amd64"],
+            "trigger_image_sync": True,
+        }
+        self._mock_get(
+            mocker,
+            mocked_session,
+            200,
+            body=test_profile,
+        )
+        env = ActivityEnvironment()
+        config = await env.run(
+            msm_act.get_full_profile_config, config_profile_param
+        )
+
+        assert config == test_profile
+        mocked_session.get.assert_called_once_with(
+            _MSM_CONFIG_URL,
+            headers={"Authorization": f"bearer {config_profile_param.jwt}"},
+        )
+
+    @pytest.mark.parametrize("return_code", [(401,), (404,), (500,)])
+    async def test_get_full_profile_config_failed_request(
+        self, mocker, msm_act, config_profile_param, return_code
+    ):
+        mocked_session = msm_act._session
+        self._mock_get(
+            mocker,
+            mocked_session,
+            return_code,
+            body={},
+        )
+        env = ActivityEnvironment()
+        with pytest.raises(ApplicationError) as err:
+            await env.run(
+                msm_act.get_full_profile_config, config_profile_param
+            )
+        assert err.value.non_retryable == (return_code in [401, 404])
+
+    async def test_report_config_progress(
+        self, mocker, msm_act, report_progress_param
+    ):
+        mocked_session = msm_act._session
+        self._mock_patch(
+            mocker,
+            mocked_session,
+            204,
+        )
+        env = ActivityEnvironment()
+        await env.run(
+            msm_act.report_config_progress, report_progress_param
+        )
+        mocked_session.patch.assert_called_once_with(
+            _MSM_REPORT_PROGRESS_URL,
+            json={
+                "status": TaskStatus.STARTED,
+                "selections_status": TaskStatus.STARTED,
+                "global_config_status": TaskStatus.STARTED,
+                "image_sync_status": TaskStatus.STARTED,
+                "errors": [],
+                "clear_errors": False,
+            },
+            headers={"Authorization": f"bearer {report_progress_param.jwt}"},
+        )
+
+    @pytest.mark.parametrize("return_code", [(401), (404,), (500,)])
+    async def test_report_config_progress_failed_request(
+        self, mocker, msm_act, report_progress_param, return_code
+    ):
+        mocked_session = msm_act._session
+        self._mock_patch(
+            mocker,
+            mocked_session,
+            return_code,
+        )
+        env = ActivityEnvironment()
+        with pytest.raises(ApplicationError) as err:
+            await env.run(
+                msm_act.report_config_progress, report_progress_param
+            )
+        assert err.value.non_retryable == (return_code in [401, 404])
 
 class TestMSMEnrolWorkflow:
     async def test_enrolment(self, enrol_param):
@@ -1050,3 +1182,123 @@ class TestRestoreDefaultBootSourceWorkflow:
                 )
         assert calls["msm-delete-boot-sources"] == [True]
         assert len(calls["msm-restore-default-source"]) == 1
+
+
+class TestConfigureProfileWorkflow:
+
+    @pytest.mark.parametrize("trigger_sync", [(True,), (False,)])
+    async def test_workflow(self, config_profile_param, trigger_sync):
+        calls = defaultdict(list)
+
+        test_profile = {
+                "global_config": {"theme": "dark"},
+                "selections": ["ubuntu/resolute/amd64"],
+                "trigger_image_sync": trigger_sync,
+            }
+
+        @activity.defn(name=MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME)
+        async def get_full_profile(input: MSMConfigureProfileParam) -> dict[str, Any]:
+            calls["msm-get-full-profile"].append(True)
+            return test_profile
+
+        @activity.defn(name=MSM_REPORT_CONFIG_PROGRESS_ACTIVITY_NAME)
+        async def report_progress(input: MSMReportConfigProgressParam) -> None:
+            calls["msm-report-progress"].append(input)
+
+        @activity.defn(name=MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME)
+        async def set_global_config(input: MSMSetGlobalConfigParam) -> None:
+            calls["msm-set-global-config"].append(input)
+
+        @activity.defn(name=MSM_SET_SELECTIONS_ACTIVITY_NAME)
+        async def set_selections(input: MSMSetSelectionsParam) -> None:
+            calls["msm-set-selections"].append(input)
+
+        @activity.defn(name=MSM_START_IMAGE_SYNC_ACTIVITY_NAME)
+        async def image_sync() -> None:
+            calls["msm-image-sync"].append(True)
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="abcd:region",
+                workflows=[MSMConfigureProfileWorkflow],
+                activities=[
+                    get_full_profile,
+                    report_progress,
+                    set_global_config,
+                    set_selections,
+                    image_sync,
+                ],
+            ) as worker:
+                await env.client.execute_workflow(
+                    MSMConfigureProfileWorkflow.run,
+                    config_profile_param,
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+        assert calls["msm-get-full-profile"] == [True]
+        expected_report_calls = [
+            # one at beginning to signal start of wf
+            MSMReportConfigProgressParam(
+                sm_url=config_profile_param.sm_url,
+                jwt=config_profile_param.jwt,
+                site_status=SiteStatus(
+                    status=TaskStatus.STARTED,
+                    selections_status=TaskStatus.STARTED,
+                    global_config_status=TaskStatus.STARTED,
+                    image_sync_status=TaskStatus.STARTED if trigger_sync else None,
+                )
+            ),
+            # one for selections, global_config activities
+            MSMReportConfigProgressParam(
+                sm_url=config_profile_param.sm_url,
+                jwt=config_profile_param.jwt,
+                site_status=SiteStatus(
+                    selections_status=TaskStatus.COMPLETE,
+                )
+            ),
+            MSMReportConfigProgressParam(
+                sm_url=config_profile_param.sm_url,
+                jwt=config_profile_param.jwt,
+                site_status=SiteStatus(
+                    global_config_status=TaskStatus.COMPLETE,
+                )
+            ),
+            # one for the end
+            MSMReportConfigProgressParam(
+                sm_url=config_profile_param.sm_url,
+                jwt=config_profile_param.jwt,
+                site_status=SiteStatus(
+                    status=TaskStatus.COMPLETE,
+                    clear_errors=True,
+                )
+            ),
+        ]
+        if trigger_sync:
+            assert calls["msm-image-sync"] == [True]
+            expected_report_calls.append(
+                MSMReportConfigProgressParam(
+                    sm_url=config_profile_param.sm_url,
+                    jwt=config_profile_param.jwt,
+                    site_status=SiteStatus(
+                        image_sync_status=TaskStatus.COMPLETE,
+                    )
+                )
+            )
+        else:
+            assert calls["msm-image-sync"] == []
+
+        for expected_call in expected_report_calls:
+            assert expected_call in calls["msm-report-progress"]
+
+
+        assert calls["msm-set-global-config"] == [MSMSetGlobalConfigParam(
+            configuration=test_profile["global_config"]
+        )]
+
+
+        assert calls["msm-set-selections"] == [MSMSetSelectionsParam(
+            sm_url=config_profile_param.sm_url,
+            selections=test_profile["selections"],
+        )]

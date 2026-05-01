@@ -938,3 +938,4 @@ class MSMConfigureProfileWorkflow:
                 ],
                 clear_errors=False,
             )
+        await report(status)
