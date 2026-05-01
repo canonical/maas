@@ -3,13 +3,15 @@
 
 import datetime
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import call, Mock, patch
 
 import pytest
 
 from maascommon.logging.security import (
     AUTHN_LOGIN_SUCCESSFUL,
     AUTHN_LOGIN_UNSUCCESSFUL,
+    AUTHN_TOKEN_CREATED,
+    hash_token_for_logging,
     SECURITY,
 )
 from maasservicelayer.auth.jwt import InvalidToken, JWT
@@ -78,11 +80,21 @@ class TestAuthService:
             token="refresh_token_hash_abc123", user_id=user.id
         )
 
-    async def test_login_logging(self) -> None:
+    async def test_login_logging(self, mocker) -> None:
         user = self._build_test_user()
         secrets_service_mock = Mock(SecretsService)
         refresh_tokens_service_mock = Mock(RefreshTokenService)
         secrets_service_mock.get_simple_secret.return_value = "123"
+        mocker.patch(
+            "maasservicelayer.services.auth.token_hex",
+            return_value="refresh_token_value",
+        )
+
+        mock_jwt_token = JWT.create("123", user.username, user.id)
+        mocker.patch(
+            "maasservicelayer.services.auth.JWT.create",
+            return_value=mock_jwt_token,
+        )
 
         users_service_mock = Mock(UsersService)
         users_service_mock.get_one.return_value = user
@@ -94,9 +106,21 @@ class TestAuthService:
         )
         with patch("maasservicelayer.services.auth.logger") as mock_logger:
             await auth_service.login(user.username, "test")
-        mock_logger.info.assert_called_once_with(
-            AUTHN_LOGIN_SUCCESSFUL,
-            type=SECURITY,
+        assert mock_logger.info.call_count == 3
+        mock_logger.info.assert_has_calls(
+            [
+                call(AUTHN_LOGIN_SUCCESSFUL, type=SECURITY),
+                call(
+                    f"{AUTHN_TOKEN_CREATED}:JWT:access_token",
+                    type=SECURITY,
+                    token_hash=hash_token_for_logging(mock_jwt_token.encoded),
+                ),
+                call(
+                    f"{AUTHN_TOKEN_CREATED}:JWT:refresh_token",
+                    type=SECURITY,
+                    token_hash=hash_token_for_logging("refresh_token_value"),
+                ),
+            ]
         )
 
     async def test_login_admin(self, mocker) -> None:

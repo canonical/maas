@@ -10,6 +10,8 @@ import structlog
 from maascommon.logging.security import (
     AUTHN_LOGIN_SUCCESSFUL,
     AUTHN_LOGIN_UNSUCCESSFUL,
+    AUTHN_TOKEN_CREATED,
+    hash_token_for_logging,
     SECURITY,
 )
 from maasservicelayer.auth.jwt import JWT
@@ -86,15 +88,36 @@ class AuthService(Service):
         await self.refresh_tokens_service.create_refresh_token(
             token=refresh_token, user_id=user.id
         )
+
+        logger.info(
+            f"{AUTHN_TOKEN_CREATED}:JWT:access_token",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(access_token.encoded),
+        )
+
+        logger.info(
+            f"{AUTHN_TOKEN_CREATED}:JWT:refresh_token",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(refresh_token),
+        )
+
         return AuthTokens(access_token, refresh_token)
 
     async def access_token(self, authenticated_user: AuthenticatedUser) -> JWT:
         jwt_key = await self._get_or_create_cached_jwt_key()
-        return JWT.create(
+        token = JWT.create(
             jwt_key,
             authenticated_user.username,
             authenticated_user.id,
         )
+
+        logger.info(
+            f"{AUTHN_TOKEN_CREATED}:JWT:access_token",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(token.encoded),
+        )
+
+        return token
 
     async def decode_and_verify_token(self, token: str) -> JWT:
         jwt_key = await self._get_or_create_cached_jwt_key()

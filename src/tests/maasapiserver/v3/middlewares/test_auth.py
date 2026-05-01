@@ -3,7 +3,7 @@
 
 from datetime import timedelta
 from typing import Any, AsyncIterator, Callable, Iterator
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, call, Mock
 
 from fastapi import FastAPI, Request
 from httpx import ASGITransport, AsyncClient
@@ -41,6 +41,9 @@ from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maascommon.logging.security import (
     AUTHN_AUTH_FAILED,
     AUTHN_AUTH_SUCCESSFUL,
+    AUTHN_TOKEN_CREATED,
+    AUTHN_TOKEN_REUSED,
+    hash_token_for_logging,
     SECURITY,
 )
 from maasservicelayer.auth.external_auth import (
@@ -502,6 +505,30 @@ class TestLocalAuthenticationProvider:
         assert (
             details[0].message
             == "Failed to refresh JWT token - the refresh token is invalid."
+        )
+
+    async def test_jwt_token_reuse_logging(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that JWT token reuse attempts are logged with token hash."""
+        mock_logger = mocker.patch("maasapiserver.v3.middlewares.auth.logger")
+        request = Mock(Request)
+        request.state.cookie_manager = Mock(EncryptedCookieManager)
+        request.state.cookie_manager.get_unsafe_cookie.return_value = None
+        request.state.services.auth = Mock(AuthService)
+        request.state.services.auth.decode_and_verify_token.side_effect = (
+            InvalidToken()
+        )
+
+        provider = LocalAuthenticationProvider()
+        test_token = "test_invalid_token"
+        with pytest.raises(UnauthorizedException):
+            await provider.authenticate(request, test_token)
+
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHN_TOKEN_REUSED}:JWT:access_token",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(test_token),
         )
 
 
@@ -1134,3 +1161,81 @@ class TestOIDCAuthenticationProvider:
         assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
         mock_logger.info.assert_called_with(AUTHN_AUTH_FAILED, type=SECURITY)
         provider._clear_oauth_cookies.assert_called_once_with(request)
+
+    async def test_oidc_access_token_refresh_logging(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that OIDC access token refresh is logged."""
+        mock_logger = mocker.patch("maasapiserver.v3.middlewares.auth.logger")
+        user = _make_oidc_user()
+        request = self.mock_request()
+        request.state.services.external_oauth.get_user_from_id_token.return_value = user
+
+        provider = OIDCAuthenticationProvider()
+        provider._is_token_valid = AsyncMock(return_value=False)
+        provider._refresh_access_token = AsyncMock(
+            return_value=OAuthRefreshData("newaccesstoken", "refreshtoken")
+        )
+
+        await provider.authenticate(request, "accesstoken")
+
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHN_TOKEN_CREATED}:OIDC:access_token",
+            type=SECURITY,
+            token_hash=hash_token_for_logging("newaccesstoken"),
+        )
+
+    async def test_oidc_refresh_token_refresh_logging(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that OIDC refresh token refresh is logged when a new one is issued."""
+        mock_logger = mocker.patch("maasapiserver.v3.middlewares.auth.logger")
+        user = _make_oidc_user()
+        request = self.mock_request()
+        request.state.services.external_oauth.get_user_from_id_token.return_value = user
+
+        provider = OIDCAuthenticationProvider()
+        provider._is_token_valid = AsyncMock(return_value=False)
+        provider._refresh_access_token = AsyncMock(
+            return_value=OAuthRefreshData("newaccesstoken", "newrefreshtoken")
+        )
+
+        await provider.authenticate(request, "accesstoken")
+
+        assert mock_logger.info.call_count == 2
+        mock_logger.info.assert_has_calls(
+            [
+                call(
+                    f"{AUTHN_TOKEN_CREATED}:OIDC:access_token",
+                    type=SECURITY,
+                    token_hash=hash_token_for_logging("newaccesstoken"),
+                ),
+                call(
+                    f"{AUTHN_TOKEN_CREATED}:OIDC:refresh_token",
+                    type=SECURITY,
+                    token_hash=hash_token_for_logging("newrefreshtoken"),
+                ),
+            ]
+        )
+
+    async def test_oidc_refresh_token_reuse_logging(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that OIDC refresh token reuse is logged when refresh fails."""
+        mock_logger = mocker.patch("maasapiserver.v3.middlewares.auth.logger")
+        request = self.mock_request()
+        request.state.services.external_oauth.refresh_access_token.side_effect = UnauthorizedException()
+
+        provider = OIDCAuthenticationProvider()
+        provider._clear_oauth_cookies = Mock()
+
+        with pytest.raises(UnauthorizedException):
+            await provider._refresh_access_token(
+                request, "invalidrefreshtoken"
+            )
+
+        mock_logger.info.assert_called_once_with(
+            f"{AUTHN_TOKEN_REUSED}:OIDC:refresh_token",
+            type=SECURITY,
+            token_hash=hash_token_for_logging("invalidrefreshtoken"),
+        )
