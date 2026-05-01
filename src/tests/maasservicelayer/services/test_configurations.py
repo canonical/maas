@@ -424,3 +424,23 @@ class TestConfigurationsService:
         test_cfg = {"vcenter_password": "superawesomepassword9000"}
         with pytest.raises(ValidationException):
             await service.clear_and_set_many(test_cfg)
+
+    async def test_get_msm_config(self):
+        service = ConfigurationsService(
+            context=Context(),
+            database_configurations_service=Mock(
+                DatabaseConfigurationsService
+            ),
+            secrets_service=Mock(SecretsService),
+            events_service=Mock(EventsService),
+        )
+        test_cfg = {
+            "theme": "dark",  # should be included
+            "kernel_ops": None,  # should not (default)
+            "maas_name": "MyMAAS",  # should not (not MSM setting)
+        }
+        service.database_configurations_service.get_many.return_value = (
+            test_cfg
+        )
+        config = await service.get_msm_config()
+        assert config == {"theme": "dark"}

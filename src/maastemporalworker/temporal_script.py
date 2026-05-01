@@ -239,6 +239,7 @@ async def main() -> None:
                 dhcp_activity.get_dhcp_data_for_agent,
                 # MSM connector activities,
                 msm_activity.check_enrol,
+                msm_activity.get_config_hash,
                 msm_activity.get_enrol,
                 msm_activity.get_heartbeat_data,
                 msm_activity.get_running_version,

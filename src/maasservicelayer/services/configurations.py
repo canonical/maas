@@ -163,6 +163,20 @@ class ConfigurationsService(Service):
         )
         return configs
 
+    async def get_msm_config(self) -> dict[str, Any]:
+        """Get all configuration items known to MSM that are stored in the
+        database, ignoring defaults.
+        """
+        nv_pairs = await self.database_configurations_service.get_many(
+            query=QuerySpec()
+        )
+        return {
+            name: val
+            for name, val in nv_pairs.items()
+            if name in ConfigFactory.MSM_CONFIGS
+            and ConfigFactory.MSM_CONFIGS[name].default != val
+        }
+
     async def set(
         self, name: str, value: Any, hook_guard: bool = True
     ) -> None:

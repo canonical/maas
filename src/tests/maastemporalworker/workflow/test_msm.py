@@ -3,9 +3,11 @@
 
 from collections import defaultdict
 from dataclasses import replace
+import hashlib
+import json
 import re
 from typing import Any
-from unittest.mock import Mock, PropertyMock
+from unittest.mock import call, Mock, PropertyMock
 import uuid
 
 from aiohttp import ClientResponse, ClientSession
@@ -13,14 +15,20 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity
 from temporalio.client import Client, ScheduleHandle
+from temporalio.common import WorkflowIDReusePolicy
 from temporalio.exceptions import ApplicationError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
+from temporalio.workflow import ParentClosePolicy
 import yaml
 
 from maascommon.enums.node import NodeStatus
 from maascommon.workflows.bootresource import MASTER_IMAGE_SYNC_WORKFLOW_NAME
-from maascommon.workflows.msm import MSMRestoreDefaultBootSourceParam
+from maascommon.workflows.msm import (
+    MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
+    MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
+    MSMRestoreDefaultBootSourceParam,
+)
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
@@ -33,6 +41,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 )
 from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.bootsources import BootSource
+from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
 from maasservicelayer.services.boot_sources import (
@@ -43,17 +52,20 @@ from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maasservicelayer.services.temporal import TemporalService
+from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.msm import (
+    CONFIGURATION_ACTIVITIES,
     MachinesCountByStatus,
     MSM_CHECK_ENROL_ACTIVITY_NAME,
     MSM_CONFIG_EP,
     MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME,
     MSM_DETAIL_EP,
     MSM_ENROL_EP,
+    MSM_GET_CONFIG_HASH_ACTIVITY_NAME,
     MSM_GET_ENROL_ACTIVITY_NAME,
     MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME,
     MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME,
-    MSM_GET_KNOWN_CONFIG_OPTIONS,
+    MSM_GET_KNOWN_CONFIG_OPTIONS_ACTIVITY_NAME,
     MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME,
     MSM_GET_VERSION_ACTIVITY_NAME,
     MSM_REFRESH_EP,
@@ -77,6 +89,7 @@ from maastemporalworker.workflow.msm import (
     MSMEnrolParam,
     MSMEnrolSiteWorkflow,
     MSMHeartbeatParam,
+    MSMHeartbeatResponse,
     MSMHeartbeatWorkflow,
     MSMReportConfigProgressParam,
     MSMRestoreDefaultBootSourceWorkflow,
@@ -423,19 +436,21 @@ class TestMSMActivities:
             True,
             200,
             "",
-            body={"config_options_requested": False},
+            body={
+                "config_options_requested": False,
+                "config_hash": "test-hash",
+            },
             headers={
                 "MSM-Heartbeat-Interval-Seconds": 300,
             },
         )
 
         env = ActivityEnvironment()
-        intval, send_config_opts = await env.run(
-            msm_act.send_heartbeat, hb_param
-        )
+        result = await env.run(msm_act.send_heartbeat, hb_param)
 
-        assert intval == 300
-        assert send_config_opts is False
+        assert result.interval == 300
+        assert result.send_config_options is False
+        assert result.config_hash == "test-hash"
         mocked_session.post.assert_called_once()
         args = mocked_session.post.call_args.args
         kwargs = mocked_session.post.call_args.kwargs
@@ -457,7 +472,10 @@ class TestMSMActivities:
             True,
             200,
             "",
-            body={"config_options_requested": True},
+            body={
+                "config_options_requested": True,
+                "config_hash": "test-hash",
+            },
             headers={
                 "MSM-Heartbeat-Interval-Seconds": 300,
             },
@@ -465,12 +483,11 @@ class TestMSMActivities:
 
         env = ActivityEnvironment()
         hb_param.known_config_options = []
-        intval, send_config_opts = await env.run(
-            msm_act.send_heartbeat, hb_param
-        )
+        result = await env.run(msm_act.send_heartbeat, hb_param)
 
-        assert intval == 300
-        assert send_config_opts is True
+        assert result.interval == 300
+        assert result.send_config_options is True
+        assert result.config_hash == "test-hash"
         mocked_session.post.assert_called_once()
         args = mocked_session.post.call_args.args
         kwargs = mocked_session.post.call_args.kwargs
@@ -488,11 +505,10 @@ class TestMSMActivities:
         self._mock_post(mocker, mocked_session, True, 401, "")
 
         env = ActivityEnvironment()
-        intval, send_config_opts = await env.run(
-            msm_act.send_heartbeat, hb_param
-        )
-        assert intval == -1
-        assert send_config_opts is False
+        result = await env.run(msm_act.send_heartbeat, hb_param)
+        assert result.interval == -1
+        assert result.send_config_options is False
+        assert result.config_hash == ""
 
     async def test_refresh_token(self, mocker, msm_act, hb_param):
         mocked_session = msm_act._session
@@ -763,8 +779,7 @@ class TestMSMActivities:
     async def test_get_known_config_options(self, msm_act):
         env = ActivityEnvironment()
         config_opts = await env.run(msm_act.get_known_config_options)
-        # TODO: update once config workflow is implemented
-        assert config_opts == []
+        assert config_opts == list(CONFIGURATION_ACTIVITIES)
 
     async def test_get_running_version(self, msm_act):
         env = ActivityEnvironment()
@@ -856,6 +871,55 @@ class TestMSMActivities:
                 msm_act.report_config_progress, report_progress_param
             )
         assert err.value.non_retryable == (return_code in [401, 404])
+<<<<<<< HEAD
+
+=======
+>>>>>>> cd343d0dd8 (add workflow tests)
+
+    async def test_get_config_hash(self, mocker, services_mock, msm_act):
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get_msm_config.return_value = {
+            "theme": "dark",
+            "default_dns_ttl": 21,
+        }
+        services_mock.boot_source_selections = Mock(
+            BootSourceSelectionsService
+        )
+        services_mock.boot_source_selections.get_all_highest_priority.return_value = [
+            BootSourceSelection(
+                id=1,
+                boot_source_id=1,
+                legacyselection_id=1,
+                os="ubuntu",
+                release="resolute",
+                arch="arm64",
+            ),
+            BootSourceSelection(
+                id=2,
+                boot_source_id=1,
+                legacyselection_id=1,
+                os="ubuntu",
+                release="noble",
+                arch="amd64",
+            ),
+        ]
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        expected_cfg = {
+            "global_config": {"default_dns_ttl": 21, "theme": "dark"},
+            "selections": ["ubuntu/noble/amd64", "ubuntu/resolute/arm64"],
+            "trigger_image_sync": False,
+        }
+        serialized = json.dumps(
+            expected_cfg,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        expected_hash = hashlib.sha256(serialized).hexdigest()
+        env = ActivityEnvironment()
+        cfg_hash = await env.run(msm_act.get_config_hash)
+        assert cfg_hash == expected_hash
 
 
 class TestMSMEnrolWorkflow:
@@ -1009,7 +1073,7 @@ class TestMSMEnrolWorkflow:
 
 
 class TestMSMHeartbeatWorkflow:
-    async def test_heartbeat(self, hb_param):
+    async def test_heartbeat(self, mocker, hb_param):
         calls = defaultdict(list)
 
         @activity.defn(name=MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME)
@@ -1020,11 +1084,20 @@ class TestMSMHeartbeatWorkflow:
         @activity.defn(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
         async def send_heartbeat(
             input: MSMHeartbeatParam,
-        ) -> tuple[int, bool]:
+        ) -> MSMHeartbeatResponse:
             calls["msm-send-heartbeat"].append(True)
             if len(calls["msm-send-heartbeat"]) == 2:
-                return (-1, False)
-            return (1, True)
+                return MSMHeartbeatResponse(
+                    interval=-1, config_hash="", send_config_options=False
+                )
+            return MSMHeartbeatResponse(
+                interval=1, config_hash="testhash", send_config_options=True
+            )
+
+        @activity.defn(name=MSM_GET_CONFIG_HASH_ACTIVITY_NAME)
+        async def get_config_hash() -> str:
+            calls["get-config-hash"].append(True)
+            return "testhash"
 
         @activity.defn(name=MSM_GET_ENROL_ACTIVITY_NAME)
         async def get_enrol() -> dict[str, Any]:
@@ -1041,10 +1114,14 @@ class TestMSMHeartbeatWorkflow:
             calls["msm-get-version"].append(True)
             return "3.4.0"
 
-        @activity.defn(name=MSM_GET_KNOWN_CONFIG_OPTIONS)
+        @activity.defn(name=MSM_GET_KNOWN_CONFIG_OPTIONS_ACTIVITY_NAME)
         async def get_config_options() -> list[str]:
             calls["msm-get-config-options"].append(True)
-            return []
+            return list(CONFIGURATION_ACTIVITIES)
+
+        mock_start_wf = mocker.patch(
+            "maastemporalworker.workflow.msm.workflow.start_child_workflow"
+        )
 
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
@@ -1053,6 +1130,7 @@ class TestMSMHeartbeatWorkflow:
                 workflows=[MSMHeartbeatWorkflow],
                 activities=[
                     get_heartbeat_data,
+                    get_config_hash,
                     send_heartbeat,
                     get_enrol,
                     get_version,
@@ -1071,6 +1149,114 @@ class TestMSMHeartbeatWorkflow:
         assert len(calls["msm-get-enrol"]) == 2
         assert len(calls["msm-get-version"]) == 2
         assert len(calls["msm-get-config-options"]) == 1
+        mock_start_wf.assert_called_once_with(
+            MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
+            MSMRestoreDefaultBootSourceParam(
+                sm_url=_MSM_BASE_URL,
+            ),
+            id=f"{MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+            parent_close_policy=ParentClosePolicy.ABANDON,
+        )
+
+    async def test_heartbeat_triggers_config_profile_wf(
+        self, mocker, hb_param
+    ):
+        calls = defaultdict(list)
+
+        @activity.defn(name=MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME)
+        async def get_heartbeat_data() -> MachinesCountByStatus:
+            calls["msm-get-heartbeat-data"].append(True)
+            return MachinesCountByStatus(allocated=1, deployed=1)
+
+        @activity.defn(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
+        async def send_heartbeat(
+            input: MSMHeartbeatParam,
+        ) -> MSMHeartbeatResponse:
+            calls["msm-send-heartbeat"].append(True)
+            if len(calls["msm-send-heartbeat"]) == 2:
+                return MSMHeartbeatResponse(
+                    interval=-1, config_hash="", send_config_options=False
+                )
+            return MSMHeartbeatResponse(
+                interval=1, config_hash="testhash", send_config_options=True
+            )
+
+        @activity.defn(name=MSM_GET_CONFIG_HASH_ACTIVITY_NAME)
+        async def get_config_hash() -> str:
+            calls["get-config-hash"].append(True)
+            return "other_hash"
+
+        @activity.defn(name=MSM_GET_ENROL_ACTIVITY_NAME)
+        async def get_enrol() -> dict[str, Any]:
+            calls["msm-get-enrol"].append(True)
+            return {
+                "jwt": _JWT_ACCESS,
+                "url": _MSM_ENROL_URL,
+                "rotation_interval_minutes": _JWT_ROTATION_INTERVAL,
+                "jwt_refresh_url": _JWT_REFRESH_URL,
+            }
+
+        @activity.defn(name=MSM_GET_VERSION_ACTIVITY_NAME)
+        async def get_version() -> str:
+            calls["msm-get-version"].append(True)
+            return "3.4.0"
+
+        @activity.defn(name=MSM_GET_KNOWN_CONFIG_OPTIONS_ACTIVITY_NAME)
+        async def get_config_options() -> list[str]:
+            calls["msm-get-config-options"].append(True)
+            return list(CONFIGURATION_ACTIVITIES)
+
+        mock_start_wf = mocker.patch(
+            "maastemporalworker.workflow.msm.workflow.start_child_workflow"
+        )
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="abcd:region",
+                workflows=[MSMHeartbeatWorkflow],
+                activities=[
+                    get_heartbeat_data,
+                    get_config_hash,
+                    send_heartbeat,
+                    get_enrol,
+                    get_version,
+                    get_config_options,
+                ],
+            ) as worker:
+                await env.client.execute_workflow(
+                    MSMHeartbeatWorkflow.run,
+                    hb_param,
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+        assert len(calls["msm-get-heartbeat-data"]) == 2
+        assert len(calls["msm-send-heartbeat"]) == 2
+        assert len(calls["msm-get-enrol"]) == 2
+        assert len(calls["msm-get-version"]) == 2
+        assert len(calls["msm-get-config-options"]) == 1
+        expected_calls = [
+            call(
+                MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
+                MSMConfigureProfileParam(
+                    sm_url=_MSM_BASE_URL, jwt=_JWT_ACCESS
+                ),
+                id=f"{MSM_CONFIGURE_PROFILE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+                parent_close_policy=ParentClosePolicy.ABANDON,
+            ),
+            call(
+                MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
+                MSMRestoreDefaultBootSourceParam(
+                    sm_url=_MSM_BASE_URL,
+                ),
+                id=f"{MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+                id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+                parent_close_policy=ParentClosePolicy.ABANDON,
+            ),
+        ]
+        assert mock_start_wf.call_args_list == expected_calls
 
 
 class TestMSMTokenRefreshWorkflow:
