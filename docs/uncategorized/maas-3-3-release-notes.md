@@ -276,7 +276,7 @@ MAAS packages now run on Ubuntu 22.04, aka Jammy Jellyfish.
 
 MAAS users want to install MAAS on a 22.04 LTS system via deb packages, as well as upgrade machines currently running MAAS on Ubuntu 20.04 LTS to 22.04 LTS. With the advent of MAAS 3.3, we have created an appropriate PPA with all required dependencies. This PPA can be directly installed on Ubuntu 22.04, Jammy Jellyfish, with no requirement to use snaps.
 
-Note that the upgrade procedure will require a release upgrade from previous Ubuntu versions to Ubuntu 22.04. Also note that, with this version of MAAS, PostgreSQL 12 is deprecated and should be upgraded to PostgreSQL 14. The [installation guide](/how-to-guides/get-maas-up-and-running) provides the necessary details.
+Note that the upgrade procedure will require a release upgrade from previous Ubuntu versions to Ubuntu 22.04. Also note that, with this version of MAAS, PostgreSQL 12 is deprecated and should be upgraded to PostgreSQL 14. The [installation guide](/how-to-guides/get-started/index.md) provides the necessary details.
 
 <!--
 ### Reliability improvements for simultaneous machine deployments

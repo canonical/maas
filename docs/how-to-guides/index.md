@@ -9,14 +9,14 @@ Before installing anything, make sure MAAS is the right fit. Confirm that your i
 <!-- * *Confirm intended use matches reference architecture* -->
 
 * [Examine and confirm requirements](/reference/configuration-guides/installation-requirements.md)
-* [Choose the installation type](/how-to-guides/get-maas-up-and-running.md#install-maas)
+* [Choose the installation type](/how-to-guides/get-started/install-maas.md)
 
 ## Install and set up
 
 Here, you'll install and initialize MAAS, then configure it to manage your infrastructure. Whether you're working with LXD, KVM, or another cloud provider, this section walks you through connecting MAAS to your virtual or physical environment.
 
-* [Install MAAS](/how-to-guides/get-maas-up-and-running.md)
-* [Initialize MAAS](/how-to-guides/get-maas-up-and-running.md#post-install-setup)
+* [Install MAAS](/how-to-guides/get-started/install-maas.md)
+* [Configure MAAS](/how-to-guides/get-started/configure-maas.md)
 * [Set up your cloud](/how-to-guides/manage-machines.md#enable-new-machines)
 
 ## Provision and deploy
@@ -78,7 +78,7 @@ Once your systems are running, it's time to manage them effectively. Learn how t
 <!--  * Integrating with corporate systems -->
 <!--  * Fabrics -->
 <!--  * Spaces -->
-  
+
 ## Monitor and troubleshoot
 
 This section helps you observe and debug your MAAS deployment using tools like Prometheus and Loki. Learn to identify issues with logs, performance, or machine behavior—and get strategies for fixing common problems across your infrastructure.
@@ -117,8 +117,9 @@ Finally, make MAAS part of your larger automation pipeline. Learn how to use the
 :maxdepth: 2
 :hidden:
 
-get-maas-up-and-running
+get-started/index
 back-up-maas
+upgrade-maas
 manage-networks
 manage-network-services
 manage-switches

@@ -95,9 +95,9 @@ Following on from MAAS 2.7, we are happy to announce that MAAS 2.8 is now availa
 
 - [What are the new features and fixes for 2.8?](#features)
 - [What known issues should I be aware of?](#known-issues)
-- [How do I install MAAS 2.8 as a snap?](/how-to-guides/get-maas-up-and-running)
+- [How do I install MAAS 2.8 as a snap?](/how-to-guides/get-started/index.md)
 - [How do I upgrade my MAAS 2.7 snap to a MAAS 2.8 snap?](https://discourse.maas.io/t/how-to-upgrade-maas/5436)
-- [How do I install MAAS 2.8 from packages?](/how-to-guides/get-maas-up-and-running)
+- [How do I install MAAS 2.8 from packages?](/how-to-guides/get-started/index.md)
 - [What bugs were fixed in this release?](#bug-fixes)
 
 ### LXD support (Beta)
