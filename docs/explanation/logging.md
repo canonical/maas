@@ -13,11 +13,14 @@ Here is a per-service breakdown how logging works in MAAS:
 Pebble logs to `stdout`, redirecting the services to `stdout` if run with `--verbose` (currently in use).  It logs additional debug information when run with envvar `PEBBLE_DEBUG=1` (currently in use).
 
 #### Log entry format
+The standard log entry format is:
 
 ```text
 2023-07-24T11:12:25.495Z [pebble] GET /v1/services?names=bind9 57.716µs
 2023-07-24T11:12:26.392Z [SERVICE_NAME] SERVICE STDOUT
 ```
+
+MAAS also includes structured contextual logging for API calls, see [Contextual Logging](contextual-logging.md) for detailed information on using trace IDs to correlate logs.
 
 #### Commands to access the log
 
@@ -324,3 +327,10 @@ Example usage of these filters can narrow down event listings significantly.
 Audit events, tagged with `AUDIT`, record MAAS configuration changes and machine state transitions. They're essential for tracking user actions and system updates, especially in multi-user environments.
 
 Use audit events alongside `jq` and command-line text tools to analyze actions like machine deletions, configuration changes, and user activities. This can provide insights into system changes and help identify areas for attention or improvement.
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+contextual-logging
+```

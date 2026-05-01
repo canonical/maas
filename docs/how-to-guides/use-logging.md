@@ -233,19 +233,43 @@ This command will retrieve a substantial number of audit events for the specifie
 
 Next, you can analyze this data to track changes, actions, and events related to the machine's life cycle. This can help in troubleshooting and monitoring machine behavior over time.
 
-## Advanced Logging Features
+## Contextual Logging
 
-MAAS provides advanced logging capabilities for request tracing:
+MAAS uses trace IDs to correlate log statements for a single API request across different components. This enables you to track the complete flow of a request through the system, making debugging and performance analysis much easier.
 
-### Contextual Logging
+### Client-Provided Trace IDs
 
-MAAS uses trace IDs to correlate all log statements for a single request across different components. This enables you to track the complete flow of a request through the system, making debugging and performance analysis much easier.
+Clients can provide their own trace ID by including the `MAAS-trace-id` header in API requests:
 
-See [Contextual Logging](contextual-logging.md) for detailed information on using trace IDs to correlate logs.
-
-```{toctree}
-:maxdepth: 1
-:hidden:
-
-contextual-logging
+```bash
+curl -H "MAAS-trace-id: my-custom-trace-id" https://maas.example.com/MAAS/api/2.0/...
 ```
+
+This allows clients to correlate their own logs with MAAS logs for end-to-end tracing.
+
+### Filtering Logs by Trace ID
+
+#### Using journalctl
+
+To view all logs for a specific trace ID using `journalctl`:
+
+```bash
+journalctl -u snap.maas.pebble.service | grep "cc6b8a1da517409c9cfc9871d6784f7b"
+```
+
+#### Using jq for JSON Processing
+
+For more sophisticated filtering and formatting of JSON logs:
+
+```bash
+journalctl -u snap.maas.pebble.service -o json | \
+  jq 'select(.MESSAGE | fromjson | .trace_id == "cc6b8a1da517409c9cfc9871d6784f7b") | .MESSAGE | fromjson'
+```
+
+This command:
+1. Outputs journalctl logs in JSON format
+2. Filters for messages with the specified trace ID
+3. Extracts and formats the structured log messages
+
+
+See [Contextual Logging](../explanation/contextual-logging.md) for detailed information on using trace IDs to correlate logs.
