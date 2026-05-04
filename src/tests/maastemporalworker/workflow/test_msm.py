@@ -12,13 +12,14 @@ from aiohttp import ClientResponse, ClientSession
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity
-from temporalio.client import Client
+from temporalio.client import Client, ScheduleHandle
 from temporalio.exceptions import ApplicationError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 import yaml
 
 from maascommon.enums.node import NodeStatus
+from maascommon.workflows.bootresource import MASTER_IMAGE_SYNC_WORKFLOW_NAME
 from maascommon.workflows.msm import MSMRestoreDefaultBootSourceParam
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.builders.bootsourceselections import (
@@ -41,6 +42,7 @@ from maasservicelayer.services.boot_sources import (
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.secrets import LocalSecretsStorageService
+from maasservicelayer.services.temporal import TemporalService
 from maastemporalworker.workflow.msm import (
     MachinesCountByStatus,
     MSM_CHECK_ENROL_ACTIVITY_NAME,
@@ -666,6 +668,24 @@ class TestMSMActivities:
         with pytest.raises(ApplicationError) as err:
             await env.run(msm_act.set_global_config, param)
         assert err.value.non_retryable
+
+    async def test_start_image_sync(self, mocker, msm_act, services_mock):
+        services_mock.temporal = Mock(TemporalService)
+        temporal_client = Mock(Client)
+        sched_handle = Mock(ScheduleHandle)
+        temporal_client.get_schedule_handle.return_value = sched_handle
+        services_mock.temporal.get_temporal_client.return_value = (
+            temporal_client
+        )
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        await env.run(msm_act.start_image_sync)
+        temporal_client.get_schedule_handle.assert_called_once_with(
+            MASTER_IMAGE_SYNC_WORKFLOW_NAME
+        )
+        sched_handle.trigger.assert_called_once()
 
     async def test_delete_bootsources_activity(
         self, mocker, msm_act, services_mock
