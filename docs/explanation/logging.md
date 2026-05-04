@@ -13,6 +13,7 @@ Here is a per-service breakdown how logging works in MAAS:
 Pebble logs to `stdout`, redirecting the services to `stdout` if run with `--verbose` (currently in use).  It logs additional debug information when run with envvar `PEBBLE_DEBUG=1` (currently in use).
 
 #### Log entry format
+
 The standard log entry format is:
 
 ```text

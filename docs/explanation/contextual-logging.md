@@ -115,6 +115,7 @@ journalctl -u snap.maas.pebble.service -o json | \
 ```
 
 This command:
+
 1. Outputs journalctl logs in JSON format
 2. Filters for messages with the specified trace ID
 3. Extracts and formats the structured log messages
@@ -139,5 +140,5 @@ For security and compliance purposes, trace IDs make it possible to reconstruct 
 
 ## Related Documentation
 
-- [Use Logging](use-logging.md) - General MAAS logging guide
+- [Use Logging](../how-to-guides/use-logging.md) - General MAAS logging guide
 - [OWASP Logging Vocabulary](https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Logging_Vocabulary_Cheat_Sheet.md) - Industry standards for log fields

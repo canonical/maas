@@ -1,6 +1,6 @@
 # Use logging
 
-MAAS logs help you find issues, spot configuration mistakes, and audit the use of your system.  Several types of logs are supported, including:
+MAAS logs help you find issues, spot configuration mistakes, and audit the use of your system. Several types of logs are supported, including:
 
 - System logs
 - Event logs
@@ -56,11 +56,11 @@ less /var/snap/maas/common/log/regiond.log
 
 ### Using the UI
 
- 1. Go to the Machines list in the UI.
+1.  Go to the Machines list in the UI.
 
- 2. Click on a machine and select the Events tab.
+2.  Click on a machine and select the Events tab.
 
-To see more details, click *View full history*.
+To see more details, click _View full history_.
 
 ### Using the command line
 
@@ -100,9 +100,9 @@ You should check commissioning logs when:
 
 ### Using the UI
 
- 1. Go to the Commissioning tab of a machine.
+1.  Go to the Commissioning tab of a machine.
 
- 2. Click the links to see the detailed logs.
+2.  Click the links to see the detailed logs.
 
 ### Using the command line
 
@@ -114,7 +114,7 @@ maas $PROFILE node-script-result read $SYSTEM_ID $RESULTS
 
 Testing logs are the final gatekeepers in the MAAS lifecycle. They help you identify whether your machine is usable for real workloads. Often skipped over, they can save you a world of trouble when hardware flakiness or misconfiguration happens.
 
-Testing confirms whether the machine is actually functioning as expected, not just booting.  It verify critical hardware functionality, validates storage health, and confirms firmware and kernel compatibility.
+Testing confirms whether the machine is actually functioning as expected, not just booting. It verify critical hardware functionality, validates storage health, and confirms firmware and kernel compatibility.
 
 Test logs can contain any sort of test you may add, but the general form of the command is:
 
@@ -267,9 +267,9 @@ journalctl -u snap.maas.pebble.service -o json | \
 ```
 
 This command:
+
 1. Outputs journalctl logs in JSON format
 2. Filters for messages with the specified trace ID
 3. Extracts and formats the structured log messages
-
 
 See [Contextual Logging](../explanation/contextual-logging.md) for detailed information on using trace IDs to correlate logs.
