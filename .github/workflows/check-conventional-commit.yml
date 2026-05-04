@@ -59,7 +59,7 @@ jobs:
         if: steps.bug-ref-check.outputs.needs_warning == 'true'
         run: |
           body="${MARKER}
-          :warning: Conventional Commit: Missing Bug Reference
+          :warning: **Conventional Commit: Missing Bug Reference**
 
           Your PR title starts with **fix** but no Launchpad bug reference was found in the PR description.
           If your PR addresses a bug, please add the following footer to the PR description:
@@ -68,22 +68,22 @@ jobs:
           Resolves LP: <bug-number>
           \`\`\`"
 
-          existing_id=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -n1)
+          # Check if a warning comment already exists to avoid duplicates.
+          existing_id=$(gh pr view "${PR_NUMBER}" --repo "${REPO}" --json comments \
+            --jq ".comments[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -n1)
 
           if [[ -n "$existing_id" ]]; then
             gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
               -f body="$body"
           else
-            gh api --method POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-              -f body="$body"
+            gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body "$body"
           fi
 
       - name: Remove warning comment if no longer needed
         if: steps.bug-ref-check.outputs.needs_warning == 'false'
         run: |
-          existing_id=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -n1)
+          existing_id=$(gh pr view "${PR_NUMBER}" --repo "${REPO}" --json comments \
+            --jq ".comments[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -n1)
 
           if [[ -n "$existing_id" ]]; then
             gh api --method DELETE "repos/${REPO}/issues/comments/${existing_id}"
