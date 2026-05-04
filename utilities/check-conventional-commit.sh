@@ -66,22 +66,6 @@ if [[ -n "$bang" ]]; then
   fi
 fi
 
-# fix commits must include a bug reference (case-insensitive).
-# Accepted keywords: close, closes, closed, fix, fixes, fixed, resolve, resolves, resolved
-# An optional colon may follow the keyword.
-# Example valid footers:
-#   Resolves LP: 1234567
-#   fixes: LP: 1234567
-#   Closed LP: 1234567
-BUG_REF_KEYWORDS="close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved"
-BUG_REF_RE="^(${BUG_REF_KEYWORDS}):?[[:space:]]+LP:[[:space:]]?[0-9]+$"
-
-if [[ "$type" == "fix" ]]; then
-  if ! printf '%s\n' "$MSG" | grep -Eiq "$BUG_REF_RE"; then
-    die "Type is 'fix' but no bug reference footer was found. Add the reference to the Launchpad bug:
-  Resolves LP:<bug-number>"
-  fi
-fi
 
 echo "OK: Conventional Commit compliant."
 

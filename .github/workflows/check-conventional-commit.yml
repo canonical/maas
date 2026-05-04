@@ -7,14 +7,18 @@ on:
 jobs:
   check-conventional-commit:
     runs-on: ubuntu-latest
+    env:
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      REPO: ${{ github.repository }}
+      MARKER: "<!-- conventional-commit-warning -->"
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Validate PR title and body against conventional commit spec
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           # We create the squash commit for PR as follows:
           # PR title as subject, blank line, then PR body.
@@ -26,3 +30,60 @@ jobs:
           fi
 
           ./utilities/check-conventional-commit.sh "$commit_msg"
+
+      - name: Check for missing bug reference on fix commits
+        id: bug-ref-check
+        run: |
+          BUG_REF_KEYWORDS="close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved"
+          BUG_REF_RE="^(${BUG_REF_KEYWORDS}):?[[:space:]]+LP:[[:space:]]?[0-9]+$"
+
+          is_fix=0
+          has_bug_ref=0
+
+          if echo "${PR_TITLE}" | grep -Eiq '^fix'; then
+            is_fix=1
+          fi
+
+          if echo "${PR_BODY}" | grep -Eiq "${BUG_REF_RE}"; then
+            has_bug_ref=1
+          fi
+
+          if [[ $is_fix && ! $has_bug_ref ]]; then
+            echo "needs_warning=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_warning=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post warning comment for missing bug reference
+        if: steps.bug-ref-check.outputs.needs_warning == 'true'
+        run: |
+          body="${MARKER}
+          :warning: Conventional Commit: Missing Bug Reference
+
+          Your PR title starts with `fix` but no Launchpad bug reference was found in the PR description.
+          If your PR addresses a bug, please add the following footer to the PR description:
+
+          \`\`\`
+          Resolves LP: <bug-number>
+          \`\`\`"
+
+          existing_id=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -n1)
+
+          if [[ -n "$existing_id" ]]; then
+            gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
+              -f body="$body"
+          else
+            gh api --method POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+              -f body="$body"
+          fi
+
+      - name: Remove warning comment if no longer needed
+        if: steps.bug-ref-check.outputs.needs_warning == 'false'
+        run: |
+          existing_id=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -n1)
+
+          if [[ -n "$existing_id" ]]; then
+            gh api --method DELETE "repos/${REPO}/issues/comments/${existing_id}"
+          fi
