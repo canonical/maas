@@ -66,8 +66,8 @@ from maastemporalworker.workflow.msm import (
     MSM_SET_ENROL_ACTIVITY_NAME,
     MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME,
     MSM_SET_SELECTIONS_ACTIVITY_NAME,
-    MSM_START_IMAGE_SYNC_ACTIVITY_NAME,
     MSM_SS_EP,
+    MSM_START_IMAGE_SYNC_ACTIVITY_NAME,
     MSM_VERIFY_EP,
     MSM_VERIFY_TOKEN_ACTIVITY_NAME,
     MSMConfigureProfileParam,
@@ -826,9 +826,7 @@ class TestMSMActivities:
             204,
         )
         env = ActivityEnvironment()
-        await env.run(
-            msm_act.report_config_progress, report_progress_param
-        )
+        await env.run(msm_act.report_config_progress, report_progress_param)
         mocked_session.patch.assert_called_once_with(
             _MSM_REPORT_PROGRESS_URL,
             json={
@@ -858,6 +856,7 @@ class TestMSMActivities:
                 msm_act.report_config_progress, report_progress_param
             )
         assert err.value.non_retryable == (return_code in [401, 404])
+
 
 class TestMSMEnrolWorkflow:
     async def test_enrolment(self, enrol_param):
@@ -1185,19 +1184,19 @@ class TestRestoreDefaultBootSourceWorkflow:
 
 
 class TestConfigureProfileWorkflow:
-
     @pytest.mark.parametrize("trigger_sync", [(True,), (False,)])
     async def test_workflow(self, config_profile_param, trigger_sync):
         calls = defaultdict(list)
-
         test_profile = {
-                "global_config": {"theme": "dark"},
-                "selections": ["ubuntu/resolute/amd64"],
-                "trigger_image_sync": trigger_sync,
-            }
+            "global_config": {"theme": "dark"},
+            "selections": ["ubuntu/resolute/amd64"],
+            "trigger_image_sync": trigger_sync,
+        }
 
         @activity.defn(name=MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME)
-        async def get_full_profile(input: MSMConfigureProfileParam) -> dict[str, Any]:
+        async def get_full_profile(
+            input: MSMConfigureProfileParam,
+        ) -> dict[str, Any]:
             calls["msm-get-full-profile"].append(True)
             return test_profile
 
@@ -1247,8 +1246,10 @@ class TestConfigureProfileWorkflow:
                     status=TaskStatus.STARTED,
                     selections_status=TaskStatus.STARTED,
                     global_config_status=TaskStatus.STARTED,
-                    image_sync_status=TaskStatus.STARTED if trigger_sync else None,
-                )
+                    image_sync_status=TaskStatus.STARTED
+                    if trigger_sync
+                    else None,
+                ),
             ),
             # one for selections, global_config activities
             MSMReportConfigProgressParam(
@@ -1256,14 +1257,14 @@ class TestConfigureProfileWorkflow:
                 jwt=config_profile_param.jwt,
                 site_status=SiteStatus(
                     selections_status=TaskStatus.COMPLETE,
-                )
+                ),
             ),
             MSMReportConfigProgressParam(
                 sm_url=config_profile_param.sm_url,
                 jwt=config_profile_param.jwt,
                 site_status=SiteStatus(
                     global_config_status=TaskStatus.COMPLETE,
-                )
+                ),
             ),
             # one for the end
             MSMReportConfigProgressParam(
@@ -1272,7 +1273,7 @@ class TestConfigureProfileWorkflow:
                 site_status=SiteStatus(
                     status=TaskStatus.COMPLETE,
                     clear_errors=True,
-                )
+                ),
             ),
         ]
         if trigger_sync:
@@ -1283,7 +1284,7 @@ class TestConfigureProfileWorkflow:
                     jwt=config_profile_param.jwt,
                     site_status=SiteStatus(
                         image_sync_status=TaskStatus.COMPLETE,
-                    )
+                    ),
                 )
             )
         else:
@@ -1292,29 +1293,36 @@ class TestConfigureProfileWorkflow:
         for expected_call in expected_report_calls:
             assert expected_call in calls["msm-report-progress"]
 
+        assert calls["msm-set-global-config"] == [
+            MSMSetGlobalConfigParam(
+                configuration=test_profile["global_config"]
+            )
+        ]
 
-        assert calls["msm-set-global-config"] == [MSMSetGlobalConfigParam(
-            configuration=test_profile["global_config"]
-        )]
+        assert calls["msm-set-selections"] == [
+            MSMSetSelectionsParam(
+                sm_url=config_profile_param.sm_url,
+                selections=test_profile["selections"],
+            )
+        ]
 
-
-        assert calls["msm-set-selections"] == [MSMSetSelectionsParam(
-            sm_url=config_profile_param.sm_url,
-            selections=test_profile["selections"],
-        )]
-
-    @pytest.mark.parametrize("failed_activity", [("global_config",), ("selections",), ("image_sync")])
-    async def test_workflow_failed_activities(self, config_profile_param, failed_activity):
+    @pytest.mark.parametrize(
+        "failed_activity", ["global_config", "selections", "image_sync"]
+    )
+    async def test_workflow_failed_activities(
+        self, config_profile_param, failed_activity
+    ):
         calls = defaultdict(list)
-
         test_profile = {
-                "global_config": {"theme": "dark"},
-                "selections": ["ubuntu/resolute/amd64"],
-                "trigger_image_sync": True,
-            }
+            "global_config": {"theme": "dark"},
+            "selections": ["ubuntu/resolute/amd64"],
+            "trigger_image_sync": True,
+        }
 
         @activity.defn(name=MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME)
-        async def get_full_profile(input: MSMConfigureProfileParam) -> dict[str, Any]:
+        async def get_full_profile(
+            input: MSMConfigureProfileParam,
+        ) -> dict[str, Any]:
             calls["msm-get-full-profile"].append(True)
             return test_profile
 
@@ -1326,7 +1334,9 @@ class TestConfigureProfileWorkflow:
         async def set_global_config(input: MSMSetGlobalConfigParam) -> None:
             calls["msm-set-global-config"].append(input)
             if failed_activity == "global_config":
-                raise ApplicationError("global_config failed", non_retryable=True)
+                raise ApplicationError(
+                    "global_config failed", non_retryable=True
+                )
 
         @activity.defn(name=MSM_SET_SELECTIONS_ACTIVITY_NAME)
         async def set_selections(input: MSMSetSelectionsParam) -> None:
@@ -1371,32 +1381,50 @@ class TestConfigureProfileWorkflow:
                     selections_status=TaskStatus.STARTED,
                     global_config_status=TaskStatus.STARTED,
                     image_sync_status=TaskStatus.STARTED,
-                )
+                ),
             ),
             # one for selections, global_config activities
             MSMReportConfigProgressParam(
                 sm_url=config_profile_param.sm_url,
                 jwt=config_profile_param.jwt,
                 site_status=SiteStatus(
-                    selections_status=TaskStatus.FAILED if failed_activity == "selections" else TaskStatus.COMPLETE,
-                    errors=[f"selections activity failed (ApplicationError: selections failed)"] if failed_activity == "selections" else None,
-                )
+                    selections_status=TaskStatus.FAILED
+                    if failed_activity == "selections"
+                    else TaskStatus.COMPLETE,
+                    errors=[
+                        f"selections activity failed (Activity task failed)."
+                    ]
+                    if failed_activity == "selections"
+                    else None,
+                ),
             ),
             MSMReportConfigProgressParam(
                 sm_url=config_profile_param.sm_url,
                 jwt=config_profile_param.jwt,
                 site_status=SiteStatus(
-                    global_config_status=TaskStatus.FAILED if failed_activity == "global_config" else TaskStatus.COMPLETE,
-                    errors=[f"global_config activity failed (ApplicationError: global_config failed)"] if failed_activity == "global_config" else None,
-                )
+                    global_config_status=TaskStatus.FAILED
+                    if failed_activity == "global_config"
+                    else TaskStatus.COMPLETE,
+                    errors=[
+                        f"global_config activity failed (Activity task failed)."
+                    ]
+                    if failed_activity == "global_config"
+                    else None,
+                ),
             ),
             MSMReportConfigProgressParam(
-                    sm_url=config_profile_param.sm_url,
-                    jwt=config_profile_param.jwt,
-                    site_status=SiteStatus(
-                    image_sync_status=TaskStatus.FAILED if failed_activity == "image_sync" else TaskStatus.COMPLETE,
-                    errors=[f"image_sync activity failed (ApplicationError: image_sync failed)"] if failed_activity == "image_sync" else None,
-                    )
+                sm_url=config_profile_param.sm_url,
+                jwt=config_profile_param.jwt,
+                site_status=SiteStatus(
+                    image_sync_status=TaskStatus.FAILED
+                    if failed_activity == "image_sync"
+                    else TaskStatus.COMPLETE,
+                    errors=[
+                        f"image_sync activity failed (Activity task failed)."
+                    ]
+                    if failed_activity == "image_sync"
+                    else None,
+                ),
             ),
             # one for the end
             MSMReportConfigProgressParam(
@@ -1404,15 +1432,84 @@ class TestConfigureProfileWorkflow:
                 jwt=config_profile_param.jwt,
                 site_status=SiteStatus(
                     status=TaskStatus.FAILED,
-                    errors=[f"The following activities failed: [{failed_activity}]"],
-                )
+                    errors=[
+                        f"The following activities failed: ['{failed_activity}']"
+                    ],
+                ),
             ),
         ]
-
-
         for expected_call in expected_report_calls:
             assert expected_call in calls["msm-report-progress"]
-
         assert len(calls["msm-set-global-config"]) == 1
         assert len(calls["msm-set-selections"]) == 1
         assert len(calls["msm-image-sync"]) == 1
+
+    async def test_workflow_unknown_activities(self, config_profile_param):
+        calls = defaultdict(list)
+        test_profile = {
+            "global_config": {"theme": "dark"},
+            "selections": ["ubuntu/resolute/amd64"],
+            "trigger_image_sync": True,
+            "something_else": 1,
+        }
+
+        @activity.defn(name=MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME)
+        async def get_full_profile(
+            input: MSMConfigureProfileParam,
+        ) -> dict[str, Any]:
+            calls["msm-get-full-profile"].append(True)
+            return test_profile
+
+        @activity.defn(name=MSM_REPORT_CONFIG_PROGRESS_ACTIVITY_NAME)
+        async def report_progress(input: MSMReportConfigProgressParam) -> None:
+            calls["msm-report-progress"].append(input)
+
+        @activity.defn(name=MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME)
+        async def set_global_config(input: MSMSetGlobalConfigParam) -> None:
+            calls["msm-set-global-config"].append(input)
+
+        @activity.defn(name=MSM_SET_SELECTIONS_ACTIVITY_NAME)
+        async def set_selections(input: MSMSetSelectionsParam) -> None:
+            calls["msm-set-selections"].append(input)
+
+        @activity.defn(name=MSM_START_IMAGE_SYNC_ACTIVITY_NAME)
+        async def image_sync() -> None:
+            calls["msm-image-sync"].append(True)
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="abcd:region",
+                workflows=[MSMConfigureProfileWorkflow],
+                activities=[
+                    get_full_profile,
+                    report_progress,
+                    set_global_config,
+                    set_selections,
+                    image_sync,
+                ],
+            ) as worker:
+                await env.client.execute_workflow(
+                    MSMConfigureProfileWorkflow.run,
+                    config_profile_param,
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+        assert calls["msm-get-full-profile"] == [True]
+        assert calls["msm-report-progress"] == [
+            MSMReportConfigProgressParam(
+                sm_url=config_profile_param.sm_url,
+                jwt=config_profile_param.jwt,
+                site_status=SiteStatus(
+                    status=TaskStatus.FAILED,
+                    errors=[
+                        f"Unknown configuration options: {set(['something_else'])}"
+                    ],
+                    clear_errors=True,
+                ),
+            )
+        ]
+        assert len(calls["msm-set-global-config"]) == 0
+        assert len(calls["msm-set-selections"]) == 0
+        assert len(calls["msm-image-sync"]) == 0

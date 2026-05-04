@@ -9,7 +9,6 @@ import asyncio
 import dataclasses
 from datetime import timedelta
 from enum import StrEnum
-import functools
 import ssl
 from typing import Any
 
