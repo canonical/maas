@@ -1,6 +1,6 @@
 # Use logging
 
-MAAS logs help you find issues, spot configuration mistakes, and audit the use of your system.  Several types of logs are supported, including:
+MAAS logs help you find issues, spot configuration mistakes, and audit the use of your system. Several types of logs are supported, including:
 
 - System logs
 - Event logs
@@ -56,11 +56,11 @@ less /var/snap/maas/common/log/regiond.log
 
 ### Using the UI
 
- 1. Go to the Machines list in the UI.
+1.  Go to the Machines list in the UI.
 
- 2. Click on a machine and select the Events tab.
+2.  Click on a machine and select the Events tab.
 
-To see more details, click *View full history*.
+To see more details, click _View full history_.
 
 ### Using the command line
 
@@ -100,9 +100,9 @@ You should check commissioning logs when:
 
 ### Using the UI
 
- 1. Go to the Commissioning tab of a machine.
+1.  Go to the Commissioning tab of a machine.
 
- 2. Click the links to see the detailed logs.
+2.  Click the links to see the detailed logs.
 
 ### Using the command line
 
@@ -114,7 +114,7 @@ maas $PROFILE node-script-result read $SYSTEM_ID $RESULTS
 
 Testing logs are the final gatekeepers in the MAAS lifecycle. They help you identify whether your machine is usable for real workloads. Often skipped over, they can save you a world of trouble when hardware flakiness or misconfiguration happens.
 
-Testing confirms whether the machine is actually functioning as expected, not just booting.  It verify critical hardware functionality, validates storage health, and confirms firmware and kernel compatibility.
+Testing confirms whether the machine is actually functioning as expected, not just booting. It verify critical hardware functionality, validates storage health, and confirms firmware and kernel compatibility.
 
 Test logs can contain any sort of test you may add, but the general form of the command is:
 
@@ -233,26 +233,43 @@ This command will retrieve a substantial number of audit events for the specifie
 
 Next, you can analyze this data to track changes, actions, and events related to the machine's life cycle. This can help in troubleshooting and monitoring machine behavior over time.
 
-## Advanced Logging Features
+## Contextual Logging
 
-MAAS provides advanced logging capabilities for request tracing and security auditing:
+MAAS uses trace IDs to correlate log statements for a single API request across different components. This enables you to track the complete flow of a request through the system, making debugging and performance analysis much easier.
 
-### Contextual Logging
+### Client-Provided Trace IDs
 
-MAAS uses trace IDs to correlate all log statements for a single request across different components. This enables you to track the complete flow of a request through the system, making debugging and performance analysis much easier.
+Clients can provide their own trace ID by including the `MAAS-trace-id` header in API requests:
 
-See [Contextual Logging](contextual-logging.md) for detailed information on using trace IDs to correlate logs.
-
-### Security Logging
-
-MAAS logs all security-related events in a structured format compliant with industry standards. Security logs capture authentication, authorization, user management, and token lifecycle events, all marked with `type=security` for easy filtering.
-
-See [Security Logging](security-logging.md) for comprehensive documentation on security event types and monitoring best practices.
-
-```{toctree}
-:maxdepth: 1
-:hidden:
-
-contextual-logging
-security-logging
+```bash
+curl -H "MAAS-trace-id: my-custom-trace-id" https://maas.example.com/MAAS/api/2.0/...
 ```
+
+This allows clients to correlate their own logs with MAAS logs for end-to-end tracing.
+
+### Filtering Logs by Trace ID
+
+#### Using journalctl
+
+To view all logs for a specific trace ID using `journalctl`:
+
+```bash
+journalctl -u snap.maas.pebble.service | grep "cc6b8a1da517409c9cfc9871d6784f7b"
+```
+
+#### Using jq for JSON Processing
+
+For more sophisticated filtering and formatting of JSON logs:
+
+```bash
+journalctl -u snap.maas.pebble.service -o json | \
+  jq 'select(.MESSAGE | fromjson | .trace_id == "cc6b8a1da517409c9cfc9871d6784f7b") | .MESSAGE | fromjson'
+```
+
+This command:
+
+1. Outputs journalctl logs in JSON format
+2. Filters for messages with the specified trace ID
+3. Extracts and formats the structured log messages
+
+See [Contextual Logging](../explanation/contextual-logging.md) for detailed information on using trace IDs to correlate logs.
