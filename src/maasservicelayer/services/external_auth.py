@@ -20,6 +20,7 @@ from maascommon.logging.security import (
     AUTHN_LOGIN_SUCCESSFUL,
     AUTHN_TOKEN_REVOKED,
     hash_token_for_logging,
+    REFRESH_TOKEN,
     SECURITY,
     USER,
 )
@@ -554,7 +555,7 @@ class ExternalOAuthService(
         await client.revoke_token(token=refresh_token)
 
         logger.info(
-            f"{AUTHN_TOKEN_REVOKED}:OIDC:refresh_token",
+            f"{AUTHN_TOKEN_REVOKED}:OIDC:{REFRESH_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging(refresh_token),
         )

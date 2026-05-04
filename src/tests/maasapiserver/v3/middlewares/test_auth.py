@@ -39,11 +39,13 @@ from maasapiserver.v3.middlewares.auth import (
 from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maascommon.logging.security import (
+    ACCESS_TOKEN,
     AUTHN_AUTH_FAILED,
     AUTHN_AUTH_SUCCESSFUL,
     AUTHN_TOKEN_CREATED,
     AUTHN_TOKEN_REUSED,
     hash_token_for_logging,
+    REFRESH_TOKEN,
     SECURITY,
 )
 from maasservicelayer.auth.external_auth import (
@@ -526,7 +528,7 @@ class TestLocalAuthenticationProvider:
             await provider.authenticate(request, test_token)
 
         mock_logger.info.assert_called_once_with(
-            f"{AUTHN_TOKEN_REUSED}:JWT:access_token",
+            f"{AUTHN_TOKEN_REUSED}:JWT:{ACCESS_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging(test_token),
         )
@@ -1180,7 +1182,7 @@ class TestOIDCAuthenticationProvider:
         await provider.authenticate(request, "accesstoken")
 
         mock_logger.info.assert_called_once_with(
-            f"{AUTHN_TOKEN_CREATED}:OIDC:access_token",
+            f"{AUTHN_TOKEN_CREATED}:OIDC:{ACCESS_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging("newaccesstoken"),
         )
@@ -1206,12 +1208,12 @@ class TestOIDCAuthenticationProvider:
         mock_logger.info.assert_has_calls(
             [
                 call(
-                    f"{AUTHN_TOKEN_CREATED}:OIDC:access_token",
+                    f"{AUTHN_TOKEN_CREATED}:OIDC:{ACCESS_TOKEN}",
                     type=SECURITY,
                     token_hash=hash_token_for_logging("newaccesstoken"),
                 ),
                 call(
-                    f"{AUTHN_TOKEN_CREATED}:OIDC:refresh_token",
+                    f"{AUTHN_TOKEN_CREATED}:OIDC:{REFRESH_TOKEN}",
                     type=SECURITY,
                     token_hash=hash_token_for_logging("newrefreshtoken"),
                 ),
@@ -1235,7 +1237,7 @@ class TestOIDCAuthenticationProvider:
             )
 
         mock_logger.info.assert_called_once_with(
-            f"{AUTHN_TOKEN_REUSED}:OIDC:refresh_token",
+            f"{AUTHN_TOKEN_REUSED}:OIDC:{REFRESH_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging("invalidrefreshtoken"),
         )

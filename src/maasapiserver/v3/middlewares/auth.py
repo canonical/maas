@@ -22,11 +22,13 @@ from maasapiserver.v3.auth.cookie_manager import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.logging.security import (
+    ACCESS_TOKEN,
     AUTHN_AUTH_FAILED,
     AUTHN_AUTH_SUCCESSFUL,
     AUTHN_TOKEN_CREATED,
     AUTHN_TOKEN_REUSED,
     hash_token_for_logging,
+    REFRESH_TOKEN,
     SECURITY,
 )
 from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
@@ -113,7 +115,7 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
             # Use refresh token to get a new JWT if the JWT is expired.
             if not refresh_token:
                 logger.info(
-                    f"{AUTHN_TOKEN_REUSED}:JWT:access_token",
+                    f"{AUTHN_TOKEN_REUSED}:JWT:{ACCESS_TOKEN}",
                     type=SECURITY,
                     token_hash=hash_token_for_logging(token),
                 )
@@ -130,7 +132,7 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
             )
             new_token = await self._get_new_jwt(request, user)
             logger.info(
-                f"{AUTHN_TOKEN_CREATED}:JWT:access_token",
+                f"{AUTHN_TOKEN_CREATED}:JWT:{ACCESS_TOKEN}",
                 type=SECURITY,
                 token_hash=hash_token_for_logging(new_token.encoded),
             )
@@ -152,7 +154,7 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
         )
         if not user:
             logger.info(
-                f"{AUTHN_TOKEN_REUSED}:JWT:refreshtoken",
+                f"{AUTHN_TOKEN_REUSED}:JWT:{REFRESH_TOKEN}",
                 type=SECURITY,
                 token_hash=hash_token_for_logging(refresh_token),
             )
@@ -421,7 +423,7 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
             tokens = await self._refresh_access_token(request, refresh_token)
 
             logger.info(
-                f"{AUTHN_TOKEN_CREATED}:OIDC:access_token",
+                f"{AUTHN_TOKEN_CREATED}:OIDC:{ACCESS_TOKEN}",
                 type=SECURITY,
                 token_hash=hash_token_for_logging(tokens.access_token),
             )
@@ -433,7 +435,7 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
             # Some providers issue a new refresh token as well.
             if tokens.refresh_token != refresh_token:
                 logger.info(
-                    f"{AUTHN_TOKEN_CREATED}:OIDC:refresh_token",
+                    f"{AUTHN_TOKEN_CREATED}:OIDC:{REFRESH_TOKEN}",
                     type=SECURITY,
                     token_hash=hash_token_for_logging(tokens.refresh_token),
                 )
@@ -471,7 +473,7 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
             )
         except UnauthorizedException as e:
             logger.info(
-                f"{AUTHN_TOKEN_REUSED}:OIDC:refresh_token",
+                f"{AUTHN_TOKEN_REUSED}:OIDC:{REFRESH_TOKEN}",
                 type=SECURITY,
                 token_hash=hash_token_for_logging(refresh_token),
             )

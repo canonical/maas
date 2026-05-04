@@ -8,10 +8,12 @@ from secrets import token_hex
 import structlog
 
 from maascommon.logging.security import (
+    ACCESS_TOKEN,
     AUTHN_LOGIN_SUCCESSFUL,
     AUTHN_LOGIN_UNSUCCESSFUL,
     AUTHN_TOKEN_CREATED,
     hash_token_for_logging,
+    REFRESH_TOKEN,
     SECURITY,
 )
 from maasservicelayer.auth.jwt import JWT
@@ -90,13 +92,13 @@ class AuthService(Service):
         )
 
         logger.info(
-            f"{AUTHN_TOKEN_CREATED}:JWT:access_token",
+            f"{AUTHN_TOKEN_CREATED}:JWT:{ACCESS_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging(access_token.encoded),
         )
 
         logger.info(
-            f"{AUTHN_TOKEN_CREATED}:JWT:refresh_token",
+            f"{AUTHN_TOKEN_CREATED}:JWT:{REFRESH_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging(refresh_token),
         )
@@ -112,7 +114,7 @@ class AuthService(Service):
         )
 
         logger.info(
-            f"{AUTHN_TOKEN_CREATED}:JWT:access_token",
+            f"{AUTHN_TOKEN_CREATED}:JWT:{ACCESS_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging(token.encoded),
         )

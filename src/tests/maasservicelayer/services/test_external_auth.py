@@ -19,6 +19,7 @@ from maascommon.logging.security import (
     AUTHN_LOGIN_SUCCESSFUL,
     AUTHN_TOKEN_REVOKED,
     hash_token_for_logging,
+    REFRESH_TOKEN,
     SECURITY,
 )
 from maasserver.macaroons import _get_macaroon_caveats_ops
@@ -1522,7 +1523,7 @@ class TestExternalOAuthService(ServiceCommonTests):
             )
 
         mock_logger.info.assert_called_once_with(
-            f"{AUTHN_TOKEN_REVOKED}:OIDC:refresh_token",
+            f"{AUTHN_TOKEN_REVOKED}:OIDC:{REFRESH_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging("abc123"),
         )
