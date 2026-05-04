@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -8,6 +8,7 @@ MAAS Site Manager Connector workflows
 import asyncio
 import dataclasses
 from datetime import timedelta
+from enum import StrEnum
 import ssl
 from typing import Any
 
@@ -25,10 +26,12 @@ from maascommon.constants import SYSTEM_CA_FILE
 from maascommon.workflows.bootresource import MASTER_IMAGE_SYNC_WORKFLOW_NAME
 from maascommon.workflows.msm import (
     MachinesCountByStatus,
+    MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
     MSM_ENROL_SITE_WORKFLOW_NAME,
     MSM_HEARTBEAT_WORKFLOW_NAME,
     MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
     MSM_TOKEN_REFRESH_WORKFLOW_NAME,
+    MSMConfigureProfileParam,
     MSMConnectorParam,
     MSMEnrolParam,
     MSMHeartbeatParam,
@@ -74,6 +77,8 @@ MSM_DETAIL_EP = "/site/v1/details"
 MSM_REFRESH_EP = "/site/v1/enroll/refresh"
 MSM_VERIFY_EP = "/site/v1/enroll/verify"
 MSM_SS_EP = "/site/v1/images/latest/stable/streams/v1/index.json"
+MSM_CONFIG_EP = "/site/v1/site-config"
+MSM_REPORT_PROGRESS_EP = "/site/v1/site-status"
 
 # Activities names
 MSM_CHECK_ENROL_ACTIVITY_NAME = "msm-check-enrol"
@@ -90,7 +95,8 @@ MSM_SET_BOOT_SOURCE_ACTIVITY_NAME = "msm-set-bootsource"
 MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME = "msm-set-global-config"
 MSM_SET_SELECTIONS_ACTIVITY_NAME = "msm-set-selections"
 MSM_START_IMAGE_SYNC_ACTIVITY_NAME = "msm-start-image-sync"
-
+MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME = "msm-get-full-profile-config"
+MSM_REPORT_CONFIG_PROGRESS_ACTIVITY_NAME = "msm-report-config-progress"
 MSM_DELETE_BOOT_SOURCES_ACTIVITY_NAME = "msm-delete-bootsources"
 MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME = (
     "msm-restore-default-bootsource"
@@ -102,6 +108,30 @@ MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME = (
 class MSMTokenVerifyParam:
     sm_url: str
     jwt: str
+
+
+class TaskStatus(StrEnum):
+    STARTED = "STARTED"
+    COMPLETE = "COMPLETE"
+    FAILED = "FAILED"
+    UNKNOWN = "UNKNOWN"
+
+
+@dataclasses.dataclass
+class SiteStatus:
+    status: TaskStatus | None = None
+    selections_status: TaskStatus | None = None
+    global_config_status: TaskStatus | None = None
+    image_sync_status: TaskStatus | None = None
+    clear_errors: bool = False
+    errors: list[str] | None = None
+
+
+@dataclasses.dataclass
+class MSMReportConfigProgressParam:
+    sm_url: str
+    jwt: str
+    site_status: SiteStatus
 
 
 class MSMConnectorActivity(ActivityBase):
@@ -291,7 +321,8 @@ class MSMConnectorActivity(ActivityBase):
             )
             if source is None:
                 raise ApplicationError(
-                    "Site Manager boot source does not exist"
+                    "Site Manager boot source does not exist",
+                    non_retryable=True,
                 )
             try:
                 builders = [
@@ -307,7 +338,8 @@ class MSMConnectorActivity(ActivityBase):
                 ]
             except ValueError as err:
                 raise ApplicationError(
-                    f"Unexpected selection format in {input.selections}. Must be in the form of os/release/arch"
+                    f"Unexpected selection format in {input.selections}. Must be in the form of os/release/arch",
+                    non_retryable=True,
                 ) from err
             await services.boot_source_selections.delete_many(
                 QuerySpec(
@@ -425,6 +457,75 @@ class MSMConnectorActivity(ActivityBase):
                 case 401 | 404:
                     logger.error("Enrolment cancelled by MSM, aborting")
                     return -1, False
+                case _:
+                    raise ApplicationError(
+                        f"got unexpected return code: HTTP {response.status}"
+                    )
+
+    @activity_defn_with_context(name=MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME)
+    async def get_full_profile_config(
+        self, input: MSMConfigureProfileParam
+    ) -> dict[str, Any]:
+        """Get the full profile from Site Manager
+
+        Args:
+            input (MSMConfigureProfileParam): includes the current JWT and base Site Manager URL
+
+        Returns:
+            dict[str, Any]: The configuration returned by Site Manager.
+        """
+        headers = {
+            "Authorization": f"bearer {input.jwt}",
+        }
+        config_url = input.sm_url + MSM_CONFIG_EP
+        async with self._session.get(config_url, headers=headers) as response:
+            match response.status:
+                case 200:
+                    return await response.json()
+                case 401 | 404:
+                    logger.error(
+                        "The JWT passed to this activity is no longer valid"
+                    )
+                    raise ApplicationError(
+                        "Authentication with MSM failed", non_retryable=True
+                    )
+                case _:
+                    raise ApplicationError(
+                        f"got unexpected return code: HTTP {response.status}"
+                    )
+
+    @activity_defn_with_context(name=MSM_REPORT_CONFIG_PROGRESS_ACTIVITY_NAME)
+    async def report_config_progress(
+        self, input: MSMReportConfigProgressParam
+    ) -> None:
+        """Report progress of configuration tasks to Site Manager.
+
+        Args:
+            input (MSMConfigureProfileParam): includes the current JWT, base Site Manager URL,
+            and the status of configuration tasks to report.
+        """
+        headers = {
+            "Authorization": f"bearer {input.jwt}",
+        }
+        config_url = input.sm_url + MSM_REPORT_PROGRESS_EP
+        data = {
+            k: v
+            for k, v in dataclasses.asdict(input.site_status).items()
+            if v is not None
+        }
+        async with self._session.patch(
+            config_url, json=data, headers=headers
+        ) as response:
+            match response.status:
+                case 204:
+                    return
+                case 401 | 404:
+                    logger.error(
+                        "The JWT passed to this activity is no longer valid"
+                    )
+                    raise ApplicationError(
+                        "Authentication with MSM failed", non_retryable=True
+                    )
                 case _:
                     raise ApplicationError(
                         f"got unexpected return code: HTTP {response.status}"
@@ -724,3 +825,133 @@ class MSMTokenRefreshWorkflow:
                 ),
                 start_to_close_timeout=MSM_TIMEOUT,
             )
+
+
+@workflow.defn(name=MSM_CONFIGURE_PROFILE_WORKFLOW_NAME, sandboxed=False)
+class MSMConfigureProfileWorkflow:
+    """Configure this MAAS according to the profile supplied by Site Manager."""
+
+    _CONFIGURATION_ACTIVITIES = {
+        "global_config",
+        "selections",
+        "trigger_image_sync",
+    }
+
+    @workflow_run_with_context
+    async def run(self, input: MSMConfigureProfileParam) -> None:
+        """Run workflow.
+
+        Args:
+            input (MSMConfigureProfileParam): Site Manager URL and JWT
+        """
+        full_config: dict[str, Any] = await workflow.execute_activity(
+            MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME,
+            input,
+            start_to_close_timeout=MSM_TIMEOUT,
+        )
+
+        async def report(status: SiteStatus) -> None:
+            await workflow.execute_activity(
+                MSM_REPORT_CONFIG_PROGRESS_ACTIVITY_NAME,
+                MSMReportConfigProgressParam(
+                    sm_url=input.sm_url, jwt=input.jwt, site_status=status
+                ),
+                start_to_close_timeout=MSM_TIMEOUT,
+            )
+
+        unknown_keys = set(full_config.keys()) - self._CONFIGURATION_ACTIVITIES
+        if unknown_keys:
+            await report(
+                SiteStatus(
+                    status=TaskStatus.FAILED,
+                    errors=[f"Unknown configuration options: {unknown_keys}"],
+                    clear_errors=True,  # This workflow will probably execute next heartbeat, don't let errors pile up
+                )
+            )
+            return
+        missing_keys = self._CONFIGURATION_ACTIVITIES - set(full_config.keys())
+        if missing_keys:
+            await report(
+                SiteStatus(
+                    status=TaskStatus.FAILED,
+                    errors=[
+                        f"Incomplete configuration provided (missing {missing_keys})"
+                    ],
+                    clear_errors=True,  # This workflow will probably execute next heartbeat, don't let errors pile up
+                )
+            )
+            return
+
+        activities = {
+            "global_config": workflow.start_activity(
+                MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME,
+                MSMSetGlobalConfigParam(
+                    configuration=full_config["global_config"]
+                ),
+                start_to_close_timeout=MSM_TIMEOUT,
+            ),
+            "selections": workflow.start_activity(
+                MSM_SET_SELECTIONS_ACTIVITY_NAME,
+                MSMSetSelectionsParam(
+                    selections=full_config["selections"],
+                    sm_url=input.sm_url,
+                ),
+                start_to_close_timeout=MSM_TIMEOUT,
+            ),
+        }
+        if full_config["trigger_image_sync"]:
+            activities["image_sync"] = workflow.start_activity(
+                MSM_START_IMAGE_SYNC_ACTIVITY_NAME,
+                start_to_close_timeout=MSM_TIMEOUT,
+            )
+
+        await report(
+            SiteStatus(
+                status=TaskStatus.STARTED,
+                global_config_status=TaskStatus.STARTED,
+                selections_status=TaskStatus.STARTED,
+                image_sync_status=TaskStatus.STARTED
+                if full_config["trigger_image_sync"]
+                else None,
+            )
+        )
+
+        completed: dict[str, bool] = {}
+        while completed.keys() != activities.keys():
+            for key, hdl in activities.items():
+                if completed.get(key) is None and hdl.done():
+                    success = False
+                    if hdl.cancelled():
+                        status = SiteStatus(
+                            **{f"{key}_status": TaskStatus.FAILED},
+                            clear_errors=False,
+                            errors=[f"{key} activity was cancelled."],
+                        )
+                    elif exc := hdl.exception():
+                        status = SiteStatus(
+                            **{f"{key}_status": TaskStatus.FAILED},
+                            clear_errors=False,
+                            errors=[f"{key} activity failed ({exc})."],
+                        )
+                    else:
+                        status = SiteStatus(
+                            **{f"{key}_status": TaskStatus.COMPLETE},
+                            clear_errors=False,
+                            errors=None,
+                        )
+                        success = True
+                    await report(status)
+                    completed[key] = success
+            await asyncio.sleep(5.0)
+
+        if all(completed.values()):
+            status = SiteStatus(status=TaskStatus.COMPLETE, clear_errors=True)
+        else:
+            status = SiteStatus(
+                status=TaskStatus.FAILED,
+                errors=[
+                    f"The following activities failed: {[k for k, v in completed.items() if not v]}"
+                ],
+                clear_errors=False,
+            )
+        await report(status)
