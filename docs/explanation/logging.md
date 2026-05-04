@@ -334,4 +334,5 @@ Use audit events alongside `jq` and command-line text tools to analyze actions l
 :hidden:
 
 contextual-logging
+security-logging
 ```

@@ -443,5 +443,4 @@ The structured JSON format and OWASP-compliant field names ensure seamless integ
 ## Related Documentation
 
 - [Contextual Logging](contextual-logging.md) - Understanding trace IDs and request correlation
-- [Use Logging](use-logging.md) - General MAAS logging guide
-- [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html) - Security logging standards
+- [Use Logging](../how-to-guides/use-logging.md) - General MAAS logging guide
