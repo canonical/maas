@@ -64,3 +64,6 @@ AUTHN_TOKEN_REVOKED = "AUTHN_token_revoked"
 # Notes the usage of any invalid version of the above tokens.
 # This could be because the token is expired, is in the wrong format, or simply does not exist in the database.
 AUTHN_TOKEN_REUSED = "AUTHN_token_reused"
+ACCESS_TOKEN = "access_token"
+REFRESH_TOKEN = "refresh_token"
+BOOTSTRAP_TOKEN = "bootstrap_token"
