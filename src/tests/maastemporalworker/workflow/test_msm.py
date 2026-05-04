@@ -1392,7 +1392,7 @@ class TestConfigureProfileWorkflow:
                     if failed_activity == "selections"
                     else TaskStatus.COMPLETE,
                     errors=[
-                        f"selections activity failed (Activity task failed)."
+                        "selections activity failed (Activity task failed)."
                     ]
                     if failed_activity == "selections"
                     else None,
@@ -1406,7 +1406,7 @@ class TestConfigureProfileWorkflow:
                     if failed_activity == "global_config"
                     else TaskStatus.COMPLETE,
                     errors=[
-                        f"global_config activity failed (Activity task failed)."
+                        "global_config activity failed (Activity task failed)."
                     ]
                     if failed_activity == "global_config"
                     else None,
@@ -1420,7 +1420,7 @@ class TestConfigureProfileWorkflow:
                     if failed_activity == "image_sync"
                     else TaskStatus.COMPLETE,
                     errors=[
-                        f"image_sync activity failed (Activity task failed)."
+                        "image_sync activity failed (Activity task failed)."
                     ]
                     if failed_activity == "image_sync"
                     else None,
