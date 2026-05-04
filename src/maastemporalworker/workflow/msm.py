@@ -498,6 +498,12 @@ class MSMConnectorActivity(ActivityBase):
     async def report_config_progress(
         self, input: MSMReportConfigProgressParam
     ) -> None:
+        """Report progress of configuration tasks to Site Manager.
+
+        Args:
+            input (MSMConfigureProfileParam): includes the current JWT, base Site Manager URL,
+            and the status of configuration tasks to report.
+        """
         headers = {
             "Authorization": f"bearer {input.jwt}",
         }
