@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections import defaultdict
@@ -1505,6 +1505,76 @@ class TestConfigureProfileWorkflow:
                     status=TaskStatus.FAILED,
                     errors=[
                         f"Unknown configuration options: {set(['something_else'])}"
+                    ],
+                    clear_errors=True,
+                ),
+            )
+        ]
+        assert len(calls["msm-set-global-config"]) == 0
+        assert len(calls["msm-set-selections"]) == 0
+        assert len(calls["msm-image-sync"]) == 0
+
+    async def test_workflow_incomplete_cfg_provided(
+        self, config_profile_param
+    ):
+        calls = defaultdict(list)
+        test_profile = {
+            "global_config": {"theme": "dark"},
+            "selections": ["ubuntu/resolute/amd64"],
+        }
+
+        @activity.defn(name=MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME)
+        async def get_full_profile(
+            input: MSMConfigureProfileParam,
+        ) -> dict[str, Any]:
+            calls["msm-get-full-profile"].append(True)
+            return test_profile
+
+        @activity.defn(name=MSM_REPORT_CONFIG_PROGRESS_ACTIVITY_NAME)
+        async def report_progress(input: MSMReportConfigProgressParam) -> None:
+            calls["msm-report-progress"].append(input)
+
+        @activity.defn(name=MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME)
+        async def set_global_config(input: MSMSetGlobalConfigParam) -> None:
+            calls["msm-set-global-config"].append(input)
+
+        @activity.defn(name=MSM_SET_SELECTIONS_ACTIVITY_NAME)
+        async def set_selections(input: MSMSetSelectionsParam) -> None:
+            calls["msm-set-selections"].append(input)
+
+        @activity.defn(name=MSM_START_IMAGE_SYNC_ACTIVITY_NAME)
+        async def image_sync() -> None:
+            calls["msm-image-sync"].append(True)
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="abcd:region",
+                workflows=[MSMConfigureProfileWorkflow],
+                activities=[
+                    get_full_profile,
+                    report_progress,
+                    set_global_config,
+                    set_selections,
+                    image_sync,
+                ],
+            ) as worker:
+                await env.client.execute_workflow(
+                    MSMConfigureProfileWorkflow.run,
+                    config_profile_param,
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+        assert calls["msm-get-full-profile"] == [True]
+        assert calls["msm-report-progress"] == [
+            MSMReportConfigProgressParam(
+                sm_url=config_profile_param.sm_url,
+                jwt=config_profile_param.jwt,
+                site_status=SiteStatus(
+                    status=TaskStatus.FAILED,
+                    errors=[
+                        "Incomplete configuration provided (missing {'trigger_image_sync'})"
                     ],
                     clear_errors=True,
                 ),

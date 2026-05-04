@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -26,7 +26,7 @@ from maascommon.constants import SYSTEM_CA_FILE
 from maascommon.workflows.bootresource import MASTER_IMAGE_SYNC_WORKFLOW_NAME
 from maascommon.workflows.msm import (
     MachinesCountByStatus,
-    MSM_CONFIGURE_PROFILE_WORKFLOW,
+    MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
     MSM_ENROL_SITE_WORKFLOW_NAME,
     MSM_HEARTBEAT_WORKFLOW_NAME,
     MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
@@ -827,7 +827,7 @@ class MSMTokenRefreshWorkflow:
             )
 
 
-@workflow.defn(name=MSM_CONFIGURE_PROFILE_WORKFLOW, sandboxed=False)
+@workflow.defn(name=MSM_CONFIGURE_PROFILE_WORKFLOW_NAME, sandboxed=False)
 class MSMConfigureProfileWorkflow:
     """Configure this MAAS according to the profile supplied by Site Manager."""
 
@@ -869,17 +869,18 @@ class MSMConfigureProfileWorkflow:
                 )
             )
             return
-
-        await report(
-            SiteStatus(
-                status=TaskStatus.STARTED,
-                global_config_status=TaskStatus.STARTED,
-                selections_status=TaskStatus.STARTED,
-                image_sync_status=TaskStatus.STARTED
-                if full_config["trigger_image_sync"]
-                else None,
+        missing_keys = self._CONFIGURATION_ACTIVITIES - set(full_config.keys())
+        if missing_keys:
+            await report(
+                SiteStatus(
+                    status=TaskStatus.FAILED,
+                    errors=[
+                        f"Incomplete configuration provided (missing {missing_keys})"
+                    ],
+                    clear_errors=True,  # This workflow will probably execute next heartbeat, don't let errors pile up
+                )
             )
-        )
+            return
 
         activities = {
             "global_config": workflow.start_activity(
@@ -892,18 +893,28 @@ class MSMConfigureProfileWorkflow:
             "selections": workflow.start_activity(
                 MSM_SET_SELECTIONS_ACTIVITY_NAME,
                 MSMSetSelectionsParam(
-                    selections=full_config["selections"], sm_url=input.sm_url
+                    selections=full_config["selections"],
+                    sm_url=input.sm_url,
                 ),
                 start_to_close_timeout=MSM_TIMEOUT,
             ),
         }
-        # need to handle trigger_image_sync separately becuase we only
-        # want to start the activity if it's specified as True
         if full_config["trigger_image_sync"]:
             activities["image_sync"] = workflow.start_activity(
                 MSM_START_IMAGE_SYNC_ACTIVITY_NAME,
                 start_to_close_timeout=MSM_TIMEOUT,
             )
+
+        await report(
+            SiteStatus(
+                status=TaskStatus.STARTED,
+                global_config_status=TaskStatus.STARTED,
+                selections_status=TaskStatus.STARTED,
+                image_sync_status=TaskStatus.STARTED
+                if full_config["trigger_image_sync"]
+                else None,
+            )
+        )
 
         completed: dict[str, bool] = {}
         while completed.keys() != activities.keys():
