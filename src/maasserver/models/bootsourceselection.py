@@ -156,7 +156,7 @@ class BootSourceSelectionNew(CleanSave, TimestampedModel):
             "arch": self.arch,
         }
 
-    def delete(self):
+    def delete(self, *args, **kwargs):
         """Delete without checking if this selection is the one used for commissioning."""
         boot_resources_to_delete = BootResource.objects.filter(
             boot_source_selection=self
@@ -165,4 +165,4 @@ class BootSourceSelectionNew(CleanSave, TimestampedModel):
             boot_resources_to_delete
         )
         boot_resources_to_delete.delete()
-        return super().delete()
+        return super().delete(*args, **kwargs)
