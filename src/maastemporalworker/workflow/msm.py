@@ -916,7 +916,7 @@ class MSMConfigureProfileWorkflow:
                             clear_errors=False,
                             errors=[f"{key} activity was cancelled."],
                         )
-                    if exc := hdl.exception():
+                    elif exc := hdl.exception():
                         status = SiteStatus(
                             **{f"{key}_status": TaskStatus.FAILED},
                             clear_errors=False,
