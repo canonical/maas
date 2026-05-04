@@ -51,6 +51,17 @@ TEST_ECDSA256_KEY = (
     "LltCeS7W0y8c7wlsADVh0= ec2@bar"
 )
 
+TEST_SK_ED25519_KEY = (
+    "sk-ssh-ed25519@openssh.com AAAAGnNrLXNzaC1lZDI1NTE5QG9wZW5zc2guY29tAAAA"
+    "ICFo/k5LU8863u66YC9eUO2170QduohPURkQnbLa/dczAAAABHNzaDo= sk-ed25519@bar"
+)
+TEST_SK_ECDSA_KEY = (
+    "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZA"
+    "b3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBGdVPkKOLUMZ7b6rZfS8BOHotic4NX4Mmu"
+    "yEmiuvkaeKlbb1F+5oNezRYHpcF6P104trNVEONCu1XX1CA7px+QUAAAAEc3NoOg=="
+    " sk-ecdsa@bar"
+)
+
 
 @pytest.mark.asyncio
 class TestCommonSshKeysService(ServiceCommonTests):
@@ -460,6 +471,8 @@ class TestSshKeysService:
             TEST_ECDSA256_KEY,
             TEST_ECDSA384_KEY,
             TEST_ECDSA521_KEY,
+            TEST_SK_ED25519_KEY,
+            TEST_SK_ECDSA_KEY,
         ],
     )
     async def test_normalize_openssh_public_keys_valid_keys_with_comments(
@@ -479,6 +492,8 @@ class TestSshKeysService:
             TEST_ECDSA256_KEY,
             TEST_ECDSA384_KEY,
             TEST_ECDSA521_KEY,
+            TEST_SK_ED25519_KEY,
+            TEST_SK_ECDSA_KEY,
         ],
     )
     async def test_normalize_openssh_public_keys_valid_keys_without_comments(

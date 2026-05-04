@@ -501,9 +501,6 @@ snap-tree-sync: $(UI_BUILD) clean-agent clean-openfga go-bins $(SNAP_UNPACKED_DI
 		$(UI_BUILD)/ \
 		$(SNAP_UNPACKED_DIR)/usr/share/maas/web/static/
 	$(RSYNC) \
-		$(OFFLINE_DOCS)/production-html-snap/ \
-		$(SNAP_UNPACKED_DIR)/usr/share/maas/web/static/docs/
-	$(RSYNC) \
 		snap/local/tree/ \
 		$(SNAP_UNPACKED_DIR)/
 	$(RSYNC) \

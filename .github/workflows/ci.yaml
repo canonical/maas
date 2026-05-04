@@ -64,6 +64,12 @@ jobs:
               - 'src/**/go.sum'
             docs:
               - 'docs/**'
+              - 'src/**/*.py'
+              - 'utilities/run-py-tests-ci'
+              - 'pyproject.toml'
+              - 'tox.ini'
+              - 'required-packages/base'
+              - 'snap/snapcraft.yaml'
 
   lint:
     runs-on: ubuntu-24.04

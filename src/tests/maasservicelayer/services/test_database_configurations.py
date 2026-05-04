@@ -69,3 +69,18 @@ class TestDatabaseConfigurationsService:
             builder
         )
         assert dbconfig == expected_dbconfig
+
+    async def test_clear_and_set_many(self) -> None:
+        database_configurations_repository_mock = Mock(
+            DatabaseConfigurationsRepository
+        )
+        configurations_service = DatabaseConfigurationsService(
+            context=Context(),
+            database_configurations_repository=database_configurations_repository_mock,
+        )
+        test_cfg = {"theme": "dark"}
+        await configurations_service.clear_and_set_many(test_cfg)
+        database_configurations_repository_mock.clear.assert_called_once()
+        database_configurations_repository_mock.set_many.assert_called_once_with(
+            test_cfg
+        )

@@ -7,14 +7,12 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from gzip import compress
 import io
-import math
 import random
 import struct
 import subprocess
 from tempfile import NamedTemporaryFile
 import time
 from unittest.mock import Mock
-from uuid import UUID, uuid1
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -23,7 +21,7 @@ from provisioningserver.tests.test_security import SharedSecretTestCase
 from provisioningserver.utils import beaconing as beaconing_module
 from provisioningserver.utils.beaconing import (
     add_arguments,
-    age_out_uuid_queue,
+    age_out_ulid_queue,
     BEACON_HEADER_FORMAT_V1,
     beacon_to_json,
     BEACON_TYPES,
@@ -33,24 +31,23 @@ from provisioningserver.utils.beaconing import (
     InvalidBeaconingPacket,
     read_beacon_payload,
     run,
-    uuid_to_timestamp,
+    ulid_to_timestamp,
 )
 from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.script import ActionScriptError
 
 
-class TestUUIDToTimestamp(MAASTestCase):
+class TestULIDToTimestamp(MAASTestCase):
     def test_round_trip_preserves_timestamp(self):
-        self.skipTest(
-            "UUID1 timestamps offset due to libuuid bug (LP#2145734)"
-        )
-        expected_timestamp = time.time()
-        uuid = str(uuid1())
-        actual_timestamp = uuid_to_timestamp(uuid)
-        difference = math.fabs(actual_timestamp - expected_timestamp)
-        # Tolerate a difference of ~3 seconds. We'll age out packets on the
-        # order of minutes, so that should be good enough.
-        self.assertLess(difference, 3.0)
+        from ulid import ULID
+
+        before = time.time()
+        ulid_str = str(ULID())
+        after = time.time()
+        extracted = ulid_to_timestamp(ulid_str)
+        # ULID timestamp must be bracketed by the before/after wall-clock values.
+        self.assertGreaterEqual(extracted, before - 0.001)
+        self.assertLessEqual(extracted, after + 0.001)
 
 
 class TestBeaconToJSON(MAASTestCase):
@@ -89,7 +86,7 @@ class TestCreateBeaconPayload(SharedSecretTestCase):
         self.assertIsInstance(beacon.bytes, bytes)
         self.assertIsNone(beacon.payload)
         self.assertEqual("solicitation", beacon.type)
-        self.assertEqual(1, beacon.version)
+        self.assertEqual(2, beacon.version)
 
     def test_succeeds_when_shared_secret_present(self):
         beacon = create_beacon_payload("solicitation", payload={})
@@ -103,8 +100,12 @@ class TestCreateBeaconPayload(SharedSecretTestCase):
         beacon = create_beacon_payload(
             random_type, payload={random_key: random_value}
         )
-        # Ensure a valid UUID was added.
-        self.assertIsNotNone(UUID(beacon.payload["uuid"]))
+        # Ensure a valid ULID was added.
+        ulid_str = beacon.payload["ulid"]
+        self.assertEqual(len(ulid_str), 26)
+        self.assertTrue(
+            all(c in "0123456789ABCDEFGHJKMNPQRSTVWXYZ" for c in ulid_str)
+        )
         self.assertEqual(random_type, beacon.type)
         # The type is replicated here for authentication purposes.
         self.assertEqual(BEACON_TYPES[random_type], beacon.payload["type"])
@@ -177,6 +178,31 @@ class TestReadBeaconPayload(SharedSecretTestCase):
         packet = _make_beacon_payload(payload=payload)
         with self.assertRaisesRegex(
             InvalidBeaconingPacket, ".*beacon payload is not BSON.*"
+        ):
+            read_beacon_payload(packet)
+
+
+class TestReadBeaconPayloadVersions(SharedSecretTestCase):
+    def setUp(self):
+        super().setUp()
+        MAAS_SECRET.set(factory.make_bytes())
+
+    def test_accepts_version_1_packet(self):
+        # v1 is decoded cleanly — dropping is the caller's responsibility.
+        beacon = create_beacon_payload("solicitation", payload={}, version=1)
+        result = read_beacon_payload(beacon.bytes)
+        self.assertEqual(result.version, 1)
+
+    def test_accepts_version_2_packet(self):
+        beacon = create_beacon_payload("solicitation", payload={})
+        self.assertEqual(beacon.version, 2)
+        result = read_beacon_payload(beacon.bytes)
+        self.assertEqual(result.version, 2)
+
+    def test_raises_for_unknown_version(self):
+        packet = _make_beacon_payload(version=0xFE)
+        with self.assertRaisesRegex(
+            InvalidBeaconingPacket, ".*Unknown beacon version.*"
         ):
             read_beacon_payload(packet)
 
@@ -327,72 +353,34 @@ class TestObserveBeaconsCommand(MAASTestCase):
         os.setpgrp.assert_called_once_with()
 
 
-class TestAgeOutUUIDQueue(MAASTestCase):
-    """Tests for `age_out_uuid_queue()` function."""
+class TestAgeOutULIDQueue(MAASTestCase):
+    """Tests for `age_out_ulid_queue()` function."""
 
     def test_does_not_remove_fresh_entries(self):
-        self.skipTest(
-            "UUID1 timestamps offset due to libuuid bug (LP#2145734)"
-        )
-        uuid_now = str(uuid1())
+        ulid_now = factory.make_ULID_with_timestamp(time.time())
         queue = OrderedDict()
-        queue[uuid_now] = {}
+        queue[ulid_now] = {}
         self.assertEqual(len(queue), 1)
-        age_out_uuid_queue(queue)
+        age_out_ulid_queue(queue)
         self.assertEqual(len(queue), 1)
 
     def test_keeps_entries_from_the_reasonable_past(self):
-        uuid_from_the_past = factory.make_UUID_with_timestamp(
-            time.time() - 60.0
-        )
+        ulid = factory.make_ULID_with_timestamp(time.time() - 60.0)
         queue = OrderedDict()
-        queue[uuid_from_the_past] = {}
-        self.assertEqual(len(queue), 1)
-        age_out_uuid_queue(queue)
-        self.assertEqual(len(queue), 1)
-
-    def test_keeps_entries_from_the_reasonable_future(self):
-        uuid_from_the_future = factory.make_UUID_with_timestamp(
-            time.time() + 60.0
-        )
-        queue = OrderedDict()
-        queue[uuid_from_the_future] = {}
-        self.assertEqual(len(queue), 1)
-        age_out_uuid_queue(queue)
+        queue[ulid] = {}
+        age_out_ulid_queue(queue)
         self.assertEqual(len(queue), 1)
 
     def test_removes_entries_from_the_past(self):
-        uuid_from_the_past = factory.make_UUID_with_timestamp(
-            time.time() - 123.0
-        )
+        ulid = factory.make_ULID_with_timestamp(time.time() - 123.0)
         queue = OrderedDict()
-        queue[uuid_from_the_past] = {}
-        self.assertEqual(len(queue), 1)
-        age_out_uuid_queue(queue)
+        queue[ulid] = {}
+        age_out_ulid_queue(queue)
         self.assertEqual(queue, {})
 
     def test_removes_entries_from_the_future(self):
-        uuid_from_the_future = factory.make_UUID_with_timestamp(
-            time.time() + 123.0
-        )
+        ulid = factory.make_ULID_with_timestamp(time.time() + 123.0)
         queue = OrderedDict()
-        queue[uuid_from_the_future] = {}
-        self.assertEqual(len(queue), 1)
-        age_out_uuid_queue(queue)
-        self.assertEqual(queue, {})
-
-    def test_removes_entries_from_the_distant_past(self):
-        uuid_from_the_past = "00000000-0000-1000-aaaa-aaaaaaaaaaaa"
-        queue = OrderedDict()
-        queue[uuid_from_the_past] = {}
-        self.assertEqual(len(queue), 1)
-        age_out_uuid_queue(queue)
-        self.assertEqual(queue, {})
-
-    def test_removes_entries_from_the_far_future(self):
-        uuid_from_the_future = "ffffffff-ffff-1fff-0000-000000000000"
-        queue = OrderedDict()
-        queue[uuid_from_the_future] = {}
-        self.assertEqual(len(queue), 1)
-        age_out_uuid_queue(queue)
+        queue[ulid] = {}
+        age_out_ulid_queue(queue)
         self.assertEqual(queue, {})
