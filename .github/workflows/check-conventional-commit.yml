@@ -37,22 +37,23 @@ jobs:
           BUG_REF_KEYWORDS="close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved"
           BUG_REF_RE="^(${BUG_REF_KEYWORDS}):?[[:space:]]+LP:[[:space:]]?[0-9]+$"
 
-          is_fix=0
-          has_bug_ref=0
+          is_fix=false
+          has_bug_ref=false
 
           if echo "${PR_TITLE}" | grep -Eiq '^fix'; then
-            is_fix=1
+            is_fix=true
           fi
 
           if echo "${PR_BODY}" | grep -Eiq "${BUG_REF_RE}"; then
-            has_bug_ref=1
+            has_bug_ref=true
           fi
 
-          if [[ $is_fix && ! $has_bug_ref ]]; then
+          if $is_fix && ! $has_bug_ref ; then
             echo "needs_warning=true" >> "$GITHUB_OUTPUT"
           else
             echo "needs_warning=false" >> "$GITHUB_OUTPUT"
           fi
+
 
       - name: Post warning comment for missing bug reference
         if: steps.bug-ref-check.outputs.needs_warning == 'true'
@@ -60,7 +61,7 @@ jobs:
           body="${MARKER}
           :warning: Conventional Commit: Missing Bug Reference
 
-          Your PR title starts with `fix` but no Launchpad bug reference was found in the PR description.
+          Your PR title starts with **fix** but no Launchpad bug reference was found in the PR description.
           If your PR addresses a bug, please add the following footer to the PR description:
 
           \`\`\`
