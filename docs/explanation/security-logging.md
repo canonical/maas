@@ -51,6 +51,8 @@ All security logs follow a consistent JSON structure:
 
 ### Authentication Events
 
+Events related to user authentication, login processes, and credential management.
+
 #### AUTHN_login_successful
 
 Logged when a user successfully logs in to MAAS.
@@ -128,6 +130,8 @@ Logged when a user's password is changed.
 
 ### Authorization Events
 
+Events related to access control, permission checks, and administrative actions.
+
 #### AUTHZ_fail
 
 Logged when a user attempts to access a resource or perform an action they are not authorized to perform.
@@ -179,6 +183,8 @@ Logged when an administrative action is performed on system resources.
 ```
 
 ### User Management Events
+
+Events related to user account lifecycle including creation, modification, and deletion.
 
 #### USER_created
 
