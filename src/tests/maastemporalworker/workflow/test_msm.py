@@ -871,10 +871,6 @@ class TestMSMActivities:
                 msm_act.report_config_progress, report_progress_param
             )
         assert err.value.non_retryable == (return_code in [401, 404])
-<<<<<<< HEAD
-
-=======
->>>>>>> cd343d0dd8 (add workflow tests)
 
     async def test_get_config_hash(self, mocker, services_mock, msm_act):
         services_mock.configurations = Mock(ConfigurationsService)

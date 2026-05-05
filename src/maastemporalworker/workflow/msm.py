@@ -786,7 +786,7 @@ class MSMHeartbeatWorkflow:
         self._running = True
         next_update = 0
         send_config_opts = False
-        while next_update >= 0:
+        while True:
             secret = await workflow.execute_activity(
                 MSM_GET_ENROL_ACTIVITY_NAME,
                 start_to_close_timeout=MSM_TIMEOUT,
@@ -846,8 +846,7 @@ class MSMHeartbeatWorkflow:
                 except WorkflowAlreadyStartedError:
                     pass
             logger.debug(f"next refresh in {next_update} seconds")
-            if next_update > 0:
-                await asyncio.sleep(next_update)
+            await asyncio.sleep(next_update)
         self._running = False
         await workflow.start_child_workflow(
             MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
