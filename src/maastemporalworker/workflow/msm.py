@@ -12,7 +12,7 @@ from enum import StrEnum
 import hashlib
 import json
 import ssl
-from typing import Any
+from typing import Any, ClassVar
 
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -130,7 +130,7 @@ class MSMConfigProfile:
     selections: list[str]
     trigger_image_sync: bool
 
-    _RETAIN_ORDER_OPTIONS: list[str] = ["upstream_dns"]
+    _RETAIN_ORDER_OPTIONS: ClassVar[list[str]] = ["upstream_dns"]
 
     def hash(self) -> str:
         self._normalize()
