@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
@@ -253,6 +253,9 @@ async def main() -> None:
                 msm_activity.restore_default_boot_source,
                 msm_activity.set_selections,
                 msm_activity.set_global_config,
+                msm_activity.start_image_sync,
+                msm_activity.get_full_profile_config,
+                msm_activity.report_config_progress,
                 # Tag evaluation activities
                 tag_evaluation_activity.evaluate_tag,
                 # Power state activities

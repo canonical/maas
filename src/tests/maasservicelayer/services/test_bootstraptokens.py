@@ -9,6 +9,7 @@ import pytest
 from maascommon.logging.security import (
     AUTHN_TOKEN_CREATED,
     AUTHN_TOKEN_DELETED,
+    BOOTSTRAP_TOKEN,
     hash_token_for_logging,
     SECURITY,
 )
@@ -52,7 +53,7 @@ class TestBootstrapTokenService(ServiceCommonTests):
             await service.post_create_hook(token)
 
         mock_logger.info.assert_called_once_with(
-            f"{AUTHN_TOKEN_CREATED}:bootstraptoken",
+            f"{AUTHN_TOKEN_CREATED}:{BOOTSTRAP_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging(token.secret),
         )
@@ -90,7 +91,7 @@ class TestBootstrapTokenService(ServiceCommonTests):
         mock_logger.info.assert_has_calls(
             [
                 call(
-                    f"{AUTHN_TOKEN_CREATED}:bootstraptoken",
+                    f"{AUTHN_TOKEN_CREATED}:{BOOTSTRAP_TOKEN}",
                     type=SECURITY,
                     token_hash=hash_token_for_logging(token.secret),
                 )
@@ -113,7 +114,7 @@ class TestBootstrapTokenService(ServiceCommonTests):
             await service.post_delete_hook(token)
 
         mock_logger.info.assert_called_once_with(
-            f"{AUTHN_TOKEN_DELETED}:bootstraptoken",
+            f"{AUTHN_TOKEN_DELETED}:{BOOTSTRAP_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging(token.secret),
         )
@@ -151,7 +152,7 @@ class TestBootstrapTokenService(ServiceCommonTests):
         mock_logger.info.assert_has_calls(
             [
                 call(
-                    f"{AUTHN_TOKEN_DELETED}:bootstraptoken",
+                    f"{AUTHN_TOKEN_DELETED}:{BOOTSTRAP_TOKEN}",
                     type=SECURITY,
                     token_hash=hash_token_for_logging(token.secret),
                 )

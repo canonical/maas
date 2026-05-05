@@ -16,6 +16,7 @@ from starlette.responses import Response
 from maasapiserver.v3.constants import V3_INTERNAL_API_PREFIX
 from maascommon.logging.security import (
     AUTHN_TOKEN_REUSED,
+    BOOTSTRAP_TOKEN,
     hash_token_for_logging,
     SECURITY,
 )
@@ -390,7 +391,7 @@ class TestAgentsApi:
         assert response.status_code == 401
 
         mock_logger.info.assert_called_once_with(
-            f"{AUTHN_TOKEN_REUSED}:bootstraptoken",
+            f"{AUTHN_TOKEN_REUSED}:{BOOTSTRAP_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging(mock_token.secret),
         )
