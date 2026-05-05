@@ -356,21 +356,18 @@ To protect sensitive token values while still allowing correlation in logs, MAAS
 You can track a token from creation through deletion and attempted reuse by matching `token_hash` values:
 
 ```json
-// Token created
 {
   "message": "AUTHN_token_created:bootstraptoken",
   "token_hash": "abc123...",
   "timestamp": "2025-11-26T10:00:00Z"
 }
 
-// Token deleted after use
 {
   "message": "AUTHN_token_deleted:bootstraptoken",
   "token_hash": "abc123...",
   "timestamp": "2025-11-26T10:05:00Z"
 }
 
-// Attempted reuse after deletion
 {
   "message": "AUTHN_token_reused:bootstraptoken",
   "token_hash": "abc123...",
