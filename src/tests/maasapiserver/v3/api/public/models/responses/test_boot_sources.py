@@ -26,11 +26,13 @@ class TestBootSourceResponse:
             id=1,
             created=now,
             updated=now,
+            name="Test Boot Source",
             url="my-url",
             keyring_filename="keyring-filename",
             keyring_data=data,
             priority=10,
             skip_keyring_verification=False,
+            enabled=True,
         )
         bootsource_response = BootSourceResponse.from_model(
             boot_source=boot_source,
@@ -100,11 +102,13 @@ class TestUISourceAvailableImageResponse:
             id=1,
             created=utcnow(),
             updated=utcnow(),
+            name="Test Boot Source",
             url="http://example.com/v1/",
             keyring_filename="/path/to/keyring.gpg",
             keyring_data="",
             priority=10,
             skip_keyring_verification=False,
+            enabled=True,
         )
         boot_source_available_image = BootSourceAvailableImage(
             os="Ubuntu",

@@ -19,6 +19,11 @@ class TestBootSource:
     )
     def test_get_base_url(self, url: str, expected_base_url: str):
         bs = BootSource(
-            id=0, priority=0, url=url, skip_keyring_verification=False
+            id=0,
+            name="Test",
+            priority=0,
+            url=url,
+            skip_keyring_verification=False,
+            enabled=True,
         )
         assert bs.get_base_url() == expected_base_url
