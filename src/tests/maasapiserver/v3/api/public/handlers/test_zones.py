@@ -170,7 +170,7 @@ class TestZonesApi(ApiCommonTests):
         assert zone_with_statistics_response.devices_count == 20
         assert zone_with_statistics_response.controllers_count == 30
 
-    async def test_list_with_statistics_other_page(
+    async def test_list_with_statistics_other_page_and_filters(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
@@ -190,7 +190,9 @@ class TestZonesApi(ApiCommonTests):
         services_mock.zones.list_with_statistics.return_value = ListResult[
             ZoneWithStatistics
         ](items=[zone_with_statistics], total=2)
-        response = await client.get(f"{V3_API_PREFIX}/zones:statistics?size=1")
+        response = await client.get(
+            f"{V3_API_PREFIX}/zones:statistics?size=1&id=0&id=1"
+        )
         assert response.status_code == 200
         zones_with_statistics_response = ZonesWithStatisticsListResponse(
             **response.json()
@@ -199,7 +201,7 @@ class TestZonesApi(ApiCommonTests):
         assert zones_with_statistics_response.total == 2
         assert (
             zones_with_statistics_response.next
-            == f"{V3_API_PREFIX}/zones:statistics?page=2&size=1"
+            == f"{V3_API_PREFIX}/zones:statistics?page=2&size=1&id=0&id=1"
         )
 
     # GET /zones/{zone_id}

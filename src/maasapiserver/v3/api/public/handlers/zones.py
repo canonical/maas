@@ -116,6 +116,7 @@ class ZonesHandler(Handler):
             size=pagination_params.size,
             query=QuerySpec(where=filters.to_clause()),
         )
+        query_filters = filters.to_href_format()
         return ZonesWithStatisticsListResponse(
             items=[
                 ZoneWithStatisticsResponse.from_model(
@@ -128,6 +129,7 @@ class ZonesHandler(Handler):
             next=(
                 f"{V3_API_PREFIX}/zones:statistics?"
                 f"{pagination_params.to_next_href_format()}"
+                f"&{query_filters if query_filters else ''}"
                 if zones_with_statistics.has_next(
                     pagination_params.page, pagination_params.size
                 )
