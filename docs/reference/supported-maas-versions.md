@@ -6,10 +6,10 @@ The table below lists dependencies for each MAAS release, including the base Ubu
 
 | Supported MAAS Versions | Dependencies  | Release Date | Type of Support |
 | - | - | - | - |
-| 3.7 | Ubuntu 24.04</br>PostgreSQL 16 |  December 2025  | Fully Supported |
-| 3.6 | Ubuntu 24.04</br>PostgreSQL 14 (16 recommended) |  April 2025  | Fully Supported |
-| 3.5 | Ubuntu 22.04</br>PostgreSQL 14 |  July 2024  | Bugfix only, no features, no backports |
-| 3.4 | Ubuntu 22.04</br>PostgreSQL 14 |  January 2024  | Bugfix only, no features, no backports |
+| 3.7 | Ubuntu 24.04</br>PostgreSQL 16</br>LXD 5.21/stable |  December 2025  | Fully Supported |
+| 3.6 | Ubuntu 24.04</br>PostgreSQL 14 (16 recommended)</br>LXD 5.21/stable |  April 2025  | Fully Supported |
+| 3.5 | Ubuntu 22.04</br>PostgreSQL 14</br>LXD 5.21/stable |  July 2024  | Bugfix only, no features, no backports |
+| 3.4 | Ubuntu 22.04</br>PostgreSQL 14</br>LXD 5.21/stable|  January 2024  | Bugfix only, no features, no backports |
 | 3.3 | Ubuntu 22.04</br>PostgreSQL 12 (14 recommended) |  February 2023  | Unsupported |
 | 3.2 | Ubuntu 20.04</br>PostgreSQL 12 |  June 2022  | Unsupported |
 | 3.1 | Ubuntu 20.04</br>PostgreSQL 12 |  October 2021  | Unsupported |
