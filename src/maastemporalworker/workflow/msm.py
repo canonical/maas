@@ -851,7 +851,7 @@ class MSMHeartbeatWorkflow:
                     await workflow.start_child_workflow(
                         MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
                         MSMConfigureProfileParam(
-                            sm_url=input.sm_url, jwt=input.jwt
+                            sm_url=input.sm_url, jwt=secret["jwt"]
                         ),
                         id=MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
                         task_queue=REGION_TASK_QUEUE,

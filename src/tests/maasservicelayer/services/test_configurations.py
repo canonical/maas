@@ -436,7 +436,7 @@ class TestConfigurationsService:
         )
         test_cfg = {
             "theme": "dark",  # should be included
-            "kernel_ops": None,  # should not (default)
+            "kernel_opts": None,  # should not (default)
             "maas_name": "MyMAAS",  # should not (not MSM setting)
         }
         service.database_configurations_service.get_many.return_value = (
