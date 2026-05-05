@@ -29,11 +29,13 @@ from maasservicelayer.db.tables import (
     NodeTable,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import (
     BootResource,
     CustomBootResourceStatistic,
     CustomBootResourceStatus,
 )
+from maasservicelayer.models.bootresourcesets import BootResourceSet
 
 
 class BootResourceClauseFactory(ClauseFactory):
@@ -127,6 +129,70 @@ class BootResourceClauseFactory(ClauseFactory):
         )
         return Clause(
             condition=BootResourceTable.c.id.in_(subquery),
+        )
+
+    @classmethod
+    def with_uploaded_type(cls) -> Clause:
+        return Clause(
+            condition=eq(BootResourceTable.c.rtype, BootResourceType.UPLOADED)
+        )
+
+    @classmethod
+    def with_asset_type_bootloader(cls) -> Clause:
+        return Clause(
+            condition=(
+                (BootResourceTable.c.rtype == BootResourceType.UPLOADED)
+                & (BootResourceTable.c.bootloader_type.isnot(None))
+            )
+        )
+
+    @classmethod
+    def with_asset_type_kernel(cls) -> Clause:
+        return Clause(
+            condition=(
+                (BootResourceTable.c.rtype == BootResourceType.UPLOADED)
+                & (BootResourceTable.c.bootloader_type.is_(None))
+                & (BootResourceTable.c.kflavor.isnot(None))
+            )
+        )
+
+    @classmethod
+    def with_asset_type_image(cls) -> Clause:
+        return Clause(
+            condition=(
+                (BootResourceTable.c.rtype == BootResourceType.UPLOADED)
+                & (BootResourceTable.c.bootloader_type.is_(None))
+                & (BootResourceTable.c.kflavor.is_(None))
+            )
+        )
+
+    @classmethod
+    def with_kflavor(cls, kflavor: str) -> Clause:
+        return Clause(condition=eq(BootResourceTable.c.kflavor, kflavor))
+
+    @classmethod
+    def with_bootloader_identity(cls, name: str, architecture: str) -> Clause:
+        return Clause(
+            condition=(
+                (BootResourceTable.c.name == name)
+                & (BootResourceTable.c.architecture == architecture)
+                & (BootResourceTable.c.rtype == BootResourceType.UPLOADED)
+                & (BootResourceTable.c.bootloader_type.isnot(None))
+            )
+        )
+
+    @classmethod
+    def with_kernel_identity(
+        cls, name: str, architecture: str, kflavor: str
+    ) -> Clause:
+        return Clause(
+            condition=(
+                (BootResourceTable.c.name == name)
+                & (BootResourceTable.c.architecture == architecture)
+                & (BootResourceTable.c.kflavor == kflavor)
+                & (BootResourceTable.c.rtype == BootResourceType.UPLOADED)
+                & (BootResourceTable.c.bootloader_type.is_(None))
+            )
         )
 
 
@@ -400,3 +466,145 @@ class BootResourcesRepository(BaseRepository[BootResource]):
             ],
             total=total,
         )
+
+    async def find_or_create_bootloader(
+        self, name: str, architecture: str
+    ) -> BootResource:
+        """Find or create a bootloader boot resource.
+
+        Args:
+            name: Bootloader name (e.g., 'ubuntu/jammy')
+            architecture: Target architecture (e.g., 'amd64/generic')
+
+        Returns:
+            Existing or newly created BootResource with bootloader_type set
+        """
+        query = QuerySpec(
+            where=BootResourceClauseFactory.with_bootloader_identity(
+                name, architecture
+            )
+        )
+        existing = await self.list(page=1, size=1, query=query)
+
+        if existing.items:
+            return existing.items[0]
+
+        # Create new bootloader resource
+        stmt = (
+            BootResourceTable.insert()
+            .values(
+                created=func.now(),
+                updated=func.now(),
+                rtype=BootResourceType.UPLOADED,
+                name=name,
+                architecture=architecture,
+                extra={},
+                bootloader_type="custom",
+                rolling=False,
+                base_image="",
+                kflavor=None,
+            )
+            .returning(BootResourceTable)
+        )
+        result = await self.execute_stmt(stmt)
+        row = result.one()
+        return BootResource(**row._asdict())
+
+    async def find_or_create_kernel(
+        self, name: str, architecture: str, kflavor: str
+    ) -> BootResource:
+        """Find or create a kernel boot resource.
+
+        Args:
+            name: Kernel name (e.g., 'ubuntu/noble')
+            architecture: Target architecture (e.g., 'amd64/generic')
+            kflavor: Kernel flavor (e.g., 'generic', 'lowlatency')
+
+        Returns:
+            Existing or newly created BootResource with kflavor set
+        """
+        query = QuerySpec(
+            where=BootResourceClauseFactory.with_kernel_identity(
+                name, architecture, kflavor
+            )
+        )
+        existing = await self.list(page=1, size=1, query=query)
+
+        if existing.items:
+            return existing.items[0]
+
+        # Create new kernel resource
+        stmt = (
+            BootResourceTable.insert()
+            .values(
+                created=func.now(),
+                updated=func.now(),
+                rtype=BootResourceType.UPLOADED,
+                name=name,
+                architecture=architecture,
+                extra={},
+                bootloader_type=None,
+                rolling=False,
+                base_image="",
+                kflavor=kflavor,
+            )
+            .returning(BootResourceTable)
+        )
+        result = await self.execute_stmt(stmt)
+        row = result.one()
+        return BootResource(**row._asdict())
+
+    async def get_latest_version(
+        self, resource_id: int
+    ) -> BootResourceSet | None:
+        """Get the latest version of a boot resource set."""
+        stmt = (
+            select(BootResourceSetTable)
+            .where(BootResourceSetTable.c.resource_id == resource_id)
+            .order_by(desc(BootResourceSetTable.c.id))
+            .limit(1)
+        )
+        result = await self.execute_stmt(stmt)
+        row = result.one_or_none()
+        if row is None:
+            return None
+        return BootResourceSet(**row._asdict())
+
+    async def get_bootloader_for_architecture(
+        self, bootloader_name: str, architecture: str
+    ) -> BootResource | None:
+        """Get a bootloader resource for a specific architecture.
+
+        Args:
+            bootloader_name: Bootloader name
+            architecture: Target architecture
+
+        Returns:
+            BootResource if found, None otherwise
+        """
+        query = QuerySpec(
+            where=BootResourceClauseFactory.with_bootloader_identity(
+                bootloader_name, architecture
+            )
+        )
+        result = await self.list(page=1, size=1, query=query)
+        return result.items[0] if result.items else None
+
+    async def get_bootloader_file_for_set(
+        self, resource_set_id: int
+    ) -> BootResourceFile | None:
+        """Get the BOOTLOADER_TARBALL file entry for a resource set."""
+        stmt = (
+            select(BootResourceFileTable)
+            .where(
+                BootResourceFileTable.c.resource_set_id == resource_set_id,
+                BootResourceFileTable.c.filetype
+                == BootResourceFileType.BOOTLOADER_TARBALL,
+            )
+            .limit(1)
+        )
+        result = await self.execute_stmt(stmt)
+        row = result.one_or_none()
+        if row is None:
+            return None
+        return BootResourceFile(**row._asdict())

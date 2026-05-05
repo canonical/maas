@@ -435,6 +435,7 @@ class ServiceCollectionV3:
             context=context,
             repository=BootResourcesRepository(context),
             boot_resource_sets_service=services.boot_resource_sets,
+            boot_resource_files_service=services.boot_resource_files,
         )
         services.boot_source_cache = BootSourceCacheService(
             context=context,

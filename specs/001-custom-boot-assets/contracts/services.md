@@ -192,13 +192,9 @@ Already exists. Used to register individual files within a version.
 
 ### `BootAssetUploadResponse`
 
-```python
-class BootAssetFileInfo(BaseModel):
-    filename: str
-    filetype: str | None
-    size: int
-    sha256: str
+Used only for upload endpoint responses (201 Created). Listing and retrieval use the `BootAssetResponse` discriminated union defined in the API contracts.
 
+```python
 class BootAssetUploadResponse(BaseModel):
     id: int
     name: str
@@ -206,8 +202,6 @@ class BootAssetUploadResponse(BaseModel):
     bootloader_type: str | None
     kflavor: str | None
     version: str
-    files: list[BootAssetFileInfo]
+    files: list[BootAssetFileInfo]  # shared with BootAssetResponse variants
     created_at: datetime
 ```
-
-**Note**: This response model is used only for the upload endpoint responses. Listing and retrieval use the existing `ImageResponse` model from `CustomImagesHandler`.

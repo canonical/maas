@@ -29,6 +29,7 @@ from maasserver.models import (
     Config,
     DHCPSnippet,
     Domain,
+    NodeMetadata,
     RackController,
     ReservedIP,
     StaticIPAddress,
@@ -37,6 +38,7 @@ from maasserver.models import (
 )
 from maasserver.models.subnet import get_boot_rackcontroller_ips
 from maasserver.secrets import SecretManager, SecretNotFound
+from maasserver.sqlalchemy import service_layer, ServiceLayerNotInitialized
 from maasserver.utils.orm import transactional
 from maasserver.workflow import start_workflow
 from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
@@ -328,6 +330,8 @@ def make_hosts_for_subnets(
     if nodes_dhcp_snippets is None:
         nodes_dhcp_snippets = []
 
+    bootloader_paths_by_node_id: dict[int, str | None] = {}
+
     def get_dhcp_snippets_for_interface(interface):
         dhcp_snippets = list()
         for dhcp_snippet in nodes_dhcp_snippets:
@@ -337,6 +341,35 @@ def make_hosts_for_subnets(
             if dhcp_snippet.node == iface_node:
                 dhcp_snippets.append(make_dhcp_snippet(dhcp_snippet))
         return dhcp_snippets
+
+    def get_bootloader_path_for_interface(interface):
+        if interface.node_config is None:
+            return None
+
+        node = interface.node_config.node
+        if node.id in bootloader_paths_by_node_id:
+            return bootloader_paths_by_node_id[node.id]
+
+        custom_bootloader = (
+            NodeMetadata.objects.filter(node=node, key="custom_bootloader")
+            .values_list("value", flat=True)
+            .first()
+        )
+        if not custom_bootloader:
+            bootloader_paths_by_node_id[node.id] = None
+            return None
+
+        try:
+            bootloader_path = service_layer.services.boot_resources.get_bootloader_path_for_machine(
+                machine_id=node.id,
+                bootloader_name=custom_bootloader,
+                architecture=node.architecture,
+            )
+        except ServiceLayerNotInitialized:
+            bootloader_path = None
+
+        bootloader_paths_by_node_id[node.id] = bootloader_path
+        return bootloader_path
 
     sips = StaticIPAddress.objects.filter(
         alloc_type__in=[
@@ -374,37 +407,45 @@ def make_hosts_for_subnets(
                     # from the bond.
                     if parent.mac_address != interface.mac_address:
                         interface_ids.add(parent.id)
-                        hosts.append(
-                            {
-                                "host": make_interface_hostname(parent),
-                                "mac": str(parent.mac_address),
-                                "ip": str(sip.ip),
-                                "dhcp_snippets": get_dhcp_snippets_for_interface(
-                                    parent
-                                ),
-                            }
+                        parent_host = {
+                            "host": make_interface_hostname(parent),
+                            "mac": str(parent.mac_address),
+                            "ip": str(sip.ip),
+                            "dhcp_snippets": get_dhcp_snippets_for_interface(
+                                parent
+                            ),
+                        }
+                        bootloader_path = get_bootloader_path_for_interface(
+                            parent
                         )
-                hosts.append(
-                    {
-                        "host": make_interface_hostname(interface),
-                        "mac": str(interface.mac_address),
-                        "ip": str(sip.ip),
-                        "dhcp_snippets": get_dhcp_snippets_for_interface(
-                            interface
-                        ),
-                    }
-                )
+                        if bootloader_path is not None:
+                            parent_host["bootloader_path"] = bootloader_path
+                        hosts.append(parent_host)
+                bond_host = {
+                    "host": make_interface_hostname(interface),
+                    "mac": str(interface.mac_address),
+                    "ip": str(sip.ip),
+                    "dhcp_snippets": get_dhcp_snippets_for_interface(
+                        interface
+                    ),
+                }
+                bootloader_path = get_bootloader_path_for_interface(interface)
+                if bootloader_path is not None:
+                    bond_host["bootloader_path"] = bootloader_path
+                hosts.append(bond_host)
             else:
-                hosts.append(
-                    {
-                        "host": make_interface_hostname(interface),
-                        "mac": str(interface.mac_address),
-                        "ip": str(sip.ip),
-                        "dhcp_snippets": get_dhcp_snippets_for_interface(
-                            interface
-                        ),
-                    }
-                )
+                host = {
+                    "host": make_interface_hostname(interface),
+                    "mac": str(interface.mac_address),
+                    "ip": str(sip.ip),
+                    "dhcp_snippets": get_dhcp_snippets_for_interface(
+                        interface
+                    ),
+                }
+                bootloader_path = get_bootloader_path_for_interface(interface)
+                if bootloader_path is not None:
+                    host["bootloader_path"] = bootloader_path
+                hosts.append(host)
 
     known_mac_addresses = [host["mac"] for host in hosts]
 

@@ -17,6 +17,18 @@
 
 ## Manual Testing Guide
 
+> Note: The FastAPI v3 endpoints are served under `/MAAS/a/v3`.
+
+```bash
+# Obtain a Bearer token via the v3 login endpoint
+TOKEN=$(curl -s -X POST http://localhost:5240/MAAS/a/v3/auth/login \
+  -d "username=admin" \
+  -d "password=admin" \
+  | jq -r '.access_token')
+
+export AUTH="Authorization: Bearer $TOKEN"
+```
+
 ### 1. Upload a Custom Bootloader
 
 ```bash
@@ -29,83 +41,119 @@ tar -czf /tmp/test-bootloader.tar.gz -C /tmp/test-bootloader .
 # Calculate SHA256
 SHA256=$(sha256sum /tmp/test-bootloader.tar.gz | cut -d' ' -f1)
 
-# Upload via v3 API (new endpoint)
-curl -X POST http://localhost:5240/MAAS/api/v3/boot_assets/bootloaders \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "name=ubuntu/jammy" \
-  -F "architecture=amd64/generic" \
-  -F "sha256=$SHA256" \
-  -F "file=@/tmp/test-bootloader.tar.gz"
+# Upload via v3 API — metadata in headers, file as octet-stream body
+curl -X POST http://localhost:5240/MAAS/a/v3/boot_assets/bootloaders \
+  -H "$AUTH" \
+  -H "x-name: custom/jammy" \
+  -H "x-architecture: amd64/generic" \
+  -H "x-sha256: $SHA256" \
+  -H "x-primary-file: shimx64.efi" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @/tmp/test-bootloader.tar.gz
 ```
 
 **Expected**: 201 response with asset details, version `YYYYMMDD`.
 
 ### 2. Upload a Custom Kernel Pair
 
+Kernel and initrd are uploaded as **two separate requests**. The first creates the
+resource and uploads the kernel; the second attaches the initrd using the resource
+ID returned from the first.
+
 ```bash
 # Create test kernel and initrd files
-dd if=/dev/urandom of=/tmp/test-kernel bs=1M count=5
-dd if=/dev/urandom of=/tmp/test-initrd bs=1M count=50
+dd if=/dev/urandom of=/tmp/test-kernel bs=1M count=2
+dd if=/dev/urandom of=/tmp/test-initrd bs=1M count=100
 
 # Calculate SHA256s
 KERNEL_SHA=$(sha256sum /tmp/test-kernel | cut -d' ' -f1)
 INITRD_SHA=$(sha256sum /tmp/test-initrd | cut -d' ' -f1)
 
-# Upload via v3 API (new endpoint)
-curl -X POST http://localhost:5240/MAAS/api/v3/boot_assets/kernels \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "name=ubuntu/noble" \
-  -F "architecture=amd64/generic" \
-  -F "kflavor=generic" \
-  -F "kernel_sha256=$KERNEL_SHA" \
-  -F "initrd_sha256=$INITRD_SHA" \
-  -F "kernel=@/tmp/test-kernel" \
-  -F "initrd=@/tmp/test-initrd"
+# Step 1: Upload kernel — returns resource ID
+RESOURCE_ID=$(
+  curl -s -X POST http://localhost:5240/MAAS/a/v3/boot_assets/kernels \
+    -H "$AUTH" \
+    -H "x-name: custom/noble" \
+    -H "x-architecture: amd64/generic" \
+    -H "x-kflavor: generic" \
+    -H "x-sha256: $KERNEL_SHA" \
+    -H "Content-Type: application/octet-stream" \
+    --data-binary @/tmp/test-kernel \
+  | jq -r '.id'
+)
+
+# Step 2: Upload initrd — attaches to the resource created above
+curl -X POST "http://localhost:5240/MAAS/a/v3/boot_assets/kernels/$RESOURCE_ID/initrd" \
+  -H "$AUTH" \
+  -H "x-sha256: $INITRD_SHA" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @/tmp/test-initrd
 ```
 
-**Expected**: 201 response with kernel pair details.
+**Expected**: Both requests return 201. After the initrd upload the resource set is
+complete and the asset is ready for deployment.
 
-### 3. Verify Partial Upload Rejection
+### 3. Verify Partial Upload State
 
 ```bash
-# Try uploading only a kernel (no initrd)
-curl -X POST http://localhost:5240/MAAS/api/v3/boot_assets/kernels \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "name=ubuntu/noble" \
-  -F "architecture=amd64/generic" \
-  -F "kflavor=generic" \
-  -F "kernel_sha256=$KERNEL_SHA" \
-  -F "kernel=@/tmp/test-kernel"
+# A resource with only a kernel (no initrd yet) will be visible via the list
+# endpoint but will not be selectable for deployment until the initrd is
+# uploaded. The service enforces completeness at resolution time.
+curl "http://localhost:5240/MAAS/a/v3/custom_images?type=kernel" \
+  -H "$AUTH" | jq
 ```
-
-**Expected**: 400 response: "Both kernel and initrd files are required"
 
 ### 4. List and Filter Assets (Existing Endpoint)
 
 ```bash
 # List all custom uploaded assets (existing behavior — includes bootloaders, kernels, images)
-curl http://localhost:5240/MAAS/api/v3/custom_images \
-  -H "Authorization: Bearer $TOKEN"
+curl http://localhost:5240/MAAS/a/v3/custom_images \
+  -H "$AUTH" | jq
 
 # Filter bootloaders only (new filter parameter)
-curl "http://localhost:5240/MAAS/api/v3/custom_images?type=bootloader" \
-  -H "Authorization: Bearer $TOKEN"
+curl "http://localhost:5240/MAAS/a/v3/custom_images?type=bootloader" \
+  -H "$AUTH" | jq
 
 # Filter kernels only
-curl "http://localhost:5240/MAAS/api/v3/custom_images?type=kernel" \
-  -H "Authorization: Bearer $TOKEN"
+curl "http://localhost:5240/MAAS/a/v3/custom_images?type=kernel" \
+  -H "$AUTH" | jq
 
 # Filter plain images only (custom OS images, existing custom images)
-curl "http://localhost:5240/MAAS/api/v3/custom_images?type=image" \
-  -H "Authorization: Bearer $TOKEN"
+curl "http://localhost:5240/MAAS/a/v3/custom_images?type=image" \
+  -H "$AUTH" | jq
+```
+
+### 4b. List and Filter by Sub-Resource (Typed Endpoints)
+
+These endpoints return concrete typed responses — `BootloaderResponse` for
+`/bootloaders` and `KernelResponse` for `/kernels` — with no discriminator
+field needed. Use them when you want only one asset type; use `/custom_images`
+when you need all asset types in a single call.
+
+```bash
+# List bootloaders only — returns BootloaderResponse items, no ?type= needed
+curl http://localhost:5240/MAAS/a/v3/bootloaders \
+  -H "$AUTH" | jq
+
+# Get a specific bootloader by ID
+curl http://localhost:5240/MAAS/a/v3/bootloaders/42 \
+  -H "$AUTH" | jq
+
+# List kernels — supports ?name=, ?architecture=, ?kflavor= filters
+curl "http://localhost:5240/MAAS/a/v3/kernels?kflavor=generic" \
+  -H "$AUTH" | jq
+
+# Get a specific kernel by ID
+curl http://localhost:5240/MAAS/a/v3/kernels/43 \
+  -H "$AUTH" | jq
 ```
 
 ### 5. Get Asset Details (Existing Endpoint)
 
 ```bash
 # Get a specific asset by ID (works for bootloaders, kernels, or images)
-curl http://localhost:5240/MAAS/api/v3/custom_images/42 \
-  -H "Authorization: Bearer $TOKEN"
+curl http://localhost:5240/MAAS/a/v3/custom_images/42 \
+  -H "$AUTH" | jq
 ```
 
 ### 6. Deploy a Machine with Custom Boot Assets
@@ -113,9 +161,9 @@ curl http://localhost:5240/MAAS/api/v3/custom_images/42 \
 ```bash
 # Deploy using custom bootloader and kernel (v2 API — extended with new params)
 curl -X POST http://localhost:5240/MAAS/api/2.0/machines/$SYSTEM_ID/op-deploy \
-  -d "distro_series=ubuntu/noble" \
-  -d "custom_bootloader=ubuntu/jammy" \
-  -d "custom_kernel=ubuntu/noble" \
+  -d "distro_series=custom/noble" \
+  -d "custom_bootloader=custom/jammy" \
+  -d "custom_kernel=custom/noble" \
   -d "custom_kernel_kflavor=generic" \
   -H "Authorization: oauth ..."
 ```
@@ -126,16 +174,19 @@ curl -X POST http://localhost:5240/MAAS/api/2.0/machines/$SYSTEM_ID/op-deploy \
 
 ```bash
 # Upload a second version of the same bootloader
-curl -X POST http://localhost:5240/MAAS/api/v3/boot_assets/bootloaders \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "name=ubuntu/jammy" \
-  -F "architecture=amd64/generic" \
-  -F "sha256=$NEW_SHA256" \
-  -F "file=@/tmp/test-bootloader-v2.tar.gz"
+SHA256_V2=$(sha256sum /tmp/test-bootloader-v2.tar.gz | cut -d' ' -f1)
+curl -X POST http://localhost:5240/MAAS/a/v3/boot_assets/bootloaders \
+  -H "$AUTH" \
+  -H "x-name: custom/jammy" \
+  -H "x-architecture: amd64/generic" \
+  -H "x-sha256: $SHA256_V2" \
+  -H "x-primary-file: shimx64.efi" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @/tmp/test-bootloader-v2.tar.gz
 
 # List all — verify both versions visible via existing endpoint
-curl "http://localhost:5240/MAAS/api/v3/custom_images?type=bootloader" \
-  -H "Authorization: Bearer $TOKEN"
+curl "http://localhost:5240/MAAS/a/v3/custom_images?type=bootloader" \
+  -H "$AUTH" | jq
 ```
 
 **Expected**: Asset listed; new deployments use the latest version.
@@ -144,8 +195,8 @@ curl "http://localhost:5240/MAAS/api/v3/custom_images?type=bootloader" \
 
 ```bash
 # Delete an entire asset — all versions (existing delete endpoint)
-curl -X DELETE http://localhost:5240/MAAS/api/v3/custom_images/42 \
-  -H "Authorization: Bearer $TOKEN"
+curl -X DELETE http://localhost:5240/MAAS/a/v3/custom_images/42 \
+  -H "$AUTH"
 ```
 
 **Expected**: 204 No Content. All versions of the resource are removed.
@@ -161,9 +212,10 @@ curl -X DELETE http://localhost:5240/MAAS/api/v3/custom_images/42 \
 make test-py
 
 # Run specific boot resource tests
-python -m pytest tests/maasservicelayer/db/repositories/test_bootresources.py -v -k "custom_boot"
-python -m pytest tests/maasservicelayer/services/test_bootresources.py -v -k "custom_boot"
-python -m pytest tests/maasapiserver/v3/api/public/handlers/test_boot_resources.py -v
+python -m pytest src/tests/maasservicelayer/db/repositories/test_bootresources.py -v -k "custom_boot"
+python -m pytest src/tests/maasservicelayer/services/test_bootresources.py -v -k "custom_boot"
+python -m pytest src/tests/maasapiserver/v3/api/public/handlers/test_boot_resources.py -v
+python -m pytest src/tests/maastemporalworker/workflow/test_bootresource.py -v -k "custom_boot_assets or sync_all_local"
 
 # Generate builders after model changes
 make generate-builders

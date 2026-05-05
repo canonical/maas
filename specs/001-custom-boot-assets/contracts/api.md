@@ -11,14 +11,18 @@
 | Operation | Endpoint | Status |
 |-----------|----------|--------|
 | Upload bootloader | `POST /api/v3/boot_assets/bootloaders` | **NEW** |
+| List bootloaders | `GET /api/v3/boot_assets/bootloaders` | **NEW** |
+| Get bootloader by ID | `GET /api/v3/boot_assets/bootloaders/{id}` | **NEW** |
 | Upload kernel pair | `POST /api/v3/boot_assets/kernels` | **NEW** |
-| List assets | `GET /api/v3/custom_images` | **EXISTING** — add `type` filter param |
+| List kernels | `GET /api/v3/boot_assets/kernels` | **NEW** |
+| Get kernel by ID | `GET /api/v3/boot_assets/kernels/{id}` | **NEW** |
+| List all assets | `GET /api/v3/custom_images` | **EXISTING** — add `type` filter param |
 | Get asset by ID | `GET /api/v3/custom_images/{id}` | **EXISTING** — no changes |
 | Delete asset by ID | `DELETE /api/v3/custom_images/{id}` | **EXISTING** — no changes |
 | Bulk delete assets | `DELETE /api/v3/custom_images` | **EXISTING** — no changes |
 | Deploy with custom asset | `POST /api/2.0/machines/{system_id}/op-deploy` | **EXISTING** — add params |
 
-**Rationale**: The existing `CustomImagesHandler` already filters by `rtype=UPLOADED`, which includes all custom boot assets (bootloaders, kernels, and images). No separate list/get/delete endpoints are needed. Only new **upload** endpoints are required because bootloader tarball extraction and kernel pair validation differ from custom image uploads.
+**Rationale**: Upload endpoints live under `/boot_assets/bootloaders` and `/boot_assets/kernels` because bootloader tarball extraction and kernel pair validation differ from plain image uploads. Dedicated list/get endpoints on the same sub-resources return concrete, non-union response types (`BootloaderAssetResponse` and `KernelAssetResponse`) with no `?type=` filter required. The existing `/custom_images` endpoints are retained for callers that need all uploaded assets in a single mixed-type call.
 
 **Per-version deletion**: NOT supported. Deletion at `BootResource` level only (all versions removed), consistent with custom images today.
 
@@ -110,6 +114,69 @@ Fields:
 
 ---
 
+## v3 API — New List/Get Endpoints
+
+### GET `/api/v3/boot_assets/bootloaders`
+
+**Permission**: Authenticated user
+
+**Query Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string (optional) | Filter by asset name (e.g. `myos/jammy`) |
+| `architecture` | string (optional) | Filter by architecture (e.g. `amd64/generic`) |
+
+**Response** (200 OK): Paginated list of `BootloaderAssetResponse`.
+
+**Errors**:
+- `403`: Insufficient permissions
+
+---
+
+### GET `/api/v3/boot_assets/bootloaders/{id}`
+
+**Permission**: Authenticated user
+
+**Response** (200 OK): Single `BootloaderAssetResponse`.
+
+**Errors**:
+- `403`: Insufficient permissions
+- `404`: Asset not found or not a bootloader
+
+---
+
+### GET `/api/v3/boot_assets/kernels`
+
+**Permission**: Authenticated user
+
+**Query Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string (optional) | Filter by asset name |
+| `architecture` | string (optional) | Filter by architecture |
+| `kflavor` | string (optional) | Filter by kernel flavour (e.g. `generic`, `lowlatency`) |
+
+**Response** (200 OK): Paginated list of `KernelAssetResponse`.
+
+**Errors**:
+- `403`: Insufficient permissions
+
+---
+
+### GET `/api/v3/boot_assets/kernels/{id}`
+
+**Permission**: Authenticated user
+
+**Response** (200 OK): Single `KernelAssetResponse`.
+
+**Errors**:
+- `403`: Insufficient permissions
+- `404`: Asset not found or not a kernel
+
+---
+
 ## v3 API — Filter Parameter Addition to Existing Endpoint
 
 ### GET `/api/v3/custom_images` (Extended)
@@ -130,18 +197,68 @@ Fields:
 - `type=image` → `WHERE bootloader_type IS NULL AND kflavor IS NULL`
 - No `type` param → all `rtype=UPLOADED` resources (current behavior, unchanged)
 
-**Response**: Unchanged format from existing endpoint (returns `ImageResponse` list with pagination).
+**Response**: Paginated list of `BootAssetResponse` (discriminated union — see **Response Models** section below). Each item includes a `type` field that identifies its concrete variant.
 
 **Note**: Additional filters (`name`, `architecture`, `kflavor`) may also be added as query parameters following the same pattern, but `type` is the primary discriminator needed.
 
 ---
 
-## v3 API — Existing Endpoints (No Changes Required)
+## v3 API — Response Models
 
-The following endpoints in `CustomImagesHandler` already work for custom boot assets with zero modifications:
+All list and single-item get responses return a `BootAssetResponse` discriminated union, keyed on the `type` field.
+
+```python
+class BootAssetFileInfo(BaseModel):
+    filename: str
+    filetype: str | None
+    size: int
+    sha256: str
+
+class _BootAssetBase(BaseModel):
+    id: int
+    name: str
+    architecture: str
+    versions: list[str]      # YYYYMMDD[.N], newest first
+    latest_version: str
+    created_at: datetime
+    updated_at: datetime
+
+class BootloaderAssetResponse(_BootAssetBase):
+    type: Literal["bootloader"]
+    bootloader_type: str     # e.g. "custom"
+    primary_file: str        # primary EFI binary filename inside the tarball
+    files: list[BootAssetFileInfo]
+
+class KernelAssetResponse(_BootAssetBase):
+    type: Literal["kernel"]
+    kflavor: str
+    complete: bool           # True when latest version has both kernel and initrd
+    files: list[BootAssetFileInfo]
+
+class ImageAssetResponse(_BootAssetBase):
+    type: Literal["image"]
+
+BootAssetResponse = Annotated[
+    BootloaderAssetResponse | KernelAssetResponse | ImageAssetResponse,
+    Field(discriminator="type"),
+]
+```
+
+`type` is derived server-side from the stored columns:
+- `bootloader_type IS NOT NULL` -> `"bootloader"`
+- `kflavor IS NOT NULL` -> `"kernel"`
+- otherwise -> `"image"`
+
+`complete` for kernels is `True` when the latest version's `BootResourceSet` contains both a `boot-kernel` and a `boot-initrd` file.
+
+---
+
+## v3 API — Existing Endpoints (Updated)
+
+The following endpoints in `CustomImagesHandler` are updated to return `BootAssetResponse` instead of the legacy `ImageResponse`:
 
 ### GET `/api/v3/custom_images/{id}`
-Returns details of any `rtype=UPLOADED` resource by ID (includes bootloaders, kernels, images).
+Returns a single `BootAssetResponse` for any `rtype=UPLOADED` resource by ID.
 
 ### DELETE `/api/v3/custom_images/{id}`
 Deletes a resource and all its versions (cascade via `pre_delete_hook`). Deletion is unconditional (no in-use protection in this spike).
