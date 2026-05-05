@@ -61,8 +61,8 @@ class ZonesHandler(Handler):
     )
     async def list_zones(
         self,
-        filters: ZonesFiltersParams = Depends(),  # noqa: B008
         pagination_params: PaginationParams = Depends(),  # noqa: B008
+        filters: ZonesFiltersParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ZonesListResponse:
         zones = await services.zones.list(
