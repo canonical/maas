@@ -5,7 +5,7 @@ on:
     types: [opened, edited, synchronize, reopened]
 
 permissions:
-  pull-requests: write
+  issues: write
 
 jobs:
   check-conventional-commit:
@@ -72,21 +72,22 @@ jobs:
           \`\`\`"
 
           # Check if a warning comment already exists to avoid duplicates.
-          existing_id=$(gh pr view "${PR_NUMBER}" --repo "${REPO}" --json comments \
-            --jq ".comments[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -n1)
+          existing_id=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -n1)
 
           if [[ -n "$existing_id" ]]; then
             gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
               -f body="$body"
           else
-            gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body "$body"
+            gh api --method POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+              -f body="$body"
           fi
 
       - name: Remove warning comment if no longer needed
         if: steps.bug-ref-check.outputs.needs_warning == 'false'
         run: |
-          existing_id=$(gh pr view "${PR_NUMBER}" --repo "${REPO}" --json comments \
-            --jq ".comments[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -n1)
+          existing_id=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -n1)
 
           if [[ -n "$existing_id" ]]; then
             gh api --method DELETE "repos/${REPO}/issues/comments/${existing_id}"
