@@ -595,7 +595,7 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.info(
                 AUTHN_AUTH_SUCCESSFUL,
                 type=SECURITY,
-                userID=user.username,
+                user_id=user.username,
             )
 
         response = await call_next(request)

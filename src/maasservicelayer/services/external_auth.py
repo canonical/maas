@@ -538,7 +538,7 @@ class ExternalOAuthService(
         logger.info(
             AUTHN_LOGIN_SUCCESSFUL,
             type=SECURITY,
-            userID=user.username,
+            user_id=user.username,
             role=ADMIN if user.is_superuser else USER,
         )
 
