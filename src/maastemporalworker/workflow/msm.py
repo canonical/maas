@@ -115,16 +115,6 @@ CONFIGURATION_ACTIVITIES = {
 }
 
 
-def _hash_desired_config(payload: dict[str, Any]) -> str:
-    """Return the SHA-256 hex digest of payload."""
-    serialized = json.dumps(
-        payload,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
-    return hashlib.sha256(serialized).hexdigest()
-
-
 def _normalize_config_value(obj: Any) -> Any:
     """Recursively sort dict keys and sort all lists."""
     if isinstance(obj, dict):
@@ -132,6 +122,29 @@ def _normalize_config_value(obj: Any) -> Any:
     if isinstance(obj, list):
         return sorted(obj)
     return obj
+
+
+@dataclasses.dataclass
+class MSMConfigProfile:
+    global_config: dict[str, Any]
+    selections: list[str]
+    trigger_image_sync: bool
+
+    def hash(self) -> str:
+        self._normalize()
+        serialized = json.dumps(
+            dataclasses.asdict(self),
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        return hashlib.sha256(serialized).hexdigest()
+
+    def _normalize(self):
+        self.global_config = {
+            k: _normalize_config_value(self.global_config[k])
+            for k in sorted(self.global_config)
+        }
+        self.selections = sorted(self.selections)
 
 
 # Activities parameters
@@ -458,16 +471,12 @@ class MSMConnectorActivity(ActivityBase):
         async with self.start_transaction() as services:
             cfg = await services.configurations.get_msm_config()
             selections = await services.boot_source_selections.get_all_highest_priority()
-        full_normalized_config = _normalize_config_value(
-            {
-                "global_config": cfg,
-                "selections": [
-                    f"{s.os}/{s.release}/{s.arch}" for s in selections
-                ],
-                "trigger_image_sync": False,
-            }
+        config = MSMConfigProfile(
+            global_config=cfg,
+            selections=[f"{s.os}/{s.release}/{s.arch}" for s in selections],
+            trigger_image_sync=False,
         )
-        return _hash_desired_config(full_normalized_config)
+        return config.hash()
 
     @activity_defn_with_context(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
     async def send_heartbeat(
