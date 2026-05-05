@@ -2371,15 +2371,18 @@ class Factory(maastesting.factory.Factory):
     make_zone = make_Zone
 
     def make_BootSource(
-        self, url=None, keyring_filename=None, keyring_data=None
+        self, name=None, url=None, keyring_filename=None, keyring_data=None
     ):
         """Create a new `BootSource`."""
+        if name is None:
+            name = self.make_name()
         if url is None:
             url = "http://%s.com/" % self.make_name("source-url")
         # Only set _one_ of keyring_filename and keyring_data.
         if keyring_filename is None and keyring_data is None:
             keyring_filename = self.make_name("keyring")
         boot_source = BootSource(
+            name=name,
             url=url,
             keyring_filename=(
                 "" if keyring_filename is None else keyring_filename

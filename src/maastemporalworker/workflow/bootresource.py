@@ -64,7 +64,7 @@ from maascommon.workflows.bootresource import (
     SyncSelectionParam,
 )
 from maasservicelayer.builders.notifications import NotificationBuilder
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFileClauseFactory,
 )
@@ -330,25 +330,27 @@ class BootResourcesActivity(ActivityBase):
     async def fetch_manifest_and_update_cache(
         self, boot_source_id: int | None = None
     ):
-        """Fetch the latest manifest for all the boot sources and updates both
-        the manifests and the boot source caches.
+        """Fetch the latest manifest for all the enabled boot sources and
+        updates both the manifests and the boot source caches.
 
         Args:
             boot_source_id: if passed, the cache will be updated only for the
                 specified boot source.
         """
         async with self.start_transaction() as services:
-            # TODO @alemar99: Remove this after introducing MAAS default boot sources in
-            # the migrations
-            await services.image_sync.ensure_boot_source_definition()
+            if not await services.image_sync.check_boot_source_enabled():
+                return
 
-            where_clause = None
+            where_clauses = [BootSourcesClauseFactory.with_enabled(True)]
+
             # TODO: MAASENG-6418 remove this
             if boot_source_id:
-                where_clause = BootSourcesClauseFactory.with_id(boot_source_id)
+                where_clauses.append(
+                    BootSourcesClauseFactory.with_id(boot_source_id)
+                )
 
             boot_sources = await services.boot_sources.get_many(
-                query=QuerySpec(where=where_clause)
+                query=QuerySpec(where=ClauseFactory.and_clauses(where_clauses))
             )
 
             for boot_source in boot_sources:
@@ -887,9 +889,10 @@ class DeleteBootResourceWorkflow:
 )
 class FetchManifestWorkflow:
     @workflow_run_with_context
-    async def run(self) -> None:
+    async def run(self, boot_source_id: int | None = None) -> None:
         return await workflow.execute_activity(
             FETCH_MANIFEST_AND_UPDATE_CACHE_ACTIVITY_NAME,
+            boot_source_id,
             start_to_close_timeout=FETCH_IMAGE_METADATA_TIMEOUT,
             heartbeat_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=3),

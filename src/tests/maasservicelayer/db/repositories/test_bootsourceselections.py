@@ -23,7 +23,11 @@ from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionStatusClauseFactory,
     BootSourceSelectionStatusRepository,
 )
-from maasservicelayer.db.tables import BootResourceTable
+from maasservicelayer.db.tables import (
+    BootResourceTable,
+    BootSourceSelectionStatusView,
+    BootSourceSelectionTable,
+)
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
@@ -101,23 +105,31 @@ class TestCommonBootSourceSelectionRepository(
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[BootSourceSelection]:
-        return [
-            await create_test_bootsourceselection_entry(
-                fixture,
-                os="ubuntu",
-                release=f"noble-{i}",
-                boot_source_id=1,
-                arch="amd64",
-            )
-            for i in range(num_objects)
+        # The migration creates 1 default selection (ubuntu/noble/amd64)
+        items = [
+            BootSourceSelection(**row)
+            for row in await fixture.get(BootSourceSelectionTable.name)
         ]
+        items.extend(
+            [
+                await create_test_bootsourceselection_entry(
+                    fixture,
+                    os="ubuntu",
+                    release=f"noble-{i}",
+                    boot_source_id=1,
+                    arch="amd64",
+                )
+                for i in range(num_objects - len(items))
+            ]
+        )
+        return items
 
     @pytest.fixture
     async def created_instance(self, fixture: Fixture) -> BootSourceSelection:
         return await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
-            release="noble",
+            release="jammy",
             boot_source_id=1,
             arch="amd64",
         )
@@ -199,30 +211,52 @@ class TestBootSourceSelectionRepository:
         self, fixture: Fixture, repository: BootSourceSelectionsRepository
     ) -> None:
         source_1 = await create_test_bootsource_entry(
-            fixture, url="http://foo.com", priority=1
+            fixture, url="http://foo.com", priority=100
         )
         source_2 = await create_test_bootsource_entry(
-            fixture, url="http://bar.com", priority=2
+            fixture, url="http://bar.com", priority=101
         )
         selection_1 = await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
-            release="noble",
+            release="jammy",
             arch="amd64",
             boot_source_id=source_1.id,
         )
         selection_2 = await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
-            release="noble",
+            release="jammy",
             arch="amd64",
             boot_source_id=source_2.id,
         )
 
         selections = await repository.get_all_highest_priority()
-        assert len(selections) == 1
+        # The migration-created selection (ubuntu/noble/amd64) from the
+        # enabled stable boot source is still returned.
+        assert len(selections) == 2
         assert selection_1 not in selections
         assert selection_2 in selections
+
+    async def test_get_all_highest_priority_disabled_source(
+        self, fixture: Fixture, repository: BootSourceSelectionsRepository
+    ) -> None:
+        source = await create_test_bootsource_entry(
+            fixture, url="http://foo.com", priority=100, enabled=False
+        )
+        await create_test_bootsourceselection_entry(
+            fixture,
+            os="ubuntu",
+            release="jammy",
+            arch="amd64",
+            boot_source_id=source.id,
+        )
+
+        selections = await repository.get_all_highest_priority()
+        # The migration-created selection (ubuntu/noble/amd64) from the
+        # enabled stable boot source is still returned.
+        assert len(selections) == 1
+        assert selections[0].boot_source_id != source.id
 
     async def test_get_selection_statistic_by_id(
         self, repository: BootSourceSelectionsRepository, fixture: Fixture
@@ -268,7 +302,7 @@ class TestBootSourceSelectionRepository:
         selection = await create_test_bootsourceselection_entry(
             fixture,
             os="ubuntu",
-            release="noble",
+            release="jammy",
             arch="amd64",
             boot_source_id=1,
         )
@@ -315,8 +349,10 @@ class TestBootSourceSelectionRepository:
         stats_list = await repository.list_selections_statistics(
             page=1, size=20
         )
-        assert len(stats_list.items) == 1
-        assert stats_list.total == 1
+        # The migration creates a default selection (ubuntu/noble/amd64),
+        # plus the test creates one more (ubuntu/jammy/amd64).
+        assert len(stats_list.items) == 2
+        assert stats_list.total == 2
 
 
 class TestBootSourceSelectionStatusClauseFactory:
@@ -342,6 +378,11 @@ class TestCommonBootSourceSelectionStatusRepository(
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[BootSourceSelectionStatus]:
+        # The migration creates a default selection that appears in the view.
+        existing = await fixture.get_typed(
+            BootSourceSelectionStatusView.name,
+            BootSourceSelectionStatus,
+        )
         region = await create_test_region_controller_entry(
             fixture,
         )
@@ -349,19 +390,23 @@ class TestCommonBootSourceSelectionStatusRepository(
             fixture,
             name="test-boot-source",
             url="http://example.com",
-            priority=1,
+            priority=100,
         )
-        return [
-            await create_test_selection_status_entry(
-                fixture,
-                os="ubuntu",
-                release=f"noble-{i}",
-                arch="amd64",
-                boot_source=boot_source,
-                region_controller=region,
-            )
-            for i in range(num_objects)
-        ]
+        items: list[BootSourceSelectionStatus] = list(existing)
+        items.extend(
+            [
+                await create_test_selection_status_entry(
+                    fixture,
+                    os="ubuntu",
+                    release=f"noble-{i}",
+                    arch="amd64",
+                    boot_source=boot_source,
+                    region_controller=region,
+                )
+                for i in range(num_objects - len(items))
+            ]
+        )
+        return items
 
     @pytest.fixture
     async def created_instance(
@@ -482,10 +527,10 @@ class TestBootSourceSelectionStatusRepository:
         self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
     ):
         boot_source_1 = await create_test_bootsource_entry(
-            fixture, name="source-1", url="http://example.com/1", priority=1
+            fixture, name="source-1", url="http://example.com/1", priority=100
         )
         boot_source_2 = await create_test_bootsource_entry(
-            fixture, name="source-2", url="http://example.com/2", priority=2
+            fixture, name="source-2", url="http://example.com/2", priority=101
         )
         s1 = await create_test_selection_status_entry(
             fixture, boot_source=boot_source_1

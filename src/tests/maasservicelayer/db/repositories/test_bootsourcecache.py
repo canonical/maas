@@ -136,7 +136,7 @@ class TestCommonBootSourceCacheRepository(
         self, fixture: Fixture, num_objects: int
     ) -> list[BootSourceCache]:
         boot_source = await create_test_bootsource_entry(
-            fixture, url="http://images.maas.io/", priority=1
+            fixture, url="http://images.maas.io/", priority=100
         )
 
         return [
@@ -154,7 +154,7 @@ class TestCommonBootSourceCacheRepository(
     @pytest.fixture
     async def created_instance(self, fixture: Fixture) -> BootSourceCache:
         boot_source = await create_test_bootsource_entry(
-            fixture, url="http://images.maas.io/", priority=1
+            fixture, url="http://images.maas.io/", priority=100
         )
         return await create_test_bootsourcecache_entry(
             fixture,
