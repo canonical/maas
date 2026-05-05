@@ -13,7 +13,7 @@ Every security log can be correlated with its originating request using the `tra
 MAAS logs security events in four main categories:
 
 - **Authentication Events (AUTHN)**: User authentication and login processes
-- **Authorization Events (AUTHZ)**: Access control and permission checks  
+- **Authorization Events (AUTHZ)**: Access control and permission checks
 - **User Management Events (USER)**: User account creation, modification, and deletion
 - **Token Management Events (AUTHN_TOKEN)**: Token lifecycle, including creation, deletion, revocation, and reuse attempts
 
@@ -56,6 +56,7 @@ All security logs follow a consistent JSON structure:
 Logged when a user successfully logs in to MAAS.
 
 **Example**:
+
 ```json
 {
   "message": "AUTHN_login_successful",
@@ -70,6 +71,7 @@ Logged when a user successfully logs in to MAAS.
 Logged when a login attempt fails due to invalid credentials.
 
 **Example**:
+
 ```json
 {
   "message": "AUTHN_login_unsuccessful",
@@ -84,6 +86,7 @@ Logged when a login attempt fails due to invalid credentials.
 Logged when a request is successfully authenticated using tokens, macaroons, or other methods.
 
 **Example**:
+
 ```json
 {
   "message": "AUTHN_authentication_successful",
@@ -98,6 +101,7 @@ Logged when a request is successfully authenticated using tokens, macaroons, or 
 Logged when authentication fails for a request (invalid token, expired credentials, etc.).
 
 **Example**:
+
 ```json
 {
   "message": "AUTHN_authentication_failed",
@@ -112,6 +116,7 @@ Logged when a user's password is changed.
 **Format**: `AUTHN_password_changed:<username>`
 
 **Example**:
+
 ```json
 {
   "message": "AUTHN_password_changed:jdoe",
@@ -128,6 +133,7 @@ Logged when a user's password is changed.
 Logged when a user attempts to access a resource or perform an action they are not authorized to perform.
 
 **Example**:
+
 ```json
 {
   "message": "AUTHZ_fail",
@@ -144,6 +150,7 @@ Logged when an administrative action is performed on system resources.
 **Format**: `AUTHZ_administrative:<resource>:<action>:<resource_id>`
 
 **Example**:
+
 ```json
 {
   "message": "AUTHZ_administrative:user:created:jdoe",
@@ -180,6 +187,7 @@ Logged when a new user account is created.
 **Format**: `USER_created:<username>:<role>`
 
 **Example**:
+
 ```json
 {
   "message": "USER_created:jdoe:User",
@@ -201,6 +209,7 @@ Logged when a user account is deleted.
 **Format**: `USER_deleted:<username>`
 
 **Example**:
+
 ```json
 {
   "message": "USER_deleted:jdoe",
@@ -215,6 +224,7 @@ Logged when a user's privileges are modified (e.g., promoted to admin or demoted
 **Format**: `USER_updated:<username>:<new_role>`
 
 **Example**:
+
 ```json
 {
   "message": "USER_updated:jdoe:Admin",
@@ -233,12 +243,14 @@ Logged when a new authentication token is created.
 **Format**: `AUTHN_token_created:<token_type>[:<identifier>]`
 
 **Token Types**:
+
 - `JWT`: JSON Web Token for API authentication
 - `bootstraptoken`: Token for agent enrollment
 - `OIDC:access_token`: OAuth2/OIDC access token
 - `OIDC:refresh_token`: OAuth2/OIDC refresh token
 
 **Examples**:
+
 ```json
 {
   "message": "AUTHN_token_created:JWT",
@@ -260,6 +272,7 @@ Logged when a new authentication token is created.
 Logged when an authentication token is explicitly deleted from the system.
 
 **Example**:
+
 ```json
 {
   "message": "AUTHN_token_deleted:bootstraptoken",
@@ -275,6 +288,7 @@ Logged when an authentication token is explicitly deleted from the system.
 Logged when an authentication token is revoked (invalidated but still exists in the database).
 
 **Examples**:
+
 ```json
 {
   "message": "AUTHN_token_revoked:certificate:550e8400-e29b-41d4-a716-446655440000",
@@ -295,6 +309,7 @@ Logged when an authentication token is revoked (invalidated but still exists in 
 Logged when an attempt is made to use an invalid, expired, or non-existent token.
 
 **What This Catches**:
+
 - Expired tokens
 - Invalid or malformed tokens
 - Deleted or revoked tokens
@@ -302,6 +317,7 @@ Logged when an attempt is made to use an invalid, expired, or non-existent token
 - Tampered tokens
 
 **Examples**:
+
 ```json
 {
   "message": "AUTHN_token_reused:JWT",
@@ -319,6 +335,7 @@ Logged when an attempt is made to use an invalid, expired, or non-existent token
 ```
 
 **Security Note**: A high frequency of `AUTHN_token_reused` events may indicate:
+
 - Attempted token replay attacks
 - Client-side bugs causing token reuse
 - Token theft attempts
