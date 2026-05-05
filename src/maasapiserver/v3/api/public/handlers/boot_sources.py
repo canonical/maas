@@ -12,6 +12,7 @@ from temporalio.client import WorkflowExecutionStatus
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
 )
@@ -214,6 +215,7 @@ class BootSourcesHandler(Handler):
                 "model": BootSourceResponse,
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
+            400: {"model": BadRequestBodyResponse},
             404: {"model": NotFoundBodyResponse},
         },
         response_model_exclude_none=True,
@@ -233,7 +235,10 @@ class BootSourcesHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> BootSourceResponse:
-        builder = await boot_source_request.to_builder(services)
+        boot_source = await services.boot_sources.get_by_id(boot_source_id)
+        if not boot_source:
+            raise NotFoundException()
+        builder = await boot_source_request.to_builder(services, boot_source)
         boot_source = await services.boot_sources.update_by_id(
             boot_source_id, builder
         )
@@ -249,6 +254,7 @@ class BootSourcesHandler(Handler):
         tags=TAGS,
         responses={
             204: {},
+            400: {"model": BadRequestBodyResponse},
             404: {"model": NotFoundBodyResponse},
         },
         response_model_exclude_none=True,
@@ -740,6 +746,18 @@ class BootSourcesHandler(Handler):
         )
         if not boot_source_selection:
             raise NotFoundException()
+
+        boot_source = await services.boot_sources.get_by_id(boot_source_id)
+        assert boot_source is not None
+        if not boot_source.enabled:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CONFLICT_VIOLATION_TYPE,
+                        message="Impossible to synchronize selections that are part of a disabled boot source. Set the boot source to enabled first.",
+                    )
+                ]
+            )
 
         selection_status = (
             await services.boot_source_selection_status.get_by_id(

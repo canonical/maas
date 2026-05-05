@@ -15,6 +15,7 @@ async def create_test_bootsource_entry(
     updated_at = datetime.now(timezone.utc).astimezone()
 
     bootsource = {
+        "name": url,
         "created": created_at,
         "updated": updated_at,
         "url": url,
@@ -22,6 +23,7 @@ async def create_test_bootsource_entry(
         "keyring_data": b"data",
         "priority": priority,
         "skip_keyring_verification": False,
+        "enabled": True,
     }
     bootsource.update(extra_details)
 

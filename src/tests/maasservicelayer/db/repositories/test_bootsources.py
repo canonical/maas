@@ -10,6 +10,7 @@ from maasservicelayer.db.repositories.bootsources import (
     BootSourcesClauseFactory,
     BootSourcesRepository,
 )
+from maasservicelayer.db.tables import BootSourceTable
 from maasservicelayer.models.bootsources import BootSource
 from tests.fixtures.factories.boot_sources import create_test_bootsource_entry
 from tests.maasapiserver.fixtures.db import Fixture
@@ -41,20 +42,34 @@ class TestBootSourcesClauseFactory:
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_bootsource.priority = 1")
 
+    def test_with_enabled(self) -> None:
+        clause = BootSourcesClauseFactory.with_enabled(True)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_bootsource.enabled = true")
+
 
 class TestBootSourcesRepository(RepositoryCommonTests[BootSource]):
     @pytest.fixture
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[BootSource]:
-        return [
-            await create_test_bootsource_entry(
-                fixture,
-                url=f"http://images.maas.io/v{i}/",
-                priority=i,
-            )
-            for i in range(num_objects)
+        # The migration creates 2 boot sources (stable + candidate)
+        items = [
+            BootSource(**row)
+            for row in await fixture.get(BootSourceTable.name)
         ]
+        items.extend(
+            [
+                await create_test_bootsource_entry(
+                    fixture,
+                    url=f"http://images.maas.io/v{i}/",
+                    priority=i + 100,
+                )
+                for i in range(num_objects - len(items))
+            ]
+        )
+        return items
 
     @pytest.fixture
     async def created_instance(self, fixture: Fixture) -> BootSource:
@@ -67,11 +82,13 @@ class TestBootSourcesRepository(RepositoryCommonTests[BootSource]):
     @pytest.fixture
     async def instance_builder(self, *args, **kwargs) -> BootSourceBuilder:
         return BootSourceBuilder(
+            name="Test Boot Source",
             url="http://example.com/v10/",
             keyring_filename="/path/to/file.gpg",
             keyring_data=b"",
             priority=10,
             skip_keyring_verification=False,
+            enabled=True,
         )
 
     @pytest.fixture
