@@ -1349,7 +1349,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         mock_logger.info.assert_called_with(
             AUTHN_LOGIN_SUCCESSFUL,
             type=SECURITY,
-            userID="testuser",
+            user_id="testuser",
             role="User",
         )
 
@@ -1452,7 +1452,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         mock_logger.info.assert_called_with(
             AUTHN_LOGIN_SUCCESSFUL,
             type=SECURITY,
-            userID="testuser",
+            user_id="testuser",
             role="User",
         )
 
