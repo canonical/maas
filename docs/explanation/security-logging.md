@@ -45,7 +45,7 @@ All security logs follow a consistent JSON structure:
 - **trace_id**: Unique identifier correlating all logs for a single request
 - **userID**: Username of the authenticated user (when applicable)
 - **role**: User's role such as Admin or User (when applicable)
-- **token_hash**: SHA-256 hash of tokens for secure identification (for token events)
+- **token_hash**: SHA-256 hash of tokens for secure identification (when applicable)
 
 ## Security Event Types
 
