@@ -102,7 +102,7 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
         assert len(zones.items) == 2
         assert zones.total == 2
 
-    async def test_list_with_summary(
+    async def test_list_with_statistics(
         self, repository_instance: ZonesRepository, fixture: Fixture
     ) -> None:
         zone = await repository_instance.get_default_zone()
@@ -122,14 +122,14 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
             for _ in range(3)
         ]
 
-        zones = await repository_instance.list_with_summary(1, 20)
+        zones = await repository_instance.list_with_statistics(1, 20)
         assert len(zones.items) == 1
         assert zones.total == 1
         assert zones.items[0].machines_count == 2
         assert zones.items[0].devices_count == 1
         assert zones.items[0].controllers_count == 3
 
-    async def test_list_with_summary_pagination(
+    async def test_list_with_statistics_pagination(
         self, repository_instance: ZonesRepository, fixture: Fixture
     ) -> None:
         zone_names = [str(x) for x in range(4)]
@@ -139,17 +139,17 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
         ]
 
         all_zones = []
-        zones = await repository_instance.list_with_summary(1, 2)
+        zones = await repository_instance.list_with_statistics(1, 2)
         all_zones += zones.items
         assert len(zones.items) == 2
         assert zones.total == 5  # 4 just created + the default zone
 
-        zones = await repository_instance.list_with_summary(2, 2)
+        zones = await repository_instance.list_with_statistics(2, 2)
         all_zones += zones.items
         assert len(zones.items) == 2
         assert zones.total == 5
 
-        zones = await repository_instance.list_with_summary(3, 2)
+        zones = await repository_instance.list_with_statistics(3, 2)
         all_zones += zones.items
         assert len(zones.items) == 1
         assert zones.total == 5

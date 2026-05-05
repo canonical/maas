@@ -24,8 +24,8 @@ from maasapiserver.v3.api.public.models.responses.base import (
 from maasapiserver.v3.api.public.models.responses.zones import (
     ZoneResponse,
     ZonesListResponse,
-    ZonesWithSummaryListResponse,
-    ZoneWithSummaryResponse,
+    ZonesWithStatisticsListResponse,
+    ZoneWithStatisticsResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -62,19 +62,15 @@ class ZonesHandler(Handler):
     async def list_zones(
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
-        filters: ZonesFiltersParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ZonesListResponse:
         zones = await services.zones.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=filters.to_clause()),
         )
         next_link = None
         if zones.has_next(pagination_params.page, pagination_params.size):
             next_link = f"{V3_API_PREFIX}/zones?{pagination_params.to_next_href_format()}"
-            if query_filters := filters.to_href_format():
-                next_link += f"&{query_filters}"
 
         return ZonesListResponse(
             items=[
@@ -88,16 +84,16 @@ class ZonesHandler(Handler):
         )
 
     @handler(
-        path="/zones_with_summary",
+        path="/zones:statistics",
         methods=["GET"],
         tags=TAGS,
         responses={
             200: {
-                "model": ZonesWithSummaryListResponse,
+                "model": ZonesWithStatisticsListResponse,
             },
         },
-        summary="List zones with a summary. ONLY FOR INTERNAL USAGE.",
-        description="List zones with a summary. This endpoint is only for internal usage and might be changed or removed "
+        summary="List zones with statistics. ONLY FOR INTERNAL USAGE.",
+        description="List zones with statistics. This endpoint is only for internal usage and might be changed or removed "
         "without notice.",
         response_model_exclude_none=True,
         status_code=200,
@@ -109,28 +105,30 @@ class ZonesHandler(Handler):
             )
         ],
     )
-    async def list_zones_with_summary(
+    async def list_zones_with_statistics(
         self,
+        filters: ZonesFiltersParams = Depends(),  # noqa: B008
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> ZonesWithSummaryListResponse:
-        zones_with_summary = await services.zones.list_with_summary(
+    ) -> ZonesWithStatisticsListResponse:
+        zones_with_statistics = await services.zones.list_with_statistics(
             page=pagination_params.page,
             size=pagination_params.size,
+            query=QuerySpec(where=filters.to_clause()),
         )
-        return ZonesWithSummaryListResponse(
+        return ZonesWithStatisticsListResponse(
             items=[
-                ZoneWithSummaryResponse.from_model(
-                    zone_with_summary=zone_with_summary,
+                ZoneWithStatisticsResponse.from_model(
+                    zone_with_statistics=zone_with_statistics,
                     self_base_hyperlink=f"{V3_API_PREFIX}/zones",
                 )
-                for zone_with_summary in zones_with_summary.items
+                for zone_with_statistics in zones_with_statistics.items
             ],
-            total=zones_with_summary.total,
+            total=zones_with_statistics.total,
             next=(
-                f"{V3_API_PREFIX}/zones_with_summary?"
+                f"{V3_API_PREFIX}/zones:statistics?"
                 f"{pagination_params.to_next_href_format()}"
-                if zones_with_summary.has_next(
+                if zones_with_statistics.has_next(
                     pagination_params.page, pagination_params.size
                 )
                 else None

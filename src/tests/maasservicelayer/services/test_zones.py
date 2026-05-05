@@ -73,7 +73,7 @@ class TestCommonZonesService(ServiceCommonTests):
 
 @pytest.mark.asyncio
 class TestZonesService:
-    async def test_list_with_summary_calls_repository(self) -> None:
+    async def test_list_with_statistics_calls_repository(self) -> None:
         zones_repository = Mock(ZonesRepository)
         zones_service = ZonesService(
             context=Context(),
@@ -82,9 +82,9 @@ class TestZonesService:
             vmcluster_service=Mock(VmClustersService),
         )
 
-        await zones_service.list_with_summary(1, 1)
-        zones_repository.list_with_summary.assert_called_once_with(
-            page=1, size=1
+        await zones_service.list_with_statistics(1, 1)
+        zones_repository.list_with_statistics.assert_called_once_with(
+            page=1, size=1, query=None
         )
 
     async def test_delete(self) -> None:
