@@ -27,7 +27,7 @@ All security logs follow a consistent JSON structure:
   "timestamp": "2025-11-26T21:02:55.704463Z",
   "level": "INFO",
   "type": "security",
-  "userID": "admin",
+  "user_id": "admin",
   "role": "Admin",
   "trace_id": "cc6b8a1da517409c9cfc9871d6784f7b",
   "request_method": "POST",
@@ -43,7 +43,7 @@ All security logs follow a consistent JSON structure:
 - **timestamp**: ISO 8601 formatted timestamp in UTC
 - **type**: Always set to `security` for security events
 - **trace_id**: Unique identifier correlating all logs for a single request
-- **userID**: Username of the authenticated user (when applicable)
+- **user_id**: Username of the authenticated user (when applicable)
 - **role**: User's role such as Admin or User (when applicable)
 - **token_hash**: SHA-256 hash of tokens for secure identification (when applicable)
 
@@ -63,7 +63,7 @@ Logged when a user successfully logs in to MAAS.
 {
   "message": "AUTHN_login_successful",
   "type": "security",
-  "userID": "admin",
+  "user_id": "admin",
   "role": "Admin"
 }
 ```
@@ -93,7 +93,7 @@ Logged when a request is successfully authenticated using tokens, macaroons, or 
 {
   "message": "AUTHN_authentication_successful",
   "type": "security",
-  "userID": "operator1",
+  "user_id": "operator1",
   "role": "User"
 }
 ```
@@ -126,7 +126,7 @@ Logged when a user's password is changed.
 }
 ```
 
-**Note**: The username in the message refers to the account whose password was changed. The `userID` field shows who made the change.
+**Note**: The username in the message refers to the account whose password was changed. The `user_id` field shows who made the change.
 
 ### Authorization Events
 
@@ -142,7 +142,7 @@ Logged when a user attempts to access a resource or perform an action they are n
 {
   "message": "AUTHZ_fail",
   "type": "security",
-  "userID": "user1",
+  "user_id": "user1",
   "role": "User"
 }
 ```
@@ -159,7 +159,7 @@ Logged when an administrative action is performed on system resources.
 {
   "message": "AUTHZ_administrative:user:created:jdoe",
   "type": "security",
-  "userID": "admin",
+  "user_id": "admin",
   "role": "Admin"
 }
 ```
@@ -168,7 +168,7 @@ Logged when an administrative action is performed on system resources.
 {
   "message": "AUTHZ_administrative:subnet:updated:10.0.0.0/24",
   "type": "security",
-  "userID": "admin",
+  "user_id": "admin",
   "role": "Admin"
 }
 ```
@@ -177,7 +177,7 @@ Logged when an administrative action is performed on system resources.
 {
   "message": "AUTHZ_administrative:machine:deleted:ace-swan",
   "type": "security",
-  "userID": "admin",
+  "user_id": "admin",
   "role": "Admin"
 }
 ```
@@ -408,7 +408,7 @@ To view all security events for a specific user:
 
 ```bash
 journalctl -u snap.maas.pebble.service | \
-  jq 'select(.MESSAGE | fromjson | .userID == "admin")'
+  jq 'select(.MESSAGE | fromjson | .user_id == "admin")'
 ```
 
 ### Filter by Token Hash
