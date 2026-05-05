@@ -841,11 +841,6 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
             ),
             Endpoint(
-                method="PUT",
-                path=f"{self.BASE_PATH}/10",
-                permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
-            ),
-            Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/10",
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
