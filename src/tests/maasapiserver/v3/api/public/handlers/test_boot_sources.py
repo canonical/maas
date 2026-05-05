@@ -841,11 +841,6 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
             ),
             Endpoint(
-                method="PUT",
-                path=f"{self.BASE_PATH}/10",
-                permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
-            ),
-            Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/10",
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
@@ -1024,87 +1019,6 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
             )
         else:
             services_mock.temporal.register_workflow_call.assert_not_called()
-
-    async def test_put_200(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
-    ):
-        client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
-        )
-        services_mock.boot_sources = Mock(BootSourcesService)
-        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
-
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
-        services_mock.boot_source_selections.get_by_id.return_value = (
-            TEST_BOOTSOURCESELECTION
-        )
-
-        updated = TEST_BOOTSOURCESELECTION.model_copy()
-        updated.arch = "arm64"
-        services_mock.boot_source_selections.update_by_id.return_value = (
-            updated
-        )
-
-        update_request = {"os": "ubuntu", "release": "noble", "arch": "arm64"}
-
-        response = await client.put(
-            f"{self.BASE_PATH}/{TEST_BOOTSOURCESELECTION.id}",
-            json=jsonable_encoder(update_request),
-        )
-
-        assert response.status_code == 200
-        assert len(response.headers["ETag"]) > 0
-
-        updated_boot_source_selection_response = ImageResponse(
-            **response.json()
-        )
-        assert updated_boot_source_selection_response.os == updated.os
-        assert (
-            updated_boot_source_selection_response.release == updated.release
-        )
-        assert (
-            updated_boot_source_selection_response.architecture == updated.arch
-        )
-
-    async def test_put_404(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
-    ):
-        client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
-        )
-        services_mock.boot_sources = Mock(BootSourcesService)
-        services_mock.boot_sources.get_by_id.return_value = TEST_BOOTSOURCE_1
-
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
-        services_mock.boot_source_selections.get_by_id.return_value = (
-            TEST_BOOTSOURCESELECTION
-        )
-
-        services_mock.boot_source_selections.update_by_id.side_effect = (
-            NotFoundException()
-        )
-
-        update_request = {"os": "ubuntu", "release": "noble", "arch": "amd64"}
-
-        response = await client.put(
-            f"{self.BASE_PATH}/{TEST_BOOTSOURCESELECTION.id}",
-            json=jsonable_encoder(update_request),
-        )
-
-        assert response.status_code == 404
-        assert "ETag" not in response.headers
-
-        error_response = ErrorBodyResponse(**response.json())
-        assert error_response.kind == "Error"
-        assert error_response.code == 404
 
     async def test_delete_204(
         self,
