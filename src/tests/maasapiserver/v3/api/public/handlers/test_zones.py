@@ -3,6 +3,7 @@
 
 from typing import Callable
 from unittest.mock import Mock
+from urllib.parse import parse_qs, urlparse
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -132,6 +133,34 @@ class TestZonesApi(ApiCommonTests):
         assert zones_response.total == 2
         assert zones_response.next is None
 
+    async def test_list_with_filters(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
+        services_mock.zones = Mock(ZonesService)
+        services_mock.zones.list.return_value = ListResult[Zone](
+            items=[TEST_ZONE], total=2
+        )
+
+        # Get also the default zone
+        response = await client.get(f"{self.BASE_PATH}?id=1&id=4&size=1")
+        assert response.status_code == 200
+        zones_response = ZonesListResponse(**response.json())
+        assert len(zones_response.items) == 1
+
+        assert zones_response.next is not None
+        next_link_params = parse_qs(urlparse(zones_response.next).query)
+        assert set(next_link_params["id"]) == {
+            str(DEFAULT_ZONE.id),
+            str(TEST_ZONE.id),
+        }
+        assert next_link_params["size"][0] == "1"
+        assert next_link_params["page"][0] == "2"
+
     async def test_list_with_statistics_no_other_page(
         self,
         services_mock: ServiceCollectionV3,
@@ -152,9 +181,7 @@ class TestZonesApi(ApiCommonTests):
         services_mock.zones.list_with_statistics.return_value = ListResult[
             ZoneWithStatistics
         ](items=[zone_with_statistics], total=1)
-        response = await client.get(
-            f"{V3_API_PREFIX}/zones:statistics?size=1&id=0"
-        )
+        response = await client.get(f"{V3_API_PREFIX}/zones:statistics?size=1")
         assert response.status_code == 200
         zones_with_statistics_response = ZonesWithStatisticsListResponse(
             **response.json()
@@ -199,10 +226,18 @@ class TestZonesApi(ApiCommonTests):
         )
         assert len(zones_with_statistics_response.items) == 1
         assert zones_with_statistics_response.total == 2
+        assert zones_with_statistics_response.next is not None
+        next_link_params = parse_qs(
+            urlparse(zones_with_statistics_response.next).query
+        )
+
         assert (
             zones_with_statistics_response.next
             == f"{V3_API_PREFIX}/zones:statistics?page=2&size=1&id=0&id=1"
         )
+        assert set(next_link_params["id"]) == {"0", "1"}
+        assert next_link_params["size"][0] == "1"
+        assert next_link_params["page"][0] == "2"
 
     # GET /zones/{zone_id}
     async def test_get_default(

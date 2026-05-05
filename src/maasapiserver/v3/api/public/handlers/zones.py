@@ -61,16 +61,20 @@ class ZonesHandler(Handler):
     )
     async def list_zones(
         self,
+        filters: ZonesFiltersParams = Depends(),  # noqa: B008
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ZonesListResponse:
         zones = await services.zones.list(
             page=pagination_params.page,
             size=pagination_params.size,
+            query=QuerySpec(where=filters.to_clause()),
         )
         next_link = None
         if zones.has_next(pagination_params.page, pagination_params.size):
             next_link = f"{V3_API_PREFIX}/zones?{pagination_params.to_next_href_format()}"
+            if query_filters := filters.to_href_format():
+                next_link += f"&{query_filters}"
 
         return ZonesListResponse(
             items=[
@@ -129,7 +133,9 @@ class ZonesHandler(Handler):
             next=(
                 f"{V3_API_PREFIX}/zones:statistics?"
                 f"{pagination_params.to_next_href_format()}"
-                f"&{query_filters if query_filters else ''}"
+                f"&{query_filters}"
+                if query_filters
+                else ""
                 if zones_with_statistics.has_next(
                     pagination_params.page, pagination_params.size
                 )
