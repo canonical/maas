@@ -11,7 +11,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maasservicelayer.models.zones import Zone, ZoneWithSummary
+from maasservicelayer.models.zones import Zone, ZoneWithStatistics
 
 
 class ZoneResponse(HalResponse[BaseHal]):
@@ -38,8 +38,8 @@ class ZonesListResponse(PaginatedResponse[ZoneResponse]):
     kind: str = Field(default="ZonesList")
 
 
-class ZoneWithSummaryResponse(HalResponse[BaseHal]):
-    kind: str = Field(default="ZoneWithSummary")
+class ZoneWithStatisticsResponse(HalResponse[BaseHal]):
+    kind: str = Field(default="ZoneWithStatistics")
     id: int
     name: str
     description: str
@@ -49,22 +49,24 @@ class ZoneWithSummaryResponse(HalResponse[BaseHal]):
 
     @classmethod
     def from_model(
-        cls, zone_with_summary: ZoneWithSummary, self_base_hyperlink: str
+        cls, zone_with_statistics: ZoneWithStatistics, self_base_hyperlink: str
     ) -> Self:
         return cls(
-            id=zone_with_summary.id,
-            name=zone_with_summary.name,
-            description=zone_with_summary.description,
-            machines_count=zone_with_summary.machines_count,
-            devices_count=zone_with_summary.devices_count,
-            controllers_count=zone_with_summary.controllers_count,
+            id=zone_with_statistics.id,
+            name=zone_with_statistics.name,
+            description=zone_with_statistics.description,
+            machines_count=zone_with_statistics.machines_count,
+            devices_count=zone_with_statistics.devices_count,
+            controllers_count=zone_with_statistics.controllers_count,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
-                    href=f"{self_base_hyperlink.rstrip('/')}/{zone_with_summary.id}"
+                    href=f"{self_base_hyperlink.rstrip('/')}/{zone_with_statistics.id}"
                 )
             ),
         )
 
 
-class ZonesWithSummaryListResponse(PaginatedResponse[ZoneWithSummaryResponse]):
-    kind: str = Field(default="ZonesWithSummaryList")
+class ZonesWithStatisticsListResponse(
+    PaginatedResponse[ZoneWithStatisticsResponse]
+):
+    kind: str = Field(default="ZonesWithStatisticsList")

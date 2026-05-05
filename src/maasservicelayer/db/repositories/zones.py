@@ -8,7 +8,7 @@ from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     DefaultResourceTable,
@@ -16,7 +16,7 @@ from maasservicelayer.db.tables import (
     ZoneTable,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.zones import Zone, ZoneWithSummary
+from maasservicelayer.models.zones import Zone, ZoneWithStatistics
 
 
 class ZonesClauseFactory(ClauseFactory):
@@ -46,10 +46,13 @@ class ZonesRepository(BaseRepository[Zone]):
         zone = result.one()
         return Zone(**zone._asdict())
 
-    async def list_with_summary(
-        self, page: int, size: int
-    ) -> ListResult[ZoneWithSummary]:
+    async def list_with_statistics(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[ZoneWithStatistics]:
         total_stmt = select(count()).select_from(self.get_repository_table())
+        if query:
+            total_stmt = query.enrich_stmt(total_stmt)
+
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
@@ -88,8 +91,13 @@ class ZonesRepository(BaseRepository[Zone]):
             .order_by(desc(ZoneTable.c.id))
         )
 
+        if query:
+            stmt = query.enrich_stmt(stmt)
+
         result = await self.execute_stmt(stmt)
-        return ListResult[ZoneWithSummary](
-            items=[ZoneWithSummary(**row._asdict()) for row in result.all()],
+        return ListResult[ZoneWithStatistics](
+            items=[
+                ZoneWithStatistics(**row._asdict()) for row in result.all()
+            ],
             total=total,
         )
