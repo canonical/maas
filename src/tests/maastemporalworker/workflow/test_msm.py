@@ -881,6 +881,7 @@ class TestMSMActivities:
         services_mock.configurations.get_msm_config.return_value = {
             "theme": "dark",
             "default_dns_ttl": 21,
+            "upstream_dns": ["2.2.2.2", "1.1.1.1"],  # should not be sorted
         }
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
@@ -907,7 +908,11 @@ class TestMSMActivities:
             msm_act, "start_transaction"
         ).return_value = AsyncContextManagerMock(services_mock)
         expected_cfg = {
-            "global_config": {"default_dns_ttl": 21, "theme": "dark"},
+            "global_config": {
+                "default_dns_ttl": 21,
+                "theme": "dark",
+                "upstream_dns": ["2.2.2.2", "1.1.1.1"],
+            },
             "selections": ["ubuntu/noble/amd64", "ubuntu/resolute/arm64"],
             "trigger_image_sync": False,
         }

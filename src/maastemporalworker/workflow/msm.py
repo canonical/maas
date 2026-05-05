@@ -130,6 +130,8 @@ class MSMConfigProfile:
     selections: list[str]
     trigger_image_sync: bool
 
+    _RETAIN_ORDER_OPTIONS: list[str] = ["upstream_dns"]
+
     def hash(self) -> str:
         self._normalize()
         serialized = json.dumps(
@@ -141,7 +143,11 @@ class MSMConfigProfile:
 
     def _normalize(self):
         self.global_config = {
-            k: _normalize_config_value(self.global_config[k])
+            k: (
+                _normalize_config_value(self.global_config[k])
+                if k not in self._RETAIN_ORDER_OPTIONS
+                else self.global_config[k]
+            )
             for k in sorted(self.global_config)
         }
         self.selections = sorted(self.selections)
