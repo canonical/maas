@@ -844,7 +844,8 @@ class MSMHeartbeatWorkflow:
                         MSMConfigureProfileParam(
                             sm_url=input.sm_url, jwt=input.jwt
                         ),
-                        id=f"{MSM_CONFIGURE_PROFILE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+                        id=MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
+                        task_queue=REGION_TASK_QUEUE,
                         parent_close_policy=ParentClosePolicy.ABANDON,
                     )
                 except WorkflowAlreadyStartedError:

@@ -1243,7 +1243,8 @@ class TestMSMHeartbeatWorkflow:
                 MSMConfigureProfileParam(
                     sm_url=_MSM_BASE_URL, jwt=_JWT_ACCESS
                 ),
-                id=f"{MSM_CONFIGURE_PROFILE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
+                id=MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
+                task_queue=REGION_TASK_QUEUE,
                 parent_close_policy=ParentClosePolicy.ABANDON,
             ),
             call(
