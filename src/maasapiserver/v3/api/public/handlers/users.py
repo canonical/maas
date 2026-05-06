@@ -457,7 +457,7 @@ class UsersHandler(Handler):
             ],
             total=users.total,
             next=(
-                f"{V3_API_PREFIX}/users_statistics?"
+                f"{V3_API_PREFIX}/users:statistics?"
                 f"{pagination_params.to_next_href_format()}"
                 f"{filters.to_href_format()}"
                 if users.has_next(
