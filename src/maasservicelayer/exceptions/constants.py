@@ -14,6 +14,11 @@ PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE = (
     "ProviderCommunicationFailedViolation"
 )
 
+# Boot sources
+CANNOT_DELETE_DEFAULT_BOOT_SOURCE_VIOLATION_TYPE = (
+    "CannotDeleteDefaultBootSourceViolation"
+)
+
 # Domains
 CANNOT_DELETE_DEFAULT_DOMAIN_VIOLATION_TYPE = (
     "CannotDeleteDefaultDomainViolation"

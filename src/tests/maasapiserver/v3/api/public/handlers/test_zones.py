@@ -15,7 +15,7 @@ from maasapiserver.v3.api.public.models.requests.zones import ZoneRequest
 from maasapiserver.v3.api.public.models.responses.zones import (
     ZoneResponse,
     ZonesListResponse,
-    ZonesWithSummaryListResponse,
+    ZonesWithStatisticsListResponse,
 )
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME, V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
@@ -31,7 +31,7 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.zones import Zone, ZoneWithSummary
+from maasservicelayer.models.zones import Zone, ZoneWithStatistics
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.zones import ZonesService
 from maasservicelayer.utils.date import utcnow
@@ -65,7 +65,7 @@ class TestZonesApi(ApiCommonTests):
         return [
             Endpoint(
                 method="GET",
-                path=f"{V3_API_PREFIX}/zones_with_summary",
+                path=f"{V3_API_PREFIX}/zones:statistics",
                 permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
             ),
             Endpoint(
@@ -133,82 +133,6 @@ class TestZonesApi(ApiCommonTests):
         assert zones_response.total == 2
         assert zones_response.next is None
 
-    async def test_list_with_summary_no_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
-    ) -> None:
-        client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
-        )
-        zone_with_summary = ZoneWithSummary(
-            id=0,
-            name="default",
-            description="description",
-            machines_count=10,
-            devices_count=20,
-            controllers_count=30,
-        )
-        services_mock.zones = Mock(ZonesService)
-        services_mock.zones.list_with_summary.return_value = ListResult[
-            ZoneWithSummary
-        ](items=[zone_with_summary], total=1)
-        response = await client.get(
-            f"{V3_API_PREFIX}/zones_with_summary?size=1"
-        )
-        assert response.status_code == 200
-        zones_with_summary_response = ZonesWithSummaryListResponse(
-            **response.json()
-        )
-        assert len(zones_with_summary_response.items) == 1
-        assert zones_with_summary_response.total == 1
-        assert zones_with_summary_response.next is None
-        zone_with_summary_response = zones_with_summary_response.items[0]
-        assert zone_with_summary_response.id == 0
-        assert zone_with_summary_response.name == "default"
-        assert zone_with_summary_response.description == "description"
-        assert zone_with_summary_response.machines_count == 10
-        assert zone_with_summary_response.devices_count == 20
-        assert zone_with_summary_response.controllers_count == 30
-        services_mock.zones.list_with_summary.assert_called_with(
-            page=1, size=1
-        )
-
-    async def test_list_with_summary_other_page(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
-    ) -> None:
-        client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
-        )
-        zone_with_summary = ZoneWithSummary(
-            id=0,
-            name="default",
-            description="description",
-            machines_count=10,
-            devices_count=20,
-            controllers_count=30,
-        )
-        services_mock.zones = Mock(ZonesService)
-        services_mock.zones.list_with_summary.return_value = ListResult[
-            ZoneWithSummary
-        ](items=[zone_with_summary], total=2)
-        response = await client.get(
-            f"{V3_API_PREFIX}/zones_with_summary?size=1"
-        )
-        assert response.status_code == 200
-        zones_with_summary_response = ZonesWithSummaryListResponse(
-            **response.json()
-        )
-        assert len(zones_with_summary_response.items) == 1
-        assert zones_with_summary_response.total == 2
-        assert (
-            zones_with_summary_response.next
-            == f"{V3_API_PREFIX}/zones_with_summary?page=2&size=1"
-        )
-
-    # GET /zones with filters
     async def test_list_with_filters(
         self,
         services_mock: ServiceCollectionV3,
@@ -234,6 +158,84 @@ class TestZonesApi(ApiCommonTests):
             str(DEFAULT_ZONE.id),
             str(TEST_ZONE.id),
         }
+        assert next_link_params["size"][0] == "1"
+        assert next_link_params["page"][0] == "2"
+
+    async def test_list_with_statistics_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
+        zone_with_statistics = ZoneWithStatistics(
+            id=0,
+            name="default",
+            description="description",
+            machines_count=10,
+            devices_count=20,
+            controllers_count=30,
+        )
+        services_mock.zones = Mock(ZonesService)
+        services_mock.zones.list_with_statistics.return_value = ListResult[
+            ZoneWithStatistics
+        ](items=[zone_with_statistics], total=1)
+        response = await client.get(f"{V3_API_PREFIX}/zones:statistics?size=1")
+        assert response.status_code == 200
+        zones_with_statistics_response = ZonesWithStatisticsListResponse(
+            **response.json()
+        )
+        assert len(zones_with_statistics_response.items) == 1
+        assert zones_with_statistics_response.total == 1
+        assert zones_with_statistics_response.next is None
+        zone_with_statistics_response = zones_with_statistics_response.items[0]
+        assert zone_with_statistics_response.id == 0
+        assert zone_with_statistics_response.name == "default"
+        assert zone_with_statistics_response.description == "description"
+        assert zone_with_statistics_response.machines_count == 10
+        assert zone_with_statistics_response.devices_count == 20
+        assert zone_with_statistics_response.controllers_count == 30
+
+    async def test_list_with_statistics_other_page_and_filters(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+        )
+        zone_with_statistics = ZoneWithStatistics(
+            id=0,
+            name="default",
+            description="description",
+            machines_count=10,
+            devices_count=20,
+            controllers_count=30,
+        )
+        services_mock.zones = Mock(ZonesService)
+        services_mock.zones.list_with_statistics.return_value = ListResult[
+            ZoneWithStatistics
+        ](items=[zone_with_statistics], total=2)
+        response = await client.get(
+            f"{V3_API_PREFIX}/zones:statistics?size=1&id=0&id=1"
+        )
+        assert response.status_code == 200
+        zones_with_statistics_response = ZonesWithStatisticsListResponse(
+            **response.json()
+        )
+        assert len(zones_with_statistics_response.items) == 1
+        assert zones_with_statistics_response.total == 2
+        assert zones_with_statistics_response.next is not None
+        next_link_params = parse_qs(
+            urlparse(zones_with_statistics_response.next).query
+        )
+
+        assert (
+            zones_with_statistics_response.next
+            == f"{V3_API_PREFIX}/zones:statistics?page=2&size=1&id=0&id=1"
+        )
+        assert set(next_link_params["id"]) == {"0", "1"}
         assert next_link_params["size"][0] == "1"
         assert next_link_params["page"][0] == "2"
 

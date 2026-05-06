@@ -8,6 +8,7 @@ from ipaddress import ip_address
 from urllib.parse import urlencode, urlparse
 
 from django.urls import reverse
+from packaging.version import InvalidVersion, parse, Version
 import yaml
 
 from maascommon.osystem import (
@@ -16,10 +17,12 @@ from maascommon.osystem import (
     OperatingSystemRegistry,
     Token,
 )
+from maascommon.utils.images import format_ubuntu_distro_series
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import NODE_STATUS, PRESEED_TYPE
 from maasserver.models import PackageRepository
 from maasserver.models.config import Config
+from maasserver.models.node import Node as NodeModel
 from maasserver.models.subnet import get_boot_rackcontroller_ips, Subnet
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
@@ -157,27 +160,27 @@ def get_cloud_init_legacy_apt_config_to_inject_key_to_archive(node):
     return apt_sources
 
 
-def get_archive_config(request, node, preserve_sources=False):
-    arch = node.split_arch()[0]
-    archive = PackageRepository.objects.get_default_archive(arch)
-    repositories = PackageRepository.objects.get_additional_repositories(arch)
-    apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller(), node)
-
-    # Process the default Ubuntu Archives or Mirror.
-    archives = {}
-    archives["apt"] = {}
-    archives["apt"]["preserve_sources_list"] = preserve_sources
+def generate_urls_for_sources_list(archive: PackageRepository) -> str:
     # Always generate a custom list of repositories. deb-src is enabled in the
     # ephemeral environment due to the cloud-init template having it enabled.
     # It is disabled in a deployed environment due to the Curtin template
     # having it enabled.
     urls = ""
-    components = set(archive.KNOWN_COMPONENTS)
 
-    if archive.disabled_components:
-        for comp in archive.COMPONENTS_TO_DISABLE:
-            if comp in archive.disabled_components:
-                components.remove(comp)
+    disabled_components = (
+        archive.disabled_components
+        if archive.disabled_components is not None
+        else ""
+    )
+
+    components = [
+        component
+        for component in archive.KNOWN_COMPONENTS
+        if not (
+            component in disabled_components
+            and component in archive.COMPONENTS_TO_DISABLE
+        )
+    ]
 
     urls += "deb {} $RELEASE {}\n".format(archive.url, " ".join(components))
     if archive.disable_sources:
@@ -204,7 +207,100 @@ def get_archive_config(request, node, preserve_sources=False):
                 " ".join(components),
             )
 
-    archives["apt"]["sources_list"] = urls
+    return urls
+
+
+def generate_deb822_for_sources(archive: PackageRepository) -> str:
+    disabled_components = (
+        archive.disabled_components
+        if archive.disabled_components is not None
+        else []
+    )
+
+    components = [
+        component
+        for component in archive.KNOWN_COMPONENTS
+        if not (
+            component in disabled_components
+            and component in archive.COMPONENTS_TO_DISABLE
+        )
+    ]
+
+    types = "deb" if archive.disable_sources else "deb deb-src"
+
+    suites = ["$RELEASE"]
+    for pocket in archive.POCKETS_TO_DISABLE:
+        if (
+            not archive.disabled_pockets
+            or pocket not in archive.disabled_pockets
+        ):
+            suites.append(f"$RELEASE-{pocket}")
+
+    content = f"Types: {types}\n"
+    content += f"URIs: {archive.url}\n"
+    content += f"Suites: {' '.join(suites)}\n"
+    content += f"Components: {' '.join(components)}\n"
+    if not archive.key:
+        content += (
+            "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n"
+        )
+    return content
+
+
+def get_ubuntu_version(series: str) -> Version:
+    version = format_ubuntu_distro_series(series)
+
+    # This avoids issues with things like "24.04 LTS".
+    version, _, _ = version.partition(" ")
+
+    try:
+        parsed_version = parse(version)
+    except InvalidVersion:
+        # If version cannot be parsed, we assume a version that
+        # matches the deb822 format behavior since it is most recent.
+        parsed_version = parse("24.04")
+
+    return parsed_version
+
+
+def get_archive_config(
+    request, node: NodeModel, preserve_sources=False
+) -> dict:
+    arch = node.split_arch()[0]
+    archive: PackageRepository = PackageRepository.objects.get_default_archive(
+        arch
+    )
+    repositories = PackageRepository.objects.get_additional_repositories(arch)
+    apt_proxy = get_apt_proxy(request, node.get_boot_rack_controller(), node)
+
+    # Process the default Ubuntu Archives or Mirror.
+    archives = {}
+    archives["apt"] = {}
+    archives["apt"]["preserve_sources_list"] = preserve_sources
+
+    if "sources" not in archives["apt"]:
+        archives["apt"]["sources"] = {}
+
+    osystem = node.get_osystem()
+    series = node.get_distro_series()
+
+    is_ubuntu_and_later_than_or_equal_to_24_04 = (
+        osystem == "ubuntu" and get_ubuntu_version(series) >= parse("24.04")
+    )
+
+    if is_ubuntu_and_later_than_or_equal_to_24_04:
+        # From 24.04 on, Ubuntu uses as default the deb822 format for APT repositories.
+        # If providing both, this creates duplicate repositories entries that confuses
+        # apt update. See https://bugs.launchpad.net/maas/+bug/2093303 for more details.
+        #
+        # Furthermore, sources_list plays a "double role" for cloud-init. If provided
+        # with something that follows the deb822 format as below, it will populate
+        # ubuntu.sources. If not, it will populate sources.list.
+        archives["apt"]["sources_list"] = generate_deb822_for_sources(archive)
+    else:
+        archives["apt"]["sources_list"] = generate_urls_for_sources_list(
+            archive
+        )
 
     if apt_proxy:
         archives["apt"]["proxy"] = apt_proxy
@@ -232,9 +328,6 @@ def get_archive_config(request, node, preserve_sources=False):
                 url = ""
                 for dist in repo.distributions:
                     url += f"deb {repo.url} {dist} {components}\n"
-
-        if "sources" not in archives["apt"].keys():
-            archives["apt"]["sources"] = {}
 
         repo_name = make_clean_repo_name(repo)
 
@@ -410,6 +503,12 @@ def get_base_preseed(node=None):
         # to JuJu deploy in an ephemeral environment.
         "manage_etc_hosts": True
     }
+
+    if node is not None and node.status == NODE_STATUS.DEPLOYING:
+        # python3-packaging is a dependency of curtin which might or might not
+        # be included in the images. For instance, it is not included in the
+        # image we use of bionic.
+        cloud_config["packages"] = ["python3-packaging"]
 
     if node is None or node.status in COMMISSIONING_LIKE_STATUSES:
         # All other ephemeral environments use the MAAS script runner or

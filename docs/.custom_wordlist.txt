@@ -69,3 +69,4 @@ openapi
 docstrings?
 Makefile
 retrigger(ing)?
+homelab

@@ -13,7 +13,7 @@ class Zone(MaasTimestampedBaseModel):
     description: str
 
 
-class ZoneWithSummary(Zone):
+class ZoneWithStatistics(Zone):
     devices_count: int
     machines_count: int
     controllers_count: int

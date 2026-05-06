@@ -309,11 +309,13 @@ BootSourceTable = Table(
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(255), nullable=False, unique=True),
     Column("url", String(200), nullable=False, unique=True),
     Column("keyring_filename", String(4096), nullable=False),
     Column("keyring_data", LargeBinary, nullable=False),
     Column("priority", Integer, nullable=False, unique=True),
     Column("skip_keyring_verification", Boolean, nullable=False),
+    Column("enabled", Boolean, nullable=False),
     Index(
         "maasserver_bootsource_url_54c78ba3_like",
         "url",
