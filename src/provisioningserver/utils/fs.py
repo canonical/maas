@@ -40,11 +40,11 @@ def get_maas_common_command():
     if is_dev_environment():
         from maastesting import dev_root
 
-        return os.path.join(dev_root, "bin/maas-common")
+        return os.path.join(dev_root, "usr/bin/maas-common")
     elif snap.running_in_snap():
         # there's no maas-common in the snap as maas-rack is always present
         return os.path.join(
-            snap.SnapPaths.from_environ().snap, "bin/maas-rack"
+            snap.SnapPaths.from_environ().snap, "usr/bin/maas-rack"
         )
     else:
         return get_path("usr/lib/maas/maas-common")
