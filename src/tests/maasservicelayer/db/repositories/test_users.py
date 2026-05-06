@@ -40,6 +40,17 @@ class TestUserClauseFactory:
             "lower(auth_user.username) LIKE lower('%foo%') OR lower(auth_user.email) LIKE lower('%foo%')"
         )
 
+    def test_with_ids(self):
+        clause = UserClauseFactory.with_ids([1, 2])
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_user.id IN (1, 2)"
+        )
+
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
@@ -297,6 +308,52 @@ class TestUsersRepository:
             ),
         )
         assert users_list.total == num_results
+
+    async def test_list_statistics_filter_by_ids(
+        self,
+        db_connection: AsyncConnection,
+        fixture: Fixture,
+        num_results: int,
+    ) -> None:
+        user1 = await create_test_user(
+            fixture, username="johnmarston", email="foo@example.com"
+        )
+        user2 = await create_test_user(
+            fixture, username="arthurmorgan", email="hello@example.com"
+        )
+        user3 = await create_test_user(
+            fixture, username="hoseamatthews", email="bar@example.com"
+        )
+
+        users_repository = UsersRepository(Context(connection=db_connection))
+
+        query = QuerySpec(
+            where=UserClauseFactory.with_ids([user1.id, user3.id])
+        )
+
+        users_statistics = await users_repository.list_statistics(
+            page=1,
+            size=1000,
+            query=query,
+        )
+
+        assert len(users_statistics.items) == 2
+        assert users_statistics.total == 2
+        assert users_statistics.items[0].id == user1.id
+        assert users_statistics.items[1].id == user3.id
+
+        query = QuerySpec(
+            where=UserClauseFactory.with_ids([user1.id, user2.id, user3.id])
+        )
+
+        users_statistics = await users_repository.list_statistics(
+            page=1,
+            size=1000,
+            query=query,
+        )
+
+        assert len(users_statistics.items) == 2
+        assert users_statistics.total == 2
 
     async def test_get_by_id_statistics(
         self, db_connection: AsyncConnection, fixture: Fixture

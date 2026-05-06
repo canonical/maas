@@ -51,6 +51,10 @@ class UserClauseFactory(ClauseFactory):
         return Clause(condition=eq(UserTable.c.id, id))
 
     @classmethod
+    def with_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=UserTable.c.id.in_(ids))
+
+    @classmethod
     def with_username(cls, username: str) -> Clause:
         return Clause(condition=eq(UserTable.c.username, username))
 
