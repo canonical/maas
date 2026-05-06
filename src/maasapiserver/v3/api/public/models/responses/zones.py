@@ -41,8 +41,6 @@ class ZonesListResponse(PaginatedResponse[ZoneResponse]):
 class ZoneWithStatisticsResponse(HalResponse[BaseHal]):
     kind: str = Field(default="ZoneWithStatistics")
     id: int
-    name: str
-    description: str
     devices_count: int
     machines_count: int
     controllers_count: int
@@ -53,8 +51,6 @@ class ZoneWithStatisticsResponse(HalResponse[BaseHal]):
     ) -> Self:
         return cls(
             id=zone_with_statistics.id,
-            name=zone_with_statistics.name,
-            description=zone_with_statistics.description,
             machines_count=zone_with_statistics.machines_count,
             devices_count=zone_with_statistics.devices_count,
             controllers_count=zone_with_statistics.controllers_count,
