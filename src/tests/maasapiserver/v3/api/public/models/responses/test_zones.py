@@ -45,16 +45,11 @@ class TestZonesResponse:
 
 class TestZonesWithStatisticsResponse:
     def test_from_model(self) -> None:
-        now = datetime.datetime.now(datetime.timezone.utc)
         zone_with_statistics = ZoneWithStatistics(
             id=1,
-            name="my zone",
-            description="my description",
             machines_count=10,
             devices_count=20,
             controllers_count=30,
-            created=now,
-            updated=now,
         )
 
         response = ZoneWithStatisticsResponse.from_model(
@@ -62,8 +57,6 @@ class TestZonesWithStatisticsResponse:
             self_base_hyperlink=f"{V3_API_PREFIX}/",
         )
         assert zone_with_statistics.id == response.id
-        assert zone_with_statistics.name == response.name
-        assert zone_with_statistics.description == response.description
         assert zone_with_statistics.machines_count == response.machines_count
         assert zone_with_statistics.devices_count == response.devices_count
         assert (
