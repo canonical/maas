@@ -313,9 +313,7 @@ class UsersRepository(BaseRepository[User]):
         total_stmt = query.enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
         stmt = (
-            self._user_statistics_stmt()
-            .offset((page - 1) * size)
-            .limit(size)
+            self._user_statistics_stmt().offset((page - 1) * size).limit(size)
         )
         stmt = query.enrich_stmt(stmt)
 

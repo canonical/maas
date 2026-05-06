@@ -845,14 +845,12 @@ class TestUsersApi(ApiCommonTests):
         self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id_statistics.return_value = (
-            UserStatistics(
-                id=0,
-                completed_intro=True,
-                is_local=True,
-                machines_count=2,
-                sshkeys_count=3,
-            )
+        services_mock.users.get_by_id_statistics.return_value = UserStatistics(
+            id=0,
+            completed_intro=True,
+            is_local=True,
+            machines_count=2,
+            sshkeys_count=3,
         )
 
         response = await mocked_api_client_user.get(
@@ -862,6 +860,4 @@ class TestUsersApi(ApiCommonTests):
         user_statistics = UserStatisticsResponse(**response.json())
         assert user_statistics.id == 0
         assert user_statistics.machines_count == 2
-        services_mock.users.get_by_id_statistics.assert_called_once_with(
-            id=0
-        )
+        services_mock.users.get_by_id_statistics.assert_called_once_with(id=0)
