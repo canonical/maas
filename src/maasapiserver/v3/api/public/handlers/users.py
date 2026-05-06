@@ -419,7 +419,7 @@ class UsersHandler(Handler):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(
-        path="/users/statistics",
+        path="/users:statistics",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -468,7 +468,7 @@ class UsersHandler(Handler):
         )
 
     @handler(
-        path="/users/me/statistics",
+        path="/users/me:statistics",
         methods=["GET"],
         tags=TAGS,
         responses={200: {"model": UserStatisticsResponse}},
