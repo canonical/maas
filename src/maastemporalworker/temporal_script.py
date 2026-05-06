@@ -56,6 +56,7 @@ from maastemporalworker.workflow.dhcp import (
     DHCPConfigActivity,
 )
 from maastemporalworker.workflow.msm import (
+    MSMConfigureProfileWorkflow,
     MSMConnectorActivity,
     MSMEnrolSiteWorkflow,
     MSMHeartbeatWorkflow,
@@ -195,6 +196,7 @@ async def main() -> None:
                 DeployWorkflow,
                 CommissionNWorkflow,
                 # MSM Connector service
+                MSMConfigureProfileWorkflow,
                 MSMEnrolSiteWorkflow,
                 MSMRestoreDefaultBootSourceWorkflow,
                 MSMHeartbeatWorkflow,

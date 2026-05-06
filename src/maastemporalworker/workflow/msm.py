@@ -852,7 +852,10 @@ class MSMHeartbeatWorkflow:
                 MSM_GET_CONFIG_HASH_ACTIVITY_NAME,
                 start_to_close_timeout=MSM_TIMEOUT,
             )
-            if current_hash != heartbeat_response.config_hash:
+            if (
+                heartbeat_response.config_hash
+                and current_hash != heartbeat_response.config_hash
+            ):
                 try:
                     await workflow.start_child_workflow(
                         MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
