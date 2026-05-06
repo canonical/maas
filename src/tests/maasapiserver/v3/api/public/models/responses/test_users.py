@@ -46,7 +46,6 @@ class TestUserResponse:
 
 class TestUserStatisticsResponse:
     def test_from_model(self) -> None:
-        now = utcnow()
         user = UserStatistics(
             id=1,
             completed_intro=False,
