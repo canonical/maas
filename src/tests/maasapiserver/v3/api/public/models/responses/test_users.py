@@ -3,10 +3,10 @@
 
 from maasapiserver.v3.api.public.models.responses.users import (
     UserResponse,
-    UserWithSummaryResponse,
+    UserStatisticsResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.models.users import User, UserWithSummary
+from maasservicelayer.models.users import User, UserStatistics
 from maasservicelayer.utils.date import utcnow
 
 
@@ -44,10 +44,10 @@ class TestUserResponse:
         )
 
 
-class TestUserWithSummaryResponse:
+class TestUserStatisticsResponse:
     def test_from_model(self) -> None:
         now = utcnow()
-        user = UserWithSummary(
+        user = UserStatistics(
             id=1,
             completed_intro=False,
             email="email@example.com",
@@ -59,7 +59,7 @@ class TestUserWithSummaryResponse:
             sshkeys_count=20,
             username="test_username",
         )
-        user_response = UserWithSummaryResponse.from_model(
+        user_response = UserStatisticsResponse.from_model(
             user, self_base_hyperlink=f"{V3_API_PREFIX}/users"
         )
         assert user_response.id == user.id
