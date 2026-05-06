@@ -48,7 +48,7 @@ class TestUserClauseFactory:
                     compile_kwargs={"literal_binds": True}
                 )
             )
-            == "maasserver_user.id IN (1, 2)"
+            == "auth_user.id IN (1, 2)"
         )
 
 
@@ -313,7 +313,6 @@ class TestUsersRepository:
         self,
         db_connection: AsyncConnection,
         fixture: Fixture,
-        num_results: int,
     ) -> None:
         user1 = await create_test_user(
             fixture, username="johnmarston", email="foo@example.com"
