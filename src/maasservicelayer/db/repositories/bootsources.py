@@ -28,6 +28,10 @@ class BootSourcesClauseFactory(ClauseFactory):
     def with_priority(cls, priority: int) -> Clause:
         return Clause(condition=eq(BootSourceTable.c.priority, priority))
 
+    @classmethod
+    def with_enabled(cls, enabled: bool) -> Clause:
+        return Clause(condition=eq(BootSourceTable.c.enabled, enabled))
+
 
 class BootSourcesRepository(BaseRepository[BootSource]):
     def get_repository_table(self) -> Table:

@@ -117,24 +117,17 @@ from threading import RLock
 from time import time
 import traceback
 
-from formencode import ForEach, Schema
+from formencode import ForEach
 from formencode.api import is_validator, NoDefault
 from formencode.declarative import DeclarativeMeta
-from formencode.validators import Number, Set
+from formencode.validators import Number
 import yaml
 
-from maascommon.constants import (
-    DEFAULT_IMAGES_URL as COMMON_DEFAULT_IMAGES_URL,
-)
-from maascommon.constants import (
-    DEFAULT_KEYRINGS_PATH as COMMON_DEFAULT_KEYRINGS_PATH,
-)
 from provisioningserver.path import get_maas_data_path, get_tentative_data_path
 from provisioningserver.utils.config import (
     DirectoryString,
     ExtendedURL,
     OneWayStringBool,
-    UnicodeString,
 )
 from provisioningserver.utils.fs import atomic_write, RunLock
 
@@ -143,36 +136,7 @@ logger = logging.getLogger(__name__)
 # Default result for cluster UUID if not set
 UUID_NOT_SET = None
 
-# Default images URL can be overridden by the environment.
-DEFAULT_IMAGES_URL = COMMON_DEFAULT_IMAGES_URL
-# Default images keyring filepath can be overridden by the environment.
-DEFAULT_KEYRINGS_PATH = COMMON_DEFAULT_KEYRINGS_PATH
 TFTP_MAX_BLKSIZE = 8192
-
-
-class BootSourceSelection(Schema):
-    """Configuration validator for boot source selection configuration."""
-
-    if_key_missing = None
-
-    os = UnicodeString(if_missing="*")
-    release = UnicodeString(if_missing="*")
-    arches = Set(if_missing=["*"])
-    subarches = Set(if_missing=["*"])
-    labels = Set(if_missing=["*"])
-
-
-class BootSource(Schema):
-    """Configuration validator for boot source configuration."""
-
-    if_key_missing = None
-
-    url = UnicodeString(if_missing=DEFAULT_IMAGES_URL)
-    keyring = UnicodeString(if_missing=DEFAULT_KEYRINGS_PATH)
-    keyring_data = UnicodeString(if_missing="")
-    selections = ForEach(
-        BootSourceSelection, if_missing=[BootSourceSelection.to_python({})]
-    )
 
 
 class ConfigBase:
@@ -296,19 +260,6 @@ class ConfigMeta(DeclarativeMeta):
             "`cls.envvar` in the environment."
         ),
     )
-
-
-class BootSourcesMeta(ConfigMeta):
-    """Meta-configuration for boot sources."""
-
-    envvar = "MAAS_BOOT_SOURCES_SETTINGS"
-    default = "sources.yaml"
-
-
-class BootSources(ConfigBase, ForEach, metaclass=BootSourcesMeta):
-    """Configuration for boot sources."""
-
-    validators = [BootSource]
 
 
 ###############################################################################

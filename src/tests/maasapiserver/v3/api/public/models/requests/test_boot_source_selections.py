@@ -26,11 +26,13 @@ class TestBootSourceSelectionRequest:
             id=1,
             created=created_at,
             updated=updated_at,
+            name="Test Boot Source",
             url="http://example.com",
             keyring_filename="/path/to/keyring.gpg",
             keyring_data=b"",
             priority=100,
             skip_keyring_verification=False,
+            enabled=True,
         )
         bootsourceselection_request = BootSourceSelectionRequest(
             os="ubuntu",

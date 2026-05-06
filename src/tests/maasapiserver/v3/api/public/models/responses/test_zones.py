@@ -2,10 +2,10 @@ import datetime
 
 from maasapiserver.v3.api.public.models.responses.zones import (
     ZoneResponse,
-    ZoneWithSummaryResponse,
+    ZoneWithStatisticsResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.models.zones import Zone, ZoneWithSummary
+from maasservicelayer.models.zones import Zone, ZoneWithStatistics
 
 
 class TestZonesResponse:
@@ -43,10 +43,10 @@ class TestZonesResponse:
         )
 
 
-class TestZonesWithSummaryResponse:
+class TestZonesWithStatisticsResponse:
     def test_from_model(self) -> None:
         now = datetime.datetime.now(datetime.timezone.utc)
-        zone_with_summary = ZoneWithSummary(
+        zone_with_statistics = ZoneWithStatistics(
             id=1,
             name="my zone",
             description="my description",
@@ -57,16 +57,17 @@ class TestZonesWithSummaryResponse:
             updated=now,
         )
 
-        response = ZoneWithSummaryResponse.from_model(
-            zone_with_summary=zone_with_summary,
+        response = ZoneWithStatisticsResponse.from_model(
+            zone_with_statistics=zone_with_statistics,
             self_base_hyperlink=f"{V3_API_PREFIX}/",
         )
-        assert zone_with_summary.id == response.id
-        assert zone_with_summary.name == response.name
-        assert zone_with_summary.description == response.description
-        assert zone_with_summary.machines_count == response.machines_count
-        assert zone_with_summary.devices_count == response.devices_count
+        assert zone_with_statistics.id == response.id
+        assert zone_with_statistics.name == response.name
+        assert zone_with_statistics.description == response.description
+        assert zone_with_statistics.machines_count == response.machines_count
+        assert zone_with_statistics.devices_count == response.devices_count
         assert (
-            zone_with_summary.controllers_count == response.controllers_count
+            zone_with_statistics.controllers_count
+            == response.controllers_count
         )
         assert response.hal_links.self.href == f"{V3_API_PREFIX}/1"

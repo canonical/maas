@@ -9,7 +9,7 @@ from fixtures import EnvironmentVariableFixture, Fixture
 import yaml
 
 from maastesting.fixtures import TempDirectory
-from provisioningserver.config import BootSources, ClusterConfiguration
+from provisioningserver.config import ClusterConfiguration
 
 
 class ConfigFixtureBase(Fixture):
@@ -43,21 +43,6 @@ class ConfigFixtureBase(Fixture):
         self.environ = {self.schema.envvar: self.filename}
         for name, value in self.environ.items():
             self.useFixture(EnvironmentVariableFixture(name, value))
-
-
-class BootSourcesFixture(ConfigFixtureBase):
-    """Fixture to substitute for :class:`BootSources` in tests.
-
-    :ivar sources: A list of dicts defining boot sources.
-    :ivar name: Base name for the file that will hold the YAML
-        representation of `sources`.  It will be in a temporary directory.
-    :ivar filename: Full path to the YAML file.
-    """
-
-    schema = BootSources
-
-    def __init__(self, sources=None, name="sources.yaml"):
-        super().__init__(config=sources, name=name)
 
 
 class ConfigurationFixtureBase(Fixture):

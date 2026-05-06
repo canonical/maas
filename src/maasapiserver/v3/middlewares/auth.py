@@ -22,8 +22,13 @@ from maasapiserver.v3.auth.cookie_manager import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.logging.security import (
+    ACCESS_TOKEN,
     AUTHN_AUTH_FAILED,
     AUTHN_AUTH_SUCCESSFUL,
+    AUTHN_TOKEN_CREATED,
+    AUTHN_TOKEN_REUSED,
+    hash_token_for_logging,
+    REFRESH_TOKEN,
     SECURITY,
 )
 from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
@@ -109,6 +114,11 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
         except InvalidToken:
             # Use refresh token to get a new JWT if the JWT is expired.
             if not refresh_token:
+                logger.info(
+                    f"{AUTHN_TOKEN_REUSED}:JWT:{ACCESS_TOKEN}",
+                    type=SECURITY,
+                    token_hash=hash_token_for_logging(token),
+                )
                 raise UnauthorizedException(  # noqa: B904
                     details=[
                         BaseExceptionDetail(
@@ -121,6 +131,11 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
                 request, refresh_token.strip()
             )
             new_token = await self._get_new_jwt(request, user)
+            logger.info(
+                f"{AUTHN_TOKEN_CREATED}:JWT:{ACCESS_TOKEN}",
+                type=SECURITY,
+                token_hash=hash_token_for_logging(new_token.encoded),
+            )
             request.state.cookie_manager.set_unsafe_cookie(
                 key=MAASLocalCookie.JWT_TOKEN,
                 value=new_token.encoded,
@@ -138,6 +153,11 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
             refresh_token
         )
         if not user:
+            logger.info(
+                f"{AUTHN_TOKEN_REUSED}:JWT:{REFRESH_TOKEN}",
+                type=SECURITY,
+                token_hash=hash_token_for_logging(refresh_token),
+            )
             raise UnauthorizedException(
                 details=[
                     BaseExceptionDetail(
@@ -401,12 +421,24 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
         if not await self._is_token_valid(request, access_token):
             # Try to refresh the access token, if it is no longer valid
             tokens = await self._refresh_access_token(request, refresh_token)
+
+            logger.info(
+                f"{AUTHN_TOKEN_CREATED}:OIDC:{ACCESS_TOKEN}",
+                type=SECURITY,
+                token_hash=hash_token_for_logging(tokens.access_token),
+            )
+
             request.state.cookie_manager.set_auth_cookie(
                 value=tokens.access_token,
                 key=MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN,
             )
             # Some providers issue a new refresh token as well.
             if tokens.refresh_token != refresh_token:
+                logger.info(
+                    f"{AUTHN_TOKEN_CREATED}:OIDC:{REFRESH_TOKEN}",
+                    type=SECURITY,
+                    token_hash=hash_token_for_logging(tokens.refresh_token),
+                )
                 request.state.cookie_manager.set_auth_cookie(
                     value=tokens.refresh_token,
                     key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN,
@@ -440,6 +472,11 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
                 refresh_token=refresh_token
             )
         except UnauthorizedException as e:
+            logger.info(
+                f"{AUTHN_TOKEN_REUSED}:OIDC:{REFRESH_TOKEN}",
+                type=SECURITY,
+                token_hash=hash_token_for_logging(refresh_token),
+            )
             self._clear_oauth_cookies(request)
             raise UnauthorizedException(
                 details=[
@@ -558,7 +595,7 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.info(
                 AUTHN_AUTH_SUCCESSFUL,
                 type=SECURITY,
-                userID=user.username,
+                user_id=user.username,
             )
 
         response = await call_next(request)

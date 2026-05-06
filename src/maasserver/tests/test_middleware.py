@@ -235,7 +235,7 @@ class TestExceptionMiddleware(MAASServerTestCase):
         logger.warn.assert_called_once_with(
             AUTHZ_FAIL,
             type=SECURITY,
-            userID=request.user.username,
+            user_id=request.user.username,
             role=middleware_module.ADMIN
             if request.user.is_superuser
             else middleware_module.USER,

@@ -27,6 +27,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
 from maasapiserver.v3.constants import V3_INTERNAL_API_PREFIX
 from maascommon.logging.security import (
     AUTHN_TOKEN_REUSED,
+    BOOTSTRAP_TOKEN,
     hash_token_for_logging,
     SECURITY,
 )
@@ -215,7 +216,7 @@ class AgentHandler(Handler):
         if bootstraptoken is None or utcnow() >= bootstraptoken.expires_at:
             if bootstraptoken:
                 logger.info(
-                    f"{AUTHN_TOKEN_REUSED}:bootstraptoken",
+                    f"{AUTHN_TOKEN_REUSED}:{BOOTSTRAP_TOKEN}",
                     type=SECURITY,
                     token_hash=hash_token_for_logging(
                         agent_enroll_request.secret

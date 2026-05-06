@@ -6,6 +6,7 @@ import structlog
 from maascommon.logging.security import (
     AUTHN_TOKEN_CREATED,
     AUTHN_TOKEN_DELETED,
+    BOOTSTRAP_TOKEN,
     hash_token_for_logging,
     SECURITY,
 )
@@ -32,7 +33,7 @@ class BootstrapTokensService(
 
     async def post_create_hook(self, resource):
         logger.info(
-            f"{AUTHN_TOKEN_CREATED}:bootstraptoken",
+            f"{AUTHN_TOKEN_CREATED}:{BOOTSTRAP_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging(resource.secret),
         )
@@ -40,14 +41,14 @@ class BootstrapTokensService(
     async def post_create_many_hook(self, resources):
         for resource in resources:
             logger.info(
-                f"{AUTHN_TOKEN_CREATED}:bootstraptoken",
+                f"{AUTHN_TOKEN_CREATED}:{BOOTSTRAP_TOKEN}",
                 type=SECURITY,
                 token_hash=hash_token_for_logging(resource.secret),
             )
 
     async def post_delete_hook(self, resource) -> None:
         logger.info(
-            f"{AUTHN_TOKEN_DELETED}:bootstraptoken",
+            f"{AUTHN_TOKEN_DELETED}:{BOOTSTRAP_TOKEN}",
             type=SECURITY,
             token_hash=hash_token_for_logging(resource.secret),
         )
@@ -55,7 +56,7 @@ class BootstrapTokensService(
     async def post_delete_many_hook(self, resources) -> None:
         for resource in resources:
             logger.info(
-                f"{AUTHN_TOKEN_DELETED}:bootstraptoken",
+                f"{AUTHN_TOKEN_DELETED}:{BOOTSTRAP_TOKEN}",
                 type=SECURITY,
                 token_hash=hash_token_for_logging(resource.secret),
             )
