@@ -170,12 +170,12 @@ class ConfigurationsService(Service):
         nv_pairs = await self.database_configurations_service.get_many(
             query=QuerySpec()
         )
-        return {
-            name: val
-            for name, val in nv_pairs.items()
-            if name in ConfigFactory.MSM_CONFIGS
-            and ConfigFactory.MSM_CONFIGS[name].default != val
-        }
+        configs = {}
+        for name, val in nv_pairs.items():
+            cfg = ConfigFactory.get_config_model(name)
+            if cfg.supported_by_msm and val != cfg.default:
+                configs[name] = val
+        return configs
 
     async def set(
         self, name: str, value: Any, hook_guard: bool = True

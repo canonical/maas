@@ -75,6 +75,9 @@ class Config(BaseModel, Generic[T]):
     secret_model: ClassVar[GlobalSecret | None] = None
     value: T
 
+    # If this config can be set by Site Manager
+    supported_by_msm: ClassVar[bool] = True
+
 
 class MAASNameConfig(Config[str | None]):
     name: ClassVar[str] = "maas_name"
@@ -82,6 +85,7 @@ class MAASNameConfig(Config[str | None]):
     description: ClassVar[str] = "MAAS name"
     help_text: ClassVar[str | None] = ""
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class ThemeConfig(Config[str | None]):
@@ -761,6 +765,7 @@ class MAASAutoIPMIKGBmcKeyConfig(Config[str | None]):
         "This IPMI K_g BMC key is used to encrypt all IPMI traffic to a BMC. Once set, all clients will REQUIRE this key upon being commissioned. Any current machines that were previously commissioned will not require this key until they are recommissioned."
     )
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
     @field_validator("value", mode="after")
     @classmethod
@@ -907,6 +912,7 @@ class VCenterServerConfig(Config[str | None]):
         "VMware vCenter server FQDN or IP address which is passed to a deployed VMware ESXi host."
     )
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class VCenterUsernameConfig(Config[str | None]):
@@ -917,6 +923,7 @@ class VCenterUsernameConfig(Config[str | None]):
         "VMware vCenter server username which is passed to a deployed VMware ESXi host."
     )
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class VCenterPasswordConfig(Config[str | None]):
@@ -929,6 +936,7 @@ class VCenterPasswordConfig(Config[str | None]):
         "VMware vCenter server password which is passed to a deployed VMware ESXi host."
     )
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class VCenterDatacenterConfig(Config[str | None]):
@@ -939,6 +947,7 @@ class VCenterDatacenterConfig(Config[str | None]):
         "VMware vCenter datacenter which is passed to a deployed VMware ESXi host."
     )
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class HardwareSyncIntervalConfig(Config[str | None]):
@@ -1027,6 +1036,7 @@ class ActiveDiscoveryLastScanConfig(Config[int | None]):
     default: ClassVar[int | None] = 0
     description: ClassVar[str] = ""
     value: int | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class CommissioningOSystemConfig(Config[str | None]):
@@ -1035,6 +1045,7 @@ class CommissioningOSystemConfig(Config[str | None]):
     default: ClassVar[str | None] = DEFAULT_OS.name
     description: ClassVar[str] = ""
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class EnableHttpProxyConfig(Config[bool | None]):
@@ -1062,6 +1073,7 @@ class HttpProxyConfig(Config[AnyHttpUrl | None]):
         "This will be passed onto provisioned nodes to use as a proxy for APT or YUM traffic. MAAS also uses the proxy for downloading boot images. If no URL is provided, the built-in MAAS proxy will be used."
     )
     value: AnyHttpUrl | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class MAASUrlConfig(Config[str | None]):
@@ -1070,6 +1082,7 @@ class MAASUrlConfig(Config[str | None]):
     default: ClassVar[str | None] = "http://localhost:5240/MAAS"
     description: ClassVar[str] = ""
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class NetworkDiscoveryConfig(Config[NetworkDiscoveryEnum | None]):
@@ -1085,6 +1098,7 @@ class NetworkDiscoveryConfig(Config[NetworkDiscoveryEnum | None]):
     value: NetworkDiscoveryEnum | None = Field(
         default=default, description=description
     )
+    supported_by_msm = False
 
 
 class OMAPIKeyConfig(Config[str | None]):
@@ -1095,6 +1109,7 @@ class OMAPIKeyConfig(Config[str | None]):
     default: ClassVar[str | None] = ""
     description: ClassVar[str] = ""
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class RPCSharedSecretConfig(Config[str | None]):
@@ -1105,6 +1120,7 @@ class RPCSharedSecretConfig(Config[str | None]):
     default: ClassVar[str | None] = None
     description: ClassVar[str] = ""
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class TLSPortConfig(Config[int | None]):
@@ -1113,6 +1129,7 @@ class TLSPortConfig(Config[int | None]):
     default: ClassVar[int | None] = None
     description: ClassVar[str] = ""
     value: int | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class UUIDConfig(Config[str | None]):
@@ -1121,6 +1138,7 @@ class UUIDConfig(Config[str | None]):
     default: ClassVar[str | None] = None
     description: ClassVar[str] = ""
     value: str | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class VaultEnabledConfig(Config[bool | None]):
@@ -1129,6 +1147,7 @@ class VaultEnabledConfig(Config[bool | None]):
     default: ClassVar[bool | None] = False
     description: ClassVar[str] = ""
     value: bool | None = Field(default=default, description=description)
+    supported_by_msm = False
 
 
 class WindowsKmsHostConfig(Config[str | None]):
@@ -1230,87 +1249,6 @@ class ConfigFactory:
         config_name: config_model
         for config_name, config_model in ALL_CONFIGS.items()
         if config_model.is_public
-    }
-
-    MSM_CONFIGS: dict[str, Type[Config]] = {
-        # MAASNameConfig.name: MAASNameConfig,
-        ThemeConfig.name: ThemeConfig,
-        KernelOptsConfig.name: KernelOptsConfig,
-        EnableHttpProxyConfig.name: EnableHttpProxyConfig,
-        # HttpProxyConfig.name: HttpProxyConfig,
-        MAASProxyPortConfig.name: MAASProxyPortConfig,
-        UsePeerProxyConfig.name: UsePeerProxyConfig,
-        PreferV4ProxyConfig.name: PreferV4ProxyConfig,
-        DefaultDnsTtlConfig.name: DefaultDnsTtlConfig,
-        UpstreamDnsConfig.name: UpstreamDnsConfig,
-        DNSSECValidationConfig.name: DNSSECValidationConfig,
-        MAASInternalDomainConfig.name: MAASInternalDomainConfig,
-        DNSTrustedAclConfig.name: DNSTrustedAclConfig,
-        AllowOnlyTrustedTransfersConfig.name: AllowOnlyTrustedTransfersConfig,
-        RemoteSyslogConfig.name: RemoteSyslogConfig,
-        MAASSyslogPortConfig.name: MAASSyslogPortConfig,
-        ActiveDiscoveryIntervalConfig.name: ActiveDiscoveryIntervalConfig,
-        DefaultBootInterfaceLinkTypeConfig.name: DefaultBootInterfaceLinkTypeConfig,
-        DefaultOSystemConfig.name: DefaultOSystemConfig,
-        DefaultDistroSeriesConfig.name: DefaultDistroSeriesConfig,
-        DefaultMinHweKernelConfig.name: DefaultMinHweKernelConfig,
-        EnableKernelCrashDumpConfig.name: EnableKernelCrashDumpConfig,
-        DefaultStorageLayoutConfig.name: DefaultStorageLayoutConfig,
-        CommissioningDistroSeriesConfig.name: CommissioningDistroSeriesConfig,
-        EnableThirdPartyDriversConfig.name: EnableThirdPartyDriversConfig,
-        EnableDiskErasingOnReleaseConfig.name: EnableDiskErasingOnReleaseConfig,
-        DiskEraseWithSecureEraseConfig.name: DiskEraseWithSecureEraseConfig,
-        DiskEraseWithQuickEraseConfig.name: DiskEraseWithQuickEraseConfig,
-        BootImagesAutoImportConfig.name: BootImagesAutoImportConfig,
-        BootImagesNoProxyConfig.name: BootImagesNoProxyConfig,
-        CurtinVerboseConfig.name: CurtinVerboseConfig,
-        ForceV1NetworkYamlConfig.name: ForceV1NetworkYamlConfig,
-        EnableAnalyticsConfig.name: EnableAnalyticsConfig,
-        CompletedIntroConfig.name: CompletedIntroConfig,
-        MaxNodeCommissioningResultsConfig.name: MaxNodeCommissioningResultsConfig,
-        MaxNodeTestingResultsConfig.name: MaxNodeTestingResultsConfig,
-        MaxNodeInstallationResultsConfig.name: MaxNodeInstallationResultsConfig,
-        MaxNodeReleaseResultsConfig.name: MaxNodeReleaseResultsConfig,
-        MaxNodeDeploymentResultsConfig.name: MaxNodeDeploymentResultsConfig,
-        SubnetIPExhaustionThresholdCountConfig.name: SubnetIPExhaustionThresholdCountConfig,
-        ReleaseNotificationsConfig.name: ReleaseNotificationsConfig,
-        UseRackProxyConfig.name: UseRackProxyConfig,
-        NodeTimeoutConfig.name: NodeTimeoutConfig,
-        PrometheusEnabledConfig.name: PrometheusEnabledConfig,
-        PrometheusPushGatewayConfig.name: PrometheusPushGatewayConfig,
-        PrometheusPushIntervalConfig.name: PrometheusPushIntervalConfig,
-        PromtailEnabledConfig.name: PromtailEnabledConfig,
-        PromtailPortConfig.name: PromtailPortConfig,
-        EnlistCommissioningConfig.name: EnlistCommissioningConfig,
-        MAASAutoIPMIUserConfig.name: MAASAutoIPMIUserConfig,
-        MAASAutoIPMIUserPrivilegeLevelConfig.name: MAASAutoIPMIUserPrivilegeLevelConfig,
-        # MAASAutoIPMIKGBmcKeyConfig.name: MAASAutoIPMIKGBmcKeyConfig,
-        MAASAutoIPMICipherSuiteIDConfig.name: MAASAutoIPMICipherSuiteIDConfig,
-        MAASAutoIPMIWorkaroundFlagsConfig.name: MAASAutoIPMIWorkaroundFlagsConfig,
-        NTPServersConfig.name: NTPServersConfig,
-        NTPExternalOnlyConfig.name: NTPExternalOnlyConfig,
-        # VCenterServerConfig.name: VCenterServerConfig,
-        # VCenterUsernameConfig.name: VCenterUsernameConfig,
-        # VCenterPasswordConfig.name: VCenterPasswordConfig,
-        # VCenterDatacenterConfig.name: VCenterDatacenterConfig,
-        HardwareSyncIntervalConfig.name: HardwareSyncIntervalConfig,
-        # TODO: drop this when websocket will be removed (MAAS 4.0, hopefully).
-        SessionLengthConfig.name: SessionLengthConfig,
-        RefreshTokenDurationConfig.name: RefreshTokenDurationConfig,
-        TlsCertExpirationNotificationEnabledConfig.name: TlsCertExpirationNotificationEnabledConfig,
-        TLSCertExpirationNotificationIntervalConfig.name: TLSCertExpirationNotificationIntervalConfig,
-        AutoVlanCreationConfig.name: AutoVlanCreationConfig,
-        # Private configs.
-        # ActiveDiscoveryLastScanConfig.name: ActiveDiscoveryLastScanConfig,
-        # CommissioningOSystemConfig.name: CommissioningOSystemConfig,
-        # MAASUrlConfig.name: MAASUrlConfig,
-        # NetworkDiscoveryConfig.name: NetworkDiscoveryConfig,
-        # OMAPIKeyConfig.name: OMAPIKeyConfig,
-        # RPCSharedSecretConfig.name: RPCSharedSecretConfig,
-        # TLSPortConfig.name: TLSPortConfig,
-        # UUIDConfig.name: UUIDConfig,
-        # VaultEnabledConfig.name: VaultEnabledConfig,
-        WindowsKmsHostConfig.name: WindowsKmsHostConfig,
     }
 
     @classmethod
