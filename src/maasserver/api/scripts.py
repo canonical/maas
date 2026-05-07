@@ -231,6 +231,11 @@ class NodeScriptHandler(OperationsHandler):
             script_name = script.name
         return ("script_handler", (script_name,))
 
+    def _get_script_or_404(self, name):
+        if name.isdigit():
+            return get_object_or_404(Script, id=int(name))
+        return get_object_or_404(Script, name=name)
+
     @classmethod
     def type(handler, script):
         return script.script_type
@@ -274,10 +279,7 @@ class NodeScriptHandler(OperationsHandler):
         @error-example "not-found"
             No Script matches the given query.
         """
-        if name.isdigit():
-            script = get_object_or_404(Script, id=int(name))
-        else:
-            script = get_object_or_404(Script, name=name)
+        script = self._get_script_or_404(name)
         script.include_script = get_optional_param(
             request.GET, "include_script", False, Bool
         )
@@ -297,10 +299,7 @@ class NodeScriptHandler(OperationsHandler):
         @error-example "not-found"
             No Script matches the given query.
         """
-        if name.isdigit():
-            script = get_object_or_404(Script, id=int(name))
-        else:
-            script = get_object_or_404(Script, name=name)
+        script = self._get_script_or_404(name)
 
         if script.default:
             raise MAASAPIValidationError("Unable to delete default script")
@@ -386,10 +385,7 @@ class NodeScriptHandler(OperationsHandler):
             No Script matches the given query.
 
         """
-        if name.isdigit():
-            script = get_object_or_404(Script, id=int(name))
-        else:
-            script = get_object_or_404(Script, name=name)
+        script = self._get_script_or_404(name)
 
         data = request.data.copy()
         if "script" in request.FILES:
@@ -426,10 +422,7 @@ class NodeScriptHandler(OperationsHandler):
         @error-example "not-found"
             No Script matches the given query.
         """
-        if name.isdigit():
-            script = get_object_or_404(Script, id=int(name))
-        else:
-            script = get_object_or_404(Script, name=name)
+        script = self._get_script_or_404(name)
         revision = get_optional_param(request.GET, "revision", None, Int)
         if revision is None:
             revision = get_optional_param(request.GET, "rev", None, Int)
@@ -469,10 +462,7 @@ class NodeScriptHandler(OperationsHandler):
         """
         revert_to = get_mandatory_param(request.data, "to", Int)
 
-        if name.isdigit():
-            script = get_object_or_404(Script, id=int(name))
-        else:
-            script = get_object_or_404(Script, name=name)
+        script = self._get_script_or_404(name)
         try:
             if script.default:
                 raise MAASAPIValidationError("Unable to revert default script")
@@ -524,10 +514,7 @@ class NodeScriptHandler(OperationsHandler):
         if "," in tag:
             raise MAASAPIValidationError('Tag may not contain a ",".')
 
-        if name.isdigit():
-            script = get_object_or_404(Script, id=int(name))
-        else:
-            script = get_object_or_404(Script, name=name)
+        script = self._get_script_or_404(name)
 
         script.add_tag(tag)
         script.save()
@@ -565,10 +552,7 @@ class NodeScriptHandler(OperationsHandler):
         """
         tag = get_mandatory_param(request.data, "tag", String)
 
-        if name.isdigit():
-            script = get_object_or_404(Script, id=int(name))
-        else:
-            script = get_object_or_404(Script, name=name)
+        script = self._get_script_or_404(name)
 
         script.remove_tag(tag)
         script.save()
