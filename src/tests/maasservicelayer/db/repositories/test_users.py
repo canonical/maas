@@ -326,14 +326,12 @@ class TestUsersRepository:
 
         users_repository = UsersRepository(Context(connection=db_connection))
 
-        query = QuerySpec(
-            where=UserClauseFactory.with_ids([user1.id, user3.id])
-        )
-
         users_statistics = await users_repository.list_statistics(
             page=1,
             size=1000,
-            query=query,
+            query=QuerySpec(
+                where=UserClauseFactory.with_ids([user1.id, user3.id])
+            ),
         )
 
         assert len(users_statistics.items) == 2
@@ -341,18 +339,18 @@ class TestUsersRepository:
         assert users_statistics.items[0].id == user1.id
         assert users_statistics.items[1].id == user3.id
 
-        query = QuerySpec(
-            where=UserClauseFactory.with_ids([user1.id, user2.id, user3.id])
-        )
-
         users_statistics = await users_repository.list_statistics(
             page=1,
             size=1000,
-            query=query,
+            query=QuerySpec(
+                where=UserClauseFactory.with_ids(
+                    [user1.id, user2.id, user3.id]
+                )
+            ),
         )
 
-        assert len(users_statistics.items) == 2
-        assert users_statistics.total == 2
+        assert len(users_statistics.items) == 3
+        assert users_statistics.total == 3
 
     async def test_get_by_id_statistics(
         self, db_connection: AsyncConnection, fixture: Fixture
