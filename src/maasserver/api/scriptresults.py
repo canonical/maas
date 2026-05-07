@@ -272,7 +272,7 @@ class NodeScriptResultHandler(OperationsHandler):
             script_set = script_sets[id]
             if script_set is None:
                 raise MAASAPIValidationError(
-                    f'No {id.replace("-", " ")} script set exists for this node.'
+                    f"No {id.replace('-', ' ')} script set exists for this node."
                 )
             return script_set
 
