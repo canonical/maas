@@ -500,6 +500,26 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 result,
             )
 
+    def test_GET_filters_no_duplicates_when_multiple_tokens_match(self):
+        script = factory.make_Script()
+        script_set = self.make_scriptset()
+        script_result = factory.make_ScriptResult(
+            script_set=script_set, script=script
+        )
+        tag = random.choice([tag for tag in script.tags if "tag" in tag])
+
+        response = self.client.get(
+            self.get_script_result_uri(script_set),
+            {"filters": "%s,%s" % (script_result.name, tag)},
+        )
+        self.assertEqual(response.status_code, http.client.OK)
+        parsed_result = json_load_bytes(response.content)
+        results = parsed_result["results"]
+        self.assertEqual(
+            1,
+            len([r for r in results if r["id"] == script_result.id]),
+        )
+
     def test_GET_filters_by_hardware_type(self):
         script_set = self.make_scriptset()
         hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
