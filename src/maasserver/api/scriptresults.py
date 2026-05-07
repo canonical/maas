@@ -59,6 +59,7 @@ def filter_script_results(script_set, filters, hardware_type=None):
                     or (f.isdigit() and int(f) == script_result.id)
                 ):
                     script_results.append(script_result)
+                    break
     if hardware_type is not None:
         script_results = [
             script_result
