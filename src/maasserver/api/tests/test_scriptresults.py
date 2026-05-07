@@ -15,7 +15,6 @@ import time
 from django.urls import reverse
 
 from maasserver.api.scriptresults import fmt_time
-from maasserver.exceptions import MAASAPIValidationError
 from maasserver.preseed import CURTIN_ERROR_TARFILE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -1135,7 +1134,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 f"{script_result.name} - {script_result.interface.name}"
                 for script_result in sorted(
                     script_results,
-                    key=lambda script_result: (script_result.interface.name),
+                    key=lambda script_result: script_result.interface.name,
                 )
             ],
         )
