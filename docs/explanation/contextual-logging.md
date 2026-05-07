@@ -65,7 +65,7 @@ Here's an example showing multiple log statements for a single request, all shar
 {
   "message": "AUTHN_authentication_successful",
   "type": "security",
-  "userID": "maas",
+  "user_id": "maas",
   "role": "Admin",
   "trace_id": "cc6b8a1da517409c9cfc9871d6784f7b",
   "timestamp": "2025-11-26T21:02:55.709633Z",

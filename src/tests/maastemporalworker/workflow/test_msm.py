@@ -28,6 +28,9 @@ from maasservicelayer.builders.bootsourceselections import (
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bootsources import (
+    BootSourcesClauseFactory,
+)
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
@@ -47,6 +50,7 @@ from maastemporalworker.workflow.msm import (
     MSM_BOOT_SOURCE_NAME,
     MSM_CHECK_ENROL_ACTIVITY_NAME,
     MSM_CONFIG_EP,
+    MSM_DELETE_MSM_BOOT_SOURCE_ACTIVITY_NAME,
     MSM_DETAIL_EP,
     MSM_DISABLE_BOOT_SOURCES_ACTIVITY_NAME,
     MSM_ENROL_EP,
@@ -750,6 +754,24 @@ class TestMSMActivities:
         await env.run(msm_act.disable_bootsources)
         services_mock.boot_sources.disable_all.assert_called_once()
 
+    async def test_delete_msm_bootsource_activity(
+        self, mocker, msm_act, services_mock
+    ):
+        services_mock.boot_sources = Mock(BootSourcesService)
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        input = MSMRestoreDefaultBootSourceParam(sm_url=_MSM_BASE_URL)
+        await env.run(msm_act.delete_msm_bootsource, input)
+        services_mock.boot_sources.delete_one.assert_called_once_with(
+            QuerySpec(
+                where=BootSourcesClauseFactory.with_url(
+                    input.sm_url + MSM_SS_EP
+                )
+            )
+        )
+
     async def test_restore_default_bootsource_activity(
         self,
         mocker,
@@ -1159,9 +1181,11 @@ class TestRestoreDefaultBootSourceWorkflow:
     async def test_restore_default_boot_source(self, restore_param):
         calls = defaultdict(list)
 
-        @activity.defn(name=MSM_DISABLE_BOOT_SOURCES_ACTIVITY_NAME)
-        async def disable_boot_sources() -> None:
-            calls["msm-disable-boot-sources"].append(True)
+        @activity.defn(name=MSM_DELETE_MSM_BOOT_SOURCE_ACTIVITY_NAME)
+        async def disable_boot_sources(
+            input: MSMRestoreDefaultBootSourceParam,
+        ) -> None:
+            calls["msm-delete-msm-boot-source"].append(True)
 
         @activity.defn(name=MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME)
         async def restore_default_source() -> None:
@@ -1183,7 +1207,7 @@ class TestRestoreDefaultBootSourceWorkflow:
                     id=f"workflow-{uuid.uuid4()}",
                     task_queue=worker.task_queue,
                 )
-        assert calls["msm-disable-boot-sources"] == [True]
+        assert calls["msm-delete-msm-boot-source"] == [True]
         assert len(calls["msm-restore-default-source"]) == 1
 
 

@@ -176,7 +176,7 @@ class ExceptionMiddleware:
             logger.warn(
                 AUTHZ_FAIL,
                 type=SECURITY,
-                userID=username,
+                user_id=username,
                 role=ADMIN if user and user.is_superuser else USER,
                 useragent=request.META.get("HTTP_USER_AGENT", "unknown"),
                 request_remote_ip=request.META.get("REMOTE_ADDR", "unknown"),

@@ -280,7 +280,7 @@ class TestV3AuthenticationMiddleware:
         }
         await auth_middleware.dispatch(request_mock, AsyncMock(Callable))
         mock_logger.info.assert_called_with(
-            AUTHN_AUTH_SUCCESSFUL, type=SECURITY, userID="myuser"
+            AUTHN_AUTH_SUCCESSFUL, type=SECURITY, user_id="myuser"
         )
 
         # valid admin JWT Token
@@ -293,7 +293,7 @@ class TestV3AuthenticationMiddleware:
         }
         await auth_middleware.dispatch(request_mock, AsyncMock(Callable))
         mock_logger.info.assert_called_with(
-            AUTHN_AUTH_SUCCESSFUL, type=SECURITY, userID="admin"
+            AUTHN_AUTH_SUCCESSFUL, type=SECURITY, user_id="admin"
         )
 
     async def test_authentication_with_macaroons(self) -> None:

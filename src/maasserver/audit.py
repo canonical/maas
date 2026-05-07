@@ -55,7 +55,7 @@ def create_audit_event(
         logger.info(
             f"{AUTHZ_ADMIN}:{event_type.title()}:{action}:{id}",
             type=SECURITY,
-            userID=user.username if user else None,
+            user_id=user.username if user else None,
             role=ADMIN
             if user and user.is_superuser
             else USER
