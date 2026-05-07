@@ -154,10 +154,7 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
         assert len(zones.items) == 1
         assert zones.total == 5
 
-        # Oldest records first
-        expected_zone_order = (["default"] + zone_names)[::-1]
-        for zone, name in zip(all_zones, expected_zone_order, strict=True):
-            assert zone.name == name
+        for zone in all_zones:
             assert zone.machines_count == 0
             assert zone.devices_count == 0
             assert zone.controllers_count == 0

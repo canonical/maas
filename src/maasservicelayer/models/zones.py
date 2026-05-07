@@ -3,6 +3,7 @@
 
 from maasservicelayer.models.base import (
     generate_builder,
+    MaasBaseModel,
     MaasTimestampedBaseModel,
 )
 
@@ -13,7 +14,8 @@ class Zone(MaasTimestampedBaseModel):
     description: str
 
 
-class ZoneWithStatistics(Zone):
+class ZoneWithStatistics(MaasBaseModel):
+    id: int
     devices_count: int
     machines_count: int
     controllers_count: int

@@ -191,8 +191,6 @@ class TestZonesApi(ApiCommonTests):
         assert zones_with_statistics_response.next is None
         zone_with_statistics_response = zones_with_statistics_response.items[0]
         assert zone_with_statistics_response.id == 0
-        assert zone_with_statistics_response.name == "default"
-        assert zone_with_statistics_response.description == "description"
         assert zone_with_statistics_response.machines_count == 10
         assert zone_with_statistics_response.devices_count == 20
         assert zone_with_statistics_response.controllers_count == 30

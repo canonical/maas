@@ -58,8 +58,6 @@ class ZonesRepository(BaseRepository[Zone]):
         stmt = (
             select(
                 ZoneTable.c.id,
-                ZoneTable.c.name,
-                ZoneTable.c.description,
                 func.count()
                 .filter(NodeTable.c.node_type == NodeTypeEnum.DEVICE)
                 .label("devices_count"),
