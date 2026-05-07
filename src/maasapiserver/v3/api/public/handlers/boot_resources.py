@@ -329,7 +329,9 @@ class CustomImagesHandler(Handler):
                 ]
             )
             if filter_clause
-            else BootResourceClauseFactory.with_rtype(BootResourceType.UPLOADED)
+            else BootResourceClauseFactory.with_rtype(
+                BootResourceType.UPLOADED
+            )
         )
 
         boot_resources = await services.boot_resources.list(
