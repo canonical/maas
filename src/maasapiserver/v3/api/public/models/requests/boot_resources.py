@@ -309,13 +309,31 @@ class CustomImageFilterParams(BaseModel):
             description="Filter by Custom Image ID",
         )
     )
+    file_type: BootResourceFileType | None = Field(
+        Query(
+            default=None,
+            description="Filter by file type (e.g., self-extracting for switch images)",
+        )
+    )
 
     def to_clause(self) -> Clause | None:
+        clauses = []
         if self.ids is not None:
-            return BootResourceClauseFactory.with_ids(self.ids)
-        return None
+            clauses.append(BootResourceClauseFactory.with_ids(self.ids))
+        if self.file_type is not None:
+            clauses.append(BootResourceClauseFactory.with_filetype(self.file_type))
+
+        if len(clauses) == 0:
+            return None
+        elif len(clauses) == 1:
+            return clauses[0]
+        else:
+            return BootResourceClauseFactory.and_clauses(clauses)
 
     def to_href_format(self) -> str | None:
+        parts = []
         if self.ids is not None:
-            return "&".join([f"id={id}" for id in self.ids])
-        return None
+            parts.extend([f"id={id}" for id in self.ids])
+        if self.file_type is not None:
+            parts.append(f"file_type={self.file_type}")
+        return "&".join(parts) if parts else None
