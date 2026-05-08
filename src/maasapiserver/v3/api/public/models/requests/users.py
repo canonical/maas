@@ -13,11 +13,21 @@ from maasservicelayer.models.base import UNSET
 
 
 class UsersFiltersParams(BaseModel):
+    ids: list[int] | None = Field(
+        Query(
+            default=None,
+            alias="id",
+            description="Filter by User ID",
+        )
+    )
+
     username_or_email: str | None = Field(
         Query(default=None, title="Filter by username or email")
     )
 
     def to_clause(self) -> Clause | None:
+        if self.ids:
+            return UserClauseFactory.with_ids(self.ids)
         if self.username_or_email:
             return UserClauseFactory.with_username_or_email_like(
                 self.username_or_email
