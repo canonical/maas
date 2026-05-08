@@ -323,7 +323,9 @@ class TestUsersRepository:
             fixture, username="arthurmorgan", email="arthur.morgan@example.com"
         )
         user2 = await create_test_user(
-            fixture, username="hoseamatthews", email="hosea.matthews@example.com"
+            fixture,
+            username="hoseamatthews",
+            email="hosea.matthews@example.com",
         )
         user3 = await create_test_user(
             fixture, username="johnmarston", email="john.marston@example.com"
