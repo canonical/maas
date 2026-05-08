@@ -257,11 +257,6 @@ class UsersRepository(BaseRepository[User]):
         return (
             select(
                 UserTable.c.id,
-                UserTable.c.username,
-                UserTable.c.email,
-                UserTable.c.is_superuser,
-                UserTable.c.last_name,
-                UserTable.c.last_login,
                 UserProfileTable.c.completed_intro,
                 UserProfileTable.c.is_local,
                 func.count(distinct(NodeTable.c.id)).label("machines_count"),
@@ -290,11 +285,6 @@ class UsersRepository(BaseRepository[User]):
             )
             .group_by(
                 UserTable.c.id,
-                UserTable.c.username,
-                UserTable.c.email,
-                UserTable.c.is_superuser,
-                UserTable.c.last_name,
-                UserTable.c.last_login,
                 UserProfileTable.c.completed_intro,
                 UserProfileTable.c.is_local,
             )

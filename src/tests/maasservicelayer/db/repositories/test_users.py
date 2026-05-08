@@ -289,15 +289,19 @@ class TestUsersRepository:
         query: str,
         num_results: int,
     ) -> None:
-        await create_test_user(
+        user1 = await create_test_user(
             fixture, username="foo", email="foo@example.com"
         )
-        await create_test_user(
+        user2 = await create_test_user(
             fixture, username="FOOOOO!", email="hello@example.com"
         )
-        await create_test_user(
+        user3 = await create_test_user(
             fixture, username="bar!", email="bar@example.com"
         )
+
+        await create_test_user_profile(fixture, user_id=user1.id)
+        await create_test_user_profile(fixture, user_id=user2.id)
+        await create_test_user_profile(fixture, user_id=user3.id)
 
         users_repository = UsersRepository(Context(connection=db_connection))
         users_list = await users_repository.list_statistics(
@@ -308,6 +312,7 @@ class TestUsersRepository:
             ),
         )
         assert users_list.total == num_results
+        assert len(users_list.items) == num_results
 
     async def test_list_statistics_filter_by_ids(
         self,
@@ -315,14 +320,18 @@ class TestUsersRepository:
         fixture: Fixture,
     ) -> None:
         user1 = await create_test_user(
-            fixture, username="johnmarston", email="foo@example.com"
+            fixture, username="arthurmorgan", email="arthur.morgan@example.com"
         )
         user2 = await create_test_user(
-            fixture, username="arthurmorgan", email="hello@example.com"
+            fixture, username="hoseamatthews", email="hosea.matthews@example.com"
         )
         user3 = await create_test_user(
-            fixture, username="hoseamatthews", email="bar@example.com"
+            fixture, username="johnmarston", email="john.marston@example.com"
         )
+
+        await create_test_user_profile(fixture, user_id=user1.id)
+        await create_test_user_profile(fixture, user_id=user2.id)
+        await create_test_user_profile(fixture, user_id=user3.id)
 
         users_repository = UsersRepository(Context(connection=db_connection))
 
@@ -336,8 +345,8 @@ class TestUsersRepository:
 
         assert len(users_statistics.items) == 2
         assert users_statistics.total == 2
-        assert users_statistics.items[0].id == user1.id
-        assert users_statistics.items[1].id == user3.id
+        assert users_statistics.items[0].id == user3.id
+        assert users_statistics.items[1].id == user1.id
 
         users_statistics = await users_repository.list_statistics(
             page=1,

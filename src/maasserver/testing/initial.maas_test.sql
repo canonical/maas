@@ -4919,21 +4919,6 @@ ALTER SEQUENCE public.django_site_id_seq OWNED BY public.django_site.id;
 
 
 --
--- Name: maasserver_sshkey; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_sshkey (
-    id bigint NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    key text NOT NULL,
-    user_id integer NOT NULL,
-    auth_id character varying(255),
-    protocol character varying(64)
-);
-
-
---
 -- Name: maasserver_agent; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5394,7 +5379,7 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
          SELECT res.id AS resource_id,
             cache.latest_version
            FROM (public.maasserver_bootsourcecache cache
-             JOIN public.maasserver_bootresource res ON ((((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND ((((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text))) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
+             JOIN public.maasserver_bootresource res ON ((((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND (((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text)) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
         ), resource_set_counts AS (
          SELECT sync_stats.resource_id,
             count(*) AS set_count
@@ -7854,6 +7839,21 @@ CREATE SEQUENCE public.maasserver_space_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_space_id_seq OWNED BY public.maasserver_space.id;
+
+
+--
+-- Name: maasserver_sshkey; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_sshkey (
+    id bigint NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    key text NOT NULL,
+    user_id integer NOT NULL,
+    auth_id character varying(255),
+    protocol character varying(64)
+);
 
 
 --
