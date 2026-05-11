@@ -112,6 +112,30 @@ class TestOsystems(MAASServerTestCase):
             ),
         )
 
+    def test_uploaded_boot_resource_empty_title_uses_release_name(self):
+        arch = "amd64/generic"
+        release_segment = factory.make_name("rel")
+        name = f"custom/{release_segment}"
+        factory.make_custom_boot_resource(
+            name=name,
+            architecture=arch,
+            extra={
+                "subarches": "generic",
+                "title": "",
+                "platform": "generic",
+                "supported_platforms": "generic",
+            },
+            base_image=factory.make_base_image_name(),
+            filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_DDGZ,
+        )
+        osystems = list_all_usable_osystems()
+        release = osystems["custom"].releases[release_segment]
+        self.assertEqual(release_segment, release.title)
+        self.assertIn(
+            self.make_release_choice("custom", release),
+            list_release_choices(osystems, include_default=False),
+        )
+
     def test_list_osystem_choices_doesnt_duplicate(self):
         factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,
