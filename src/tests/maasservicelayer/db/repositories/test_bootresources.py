@@ -396,7 +396,7 @@ class TestBootResourceRepository:
         regular_resource = await create_test_bootresource_entry(
             fixture,
             rtype=BootResourceType.UPLOADED,
-            name="ubuntu/focal",
+            name="custom/noble",
             architecture="amd64/generic",
         )
         regular_set = await create_test_bootresourceset_entry(
