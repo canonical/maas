@@ -201,6 +201,11 @@ class UsersHandler(Handler):
             size=pagination_params.size,
             query=QuerySpec(where=filters.to_clause()),
         )
+        next_link = None
+        if users.has_next(pagination_params.page, pagination_params.size):
+            next_link = f"{V3_API_PREFIX}/users?{pagination_params.to_next_href_format()}"
+            if query_filters := filters.to_href_format():
+                next_link += f"&{query_filters}"
         return UsersListResponse(
             items=[
                 UserResponse.from_model(
@@ -210,15 +215,7 @@ class UsersHandler(Handler):
                 for user in users.items
             ],
             total=users.total,
-            next=(
-                f"{V3_API_PREFIX}/users?"
-                f"{pagination_params.to_next_href_format()}"
-                f"{filters.to_href_format()}"
-                if users.has_next(
-                    pagination_params.page, pagination_params.size
-                )
-                else None
-            ),
+            next=next_link,
         )
 
     @handler(
