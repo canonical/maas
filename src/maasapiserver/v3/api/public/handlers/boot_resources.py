@@ -318,20 +318,13 @@ class CustomImagesHandler(Handler):
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ImageListResponse:
-        filter_clause = filters.to_clause()
-        where_clause = (
-            BootResourceClauseFactory.and_clauses(
-                [
-                    BootResourceClauseFactory.with_rtype(
-                        BootResourceType.UPLOADED
-                    ),
-                    filter_clause,
-                ]
-            )
-            if filter_clause
-            else BootResourceClauseFactory.with_rtype(
-                BootResourceType.UPLOADED
-            )
+        where_clause = BootResourceClauseFactory.and_clauses(
+            [
+                BootResourceClauseFactory.with_rtype(
+                    BootResourceType.UPLOADED
+                ),
+                filters.to_clause(),
+            ]
         )
 
         boot_resources = await services.boot_resources.list(

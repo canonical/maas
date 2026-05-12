@@ -322,7 +322,9 @@ class CustomImageFilterParams(BaseModel):
             clauses.append(BootResourceClauseFactory.with_ids(self.ids))
         if self.file_type is not None:
             clauses.append(
-                BootResourceClauseFactory.with_filetype(self.file_type)
+                BootResourceClauseFactory.with_filetype(
+                    BootResourceFileTypeChoice.get_resource_filetype(self.file_type)
+                )
             )
 
         if len(clauses) == 0:

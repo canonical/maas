@@ -571,13 +571,13 @@ class TestCustomImageFilterParams:
         [
             (None, None),
             (
-                BootResourceFileType.SELF_EXTRACTING,
+                BootResourceFileTypeChoice.SELF_EXTRACTING,
                 BootResourceClauseFactory.with_filetype(
                     BootResourceFileType.SELF_EXTRACTING
                 ),
             ),
             (
-                BootResourceFileType.ROOT_TGZ,
+                BootResourceFileTypeChoice.TGZ,
                 BootResourceClauseFactory.with_filetype(
                     BootResourceFileType.ROOT_TGZ
                 ),
@@ -621,10 +621,10 @@ class TestCustomImageFilterParams:
         [
             (None, None),
             (
-                BootResourceFileType.SELF_EXTRACTING,
+                BootResourceFileTypeChoice.SELF_EXTRACTING,
                 "file_type=self-extracting",
             ),
-            (BootResourceFileType.ROOT_TGZ, "file_type=root-tgz"),
+            (BootResourceFileTypeChoice.TGZ, "file_type=tgz"),
         ],
     )
     def test_to_href_format_file_type(self, file_type, expected):
