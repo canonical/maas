@@ -457,7 +457,7 @@ class TestBootResourceRepository:
         assert result_tgz.total == 1
         assert len(result_tgz.items) == 1
         assert result_tgz.items[0].id == regular_resource.id
-        assert result_tgz.items[0].name == "ubuntu/focal"
+        assert result_tgz.items[0].name == "custom/noble"
 
     async def test_list_with_filetype_filter_no_duplicates(
         self,

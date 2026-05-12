@@ -591,7 +591,7 @@ class TestCustomImageFilterParams:
 
     def test_to_clause_combined_filters(self):
         filters = CustomImageFilterParams(
-            ids=[1, 2], file_type=BootResourceFileType.SELF_EXTRACTING
+            ids=[1, 2], file_type=BootResourceFileTypeChoice.SELF_EXTRACTING
         )
         clause = filters.to_clause()
         # Should return an and_clauses with both filters
@@ -634,7 +634,7 @@ class TestCustomImageFilterParams:
 
     def test_to_href_format_combined_filters(self):
         filters = CustomImageFilterParams(
-            ids=[1, 2], file_type=BootResourceFileType.SELF_EXTRACTING
+            ids=[1, 2], file_type=BootResourceFileTypeChoice.SELF_EXTRACTING
         )
         href = filters.to_href_format()
         assert href == "id=1&id=2&file_type=self-extracting"
