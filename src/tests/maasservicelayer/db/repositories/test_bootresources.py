@@ -13,14 +13,21 @@ from maascommon.enums.boot_resources import (
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
     BootResourcesRepository,
 )
 from maasservicelayer.models.bootresources import BootResource
+from tests.fixtures.factories.bootresourcefiles import (
+    create_test_bootresourcefile_entry,
+)
 from tests.fixtures.factories.bootresources import (
     create_test_bootresource_entry,
     create_test_custom_bootresource_status_entry,
+)
+from tests.fixtures.factories.bootresourcesets import (
+    create_test_bootresourceset_entry,
 )
 from tests.fixtures.factories.node import (
     create_test_machine_entry,
@@ -361,13 +368,6 @@ class TestBootResourceRepository:
         fixture: Fixture,
     ):
         """Test filtering boot resources by file type."""
-        from maasservicelayer.db.filters import QuerySpec
-        from tests.fixtures.factories.bootresourcefiles import (
-            create_test_bootresourcefile_entry,
-        )
-        from tests.fixtures.factories.bootresourcesets import (
-            create_test_bootresourceset_entry,
-        )
 
         # Create boot resource with self-extracting file (switch image)
         switch_resource = await create_test_bootresource_entry(
