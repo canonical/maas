@@ -1,6 +1,5 @@
 bind9
 bind9utils
-clang
 devscripts
 distro-info
 dnsutils
@@ -8,10 +7,7 @@ freeipmi-tools
 iputils-ping
 isc-dhcp-common
 isc-dhcp-server
-libbpf-dev
 libpq-dev
-libdqlite1.17-dev
-llvm
 lshw
 postgresql
 pxelinux

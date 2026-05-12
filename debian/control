@@ -2,18 +2,14 @@ Source: maas
 Section: net
 Priority: optional
 Maintainer: MAAS developers <maas-devel@lists.ubuntu.com>
-Build-Depends: clang,
-               debhelper-compat (= 13),
+Build-Depends: debhelper-compat (= 13),
                dh-apport,
                dh-exec,
                dh-python,
                fakeroot,
                git,
                golang-go (>= 2:1.24~),
-               libbpf-dev,
                libcairo2-dev,
-               libdqlite1.17-dev,
-               llvm,
                po-debconf,
                python3-all,
                python3-dev,

@@ -305,11 +305,7 @@ parts:
     plugin: make
     source: src/maasagent
     build-packages:
-      - clang
       - golang-go
-      - libbpf-dev
-      - libdqlite1.17-dev
-      - llvm
     build-environment:
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
     prime:
