@@ -40,7 +40,7 @@ class UsersFiltersParams(BaseModel):
             parts.extend([f"id={id}" for id in self.ids])
         if self.username_or_email:
             parts.append(f"username_or_email={self.username_or_email}")
-        return '&'.join(parts) if parts else ""
+        return "&".join(parts) if parts else ""
 
 
 class BaseUserRequest(BaseModel):
