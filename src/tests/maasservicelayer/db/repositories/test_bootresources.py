@@ -109,14 +109,10 @@ class TestBootResourceClauseFactory:
         compiled = str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         )
-        assert "maasserver_bootresource.id IN" in compiled
-        assert "SELECT DISTINCT" in compiled
-        assert "maasserver_bootresourceset.resource_id" in compiled
         assert (
-            "maasserver_bootresourcefile.filetype = 'self-extracting'"
-            in compiled
+            compiled
+            == "maasserver_bootresource.id IN (SELECT DISTINCT maasserver_bootresourceset.resource_id \nFROM maasserver_bootresourceset JOIN maasserver_bootresourcefile ON maasserver_bootresourcefile.resource_set_id = maasserver_bootresourceset.id \nWHERE maasserver_bootresourcefile.filetype = 'self-extracting')"
         )
-        assert len(clause.joins) == 0
 
 
 class TestCommonBootResourceRepository(RepositoryCommonTests[BootResource]):
