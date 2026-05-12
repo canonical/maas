@@ -309,7 +309,7 @@ class CustomImageFilterParams(BaseModel):
             description="Filter by Custom Image ID",
         )
     )
-    file_type: BootResourceFileType | None = Field(
+    file_type: BootResourceFileTypeChoice | None = Field(
         Query(
             default=None,
             description="Filter by file type (e.g., self-extracting for switch images)",
