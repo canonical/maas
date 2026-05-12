@@ -110,13 +110,8 @@ def list_all_usable_osystems() -> Dict[str, OperatingSystem]:
         if br.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
             # User may set the title of an uploaded resource. Empty values
             # in extra must not override the display name (LP:2044378).
-            explicit_title = br.extra.get("title")
-            if isinstance(explicit_title, str):
-                explicit_title = explicit_title.strip()
-            if explicit_title:
-                release_title = explicit_title
-            else:
-                release_title = release_name
+            explicit_title = (br.extra.get("title") or "").strip()
+            release_title = explicit_title or release_name
 
         if os_name not in osystems:
             if osystem is not None:
