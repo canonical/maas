@@ -193,11 +193,13 @@ class UsersHandler(Handler):
     async def list_users(
         self,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
+        filters: UsersFiltersParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UsersListResponse:
         users = await services.users.list(
             page=pagination_params.page,
             size=pagination_params.size,
+            query=QuerySpec(where=filters.to_clause()),
         )
         return UsersListResponse(
             items=[
@@ -211,6 +213,7 @@ class UsersHandler(Handler):
             next=(
                 f"{V3_API_PREFIX}/users?"
                 f"{pagination_params.to_next_href_format()}"
+                f"{filters.to_href_format()}"
                 if users.has_next(
                     pagination_params.page, pagination_params.size
                 )
