@@ -57,6 +57,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.models.configurations import UpstreamDnsConfig
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.worker import REGION_TASK_QUEUE
@@ -130,7 +131,7 @@ class MSMConfigProfile:
     selections: list[str]
     trigger_image_sync: bool
 
-    _RETAIN_ORDER_OPTIONS: ClassVar[list[str]] = ["upstream_dns"]
+    _RETAIN_ORDER_OPTIONS: ClassVar[list[str]] = [UpstreamDnsConfig.name]
 
     def hash(self) -> str:
         self._normalize()

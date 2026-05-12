@@ -82,6 +82,7 @@ from maastemporalworker.workflow.msm import (
     MSM_START_IMAGE_SYNC_ACTIVITY_NAME,
     MSM_VERIFY_EP,
     MSM_VERIFY_TOKEN_ACTIVITY_NAME,
+    MSMConfigProfile,
     MSMConfigureProfileParam,
     MSMConfigureProfileWorkflow,
     MSMConnectorActivity,
@@ -925,6 +926,65 @@ class TestMSMActivities:
         env = ActivityEnvironment()
         cfg_hash = await env.run(msm_act.get_config_hash)
         assert cfg_hash == expected_hash
+
+
+class TestMSMConfigProfile:
+    def test_normalize_nested_objects(self):
+        unsorted_cfg = {
+            "c": {2: 2, 1: 1},
+            "b": 1,
+            "a": ["z", "a"],
+        }
+        for cfg_opt in MSMConfigProfile._RETAIN_ORDER_OPTIONS:
+            unsorted_cfg[cfg_opt] = ["b", "a"]
+        unsorted_selections = ["z", "a", "r"]
+        cfg = MSMConfigProfile(
+            global_config=unsorted_cfg,
+            selections=unsorted_selections,
+            trigger_image_sync=False,
+        )
+        cfg._normalize()
+        assert cfg.selections == sorted(unsorted_selections)
+        assert list(cfg.global_config.keys()) == sorted(
+            list(unsorted_cfg.keys())
+        )
+        assert list(cfg.global_config["c"].keys()) == sorted(
+            list(unsorted_cfg["c"].keys())
+        )
+        assert cfg.global_config["a"] == sorted(unsorted_cfg["a"])
+        for cfg_opt in MSMConfigProfile._RETAIN_ORDER_OPTIONS:
+            assert cfg.global_config[cfg_opt] != sorted(unsorted_cfg[cfg_opt])
+
+    def test_hash(self):
+        unsorted_cfg1 = {
+            "c": {3: 3, 2: 2, 1: 1},
+            "b": 1,
+            "a": ["z", "q", "a"],
+        }
+        unsorted_cfg2 = {
+            "b": 1,
+            "c": {2: 2, 3: 3, 1: 1},
+            "a": ["q", "z", "a"],
+        }
+        for cfg_opt in MSMConfigProfile._RETAIN_ORDER_OPTIONS:
+            unsorted_cfg2[cfg_opt] = ["b", "a"]
+        for cfg_opt in MSMConfigProfile._RETAIN_ORDER_OPTIONS:
+            unsorted_cfg1[cfg_opt] = ["b", "a"]
+        unsorted_selections1 = ["z", "a", "r"]
+        unsorted_selections2 = ["a", "z", "r"]
+        cfg1 = MSMConfigProfile(
+            global_config=unsorted_cfg1,
+            selections=unsorted_selections1,
+            trigger_image_sync=False,
+        )
+        cfg2 = MSMConfigProfile(
+            global_config=unsorted_cfg2,
+            selections=unsorted_selections2,
+            trigger_image_sync=False,
+        )
+        assert cfg1.hash() == cfg2.hash()
+        cfg1.trigger_image_sync = not cfg2.trigger_image_sync
+        assert cfg1.hash() != cfg2.hash()
 
 
 class TestMSMEnrolWorkflow:
