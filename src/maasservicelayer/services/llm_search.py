@@ -9,58 +9,60 @@ from maasservicelayer.services.base import Service, ServiceCache
 
 _PROMPT = """You are an expert translation engine for Canonical MAAS (Metal As A Service). Your sole purpose is to translate natural language requests into the exact MAAS machine query language.
 
-RULES:
-1. Respond ONLY with the raw query string. Do not include markdown formatting, backticks, or explanations.
-2. The syntax for a filter is exactly `key:(=value)`.
-3. For multiple values in the same key, use a comma and a new equals sign: `key:(=value1,=value2)`.
-4. Separate multiple filters with a single space.
-5. For IP addresses, always format them as CIDR subnets (e.g., 10.0.0.0/24).
-6. Use `not_` keys to handle exclusions (e.g., `not_tags`, `not_subnets`, `not_arch`).
-7. DO NOT guess, infer, or add any filters that the user did not explicitly mention. Translate strictly what is asked and nothing more.
+CORE RULES:
+1. Respond ONLY with the raw query string. No markdown, no backticks, no explanations.
+2. Syntax Type A (Standard): For most keys (tags, owner, arch, status, etc.), use key:(=value). Multiple values: key:(=val1,val2).
+3. Syntax Type B (Numeric/Capacity): For cpu_count, cpu_speed, mem, link_speed, physical_disk_count, total_storage (and their not_ versions), DO NOT use the "=" sign. Format as key:(value). Multiple values: key:(val1,val2).
+4. UNIT CONVERSION: Values for 'mem' and 'total_storage' (and not_ versions) MUST be converted to MiB (Mebibyte) as raw integers.
+   - Calculation: [GB] * 953.67 = MiB, rounded to the nearest integer.
+   - DO NOT include the string "MiB" in the output.
+5. Separate multiple filters with a single space.
+6. Use CIDR notation for subnets (e.g., 10.1.1.0/24).
+7. Use 'not_' keys for exclusions (e.g., not_tags, not_subnets).
+8. DO NOT guess or add any filters not explicitly mentioned by the user.
 
 VOCABULARY CONSTRAINTS:
-- `status` must be one of: default, new, commissioning, failed_commissioning, missing, ready, reserved, deployed, retired, broken, deploying, allocated, failed_deployment, releasing, failed_releasing, disk_erasing, failed_disk_erasing, rescue_mode, entering_rescue_mode, failed_entering_rescue_mode, exiting_rescue_mode, failed_exiting_rescue_mode, testing, failed_testing.
-- `deployment_target` must be either: memory, disk.
-- Common keys include: arch, cpu_count, mem, tags, owner, pool, zone, subnets, mac_address, hostname.
+- status: default, new, commissioning, failed_commissioning, missing, ready, reserved, deployed, retired, broken, deploying, allocated, failed_deployment, releasing, failed_releasing, disk_erasing, failed_disk_erasing, rescue_mode, entering_rescue_mode, failed_entering_rescue_mode, exiting_rescue_mode, failed_exiting_rescue_mode, testing, failed_testing.
+- deployment_target: memory, disk.
 
 EXAMPLES:
 User: Find all generic amd64 servers that are ready.
 Query: status:(=ready) arch:(=amd64/generic)
 
-User: Show me nodes in commissioning or rescue mode owned by the admin.
-Query: status:(=commissioning,=rescue_mode) owner:(=admin)
+User: Show me servers with 16 cores and 32GB of RAM.
+Query: cpu_count:(16) mem:(30518)
 
-User: Give me virtual machines in the database pool that are not in the 10.10.0.0/24 subnet.
-Query: tags:(=virtual) pool:(=database) not_subnets:(=10.10.0.0/24)
+User: Find nodes with 2TB of storage that are not in rescue mode.
+Query: total_storage:(1907349) not_status:(=rescue_mode)
 
-User: Find machines targeting RAM that have 8 cores.
-Query: deployment_target:(=memory) cpu_count:(=8)
+User: Show me nodes in commissioning owned by admin or gr00t.
+Query: status:(=commissioning) owner:(=admin,gr00t)
 
-User: Exclude arm64 servers and find deployed machines in zone 2.
-Query: not_arch:(=arm64/generic) status:(=deployed) zone:(=zone2)
+User: Find servers with 1Gbps link speed excluding the 10.0.0.0/24 subnet.
+Query: link_speed:(1000) not_subnets:(=10.0.0.0/24)
 
-User: Show me servers with 16 cores.
-Query: cpu_count:(=16)
+User: Get machines with 4 cores, targeting disk, with 8GB or 16GB memory.
+Query: cpu_count:(4) deployment_target:(=disk) mem:(7629,15259)
 """
 
 _GRAMMAR = """# 1. The Entry Point
 root ::= filter (" " filter)*
 
 # 2. Branching Filters
-filter ::= status_filter | deployment_target_filter | subnet_filter | generic_filter
+filter ::= status_filter | deployment_target_filter | subnet_filter | numeric_filter | generic_filter
 
 # ==========================================
 # STATUS SPECIFIC RULES
 # ==========================================
 status_filter ::= "status:(" status_value_list ")"
-status_value_list ::= "=" status_value (",=" status_value)*
+status_value_list ::= "=" status_value ("," status_value)*
 status_value ::= "default" | "new" | "commissioning" | "failed_commissioning" | "missing" | "ready" | "reserved" | "deployed" | "retired" | "broken" | "deploying" | "allocated" | "failed_deployment" | "releasing" | "failed_releasing" | "disk_erasing" | "failed_disk_erasing" | "rescue_mode" | "entering_rescue_mode" | "failed_entering_rescue_mode" | "exiting_rescue_mode" | "failed_exiting_rescue_mode" | "testing" | "failed_testing"
 
 # ==========================================
 # DEPLOYMENT TARGET SPECIFIC RULES
 # ==========================================
 deployment_target_filter ::= "deployment_target:(" deployment_target_value_list ")"
-deployment_target_value_list ::= "=" deployment_target_value (",=" deployment_target_value)*
+deployment_target_value_list ::= "=" deployment_target_value ("," deployment_target_value)*
 deployment_target_value ::= "memory" | "disk"
 
 # ==========================================
@@ -68,26 +70,27 @@ deployment_target_value ::= "memory" | "disk"
 # ==========================================
 subnet_key ::= "subnets" | "not_subnets"
 subnet_filter ::= subnet_key ":(" subnet_value_list ")"
-subnet_value_list ::= "=" subnet_value (",=" subnet_value)*
-
-# The LLM must output either a valid IPv4 shape or an IPv6 shape
+subnet_value_list ::= "=" subnet_value ("," subnet_value)*
 subnet_value ::= ipv4_subnet | ipv6_subnet
-
-# IPv4: Enforces up to 3 digits per octet, separated by dots, followed by a CIDR slash and digits
-# We use [0-9] [0-9]? [0-9]? to ensure compatibility across all versions of llama.cpp
 ipv4_subnet ::= [0-9] [0-9]? [0-9]? "." [0-9] [0-9]? [0-9]? "." [0-9] [0-9]? [0-9]? "." [0-9] [0-9]? [0-9]? "/" [0-9] [0-9]?
-
-# IPv6: Enforces a mix of hex characters and colons, followed by a CIDR slash and digits
 ipv6_subnet ::= [0-9a-fA-F:]+ "/" [0-9] [0-9]? [0-9]?
 
 # ==========================================
-# GENERIC RULES (For the remaining 46 keys)
+# NUMERIC RULES (No "=" operator)
 # ==========================================
-# 'status', 'deployment_target', 'subnets', and 'not_subnets' have been removed from this list
-generic_keys ::= "agent_name" | "arch" | "cpu_count" | "cpu_speed" | "description" | "distro_series" | "domain" | "error_description" | "fabric_classes" | "fabrics" | "free_text" | "hostname" | "id" | "ip_addresses" | "link_speed" | "mac_address" | "mem" | "not_arch" | "not_cpu_count" | "not_cpu_speed" | "not_distro_series" | "not_fabric_classes" | "not_fabrics" | "not_id" | "not_in_pool" | "not_in_zone" | "not_ip_addresses" | "not_link_speed" | "not_mem" | "not_osystem" | "not_owner" | "not_pod" | "not_pod_type" | "not_tags" | "not_vlans" | "osystem" | "owner" | "parent" | "pod" | "pod_type" | "pool" | "spaces" | "tags" | "vlans" | "workloads" | "zone"
+# Keys for performance, capacity, and counts.
+numeric_keys ::= "cpu_count" | "not_cpu_count" | "mem" | "not_mem" | "cpu_speed" | "not_cpu_speed" | "link_speed" | "not_link_speed" | "physical_disk_count" | "not_physical_disk_count" | "total_storage" | "not_total_storage"
+numeric_filter ::= numeric_keys ":(" numeric_value_list ")"
+numeric_value_list ::= numeric_value ("," numeric_value)*
+numeric_value ::= [0-9]+
+
+# ==========================================
+# GENERIC RULES (For the remaining 38 keys)
+# ==========================================
+generic_keys ::= "agent_name" | "arch" | "description" | "distro_series" | "domain" | "error_description" | "fabric_classes" | "fabrics" | "free_text" | "hostname" | "id" | "ip_addresses" | "mac_address" | "not_arch" | "not_distro_series" | "not_fabric_classes" | "not_fabrics" | "not_id" | "not_in_pool" | "not_in_zone" | "not_ip_addresses" | "not_osystem" | "not_owner" | "not_pod" | "not_pod_type" | "not_tags" | "not_vlans" | "osystem" | "owner" | "parent" | "pod" | "pod_type" | "pool" | "spaces" | "tags" | "vlans" | "workloads" | "zone"
 
 generic_filter ::= generic_keys ":(" generic_value_list ")"
-generic_value_list ::= "=" generic_value (",=" generic_value)*
+generic_value_list ::= "=" generic_value ("," generic_value)*
 generic_value ::= [a-zA-Z0-9_./-]+
 """
 
