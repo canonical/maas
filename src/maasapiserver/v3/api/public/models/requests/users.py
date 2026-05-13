@@ -35,11 +35,12 @@ class UsersFiltersParams(BaseModel):
         return None
 
     def to_href_format(self) -> str:
-        return (
-            f"&username_or_email={self.username_or_email}"
-            if self.username_or_email
-            else ""
-        )
+        parts = []
+        if self.ids:
+            parts.extend([f"id={id}" for id in self.ids])
+        if self.username_or_email:
+            parts.append(f"username_or_email={self.username_or_email}")
+        return "&".join(parts) if parts else ""
 
 
 class BaseUserRequest(BaseModel):

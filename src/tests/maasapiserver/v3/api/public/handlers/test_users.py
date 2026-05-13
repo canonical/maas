@@ -250,6 +250,38 @@ class TestUsersApi(ApiCommonTests):
         assert users_response.total == 2
         assert users_response.next is None
 
+    async def test_list_users_with_username_or_email_filter(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+        )
+        services_mock.users = Mock(UsersService)
+        services_mock.users.list.return_value = ListResult[User](
+            items=[USER_1], total=2
+        )
+
+        response = await client.get(
+            f"{self.BASE_PATH}?size=1&username_or_email=example",
+        )
+        assert response.status_code == 200
+        users_response = UsersListResponse(**response.json())
+        assert users_response.total == 2
+        assert len(users_response.items) == 1
+        assert (
+            users_response.next
+            == f"{self.BASE_PATH}?page=2&size=1&username_or_email=example"
+        )
+        services_mock.users.list.assert_called_once_with(
+            page=1,
+            size=1,
+            query=QuerySpec(
+                where=UserClauseFactory.with_username_or_email_like("example")
+            ),
+        )
+
     # GET /users/{user_id}
     async def test_get_user(
         self,
