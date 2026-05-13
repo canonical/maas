@@ -49,10 +49,12 @@ type powerSvcConfig struct {
 	agentUUID string
 	// TODO: systemID should be removed.
 	systemID string
+	registry *power.Registry
+	logger   *slog.Logger
 }
 
 func newPowerService(c powerSvcConfig) (*power.PowerService, error) {
-	return power.NewPowerService(c.systemID, c.pool), nil
+	return power.NewPowerService(c.systemID, c.pool, c.registry, c.logger), nil
 }
 
 type clusterSvcConfig struct {
@@ -202,14 +204,58 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 		return fmt.Errorf("failed to initialize resolver service: %w", err)
 	}
 
+	// Power driver discovery and registration
+	socketDir := power.DefaultSocketDir()
+	if err := os.MkdirAll(socketDir, 0o755); err != nil {
+		return fmt.Errorf("create power drivers socket directory: %w", err)
+	}
+
+	powerRegistry := power.NewRegistry()
+	powerDiscovery := power.NewDiscovery(d.logger, socketDir)
+
+	// Initial scan
+	initialDrivers, err := powerDiscovery.Scan(ctx)
+	if err != nil {
+		d.logger.Warn("initial power driver scan failed", "error", err)
+	} else if len(initialDrivers) > 0 {
+		d.logger.Info("discovered power drivers on startup", "count", len(initialDrivers))
+		for _, drv := range initialDrivers {
+			powerRegistry.Register(drv)
+		}
+		// Register with region
+		regionClient := power.NewRegionClient(d.logger, d.cfg.ControllerURL,
+			client.NewTLSConfigWithCAValidationOnly(d.cert, caPool))
+		if err := regionClient.RegisterDrivers(ctx, id, initialDrivers); err != nil {
+			d.logger.Warn("failed to register initial drivers with region", "error", err)
+		}
+	}
+
+	// Set up SIGHUP signal handler for driver re-discovery
+	signalHandler := power.SetupSignalHandler(
+		d.logger, socketDir, powerRegistry, powerDiscovery,
+		power.NewRegionClient(d.logger, d.cfg.ControllerURL,
+			client.NewTLSConfigWithCAValidationOnly(d.cert, caPool)),
+		id,
+	)
+
+	// Pass registry to power service
 	powerService, err := newPowerService(powerSvcConfig{
 		agentUUID: id,
 		systemID:  d.dynCfg.SystemID,
 		pool:      &workerPool,
+		registry:  powerRegistry,
+		logger:    d.logger,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to initialize power service: %w", err)
 	}
+
+	g.Go(func() error {
+		<-ctx.Done()
+		signalHandler.Stop()
+		return nil
+	})
+
 	// API client used to communicate with MAAS controller.
 	// It is using HTTP client with TLS configuration for mTLS
 	//nolint:staticcheck // TODO: migrate to new client

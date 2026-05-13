@@ -22,7 +22,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 **Purpose**: Project initialization, shared infrastructure, and foundational Go/Python structures
 
-### T001 [P] Create Go maas-agent power package structure
+### [X] T001 [P] Create Go maas-agent power package structure
 
 **Story**: Foundational | **Parallel**: Yes
 
@@ -34,7 +34,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T002 [P] Create Python v3 internal API handler stub
+### [X] T002 [P] Create Python v3 internal API handler stub
 
 **Story**: Foundational | **Parallel**: Yes
 
@@ -46,7 +46,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T003 [P] Create maasservicelayer power drivers model file
+### [X] T003 [P] Create maasservicelayer power drivers model file
 
 **Story**: Foundational | **Parallel**: Yes
 
@@ -59,7 +59,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T004 [P] Create maasservicelayer power drivers repository stub
+### [X] T004 [P] Create maasservicelayer power drivers repository stub
 
 **Story**: Foundational | **Parallel**: Yes
 
@@ -71,7 +71,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T005 [P] Create maasservicelayer power drivers service stub
+### [X] T005 [P] Create maasservicelayer power drivers service stub
 
 **Story**: Foundational | **Parallel**: Yes
 
@@ -92,7 +92,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 **Independent Test**: Mock UNIX socket servers can be started; `ScanSocketDirectory()` discovers them; `GetMetadata()` returns valid capabilities; power action calls succeed.
 
-### T006 [P] [US1] Implement socket directory scanner in src/maasagent/internal/power/discovery.go
+### [X] T006 [P] [US1] Implement socket directory scanner in src/maasagent/internal/power/discovery.go
 
 **Description**: Implement `ScanSocketDirectory(path string) ([]SocketDriver, error)` that scans for `.sock` files, queries `GET /metadata` on each, and filters out stale sockets.
 
@@ -107,7 +107,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T007 [P] [US2] Implement HTTP-over-UNIX-socket client in src/maasagent/internal/power/socketclient.go
+### [X] T007 [P] [US2] Implement HTTP-over-UNIX-socket client in src/maasagent/internal/power/socketclient.go
 
 **Description**: HTTP client that speaks to UNIX sockets via `net/http` with custom `DialContext`.
 
@@ -120,7 +120,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T008 [P] [US1] Implement in-memory driver registry in src/maasagent/internal/power/registry.go
+### [X] T008 [P] [US1] Implement in-memory driver registry in src/maasagent/internal/power/registry.go
 
 **Description**: In-memory registry of discovered drivers, keyed by `driver_name`.
 
@@ -135,7 +135,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T009 [US3] Implement SIGHUP signal handler in src/maasagent/internal/power/signalhandler.go
+### [X] T009 [US3] Implement SIGHUP signal handler in src/maasagent/internal/power/signalhandler.go
 
 **Description**: Registers `SIGHUP` handler that triggers re-scan of socket directory.
 
@@ -151,7 +151,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T010 [P] [US7] Implement region notification client in src/maasagent/internal/power/regionclient.go
+### [X] T010 [P] [US7] Implement region notification client in src/maasagent/internal/power/regionclient.go
 
 **Description**: HTTP client for the v3 internal API (agent→region communication).
 
@@ -164,7 +164,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T011 [US3] Refactor maas-agent power service to use socket client
+### [X] T011 [US3] Refactor maas-agent power service to use socket client
 
 **Description**: Replace `maas-power` CLI invocation (`exec.Command`) with direct HTTP calls to driver sockets.
 
@@ -187,7 +187,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 **Independent Test**: MAAS snap declares `power-drivers` content slot; test driver snap connects; socket appears in shared directory; SIGHUP hook triggers maas-agent re-scan.
 
-### T012 [P] [US6] Add power-drivers content slot to snap/snapcraft.yaml
+### [X] T012 [P] [US6] Add power-drivers content slot to snap/snapcraft.yaml
 
 **Description**: Add the content slot that provides a shared directory for driver UNIX sockets.
 
@@ -199,7 +199,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T013 [P] [US6] Remove apps.power and driver stage-packages from snap/snapcraft.yaml
+### [X] T013 [P] [US6] Remove apps.power and driver stage-packages from snap/snapcraft.yaml
 
 **Description**: Remove `maas-power` app and driver-specific system dependencies from the MAAS snap.
 
@@ -211,7 +211,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T014 [P] [US5] Create connect-power-drivers snap hook
+### [X] T014 [P] [US5] Create connect-power-drivers snap hook
 
 **Description**: Custom hook triggered when a driver snap connects its `power-drivers` plug.
 
@@ -223,7 +223,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T015 [P] [US5] Create disconnect-power-drivers snap hook
+### [X] T015 [P] [US5] Create disconnect-power-drivers snap hook
 
 **Description**: Custom hook triggered when a driver snap disconnects.
 
@@ -235,7 +235,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T016 [US5] Register custom hooks in snap/snapcraft.yaml hooks section
+### [X] T016 [US5] Register custom hooks in snap/snapcraft.yaml hooks section
 
 **Description**: Register `connect-power-drivers` and `disconnect-power-drivers` hooks with network plug access.
 
@@ -246,7 +246,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T017 [US6] Update maas-agent daemon startup to create socket directory and perform initial scan
+### [X] T017 [US6] Update maas-agent daemon startup to create socket directory and perform initial scan
 
 **Description**: On `Start()`, create the runtime socket directory if it doesn't exist, perform initial driver discovery scan, and register discovered drivers with region.
 
@@ -271,7 +271,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 **Independent Test**: POST to register endpoint creates DB entries; DELETE removes them; GET returns registered drivers; `get_all_power_types()` returns merged builtin + rack-registered drivers.
 
-### T018 [P] [US7] Add rack_power_drivers table definition to src/maasservicelayer/db/tables.py
+### [X] T018 [P] [US7] Add rack_power_drivers table definition to src/maasservicelayer/db/tables.py
 
 **Description**: Define the SQLAlchemy Core table with columns: `id`, `created`, `updated`, `rack_system_id`, `driver_name`, `driver_version`, `schema` (JSONB). Add unique constraint on `(rack_system_id, driver_name, driver_version)`.
 
@@ -280,7 +280,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T019 [US7] Generate Alembic migration for rack_power_drivers table
+### [X] T019 [US7] Generate Alembic migration for rack_power_drivers table
 
 **Description**: Run `alembic revision --autogenerate -m "add rack_power_drivers table"` and test migration up/down.
 
@@ -291,7 +291,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T020 [P] [US7] Implement PowerDriver domain model and DriverSchema validation in src/maasservicelayer/models/power_drivers.py
+### [X] T020 [P] [US7] Implement PowerDriver domain model and DriverSchema validation in src/maasservicelayer/models/power_drivers.py
 
 **Description**: Complete the `PowerDriver` model with `@generate_builder()` and `DriverSchema` validation model with sub-models (`DriverAction`, `DriverSetting`, `DriverCapabilities`, `IpExtractor`).
 
@@ -300,7 +300,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T021 [P] [US7] Implement PowerDriversRepository and ClauseFactory in src/maasservicelayer/db/repositories/power_drivers.py
+### [X] T021 [P] [US7] Implement PowerDriversRepository and ClauseFactory in src/maasservicelayer/db/repositories/power_drivers.py
 
 **Description**: Complete the repository extending `BaseRepository[PowerDriver]` and `PowerDriverClauseFactory` with `with_id`, `with_rack_system_id`, `with_driver_name`, `with_driver_version`.
 
@@ -309,7 +309,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T022 [P] [US7] Implement PowerDriversService in src/maasservicelayer/services/power_drivers.py
+### [X] T022 [P] [US7] Implement PowerDriversService in src/maasservicelayer/services/power_drivers.py
 
 **Description**: Complete the service with `create()` (with `DriverSchema` validation), `delete_one()`, `delete_many()`, and `get_available_power_types()` (merged view across all racks + builtin drivers).
 
@@ -318,7 +318,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T023 [US7] Implement v3 internal API handler in src/maasapiserver/v3/api/internal/handlers/rack_power_drivers.py
+### [X] T023 [US7] Implement v3 internal API handler in src/maasapiserver/v3/api/internal/handlers/rack_power_drivers.py
 
 **Description**: Complete the handler with three endpoints:
 - `POST /agents/{agent_uuid}/power-drivers:register` — register multiple drivers (204)
@@ -333,7 +333,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T024 [US7] Update get_all_power_types() in src/maasserver/clusterrpc/driver_parameters.py
+### [X] T024 [US7] Update get_all_power_types() in src/maasserver/clusterrpc/driver_parameters.py
 
 **Description**: Modify to merge builtin driver schemas with rack-registered drivers from `rack_power_drivers` DB table.
 
@@ -352,7 +352,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 **Independent Test**: `bin/test.rack` passes; `bin/test.region` passes; no direct driver imports in provisioningserver/maasserver; `maas-power` command no longer exists.
 
-### T025 [US4] Delete external power driver files from provisioningserver
+### [X] T025 [US4] Delete external power driver files from provisioningserver
 
 **Description**: Remove 19 external driver files and corresponding test files.
 
@@ -380,7 +380,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T026 [US4] Remove maas-power CLI and update pyproject.toml
+### [X] T026 [US4] Remove maas-power CLI and update pyproject.toml
 
 **Description**: Delete `power_driver_command.py` and remove `scripts.maas-power` entry from `pyproject.toml`.
 
@@ -392,7 +392,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T027 [US4] Update registry.py to remove deleted driver imports
+### [X] T027 [US4] Update registry.py to remove deleted driver imports
 
 **Description**: Remove imports of all deleted external drivers from `PowerDriverRegistry`. Keep only `manual` and `webhook`.
 
@@ -403,7 +403,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T028 [P] [US4] Update maasserver files to remove deleted driver imports
+### [X] T028 [P] [US4] Update maasserver files to remove deleted driver imports
 
 **Description**: Remove imports of deleted drivers from maasserver files.
 
@@ -417,7 +417,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T029 [US8] Adapt builtin manual and webhook drivers for new registry
+### [X] T029 [US8] Adapt builtin manual and webhook drivers for new registry
 
 **Description**: Ensure `manual` and `webhook` builtin drivers work with the refactored `PowerDriverRegistry` (no longer eagerly populated with external drivers).
 
@@ -437,7 +437,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 **Independent Test**: Each driver repo can be cloned, built standalone, test suite runs and passes, and `snapcraft` produces a valid snap.
 
-### T030 [P] [US4] Create maas-power-driver-ipmi repository
+### [X] T030 [P] [US4] Create maas-power-driver-ipmi repository
 
 **Description**: Extract IPMI driver code, create HTTP server over UNIX socket, snapcraft config with `freeipmi-tools` dependency.
 
@@ -446,7 +446,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T031 [P] [US4] Create maas-power-driver-redfish repository
+### [X] T031 [P] [US4] Create maas-power-driver-redfish repository
 
 **Description**: Extract Redfish driver code, create HTTP server over UNIX socket, snapcraft config with `python3-requests` dependency.
 
@@ -455,7 +455,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T032 [P] [US4] Create maas-power-driver-amt repository
+### [X] T032 [P] [US4] Create maas-power-driver-amt repository
 
 **Description**: Extract AMT driver code, create HTTP server over UNIX socket, snapcraft config with `amtterm`, `wsmancli` dependencies.
 
@@ -464,7 +464,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T033 [P] [US4] Create maas-power-driver-apc repository
+### [X] T033 [P] [US4] Create maas-power-driver-apc repository
 
 **Description**: Extract APC driver code, create HTTP server over UNIX socket, snapcraft config with `snmp` dependency.
 
@@ -473,7 +473,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T034 [P] [US4] Create maas-power-driver-dli repository
+### [X] T034 [P] [US4] Create maas-power-driver-dli repository
 
 **Description**: Extract DLI driver code, create HTTP server over UNIX socket, snapcraft config with `wget` dependency.
 
@@ -482,7 +482,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T035 [P] [US4] Create maas-power-driver-eaton repository
+### [X] T035 [P] [US4] Create maas-power-driver-eaton repository
 
 **Description**: Extract Eaton driver code, create HTTP server over UNIX socket.
 
@@ -491,7 +491,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T036 [P] [US4] Create maas-power-driver-hmc repository
+### [X] T036 [P] [US4] Create maas-power-driver-hmc repository
 
 **Description**: Extract HMC driver code, create HTTP server over UNIX socket, snapcraft config with `python3-zhmcclient` dependency.
 
@@ -500,7 +500,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T037 [P] [US4] Create maas-power-driver-hmcz repository
+### [X] T037 [P] [US4] Create maas-power-driver-hmcz repository
 
 **Description**: Extract HMCz driver code, create HTTP server over UNIX socket, snapcraft config with `python3-zhmcclient` dependency.
 
@@ -509,7 +509,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T038 [P] [US4] Create maas-power-driver-moonshot repository
+### [X] T038 [P] [US4] Create maas-power-driver-moonshot repository
 
 **Description**: Extract Moonshot driver code, create HTTP server over UNIX socket, snapcraft config with `ipmitool` dependency.
 
@@ -518,7 +518,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T039 [P] [US4] Create maas-power-driver-mscm repository
+### [X] T039 [P] [US4] Create maas-power-driver-mscm repository
 
 **Description**: Extract MSCM driver code, create HTTP server over UNIX socket, snapcraft config with `python3-zhmcclient` dependency.
 
@@ -527,7 +527,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T040 [P] [US4] Create maas-power-driver-msftocs repository
+### [X] T040 [P] [US4] Create maas-power-driver-msftocs repository
 
 **Description**: Extract MSFTOCS driver code, create HTTP server over UNIX socket.
 
@@ -536,7 +536,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T041 [P] [US4] Create maas-power-driver-openbmc repository
+### [X] T041 [P] [US4] Create maas-power-driver-openbmc repository
 
 **Description**: Extract OpenBMC driver code, create HTTP server over UNIX socket, snapcraft config with `python3-requests` dependency.
 
@@ -545,7 +545,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T042 [P] [US4] Create maas-power-driver-proxmox repository
+### [X] T042 [P] [US4] Create maas-power-driver-proxmox repository
 
 **Description**: Extract Proxmox driver code, create HTTP server over UNIX socket.
 
@@ -554,7 +554,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T043 [P] [US4] Create maas-power-driver-raritan repository
+### [X] T043 [P] [US4] Create maas-power-driver-raritan repository
 
 **Description**: Extract Raritan driver code, create HTTP server over UNIX socket.
 
@@ -563,7 +563,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T044 [P] [US4] Create maas-power-driver-recs repository
+### [X] T044 [P] [US4] Create maas-power-driver-recs repository
 
 **Description**: Extract RECS driver code, create HTTP server over UNIX socket.
 
@@ -572,7 +572,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T045 [P] [US4] Create maas-power-driver-seamicro repository
+### [X] T045 [P] [US4] Create maas-power-driver-seamicro repository
 
 **Description**: Extract Seamount driver code, create HTTP server over UNIX socket, snapcraft config with `python3-seamicroclient` dependency.
 
@@ -581,7 +581,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T046 [P] [US4] Create maas-power-driver-ucsm repository
+### [X] T046 [P] [US4] Create maas-power-driver-ucsm repository
 
 **Description**: Extract UCSM driver code, create HTTP server over UNIX socket.
 
@@ -590,7 +590,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T047 [P] [US4] Create maas-power-driver-vmware repository
+### [X] T047 [P] [US4] Create maas-power-driver-vmware repository
 
 **Description**: Extract VMware driver code, create HTTP server over UNIX socket, snapcraft config with `python3-pyvmomi` dependency.
 
@@ -599,7 +599,7 @@ description: "Task list for power drivers extraction feature (Go maas-agent + Py
 
 ---
 
-### T048 [P] [US4] Create maas-power-driver-wedge repository
+### [X] T048 [P] [US4] Create maas-power-driver-wedge repository
 
 **Description**: Extract Wedge driver code, create HTTP server over UNIX socket.
 

@@ -16,15 +16,11 @@
 package power
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"reflect"
-	"strings"
+	"log/slog"
 	"time"
 
 	"go.temporal.io/sdk/activity"
@@ -41,36 +37,38 @@ var (
 	// and the machine is found in an incorrect power state
 	ErrWrongPowerState = errors.New("BMC is in the wrong power state")
 
-	// procFactory holds the implementation of a function that will return a
-	// command that can be called with Run(). This is used to inject the actual
-	// `os/exec`-based implementation within `configure()`, or a mocked
-	// implementation for unit testing.
-	procFactory powerProcFactory
-
-	// pathFactory holds the implementation of a function that will return a
-	// command that attempts to resolve the full path of a program binary.
-	// This is used to inject the actual `os/exec`-based implementation within
-	// `configure()`, or a mocked implementation for unit testing.
-	pathFactory osPathFactory
+	// socketClientFactory is a function that creates a socketClient.
+	// It can be overridden in tests to inject a mock client.
+	socketClientFactory = func(logger *slog.Logger, socketPath string) socketClient {
+		return NewSocketClient(logger, socketPath)
+	}
 )
 
-type powerProc interface {
-	Run() error
+// socketClient defines the interface for communicating with a power driver.
+type socketClient interface {
+	On(ctx context.Context, systemID string, context map[string]any) (map[string]any, error)
+	Off(ctx context.Context, systemID string, context map[string]any) (map[string]any, error)
+	Cycle(ctx context.Context, systemID string, context map[string]any) (map[string]any, error)
+	Query(ctx context.Context, systemID string, context map[string]any) (map[string]any, error)
+	Reset(ctx context.Context, systemID string, context map[string]any) (map[string]any, error)
+	SetBootOrder(ctx context.Context, systemID string, context map[string]any, order []string) (map[string]any, error)
 }
-
-type powerProcFactory func(ctx context.Context, stdout, stderr *bytes.Buffer, name string, arg ...string) powerProc
-
-type osPathFactory func(file string) (string, error)
 
 // PowerService is a service that knows how to reach BMC to perform power
 // operations. Invocation of this service normally should happen via Temporal.
 type PowerService struct {
-	pool *worker.WorkerPool
+	pool     *worker.WorkerPool
+	systemID string
+	registry *Registry
+	logger   *slog.Logger
 }
 
-func NewPowerService(systemID string, pool *worker.WorkerPool) *PowerService {
+func NewPowerService(systemID string, pool *worker.WorkerPool, registry *Registry, logger *slog.Logger) *PowerService {
 	return &PowerService{
-		pool: pool,
+		pool:     pool,
+		systemID: systemID,
+		registry: registry,
+		logger:   logger,
 	}
 }
 
@@ -117,20 +115,6 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 		Get(ctx, &vlansResult)
 	if err != nil {
 		return err
-	}
-
-	procFactory = func(ctx context.Context, stdout, stderr *bytes.Buffer, name string, arg ...string) powerProc {
-		//nolint: gosec // G204: variable comes from power driver config (regiond)
-		cmd := exec.CommandContext(ctx, name, arg...)
-		cmd.Stdout = stdout
-		cmd.Stderr = stderr
-
-		return cmd
-	}
-
-	//nolint:gocritic // The 'unlambda' check fails if enabled - this interface-based implementation is needed for dependency injection and unit testing
-	pathFactory = func(file string) (string, error) {
-		return exec.LookPath(file)
 	}
 
 	activities := map[string]any{
@@ -231,72 +215,116 @@ type PowerResetResult struct {
 }
 
 func (s *PowerService) PowerOn(ctx context.Context, param PowerOnParam) (*PowerOnResult, error) {
-	out, err := powerCommand(ctx, "on", param.IsDPU, param.DriverType, param.DriverOpts)
+	driver, ok := s.registry.Get(param.DriverType)
+	if !ok {
+		return nil, fmt.Errorf("power driver %q not found in registry", param.DriverType)
+	}
+
+	client := socketClientFactory(s.logger, driver.SocketPath)
+	result, err := client.On(ctx, "", param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	out = strings.TrimSpace(out)
+	state, _ := result["state"].(string)
+	if state == "" {
+		state = "on"
+	}
 
-	if out != "on" {
+	if state != "on" {
 		return nil, ErrWrongPowerState
 	}
 
-	return &PowerOnResult{State: out}, nil
+	return &PowerOnResult{State: state}, nil
 }
+
 func (s *PowerService) PowerOff(ctx context.Context, param PowerOffParam) (*PowerOffResult, error) {
-	out, err := powerCommand(ctx, "off", param.IsDPU, param.DriverType, param.DriverOpts)
+	driver, ok := s.registry.Get(param.DriverType)
+	if !ok {
+		return nil, fmt.Errorf("power driver %q not found in registry", param.DriverType)
+	}
+
+	client := socketClientFactory(s.logger, driver.SocketPath)
+	result, err := client.Off(ctx, "", param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	out = strings.TrimSpace(out)
+	state, _ := result["state"].(string)
+	if state == "" {
+		state = "off"
+	}
 
-	if out != "off" {
+	if state != "off" {
 		return nil, ErrWrongPowerState
 	}
 
-	return &PowerOffResult{State: out}, nil
+	return &PowerOffResult{State: state}, nil
 }
+
 func (s *PowerService) PowerCycle(ctx context.Context, param PowerCycleParam) (*PowerCycleResult, error) {
-	out, err := powerCommand(ctx, "cycle", param.IsDPU, param.DriverType, param.DriverOpts)
+	driver, ok := s.registry.Get(param.DriverType)
+	if !ok {
+		return nil, fmt.Errorf("power driver %q not found in registry", param.DriverType)
+	}
+
+	client := socketClientFactory(s.logger, driver.SocketPath)
+	result, err := client.Cycle(ctx, "", param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	out = strings.TrimSpace(out)
+	state, _ := result["state"].(string)
+	if state == "" {
+		state = "on"
+	}
 
-	if out != "on" {
+	if state != "on" {
 		return nil, ErrWrongPowerState
 	}
 
-	return &PowerCycleResult{State: out}, nil
+	return &PowerCycleResult{State: state}, nil
 }
 
 func (s *PowerService) PowerQuery(ctx context.Context, param PowerQueryParam) (*PowerQueryResult, error) {
-	out, err := powerCommand(ctx, "status", param.IsDPU, param.DriverType, param.DriverOpts)
+	driver, ok := s.registry.Get(param.DriverType)
+	if !ok {
+		return nil, fmt.Errorf("power driver %q not found in registry", param.DriverType)
+	}
+
+	client := socketClientFactory(s.logger, driver.SocketPath)
+	result, err := client.Query(ctx, "", param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	out = strings.TrimSpace(out)
+	state, _ := result["state"].(string)
 
-	return &PowerQueryResult{State: out}, nil
+	return &PowerQueryResult{State: state}, nil
 }
 
 func (s *PowerService) PowerReset(ctx context.Context, param PowerResetParam) (*PowerResetResult, error) {
-	out, err := powerCommand(ctx, "reset", param.IsDPU, param.DriverType, param.DriverOpts)
+	driver, ok := s.registry.Get(param.DriverType)
+	if !ok {
+		return nil, fmt.Errorf("power driver %q not found in registry", param.DriverType)
+	}
+
+	client := socketClientFactory(s.logger, driver.SocketPath)
+	result, err := client.Reset(ctx, "", param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	out = strings.TrimSpace(out)
+	state, _ := result["state"].(string)
+	if state == "" {
+		state = "on"
+	}
 
-	if out != "on" {
+	if state != "on" {
 		return nil, ErrWrongPowerState
 	}
 
-	return &PowerResetResult{State: out}, nil
+	return &PowerResetResult{State: state}, nil
 }
 
 type SetBootOrderParam struct {
@@ -310,118 +338,22 @@ func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam
 
 	log.Info("setting boot order of " + param.SystemID)
 
-	_, err := powerCommand(ctx, "set-boot-order", false, param.PowerParams.DriverType, param.PowerParams.DriverOpts)
+	driver, ok := s.registry.Get(param.PowerParams.DriverType)
+	if !ok {
+		return fmt.Errorf("power driver %q not found in registry", param.PowerParams.DriverType)
+	}
 
+	// Convert order maps to JSON strings for the socket client
+	orderStrs := make([]string, len(param.Order))
+	for i, device := range param.Order {
+		devData, err := json.Marshal(device)
+		if err != nil {
+			return fmt.Errorf("marshal boot order device: %w", err)
+		}
+		orderStrs[i] = string(devData)
+	}
+
+	client := socketClientFactory(s.logger, driver.SocketPath)
+	_, err := client.SetBootOrder(ctx, param.SystemID, param.PowerParams.DriverOpts, orderStrs)
 	return err
-}
-
-func powerCommand(ctx context.Context, action string, isDPU bool, driver string, opts map[string]any, bootOrder ...map[string]any) (string, error) {
-	log := activity.GetLogger(ctx)
-
-	maasPowerCLI, err := pathFactory(powerCLIExecutableName())
-	if err != nil {
-		log.Error("MAAS power CLI executable path lookup failure",
-			"error", err)
-
-		return "", err
-	}
-
-	var args []string
-
-	args = append(args, action)
-
-	if isDPU {
-		args = append(args, "--is-dpu")
-	}
-
-	args = append(args, driver)
-
-	formattedOpts := fmtPowerOpts(opts)
-
-	args = append(args, formattedOpts...)
-
-	if action == "set-boot-order" {
-		bootOrderStr := make([]string, len(bootOrder))
-
-		for i, device := range bootOrder {
-			var dev []byte
-
-			dev, err = json.Marshal(device)
-			if err != nil {
-				return "", err
-			}
-
-			bootOrderStr[i] = string(dev)
-		}
-
-		args = append(args, "--order", "'"+strings.Join(bootOrderStr, ",")+"'")
-	}
-
-	log.Debug("Executing MAAS power CLI", "args", args)
-
-	var stdout, stderr bytes.Buffer
-
-	cmd := procFactory(ctx, &stdout, &stderr, maasPowerCLI, args...)
-
-	err = cmd.Run()
-	if err != nil {
-		kv := []any{"error", err}
-		if stdout.String() != "" {
-			kv = append(kv, "stdout", stdout)
-		}
-
-		if stderr.String() != "" {
-			kv = append(kv, "stderr", stderr)
-		}
-
-		log.Error("Error executing power command", kv...)
-
-		return "", err
-	}
-
-	return stdout.String(), nil
-}
-
-// powerCLIExecutableName returns correct MAAS Power CLI executable name
-// depending on the installation type (snap or deb package)
-func powerCLIExecutableName() string {
-	if os.Getenv("SNAP") == "" {
-		return "maas.power"
-	}
-
-	return "maas-power"
-}
-
-func fmtPowerOpts(opts map[string]any) []string {
-	var res []string
-
-	for k, v := range opts {
-		// skip 'system_id' as it is not required by any power driver contract.
-		// it is added by the region when driver is called directly (not via CLI)
-		// also skip 'null' values (some power options might have them empty)
-		if k == "system_id" || v == nil {
-			continue
-		}
-
-		k = strings.ReplaceAll(k, "_", "-")
-
-		switch reflect.TypeOf(v).Kind() {
-		case reflect.Slice:
-			s := reflect.ValueOf(v)
-			for i := 0; i < s.Len(); i++ {
-				vStr := fmt.Sprintf("%v", s.Index(i))
-
-				res = append(res, fmt.Sprintf("--%s", k), vStr)
-			}
-		default:
-			vStr := fmt.Sprintf("%v", v)
-			if len(vStr) == 0 {
-				continue
-			}
-
-			res = append(res, fmt.Sprintf("--%s", k), vStr)
-		}
-	}
-
-	return res
 }
