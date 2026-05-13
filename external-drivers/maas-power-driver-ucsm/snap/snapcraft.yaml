@@ -5,21 +5,15 @@ description: MAAS power driver for Cisco UCSM BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
   power-driver:
     interface: content
     content: power-driver
+    target: $SNAP_COMMON/power-driver
 
 parts:
   ucsm-driver:
     plugin: python
     source: .
-services:
-  ucsm-driver:
-    command: bin/ucsm-driver start
-    plugs:
-      - network
-    sockets:
-      ucsm:
-        listen-stream: $SNAP_COMMON/power-driver/ucsm.sock

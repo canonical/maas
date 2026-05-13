@@ -5,11 +5,13 @@ description: MAAS power driver for APC BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
   power-driver:
     interface: content
     content: power-driver
+    target: $SNAP_COMMON/power-driver
 
 parts:
   apc-driver:
@@ -17,11 +19,3 @@ parts:
     source: .
     stage-packages:
       - snmp
-services:
-  apc-driver:
-    command: bin/apc-driver start
-    plugs:
-      - network
-    sockets:
-      apc:
-        listen-stream: $SNAP_COMMON/power-driver/apc.sock

@@ -5,21 +5,15 @@ description: MAAS power driver for OpenBMC BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
   power-driver:
     interface: content
     content: power-driver
+    target: $SNAP_COMMON/power-driver
 
 parts:
   openbmc-driver:
     plugin: python
     source: .
-services:
-  openbmc-driver:
-    command: bin/openbmc-driver start
-    plugs:
-      - network
-    sockets:
-      openbmc:
-        listen-stream: $SNAP_COMMON/power-driver/openbmc.sock

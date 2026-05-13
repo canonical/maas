@@ -5,11 +5,13 @@ description: MAAS power driver for Intel AMT BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
   power-driver:
     interface: content
     content: power-driver
+    target: $SNAP_COMMON/power-driver
 
 parts:
   amt-driver:
@@ -18,11 +20,3 @@ parts:
     stage-packages:
       - amtterm
       - wsmancli
-services:
-  amt-driver:
-    command: bin/amt-driver start
-    plugs:
-      - network
-    sockets:
-      amt:
-        listen-stream: $SNAP_COMMON/power-driver/amt.sock

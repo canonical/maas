@@ -5,21 +5,15 @@ description: MAAS power driver for RECS BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
   power-driver:
     interface: content
     content: power-driver
+    target: $SNAP_COMMON/power-driver
 
 parts:
   recs-driver:
     plugin: python
     source: .
-services:
-  recs-driver:
-    command: bin/recs-driver start
-    plugs:
-      - network
-    sockets:
-      recs:
-        listen-stream: $SNAP_COMMON/power-driver/recs.sock

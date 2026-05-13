@@ -5,21 +5,15 @@ description: MAAS power driver for Raritan BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
   power-driver:
     interface: content
     content: power-driver
+    target: $SNAP_COMMON/power-driver
 
 parts:
   raritan-driver:
     plugin: python
     source: .
-services:
-  raritan-driver:
-    command: bin/raritan-driver start
-    plugs:
-      - network
-    sockets:
-      raritan:
-        listen-stream: $SNAP_COMMON/power-driver/raritan.sock

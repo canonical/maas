@@ -5,21 +5,15 @@ description: MAAS power driver for HP Power Distribution Unit Wedge BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
   power-driver:
     interface: content
     content: power-driver
+    target: $SNAP_COMMON/power-driver
 
 parts:
   wedge-driver:
     plugin: python
     source: .
-services:
-  wedge-driver:
-    command: bin/wedge-driver start
-    plugs:
-      - network
-    sockets:
-      wedge:
-        listen-stream: $SNAP_COMMON/power-driver/wedge.sock

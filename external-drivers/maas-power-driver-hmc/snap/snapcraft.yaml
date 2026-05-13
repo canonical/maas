@@ -5,21 +5,15 @@ description: MAAS power driver for IBM HMC BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
   power-driver:
     interface: content
     content: power-driver
+    target: $SNAP_COMMON/power-driver
 
 parts:
   hmc-driver:
     plugin: python
     source: .
-services:
-  hmc-driver:
-    command: bin/hmc-driver start
-    plugs:
-      - network
-    sockets:
-      hmc:
-        listen-stream: $SNAP_COMMON/power-driver/hmc.sock
