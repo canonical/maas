@@ -3,7 +3,7 @@ name = "maas-power-driver-redfish"
 version = "1.0.0"
 description = "MAAS power driver for Redfish"
 requires-python = ">=3.11"
-dependencies = ["aiohttp>=3.9"]
+dependencies = ["aiohttp>=3.9", "requests"]
 
 [project.scripts]
 redfish-driver = "maas_power_driver_redfish.server:main"
@@ -14,6 +14,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+maas_power_driver_redfish = ["metadata.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

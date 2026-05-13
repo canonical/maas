@@ -10,8 +10,9 @@ build-base: devel
 apps:
   redfish-driver:
     command: bin/redfish-driver start
+    daemon: simple
     plugs:
-      - network
+      - network-bind
       - power-drivers
     sockets:
       redfish:
@@ -27,5 +28,8 @@ parts:
   redfish-driver:
     plugin: python
     source: .
-    build-environment:
-      - PARTS_PYTHON_INTERPRETER: python3
+    build-packages:
+      - python3
+      - python3.14-venv
+    stage-packages:
+      - python3.14-venv

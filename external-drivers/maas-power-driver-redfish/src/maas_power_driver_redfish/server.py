@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import signal
+import socket
 from pathlib import Path
 
 from aiohttp import web
@@ -204,11 +205,17 @@ class RedfishDriverServer:
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
 
-        # Remove stale socket
-        if os.path.exists(self.socket_path):
-            os.unlink(self.socket_path)
+        listen_fds = int(os.environ.get("LISTEN_FDS", 0))
+        if listen_fds >= 1:
+            # Socket-activated: systemd passes the bound socket as fd 3.
+            sock = socket.fromfd(3, socket.AF_UNIX, socket.SOCK_STREAM)
+            self.site = web.SockSite(self.runner, sock)
+        else:
+            # Direct invocation: create and bind the socket ourselves.
+            if os.path.exists(self.socket_path):
+                os.unlink(self.socket_path)
+            self.site = web.UnixSite(self.runner, self.socket_path)
 
-        self.site = web.UnixSite(self.runner, self.socket_path)
         await self.site.start()
 
         logger.info("Redfish power driver listening on %s", self.socket_path)
