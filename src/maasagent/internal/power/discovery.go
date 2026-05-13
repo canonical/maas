@@ -56,10 +56,10 @@ func NewDiscovery(logger *slog.Logger, socketDir string) *Discovery {
 	}
 }
 
-// DefaultSocketDir returns the default power drivers socket directory
+// DefaultSocketDir returns the default power driver socket directory
 // based on the installation type (snap or deb).
 func DefaultSocketDir() string {
-	return filepath.Join(pathutil.RunDir(), "power-drivers")
+	return filepath.Join(pathutil.RunDir(), "power-driver")
 }
 
 // Scan scans the socket directory for .sock files and queries each for metadata.

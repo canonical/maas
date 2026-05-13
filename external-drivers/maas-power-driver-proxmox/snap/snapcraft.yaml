@@ -7,9 +7,9 @@ confinement: strict
 base: core26
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
 
 parts:
   proxmox-driver:
@@ -22,4 +22,4 @@ services:
       - network
     sockets:
       proxmox:
-        listen-stream: $SNAP_COMMON/power-drivers/proxmox.sock
+        listen-stream: $SNAP_COMMON/power-driver/proxmox.sock

@@ -228,7 +228,7 @@ def main():
     )
     parser.add_argument(
         "--socket-path",
-        default="/var/snap/maas-power-driver-apc/common/power-drivers/apc.sock",
+        default="/var/snap/maas-power-driver-apc/common/power-driver/apc.sock",
         help="Path to the UNIX domain socket",
     )
     parser.add_argument(

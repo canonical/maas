@@ -7,9 +7,9 @@ confinement: strict
 base: core26
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
 
 parts:
   eaton-driver:
@@ -22,4 +22,4 @@ services:
       - network
     sockets:
       eaton:
-        listen-stream: $SNAP_COMMON/power-drivers/eaton.sock
+        listen-stream: $SNAP_COMMON/power-driver/eaton.sock

@@ -228,7 +228,7 @@ def main():
     )
     parser.add_argument(
         "--socket-path",
-        default="/var/snap/maas-power-driver-proxmox/common/power-drivers/proxmox.sock",
+        default="/var/snap/maas-power-driver-proxmox/common/power-driver/proxmox.sock",
         help="Path to the UNIX domain socket",
     )
     parser.add_argument(

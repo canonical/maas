@@ -58,9 +58,9 @@ type RegisterDriverPayload struct {
 }
 
 // RegisterDrivers notifies the region about discovered power drivers for an agent.
-// It POSTs to /MAAS/api/v3/internal/agents/{agent_uuid}/power-drivers:register.
+// It POSTs to /MAAS/api/v3/internal/agents/{agent_uuid}/power-driver:register.
 func (c *RegionClient) RegisterDrivers(ctx context.Context, agentUUID string, drivers []SocketDriver) error {
-	path := fmt.Sprintf("/MAAS/api/v3/internal/agents/%s/power-drivers:register", url.PathEscape(agentUUID))
+	path := fmt.Sprintf("/MAAS/api/v3/internal/agents/%s/power-driver:register", url.PathEscape(agentUUID))
 
 	payloads := make([]RegisterDriverPayload, 0, len(drivers))
 	for _, d := range drivers {
@@ -100,10 +100,10 @@ func (c *RegionClient) RegisterDrivers(ctx context.Context, agentUUID string, dr
 }
 
 // UnregisterDriver notifies the region that a power driver has been removed.
-// It DELETEs to /MAAS/api/v3/internal/agents/{agent_uuid}/power-drivers/{driver_name}/{version}.
+// It DELETEs to /MAAS/api/v3/internal/agents/{agent_uuid}/power-driver/{driver_name}/{version}.
 func (c *RegionClient) UnregisterDriver(ctx context.Context, agentUUID, driverName, version string) error {
 	path := fmt.Sprintf(
-		"/MAAS/api/v3/internal/agents/%s/power-drivers/%s/%s",
+		"/MAAS/api/v3/internal/agents/%s/power-driver/%s/%s",
 		url.PathEscape(agentUUID),
 		url.PathEscape(driverName),
 		url.PathEscape(version),

@@ -20,7 +20,7 @@ class RackPowerDriversHandler(Handler):
     """v3 internal API handler for rack power driver lifecycle."""
 
     @handler(
-        path="/agents/{agent_uuid}/power-drivers:register",
+        path="/agents/{agent_uuid}/power-driver:register",
         methods=["POST"],
         responses={
             204: {},
@@ -50,7 +50,7 @@ class RackPowerDriversHandler(Handler):
         await services.power_drivers.upsert_many(builders)
 
     @handler(
-        path="/agents/{agent_uuid}/power-drivers/{driver_name}/{version}",
+        path="/agents/{agent_uuid}/power-driver/{driver_name}/{version}",
         methods=["DELETE"],
         responses={
             204: {},

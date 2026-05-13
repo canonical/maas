@@ -228,7 +228,7 @@ def main():
     )
     parser.add_argument(
         "--socket-path",
-        default="/var/snap/maas-power-driver-redfish/common/power-drivers/redfish.sock",
+        default="/var/snap/maas-power-driver-redfish/common/power-driver/redfish.sock",
         help="Path to the UNIX domain socket",
     )
     parser.add_argument(

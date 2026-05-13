@@ -7,9 +7,9 @@ confinement: strict
 base: core26
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
 
 parts:
   apc-driver:
@@ -24,4 +24,4 @@ services:
       - network
     sockets:
       apc:
-        listen-stream: $SNAP_COMMON/power-drivers/apc.sock
+        listen-stream: $SNAP_COMMON/power-driver/apc.sock

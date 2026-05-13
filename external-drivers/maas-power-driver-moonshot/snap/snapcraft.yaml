@@ -7,9 +7,9 @@ confinement: strict
 base: core26
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
 
 parts:
   moonshot-driver:
@@ -24,4 +24,4 @@ services:
       - network
     sockets:
       moonshot:
-        listen-stream: $SNAP_COMMON/power-drivers/moonshot.sock
+        listen-stream: $SNAP_COMMON/power-driver/moonshot.sock

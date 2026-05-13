@@ -7,9 +7,9 @@ confinement: strict
 base: core26
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
 
 parts:
   amt-driver:
@@ -25,4 +25,4 @@ services:
       - network
     sockets:
       amt:
-        listen-stream: $SNAP_COMMON/power-drivers/amt.sock
+        listen-stream: $SNAP_COMMON/power-driver/amt.sock

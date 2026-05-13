@@ -7,9 +7,9 @@ confinement: strict
 base: core26
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
 
 parts:
   dli-driver:
@@ -24,4 +24,4 @@ services:
       - network
     sockets:
       dli:
-        listen-stream: $SNAP_COMMON/power-drivers/dli.sock
+        listen-stream: $SNAP_COMMON/power-driver/dli.sock

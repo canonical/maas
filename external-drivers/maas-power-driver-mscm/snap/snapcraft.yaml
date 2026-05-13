@@ -7,9 +7,9 @@ confinement: strict
 base: core26
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
 
 parts:
   mscm-driver:
@@ -22,4 +22,4 @@ services:
       - network
     sockets:
       mscm:
-        listen-stream: $SNAP_COMMON/power-drivers/mscm.sock
+        listen-stream: $SNAP_COMMON/power-driver/mscm.sock
