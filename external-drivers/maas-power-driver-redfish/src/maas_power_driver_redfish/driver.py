@@ -281,11 +281,6 @@ class RedfishPowerDriver:
         self._power(session, url_base, node_id, POWER_CHANGE_RESET)
         self._wait_for_status(session, url_base, node_id, "on")
 
-    def set_boot_order(self, system_id: str, context: dict) -> None:
-        """Set boot order (not implemented for basic Redfish).
-
-        The monorepo Redfish driver supports PXE boot via set_pxe_boot,
-        but that requires PATCH to the system resource with etag handling.
-        This is deferred for now.
-        """
-        logger.warning("set_boot_order is not supported by the Redfish driver")
+    def set_boot_order(self, system_id: str, context: dict, order: list) -> None:
+        """Set boot order is not supported by the Redfish driver."""
+        raise NotImplementedError("set_boot_order is not supported by the Redfish driver")

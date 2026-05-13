@@ -201,9 +201,24 @@ class PowerDriverHandler(BaseHTTPRequestHandler):
     def handle_set_boot_order(self):
         """Handle POST /set-boot-order."""
         try:
-            system_id, context = self._get_params()
-            self.driver.set_boot_order(system_id, context)
+            body = self.read_json_body()
+            if body is None:
+                raise ValueError("Missing request body")
+            system_id = body.get("system_id")
+            if not system_id:
+                raise ValueError("Missing 'system_id' parameter")
+            context = body.get("context", {})
+            if not context:
+                raise ValueError("Missing 'context' parameter")
+            order = body.get("order", [])
+            self.driver.set_boot_order(system_id, context, order)
             self.send_json(200, {"status": "ok"})
+        except NotImplementedError as e:
+            self.send_json(501, {
+                "status": "error",
+                "error_type": "not_implemented",
+                "error_message": str(e),
+            })
         except ValueError as e:
             self.send_json(400, {
                 "status": "error",
