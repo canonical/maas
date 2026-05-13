@@ -23,6 +23,7 @@ from maasapiserver.v3.api.public.handlers.fabrics import FabricsHandler
 from maasapiserver.v3.api.public.handlers.files import FilesHandler
 from maasapiserver.v3.api.public.handlers.interfaces import InterfacesHandler
 from maasapiserver.v3.api.public.handlers.ipranges import IPRangesHandler
+from maasapiserver.v3.api.public.handlers.llm_search import LLMSearchHandler
 from maasapiserver.v3.api.public.handlers.machines import MachinesHandler
 from maasapiserver.v3.api.public.handlers.nos import NOSInstallerHandler
 from maasapiserver.v3.api.public.handlers.notifications import (
@@ -71,6 +72,7 @@ APIv3 = API(
         FilesHandler(),
         InterfacesHandler(),
         IPRangesHandler(),
+        LLMSearchHandler(),
         MachinesHandler(),
         NOSInstallerHandler(),
         NotificationsHandler(),
