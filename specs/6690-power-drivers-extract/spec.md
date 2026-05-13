@@ -10,6 +10,7 @@
 - **Language-agnostic**: Power drivers may be implemented in any programming language (Python, Go, Rust, etc.). The interface between MAAS and drivers is a JSON-based protocol, not a language-specific API.
 - **Snap plug/slot discovery**: Drivers are distributed as separate snaps. When a driver snap connects to the MAAS snap (via a content plug and slot), it exposes driver metadata as a JSON file at a known path. MAAS discovers drivers by scanning these JSON files at runtime.
 - **`maas-power` CLI deprecated**: The `maas-power` command (currently in `provisioningserver/power_driver_command.py`) is deprecated. Driver snaps provide their own CLI tools for testing and direct invocation. MAAS no longer ships a unified power CLI.
+- **Independent repositories**: Each driver group lives in its own git repository. Driver code, tests, documentation, and snapcraft configuration are all maintained in the driver's repository — not in the MAAS monorepo.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -62,7 +63,23 @@
 4. **Given** a driver crashes or becomes unresponsive, **When** MAAS attempts to invoke it, **Then** MAAS receives a clear error and reports it to the user
 5. **Given** `provisioningserver` source code, **When** searched for direct driver imports, **Then** no import of specific power driver implementations exists (only the protocol client and registry)
 
-### User Story 4 - Power drivers are distributed as standalone snaps (Priority: P2)
+### User Story 4 - Power drivers live in independent repositories (Priority: P1)
+
+**Description**: Each power driver (or group of related drivers) is maintained in its own git repository. The repository contains the driver implementation, its test suite, documentation, and snapcraft configuration. Driver teams can develop, version, and release independently of MAAS core.
+
+**Why this priority**: Independent repositories enable independent versioning, separate CI pipelines, and clear ownership. Without this, drivers cannot truly be maintained separately from MAAS.
+
+**Independent Test**: Can be tested by verifying that a driver repository contains its own test suite (runnable without the MAAS monorepo), its own documentation, and its own `snap/snapcraft.yaml` for building the driver snap.
+
+**Acceptance Scenarios**:
+
+1. **Given** a driver repository (e.g., `maas-power-driver-ipmi`), **When** cloned and built standalone, **Then** its test suite runs and passes without requiring the MAAS monorepo
+2. **Given** a driver repository, **When** inspected, **Then** it contains documentation describing the driver's supported BMC types, configuration parameters, and known limitations
+3. **Given** a driver repository, **When** `snapcraft` is run, **Then** a driver snap is produced that can be installed and connected to MAAS
+4. **Given** a driver repository, **When** its version is bumped and released, **Then** the new driver snap can be released without touching the MAAS repository
+5. **Given** the MAAS monorepo after extraction, **When** searched for driver implementation code, **Then** no driver implementation files exist (only the protocol client, registry, and builtin `manual` driver remain)
+
+### User Story 5 - Power drivers are distributed as standalone snaps (Priority: P2)
 
 **Description**: Each power driver (or group of related drivers) is packaged as a standalone snap. The snap includes the driver executable, its metadata JSON, and any system-level dependencies. Installing a driver is `snap install` + `snap connect`.
 
@@ -77,7 +94,7 @@
 3. **Given** a driver snap is removed, **When** `snap remove driver` is run, **Then** the driver is no longer available to MAAS
 4. **Given** a driver snap is updated, **When** `snap refresh driver` is run, **Then** MAAS picks up the updated driver metadata and version
 
-### User Story 5 - The MAAS snap exposes a content slot for driver discovery (Priority: P1)
+### User Story 6 - The MAAS snap exposes a content slot for driver discovery (Priority: P1)
 
 **Description**: The MAAS snap declares a content slot (`power-drivers`) that driver snaps connect to via a content plug. When connected, the slot provides MAAS with access to driver metadata JSON files. The slot path is a directory that driver snaps populate with their metadata.
 
@@ -92,7 +109,7 @@
 3. **Given** multiple driver snaps connected, **When** MAAS scans the slot path, **Then** each driver's metadata JSON is found and loaded
 4. **Given** a driver snap is disconnected, **When** MAAS scans the slot path, **Then** the disconnected driver's metadata is no longer present
 
-### User Story 6 - Existing power functionality is preserved after extraction (Priority: P1)
+### User Story 7 - Existing power functionality is preserved after extraction (Priority: P1)
 
 **Description**: After moving drivers to separate snaps, all existing power actions (on, off, query, cycle, reset, set-boot-order) continue to work as before. RPC power commands and UI power controls function identically. The `maas-power` CLI is deprecated — driver snaps provide their own CLI tools for testing and direct invocation.
 
@@ -116,8 +133,9 @@
 - System-level dependencies (e.g., `freeipmi-tools`, `amtterm`) are included in the driver snap, not the MAAS snap
 - The `manual` power driver remains builtin in MAAS core (no external dependencies, always available)
 - Pod drivers (LXD, Virsh) follow a similar but separate extraction path (out of scope for this feature)
+- Driver code, tests, and documentation are maintained in driver repositories, not the MAAS monorepo
 - Third-party power drivers are a valid use case (anyone can build a driver snap)
-- The metadata JSON schema is versioned to allow backward-compatible evolution
+- Each driver repository has its own CI pipeline for testing and snap building
 
 ## Key Entities
 
@@ -155,6 +173,16 @@
 - **Slot** (MAAS snap): `power-drivers` — a directory where driver metadata JSON files appear
 - **Plug** (driver snap): `power-drivers` — connects to MAAS's slot, provides metadata JSON
 - **Path convention**: Each driver writes a single metadata JSON file named `<driver-name>.json`
+
+### Driver Repository Structure
+- **Purpose**: Standard layout for each driver's git repository
+- **Contents**:
+  - Driver implementation source code
+  - Test suite (unit tests, integration tests against real or mocked BMCs)
+  - Documentation (driver-specific README, supported hardware, configuration guide)
+  - `snap/snapcraft.yaml` (snap build configuration)
+  - Metadata JSON template (processed during snap build to include version, executable path, etc.)
+- **Independence**: Each repository builds, tests, and releases without requiring the MAAS monorepo
 
 ### Driver Grouping
 - **Purpose**: Logical grouping of related drivers into shared snaps
