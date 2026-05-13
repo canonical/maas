@@ -257,29 +257,62 @@ Each driver snap writes its socket to the same runtime directory:
 **New database table** (`src/maasservicelayer/db/tables.py`):
 
 ```python
-rack_power_drivers = Table(
+PowerDriverTable = Table(
     "rack_power_drivers",
-    Column("id", Serial, primary_key=True),
-    Column("rack_system_id", String, ForeignKey("rackcontrollers.system_id"), nullable=False),
-    Column("driver_name", String, nullable=False),
-    Column("driver_version", String, nullable=False),
-    Column("schema", JSON, nullable=False),  # driver metadata from GET /metadata
-    Column("last_seen", DateTime, nullable=False, server_default=func.now()),
-    UniqueConstraint("rack_system_id", "driver_name", "driver_version", name="UK_rack_power_drivers_rack_driver_version"),
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("rack_system_id", String(255), nullable=False),
+    Column("driver_name", String(255), nullable=False),
+    Column("driver_version", String(255), nullable=False),
+    Column("schema", JSONB, nullable=False),  # driver metadata from GET /metadata
+    UniqueConstraint("rack_system_id", "driver_name", "driver_version"),
 )
 ```
 
-**New repository** (`src/maasservicelayer/db/repositories/rack_power_drivers.py`):
-- `upsert(rack_system_id, driver_name, driver_version, schema)` — insert or update
-- `remove(rack_system_id, driver_name, driver_version)` — delete specific version
-- `get_all_for_rack(rack_system_id)` — list all drivers for a rack
-- `get_merged_across_racks()` — merge unique drivers across all racks
-- `cleanup_stale(rack_system_id)` — remove all entries for a disconnected rack
+**New model** (`src/maasservicelayer/models/power_drivers.py`):
 
-**New service** (`src/maasservicelayer/services/rack_power_drivers.py`):
-- `register_driver(rack_system_id, driver_name, driver_version, schema)`
-- `unregister_driver(rack_system_id, driver_name, driver_version)`
-- `unregister_all(rack_system_id)` — called on rack disconnect
+```python
+@generate_builder()
+class PowerDriver(MaasTimestampedBaseModel):
+    rack_system_id: str
+    driver_name: str
+    driver_version: str
+    schema: dict
+```
+
+The `@generate_builder()` decorator produces `PowerDriverBuilder` (all fields default to `UNSET`).
+
+**Validation model** (`src/maasservicelayer/models/power_drivers.py`):
+
+```python
+class DriverSchema(BaseModel):
+    name: str
+    description: str
+    version: str
+    actions: list[DriverAction]
+    settings: list[DriverSetting]
+    capabilities: DriverCapabilities
+    ip_extractor: IpExtractor | None
+```
+
+This enforces the general contract that every power driver service must comply with when registering.
+
+**New ClauseFactory** (`src/maasservicelayer/db/repositories/power_drivers.py`):
+- `with_id(id: int)` — match by primary key
+- `with_rack_system_id(rack_system_id: str)` — match all drivers for a rack
+- `with_driver_name(driver_name: str)` — match by driver name
+- `with_driver_version(driver_version: str)` — match by driver version
+
+**New repository** (`src/maasservicelayer/db/repositories/power_drivers.py`):
+- Extends `BaseRepository[PowerDriver]` — inherits all standard CRUD methods (`create`, `create_many`, `get_by_id`, `get_one`, `get_many`, `list`, `update_by_id`, `update_one`, `update_many`, `delete_by_id`, `delete_one`, `delete_many`)
+
+**New service** (`src/maasservicelayer/services/power_drivers.py`):
+- Extends `BaseService[PowerDriver, PowerDriversRepository, PowerDriverBuilder]` — inherits all standard CRUD methods
+- `create(builder)` — register a new driver (schema validated against `DriverSchema` before create)
+- `delete_one(query)` — unregister a specific driver version for a rack
+- `delete_many(query)` — unregister all drivers for a rack (called on rack disconnect)
 - `get_available_power_types()` — merged view across all racks + builtin drivers
 
 **New v3 internal API handler** (`src/maasapiserver/v3/api/internal/handlers/rack_power_drivers.py`):
@@ -321,8 +354,9 @@ GET /MAAS/api/v3/internal/agents/{agent_uuid}/power-drivers
 **Alembic migration**: `alembic revision --autogenerate -m "add rack_power_drivers table"`
 
 **Files created:**
-- `src/maasservicelayer/db/repositories/rack_power_drivers.py`
-- `src/maasservicelayer/services/rack_power_drivers.py`
+- `src/maasservicelayer/models/power_drivers.py`
+- `src/maasservicelayer/db/repositories/power_drivers.py`
+- `src/maasservicelayer/services/power_drivers.py`
 - `src/maasapiserver/v3/api/internal/handlers/rack_power_drivers.py`
 - `src/provisioningserver/rpc/driver_lifecycle_client.py`
 - `src/maasservicelayer/db/alembic/versions/XXXXX_add_rack_power_drivers.py`
@@ -486,16 +520,45 @@ maas-power-driver-<name>/
 | Column | Type | Constraints |
 |--------|------|-------------|
 | `id` | Serial | PK |
+| `created` | DateTime | NOT NULL, default `now()` |
+| `updated` | DateTime | NOT NULL, default `now()` |
 | `rack_system_id` | String | FK → `rackcontrollers.system_id`, NOT NULL |
 | `driver_name` | String | NOT NULL |
-| `schema` | JSON | NOT NULL (driver metadata from `/metadata`) |
-| `last_seen` | DateTime | NOT NULL, default `now()` |
+| `driver_version` | String | NOT NULL |
+| `schema` | JSONB | NOT NULL (driver metadata from `/metadata`) |
 
 **Indexes:**
-- `UK_rack_power_drivers_rack_driver` — unique on `(rack_system_id, driver_name)`
-- `idx_rack_power_drivers_last_seen` — on `last_seen` for staleness queries
+- `UK_rack_power_drivers_rack_driver_version` — unique on `(rack_system_id, driver_name, driver_version)`
 
 **Migration**: Alembic autogenerate, test up/down.
+
+### Domain Model: `PowerDriver`
+
+```python
+@generate_builder()
+class PowerDriver(MaasTimestampedBaseModel):
+    rack_system_id: str
+    driver_name: str
+    driver_version: str
+    schema: dict
+```
+
+`@generate_builder()` produces `PowerDriverBuilder`. The `schema` field maps to the `JSONB` column.
+
+### Validation Model: `DriverSchema`
+
+```python
+class DriverSchema(BaseModel):
+    name: str
+    description: str
+    version: str
+    actions: list[DriverAction]
+    settings: list[DriverSetting]
+    capabilities: DriverCapabilities
+    ip_extractor: IpExtractor | None
+```
+
+Enforces the general contract every power driver must comply with. Used to validate the incoming schema dict before `create()`.
 
 ---
 
@@ -548,7 +611,7 @@ GET /MAAS/api/v3/internal/rack-power-drivers
 |------|-----------|
 | Driver service crashes during power action | `socketclient` retries with backoff; maas-agent reports error to region |
 | Socket directory permissions (strict confinement) | Snap content interface handles mount; socket dir created with correct perms |
-| Region stale driver data (agent disconnects without cleanup) | `last_seen` timestamp + periodic cleanup of stale entries |
+| Region stale driver data (agent disconnects without cleanup) | `delete_many()` with `with_rack_system_id` clause on rack disconnect; agent re-registers on next startup |
 | Migration breaks existing rack registrations | Down migration tested; agent re-registers on next startup |
 | Existing tests break during transition | Phase 3 (driver deletion) done last; test suite runs between phases |
 | Driver snap confinement blocks BMC access | Driver snap declares `network` plug; system tools included in driver snap |

@@ -1,51 +1,81 @@
 # Service Contracts: Rack Power Drivers
 
-## `RackPowerDriverService`
+## `PowerDriversService`
 
-**Location**: `src/maasservicelayer/services/rack_power_drivers.py`
+**Location**: `src/maasservicelayer/services/power_drivers.py`
 
-**Base class**: `BaseService`
+**Base class**: `BaseService[PowerDriver, PowerDriversRepository, PowerDriverBuilder]`
 
-### Methods
+### Inherited Methods
 
-#### `register_driver(rack_system_id, driver_name, driver_version, schema)`
+All standard CRUD methods are inherited from `BaseService`:
 
-Register or update a power driver for a rack.
+| Method | Description |
+|--------|-------------|
+| `create(builder: PowerDriverBuilder) -> PowerDriver` | Register a new driver |
+| `create_many(builders: list[PowerDriverBuilder]) -> list[PowerDriver]` | Register multiple drivers |
+| `delete_one(query: QuerySpec) -> PowerDriver \| None` | Unregister a specific driver |
+| `delete_many(query: QuerySpec) -> list[PowerDriver]` | Unregister all drivers for a rack |
+| `get_one(query: QuerySpec) -> PowerDriver \| None` | Fetch one by query |
+| `get_many(query: QuerySpec) -> list[PowerDriver]` | Fetch many by query |
+| `list(page, size, query) -> ListResult[PowerDriver]` | Paginated list |
 
-- **Args**:
-  - `rack_system_id: str` — the rack's system ID
-  - `driver_name: str` — unique driver identifier (e.g., `"ipmi"`)
-  - `driver_version: str` — driver version (e.g., `"1.0.0"`)
-  - `schema: dict` — driver metadata from `GET /metadata`
-- **Side effects**: Upserts row in `rack_power_drivers` table
-- **Returns**: None
+### Custom Methods
 
-#### `unregister_driver(rack_system_id, driver_name, driver_version)`
-
-Remove a specific version of a power driver registration for a rack.
-
-- **Args**:
-  - `rack_system_id: str`
-  - `driver_name: str`
-  - `driver_version: str`
-- **Side effects**: Deletes row from `rack_power_drivers` table
-- **Returns**: None
-
-#### `unregister_all(rack_system_id)`
-
-Remove all power driver registrations for a rack (called on rack disconnect).
-
-- **Args**: `rack_system_id: str`
-- **Side effects**: Deletes all rows for the rack
-- **Returns**: None
-
-#### `get_available_power_types()`
+#### `get_available_power_types() -> list[dict]`
 
 Get the merged set of available power types across all racks plus builtin drivers.
 
 - **Returns**: `list[dict]` — list of driver schemas (merged, deduplicated by name)
 - **Logic**:
-  1. Query `rack_power_drivers` for all entries
+  1. Query `rack_power_drivers` for all entries via `list_all()`
   2. Merge with builtin driver schemas (`manual`, `webhook`)
   3. Deduplicate by driver name (rack-registered takes precedence)
   4. Return combined list
+
+### Usage Examples
+
+```python
+# Register a driver (schema validated before create)
+from maasservicelayer.models.power_drivers import DriverSchema, PowerDriverBuilder
+
+# Validate the incoming schema dict against the contract
+validated = DriverSchema(**raw_schema_dict)
+
+await service.create(
+    PowerDriverBuilder(
+        rack_system_id="ABCD1234",
+        driver_name="ipmi",
+        driver_version="1.0.0",
+        schema=validated.model_dump(),
+    )
+)
+
+# Unregister a specific driver version for a rack
+from maasservicelayer.db.filters import QuerySpec, ClauseFactory
+from maasservicelayer.db.repositories.power_drivers import PowerDriverClauseFactory
+
+await service.delete_one(
+    query=QuerySpec(
+        where=ClauseFactory.and_clauses([
+            PowerDriverClauseFactory.with_rack_system_id("ABCD1234"),
+            PowerDriverClauseFactory.with_driver_name("ipmi"),
+            PowerDriverClauseFactory.with_driver_version("1.0.0"),
+        ])
+    )
+)
+
+# Unregister all drivers for a rack (rack disconnect)
+await service.delete_many(
+    query=QuerySpec(
+        where=PowerDriverClauseFactory.with_rack_system_id("ABCD1234")
+    )
+)
+
+# List all drivers for a rack
+drivers = await service.get_many(
+    query=QuerySpec(
+        where=PowerDriverClauseFactory.with_rack_system_id("ABCD1234")
+    )
+)
+```
