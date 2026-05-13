@@ -52,7 +52,7 @@ def openfga_server(tmpdir, project_root_path, openfga_socket_path, db):
     regiond_conf = {
         "database_host": db.config.host,
         "database_name": db.config.name,
-        "database_user": "ubuntu",
+        "database_user": env["USER"],
     }
 
     # Write the regiond configuration to a file in the temporary directory
