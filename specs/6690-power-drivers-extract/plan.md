@@ -82,6 +82,9 @@ region → AMP DescribePowerTypes → rackd clusterservice.describe_power_types(
 7. **`maas-power`**: Removed entirely. No deprecation period. Power execution moves to maas-agent.
 8. **SIGHUP-driven re-scan**: Custom snap hooks (`connect`/`disconnect`) send `SIGHUP` to maas-agent, triggering a re-scan of the socket directory. No background watcher or polling.
 9. **maas-agent owns power**: The Go maas-agent handles both driver discovery and power action execution, replacing the Python `maas-power` CLI.
+10. **Communication paths**:
+    - **Driver lifecycle** (register/unregister) → v3 internal API (agent→region HTTP with mTLS). Not legacy AMP/RPC.
+    - **Power actions** (on/off/query/cycle/reset) → Temporal workflows (unchanged). Region schedules Temporal activities → maas-agent picks them up → calls driver sockets directly. No change to the established Temporal path.
 
 ---
 
