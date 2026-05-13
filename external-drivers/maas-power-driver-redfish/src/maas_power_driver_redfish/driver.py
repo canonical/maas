@@ -303,7 +303,6 @@ class RedfishPowerDriver:
             node_id = self._get_node_id(session, url_base)
 
         self._power(session, url_base, node_id, POWER_CHANGE_RESET)
-        self._wait_for_status(session, url_base, node_id, "on")
 
     def set_boot_order(self, system_id: str, context: dict, order: list) -> None:
         """Set boot order is not supported by the Redfish driver."""
