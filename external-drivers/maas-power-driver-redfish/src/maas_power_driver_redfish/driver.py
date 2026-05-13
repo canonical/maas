@@ -222,7 +222,7 @@ class RedfishPowerDriver:
                 # Transitional state - retry with exponential backoff
                 if retry == MAX_STATUS_REQUEST_RETRIES - 1:
                     logger.error(
-                        "Redfish node %s still in '%s' state after all retries.",
+                        "Redfish node %s still in '%s' state after all retries. Giving up.",
                         node_id, raw_state,
                     )
                     return "error"
