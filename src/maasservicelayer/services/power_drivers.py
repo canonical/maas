@@ -32,7 +32,7 @@ class PowerDriversService(
         Rack-registered drivers take precedence over builtins by name.
         """
         # Get all registered drivers from all racks
-        all_drivers = await self.repository.list_all()
+        all_drivers = await self.list_all()
 
         # Build a dict keyed by driver_name (rack-registered takes precedence)
         drivers_by_name = {}
