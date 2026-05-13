@@ -153,9 +153,9 @@
 - Driver snaps run with `strict` confinement (same as MAAS)
 - System-level dependencies (e.g., `freeipmi-tools`, `amtterm`) are included in the driver snap, not the MAAS snap
 - The `webhook` and `manual` power drivers remain builtin in MAAS core (no external dependencies)
-- Each driver is an independent project — no driver grouping, one driver per repo and per snap
+- Each driver is an independent project — no driver grouping, one driver per repo and per snap, with the exception of built-in power drivers.
 - Pod drivers (LXD, Virsh) follow a similar but separate extraction path (out of scope for this feature)
-- Driver code, tests, and documentation are maintained in driver repositories, not the MAAS monorepo
+- Driver code, tests, and documentation are maintained in driver repositories, not the MAAS monorepo, with the exception of built-in power drivers.
 - Third-party power drivers are a valid use case (anyone can build a driver snap)
 - Each driver repository has its own CI pipeline for testing and snap building
 - The rack controller is responsible for driver discovery and for notifying the region of driver lifecycle changes via the v3 internal API
