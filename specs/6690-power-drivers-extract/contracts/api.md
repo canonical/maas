@@ -22,8 +22,7 @@ Returns driver capabilities. No body required.
       "name": "power_address",
       "label": "BMC IP address",
       "field_type": "ip_address",
-      "required": true,
-      "scope": "bmc"
+      "required": true
     }
   ],
   "capabilities": {
@@ -128,15 +127,17 @@ Configure boot order. Only available if driver's `can_set_boot_order` is `true`.
 
 ---
 
-## v3 Internal API — Rack Power Drivers
+## v3 Internal API — Agent Power Drivers
 
 Base path: `/MAAS/api/v3/internal`
 
-Auth: mTLS client certificate (CN = rack system_id).
+Auth: mTLS client certificate (CN = agent UUID).
 
-### `POST /rack-power-drivers:register`
+### `POST /agents/{agent_uuid}/power-drivers:register`
 
-Register one or more power drivers for a rack controller.
+Register one or more power drivers for a rack controller agent.
+
+**Path parameter:** `agent_uuid` — the rack controller's agent UUID
 
 **Request body:**
 ```json
@@ -160,20 +161,19 @@ Register one or more power drivers for a rack controller.
 
 **Response:** `204 No Content`
 
-### `DELETE /rack-power-drivers:unregister`
+### `DELETE /agents/{agent_uuid}/power-drivers/{driver_name}/{version}`
 
-Unregister a power driver for a rack controller.
+Unregister a specific version of a power driver for a rack controller agent.
 
-**Request body:**
-```json
-{ "driver_name": "ipmi" }
-```
+**Path parameters:** `agent_uuid`, `driver_name`, `version`
 
 **Response:** `204 No Content`
 
-### `GET /rack-power-drivers`
+### `GET /agents/{agent_uuid}/power-drivers`
 
-List all registered power drivers for a rack controller.
+List all registered power drivers for a rack controller agent.
+
+**Path parameter:** `agent_uuid`
 
 **Response 200:**
 ```json

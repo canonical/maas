@@ -8,24 +8,26 @@
 
 ### Methods
 
-#### `register_driver(rack_system_id, driver_name, schema)`
+#### `register_driver(rack_system_id, driver_name, driver_version, schema)`
 
 Register or update a power driver for a rack.
 
 - **Args**:
   - `rack_system_id: str` — the rack's system ID
   - `driver_name: str` — unique driver identifier (e.g., `"ipmi"`)
+  - `driver_version: str` — driver version (e.g., `"1.0.0"`)
   - `schema: dict` — driver metadata from `GET /metadata`
 - **Side effects**: Upserts row in `rack_power_drivers` table
 - **Returns**: None
 
-#### `unregister_driver(rack_system_id, driver_name)`
+#### `unregister_driver(rack_system_id, driver_name, driver_version)`
 
-Remove a power driver registration for a rack.
+Remove a specific version of a power driver registration for a rack.
 
 - **Args**:
   - `rack_system_id: str`
   - `driver_name: str`
+  - `driver_version: str`
 - **Side effects**: Deletes row from `rack_power_drivers` table
 - **Returns**: None
 

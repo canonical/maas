@@ -171,7 +171,8 @@ This follows the canonical MAAS pattern (same as the Go agent's `RunDir()` funct
      power-drivers:
        interface: content
        content: power-drivers
-       write:  # MAAS snap owns the directory
+       default-provider: maas-power-ipmi
+       write:
          - $SNAP_INSTANCE_NAME/power-drivers   # snap: /run/snap.<name>/power-drivers
    ```
 
@@ -224,39 +225,39 @@ rack_power_drivers = Table(
     Column("id", Serial, primary_key=True),
     Column("rack_system_id", String, ForeignKey("rackcontrollers.system_id"), nullable=False),
     Column("driver_name", String, nullable=False),
+    Column("driver_version", String, nullable=False),
     Column("schema", JSON, nullable=False),  # driver metadata from GET /metadata
     Column("last_seen", DateTime, nullable=False, server_default=func.now()),
-    UniqueConstraint("rack_system_id", "driver_name", name="UK_rack_power_drivers_rack_driver"),
+    UniqueConstraint("rack_system_id", "driver_name", "driver_version", name="UK_rack_power_drivers_rack_driver_version"),
 )
 ```
 
 **New repository** (`src/maasservicelayer/db/repositories/rack_power_drivers.py`):
-- `upsert(rack_system_id, driver_name, schema)` — insert or update
-- `remove(rack_system_id, driver_name)` — delete
+- `upsert(rack_system_id, driver_name, driver_version, schema)` — insert or update
+- `remove(rack_system_id, driver_name, driver_version)` — delete specific version
 - `get_all_for_rack(rack_system_id)` — list all drivers for a rack
 - `get_merged_across_racks()` — merge unique drivers across all racks
 - `cleanup_stale(rack_system_id)` — remove all entries for a disconnected rack
 
 **New service** (`src/maasservicelayer/services/rack_power_drivers.py`):
-- `register_driver(rack_system_id, driver_name, schema)`
-- `unregister_driver(rack_system_id, driver_name)`
+- `register_driver(rack_system_id, driver_name, driver_version, schema)`
+- `unregister_driver(rack_system_id, driver_name, driver_version)`
 - `unregister_all(rack_system_id)` — called on rack disconnect
 - `get_available_power_types()` — merged view across all racks + builtin drivers
 
 **New v3 internal API handler** (`src/maasapiserver/v3/api/internal/handlers/rack_power_drivers.py`):
 
 ```
-POST /MAAS/api/v3/internal/rack-power-drivers:register
-  - Body: { "drivers": [ { "name": "...", "schema": {...} }, ... ] }
-  - Auth: mTLS client cert (CN = rack system_id)
+POST /MAAS/api/v3/internal/agents/{agent_uuid}/power-drivers:register
+  - Body: { "drivers": [ { "name": "...", "version": "...", "schema": {...} }, ... ] }
+  - Auth: mTLS client cert (CN = agent UUID)
   - Response: 204 No Content
 
-DELETE /MAAS/api/v3/internal/rack-power-drivers:unregister
-  - Body: { "driver_name": "..." }
+DELETE /MAAS/api/v3/internal/agents/{agent_uuid}/power-drivers/{driver_name}/{version}
   - Auth: mTLS client cert
   - Response: 204 No Content
 
-GET /MAAS/api/v3/internal/rack-power-drivers
+GET /MAAS/api/v3/internal/agents/{agent_uuid}/power-drivers
   - Auth: mTLS client cert
   - Response: 200 { "drivers": [...] }
 ```
@@ -271,8 +272,8 @@ GET /MAAS/api/v3/internal/rack-power-drivers
 
 - Create `provisioningserver/rpc/driver_lifecycle_client.py`:
   - HTTP client for the v3 internal API
-  - `register_drivers(rack_system_id, drivers)` — POST to register endpoint
-  - `unregister_driver(rack_system_id, driver_name)` — DELETE to unregister endpoint
+  - `register_drivers(agent_uuid, drivers)` — POST to `/agents/{agent_uuid}/power-drivers:register`
+  - `unregister_driver(agent_uuid, driver_name, version)` — DELETE to `/agents/{agent_uuid}/power-drivers/{driver_name}/{version}`
   - Uses the rack's mTLS client certificate
 
 - Update `provisioningserver/server.py`:
