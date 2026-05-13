@@ -4,20 +4,21 @@
 
 ## Summary
 
-Extract 19 power drivers from the MAAS monorepo into independent snap-service projects. Each driver runs as a long-running HTTP service over UNIX domain sockets. `rackd` discovers drivers by scanning a shared socket directory (via snap content interface), queries `GET /metadata` for capabilities, and invokes power actions via `POST /query`, `POST /on`, etc. The rack controller notifies the region of driver lifecycle changes via a new v3 internal API endpoint. The `maas-power` CLI is removed entirely. Two drivers (`manual`, `webhook`) remain builtin.
+Extract 19 power drivers from the MAAS monorepo into independent snap-service projects. Each driver runs as a long-running HTTP service over UNIX domain sockets. The `maas-agent` (Go) discovers drivers by scanning a shared socket directory (via snap content interface), queries `GET /metadata` for capabilities, and invokes power actions via `POST /query`, `POST /on`, etc. The maas-agent registers discovered drivers with the region via a new v3 internal API endpoint. Custom snap hooks (`connect`/`disconnect`) send `SIGHUP` to maas-agent to trigger re-scans. The `maas-power` CLI is removed entirely. Two drivers (`manual`, `webhook`) remain builtin in provisioningserver.
 
 ## Technical Context
 
-**Language/Version**: Python 3.14 (MAAS core), any language (drivers)
-**Primary Dependencies**: Twisted (rackd HTTP client), FastAPI (v3 internal API), httpx (rack→region HTTP)
+**Language/Version**: Go (maas-agent), Python 3.14 (MAAS core / builtin drivers), any language (external drivers)
+**Primary Dependencies**: Go `net/http` (maas-agent HTTP client over UNIX sockets), FastAPI (v3 internal API), httpx (region-side HTTP)
 **Database**: PostgreSQL — new table for per-rack power driver registrations
-**Testing**: pytest + asyncio (Python), existing testtools suite (legacy rack tests)
+**Testing**: Go `testing` + `testify` (maas-agent), pytest + asyncio (Python), existing testtools suite (legacy rack tests)
 **Target Components**:
-- `provisioningserver` — socket discovery, HTTP client, registry refactor, v3 internal API client
+- `src/maasagent` — socket discovery, SIGHUP handler, HTTP client over UNIX sockets, v3 internal API client, power execution (replaces `maas-power` CLI)
 - `maasapiserver` — new v3 internal API handler for power driver registration
 - `maasservicelayer` — new service/repository for rack power driver data
 - `maasserver` — update `get_all_power_types()` to merge rack-registered drivers
-- `snap/snapcraft.yaml` — add content slot, remove `maas-power` app, remove driver stage-packages
+- `snap/snapcraft.yaml` — add content slot, remove `maas-power` app, remove driver stage-packages, add custom `connect`/`disconnect` hooks
+- `snap/hooks` — custom hooks for `connect`/`disconnect` that send SIGHUP to maas-agent
 - `pyproject.toml` — remove `scripts.maas-power`
 - **External repos** — 19 new driver repositories (one per driver)
 
@@ -73,84 +74,91 @@ region → AMP DescribePowerTypes → rackd clusterservice.describe_power_types(
 ### Key Design Decisions
 
 1. **Protocol**: HTTP over UNIX socket — standard HTTP semantics, JSON bodies. No custom framing.
-2. **Discovery**: `rackd` scans a shared directory for `.sock` files. Each socket is a driver service.
+2. **Discovery**: `maas-agent` scans a shared directory for `.sock` files. Each socket is a driver service.
 3. **Metadata**: `GET /metadata` on each socket returns driver capabilities. No static files.
 4. **System identification**: `system_id` only (no `hostname` in request body).
-5. **Rack→Region notification**: New v3 internal API endpoint. Not legacy AMP/RPC.
-6. **Builtin drivers**: `manual` and `webhook` stay in MAAS monorepo. All others are external snaps.
-7. **`maas-power`**: Removed entirely. No deprecation period.
+5. **Agent→Region notification**: New v3 internal API endpoint. Not legacy AMP/RPC.
+6. **Builtin drivers**: `manual` and `webhook` stay in MAAS monorepo (provisioningserver). All others are external snaps.
+7. **`maas-power`**: Removed entirely. No deprecation period. Power execution moves to maas-agent.
+8. **SIGHUP-driven re-scan**: Custom snap hooks (`connect`/`disconnect`) send `SIGHUP` to maas-agent, triggering a re-scan of the socket directory. No background watcher or polling.
+9. **maas-agent owns power**: The Go maas-agent handles both driver discovery and power action execution, replacing the Python `maas-power` CLI.
 
 ---
 
 ## Implementation Phases
 
-### Phase 0: MAAS Core — Protocol Client & Registry Refactor
+### Phase 0: maas-agent — Socket Client & Discovery (Go)
 
-**Goal**: Replace the Python-method-call driver invocation with HTTP-over-UNIX-socket client.
+**Goal**: Implement the Go components in maas-agent for driver discovery, HTTP-over-UNIX-socket client, and SIGHUP-driven re-scanning.
 
-**Changes in `provisioningserver`:**
+**Changes in `src/maasagent`:**
 
-1. **Create `provisioningserver/drivers/power/socket_client.py`**
-   - HTTP client that speaks to UNIX sockets
-   - Methods: `get_metadata()`, `query(system_id, context)`, `on(system_id, context)`, `off(...)`, `cycle(...)`, `reset(...)`, `set_boot_order(system_id, context, order)`
-   - Uses `httpx` with `http+unix://` URL scheme
-   - Timeout handling, retry logic (mirrors current `PowerDriver` retry policy)
-   - Converts HTTP errors to `PowerError` hierarchy (`PowerConnError`, `PowerActionError`, etc.)
+1. **Create `internal/power/discovery.go`**
+   - `ScanSocketDirectory(path string) ([]SocketDriver, error)` — scans for `.sock` files, queries `GET /metadata` on each
+   - `SocketDriver` struct: `Name`, `SocketPath`, `Metadata`
+   - Filters out stale sockets (service not responding)
 
-2. **Create `provisioningserver/drivers/power/discovery.py`**
-   - `scan_socket_directory(path)` → list of socket paths
-   - `query_metadata(socket_path)` → driver metadata dict
-   - `watch_for_changes(path)` → async generator yielding socket add/remove events
-   - Uses `inotify` or periodic scan (configurable)
+2. **Create `internal/power/socketclient.go`**
+   - HTTP client that speaks to UNIX sockets via `net/http` with custom `DialContext`
+   - Methods: `GetMetadata()`, `Query(systemID, context)`, `On(systemID, context)`, `Off(...)`, `Cycle(...)`, `Reset(...)`, `SetBootOrder(systemID, context, order)`
+   - Timeout handling, retry logic with backoff
+   - Converts HTTP errors to typed Go errors (`PowerConnError`, `PowerActionError`, etc.)
 
-3. **Refactor `provisioningserver/drivers/power/registry.py`**
-   - Remove eager driver instantiation loop
-   - Add `register_from_socket(driver_name, socket_path)` method
-   - Add `unregister(driver_name)` method
-   - Keep `get_item()`, `get_schema()`, iteration — but backed by socket-based drivers
-   - Keep `sanitise_power_parameters()` unchanged
+3. **Create `internal/power/registry.go`**
+   - In-memory registry of discovered drivers, keyed by `driver_name`
+   - `Register(driver SocketDriver)` — add or update
+   - `Unregister(driverName string)` — remove
+   - `Get(driverName string) (SocketDriver, bool)` — lookup
+   - `GetAll() []SocketDriver` — list all
+   - `Diff(previous []SocketDriver, current []SocketDriver) (added, removed []SocketDriver)` — compute changes for region notification
 
-4. **Create `provisioningserver/drivers/power/socket_driver.py`**
-   - `SocketPowerDriver` class implementing the same interface as current `PowerDriver`
-   - Delegates all operations to `socket_client`
-   - `get_schema()` returns metadata from `GET /metadata`
-   - Bridges the external HTTP service to the existing Python registry interface
+4. **Create `internal/power/signalhandler.go`**
+   - `SetupSignalHandler(agent *Daemon)` — registers `SIGHUP` handler
+   - On `SIGHUP`: triggers re-scan of `$SNAP_COMMON/power-drivers`
+   - Computes diff between previous and current scan
+   - Notifies region of added/removed drivers via v3 internal API
 
-5. **Refactor `provisioningserver/rpc/power.py`**
-   - `get_power_state()` → looks up driver in registry (now a `SocketPowerDriver`)
-   - `perform_power_driver_query()` → calls `driver.query()` which goes through socket client
-   - No structural change needed — the registry interface is preserved
+5. **Refactor `internal/power/service.go`**
+   - Replace `maas-power` CLI invocation (`exec.Command`) with direct HTTP calls to driver sockets via `socketclient`
+   - Look up driver socket from registry by `driver_type`
+   - Power activities (`PowerOn`, `PowerOff`, etc.) now call the socket client directly
+   - Remove dependency on `maas-power` CLI entirely
 
-6. **Refactor `provisioningserver/rpc/clusterservice.py`**
-   - `describe_power_types()` → returns `PowerDriverRegistry.get_schema()` (unchanged interface)
-   - `power_driver_check()` → for socket drivers, always returns `[]` (packages are in the driver snap)
-   - `set_boot_order()` → unchanged
+6. **Create `internal/power/regionclient.go`**
+   - HTTP client for the v3 internal API (agent→region communication)
+   - `RegisterDrivers(drivers []SocketDriver)` — POST to register endpoint
+   - `UnregisterDriver(driverName string)` — DELETE to unregister endpoint
+   - Uses the rack's mTLS client certificate
 
-7. **Remove `provisioningserver/power_driver_command.py`**
-   - Delete entirely
+7. **Update `internal/daemon/daemon.go`**
+   - On `Start()`: create `$SNAP_COMMON/power-drivers` directory if it doesn't exist
+   - Perform initial driver discovery scan
+   - Register discovered drivers with region
+   - Wire up `SIGHUP` signal handler
 
-8. **Update `pyproject.toml`**
-   - Remove `scripts.maas-power` entry point
+8. **Update `internal/daemon/config.go`**
+   - Add `PowerDriversSocketDir` config field (defaults to `$SNAP_COMMON/power-drivers`)
 
 **Files created:**
-- `src/provisioningserver/drivers/power/socket_client.py`
-- `src/provisioningserver/drivers/power/discovery.py`
-- `src/provisioningserver/drivers/power/socket_driver.py`
+- `src/maasagent/internal/power/discovery.go`
+- `src/maasagent/internal/power/socketclient.go`
+- `src/maasagent/internal/power/registry.go`
+- `src/maasagent/internal/power/signalhandler.go`
+- `src/maasagent/internal/power/regionclient.go`
 
 **Files modified:**
-- `src/provisioningserver/drivers/power/registry.py`
-- `src/provisioningserver/rpc/power.py`
-- `src/provisioningserver/rpc/clusterservice.py`
-- `pyproject.toml`
+- `src/maasagent/internal/power/service.go`
+- `src/maasagent/internal/daemon/daemon.go`
+- `src/maasagent/internal/daemon/config.go`
 
 **Files deleted:**
-- `src/provisioningserver/power_driver_command.py`
+- (none in this phase; `power_driver_command.py` deleted in Phase 3)
 
 ---
 
-### Phase 1: MAAS Core — Socket Directory & Snap Integration
+### Phase 1: Snap Integration — Content Slot, Hooks & Stage Packages
 
-**Goal**: Wire up the snap content interface so driver sockets are discoverable.
+**Goal**: Wire up the snap content interface, custom hooks, and clean up stage packages.
 
 **Socket directory convention:**
 
@@ -188,15 +196,40 @@ This follows the canonical MAAS pattern (same as the Go agent's `RunDir()` funct
    - Remove: `amtterm`, `wsmancli`, `freeipmi-tools`, `ipmitool`, `snmp`, `wget`, `python3-seamicroclient`, `python3-zhmcclient`, `python3-pyvmomi`
    - Keep: packages needed for builtin drivers (`webhook` needs nothing extra, `manual` needs nothing)
 
-**Changes in `provisioningserver`:**
+4. **Register custom hooks in `hooks:` section:**
+   ```yaml
+   hooks:
+     ...
+     connect-power-drivers:
+       plugs:
+         - network  # to send SIGHUP and potentially query region
+     disconnect-power-drivers:
+       plugs:
+         - network
+   ```
 
-4. **Update `provisioningserver/server.py` (rack startup):**
-   - On startup: create the runtime socket directory if it doesn't exist
-   - Start socket directory watcher
-   - On first scan: register all discovered drivers, notify region
+**Custom snap hooks (`snap/hooks/`):**
 
-5. **Update `provisioningserver/path.py`:**
-   - Add `get_power_drivers_socket_dir()` function using the same logic as the Go agent's `RunDir()`:
+5. **Create `snap/hooks/connect-power-drivers`:**
+   - Triggered when a driver snap connects its `power-drivers` plug to MAAS's slot
+   - Sends `SIGHUP` to the `maas-agent` process to trigger a re-scan of the runtime socket directory
+   - Implementation: `kill -HUP $(pidof maas-agent)` or via Pebble `pebble signal --signal=HUP maas-agent`
+
+6. **Create `snap/hooks/disconnect-power-drivers`:**
+   - Triggered when a driver snap disconnects its `power-drivers` plug
+   - Sends `SIGHUP` to the `maas-agent` process to trigger a re-scan
+   - maas-agent will detect removed sockets and unregister stale drivers from the region
+
+**Changes in `src/maasagent`:**
+
+7. **Update `internal/daemon/daemon.go` (agent startup):**
+   - On startup: create the runtime socket directory if it doesn't exist (using `RunDir()` convention)
+   - Perform initial driver discovery scan
+   - Register discovered drivers with region via v3 internal API
+   - Wire up `SIGHUP` handler (from Phase 0)
+
+8. **Update `internal/pathutil/` (or equivalent):**
+   - Add `GetPowerDriversSocketDir()` function using the same logic as the Go agent's `RunDir()`:
      - If `SNAP_INSTANCE_NAME` is set: `/run/snap.<name>/power-drivers`
      - Otherwise: `/run/maas/power-drivers`
 
@@ -206,16 +239,20 @@ Each driver snap writes its socket to the same runtime directory:
 - Snap: `/run/snap.<instance>/power-drivers/<driver-name>.sock`
 - The driver snap's service starts and writes its socket here
 
+**Files created:**
+- `snap/hooks/connect-power-drivers`
+- `snap/hooks/disconnect-power-drivers`
+
 **Files modified:**
 - `snap/snapcraft.yaml`
-- `src/provisioningserver/server.py`
-- `src/provisioningserver/path.py`
+- `src/maasagent/internal/daemon/daemon.go`
+- `src/maasagent/internal/daemon/config.go`
 
 ---
 
 ### Phase 2: MAAS Core — v3 Internal API for Driver Lifecycle
 
-**Goal**: Create the v3 internal API endpoint that rack controllers use to register/unregister power drivers with the region.
+**Goal**: Create the v3 internal API endpoint that maas-agent uses to register/unregister power drivers with the region.
 
 **New database table** (`src/maasservicelayer/db/tables.py`):
 
@@ -404,23 +441,27 @@ maas-power-driver-<name>/
 **Test categories:**
 
 1. **Unit tests** (MAAS monorepo):
-   - `socket_client.py` — mock UNIX socket server, verify HTTP calls
-   - `discovery.py` — mock socket directory, verify scan/watch
-   - `socket_driver.py` — mock client, verify registry interface
-   - `driver_lifecycle_client.py` — mock v3 internal API, verify HTTP calls
-   - `rack_power_drivers` repository — real DB, verify CRUD
-   - `rack_power_drivers` service — mock repo, verify business logic
-   - v3 internal API handler — mock service, verify HTTP responses
+   - `internal/power/discovery_test.go` — mock socket directory, verify scan and metadata queries
+   - `internal/power/socketclient_test.go` — mock UNIX socket server, verify HTTP calls and error handling
+   - `internal/power/registry_test.go` — verify register/unregister/diff operations
+   - `internal/power/signalhandler_test.go` — verify SIGHUP triggers re-scan and region notification
+   - `internal/power/regionclient_test.go` — mock v3 internal API, verify HTTP calls
+   - `internal/power/service_test.go` — verify power activities call socket client directly (no CLI)
+   - `rack_power_drivers` repository (Python) — real DB, verify CRUD
+   - `rack_power_drivers` service (Python) — mock repo, verify business logic
+   - v3 internal API handler (Python) — mock service, verify HTTP responses
 
 2. **Integration tests** (MAAS monorepo):
-   - Rack startup with connected driver snap → drivers registered in registry
-   - Driver snap disconnect → drivers removed from registry
-   - Rack→region driver registration via v3 internal API
-   - `get_all_power_types()` returns merged builtin + rack-registered drivers
+   - maas-agent startup with connected driver snap → drivers registered in region
+   - Driver snap disconnect (SIGHUP via hook) → drivers removed from registry
+   - Agent→region driver registration via v3 internal API
+   - `get_all_power_types()` returns merged builtin + agent-registered drivers
    - `DescribePowerTypes` RPC still works
 
 3. **Functional tests** (MAAS monorepo):
-   - Full flow: connect driver snap → rack discovers → region notified → power action succeeds
+   - Full flow: connect driver snap → maas-agent discovers → region notified → power action succeeds
+   - SIGHUP triggers re-scan: connect new driver snap → hook fires → agent picks up new driver
+   - SIGHUP triggers cleanup: disconnect driver snap → hook fires → agent removes stale driver
    - Builtin `manual` driver still works
    - Builtin `webhook` driver still works
 
@@ -505,13 +546,14 @@ GET /MAAS/api/v3/internal/rack-power-drivers
 
 | Risk | Mitigation |
 |------|-----------|
-| Driver service crashes during power action | `socket_client` retries with backoff; `rackd` reports error to region |
+| Driver service crashes during power action | `socketclient` retries with backoff; maas-agent reports error to region |
 | Socket directory permissions (strict confinement) | Snap content interface handles mount; socket dir created with correct perms |
-| Region stale driver data (rack disconnects without cleanup) | `last_seen` timestamp + periodic cleanup of stale entries |
-| Migration breaks existing rack registrations | Down migration tested; rack re-registers on next startup |
+| Region stale driver data (agent disconnects without cleanup) | `last_seen` timestamp + periodic cleanup of stale entries |
+| Migration breaks existing rack registrations | Down migration tested; agent re-registers on next startup |
 | Existing tests break during transition | Phase 3 (driver deletion) done last; test suite runs between phases |
 | Driver snap confinement blocks BMC access | Driver snap declares `network` plug; system tools included in driver snap |
 | `DescribePowerTypes` RPC still used by region | Keep working alongside v3 internal API; deprecate later |
+| SIGHUP arrives before maas-agent is ready | Signal handler checks if discovery is initialized; drops signal if not ready |
 
 ---
 
@@ -529,11 +571,13 @@ Each phase is independently testable. Phase 4 can proceed in parallel for differ
 
 ## Success Criteria
 
-- ✅ `rackd` discovers driver services via UNIX sockets within 1 second
-- ✅ `rackd` queries `GET /metadata` for driver capabilities
-- ✅ Power actions succeed over HTTP on UNIX sockets
+- ✅ `maas-agent` discovers driver services via UNIX sockets within 1 second
+- ✅ `maas-agent` queries `GET /metadata` for driver capabilities
+- ✅ Power actions succeed over HTTP on UNIX sockets (no `maas-power` CLI)
 - ✅ Region receives driver lifecycle notifications via v3 internal API
-- ✅ `get_all_power_types()` returns merged builtin + rack-registered drivers
+- ✅ SIGHUP triggers re-scan: new drivers registered, stale drivers removed
+- ✅ Custom snap hooks (`connect-power-drivers`, `disconnect-power-drivers`) fire correctly
+- ✅ `get_all_power_types()` returns merged builtin + agent-registered drivers
 - ✅ `manual` and `webhook` builtin drivers work without external snaps
 - ✅ `maas-power` command and `power_driver_command.py` removed
 - ✅ No direct driver imports in `provisioningserver` or `maasserver`
