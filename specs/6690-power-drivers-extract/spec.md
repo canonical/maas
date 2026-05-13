@@ -3,83 +3,93 @@
 **Feature Branch**: `6690-power-drivers-extract`  
 **Created**: 2025-01-13  
 **Status**: Draft  
-**Input**: Move power drivers to their own repositories with entry point discovery mechanism, common interface, and snap distribution.
+**Input**: Move power drivers to their own repositories with snap plug/slot discovery mechanism, language-agnostic interface via JSON metadata, and snap distribution.
+
+## Clarifications
+
+- **Language-agnostic**: Power drivers may be implemented in any programming language (Python, Go, Rust, etc.). The interface between MAAS and drivers is a JSON-based protocol, not a language-specific API.
+- **Snap plug/slot discovery**: Drivers are distributed as separate snaps. When a driver snap connects to the MAAS snap (via a content plug and slot), it exposes driver metadata as a JSON file at a known path. MAAS discovers drivers by scanning these JSON files at runtime.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - MAAS discovers installed power drivers at startup (Priority: P1)
+### User Story 1 - MAAS discovers power drivers via snap plug/slot connections (Priority: P1)
 
-**Description**: When MAAS region or rack controller starts, it automatically discovers all installed power driver packages through Python entry points. Administrators install power driver packages separately, and MAAS recognizes them without requiring changes to MAAS core.
+**Description**: When a power driver snap is installed and connected to the MAAS snap, MAAS automatically discovers the driver by reading a JSON metadata file exposed through the snap's content interface. No MAAS core changes are required to add new drivers — installing and connecting a driver snap is sufficient.
 
-**Why this priority**: This is the foundational capability. Without runtime discovery, the entire separation architecture cannot function. All other stories depend on this working correctly.
+**Why this priority**: This is the foundational capability. Without snap-based discovery, the entire separation architecture cannot function. All other stories depend on this working correctly.
 
-**Independent Test**: Can be fully tested by installing a mock power driver package with an entry point, starting the rack controller, and verifying that `PowerDriverRegistry` contains the driver. Delivers a working plugin architecture.
-
-**Acceptance Scenarios**:
-
-1. **Given** a fresh MAAS installation with no external power drivers, **When** the rack controller starts, **Then** only builtin drivers (e.g., `manual`) are available in `PowerDriverRegistry`
-2. **Given** a MAAS installation with `maas-power-driver-ipmi` package installed, **When** the rack controller starts, **Then** the `ipmi` driver is discoverable via `PowerDriverRegistry.get_item("ipmi")`
-3. **Given** multiple power driver packages are installed, **When** the rack controller starts, **Then** all drivers from all packages are registered and available
-4. **Given** a power driver package is uninstalled, **When** the rack controller restarts, **Then** that driver is no longer available in the registry
-5. **Given** a power driver package fails to load (import error), **When** the rack controller starts, **Then** MAAS logs a warning but continues startup with remaining drivers
-
-### User Story 2 - Power driver packages declare themselves via standard entry point (Priority: P1)
-
-**Description**: Power driver package authors implement the `PowerDriverBase` interface and register their driver under the `maas.power_drivers` entry point group. The package declares its dependency on `maas-power-driver-interface`.
-
-**Why this priority**: This defines the contract between MAAS and driver packages. Without a standardized registration mechanism, discovery cannot work.
-
-**Independent Test**: Can be tested by creating a minimal Python package with an entry point that loads a driver class, verifying that `importlib.metadata.entry_points(group="maas.power_drivers")` returns it, and that the loaded class implements the required interface.
+**Independent Test**: Can be fully tested by building a minimal driver snap with a valid metadata JSON, installing it, connecting it to the MAAS snap, and verifying that `PowerDriverRegistry` contains the driver after MAAS reloads its driver list.
 
 **Acceptance Scenarios**:
 
-1. **Given** a driver package with `maas.power_drivers` entry point, **When** `importlib.metadata.entry_points(group="maas.power_drivers")` is called, **Then** the entry point is returned with the driver's name and import path
-2. **Given** an entry point loads successfully, **When** instantiated, **Then** the driver class implements all required properties (`name`, `description`, `settings`, `ip_extractor`, `queryable`, `chassis`, `can_probe`, `can_set_boot_order`)
-3. **Given** an entry point loads successfully, **When** instantiated, **Then** the driver class implements all required methods (`on`, `off`, `query`, `cycle`, `reset`)
-4. **Given** a driver package depends on `maas-power-driver-interface`, **When** the package is installed, **Then** the interface package is installed as a dependency
+1. **Given** a fresh MAAS installation with no driver snaps connected, **When** the rack controller starts, **Then** only builtin drivers (e.g., `manual`) are available in `PowerDriverRegistry`
+2. **Given** a driver snap `maas-power-driver-ipmi` is installed and connected to MAAS, **When** MAAS reloads its driver list, **Then** the `ipmi` driver is discoverable via `PowerDriverRegistry.get_item("ipmi")`
+3. **Given** multiple driver snaps are connected, **When** MAAS reloads its driver list, **Then** all drivers from all connected snaps are registered and available
+4. **Given** a driver snap is disconnected, **When** MAAS reloads its driver list, **Then** that driver is no longer available in the registry
+5. **Given** a driver snap's metadata JSON is malformed, **When** MAAS attempts to discover it, **Then** MAAS logs a warning and skips that driver but continues discovering others
+6. **Given** a driver snap is connected while MAAS is running, **When** MAAS detects the new connection (via snap change notification or periodic scan), **Then** the new driver becomes available without a full MAAS restart
 
-### User Story 3 - MAAS core uses power drivers without importing them directly (Priority: P1)
+### User Story 2 - Driver snaps expose metadata via JSON at the snap interface (Priority: P1)
 
-**Description**: MAAS region and rack controllers interact with power drivers exclusively through `PowerDriverRegistry`. MAAS core code never imports a specific power driver implementation. Power actions (on, off, query, cycle, reset) flow through the registry.
+**Description**: Each power driver snap exposes a JSON metadata file at a known path through its content interface. This file describes the driver's capabilities, parameters, and how MAAS should invoke it. The JSON schema is defined by the MAAS power driver interface contract.
 
-**Why this priority**: This ensures true decoupling. If MAAS core imports specific drivers, the separation is incomplete and drivers cannot be moved to separate repositories.
+**Why this priority**: This defines the contract between MAAS and driver snaps. Without a standardized metadata format, discovery and invocation cannot work.
 
-**Independent Test**: Can be tested by running the existing power action test suite with all driver imports removed from MAAS core, verifying that power actions still succeed through registry lookups.
-
-**Acceptance Scenarios**:
-
-1. **Given** a machine with power type `ipmi`, **When** a power query is requested via RPC, **Then** the rack controller looks up the driver via `PowerDriverRegistry.get_item("ipmi")` and executes the query
-2. **Given** a machine with power type `redfish`, **When** a power-on action is requested, **Then** the action succeeds without MAAS core importing the redfish driver directly
-3. **Given** `provisioningserver` source code, **When** searched for direct driver imports, **Then** no import of `provisioningserver.drivers.power.ipmi`, `provisioningserver.drivers.power.redfish`, etc. exists (only registry imports)
-4. **Given** `maasserver` source code, **When** searched for direct driver imports, **Then** no import of specific power driver implementations exists
-
-### User Story 4 - Power drivers are distributed as installable packages (Priority: P2)
-
-**Description**: Power drivers are packaged as Python packages that can be installed via pip or included in snap builds. Each driver package includes its system-level dependencies (e.g., `freeipmi-tools` for IPMI).
-
-**Why this priority**: This enables the operational model where drivers can be installed/uninstalled independently of MAAS core. Lower priority than discovery because it's about distribution, not functionality.
-
-**Independent Test**: Can be tested by building a driver package with `build`, installing it with `pip install`, and verifying that the driver is discovered by MAAS.
+**Independent Test**: Can be tested by creating a minimal driver snap that exposes a metadata JSON file, connecting it to MAAS, and verifying that MAAS can read and validate the metadata.
 
 **Acceptance Scenarios**:
 
-1. **Given** a power driver package repository, **When** `pip install .` is run, **Then** the package installs with its entry point registered
-2. **Given** a power driver package, **When** `python -m build` is run, **Then** a wheel and sdist are produced
-3. **Given** a power driver package with system dependencies, **When** the package metadata is inspected, **Then** the system dependencies are documented (via package metadata or documentation)
+1. **Given** a driver snap connected to MAAS, **When** MAAS reads the metadata JSON at the interface path, **Then** the JSON is valid against the power driver metadata schema
+2. **Given** a metadata JSON file, **When** validated, **Then** it contains: driver `name`, `description`, `version`, `settings` (parameter schema), `executable` path, and supported `actions`
+3. **Given** a metadata JSON with invalid or missing required fields, **When** MAAS validates it, **Then** MAAS rejects the driver and logs the validation error
+4. **Given** a driver snap is updated (new version), **When** the metadata JSON changes, **Then** MAAS detects the change and reloads the driver metadata
+5. **Given** the metadata JSON, **When** inspected, **Then** it contains no language-specific information — the format is identical regardless of whether the driver is written in Python, Go, Rust, or any other language
 
-### User Story 5 - Power drivers are available in the MAAS snap (Priority: P2)
+### User Story 3 - MAAS invokes power drivers via a language-agnostic protocol (Priority: P1)
 
-**Description**: Power driver packages are included in the MAAS snap alongside the core MAAS installation. The snap declares system-level dependencies for each included driver.
+**Description**: MAAS communicates with power drivers through a language-agnostic protocol (subprocess with JSON on stdin/stdout, or a local HTTP endpoint). MAAS core code never imports or links against driver code directly. Power actions (on, off, query, cycle, reset) are sent as structured requests and receive structured responses.
 
-**Why this priority**: This is the primary distribution channel for MAAS. Drivers must be available in the snap for production use. Lower priority because the snap configuration depends on the package structure being finalized.
+**Why this priority**: This ensures true decoupling. Drivers can be written in any language and updated independently of MAAS. The protocol is the only contract between MAAS and drivers.
 
-**Independent Test**: Can be tested by building the MAAS snap with driver packages included, installing the snap, and verifying that `maas-power` CLI shows all expected drivers.
+**Independent Test**: Can be tested by implementing a minimal driver in a non-Python language (e.g., a shell script or Go binary) that speaks the protocol, connecting it via a test snap, and verifying that MAAS can execute power actions through it.
 
 **Acceptance Scenarios**:
 
-1. **Given** the MAAS snap with power driver packages included, **When** the snap is installed, **Then** `maas-power --help` lists all included driver types as subcommands
-2. **Given** the MAAS snap, **When** a power driver's system dependency is missing, **Then** the driver reports missing packages via `detect_missing_packages()` rather than failing at import
-3. **Given** the MAAS snap with drivers, **When** `snap list` is run, **Then** the snap includes the driver packages
+1. **Given** a machine with power type `ipmi`, **When** a power query is requested via RPC, **Then** MAAS invokes the driver through the protocol and receives the power state
+2. **Given** a driver implemented in Go, **When** connected via snap, **Then** MAAS can execute all supported power actions through it
+3. **Given** a driver implemented in Python, **When** connected via snap, **Then** MAAS can execute all supported power actions through it
+4. **Given** a driver crashes or becomes unresponsive, **When** MAAS attempts to invoke it, **Then** MAAS receives a clear error and reports it to the user
+5. **Given** `provisioningserver` source code, **When** searched for direct driver imports, **Then** no import of specific power driver implementations exists (only the protocol client and registry)
+
+### User Story 4 - Power drivers are distributed as standalone snaps (Priority: P2)
+
+**Description**: Each power driver (or group of related drivers) is packaged as a standalone snap. The snap includes the driver executable, its metadata JSON, and any system-level dependencies. Installing a driver is `snap install` + `snap connect`.
+
+**Why this priority**: This enables the operational model where drivers can be installed, updated, and uninstalled independently of MAAS core and independently of each other.
+
+**Independent Test**: Can be tested by building a driver snap with `snapcraft`, installing it locally, connecting it to MAAS, and verifying that the driver is discovered and functional.
+
+**Acceptance Scenarios**:
+
+1. **Given** a driver snap, **When** `snap install --dangerous driver.snap` is run, **Then** the snap installs successfully
+2. **Given** a driver snap is installed, **When** `snap connect maas:power-drivers driver:power-drivers` is run, **Then** the driver's metadata becomes visible to MAAS
+3. **Given** a driver snap is removed, **When** `snap remove driver` is run, **Then** the driver is no longer available to MAAS
+4. **Given** a driver snap is updated, **When** `snap refresh driver` is run, **Then** MAAS picks up the updated driver metadata and version
+
+### User Story 5 - The MAAS snap exposes a content slot for driver discovery (Priority: P1)
+
+**Description**: The MAAS snap declares a content slot (`power-drivers`) that driver snaps connect to via a content plug. When connected, the slot provides MAAS with access to driver metadata JSON files. The slot path is a directory that driver snaps populate with their metadata.
+
+**Why this priority**: This is the mechanism that makes discovery work. Without the snap content interface, MAAS cannot find or read driver metadata.
+
+**Independent Test**: Can be tested by verifying that the MAAS snap declares the content slot, that a test driver snap can connect to it, and that MAAS can read the metadata JSON from the connected path.
+
+**Acceptance Scenarios**:
+
+1. **Given** the MAAS snap, **When** `snap info maas` is run, **Then** a `power-drivers` content slot is declared
+2. **Given** a driver snap with a `power-drivers` content plug, **When** `snap connect maas:power-drivers driver:power-drivers` is run, **Then** the connection succeeds and the driver's metadata JSON is accessible at the slot path
+3. **Given** multiple driver snaps connected, **When** MAAS scans the slot path, **Then** each driver's metadata JSON is found and loaded
+4. **Given** a driver snap is disconnected, **When** MAAS scans the slot path, **Then** the disconnected driver's metadata is no longer present
 
 ### User Story 6 - Existing power functionality is preserved after extraction (Priority: P1)
 
@@ -98,37 +108,57 @@
 
 ## Assumptions
 
-- Python 3.14+ is available (MAAS already requires this)
-- `importlib.metadata.entry_points()` with `group` parameter is available (Python 3.10+)
-- The existing `PowerDriverBase` ABC is sufficient as the interface contract
-- Driver packages target the same Python version as MAAS core
-- System-level dependencies (e.g., `freeipmi-tools`, `amtterm`) remain as snap stage-packages, not Python packages
+- Power drivers may be written in any programming language (Python, Go, Rust, C, shell, etc.)
+- The communication protocol between MAAS and drivers is language-agnostic (JSON over subprocess stdin/stdout or local HTTP)
+- Snap content interfaces (plug/slot) are the discovery mechanism — not Python entry points, shared libraries, or other language-specific mechanisms
+- Driver snaps run with `strict` confinement (same as MAAS)
+- System-level dependencies (e.g., `freeipmi-tools`, `amtterm`) are included in the driver snap, not the MAAS snap
 - The `manual` power driver remains builtin in MAAS core (no external dependencies, always available)
 - Pod drivers (LXD, Virsh) follow a similar but separate extraction path (out of scope for this feature)
-- Third-party power drivers are a valid use case (hence the public interface package)
+- Third-party power drivers are a valid use case (anyone can build a driver snap)
+- The metadata JSON schema is versioned to allow backward-compatible evolution
 
 ## Key Entities
 
-### Power Driver Interface
-- **Purpose**: Defines the contract that all power drivers must implement
-- **Properties**: `name`, `description`, `settings`, `ip_extractor`, `queryable`, `chassis`, `can_probe`, `can_set_boot_order`
-- **Methods**: `on()`, `off()`, `query()`, `cycle()`, `reset()`, `set_boot_order()`, `detect_missing_packages()`, `get_schema()`
+### Power Driver Metadata JSON
+- **Purpose**: Describes a driver's capabilities, parameters, and invocation details to MAAS
+- **Location**: Exposed at the snap content interface path when the driver snap is connected
+- **Schema** (key fields):
+  - `name`: Unique driver identifier (e.g., `ipmi`, `redfish`)
+  - `description`: Human-readable description
+  - `version`: Driver version string
+  - `actions`: List of supported actions (`on`, `off`, `query`, `cycle`, `reset`, `set-boot-order`)
+  - `settings`: Array of parameter definitions (name, label, type, required, choices, scope, secret)
+  - `ip_extractor`: Field name and regex pattern for extracting IP address from parameters
+  - `executable`: Path to the driver binary/script within the snap
+  - `protocol`: Communication method (`subprocess` or `http`)
+  - `capabilities`: Flags (`queryable`, `chassis`, `can_probe`, `can_set_boot_order`)
+- **Validation**: MAAS validates metadata against a JSON Schema before accepting the driver
+
+### Power Driver Protocol
+- **Purpose**: Language-agnostic communication between MAAS and driver processes
+- **Transport**: Subprocess with JSON lines on stdin/stdout (primary), or local HTTP (alternative)
+- **Request format**: JSON object with `action`, `system_id`, `hostname`, `context` (power parameters)
+- **Response format**: JSON object with `state` (for query) or `status`/`error` (for actions)
+- **Error format**: JSON object with `error_type` and `error_message`
+- **Lifecycle**: Driver process is started per-action (subprocess) or long-running (HTTP)
 
 ### Power Driver Registry
 - **Purpose**: Runtime registry of all discovered power drivers
 - **Operations**: `register_item()`, `get_item()`, `get_schema()`, iteration over registered drivers
-- **Discovery**: Populated via `importlib.metadata.entry_points(group="maas.power_drivers")` at startup
+- **Discovery**: Populated by scanning the snap content slot path for metadata JSON files
+- **Reload**: Supports hot-reload when snaps are connected/disconnected/updated
 
-### Power Driver Package
-- **Purpose**: A Python package containing one or more power driver implementations
-- **Structure**: Standard Python package with `pyproject.toml` declaring entry points and dependencies
-- **Entry Point Group**: `maas.power_drivers`
-- **Dependency**: `maas-power-driver-interface`
+### Snap Content Interface
+- **Purpose**: The snap plug/slot mechanism that exposes driver metadata to MAAS
+- **Slot** (MAAS snap): `power-drivers` — a directory where driver metadata JSON files appear
+- **Plug** (driver snap): `power-drivers` — connects to MAAS's slot, provides metadata JSON
+- **Path convention**: Each driver writes a single metadata JSON file named `<driver-name>.json`
 
 ### Driver Grouping
-- **Purpose**: Logical grouping of related drivers into shared packages
+- **Purpose**: Logical grouping of related drivers into shared snaps
 - **Groups**:
-  - `maas-power-drivers-core`: `manual` (builtin)
+  - `maas-power-drivers-core`: `manual` (builtin in MAAS snap)
   - `maas-power-driver-ipmi`: `ipmi`, `moonshot`
   - `maas-power-driver-redfish`: `redfish`, `openbmc`
   - `maas-power-driver-ibm`: `hmc`, `hmcz`, `mscm`
@@ -140,14 +170,15 @@
 
 ## Success Criteria
 
-- MAAS rack controller discovers all installed power drivers within 1 second of startup
+- MAAS rack controller discovers all connected driver snaps within 1 second of snap connection
 - Zero power driver tests fail after extraction (100% test pass rate preserved)
 - All 21 existing power driver types remain functional after extraction
-- The `maas-power` CLI works with all installed drivers without modification
-- A new power driver can be added by creating a Python package (no MAAS core changes required)
-- Power driver interface package can be published to PyPI for third-party consumption
+- The `maas-power` CLI works with all connected drivers without modification
+- A new power driver can be added by building and connecting a driver snap (no MAAS core changes required)
+- A power driver written in a non-Python language (e.g., Go) can be discovered and invoked by MAAS
+- The metadata JSON schema is published and versioned for third-party driver authors
 - No breaking changes to existing MAAS APIs or RPC interfaces
-- The MAAS snap builds and installs successfully with driver packages included
+- The MAAS snap declares a `power-drivers` content slot that driver snaps can connect to
 
 ## Non-Goals
 
@@ -156,4 +187,5 @@
 - This feature does not change how power parameters are stored in the database
 - This feature does not introduce a new authentication or authorization model for drivers
 - This feature does not require changes to the MAAS UI
-- This feature does not publish packages to PyPI (that is a follow-up)
+- This feature does not publish driver snaps to the Snap Store (that is a follow-up)
+- This feature does not define a driver SDK or CLI tooling for driver authors (that is a follow-up)
