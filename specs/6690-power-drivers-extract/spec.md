@@ -14,6 +14,7 @@
 - **Independent repositories**: Each power driver lives in its own git repository as an independent project. No driver grouping — one driver per repo, one driver per snap.
 - **`webhook` and `manual` builtin**: The `webhook` and `manual` power drivers remain builtin in MAAS core (no external dependencies). `webhook` is useful for custom integrations; `manual` is useful for nodes without automated BMC access. All other drivers are external snaps.
 - **Rack-to-region driver lifecycle (v3 internal API)**: When drivers appear or disappear (snap connect/disconnect), the rack controller notifies the region controller via the v3 internal API so the region's view of available power types stays in sync. This is not the legacy RPC channel.
+- **Per-rack driver versions**: Each rack can run a different version of the same driver. For example, rack A may run `ipmi` 1.0.0 while rack B runs `ipmi` 2.0.0. The region merges all registered driver versions across racks and associates machines with the correct driver version based on which rack manages them.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -127,6 +128,7 @@
 3. **Given** the region controller receives a driver addition via the v3 internal API, **When** it processes the notification, **Then** the new power type appears in the rack's available power types
 4. **Given** the region controller receives a driver removal via the v3 internal API, **When** it processes the notification, **Then** the removed power type no longer appears in the rack's available power types
 5. **Given** `rackd` starts and discovers existing driver services, **When** it communicates with the region, **Then** the region receives the complete set of available power types for that rack via the v3 internal API
+6. **Given** rack A runs `ipmi` 1.0.0 and rack B runs `ipmi` 2.0.0, **When** the region merges driver registrations, **Then** both versions are tracked independently and machines on each rack use the correct version
 
 ### User Story 8 - Existing power functionality is preserved after extraction (Priority: P1)
 
