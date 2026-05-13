@@ -1,18 +1,18 @@
 # Copyright 2025 Canonical Ltd.
 # SPDX-License-Identifier: AGPL-3.0-only
 
-"""HTTP server for the Redfish power driver, listening on a UNIX domain socket."""
+"""HTTP server for the Redfish power driver using aiohttp."""
 
 import argparse
+import asyncio
 import json
 import logging
 import os
 import signal
 import socket
-import sys
-import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+
+from aiohttp import web
 
 from maas_power_driver_redfish.driver import RedfishPowerDriver
 
@@ -21,214 +21,230 @@ logger = logging.getLogger("maas-power-driver-redfish")
 METADATA_PATH = Path(__file__).parent / "metadata.json"
 
 
-class PowerDriverHandler(BaseHTTPRequestHandler):
-    """HTTP request handler for power driver operations."""
+class RedfishDriverServer:
+    """Aiohttp-based server for the Redfish power driver."""
 
-    driver = None
+    def __init__(self, socket_path: str):
+        self.socket_path = socket_path
+        self.driver = RedfishPowerDriver()
+        self.app = web.Application()
+        self.runner = None
+        self.site = None
+        self._setup_routes()
 
-    def log_message(self, format, *args):
-        """Override to use our logger."""
-        logger.info(format, *args)
+    def _setup_routes(self):
+        self.app.router.add_get("/metadata", self.handle_metadata)
+        self.app.router.add_post("/query", self.handle_query)
+        self.app.router.add_post("/on", self.handle_on)
+        self.app.router.add_post("/off", self.handle_off)
+        self.app.router.add_post("/cycle", self.handle_cycle)
+        self.app.router.add_post("/reset", self.handle_reset)
+        self.app.router.add_post("/set-boot-order", self.handle_set_boot_order)
 
-    def send_json(self, status_code, data):
-        """Send a JSON response."""
-        body = json.dumps(data).encode("utf-8")
-        self.send_response(status_code)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def read_json_body(self):
-        """Read and parse JSON from the request body."""
-        content_length = int(self.headers.get("Content-Length", 0))
-        if content_length == 0:
-            return None
-        raw = self.rfile.read(content_length)
-        return json.loads(raw)
-
-    def do_GET(self):
-        """Handle GET requests."""
-        if self.path == "/metadata":
-            try:
-                metadata = json.loads(METADATA_PATH.read_text())
-                self.send_json(200, metadata)
-            except Exception as e:
-                self.send_json(500, {
+    async def handle_metadata(self, request):
+        try:
+            metadata = json.loads(METADATA_PATH.read_text())
+            return web.json_response(metadata)
+        except Exception as e:
+            return web.json_response(
+                {
                     "status": "error",
                     "error_type": "internal_error",
                     "error_message": str(e),
+                },
+                status=500,
+            )
+
+    async def _get_params(self, request):
+        try:
+            body = await request.json()
+        except json.JSONDecodeError:
+            raise web.HTTPBadRequest(
+                text=json.dumps({
+                    "status": "error",
+                    "error_type": "invalid_parameters",
+                    "error_message": "Invalid JSON",
                 })
-        else:
-            self.send_json(404, {
-                "status": "error",
-                "error_type": "not_found",
-                "error_message": f"Unknown path: {self.path}",
-            })
+            )
 
-    def do_POST(self):
-        """Handle POST requests for power operations."""
-        if self.path == "/query":
-            self.handle_query()
-        elif self.path == "/on":
-            self.handle_on()
-        elif self.path == "/off":
-            self.handle_off()
-        elif self.path == "/cycle":
-            self.handle_cycle()
-        elif self.path == "/reset":
-            self.handle_reset()
-        elif self.path == "/set-boot-order":
-            self.handle_set_boot_order()
-        else:
-            self.send_json(404, {
-                "status": "error",
-                "error_type": "not_found",
-                "error_message": f"Unknown path: {self.path}",
-            })
+        system_id = body.get("system_id")
+        if not system_id:
+            raise web.HTTPBadRequest(
+                text=json.dumps({
+                    "status": "error",
+                    "error_type": "invalid_parameters",
+                    "error_message": "Missing 'system_id' parameter",
+                })
+            )
 
-    def _get_params(self):
-        """Extract and validate common POST parameters."""
+        context = body.get("context", {})
+        if not context:
+            raise web.HTTPBadRequest(
+                text=json.dumps({
+                    "status": "error",
+                    "error_type": "invalid_parameters",
+                    "error_message": "Missing 'context' parameter",
+                })
+            )
+
+        order = body.get("order", [])
+        return system_id, context, order
+
+    async def handle_query(self, request):
         try:
-            body = self.read_json_body()
-            if body is None:
-                raise ValueError("Missing request body")
-            system_id = body.get("system_id")
-            if not system_id:
-                raise ValueError("Missing 'system_id' parameter")
-            context = body.get("context", {})
-            if not context:
-                raise ValueError("Missing 'context' parameter")
-            return system_id, context
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON: {e}")
-
-    def handle_query(self):
-        """Handle POST /query."""
-        try:
-            system_id, context = self._get_params()
+            system_id, context, _ = await self._get_params(request)
             state = self.driver.query(system_id, context)
-            self.send_json(200, {"status": "ok", "state": state})
-        except ValueError as e:
-            self.send_json(400, {
-                "status": "error",
-                "error_type": "invalid_parameters",
-                "error_message": str(e),
-            })
+            return web.json_response({"status": "ok", "state": state})
+        except web.HTTPBadRequest:
+            raise
         except Exception as e:
-            self.send_json(500, {
-                "status": "error",
-                "error_type": "internal_error",
-                "error_message": str(e),
-            })
+            return web.json_response(
+                {
+                    "status": "error",
+                    "error_type": "internal_error",
+                    "error_message": str(e),
+                },
+                status=500,
+            )
 
-    def handle_on(self):
-        """Handle POST /on."""
+    async def handle_on(self, request):
         try:
-            system_id, context = self._get_params()
+            system_id, context, _ = await self._get_params(request)
             self.driver.on(system_id, context)
-            self.send_json(200, {"status": "ok"})
-        except ValueError as e:
-            self.send_json(400, {
-                "status": "error",
-                "error_type": "invalid_parameters",
-                "error_message": str(e),
-            })
+            return web.json_response({"status": "ok"})
+        except web.HTTPBadRequest:
+            raise
         except Exception as e:
-            self.send_json(500, {
-                "status": "error",
-                "error_type": "internal_error",
-                "error_message": str(e),
-            })
+            return web.json_response(
+                {
+                    "status": "error",
+                    "error_type": "internal_error",
+                    "error_message": str(e),
+                },
+                status=500,
+            )
 
-    def handle_off(self):
-        """Handle POST /off."""
+    async def handle_off(self, request):
         try:
-            system_id, context = self._get_params()
+            system_id, context, _ = await self._get_params(request)
             self.driver.off(system_id, context)
-            self.send_json(200, {"status": "ok"})
-        except ValueError as e:
-            self.send_json(400, {
-                "status": "error",
-                "error_type": "invalid_parameters",
-                "error_message": str(e),
-            })
+            return web.json_response({"status": "ok"})
+        except web.HTTPBadRequest:
+            raise
         except Exception as e:
-            self.send_json(500, {
-                "status": "error",
-                "error_type": "internal_error",
-                "error_message": str(e),
-            })
+            return web.json_response(
+                {
+                    "status": "error",
+                    "error_type": "internal_error",
+                    "error_message": str(e),
+                },
+                status=500,
+            )
 
-    def handle_cycle(self):
-        """Handle POST /cycle."""
+    async def handle_cycle(self, request):
         try:
-            system_id, context = self._get_params()
+            system_id, context, _ = await self._get_params(request)
             self.driver.cycle(system_id, context)
-            self.send_json(200, {"status": "ok"})
-        except ValueError as e:
-            self.send_json(400, {
-                "status": "error",
-                "error_type": "invalid_parameters",
-                "error_message": str(e),
-            })
+            return web.json_response({"status": "ok"})
+        except web.HTTPBadRequest:
+            raise
         except Exception as e:
-            self.send_json(500, {
-                "status": "error",
-                "error_type": "internal_error",
-                "error_message": str(e),
-            })
+            return web.json_response(
+                {
+                    "status": "error",
+                    "error_type": "internal_error",
+                    "error_message": str(e),
+                },
+                status=500,
+            )
 
-    def handle_reset(self):
-        """Handle POST /reset."""
+    async def handle_reset(self, request):
         try:
-            system_id, context = self._get_params()
+            system_id, context, _ = await self._get_params(request)
             self.driver.reset(system_id, context)
-            self.send_json(200, {"status": "ok"})
-        except ValueError as e:
-            self.send_json(400, {
-                "status": "error",
-                "error_type": "invalid_parameters",
-                "error_message": str(e),
-            })
+            return web.json_response({"status": "ok"})
+        except web.HTTPBadRequest:
+            raise
         except Exception as e:
-            self.send_json(500, {
-                "status": "error",
-                "error_type": "internal_error",
-                "error_message": str(e),
-            })
+            return web.json_response(
+                {
+                    "status": "error",
+                    "error_type": "internal_error",
+                    "error_message": str(e),
+                },
+                status=500,
+            )
 
-    def handle_set_boot_order(self):
-        """Handle POST /set-boot-order."""
+    async def handle_set_boot_order(self, request):
         try:
-            system_id, context = self._get_params()
-            self.driver.set_boot_order(system_id, context)
-            self.send_json(200, {"status": "ok"})
-        except ValueError as e:
-            self.send_json(400, {
-                "status": "error",
-                "error_type": "invalid_parameters",
-                "error_message": str(e),
-            })
+            system_id, context, order = await self._get_params(request)
+            self.driver.set_boot_order(system_id, context, order)
+            return web.json_response({"status": "ok"})
+        except NotImplementedError as e:
+            return web.json_response(
+                {
+                    "status": "error",
+                    "error_type": "not_implemented",
+                    "error_message": str(e),
+                },
+                status=501,
+            )
+        except web.HTTPBadRequest:
+            raise
         except Exception as e:
-            self.send_json(500, {
-                "status": "error",
-                "error_type": "internal_error",
-                "error_message": str(e),
-            })
+            return web.json_response(
+                {
+                    "status": "error",
+                    "error_type": "internal_error",
+                    "error_message": str(e),
+                },
+                status=500,
+            )
+
+    async def start(self):
+        self.runner = web.AppRunner(self.app)
+        await self.runner.setup()
+
+        listen_fds = int(os.environ.get("LISTEN_FDS", 0))
+        if listen_fds >= 1:
+            # Socket-activated: systemd passes the bound socket as fd 3.
+            sock = socket.fromfd(3, socket.AF_UNIX, socket.SOCK_STREAM)
+            self.site = web.SockSite(self.runner, sock)
+        else:
+            # Direct invocation: create and bind the socket ourselves.
+            if os.path.exists(self.socket_path):
+                os.unlink(self.socket_path)
+            self.site = web.UnixSite(self.runner, self.socket_path)
+
+        await self.site.start()
+
+        logger.info("Redfish power driver listening on %s", self.socket_path)
+
+    async def stop(self):
+        if self.site:
+            await self.site.stop()
+        if self.runner:
+            await self.runner.cleanup()
+
+        if os.path.exists(self.socket_path):
+            os.unlink(self.socket_path)
+
+        logger.info("Server stopped")
 
 
 def main():
-    """Start the Redfish power driver HTTP server."""
     parser = argparse.ArgumentParser(description="Redfish Power Driver Service")
     parser.add_argument(
         "command",
         choices=["start", "status"],
         help="Command to execute",
     )
+    snap_common = os.environ["SNAP_COMMON"]
+    default_socket = os.path.join(snap_common, "power-drivers", "redfish.sock")
+
     parser.add_argument(
         "--socket-path",
-        default="/var/snap/maas-power-driver-redfish/common/power-drivers/redfish.sock",
+        default=default_socket,
         help="Path to the UNIX domain socket",
     )
     parser.add_argument(
@@ -247,54 +263,32 @@ def main():
     if args.command == "status":
         if os.path.exists(args.socket_path):
             logger.info("Service is running on %s", args.socket_path)
-            sys.exit(0)
+            return 0
         else:
             logger.info("Service is not running")
-            sys.exit(3)
+            return 3
 
-    # Remove stale socket file
-    if os.path.exists(args.socket_path):
-        os.unlink(args.socket_path)
+    server = RedfishDriverServer(args.socket_path)
 
-    # Initialize the driver
-    PowerDriverHandler.driver = RedfishPowerDriver()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-    # Create UNIX domain socket server
-    unix_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    unix_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    unix_socket.bind(args.socket_path)
-    unix_socket.listen(5)
-
-    class UnixHTTPServer(HTTPServer):
-        """HTTPServer that uses a pre-created UNIX socket."""
-
-        allow_reuse_address = True
-
-        def server_bind(self):
-            pass
-
-        def server_close(self):
-            self.socket.close()
-
-    server = UnixHTTPServer((args.socket_path,), PowerDriverHandler)
-    server.socket = unix_socket
-
-    logger.info("Redfish power driver listening on %s", args.socket_path)
-
-    def shutdown(signum, frame):
+    def shutdown():
         logger.info("Shutting down...")
-        threading.Thread(target=server.shutdown, daemon=True).start()
+        loop.create_task(server.stop())
+        loop.stop()
 
-    signal.signal(signal.SIGTERM, shutdown)
-    signal.signal(signal.SIGINT, shutdown)
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, shutdown)
 
     try:
-        server.serve_forever()
+        loop.run_until_complete(server.start())
+        loop.run_forever()
     finally:
-        if os.path.exists(args.socket_path):
-            os.unlink(args.socket_path)
-        logger.info("Server stopped")
+        loop.close()
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -31,8 +31,8 @@
   ],
   "capabilities": {
     "queryable": true,
-    "chassis": false,
-    "can_probe": true,
+    "chassis": true,
+    "can_probe": false,
     "can_set_boot_order": false
   },
   "ip_extractor": {

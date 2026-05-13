@@ -24,6 +24,10 @@ POWER_CHANGE_OFF = "ForceOff"
 POWER_CHANGE_RESET = "GracefulRestart"
 POWER_CHANGE_CYCLE = "ForceRestart"
 
+# Boot override values
+BOOT_SOURCE_PXE = "Pxe"
+BOOT_SOURCE_OVERRIDE_ENABLED = "Once"
+
 # Power state mapping from Redfish to MAAS
 # Redfish states: Off, On, Paused, PoweringOff, PoweringOn, StandaloneNetworking, etc.
 POWER_STATE_MAP = {
@@ -176,6 +180,20 @@ class RedfishPowerDriver:
             url_base=url_base,
         )
 
+    def _set_pxe_boot(self, session, url_base, node_id):
+        """Set the machine to PXE boot once (matches original driver behavior)."""
+        endpoint = f"{REDFISH_SYSTEMS_ENDPOINT}/{node_id}"
+        body = {
+            "Boot": {
+                "BootSourceOverrideEnabled": BOOT_SOURCE_OVERRIDE_ENABLED,
+                "BootSourceOverrideTarget": BOOT_SOURCE_PXE,
+            }
+        }
+        try:
+            self._redfish_request(session, "PATCH", endpoint, body=body, url_base=url_base)
+        except Exception as e:
+            logger.warning("Failed to set PXE boot for node %s: %s", node_id, e)
+
     def query(self, system_id: str, context: dict) -> str:
         """Query the current power state of the system.
 
@@ -204,7 +222,7 @@ class RedfishPowerDriver:
                 # Transitional state - retry with exponential backoff
                 if retry == MAX_STATUS_REQUEST_RETRIES - 1:
                     logger.error(
-                        "Redfish node %s still in '%s' state after all retries.",
+                        "Redfish node %s still in '%s' state after all retries. Giving up.",
                         node_id, raw_state,
                     )
                     return "error"
@@ -239,6 +257,9 @@ class RedfishPowerDriver:
             self._power(session, url_base, node_id, POWER_CHANGE_OFF)
             self._wait_for_status(session, url_base, node_id, "off")
 
+        # Set PXE boot (original behavior)
+        self._set_pxe_boot(session, url_base, node_id)
+
         # Power on the machine
         self._power(session, url_base, node_id, POWER_CHANGE_ON)
         self._wait_for_status(session, url_base, node_id, "on")
@@ -260,6 +281,9 @@ class RedfishPowerDriver:
             self._power(session, url_base, node_id, POWER_CHANGE_OFF)
             self._wait_for_status(session, url_base, node_id, "off")
 
+        # Set PXE boot (original behavior, even when powering off)
+        self._set_pxe_boot(session, url_base, node_id)
+
     def cycle(self, system_id: str, context: dict) -> None:
         """Cycle power (force restart)."""
         session = self._make_session(context)
@@ -279,13 +303,7 @@ class RedfishPowerDriver:
             node_id = self._get_node_id(session, url_base)
 
         self._power(session, url_base, node_id, POWER_CHANGE_RESET)
-        self._wait_for_status(session, url_base, node_id, "on")
 
-    def set_boot_order(self, system_id: str, context: dict) -> None:
-        """Set boot order (not implemented for basic Redfish).
-
-        The monorepo Redfish driver supports PXE boot via set_pxe_boot,
-        but that requires PATCH to the system resource with etag handling.
-        This is deferred for now.
-        """
-        logger.warning("set_boot_order is not supported by the Redfish driver")
+    def set_boot_order(self, system_id: str, context: dict, order: list) -> None:
+        """Set boot order is not supported by the Redfish driver."""
+        raise NotImplementedError("set_boot_order is not supported by the Redfish driver")
