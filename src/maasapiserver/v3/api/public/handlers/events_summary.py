@@ -3,7 +3,6 @@
 
 import asyncio
 import json
-import os
 from urllib.request import Request, urlopen
 
 from fastapi import Depends, Header
@@ -18,17 +17,24 @@ from maasapiserver.v3.api.public.models.responses.events_summary import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maascommon.openfga.base import MAASResourceEntitlement
+from maasserver.config import RegionConfiguration
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.models.events import Event
 from maasservicelayer.services import ServiceCollectionV3
 
-_MAX_ROWS = 500
-_DEFAULT_MODEL = "mistralai/mistral-small-24b-instruct-2501"
-_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 _HEADER = [
     "id", "created", "type", "node_system_id", "node_hostname",
     "owner", "action", "description",
 ]
+
+
+def _get_ai_config() -> tuple[int, str, str]:
+    with RegionConfiguration.open() as config:
+        return (
+            config.ai_events_max_rows,
+            config.ai_events_model,
+            config.ai_events_openrouter_url,
+        )
 
 
 def _to_table(events: list[Event]) -> str:
@@ -43,7 +49,7 @@ def _to_table(events: list[Event]) -> str:
     return "\n".join(["\t".join(_HEADER)] + ["\t".join(r) for r in rows])
 
 
-def _call_openrouter(api_key: str, model: str, table: str) -> str:
+def _call_openrouter(api_key: str, model: str, openrouter_url: str, table: str) -> str:
     payload = json.dumps(
         {
             "model": model,
@@ -51,15 +57,16 @@ def _call_openrouter(api_key: str, model: str, table: str) -> str:
                 {
                     "role": "system",
                     "content": (
-                        "You analyze MAAS infrastructure event logs. "
+                        "You analyze MAAS infrastructure events."
                         "The user message contains tab-separated event data. "
                         "Answer from the data only; say if something cannot be determined."
+                        "Avoid uneccessary commentary or filler text. Focus on key insights, trends, and notable events."
                     ),
                 },
                 {
                     "role": "user",
                     "content": (
-                        f"Produce a summary of the following events data. Be concise, remove uneccessary markdown headers, and focus on key content without referencing specific events (resource ids are okay). "
+                        f"Produce a summary of the following events data. Be concise, remove uneccessary markdown headers, and focus on key content without referencing specific events (resource ids are okay). Start with a title for the summary, and highlight critical events."
                         f"\n\n--- Events (tab-separated) ---\n{table}"
                     ),
                 },
@@ -68,7 +75,7 @@ def _call_openrouter(api_key: str, model: str, table: str) -> str:
     ).encode()
 
     req = Request(
-        _OPENROUTER_URL,
+        openrouter_url,
         data=payload,
         headers={
             "Authorization": f"Bearer {api_key}",
@@ -80,11 +87,12 @@ def _call_openrouter(api_key: str, model: str, table: str) -> str:
     return body["choices"][0]["message"]["content"]
 
 
-async def _llm_summarize(api_key: str, table: str) -> str:
-    model = os.getenv("MAAS_EVENTS_SUMMARY_MODEL", _DEFAULT_MODEL)
+async def _llm_summarize(
+    api_key: str, model: str, openrouter_url: str, table: str
+) -> str:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
-        None, _call_openrouter, api_key, model, table
+        None, _call_openrouter, api_key, model, openrouter_url, table
     )
 
 
@@ -114,9 +122,11 @@ class EventsSummaryHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         openrouter_api_key: str = Header(alias="x-openrouter-api-key"),  # noqa: B008
     ) -> EventsSummaryResponse:
+        max_rows, model, openrouter_url = _get_ai_config()
+
         result = await services.events.list(
             page=1,
-            size=_MAX_ROWS,
+            size=max_rows,
             query=QuerySpec(where=filters.to_clause()),
         )
 
@@ -131,5 +141,7 @@ class EventsSummaryHandler(Handler):
                 summary="No events found matching the given filters."
             )
 
-        summary = await _llm_summarize(openrouter_api_key, _to_table(events))
+        summary = await _llm_summarize(
+            openrouter_api_key, model, openrouter_url, _to_table(events)
+        )
         return EventsSummaryResponse(summary=summary)

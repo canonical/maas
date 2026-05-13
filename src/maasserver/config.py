@@ -165,3 +165,26 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         "When disabled, logs are emitted in plaintext format.",
         OneWayStringBool(if_missing=True),
     )
+
+    # AI events summarisation
+    ai_events_max_rows = ConfigurationOption(
+        "ai_events_max_rows",
+        "Maximum number of event rows sent to the LLM for summarisation.",
+        Int(if_missing=500, accept_python=False, min=1),
+    )
+    ai_events_model = ConfigurationOption(
+        "ai_events_model",
+        "OpenRouter model identifier for events summarisation.",
+        UnicodeString(
+            if_missing="mistralai/mistral-small-24b-instruct-2501",
+            accept_python=False,
+        ),
+    )
+    ai_events_openrouter_url = ConfigurationOption(
+        "ai_events_openrouter_url",
+        "OpenRouter API URL for events summarisation.",
+        UnicodeString(
+            if_missing="https://openrouter.ai/api/v1/chat/completions",
+            accept_python=False,
+        ),
+    )
