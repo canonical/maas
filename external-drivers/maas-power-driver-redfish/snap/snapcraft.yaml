@@ -5,6 +5,7 @@ description: MAAS power driver for Redfish BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 apps:
   redfish-driver:
@@ -20,6 +21,7 @@ plugs:
   power-drivers:
     interface: content
     content: power-drivers
+    target: $SNAP_COMMON/power-drivers
 
 parts:
   redfish-driver:
