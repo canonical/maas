@@ -152,6 +152,17 @@ region → AMP DescribePowerTypes → rackd clusterservice.describe_power_types(
 
 **Goal**: Wire up the snap content interface so driver sockets are discoverable.
 
+**Socket directory convention:**
+
+The shared socket directory lives in the MAAS runtime directory:
+
+| Environment | Path |
+|---|---|
+| Snap | `/run/snap.<instance>/power-drivers` |
+| Deb | `/run/maas/power-drivers` |
+
+This follows the canonical MAAS pattern (same as the Go agent's `RunDir()` function). The directory is created at rack startup if it doesn't exist.
+
 **Changes in `snap/snapcraft.yaml`:**
 
 1. **Add content slot:**
@@ -160,8 +171,8 @@ region → AMP DescribePowerTypes → rackd clusterservice.describe_power_types(
      power-drivers:
        interface: content
        content: power-drivers
-       read:
-         - $SNAP_COMMON/power-drivers
+       write:  # MAAS snap owns the directory
+         - $SNAP_INSTANCE_NAME/power-drivers   # snap: /run/snap.<name>/power-drivers
    ```
 
 2. **Remove `apps.power`:**
@@ -176,17 +187,23 @@ region → AMP DescribePowerTypes → rackd clusterservice.describe_power_types(
    - Remove: `amtterm`, `wsmancli`, `freeipmi-tools`, `ipmitool`, `snmp`, `wget`, `python3-seamicroclient`, `python3-zhmcclient`, `python3-pyvmomi`
    - Keep: packages needed for builtin drivers (`webhook` needs nothing extra, `manual` needs nothing)
 
-4. **Add `SNAP_COMMON/power-drivers` directory creation** in rack startup
-
 **Changes in `provisioningserver`:**
 
-5. **Update `provisioningserver/server.py` (rack startup):**
-   - On startup: create `$SNAP_COMMON/power-drivers` if it doesn't exist
+4. **Update `provisioningserver/server.py` (rack startup):**
+   - On startup: create the runtime socket directory if it doesn't exist
    - Start socket directory watcher
    - On first scan: register all discovered drivers, notify region
 
-6. **Update `provisioningserver/path.py`:**
-   - Add `get_power_drivers_socket_dir()` function
+5. **Update `provisioningserver/path.py`:**
+   - Add `get_power_drivers_socket_dir()` function using the same logic as the Go agent's `RunDir()`:
+     - If `SNAP_INSTANCE_NAME` is set: `/run/snap.<name>/power-drivers`
+     - Otherwise: `/run/maas/power-drivers`
+
+**Driver snap convention:**
+
+Each driver snap writes its socket to the same runtime directory:
+- Snap: `/run/snap.<instance>/power-drivers/<driver-name>.sock`
+- The driver snap's service starts and writes its socket here
 
 **Files modified:**
 - `snap/snapcraft.yaml`
@@ -352,7 +369,7 @@ maas-power-driver-<name>/
 - Declares snap service
 - Declares `power-drivers` content plug
 - Stage-packages for system dependencies (e.g., `freeipmi-tools` for ipmi)
-- Service writes socket to `$SNAP_COMMON/power-drivers/<driver-name>.sock`
+- Service writes socket to `<run-dir>/power-drivers/<driver-name>.sock` (where run-dir is `/run/snap.<instance>` in snap or `/run/maas` in deb)
 
 **Drivers to create (19):**
 1. `maas-power-driver-ipmi` (deps: `freeipmi-tools`)

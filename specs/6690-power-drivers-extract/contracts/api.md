@@ -2,7 +2,9 @@
 
 ## Driver Service Protocol (HTTP over UNIX Socket)
 
-Each power driver runs an HTTP server on a UNIX domain socket at `$SNAP_COMMON/power-drivers/<driver-name>.sock`.
+Each power driver runs an HTTP server on a UNIX domain socket in the MAAS runtime directory:
+- Snap: `/run/snap.<instance>/power-drivers/<driver-name>.sock`
+- Deb: `/run/maas/power-drivers/<driver-name>.sock`
 
 ### `GET /metadata`
 

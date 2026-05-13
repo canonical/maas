@@ -31,6 +31,9 @@ sudo snap connect maas:power-drivers maas-power-driver-ipmi:power-drivers
 
 # Verify service is running
 sudo snap services maas-power-driver-ipmi
+
+# Verify socket exists in the runtime directory
+ls -la /run/snap.maas/power-drivers/
 ```
 
 ### 3. Verify discovery
