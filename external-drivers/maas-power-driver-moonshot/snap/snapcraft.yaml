@@ -1,7 +1,7 @@
 name: maas-power-driver-moonshot
 version: '1.0.0'
-summary: MAAS power driver for HP Moonshot
-description: MAAS power driver for HP Moonshot BMCs
+summary: MAAS power driver for Moonshot
+description: MAAS power driver for Moonshot BMCs
 grade: devel
 confinement: strict
 base: core26
@@ -12,8 +12,14 @@ plugs:
     interface: content
     content: power-driver
     target: $SNAP_COMMON/power-driver
+  network-bind:
 
 apps:
+  moonshot:
+    command: bin/moonshot-driver start
+    sockets:
+      moonshot:
+        listen-stream: $SNAP_COMMON/power-driver/moonshot.sock
   status:
     command: bin/moonshot-driver status
 
@@ -28,7 +34,3 @@ parts:
     override-build: |
       /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
       find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#!.*python3.*$|#!/usr/bin/env python3|' {} +
-
-  tree:
-    plugin: dump
-    source: snap/local/tree

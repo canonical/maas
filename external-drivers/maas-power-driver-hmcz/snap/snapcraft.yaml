@@ -1,7 +1,7 @@
 name: maas-power-driver-hmcz
 version: '1.0.0'
-summary: MAAS power driver for IBM HMCz
-description: MAAS power driver for IBM HMCz BMCs
+summary: MAAS power driver for HMCz
+description: MAAS power driver for HMCz BMCs
 grade: devel
 confinement: strict
 base: core26
@@ -12,8 +12,14 @@ plugs:
     interface: content
     content: power-driver
     target: $SNAP_COMMON/power-driver
+  network-bind:
 
 apps:
+  hmcz:
+    command: bin/hmcz-driver start
+    sockets:
+      hmcz:
+        listen-stream: $SNAP_COMMON/power-driver/hmcz.sock
   status:
     command: bin/hmcz-driver status
 
@@ -26,7 +32,3 @@ parts:
     override-build: |
       /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
       find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#!.*python3.*$|#!/usr/bin/env python3|' {} +
-
-  tree:
-    plugin: dump
-    source: snap/local/tree
