@@ -17,3 +17,7 @@ parts:
   hmcz-driver:
     plugin: python
     source: .
+
+  tree:
+    plugin: dump
+    source: snap/local/tree

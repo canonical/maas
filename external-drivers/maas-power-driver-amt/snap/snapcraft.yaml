@@ -20,3 +20,7 @@ parts:
     stage-packages:
       - amtterm
       - wsmancli
+
+  tree:
+    plugin: dump
+    source: snap/local/tree

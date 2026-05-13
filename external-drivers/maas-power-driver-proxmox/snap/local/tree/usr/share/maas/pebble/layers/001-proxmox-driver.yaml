@@ -1,0 +1,13 @@
+summary: proxmox power driver service
+
+description: |
+  MAAS power driver for proxmox BMCs
+
+services:
+  proxmox-driver:
+    override: replace
+    command: $SNAP/bin/proxmox-driver start
+    startup: enabled
+    sockets:
+      proxmox:
+        listen-stream: $SNAP_COMMON/power-driver/proxmox.sock

@@ -19,3 +19,7 @@ parts:
     source: .
     stage-packages:
       - snmp
+
+  tree:
+    plugin: dump
+    source: snap/local/tree

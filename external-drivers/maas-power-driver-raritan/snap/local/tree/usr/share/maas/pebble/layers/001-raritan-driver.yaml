@@ -1,0 +1,13 @@
+summary: raritan power driver service
+
+description: |
+  MAAS power driver for raritan BMCs
+
+services:
+  raritan-driver:
+    override: replace
+    command: $SNAP/bin/raritan-driver start
+    startup: enabled
+    sockets:
+      raritan:
+        listen-stream: $SNAP_COMMON/power-driver/raritan.sock

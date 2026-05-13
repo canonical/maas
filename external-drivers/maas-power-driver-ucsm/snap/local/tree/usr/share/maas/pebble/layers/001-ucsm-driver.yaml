@@ -1,0 +1,13 @@
+summary: ucsm power driver service
+
+description: |
+  MAAS power driver for ucsm BMCs
+
+services:
+  ucsm-driver:
+    override: replace
+    command: $SNAP/bin/ucsm-driver start
+    startup: enabled
+    sockets:
+      ucsm:
+        listen-stream: $SNAP_COMMON/power-driver/ucsm.sock

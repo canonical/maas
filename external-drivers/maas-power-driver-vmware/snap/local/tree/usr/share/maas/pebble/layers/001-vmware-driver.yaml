@@ -1,0 +1,13 @@
+summary: vmware power driver service
+
+description: |
+  MAAS power driver for vmware BMCs
+
+services:
+  vmware-driver:
+    override: replace
+    command: $SNAP/bin/vmware-driver start
+    startup: enabled
+    sockets:
+      vmware:
+        listen-stream: $SNAP_COMMON/power-driver/vmware.sock

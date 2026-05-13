@@ -1,0 +1,13 @@
+summary: hmcz power driver service
+
+description: |
+  MAAS power driver for hmcz BMCs
+
+services:
+  hmcz-driver:
+    override: replace
+    command: $SNAP/bin/hmcz-driver start
+    startup: enabled
+    sockets:
+      hmcz:
+        listen-stream: $SNAP_COMMON/power-driver/hmcz.sock

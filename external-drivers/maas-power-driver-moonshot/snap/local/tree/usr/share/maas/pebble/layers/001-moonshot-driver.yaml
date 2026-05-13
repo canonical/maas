@@ -1,0 +1,13 @@
+summary: moonshot power driver service
+
+description: |
+  MAAS power driver for moonshot BMCs
+
+services:
+  moonshot-driver:
+    override: replace
+    command: $SNAP/bin/moonshot-driver start
+    startup: enabled
+    sockets:
+      moonshot:
+        listen-stream: $SNAP_COMMON/power-driver/moonshot.sock

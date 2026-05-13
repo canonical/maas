@@ -1,0 +1,13 @@
+summary: apc power driver service
+
+description: |
+  MAAS power driver for apc BMCs
+
+services:
+  apc-driver:
+    override: replace
+    command: $SNAP/bin/apc-driver start
+    startup: enabled
+    sockets:
+      apc:
+        listen-stream: $SNAP_COMMON/power-driver/apc.sock

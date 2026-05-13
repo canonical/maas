@@ -1,0 +1,13 @@
+summary: msftocs power driver service
+
+description: |
+  MAAS power driver for msftocs BMCs
+
+services:
+  msftocs-driver:
+    override: replace
+    command: $SNAP/bin/msftocs-driver start
+    startup: enabled
+    sockets:
+      msftocs:
+        listen-stream: $SNAP_COMMON/power-driver/msftocs.sock

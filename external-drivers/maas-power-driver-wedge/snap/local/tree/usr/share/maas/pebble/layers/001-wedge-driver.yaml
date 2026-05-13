@@ -1,0 +1,13 @@
+summary: wedge power driver service
+
+description: |
+  MAAS power driver for wedge BMCs
+
+services:
+  wedge-driver:
+    override: replace
+    command: $SNAP/bin/wedge-driver start
+    startup: enabled
+    sockets:
+      wedge:
+        listen-stream: $SNAP_COMMON/power-driver/wedge.sock

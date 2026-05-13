@@ -19,3 +19,7 @@ parts:
     source: .
     stage-packages:
       - freeipmi-tools
+
+  tree:
+    plugin: dump
+    source: snap/local/tree

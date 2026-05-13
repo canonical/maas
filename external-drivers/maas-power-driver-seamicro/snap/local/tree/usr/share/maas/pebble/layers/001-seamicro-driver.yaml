@@ -1,0 +1,13 @@
+summary: seamicro power driver service
+
+description: |
+  MAAS power driver for seamicro BMCs
+
+services:
+  seamicro-driver:
+    override: replace
+    command: $SNAP/bin/seamicro-driver start
+    startup: enabled
+    sockets:
+      seamicro:
+        listen-stream: $SNAP_COMMON/power-driver/seamicro.sock

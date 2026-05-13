@@ -1,0 +1,13 @@
+summary: dli power driver service
+
+description: |
+  MAAS power driver for dli BMCs
+
+services:
+  dli-driver:
+    override: replace
+    command: $SNAP/bin/dli-driver start
+    startup: enabled
+    sockets:
+      dli:
+        listen-stream: $SNAP_COMMON/power-driver/dli.sock

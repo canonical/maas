@@ -1,0 +1,13 @@
+summary: amt power driver service
+
+description: |
+  MAAS power driver for amt BMCs
+
+services:
+  amt-driver:
+    override: replace
+    command: $SNAP/bin/amt-driver start
+    startup: enabled
+    sockets:
+      amt:
+        listen-stream: $SNAP_COMMON/power-driver/amt.sock
