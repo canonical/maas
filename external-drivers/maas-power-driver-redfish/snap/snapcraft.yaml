@@ -27,3 +27,5 @@ parts:
   redfish-driver:
     plugin: python
     source: .
+    build-environment:
+      - PARTS_PYTHON_INTERPRETER: python3
