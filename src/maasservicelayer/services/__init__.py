@@ -171,6 +171,7 @@ from maasservicelayer.services.leases import LeasesService
 from maasservicelayer.services.legacybootsourceselections import (
     LegacyBootSourceSelectionService,
 )
+from maasservicelayer.services.llm_search import LLMSearchService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.machines_v2 import MachinesV2Service
 from maasservicelayer.services.mdns import MDNSService
@@ -283,6 +284,7 @@ class ServiceCollectionV3:
     ipranges: IPRangesService
     leases: LeasesService
     legacy_boot_source_selections: LegacyBootSourceSelectionService
+    llm_search: LLMSearchService
     machines: MachinesService
     machines_v2: MachinesV2Service
     mdns: MDNSService
@@ -761,5 +763,11 @@ class ServiceCollectionV3:
             boot_resources_service=services.boot_resources,
             boot_resource_sets_service=services.boot_resource_sets,
             boot_resource_files_service=services.boot_resource_files,
+        )
+        services.llm_search = LLMSearchService(
+            context=context,
+            cache=cache.get(
+                LLMSearchService.__name__, LLMSearchService.build_cache_object
+            ),
         )
         return services

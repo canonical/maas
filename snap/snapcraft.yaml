@@ -160,6 +160,7 @@ parts:
       - python3-netaddr
       - python3-netifaces
       - python3-oauthlib
+      - python3-openai
       - python3-packaging
       - python3-paramiko
       - python3-passlib
