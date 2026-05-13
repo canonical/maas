@@ -7,11 +7,13 @@
 
 ## Clarifications
 
-- **Language-agnostic**: Power drivers may be implemented in any programming language (Python, Go, Rust, etc.). The interface between MAAS and drivers is a JSON-based protocol over UNIX sockets, not a language-specific API.
-- **Driver services**: Each power driver runs as a long-running snap service. The rack controller (`rackd`) communicates with driver services over UNIX domain sockets exposed through the snap interface.
+- **Language-agnostic**: Power drivers may be implemented in any programming language (Python, Go, Rust, etc.). The interface between MAAS and drivers is HTTP over UNIX domain sockets, not a language-specific API.
+- **Driver services**: Each power driver runs as a long-running snap service. The rack controller (`rackd`) communicates with driver services over HTTP on UNIX domain sockets exposed through the snap interface.
 - **No metadata JSON**: Driver capabilities are discovered by querying the live service at its UNIX socket. There is no static metadata file.
 - **`maas-power` CLI deprecated**: The `maas-power` command (currently in `provisioningserver/power_driver_command.py`) is deprecated. Driver snaps provide their own CLI tools for testing and direct invocation. MAAS no longer ships a unified power CLI.
-- **Independent repositories**: Each driver group lives in its own git repository. Driver code, tests, documentation, and snapcraft configuration are all maintained in the driver's repository — not in the MAAS monorepo.
+- **Independent repositories**: Each power driver lives in its own git repository as an independent project. No driver grouping — one driver per repo, one driver per snap.
+- **`webhook` builtin**: The `webhook` power driver remains builtin in MAAS core (no external dependencies, useful for testing and custom integrations). All other drivers are external snaps.
+- **No `manual` driver**: The `manual` power driver is dropped entirely. It has no value in a service-based architecture.
 - **Rack-to-region driver lifecycle**: When drivers appear or disappear (snap connect/disconnect), the rack controller notifies the region controller so the region's view of available power types stays in sync.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -26,7 +28,7 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** a fresh MAAS installation with no driver snaps connected, **When** `rackd` starts, **Then** only builtin drivers (e.g., `manual`) are available in `PowerDriverRegistry`
+1. **Given** a fresh MAAS installation with no driver snaps connected, **When** `rackd` starts, **Then** only the builtin `webhook` driver is available in `PowerDriverRegistry`
 2. **Given** a driver snap `maas-power-driver-ipmi` is installed, connected, and its service is running, **When** `rackd` discovers available sockets, **Then** the `ipmi` driver is discoverable via `PowerDriverRegistry.get_item("ipmi")`
 3. **Given** multiple driver snaps are connected and running, **When** `rackd` discovers available sockets, **Then** all drivers are registered and available
 4. **Given** a driver snap is disconnected or its service stops, **When** `rackd` detects the socket is unavailable, **Then** that driver is removed from the registry
@@ -65,9 +67,9 @@
 4. **Given** a driver service crashes or becomes unresponsive, **When** `rackd` attempts to send a request, **Then** `rackd` receives a clear error and reports it to the user
 5. **Given** `provisioningserver` source code, **When** searched for direct driver imports, **Then** no import of specific power driver implementations exists (only the socket client and registry)
 
-### User Story 4 - Power drivers live in independent repositories (Priority: P1)
+### User Story 4 - Each power driver is an independent project (Priority: P1)
 
-**Description**: Each power driver (or group of related drivers) is maintained in its own git repository. The repository contains the driver implementation, its test suite, documentation, and snapcraft configuration. Driver teams can develop, version, and release independently of MAAS core.
+**Description**: Each power driver is maintained in its own git repository as a fully independent project. There is no driver grouping — one driver per repository, one driver per snap. Driver teams can develop, version, and release independently of MAAS core and independently of each other.
 
 **Why this priority**: Independent repositories enable independent versioning, separate CI pipelines, and clear ownership. Without this, drivers cannot truly be maintained separately from MAAS.
 
@@ -79,7 +81,7 @@
 2. **Given** a driver repository, **When** inspected, **Then** it contains documentation describing the driver's supported BMC types, configuration parameters, and known limitations
 3. **Given** a driver repository, **When** `snapcraft` is run, **Then** a driver snap is produced that can be installed and connected to MAAS
 4. **Given** a driver repository, **When** its version is bumped and released, **Then** the new driver snap can be released without touching the MAAS repository
-5. **Given** the MAAS monorepo after extraction, **When** searched for driver implementation code, **Then** no driver implementation files exist (only the protocol client, registry, and builtin `manual` driver remain)
+5. **Given** the MAAS monorepo after extraction, **When** searched for driver implementation code, **Then** no driver implementation files exist (only the protocol client, registry, and builtin `webhook` driver remain)
 
 ### User Story 5 - Driver snaps run as long-running services (Priority: P1)
 
@@ -146,12 +148,14 @@
 ## Assumptions
 
 - Power drivers may be written in any programming language (Python, Go, Rust, C, shell, etc.)
-- Each driver runs as a long-running service communicating over UNIX domain sockets
+- Each driver runs as a long-running service communicating over HTTP on UNIX domain sockets
 - Driver capabilities are discovered by querying the live service — there is no static metadata JSON file
 - Snap content interfaces (plug/slot) provide a shared directory for UNIX sockets
 - Driver snaps run with `strict` confinement (same as MAAS)
 - System-level dependencies (e.g., `freeipmi-tools`, `amtterm`) are included in the driver snap, not the MAAS snap
-- The `manual` power driver remains builtin in MAAS core (no external dependencies, always available)
+- The `webhook` power driver remains builtin in MAAS core (no external dependencies, useful for testing)
+- The `manual` power driver is dropped entirely
+- Each driver is an independent project — no driver grouping, one driver per repo and per snap
 - Pod drivers (LXD, Virsh) follow a similar but separate extraction path (out of scope for this feature)
 - Driver code, tests, and documentation are maintained in driver repositories, not the MAAS monorepo
 - Third-party power drivers are a valid use case (anyone can build a driver snap)
@@ -160,16 +164,21 @@
 
 ## Key Entities
 
-### Driver Service Protocol (UNIX Socket)
+### Driver Service Protocol (HTTP over UNIX Socket)
 - **Purpose**: Language-agnostic communication between `rackd` and driver services
-- **Transport**: UNIX domain socket in the shared snap content directory
-- **Messages**: JSON objects, length-prefixed (4-byte big-endian length + JSON payload)
-- **Request types**:
-  - `capabilities` — returns driver name, description, version, actions, settings, capability flags
-  - `power_query` — returns current power state (`on`, `off`, `unknown`)
-  - `power_on`, `power_off`, `power_cycle`, `power_reset` — performs action, returns status
-  - `set_boot_order` — configures boot order, returns status
+- **Transport**: HTTP over UNIX domain socket in the shared snap content directory
+- **Wire format**: Standard HTTP requests/responses with JSON bodies
+- **Endpoints**:
+  - `GET /` — returns driver capabilities (name, description, version, actions, settings, capability flags)
+  - `POST /query` — returns current power state (`on`, `off`, `unknown`)
+  - `POST /on` — powers on the node
+  - `POST /off` — powers off the node
+  - `POST /cycle` — cycles power
+  - `POST /reset` — resets power
+  - `POST /set-boot-order` — configures boot order
+- **Request body**: JSON object with `system_id`, `hostname`, `context` (power parameters)
 - **Response format**: JSON object with `status` (`ok`/`error`), optional `state` (for queries), optional `error_type` and `error_message`
+- **HTTP status codes**: 200 for success, 503 for unavailable, 400 for invalid parameters, 500 for driver errors
 - **Lifecycle**: Driver is a long-running service; `rackd` connects as needed, does not manage the service lifecycle
 
 ### Power Driver Registry
@@ -201,28 +210,39 @@
   - Protocol client library (for testing: a small client that speaks the UNIX socket protocol)
 - **Independence**: Each repository builds, tests, and releases without requiring the MAAS monorepo
 
-### Driver Grouping
-- **Purpose**: Logical grouping of related drivers into shared snaps
-- **Groups**:
-  - `maas-power-drivers-core`: `manual` (builtin in MAAS snap)
-  - `maas-power-driver-ipmi`: `ipmi`, `moonshot`
-  - `maas-power-driver-redfish`: `redfish`, `openbmc`
-  - `maas-power-driver-ibm`: `hmc`, `hmcz`, `mscm`
-  - `maas-power-driver-amt`: `amt`
-  - `maas-power-driver-apc`: `apc`
-  - `maas-power-driver-vmware`: `vmware`, `proxmox`
-  - `maas-power-driver-webhook`: `webhook`
-  - `maas-power-drivers-legacy`: `dli`, `eaton`, `raritan`, `recs`, `seamicro`, `ucsm`, `wedge`
+### Driver Listing
+- **Purpose**: Each driver is an independent project — no grouping
+- **Drivers**:
+  - `webhook` (builtin in MAAS snap)
+  - `ipmi` (independent snap)
+  - `redfish` (independent snap)
+  - `amt` (independent snap)
+  - `apc` (independent snap)
+  - `dli` (independent snap)
+  - `eaton` (independent snap)
+  - `hmc` (independent snap)
+  - `hmcz` (independent snap)
+  - `moonshot` (independent snap)
+  - `mscm` (independent snap)
+  - `msftocs` (independent snap)
+  - `openbmc` (independent snap)
+  - `proxmox` (independent snap)
+  - `raritan` (independent snap)
+  - `recs` (independent snap)
+  - `seamicro` (independent snap)
+  - `ucsm` (independent snap)
+  - `vmware` (independent snap)
+  - `wedge` (independent snap)
 
 ## Success Criteria
 
 - MAAS rack controller discovers all connected driver services within 1 second of service start
 - Zero power driver tests fail after extraction (100% test pass rate preserved)
-- All 21 existing power driver types remain functional after extraction
+- All 20 external power driver types remain functional after extraction (webhook stays builtin)
 - The `maas-power` command prints a deprecation warning and exits (driver snaps provide their own CLI tools)
 - A new power driver can be added by building and connecting a driver snap (no MAAS core changes required)
 - A power driver written in a non-Python language (e.g., Go) can be discovered and invoked by `rackd`
-- The UNIX socket protocol specification is published for third-party driver authors
+- The HTTP-over-UNIX-socket protocol specification is published for third-party driver authors
 - No breaking changes to existing MAAS APIs or RPC interfaces
 - The MAAS snap declares a `power-drivers` content slot that driver snaps can connect to
 - The region controller receives timely notifications when drivers are added or removed from a rack
@@ -238,4 +258,4 @@
 - This feature does not publish driver snaps to the Snap Store (that is a follow-up)
 - This feature does not define a driver SDK or CLI tooling for driver authors (that is a follow-up)
 - This feature does not preserve the `maas-power` CLI — it is deprecated in favor of per-driver CLI tools
-- This feature does not define a driver SDK or language bindings for the UNIX socket protocol (that is a follow-up)
+- This feature does not define a driver SDK or language bindings for the HTTP-over-UNIX-socket protocol (that is a follow-up)
