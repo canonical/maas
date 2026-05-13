@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MAAS Events Client — Canonical</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --orange:        #E95420;
+  --orange-light:  #F4815A;
+  --orange-dim:    #3d1509;
+  --orange-glow:   #E9542033;
+  --aubergine:     #77216F;
+  --aubergine-2:   #2C001E;
+  --aubergine-mid: #5E2750;
+  --warm-grey:     #AEA79F;
+  --bg:            #1A0A17;
+  --bg2:           #220D1E;
+  --bg3:           #2C1228;
+  --bg4:           #3A1A34;
+  --border:        #4A1F44;
+  --border2:       #6B2E63;
+  --text:          #F5F0F4;
+  --text2:         #C8B8C5;
+  --text3:         #8A6E85;
+  --green:         #0E8420;
+  --green-dim:     #082e0b;
+  --red:           #C7162B;
+  --red-dim:       #2d0509;
+  --amber:         #F99B11;
+  --amber-dim:     #3d2500;
+  --font:          'Ubuntu', sans-serif;
+  --mono:          'Ubuntu Mono', monospace;
+  --radius:        2px;
+}
+
+html, body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 80% 10%, #77216F18 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 10% 80%, #E9542011 0%, transparent 70%);
+}
+
+.app {
+  position: relative; z-index: 1;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 28px 80px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+
+.brand { display: flex; align-items: center; }
+
+.brand-circle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--orange);
+  display: flex; align-items: center; justify-content: center;
+  margin-right: 10px; flex-shrink: 0;
+}
+.brand-circle::after {
+  content: '';
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--orange);
+}
+.brand-name { font-size: 15px; font-weight: 300; color: var(--text); }
+.brand-name strong { font-weight: 500; }
+.brand-sep { width: 1px; height: 20px; background: var(--border2); margin: 0 14px; }
+.brand-product { font-size: 13px; color: var(--text2); }
+
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--bg2);
+  font-size: 11px; color: var(--text3); transition: all 0.3s;
+}
+.status-pill.auth  { border-color: var(--green);  color: var(--green);  background: var(--green-dim); }
+.status-pill.error { border-color: var(--red);    color: var(--red);    background: var(--red-dim); }
+.status-pill.busy  { border-color: var(--orange); color: var(--orange); background: var(--orange-dim); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.status-pill.busy .status-dot { animation: blink 0.8s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+.content { padding-top: 40px; }
+.section { margin-bottom: 40px; }
+
+.section-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+}
+.section-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--orange); color: #fff;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.section-num.locked { background: var(--bg4); color: var(--text3); }
+.section-title {
+  font-size: 13px; font-weight: 500;
+  color: var(--text2); text-transform: uppercase; letter-spacing: 0.1em;
+}
+.section-head::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+.field-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; margin-bottom: 12px;
+}
+.field-full { grid-column: 1 / -1; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label {
+  font-size: 11px; font-weight: 500;
+  color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em;
+}
+.field-input {
+  height: 38px; padding: 0 12px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text);
+  font-family: var(--mono); font-size: 13px; outline: none;
+  transition: border-color 0.15s;
+}
+.field-input::placeholder { color: var(--text3); font-family: var(--font); font-size: 13px; }
+.field-input:focus { border-color: var(--orange); }
+.field-input.ok  { border-color: var(--green); }
+.field-input.err { border-color: var(--red); }
+.field-input[type="datetime-local"] { font-size: 12px; padding: 0 8px; }
+
+.action-row {
+  display: flex; align-items: center;
+  gap: 12px; margin-top: 16px; flex-wrap: wrap;
+}
+
+.btn {
+  height: 38px; padding: 0 20px;
+  border-radius: var(--radius); border: 1px solid var(--border2);
+  background: transparent; color: var(--text2);
+  font-family: var(--font); font-size: 13px; font-weight: 400;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  transition: all 0.15s; white-space: nowrap;
+}
+.btn:hover:not(:disabled) { background: var(--bg4); color: var(--text); border-color: var(--orange); }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--orange); border-color: var(--orange);
+  color: #fff; font-weight: 500;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--orange-light); border-color: var(--orange-light);
+  color: #fff; box-shadow: 0 0 20px var(--orange-glow);
+}
+
+.btn-secondary {
+  background: var(--aubergine-mid); border-color: var(--aubergine-mid);
+  color: #fff; font-weight: 500;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--aubergine); border-color: var(--aubergine); color: #fff;
+}
+
+.token-pill {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--text3); background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 4px 14px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; max-width: 300px; transition: all 0.3s;
+}
+.token-pill.active { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+
+.response-box {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; margin-top: 16px;
+  animation: slideIn 0.2s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+.response-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; background: var(--bg3);
+  border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.http-code {
+  font-family: var(--mono); font-weight: 700; font-size: 12px;
+  padding: 2px 10px; border-radius: 2px; letter-spacing: 0.04em;
+}
+.http-code.ok   { background: var(--green-dim); color: #3baa4a; border: 1px solid var(--green); }
+.http-code.err  { background: var(--red-dim);   color: #e55;    border: 1px solid var(--red); }
+.http-code.warn { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber); }
+.response-msg   { color: var(--text2); flex: 1; font-size: 12px; }
+.response-time  { color: var(--text3); font-family: var(--mono); font-size: 11px; margin-left: auto; }
+
+.response-body {
+  padding: 20px 22px; max-height: 560px;
+  overflow-y: auto; background: var(--bg2);
+}
+
+.md h1,.md h2,.md h3 {
+  font-family: var(--font); font-weight: 300; color: var(--text); margin: 22px 0 8px;
+}
+.md h1 { font-size: 20px; }
+.md h2 {
+  font-size: 15px; color: var(--orange); font-weight: 400;
+  border-bottom: 1px solid var(--border); padding-bottom: 6px;
+}
+.md h3 { font-size: 13px; color: var(--text); font-weight: 500; }
+.md p  { color: var(--text2); font-size: 13px; margin-bottom: 10px; line-height: 1.7; }
+.md ul,.md ol { margin: 6px 0 10px 20px; }
+.md li { color: var(--text2); font-size: 13px; margin-bottom: 4px; }
+.md strong { color: var(--orange-light); font-weight: 500; }
+.md code {
+  font-family: var(--mono); font-size: 12px;
+  background: var(--bg4); padding: 1px 6px; border-radius: 2px;
+  color: var(--orange-light);
+}
+.md pre {
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: 2px; padding: 14px; overflow-x: auto; margin: 10px 0;
+}
+.md pre code { background: none; padding: 0; color: var(--text); }
+
+.raw-json {
+  font-family: var(--mono); font-size: 12px;
+  color: var(--text2); white-space: pre-wrap; word-break: break-all;
+}
+
+.locked-section { opacity: 0.35; pointer-events: none; transition: opacity 0.4s; }
+.locked-section.unlocked { opacity: 1; pointer-events: auto; }
+
+.date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+.spinner {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin 0.6s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.endpoint-hint { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-top: 8px; }
+.endpoint-hint span { color: var(--aubergine); }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* loading overlay */
+#loading-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(26, 10, 23, 0.88);
+  backdrop-filter: blur(4px);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px;
+}
+#loading-overlay.visible { display: flex; animation: fadeInOverlay 0.25s ease; }
+@keyframes fadeInOverlay { from{opacity:0} to{opacity:1} }
+.overlay-label {
+  font-family: 'Ubuntu', sans-serif;
+  font-size: 13px; font-weight: 300;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.14em; text-transform: uppercase;
+}
+
+
+/* save button */
+.save-btn {
+  height: 30px; padding: 0 14px;
+  border-radius: var(--radius); border: 1px solid var(--border2);
+  background: var(--bg4); color: var(--text2);
+  font-family: var(--font); font-size: 11px; font-weight: 500;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  transition: all 0.15s; margin-left: auto;
+}
+.save-btn:hover { background: var(--orange); border-color: var(--orange); color: #fff; }
+.save-btn svg { flex-shrink: 0; }
+
+/* eye toggle */
+.pwd-wrap { position: relative; }
+.pwd-wrap .field-input { width: 100%; padding-right: 38px; }
+.eye-btn {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: 38px; background: none; border: none; cursor: pointer;
+  color: var(--text3); display: flex; align-items: center; justify-content: center;
+  font-size: 15px; transition: color 0.15s;
+}
+.eye-btn:hover { color: var(--orange); }
+
+/* tooltip */
+.help-wrap { position: relative; display: inline-flex; align-items: center; margin-left: 6px; }
+.help-btn {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--bg4); border: 1px solid var(--border2);
+  color: var(--text3); font-size: 9px; font-weight: 700;
+  cursor: default; display: flex; align-items: center; justify-content: center;
+  line-height: 1; flex-shrink: 0; font-family: var(--font);
+  transition: border-color 0.15s, color 0.15s;
+}
+.help-wrap:hover .help-btn { border-color: var(--orange); color: var(--orange); }
+.tooltip {
+  display: none;
+  position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
+  background: var(--bg4); border: 1px solid var(--border2);
+  color: var(--text2); font-size: 11px; font-family: var(--font);
+  padding: 6px 10px; border-radius: var(--radius);
+  white-space: nowrap; z-index: 100; max-width: 260px; white-space: normal; width: 240px;
+  line-height: 1.5; pointer-events: none;
+}
+.help-wrap:hover .tooltip { display: block; }
+
+/* section-head label row */
+.section-label-row {
+  display: flex; align-items: center; gap: 0;
+}
+
+/* clock */
+.topbar-clock {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--text3); letter-spacing: 0.04em;
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <!-- STATIC logo (default) -->
+      <svg id="logo-static" width="38" height="38" viewBox="0 0 200 200" style="flex-shrink:0;margin-right:10px;" role="img" aria-label="MAAS logo">
+        <defs><clipPath id="slc"><circle cx="0" cy="0" r="52"/></clipPath></defs>
+        <rect x="10" y="8" width="180" height="184" rx="10" fill="#E95420"/>
+        <circle cx="42"  cy="54"  r="7" fill="#fff"/>
+        <rect    x="56"  y="48"  width="72" height="12" rx="2" fill="rgba(255,255,255,0.82)"/>
+        <circle cx="42"  cy="82"  r="7" fill="#fff"/>
+        <rect    x="56"  y="76"  width="72" height="12" rx="2" fill="rgba(255,255,255,0.82)"/>
+        <circle cx="42"  cy="110" r="7" fill="#fff"/>
+        <rect    x="56"  y="104" width="72" height="12" rx="2" fill="rgba(255,255,255,0.82)"/>
+        <circle cx="42"  cy="138" r="7" fill="#fff"/>
+        <rect    x="56"  y="132" width="72" height="12" rx="2" fill="rgba(255,255,255,0.82)"/>
+        <text x="100" y="168" text-anchor="middle" font-size="22" font-family="Ubuntu,sans-serif" font-weight="700" fill="#fff">MAAS</text>
+        <!-- static magnifier settled over nodes -->
+        <g transform="translate(118,96)">
+          <circle cx="0" cy="0" r="52" fill="#C94015"/>
+          <g clip-path="url(#slc)">
+            <g transform="scale(1.85) translate(-42,-96)">
+              <circle cx="42"  cy="54"  r="7" fill="#fff"/>
+              <rect    x="56"  y="48"  width="72" height="12" rx="2" fill="rgba(255,255,255,0.9)"/>
+              <circle cx="42"  cy="82"  r="7" fill="#fff"/>
+              <rect    x="56"  y="76"  width="72" height="12" rx="2" fill="rgba(255,255,255,0.9)"/>
+              <circle cx="42"  cy="110" r="7" fill="#fff"/>
+              <rect    x="56"  y="104" width="72" height="12" rx="2" fill="rgba(255,255,255,0.9)"/>
+              <circle cx="42"  cy="138" r="7" fill="#fff"/>
+              <rect    x="56"  y="132" width="72" height="12" rx="2" fill="rgba(255,255,255,0.9)"/>
+            </g>
+            <ellipse cx="-18" cy="-30" rx="16" ry="10" fill="rgba(255,255,255,0.18)" transform="rotate(-25 -18 -30)"/>
+          </g>
+          <circle cx="0" cy="0" r="52" fill="none" stroke="#fff" stroke-width="9"/>
+          <line x1="38" y1="42" x2="70" y2="78" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+        </g>
+      </svg>
+
+      <span class="brand-name"><strong>Canonical</strong></span>
+      <div class="brand-sep"></div>
+      <span class="brand-product">MAAS Events Client</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+    <span class="topbar-clock" id="topbar-clock"></span>
+    <div class="status-pill" id="status-pill">
+      <div class="status-dot"></div>
+      <span id="status-label">not connected</span>
+    </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Section 01 -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-num" id="num-01">1</div>
+        <div class="section-label-row">
+          <span class="section-title">Connection</span>
+          <div class="help-wrap">
+            <div class="help-btn">?</div>
+            <div class="tooltip">Enter your MAAS server URL, username and password to authenticate and obtain a session token. The token is used for all subsequent API calls.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-grid">
+        <div class="field field-full">
+          <div class="field-label">MAAS URL</div>
+          <input class="field-input" id="maas-url" type="text"
+            value="http://10.56.1.218:5240"
+            placeholder="http://10.x.x.x:5240"
+            spellcheck="false" autocomplete="off" />
+        </div>
+        <div class="field">
+          <div class="field-label">Username</div>
+          <input class="field-input" id="maas-user" type="text"
+            value="maas" placeholder="maas" spellcheck="false" autocomplete="off" />
+        </div>
+        <div class="field">
+          <div class="field-label">Password</div>
+          <div class="pwd-wrap">
+            <input class="field-input" id="maas-pwd" type="password"
+              placeholder="••••••••" autocomplete="current-password" />
+            <button class="eye-btn" type="button" onclick="togglePwd('maas-pwd',this)" tabindex="-1" aria-label="Toggle password visibility"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-primary" id="auth-btn" onclick="authenticate()">
+          <span id="auth-btn-inner">Connect</span>
+        </button>
+        <div class="token-pill" id="token-display">no token</div>
+      </div>
+
+      <div id="auth-response"></div>
+    </div>
+
+    <!-- Section 02 -->
+    <div class="section locked-section" id="query-section">
+      <div class="section-head">
+        <div class="section-num locked" id="num-02">2</div>
+        <div class="section-label-row">
+          <span class="section-title">Events Summary</span>
+          <div class="help-wrap">
+            <div class="help-btn">?</div>
+            <div class="tooltip">Fetches MAAS events for the selected time range and asks an LLM to summarise them. Requires an OpenRouter API key to call the AI model.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-grid">
+        <div class="field field-full">
+          <div class="field-label">OpenRouter API Key</div>
+          <div class="pwd-wrap">
+            <input class="field-input" id="or-key" type="password"
+              placeholder="sk-or-v1-…" spellcheck="false" autocomplete="off" />
+            <button class="eye-btn" type="button" onclick="togglePwd('or-key',this)" tabindex="-1" aria-label="Toggle key visibility"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="date-row">
+        <div class="field">
+          <div class="field-label">From (UTC)</div>
+          <input class="field-input" id="date-from" type="datetime-local" value="2026-01-01T00:00" />
+        </div>
+        <div class="field">
+          <div class="field-label">To (UTC) — optional</div>
+          <input class="field-input" id="date-to" type="datetime-local" />
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-secondary" id="query-btn" onclick="querySummary()">
+          <span id="query-btn-inner">Fetch Summary</span>
+        </button>
+      </div>
+      <div class="endpoint-hint">
+        GET <span>/MAAS/a/v3/events/summary</span>?created_after=…&created_before=…
+      </div>
+
+      <div id="query-response"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let token = null;
+let isBusy = false;
+
+function proxied(url) {
+  return `/proxy?url=${encodeURIComponent(url)}`;
+}
+
+function setGlobalStatus(state, msg) {
+  const pill  = document.getElementById('status-pill');
+  const label = document.getElementById('status-label');
+  pill.className = 'status-pill ' + state;
+  label.textContent = msg;
+}
+
+function setBusy(busy) {
+  isBusy = busy;
+  setGlobalStatus(
+    busy ? 'busy' : (token ? 'auth' : ''),
+    busy ? 'working…' : (token ? 'authenticated' : 'not connected')
+  );
+}
+
+function httpLabel(code) {
+  if (code >= 200 && code < 300) return { cls: 'ok',  msg: 'Success' };
+  if (code === 401)               return { cls: 'err', msg: 'Unauthorized — check credentials' };
+  if (code === 403)               return { cls: 'err', msg: 'Forbidden — insufficient permissions' };
+  if (code === 404)               return { cls: 'err', msg: 'Not found — check URL or endpoint' };
+  if (code === 500)               return { cls: 'err', msg: 'Server error — MAAS internal error' };
+  if (code >= 400)                return { cls: 'err', msg: 'Client error' };
+  if (code >= 300)                return { cls: 'warn', msg: 'Redirect' };
+  return { cls: 'warn', msg: 'Unknown' };
+}
+
+function responseBar(code, elapsed, extra) {
+  const { cls, msg } = httpLabel(code);
+  return `
+    <div class="response-bar">
+      <span class="http-code ${cls}">${code}</span>
+      <span class="response-msg">${msg}${extra ? ' — ' + extra : ''}</span>
+      <span class="response-time">${elapsed}ms</span>
+    </div>`;
+}
+
+function renderMarkdown(text) {
+  let s = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,  '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,   '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, m => '<ul>' + m + '</ul>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+  return '<p>' + s + '</p>';
+}
+
+async function authenticate() {
+  if (isBusy) return;
+  const url  = document.getElementById('maas-url').value.trim().replace(/\/$/, '');
+  const user = document.getElementById('maas-user').value.trim();
+  const pwd  = document.getElementById('maas-pwd').value;
+
+  if (!url || !user || !pwd) { showAuthResponse(null, 0, 'Please fill in all fields'); return; }
+
+  setBusy(true);
+  document.getElementById('auth-btn-inner').innerHTML = '<span class="spinner"></span> connecting…';
+  document.getElementById('token-display').textContent = 'requesting…';
+  document.getElementById('token-display').className = 'token-pill';
+
+  const body = new URLSearchParams({ username: user, password: pwd });
+  const t0 = Date.now();
+
+  try {
+    const resp = await fetch(proxied(`${url}/MAAS/a/v3/auth/login`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+    const elapsed = Date.now() - t0;
+    let data; try { data = await resp.json(); } catch { data = null; }
+
+    if (resp.ok && data?.access_token) {
+      token = data.access_token;
+      document.getElementById('token-display').textContent = token.slice(0,20) + '…' + token.slice(-6);
+      document.getElementById('token-display').className = 'token-pill active';
+      document.getElementById('maas-url').classList.add('ok');
+      document.getElementById('query-section').classList.add('unlocked');
+      document.getElementById('num-02').classList.remove('locked');
+      setGlobalStatus('auth', 'authenticated');
+      showAuthResponse(resp.status, elapsed, null, data);
+    } else {
+      token = null;
+      document.getElementById('token-display').textContent = 'authentication failed';
+      document.getElementById('maas-url').classList.add('err');
+      document.getElementById('maas-url').classList.remove('ok');
+      setGlobalStatus('error', 'auth failed');
+      showAuthResponse(resp.status, elapsed, data?.detail || data?.message || null, data);
+    }
+  } catch (err) {
+    const elapsed = Date.now() - t0;
+    document.getElementById('token-display').textContent = 'connection failed';
+    setGlobalStatus('error', 'unreachable');
+    showAuthResponse(0, elapsed, err.message, null);
+  }
+
+  setBusy(false);
+  document.getElementById('auth-btn-inner').textContent = 'Connect';
+}
+
+function showAuthResponse(code, elapsed, errorMsg, data) {
+  const wrap = document.getElementById('auth-response');
+  if (code === null || code === 0) {
+    wrap.innerHTML = `<div class="response-box">
+      <div class="response-bar">
+        <span class="http-code err">ERR</span>
+        <span class="response-msg">Network error — ${errorMsg}</span>
+        <span class="response-time">${elapsed}ms</span>
+      </div>
+      <div class="response-body" style="color:var(--red);font-size:12px;">
+        Could not reach the server. Check the URL and make sure you are on the correct network.
+      </div></div>`;
+    return;
+  }
+  const bar = responseBar(code, elapsed, errorMsg);
+  if (code >= 200 && code < 300) {
+    wrap.innerHTML = `<div class="response-box">${bar}
+      <div class="response-body" style="color:#3baa4a;font-size:13px;">
+        Token acquired successfully. Section 2 is now unlocked.
+      </div></div>`;
+  } else {
+    wrap.innerHTML = `<div class="response-box">${bar}
+      <div class="response-body">
+        <div class="raw-json">${JSON.stringify(data, null, 2)}</div>
+      </div></div>`;
+  }
+}
+
+async function querySummary() {
+  if (isBusy || !token) return;
+  const url   = document.getElementById('maas-url').value.trim().replace(/\/$/, '');
+  const orKey = document.getElementById('or-key').value.trim();
+  const from  = document.getElementById('date-from').value;
+  const to    = document.getElementById('date-to').value;
+
+  if (!orKey) { showQueryResponse(null, 0, 'Please enter your OpenRouter API key', null); return; }
+
+  setBusy(true);
+  setLogoAnimating(true);
+  document.getElementById('query-btn-inner').innerHTML = '<span class="spinner"></span> fetching…';
+
+  let endpoint = `${url}/MAAS/a/v3/events/summary`;
+  const params = new URLSearchParams();
+  if (from) params.set('created_after',  new Date(from).toISOString());
+  if (to)   params.set('created_before', new Date(to).toISOString());
+  if ([...params].length) endpoint += '?' + params.toString();
+
+  const t0 = Date.now();
+  try {
+    const resp = await fetch(proxied(endpoint), {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-OpenRouter-Api-Key': orKey
+      }
+    });
+    const elapsed = Date.now() - t0;
+    let data;
+    try { data = await resp.json(); } catch(e) { data = { error: 'Could not parse response as JSON', raw: e.message }; }
+    showQueryResponse(resp.status, elapsed, null, data);
+  } catch (err) {
+    const elapsed = Date.now() - t0;
+    showQueryResponse(0, elapsed, err.message, null);
+  } finally {
+    setBusy(false);
+    setLogoAnimating(false);
+    document.getElementById('query-btn-inner').textContent = 'Fetch Summary';
+    setGlobalStatus('auth', 'authenticated');
+  }
+}
+
+function showQueryResponse(code, elapsed, errorMsg, data) {
+  const wrap = document.getElementById('query-response');
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  if (code === null || code === 0) {
+    wrap.innerHTML = `<div class="response-box">
+      <div class="response-bar">
+        <span class="http-code err">ERR</span>
+        <span class="response-msg">Network error — ${errorMsg}</span>
+      </div>
+      <div class="response-body" style="color:var(--red);font-size:12px;">
+        Request failed. The token may have expired — try reconnecting.
+      </div></div>`;
+    return;
+  }
+
+  const bar = responseBar(code, elapsed, errorMsg);
+  if (code >= 200 && code < 300 && data?.summary) {
+    const saveIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
+    wrap.innerHTML = `<div class="response-box">${bar}
+      <div class="response-bar" style="border-top:1px solid var(--border);border-bottom:none;padding:6px 14px;">
+        ${saveIcon}
+        <span style="font-size:11px;color:var(--text3);">Events summary</span>
+        <button class="save-btn" onclick="saveSummary()">
+          ${saveIcon} Save as .txt
+        </button>
+      </div>
+      <div class="response-body">
+        <div class="md">${renderMarkdown(data.summary)}</div>
+      </div></div>`;
+    // store summary text for saving
+    window._lastSummary = data.summary;
+  } else {
+    wrap.innerHTML = `<div class="response-box">${bar}
+      <div class="response-body">
+        <div class="raw-json">${JSON.stringify(data, null, 2)}</div>
+      </div></div>`;
+  }
+}
+
+const savedKey = localStorage.getItem('or_key');
+if (savedKey) document.getElementById('or-key').value = savedKey;
+document.getElementById('or-key').addEventListener('change', function() {
+  if (this.value) localStorage.setItem('or_key', this.value);
+});
+document.getElementById('maas-pwd').addEventListener('keydown', e => {
+  if (e.key === 'Enter') authenticate();
+});
+
+// eye toggle
+function togglePwd(id, btn) {
+  const inp = document.getElementById(id);
+  if (inp.type === 'password') { inp.type = 'text';     btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`; }
+  else                         { inp.type = 'password'; btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`; }
+}
+
+// live clock
+function updateClock() {
+  const now = new Date();
+  const d = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+  const t = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const el = document.getElementById('topbar-clock');
+  if (el) el.textContent = d + '  ' + t;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+
+// save summary
+function saveSummary() {
+  if (!window._lastSummary) return;
+  const now = new Date();
+  const stamp = now.toISOString().slice(0,16).replace('T','_').replace(':','-');
+  const filename = `maas-summary-${stamp}.txt`;
+  const blob = new Blob([window._lastSummary], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+
+function setLogoAnimating(on) {
+  const ov = document.getElementById('loading-overlay');
+  if (on) { ov.classList.add('visible'); }
+  else    { ov.classList.remove('visible'); }
+}
+
+</script>
+
+  <!-- Loading overlay with animated logo -->
+  <div id="loading-overlay">
+    <svg width="220" height="220" viewBox="0 0 200 200" role="img" aria-label="Analyzing MAAS logs">
+      <defs><clipPath id="olc"><circle cx="0" cy="0" r="52"/></clipPath></defs>
+      <rect x="10" y="8" width="180" height="184" rx="10" fill="#E95420"/>
+      <circle cx="42"  cy="54"  r="7" fill="#fff"/>
+      <rect    x="56"  y="48"  width="72" height="12" rx="2" fill="rgba(255,255,255,0.82)"/>
+      <circle cx="42"  cy="82"  r="7" fill="#fff"/>
+      <rect    x="56"  y="76"  width="72" height="12" rx="2" fill="rgba(255,255,255,0.82)"/>
+      <circle cx="42"  cy="110" r="7" fill="#fff"/>
+      <rect    x="56"  y="104" width="72" height="12" rx="2" fill="rgba(255,255,255,0.82)"/>
+      <circle cx="42"  cy="138" r="7" fill="#fff"/>
+      <rect    x="56"  y="132" width="72" height="12" rx="2" fill="rgba(255,255,255,0.82)"/>
+      <text x="100" y="168" text-anchor="middle" font-size="22" font-family="Ubuntu,sans-serif" font-weight="700" fill="#fff">MAAS</text>
+      <g>
+        <animateTransform attributeName="transform" type="translate"
+          values="185,185; 185,185; 118,96; 114,93; 120,98; 118,96; 118,96; 118,96"
+          keyTimes="0; 0.05; 0.52; 0.60; 0.68; 0.75; 0.88; 1"
+          dur="3.8s" repeatCount="indefinite" calcMode="spline"
+          keySplines="0 0 1 1; 0.42 0 0.2 1; 0.4 0 0.6 1; 0.4 0 0.6 1; 0.4 0 0.6 1; 0 0 1 1; 0 0 1 1"/>
+        <circle cx="0" cy="0" r="52" fill="rgba(180,50,10,0.4)">
+          <animate attributeName="fill"
+            values="rgba(180,50,10,0.35); rgba(180,50,10,0.35); rgba(180,50,10,0.35); #C94015; #C94015; #C94015"
+            keyTimes="0; 0.05; 0.72; 0.80; 0.88; 1"
+            dur="3.8s" repeatCount="indefinite"/>
+        </circle>
+        <g clip-path="url(#olc)" opacity="0">
+          <animate attributeName="opacity"
+            values="0; 0; 0; 0; 1; 1"
+            keyTimes="0; 0.05; 0.70; 0.75; 0.84; 1"
+            dur="3.8s" repeatCount="indefinite"/>
+          <g transform="scale(1.85) translate(-42,-96)">
+            <circle cx="42"  cy="54"  r="7" fill="#fff"/>
+            <rect    x="56"  y="48"  width="72" height="12" rx="2" fill="rgba(255,255,255,0.9)"/>
+            <circle cx="42"  cy="82"  r="7" fill="#fff"/>
+            <rect    x="56"  y="76"  width="72" height="12" rx="2" fill="rgba(255,255,255,0.9)"/>
+            <circle cx="42"  cy="110" r="7" fill="#fff"/>
+            <rect    x="56"  y="104" width="72" height="12" rx="2" fill="rgba(255,255,255,0.9)"/>
+            <circle cx="42"  cy="138" r="7" fill="#fff"/>
+            <rect    x="56"  y="132" width="72" height="12" rx="2" fill="rgba(255,255,255,0.9)"/>
+          </g>
+          <ellipse cx="-18" cy="-30" rx="16" ry="10" fill="rgba(255,255,255,0.18)" transform="rotate(-25 -18 -30)"/>
+        </g>
+        <circle cx="0" cy="0" r="52" fill="none" stroke="#fff" stroke-width="9"/>
+        <line x1="38" y1="42" x2="70" y2="78" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+      </g>
+    </svg>
+    <div class="overlay-label">Analyzing logs…</div>
+  </div>
+
+</body>
+</html>
