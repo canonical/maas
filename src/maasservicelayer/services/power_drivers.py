@@ -54,3 +54,14 @@ class PowerDriversService(
             schema_dict = schema_value.model_dump()
         # Validate against the DriverSchema contract
         DriverSchema(**schema_dict)
+
+    async def upsert_many(self, builders: list[PowerDriverBuilder]) -> list[PowerDriver]:
+        """Insert or update power drivers.
+
+        Uses upsert semantics so that re-registering an existing driver
+        (same rack_system_id, driver_name, driver_version) updates its
+        schema instead of raising a conflict error.
+        """
+        for builder in builders:
+            await self.pre_create_hook(builder)
+        return await self.repository.upsert_many(builders)

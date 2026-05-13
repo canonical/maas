@@ -36,12 +36,6 @@ var (
 	// ErrWrongPowerState is an error for when a power action executes
 	// and the machine is found in an incorrect power state
 	ErrWrongPowerState = errors.New("BMC is in the wrong power state")
-
-	// socketClientFactory is a function that creates a socketClient.
-	// It can be overridden in tests to inject a mock client.
-	socketClientFactory = func(logger *slog.Logger, socketPath string) socketClient {
-		return NewSocketClient(logger, socketPath)
-	}
 )
 
 // socketClient defines the interface for communicating with a power driver.
@@ -54,13 +48,17 @@ type socketClient interface {
 	SetBootOrder(ctx context.Context, systemID string, context map[string]any, order []string) (map[string]any, error)
 }
 
+// socketClientFunc is a function type that creates a socketClient.
+type socketClientFunc func(logger *slog.Logger, socketPath string) socketClient
+
 // PowerService is a service that knows how to reach BMC to perform power
 // operations. Invocation of this service normally should happen via Temporal.
 type PowerService struct {
-	pool     *worker.WorkerPool
-	systemID string
-	registry *Registry
-	logger   *slog.Logger
+	pool                *worker.WorkerPool
+	systemID            string
+	registry            *Registry
+	logger              *slog.Logger
+	socketClientFactory socketClientFunc
 }
 
 func NewPowerService(systemID string, pool *worker.WorkerPool, registry *Registry, logger *slog.Logger) *PowerService {
@@ -69,7 +67,17 @@ func NewPowerService(systemID string, pool *worker.WorkerPool, registry *Registr
 		systemID: systemID,
 		registry: registry,
 		logger:   logger,
+		socketClientFactory: func(logger *slog.Logger, socketPath string) socketClient {
+			return NewSocketClient(logger, socketPath)
+		},
 	}
+}
+
+// WithSocketClientFactory sets a custom socket client factory.
+// It is used in tests to inject a mock client.
+func (s *PowerService) WithSocketClientFactory(factory socketClientFunc) *PowerService {
+	s.socketClientFactory = factory
+	return s
 }
 
 func (s *PowerService) ConfigurationWorkflows() map[string]any {
@@ -220,8 +228,8 @@ func (s *PowerService) PowerOn(ctx context.Context, param PowerOnParam) (*PowerO
 		return nil, fmt.Errorf("power driver %q not found in registry", param.DriverType)
 	}
 
-	client := socketClientFactory(s.logger, driver.SocketPath)
-	result, err := client.On(ctx, "", param.DriverOpts)
+	client := s.socketClientFactory(s.logger, driver.SocketPath)
+	result, err := client.On(ctx, s.systemID, param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -244,8 +252,8 @@ func (s *PowerService) PowerOff(ctx context.Context, param PowerOffParam) (*Powe
 		return nil, fmt.Errorf("power driver %q not found in registry", param.DriverType)
 	}
 
-	client := socketClientFactory(s.logger, driver.SocketPath)
-	result, err := client.Off(ctx, "", param.DriverOpts)
+	client := s.socketClientFactory(s.logger, driver.SocketPath)
+	result, err := client.Off(ctx, s.systemID, param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -268,8 +276,8 @@ func (s *PowerService) PowerCycle(ctx context.Context, param PowerCycleParam) (*
 		return nil, fmt.Errorf("power driver %q not found in registry", param.DriverType)
 	}
 
-	client := socketClientFactory(s.logger, driver.SocketPath)
-	result, err := client.Cycle(ctx, "", param.DriverOpts)
+	client := s.socketClientFactory(s.logger, driver.SocketPath)
+	result, err := client.Cycle(ctx, s.systemID, param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -292,8 +300,8 @@ func (s *PowerService) PowerQuery(ctx context.Context, param PowerQueryParam) (*
 		return nil, fmt.Errorf("power driver %q not found in registry", param.DriverType)
 	}
 
-	client := socketClientFactory(s.logger, driver.SocketPath)
-	result, err := client.Query(ctx, "", param.DriverOpts)
+	client := s.socketClientFactory(s.logger, driver.SocketPath)
+	result, err := client.Query(ctx, s.systemID, param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -309,8 +317,8 @@ func (s *PowerService) PowerReset(ctx context.Context, param PowerResetParam) (*
 		return nil, fmt.Errorf("power driver %q not found in registry", param.DriverType)
 	}
 
-	client := socketClientFactory(s.logger, driver.SocketPath)
-	result, err := client.Reset(ctx, "", param.DriverOpts)
+	client := s.socketClientFactory(s.logger, driver.SocketPath)
+	result, err := client.Reset(ctx, s.systemID, param.DriverOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +361,7 @@ func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam
 		orderStrs[i] = string(devData)
 	}
 
-	client := socketClientFactory(s.logger, driver.SocketPath)
+	client := s.socketClientFactory(s.logger, driver.SocketPath)
 	_, err := client.SetBootOrder(ctx, param.SystemID, param.PowerParams.DriverOpts, orderStrs)
 	return err
 }

@@ -17,7 +17,12 @@ from maasservicelayer.services import ServiceCollectionV3
 
 
 class DriverRegisterRequest(BaseModel):
-    """Request body for driver registration."""
+    """Request body for driver registration.
+
+    Accepts both snake_case (from Python) and camelCase (from Go agent).
+    The Go agent serializes SocketDriver with JSON field tags that map to
+    snake_case, so both forms are supported.
+    """
 
     name: str
     version: str
@@ -68,7 +73,7 @@ class RackPowerDriversHandler(Handler):
                 )
             )
 
-        await service_collection.power_drivers.create_many(builders)
+        await service_collection.power_drivers.upsert_many(builders)
 
     @handler(
         path="/agents/{agent_uuid}/power-drivers/{driver_name}/{version}",

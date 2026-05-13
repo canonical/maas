@@ -50,13 +50,34 @@ func NewRegionClient(logger *slog.Logger, baseURL *url.URL, tlsConfig *tls.Confi
 	}
 }
 
+// RegisterDriverPayload represents a single driver to register with the region.
+type RegisterDriverPayload struct {
+	Name    string         `json:"name"`
+	Version string         `json:"version"`
+	Schema  map[string]any `json:"schema"`
+}
+
 // RegisterDrivers notifies the region about discovered power drivers for an agent.
 // It POSTs to /MAAS/api/v3/internal/agents/{agent_uuid}/power-drivers:register.
 func (c *RegionClient) RegisterDrivers(ctx context.Context, agentUUID string, drivers []SocketDriver) error {
 	path := fmt.Sprintf("/MAAS/api/v3/internal/agents/%s/power-drivers:register", url.PathEscape(agentUUID))
 
+	payloads := make([]RegisterDriverPayload, 0, len(drivers))
+	for _, d := range drivers {
+		p := RegisterDriverPayload{
+			Name:    d.Name,
+			Schema:  d.Metadata,
+		}
+		if v, ok := d.Metadata["version"]; ok {
+			if vs, ok := v.(string); ok {
+				p.Version = vs
+			}
+		}
+		payloads = append(payloads, p)
+	}
+
 	payload := map[string]any{
-		"drivers": drivers,
+		"drivers": payloads,
 	}
 
 	data, err := json.Marshal(payload)
