@@ -12,8 +12,7 @@
 - **No metadata JSON**: Driver capabilities are discovered by querying the live service at its UNIX socket. There is no static metadata file.
 - **`maas-power` removed entirely**: The `maas-power` command (currently in `provisioningserver/power_driver_command.py`) is removed. It is not deprecated — it simply no longer exists. Driver snaps provide their own CLI tools for testing and direct invocation.
 - **Independent repositories**: Each power driver lives in its own git repository as an independent project. No driver grouping — one driver per repo, one driver per snap.
-- **`webhook` builtin**: The `webhook` power driver remains builtin in MAAS core (no external dependencies, useful for testing and custom integrations). All other drivers are external snaps.
-- **No `manual` driver**: The `manual` power driver is dropped entirely. It has no value in a service-based architecture.
+- **`webhook` and `manual` builtin**: The `webhook` and `manual` power drivers remain builtin in MAAS core (no external dependencies). `webhook` is useful for custom integrations; `manual` is useful for nodes without automated BMC access. All other drivers are external snaps.
 - **Rack-to-region driver lifecycle (v3 internal API)**: When drivers appear or disappear (snap connect/disconnect), the rack controller notifies the region controller via the v3 internal API so the region's view of available power types stays in sync. This is not the legacy RPC channel.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -28,7 +27,7 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** a fresh MAAS installation with no driver snaps connected, **When** `rackd` starts, **Then** only the builtin `webhook` driver is available in `PowerDriverRegistry`
+1. **Given** a fresh MAAS installation with no driver snaps connected, **When** `rackd` starts, **Then** only the builtin `webhook` and `manual` drivers are available in `PowerDriverRegistry`
 2. **Given** a driver snap `maas-power-driver-ipmi` is installed, connected, and its service is running, **When** `rackd` discovers available sockets, **Then** the `ipmi` driver is discoverable via `PowerDriverRegistry.get_item("ipmi")`
 3. **Given** multiple driver snaps are connected and running, **When** `rackd` discovers available sockets, **Then** all drivers are registered and available
 4. **Given** a driver snap is disconnected or its service stops, **When** `rackd` detects the socket is unavailable, **Then** that driver is removed from the registry
@@ -81,7 +80,7 @@
 2. **Given** a driver repository, **When** inspected, **Then** it contains documentation describing the driver's supported BMC types, configuration parameters, and known limitations
 3. **Given** a driver repository, **When** `snapcraft` is run, **Then** a driver snap is produced that can be installed and connected to MAAS
 4. **Given** a driver repository, **When** its version is bumped and released, **Then** the new driver snap can be released without touching the MAAS repository
-5. **Given** the MAAS monorepo after extraction, **When** searched for driver implementation code, **Then** no driver implementation files exist (only the protocol client, registry, and builtin `webhook` driver remain)
+5. **Given** the MAAS monorepo after extraction, **When** searched for driver implementation code, **Then** no driver implementation files exist (only the protocol client, registry, and builtin `webhook` and `manual` drivers remain)
 
 ### User Story 5 - Driver snaps run as long-running services (Priority: P1)
 
@@ -153,8 +152,7 @@
 - Snap content interfaces (plug/slot) provide a shared directory for UNIX sockets
 - Driver snaps run with `strict` confinement (same as MAAS)
 - System-level dependencies (e.g., `freeipmi-tools`, `amtterm`) are included in the driver snap, not the MAAS snap
-- The `webhook` power driver remains builtin in MAAS core (no external dependencies, useful for testing)
-- The `manual` power driver is dropped entirely
+- The `webhook` and `manual` power drivers remain builtin in MAAS core (no external dependencies)
 - Each driver is an independent project — no driver grouping, one driver per repo and per snap
 - Pod drivers (LXD, Virsh) follow a similar but separate extraction path (out of scope for this feature)
 - Driver code, tests, and documentation are maintained in driver repositories, not the MAAS monorepo
@@ -213,6 +211,7 @@
 ### Driver Listing
 - **Purpose**: Each driver is an independent project — no grouping
 - **Drivers**:
+  - `manual` (builtin in MAAS snap)
   - `webhook` (builtin in MAAS snap)
   - `ipmi` (independent snap)
   - `redfish` (independent snap)
@@ -238,7 +237,7 @@
 
 - MAAS rack controller discovers all connected driver services within 1 second of service start
 - Zero power driver tests fail after extraction (100% test pass rate preserved)
-- All 20 external power driver types remain functional after extraction (webhook stays builtin)
+- All 19 external power driver types remain functional after extraction (manual and webhook stay builtin)
 - A new power driver can be added by building and connecting a driver snap (no MAAS core changes required)
 - A power driver written in a non-Python language (e.g., Go) can be discovered and invoked by `rackd`
 - The HTTP-over-UNIX-socket protocol specification is published for third-party driver authors
