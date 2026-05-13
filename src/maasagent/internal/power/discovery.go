@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"maas.io/core/src/maasagent/internal/pathutil"
@@ -65,33 +66,55 @@ func DefaultSocketDir() string {
 // Scan scans the socket directory for .sock files and queries each for metadata.
 // It returns a slice of SocketDriver for all responsive drivers.
 // Stale sockets that fail to respond are logged and skipped.
+// Discovery is performed in parallel for all sockets.
 func (d *Discovery) Scan(ctx context.Context) ([]SocketDriver, error) {
-	entries, err := os.ReadDir(d.socketDir)
-	if err != nil {
+	if _, err := os.Stat(d.socketDir); err != nil {
 		if os.IsNotExist(err) {
 			d.logger.Warn("socket directory does not exist", "dir", d.socketDir)
 			return nil, nil
 		}
-		return nil, fmt.Errorf("read socket directory %s: %w", d.socketDir, err)
+		return nil, fmt.Errorf("stat socket directory %s: %w", d.socketDir, err)
 	}
 
-	var drivers []SocketDriver
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sock") {
-			continue
-		}
-
-		socketPath := filepath.Join(d.socketDir, entry.Name())
-		driver, err := d.querySocket(ctx, socketPath, entry.Name())
+	// Collect all .sock paths first.
+	var sockPaths []string
+	if err := filepath.WalkDir(d.socketDir, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
-			d.logger.Warn("skipping unresponsive socket", "socket", socketPath, "error", err)
-			continue
+			return err
 		}
-
-		drivers = append(drivers, *driver)
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".sock") {
+			sockPaths = append(sockPaths, path)
+		}
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("walk socket directory %s: %w", d.socketDir, err)
 	}
 
+	if len(sockPaths) == 0 {
+		return nil, nil
+	}
+
+	// Query all sockets in parallel.
+	var mu sync.Mutex
+	var drivers []SocketDriver
+	var wg sync.WaitGroup
+
+	for _, socketPath := range sockPaths {
+		wg.Add(1)
+		go func(sp string) {
+			defer wg.Done()
+			driver, err := d.querySocket(ctx, sp, filepath.Base(sp))
+			if err != nil {
+				d.logger.Warn("skipping unresponsive socket", "socket", sp, "error", err)
+				return
+			}
+			mu.Lock()
+			drivers = append(drivers, *driver)
+			mu.Unlock()
+		}(socketPath)
+	}
+
+	wg.Wait()
 	return drivers, nil
 }
 
