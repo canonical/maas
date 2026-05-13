@@ -174,6 +174,17 @@ The shared socket directory lives in the MAAS runtime directory:
 
 This follows the canonical MAAS pattern (same as the Go agent's `RunDir()` function). The directory is created at rack startup if it doesn't exist.
 
+**Socket directory convention:**
+
+The shared socket directory lives in the MAAS runtime directory:
+
+| Environment | Path |
+|---|---|
+| Snap | `/run/snap.<instance>/power-drivers` |
+| Deb | `/run/maas/power-drivers` |
+
+This follows the canonical MAAS pattern (same as the Go agent's `RunDir()` function). The directory is created at rack startup if it doesn't exist.
+
 **Changes in `snap/snapcraft.yaml`:**
 
 1. **Add content slot:**
