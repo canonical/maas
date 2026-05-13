@@ -39,6 +39,12 @@ slots:
     interface: content
     read:
       - $SNAP_COMMON/log
+  power-drivers:
+    interface: content
+    content: power-drivers
+    default-provider: maas-power-ipmi
+    write:
+      - $SNAP_INSTANCE_NAME/power-drivers
 
 apps:
   pebble:
@@ -66,13 +72,6 @@ apps:
       - network # for external authentication
       - network-observe # to get default URL
 
-  power:
-    command: usr/bin/maas-power
-    environment:
-      MAAS_PATH: $SNAP
-    plugs:
-      - network
-
 parts:
   pebble:
     plugin: go
@@ -99,15 +98,12 @@ parts:
       - python3-setuptools
       - python3-wheel
     stage-packages:
-      - amtterm # AMT
       - avahi-utils
       - bind9
       - bind9-dnsutils
       - chrony
       - dns-root-data # for bind9
-      - freeipmi-tools # IPMI
       - gpgv
-      - ipmitool # Moonshot
       - iproute2
       - isc-dhcp-client
       - isc-dhcp-server
@@ -175,13 +171,11 @@ parts:
       - python3-pyparsing
       - python3-pyrsistent # for jsonschema
       - python3-pythonjsonlogger
-      - python3-pyvmomi
       - python3-referencing
       - python3-requests
       - python3-requests-toolbelt  # for pylxd
       - python3-requests-unixsocket
       - python3-rfc3339 # for macaroonbakery
-      - python3-seamicroclient
       - python3-sqlalchemy
       - python3-starlette
       - python3-structlog
@@ -194,17 +188,13 @@ parts:
       - python3-urllib3 # for macaroonbakery
       - python3-uvicorn
       - python3-yaml
-      - python3-zhmcclient
       - python3-zope.interface
       - rsyslog
-      - snmp # APC
       - squid
       - tcpdump
       - temporal
       - ubuntu-keyring
       - util-linux
-      - wget # DLI
-      - wsmancli # AMT
     build-attributes:
       - enable-usrmerge
     organize:
@@ -333,6 +323,12 @@ parts:
     source-type: git
 
 hooks:
+  connect-power-drivers:
+    plugs:
+      - network
+  disconnect-power-drivers:
+    plugs:
+      - network
   install:
     plugs:
       - mount-observe  # to read /proc/*/mounts

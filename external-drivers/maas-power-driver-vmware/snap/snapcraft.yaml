@@ -1,0 +1,25 @@
+name: maas-power-driver-vmware
+version: '1.0.0'
+summary: MAAS power driver for VMware
+description: MAAS power driver for VMware BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  vmware-driver:
+    plugin: python
+    source: .
+services:
+  vmware-driver:
+    command: bin/vmware-driver start
+    plugs:
+      - network
+    sockets:
+      vmware:
+        listen-stream: $SNAP_COMMON/power-drivers/vmware.sock

@@ -1,0 +1,25 @@
+name: maas-power-driver-redfish
+version: '1.0.0'
+summary: MAAS power driver for Redfish
+description: MAAS power driver for Redfish BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  redfish-driver:
+    plugin: python
+    source: .
+services:
+  redfish-driver:
+    command: bin/redfish-driver start
+    plugs:
+      - network
+    sockets:
+      redfish:
+        listen-stream: $SNAP_COMMON/power-drivers/redfish.sock

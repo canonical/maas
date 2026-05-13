@@ -1,0 +1,25 @@
+name: maas-power-driver-hmc
+version: '1.0.0'
+summary: MAAS power driver for IBM HMC
+description: MAAS power driver for IBM HMC BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  hmc-driver:
+    plugin: python
+    source: .
+services:
+  hmc-driver:
+    command: bin/hmc-driver start
+    plugs:
+      - network
+    sockets:
+      hmc:
+        listen-stream: $SNAP_COMMON/power-drivers/hmc.sock

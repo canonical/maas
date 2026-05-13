@@ -1,0 +1,25 @@
+name: maas-power-driver-hmcz
+version: '1.0.0'
+summary: MAAS power driver for IBM HMCz
+description: MAAS power driver for IBM HMCz BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  hmcz-driver:
+    plugin: python
+    source: .
+services:
+  hmcz-driver:
+    command: bin/hmcz-driver start
+    plugs:
+      - network
+    sockets:
+      hmcz:
+        listen-stream: $SNAP_COMMON/power-drivers/hmcz.sock

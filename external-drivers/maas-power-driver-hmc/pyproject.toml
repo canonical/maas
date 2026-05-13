@@ -1,0 +1,26 @@
+[project]
+name = "maas-power-driver-hmc"
+version = "1.0.0"
+description = "MAAS power driver for IBM HMC"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+hmc-driver = "maas_power_driver_hmc.server:main"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 79
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

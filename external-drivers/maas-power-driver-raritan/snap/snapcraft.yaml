@@ -1,0 +1,25 @@
+name: maas-power-driver-raritan
+version: '1.0.0'
+summary: MAAS power driver for Raritan
+description: MAAS power driver for Raritan BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  raritan-driver:
+    plugin: python
+    source: .
+services:
+  raritan-driver:
+    command: bin/raritan-driver start
+    plugs:
+      - network
+    sockets:
+      raritan:
+        listen-stream: $SNAP_COMMON/power-drivers/raritan.sock

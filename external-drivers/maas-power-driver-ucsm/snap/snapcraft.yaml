@@ -1,0 +1,25 @@
+name: maas-power-driver-ucsm
+version: '1.0.0'
+summary: MAAS power driver for Cisco UCSM
+description: MAAS power driver for Cisco UCSM BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  ucsm-driver:
+    plugin: python
+    source: .
+services:
+  ucsm-driver:
+    command: bin/ucsm-driver start
+    plugs:
+      - network
+    sockets:
+      ucsm:
+        listen-stream: $SNAP_COMMON/power-drivers/ucsm.sock

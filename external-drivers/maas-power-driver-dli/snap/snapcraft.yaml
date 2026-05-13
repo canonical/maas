@@ -1,0 +1,27 @@
+name: maas-power-driver-dli
+version: '1.0.0'
+summary: MAAS power driver for DLI
+description: MAAS power driver for DLI BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  dli-driver:
+    plugin: python
+    source: .
+    stage-packages:
+      - wget
+services:
+  dli-driver:
+    command: bin/dli-driver start
+    plugs:
+      - network
+    sockets:
+      dli:
+        listen-stream: $SNAP_COMMON/power-drivers/dli.sock

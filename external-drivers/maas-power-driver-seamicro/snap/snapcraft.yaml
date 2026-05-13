@@ -1,0 +1,25 @@
+name: maas-power-driver-seamicro
+version: '1.0.0'
+summary: MAAS power driver for SeaMicro
+description: MAAS power driver for SeaMicro BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  seamicro-driver:
+    plugin: python
+    source: .
+services:
+  seamicro-driver:
+    command: bin/seamicro-driver start
+    plugs:
+      - network
+    sockets:
+      seamicro:
+        listen-stream: $SNAP_COMMON/power-drivers/seamicro.sock

@@ -33,6 +33,7 @@ from copy import deepcopy
 from operator import itemgetter
 
 from django import forms
+from django.db import connection
 from jsonschema import validate
 
 from maasserver.config_forms import DictCharField
@@ -252,6 +253,10 @@ def get_driver_types():
 def get_all_power_types():
     """Query the PowerDriverRegistry and obtain all known power driver types.
 
+    Merges builtin drivers with rack-registered drivers from the
+    `rack_power_drivers` table. Rack-registered drivers take precedence
+    over builtins by name.
+
     :return: a list of power types matching the schema
         provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA or
         provisioningserver.drivers.pod.JSON_POD_DRIVERS_SCHEMA
@@ -280,6 +285,34 @@ def get_all_power_types():
             merged_types,
             queryable=queryable,
         )
+
+    # Query rack-registered drivers and merge them in.
+    # Rack-registered drivers take precedence over builtins by name.
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT driver_name, schema FROM rack_power_drivers "
+            "ORDER BY id DESC"
+        )
+        rows = cursor.fetchall()
+
+    # Deduplicate by driver_name (first occurrence wins, i.e., newest row).
+    seen_names = set()
+    for driver_name, schema in rows:
+        if driver_name in seen_names:
+            continue
+        seen_names.add(driver_name)
+        add_power_driver_parameters(
+            "power",
+            schema["name"],
+            schema["description"],
+            schema["capabilities"]["chassis"],
+            schema["capabilities"]["can_probe"],
+            schema.get("settings", []),
+            [],
+            merged_types,
+            queryable=schema["capabilities"].get("queryable"),
+        )
+
     return sorted(merged_types, key=itemgetter("description"))
 
 

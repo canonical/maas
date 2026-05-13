@@ -1,0 +1,25 @@
+name: maas-power-driver-msftocs
+version: '1.0.0'
+summary: MAAS power driver for Microsoft OCS
+description: MAAS power driver for Microsoft OCS BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  msftocs-driver:
+    plugin: python
+    source: .
+services:
+  msftocs-driver:
+    command: bin/msftocs-driver start
+    plugs:
+      - network
+    sockets:
+      msftocs:
+        listen-stream: $SNAP_COMMON/power-drivers/msftocs.sock

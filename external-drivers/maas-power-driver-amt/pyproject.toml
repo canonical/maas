@@ -1,0 +1,26 @@
+[project]
+name = "maas-power-driver-amt"
+version = "1.0.0"
+description = "MAAS power driver for Intel AMT"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+amt-driver = "maas_power_driver_amt.server:main"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 79
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

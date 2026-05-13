@@ -1810,6 +1810,19 @@ PhysicalBlockDeviceTable = Table(
     ),
 )
 
+PowerDriverTable = Table(
+    "rack_power_drivers",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("rack_system_id", String(255), nullable=False),
+    Column("driver_name", String(255), nullable=False),
+    Column("driver_version", String(255), nullable=False),
+    Column("schema", JSONB, nullable=False),
+    UniqueConstraint("rack_system_id", "driver_name", "driver_version"),
+)
+
 RackTable = Table(
     "maasserver_rack",
     METADATA,

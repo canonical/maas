@@ -1,0 +1,25 @@
+name: maas-power-driver-proxmox
+version: '1.0.0'
+summary: MAAS power driver for Proxmox
+description: MAAS power driver for Proxmox BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  proxmox-driver:
+    plugin: python
+    source: .
+services:
+  proxmox-driver:
+    command: bin/proxmox-driver start
+    plugs:
+      - network
+    sockets:
+      proxmox:
+        listen-stream: $SNAP_COMMON/power-drivers/proxmox.sock
