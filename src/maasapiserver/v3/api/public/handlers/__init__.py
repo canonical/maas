@@ -19,6 +19,9 @@ from maasapiserver.v3.api.public.handlers.configurations import (
 from maasapiserver.v3.api.public.handlers.discoveries import DiscoveriesHandler
 from maasapiserver.v3.api.public.handlers.domains import DomainsHandler
 from maasapiserver.v3.api.public.handlers.events import EventsHandler
+from maasapiserver.v3.api.public.handlers.events_summary import (
+    EventsSummaryHandler,
+)
 from maasapiserver.v3.api.public.handlers.fabrics import FabricsHandler
 from maasapiserver.v3.api.public.handlers.files import FilesHandler
 from maasapiserver.v3.api.public.handlers.interfaces import InterfacesHandler
@@ -65,6 +68,7 @@ APIv3 = API(
         ConfigurationsHandler(),
         CustomImagesHandler(),
         EventsHandler(),
+        EventsSummaryHandler(),
         DiscoveriesHandler(),
         DomainsHandler(),
         FabricsHandler(),

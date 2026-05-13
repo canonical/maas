@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk '/^\\\\[project\\\\]/,/^\\\\[/ {print NR\": \"$0}' /home/dummy/work/maas-edge/pyproject.toml)",
+      "Bash(grep -E \"\\\\.\\(cfg|ini|txt\\)$\")",
+      "Bash(curl -s -X POST http://10.10.0.28:5240/api/v3/auth/login -d \"username=maas&password=maas\" -v)",
+      "Bash(curl -s http://10.10.0.28:5240/api/v3/auth/login)",
+      "Bash(curl -s http://10.10.0.28:5243/api/v3/auth/login)",
+      "Bash(curl -s http://10.10.0.28:5244/api/v3/auth/login)",
+      "Bash(lxc exec *)",
+      "Bash(curl *)"
+    ]
+  }
+}
