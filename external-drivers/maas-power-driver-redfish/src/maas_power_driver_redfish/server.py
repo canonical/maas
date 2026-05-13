@@ -241,9 +241,12 @@ def main():
         choices=["start", "status"],
         help="Command to execute",
     )
+    snap_common = os.environ["SNAP_COMMON"]
+    default_socket = os.path.join(snap_common, "power-drivers", "redfish.sock")
+
     parser.add_argument(
         "--socket-path",
-        default="/var/snap/maas-power-driver-redfish/common/power-drivers/redfish.sock",
+        default=default_socket,
         help="Path to the UNIX domain socket",
     )
     parser.add_argument(
