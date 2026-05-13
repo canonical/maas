@@ -79,6 +79,9 @@ from maasservicelayer.db.repositories.openfga_tuples import (
 from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
 )
+from maasservicelayer.db.repositories.power_drivers import (
+    PowerDriversRepository,
+)
 from maasservicelayer.db.repositories.racks import RacksRepository
 from maasservicelayer.db.repositories.rdns import RDNSRepository
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
@@ -185,6 +188,7 @@ from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 from maasservicelayer.services.package_repositories import (
     PackageRepositoriesService,
 )
+from maasservicelayer.services.power_drivers import PowerDriversService
 from maasservicelayer.services.racks import RacksService
 from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
@@ -294,6 +298,7 @@ class ServiceCollectionV3:
     oidc_revoked_tokens: OIDCRevokedTokenService
     openfga_tuples: OpenFGATupleService
     package_repositories: PackageRepositoriesService
+    power_drivers: PowerDriversService
     racks: RacksService
     rdns: RDNSService
     refresh_tokens: RefreshTokenService
@@ -744,6 +749,10 @@ class ServiceCollectionV3:
             context=context,
             repository=PackageRepositoriesRepository(context),
             events_service=services.events,
+        )
+        services.power_drivers = PowerDriversService(
+            context=context,
+            repository=PowerDriversRepository(context),
         )
         services.hooked_configurations = HookedConfigurationsService(
             context=context,

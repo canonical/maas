@@ -1,0 +1,27 @@
+name: maas-power-driver-apc
+version: '1.0.0'
+summary: MAAS power driver for APC
+description: MAAS power driver for APC BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  apc-driver:
+    plugin: python
+    source: .
+    stage-packages:
+      - snmp
+services:
+  apc-driver:
+    command: bin/apc-driver start
+    plugs:
+      - network
+    sockets:
+      apc:
+        listen-stream: $SNAP_COMMON/power-drivers/apc.sock

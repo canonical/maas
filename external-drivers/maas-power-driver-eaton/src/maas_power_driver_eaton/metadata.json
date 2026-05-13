@@ -1,0 +1,42 @@
+{
+  "name": "eaton",
+  "description": "Eaton power driver",
+  "version": "1.0.0",
+  "actions": [
+    "query",
+    "on",
+    "off",
+    "cycle",
+    "reset"
+  ],
+  "settings": [
+    {
+      "name": "power_address",
+      "label": "BMC IP address",
+      "field_type": "ip_address",
+      "required": true
+    },
+    {
+      "name": "power_user",
+      "label": "BMC username",
+      "field_type": "string",
+      "required": false
+    },
+    {
+      "name": "power_pass",
+      "label": "BMC password",
+      "field_type": "string",
+      "required": false
+    }
+  ],
+  "capabilities": {
+    "queryable": true,
+    "chassis": false,
+    "can_probe": true,
+    "can_set_boot_order": false
+  },
+  "ip_extractor": {
+    "field_name": "power_address",
+    "pattern": "^(?P<address>.+?)$"
+  }
+}

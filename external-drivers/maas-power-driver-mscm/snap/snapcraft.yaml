@@ -1,0 +1,25 @@
+name: maas-power-driver-mscm
+version: '1.0.0'
+summary: MAAS power driver for IBM MSCM
+description: MAAS power driver for IBM MSCM BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  mscm-driver:
+    plugin: python
+    source: .
+services:
+  mscm-driver:
+    command: bin/mscm-driver start
+    plugs:
+      - network
+    sockets:
+      mscm:
+        listen-stream: $SNAP_COMMON/power-drivers/mscm.sock

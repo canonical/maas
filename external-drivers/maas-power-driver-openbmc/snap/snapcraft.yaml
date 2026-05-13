@@ -1,0 +1,25 @@
+name: maas-power-driver-openbmc
+version: '1.0.0'
+summary: MAAS power driver for OpenBMC
+description: MAAS power driver for OpenBMC BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  openbmc-driver:
+    plugin: python
+    source: .
+services:
+  openbmc-driver:
+    command: bin/openbmc-driver start
+    plugs:
+      - network
+    sockets:
+      openbmc:
+        listen-stream: $SNAP_COMMON/power-drivers/openbmc.sock

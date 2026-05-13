@@ -1,0 +1,28 @@
+name: maas-power-driver-ipmi
+version: '1.0.0'
+summary: MAAS power driver for IPMI
+description: MAAS power driver for IPMI BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  ipmi-driver:
+    plugin: python
+    source: .
+    stage-packages:
+      - freeipmi-tools
+
+services:
+  ipmi-driver:
+    command: bin/ipmi-driver start
+    plugs:
+      - network
+    sockets:
+      ipmi:
+        listen-stream: $SNAP_COMMON/power-drivers/ipmi.sock

@@ -1,0 +1,25 @@
+name: maas-power-driver-eaton
+version: '1.0.0'
+summary: MAAS power driver for Eaton
+description: MAAS power driver for Eaton BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  eaton-driver:
+    plugin: python
+    source: .
+services:
+  eaton-driver:
+    command: bin/eaton-driver start
+    plugs:
+      - network
+    sockets:
+      eaton:
+        listen-stream: $SNAP_COMMON/power-drivers/eaton.sock

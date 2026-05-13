@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Copyright 2025 Canonical Ltd.
+# This hook is triggered when a driver snap connects its power-drivers plug.
+# It sends SIGHUP to the maas-agent process to trigger a re-scan of the
+# runtime socket directory.
+
+set -euo pipefail
+
+# Find the maas-agent PID and send SIGHUP
+if pid=$(pidof maas-agent 2>/dev/null || true); then
+    kill -HUP "$pid"
+fi
+
+# Fallback: try Pebble if maas-agent PID not found
+if command -v pebble &>/dev/null; then
+    pebble signal --signal=HUP maas-agent 2>/dev/null || true
+fi

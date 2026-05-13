@@ -1,0 +1,28 @@
+name: maas-power-driver-amt
+version: '1.0.0'
+summary: MAAS power driver for Intel AMT
+description: MAAS power driver for Intel AMT BMCs
+grade: devel
+confinement: strict
+base: core26
+
+plugs:
+  power-drivers:
+    interface: content
+    content: power-drivers
+
+parts:
+  amt-driver:
+    plugin: python
+    source: .
+    stage-packages:
+      - amtterm
+      - wsmancli
+services:
+  amt-driver:
+    command: bin/amt-driver start
+    plugs:
+      - network
+    sockets:
+      amt:
+        listen-stream: $SNAP_COMMON/power-drivers/amt.sock
