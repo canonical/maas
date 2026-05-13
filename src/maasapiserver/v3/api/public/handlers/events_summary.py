@@ -44,26 +44,28 @@ def _to_table(events: list[Event]) -> str:
 
 
 def _call_openrouter(api_key: str, model: str, table: str) -> str:
-    payload = json.dumps({
-        "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You analyze MAAS infrastructure event logs. "
-                    "The user message contains tab-separated event data. "
-                    "Answer from the data only; say if something cannot be determined."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"Produce a summary of this MAAS events dataset."
-                    f"\n\n--- Events (tab-separated) ---\n{table}"
-                ),
-            },
-        ],
-    }).encode()
+    payload = json.dumps(
+        {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You analyze MAAS infrastructure event logs. "
+                        "The user message contains tab-separated event data. "
+                        "Answer from the data only; say if something cannot be determined."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Produce a summary of the following events data. Be concise, remove uneccessary markdown headers, and focus on key content without referencing specific events (resource ids are okay). "
+                        f"\n\n--- Events (tab-separated) ---\n{table}"
+                    ),
+                },
+            ],
+        }
+    ).encode()
 
     req = Request(
         _OPENROUTER_URL,
