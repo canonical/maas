@@ -13,6 +13,10 @@ plugs:
     content: power-driver
     target: $SNAP_COMMON/power-driver
 
+apps:
+  status:
+    command: bin/wedge-driver status
+
 parts:
   wedge-driver:
     plugin: python

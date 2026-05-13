@@ -13,6 +13,10 @@ plugs:
     content: power-driver
     target: $SNAP_COMMON/power-driver
 
+apps:
+  status:
+    command: bin/eaton-driver status
+
 parts:
   eaton-driver:
     plugin: python
