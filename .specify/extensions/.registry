@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "git": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:9731aa8143a72fbebfdb440f155038ab42642517c2b2bdbbf67c8fdbe076ed79",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "copilot": [
+          "speckit.git.feature",
+          "speckit.git.validate",
+          "speckit.git.remote",
+          "speckit.git.initialize",
+          "speckit.git.commit"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-20T14:49:08.830339+00:00"
+    },
+    "brownfield": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:671babc47c752bf18868d0aeeef66f0fc4f37c6cf52622cfa07e8715fb5ac4a6",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "copilot": [
+          "speckit.brownfield.scan",
+          "speckit.brownfield.bootstrap",
+          "speckit.brownfield.validate",
+          "speckit.brownfield.migrate"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-20T15:02:26.119823+00:00"
+    }
+  }
+}
