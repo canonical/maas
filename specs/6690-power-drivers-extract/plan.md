@@ -160,6 +160,7 @@ region → AMP DescribePowerTypes → rackd clusterservice.describe_power_types(
      power-drivers:
        interface: content
        content: power-drivers
+       default-provider: maas-power-ipmi
        read:
          - $SNAP_COMMON/power-drivers
    ```
