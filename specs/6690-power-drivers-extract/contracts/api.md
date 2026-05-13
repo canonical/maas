@@ -169,7 +169,7 @@ Unregister a power driver for a rack controller.
 
 **Response:** `204 No Content`
 
-### `GET /rack-power-drivers`
+### `GET /power-drivers`
 
 List all registered power drivers for a rack controller.
 
