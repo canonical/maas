@@ -3,65 +3,67 @@
 **Feature Branch**: `6690-power-drivers-extract`  
 **Created**: 2025-01-13  
 **Status**: Draft  
-**Input**: Move power drivers to their own repositories with snap plug/slot discovery mechanism, language-agnostic interface via JSON metadata, and snap distribution.
+**Input**: Move power drivers to their own repositories as snap services communicating over UNIX sockets, with rack-to-region driver lifecycle notifications.
 
 ## Clarifications
 
-- **Language-agnostic**: Power drivers may be implemented in any programming language (Python, Go, Rust, etc.). The interface between MAAS and drivers is a JSON-based protocol, not a language-specific API.
-- **Snap plug/slot discovery**: Drivers are distributed as separate snaps. When a driver snap connects to the MAAS snap (via a content plug and slot), it exposes driver metadata as a JSON file at a known path. MAAS discovers drivers by scanning these JSON files at runtime.
+- **Language-agnostic**: Power drivers may be implemented in any programming language (Python, Go, Rust, etc.). The interface between MAAS and drivers is a JSON-based protocol over UNIX sockets, not a language-specific API.
+- **Driver services**: Each power driver runs as a long-running snap service. The rack controller (`rackd`) communicates with driver services over UNIX domain sockets exposed through the snap interface.
+- **No metadata JSON**: Driver capabilities are discovered by querying the live service at its UNIX socket. There is no static metadata file.
 - **`maas-power` CLI deprecated**: The `maas-power` command (currently in `provisioningserver/power_driver_command.py`) is deprecated. Driver snaps provide their own CLI tools for testing and direct invocation. MAAS no longer ships a unified power CLI.
 - **Independent repositories**: Each driver group lives in its own git repository. Driver code, tests, documentation, and snapcraft configuration are all maintained in the driver's repository — not in the MAAS monorepo.
+- **Rack-to-region driver lifecycle**: When drivers appear or disappear (snap connect/disconnect), the rack controller notifies the region controller so the region's view of available power types stays in sync.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - MAAS discovers power drivers via snap plug/slot connections (Priority: P1)
+### User Story 1 - Rack controller discovers driver services via UNIX sockets (Priority: P1)
 
-**Description**: When a power driver snap is installed and connected to the MAAS snap, MAAS automatically discovers the driver by reading a JSON metadata file exposed through the snap's content interface. No MAAS core changes are required to add new drivers — installing and connecting a driver snap is sufficient.
+**Description**: When a power driver snap is installed, connected, and its service is running, the rack controller (`rackd`) discovers the driver by connecting to its UNIX domain socket through the snap interface. The rack queries the service to learn the driver's name, capabilities, and parameter schema. No MAAS core changes are required to add new drivers — installing, connecting, and starting a driver snap is sufficient.
 
-**Why this priority**: This is the foundational capability. Without snap-based discovery, the entire separation architecture cannot function. All other stories depend on this working correctly.
+**Why this priority**: This is the foundational capability. Without service-based discovery, the entire separation architecture cannot function. All other stories depend on this working correctly.
 
-**Independent Test**: Can be fully tested by building a minimal driver snap with a valid metadata JSON, installing it, connecting it to the MAAS snap, and verifying that `PowerDriverRegistry` contains the driver after MAAS reloads its driver list.
-
-**Acceptance Scenarios**:
-
-1. **Given** a fresh MAAS installation with no driver snaps connected, **When** the rack controller starts, **Then** only builtin drivers (e.g., `manual`) are available in `PowerDriverRegistry`
-2. **Given** a driver snap `maas-power-driver-ipmi` is installed and connected to MAAS, **When** MAAS reloads its driver list, **Then** the `ipmi` driver is discoverable via `PowerDriverRegistry.get_item("ipmi")`
-3. **Given** multiple driver snaps are connected, **When** MAAS reloads its driver list, **Then** all drivers from all connected snaps are registered and available
-4. **Given** a driver snap is disconnected, **When** MAAS reloads its driver list, **Then** that driver is no longer available in the registry
-5. **Given** a driver snap's metadata JSON is malformed, **When** MAAS attempts to discover it, **Then** MAAS logs a warning and skips that driver but continues discovering others
-6. **Given** a driver snap is connected while MAAS is running, **When** MAAS detects the new connection (via snap change notification or periodic scan), **Then** the new driver becomes available without a full MAAS restart
-
-### User Story 2 - Driver snaps expose metadata via JSON at the snap interface (Priority: P1)
-
-**Description**: Each power driver snap exposes a JSON metadata file at a known path through its content interface. This file describes the driver's capabilities, parameters, and how MAAS should invoke it. The JSON schema is defined by the MAAS power driver interface contract.
-
-**Why this priority**: This defines the contract between MAAS and driver snaps. Without a standardized metadata format, discovery and invocation cannot work.
-
-**Independent Test**: Can be tested by creating a minimal driver snap that exposes a metadata JSON file, connecting it to MAAS, and verifying that MAAS can read and validate the metadata.
+**Independent Test**: Can be fully tested by building a minimal driver snap that runs a service listening on a UNIX socket, connecting it to the MAAS snap, and verifying that `rackd` discovers the driver and populates `PowerDriverRegistry`.
 
 **Acceptance Scenarios**:
 
-1. **Given** a driver snap connected to MAAS, **When** MAAS reads the metadata JSON at the interface path, **Then** the JSON is valid against the power driver metadata schema
-2. **Given** a metadata JSON file, **When** validated, **Then** it contains: driver `name`, `description`, `version`, `settings` (parameter schema), `executable` path, and supported `actions`
-3. **Given** a metadata JSON with invalid or missing required fields, **When** MAAS validates it, **Then** MAAS rejects the driver and logs the validation error
-4. **Given** a driver snap is updated (new version), **When** the metadata JSON changes, **Then** MAAS detects the change and reloads the driver metadata
-5. **Given** the metadata JSON, **When** inspected, **Then** it contains no language-specific information — the format is identical regardless of whether the driver is written in Python, Go, Rust, or any other language
+1. **Given** a fresh MAAS installation with no driver snaps connected, **When** `rackd` starts, **Then** only builtin drivers (e.g., `manual`) are available in `PowerDriverRegistry`
+2. **Given** a driver snap `maas-power-driver-ipmi` is installed, connected, and its service is running, **When** `rackd` discovers available sockets, **Then** the `ipmi` driver is discoverable via `PowerDriverRegistry.get_item("ipmi")`
+3. **Given** multiple driver snaps are connected and running, **When** `rackd` discovers available sockets, **Then** all drivers are registered and available
+4. **Given** a driver snap is disconnected or its service stops, **When** `rackd` detects the socket is unavailable, **Then** that driver is removed from the registry
+5. **Given** a driver service is unresponsive, **When** `rackd` attempts to query it, **Then** `rackd` logs a warning and marks the driver as unavailable but continues operating with other drivers
+6. **Given** a driver snap is connected and its service starts while `rackd` is running, **When** `rackd` detects the new socket, **Then** the new driver becomes available without a `rackd` restart
 
-### User Story 3 - MAAS invokes power drivers via a language-agnostic protocol (Priority: P1)
+### User Story 2 - Rack controller queries driver services for capabilities (Priority: P1)
 
-**Description**: MAAS communicates with power drivers through a language-agnostic protocol (subprocess with JSON on stdin/stdout, or a local HTTP endpoint). MAAS core code never imports or links against driver code directly. Power actions (on, off, query, cycle, reset) are sent as structured requests and receive structured responses.
+**Description**: When `rackd` connects to a driver service's UNIX socket, it sends a capabilities request. The service responds with its driver name, description, version, supported actions, parameter schema, and capability flags. This replaces any static metadata file — the live service is the source of truth.
 
-**Why this priority**: This ensures true decoupling. Drivers can be written in any language and updated independently of MAAS. The protocol is the only contract between MAAS and drivers.
+**Why this priority**: This defines the contract between `rackd` and driver services. Without a standardized capabilities query, `rackd` cannot know what a driver supports.
 
-**Independent Test**: Can be tested by implementing a minimal driver in a non-Python language (e.g., a shell script or Go binary) that speaks the protocol, connecting it via a test snap, and verifying that MAAS can execute power actions through it.
+**Independent Test**: Can be tested by implementing a minimal driver service that responds to a capabilities query on its UNIX socket, connecting it to MAAS, and verifying that `rackd` receives and registers the driver's capabilities.
 
 **Acceptance Scenarios**:
 
-1. **Given** a machine with power type `ipmi`, **When** a power query is requested via RPC, **Then** MAAS invokes the driver through the protocol and receives the power state
-2. **Given** a driver implemented in Go, **When** connected via snap, **Then** MAAS can execute all supported power actions through it
-3. **Given** a driver implemented in Python, **When** connected via snap, **Then** MAAS can execute all supported power actions through it
-4. **Given** a driver crashes or becomes unresponsive, **When** MAAS attempts to invoke it, **Then** MAAS receives a clear error and reports it to the user
-5. **Given** `provisioningserver` source code, **When** searched for direct driver imports, **Then** no import of specific power driver implementations exists (only the protocol client and registry)
+1. **Given** a driver service is running and accessible via its UNIX socket, **When** `rackd` sends a capabilities request, **Then** the service responds with: driver `name`, `description`, `version`, `actions`, `settings` (parameter schema), and `capabilities` (flags)
+2. **Given** a capabilities response, **When** validated by `rackd`, **Then** all required fields are present and well-formed
+3. **Given** a driver service responds with an invalid or incomplete capabilities message, **When** `rackd` processes it, **Then** `rackd` rejects the driver and logs the validation error
+4. **Given** a driver service is updated (new version), **When** `rackd` queries it again, **Then** `rackd` receives the updated capabilities and version
+5. **Given** the capabilities response, **When** inspected, **Then** it contains no language-specific information — the format is identical regardless of whether the driver is written in Python, Go, Rust, or any other language
+
+### User Story 3 - Rack controller invokes power drivers over UNIX sockets (Priority: P1)
+
+**Description**: `rackd` communicates with power driver services over UNIX domain sockets. Power actions (on, off, query, cycle, reset, set-boot-order) are sent as structured JSON requests and receive structured JSON responses. The driver service is long-running — `rackd` does not start or stop it.
+
+**Why this priority**: This ensures true decoupling. Drivers can be written in any language and updated independently of MAAS. The UNIX socket protocol is the only contract between `rackd` and drivers.
+
+**Independent Test**: Can be tested by implementing a minimal driver service in any language that listens on a UNIX socket and responds to power action requests, connecting it via snap, and verifying that `rackd` can execute power actions through it.
+
+**Acceptance Scenarios**:
+
+1. **Given** a machine with power type `ipmi`, **When** a power query is requested via RPC, **Then** `rackd` sends a query request to the ipmi driver's UNIX socket and receives the power state
+2. **Given** a driver implemented in Go, **When** connected via snap and running as a service, **Then** `rackd` can execute all supported power actions through its UNIX socket
+3. **Given** a driver implemented in Python, **When** connected via snap and running as a service, **Then** `rackd` can execute all supported power actions through its UNIX socket
+4. **Given** a driver service crashes or becomes unresponsive, **When** `rackd` attempts to send a request, **Then** `rackd` receives a clear error and reports it to the user
+5. **Given** `provisioningserver` source code, **When** searched for direct driver imports, **Then** no import of specific power driver implementations exists (only the socket client and registry)
 
 ### User Story 4 - Power drivers live in independent repositories (Priority: P1)
 
@@ -79,39 +81,55 @@
 4. **Given** a driver repository, **When** its version is bumped and released, **Then** the new driver snap can be released without touching the MAAS repository
 5. **Given** the MAAS monorepo after extraction, **When** searched for driver implementation code, **Then** no driver implementation files exist (only the protocol client, registry, and builtin `manual` driver remain)
 
-### User Story 5 - Power drivers are distributed as standalone snaps (Priority: P2)
+### User Story 5 - Driver snaps run as long-running services (Priority: P1)
 
-**Description**: Each power driver (or group of related drivers) is packaged as a standalone snap. The snap includes the driver executable, its metadata JSON, and any system-level dependencies. Installing a driver is `snap install` + `snap connect`.
+**Description**: Each power driver snap declares a snap service that starts automatically when the snap is installed. The service listens on a UNIX domain socket at a known path within the snap's interface directory. The snap includes the driver binary, any system-level dependencies, and the snapcraft configuration. Installing a driver is `snap install` + `snap connect`.
 
-**Why this priority**: This enables the operational model where drivers can be installed, updated, and uninstalled independently of MAAS core and independently of each other.
+**Why this priority**: Long-running services eliminate per-action startup overhead and allow drivers to maintain state (e.g., connection pools, session caches) between power operations.
 
-**Independent Test**: Can be tested by building a driver snap with `snapcraft`, installing it locally, connecting it to MAAS, and verifying that the driver is discovered and functional.
+**Independent Test**: Can be tested by building a driver snap with `snapcraft` that declares a service, installing it, connecting it to MAAS, and verifying that the service is running and listening on its UNIX socket.
 
 **Acceptance Scenarios**:
 
-1. **Given** a driver snap, **When** `snap install --dangerous driver.snap` is run, **Then** the snap installs successfully
-2. **Given** a driver snap is installed, **When** `snap connect maas:power-drivers driver:power-drivers` is run, **Then** the driver's metadata becomes visible to MAAS
-3. **Given** a driver snap is removed, **When** `snap remove driver` is run, **Then** the driver is no longer available to MAAS
-4. **Given** a driver snap is updated, **When** `snap refresh driver` is run, **Then** MAAS picks up the updated driver metadata and version
+1. **Given** a driver snap, **When** `snap install --dangerous driver.snap` is run, **Then** the snap installs and its service starts automatically
+2. **Given** a driver snap is installed and connected, **When** `snap services driver` is run, **Then** the driver service is listed as active
+3. **Given** a driver snap is removed, **When** `snap remove driver` is run, **Then** the service stops and the UNIX socket is removed
+4. **Given** a driver snap is updated, **When** `snap refresh driver` is run, **Then** the service restarts with the updated version and `rackd` picks up the new capabilities
 
-### User Story 6 - The MAAS snap exposes a content slot for driver discovery (Priority: P1)
+### User Story 6 - The MAAS snap exposes a UNIX socket directory for driver services (Priority: P1)
 
-**Description**: The MAAS snap declares a content slot (`power-drivers`) that driver snaps connect to via a content plug. When connected, the slot provides MAAS with access to driver metadata JSON files. The slot path is a directory that driver snaps populate with their metadata.
+**Description**: The MAAS snap declares a content slot (`power-drivers`) that provides a shared directory where driver snaps place their UNIX domain sockets. When a driver snap connects its plug to MAAS's slot, its service writes a UNIX socket into that shared directory. `rackd` scans this directory to discover available driver services.
 
-**Why this priority**: This is the mechanism that makes discovery work. Without the snap content interface, MAAS cannot find or read driver metadata.
+**Why this priority**: This is the mechanism that makes discovery work. Without the shared socket directory, `rackd` cannot find or connect to driver services.
 
-**Independent Test**: Can be tested by verifying that the MAAS snap declares the content slot, that a test driver snap can connect to it, and that MAAS can read the metadata JSON from the connected path.
+**Independent Test**: Can be tested by verifying that the MAAS snap declares the content slot, that a test driver snap can connect to it, and that the driver's UNIX socket appears in the shared directory.
 
 **Acceptance Scenarios**:
 
 1. **Given** the MAAS snap, **When** `snap info maas` is run, **Then** a `power-drivers` content slot is declared
-2. **Given** a driver snap with a `power-drivers` content plug, **When** `snap connect maas:power-drivers driver:power-drivers` is run, **Then** the connection succeeds and the driver's metadata JSON is accessible at the slot path
-3. **Given** multiple driver snaps connected, **When** MAAS scans the slot path, **Then** each driver's metadata JSON is found and loaded
-4. **Given** a driver snap is disconnected, **When** MAAS scans the slot path, **Then** the disconnected driver's metadata is no longer present
+2. **Given** a driver snap with a `power-drivers` content plug, **When** `snap connect maas:power-drivers driver:power-drivers` is run, **Then** the connection succeeds and the driver's UNIX socket is accessible in the shared directory
+3. **Given** multiple driver snaps connected, **When** `rackd` scans the shared directory, **Then** each driver's UNIX socket is found and connected to
+4. **Given** a driver snap is disconnected, **When** `rackd` scans the shared directory, **Then** the disconnected driver's socket is no longer present
 
-### User Story 7 - Existing power functionality is preserved after extraction (Priority: P1)
+### User Story 7 - Rack controller notifies region of driver lifecycle changes (Priority: P1)
 
-**Description**: After moving drivers to separate snaps, all existing power actions (on, off, query, cycle, reset, set-boot-order) continue to work as before. RPC power commands and UI power controls function identically. The `maas-power` CLI is deprecated — driver snaps provide their own CLI tools for testing and direct invocation.
+**Description**: When drivers appear or disappear on a rack (due to snap connect/disconnect/service start/stop), `rackd` notifies the region controller of the change. The region updates its view of available power types for that rack. This ensures the region's power type list stays in sync with what each rack actually supports.
+
+**Why this priority**: The region controller needs to know which power types each rack supports (for form generation, validation, documentation). Without lifecycle notifications, the region's view becomes stale when drivers are added or removed.
+
+**Independent Test**: Can be tested by connecting a driver snap to a rack controller and verifying that the region controller receives a notification and updates its power type list for that rack.
+
+**Acceptance Scenarios**:
+
+1. **Given** a driver snap is connected to a rack controller, **When** `rackd` discovers the new driver, **Then** `rackd` sends a notification to the region controller with the driver's capabilities
+2. **Given** a driver snap is disconnected from a rack controller, **When** `rackd` detects the driver is gone, **Then** `rackd` sends a removal notification to the region controller
+3. **Given** the region controller receives a driver addition notification, **When** it processes the notification, **Then** the new power type appears in the rack's available power types
+4. **Given** the region controller receives a driver removal notification, **When** it processes the notification, **Then** the removed power type no longer appears in the rack's available power types
+5. **Given** `rackd` starts and discovers existing driver services, **When** it communicates with the region, **Then** the region receives the complete set of available power types for that rack
+
+### User Story 8 - Existing power functionality is preserved after extraction (Priority: P1)
+
+**Description**: After moving drivers to separate snap services, all existing power actions (on, off, query, cycle, reset, set-boot-order) continue to work as before. RPC power commands and UI power controls function identically. The `maas-power` CLI is deprecated — driver snaps provide their own CLI tools for testing and direct invocation.
 
 **Why this priority**: This is a refactoring feature. If existing functionality breaks, the extraction has failed. Must be verified for all 21 existing driver types.
 
@@ -119,16 +137,18 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** the refactored code with drivers in separate snaps, **When** the existing test suite `bin/test.rack` is run for power drivers, **Then** all tests pass
+1. **Given** the refactored code with drivers as snap services, **When** the existing test suite `bin/test.rack` is run for power drivers, **Then** all tests pass
 2. **Given** the refactored code, **When** the region controller requests power types from the rack controller via `DescribePowerTypes` RPC, **Then** all connected drivers are returned in the schema
 3. **Given** the refactored code, **When** a BMC's power parameters are sanitized, **Then** secret parameters are correctly separated from non-secret parameters using `sanitise_power_parameters()`
 4. **Given** the `maas-power` command is invoked, **When** it runs, **Then** it prints a deprecation warning directing users to the driver snap's own CLI tool
+5. **Given** a driver snap is connected to a rack, **When** the region queries that rack for available power types, **Then** the new driver appears in the rack's power type list
 
 ## Assumptions
 
 - Power drivers may be written in any programming language (Python, Go, Rust, C, shell, etc.)
-- The communication protocol between MAAS and drivers is language-agnostic (JSON over subprocess stdin/stdout or local HTTP)
-- Snap content interfaces (plug/slot) are the discovery mechanism — not Python entry points, shared libraries, or other language-specific mechanisms
+- Each driver runs as a long-running service communicating over UNIX domain sockets
+- Driver capabilities are discovered by querying the live service — there is no static metadata JSON file
+- Snap content interfaces (plug/slot) provide a shared directory for UNIX sockets
 - Driver snaps run with `strict` confinement (same as MAAS)
 - System-level dependencies (e.g., `freeipmi-tools`, `amtterm`) are included in the driver snap, not the MAAS snap
 - The `manual` power driver remains builtin in MAAS core (no external dependencies, always available)
@@ -136,52 +156,49 @@
 - Driver code, tests, and documentation are maintained in driver repositories, not the MAAS monorepo
 - Third-party power drivers are a valid use case (anyone can build a driver snap)
 - Each driver repository has its own CI pipeline for testing and snap building
+- The rack controller is responsible for driver discovery and for notifying the region of driver lifecycle changes
 
 ## Key Entities
 
-### Power Driver Metadata JSON
-- **Purpose**: Describes a driver's capabilities, parameters, and invocation details to MAAS
-- **Location**: Exposed at the snap content interface path when the driver snap is connected
-- **Schema** (key fields):
-  - `name`: Unique driver identifier (e.g., `ipmi`, `redfish`)
-  - `description`: Human-readable description
-  - `version`: Driver version string
-  - `actions`: List of supported actions (`on`, `off`, `query`, `cycle`, `reset`, `set-boot-order`)
-  - `settings`: Array of parameter definitions (name, label, type, required, choices, scope, secret)
-  - `ip_extractor`: Field name and regex pattern for extracting IP address from parameters
-  - `executable`: Path to the driver binary/script within the snap
-  - `protocol`: Communication method (`subprocess` or `http`)
-  - `capabilities`: Flags (`queryable`, `chassis`, `can_probe`, `can_set_boot_order`)
-- **Validation**: MAAS validates metadata against a JSON Schema before accepting the driver
-
-### Power Driver Protocol
-- **Purpose**: Language-agnostic communication between MAAS and driver processes
-- **Transport**: Subprocess with JSON lines on stdin/stdout (primary), or local HTTP (alternative)
-- **Request format**: JSON object with `action`, `system_id`, `hostname`, `context` (power parameters)
-- **Response format**: JSON object with `state` (for query) or `status`/`error` (for actions)
-- **Error format**: JSON object with `error_type` and `error_message`
-- **Lifecycle**: Driver process is started per-action (subprocess) or long-running (HTTP)
+### Driver Service Protocol (UNIX Socket)
+- **Purpose**: Language-agnostic communication between `rackd` and driver services
+- **Transport**: UNIX domain socket in the shared snap content directory
+- **Messages**: JSON objects, length-prefixed (4-byte big-endian length + JSON payload)
+- **Request types**:
+  - `capabilities` — returns driver name, description, version, actions, settings, capability flags
+  - `power_query` — returns current power state (`on`, `off`, `unknown`)
+  - `power_on`, `power_off`, `power_cycle`, `power_reset` — performs action, returns status
+  - `set_boot_order` — configures boot order, returns status
+- **Response format**: JSON object with `status` (`ok`/`error`), optional `state` (for queries), optional `error_type` and `error_message`
+- **Lifecycle**: Driver is a long-running service; `rackd` connects as needed, does not manage the service lifecycle
 
 ### Power Driver Registry
-- **Purpose**: Runtime registry of all discovered power drivers
+- **Purpose**: Runtime registry of all discovered power drivers on a rack
 - **Operations**: `register_item()`, `get_item()`, `get_schema()`, iteration over registered drivers
-- **Discovery**: Populated by scanning the snap content slot path for metadata JSON files
-- **Reload**: Supports hot-reload when snaps are connected/disconnected/updated
+- **Discovery**: Populated by `rackd` scanning the shared socket directory and querying each service for capabilities
+- **Reload**: Supports hot-reload when driver services appear or disappear
 
 ### Snap Content Interface
-- **Purpose**: The snap plug/slot mechanism that exposes driver metadata to MAAS
-- **Slot** (MAAS snap): `power-drivers` — a directory where driver metadata JSON files appear
-- **Plug** (driver snap): `power-drivers` — connects to MAAS's slot, provides metadata JSON
-- **Path convention**: Each driver writes a single metadata JSON file named `<driver-name>.json`
+- **Purpose**: The snap plug/slot mechanism that provides a shared directory for UNIX sockets
+- **Slot** (MAAS snap): `power-drivers` — a directory where driver services place their UNIX sockets
+- **Plug** (driver snap): `power-drivers` — connects to MAAS's slot, driver service writes its socket here
+- **Socket naming**: Each driver writes a UNIX socket named `<driver-name>.sock`
+
+### Rack-to-Region Driver Lifecycle Notification
+- **Purpose**: Keeps the region's view of available power types in sync with each rack
+- **Trigger**: Driver service appears (snap connect + service start) or disappears (snap disconnect / service stop)
+- **Direction**: Rack controller → Region controller (via existing RPC channel)
+- **Payload**: Driver capabilities (same as the capabilities query response) for additions; driver name for removals
+- **On rack startup**: `rackd` sends the complete set of available drivers to the region during registration
 
 ### Driver Repository Structure
 - **Purpose**: Standard layout for each driver's git repository
 - **Contents**:
-  - Driver implementation source code
+  - Driver implementation source code (service binary)
   - Test suite (unit tests, integration tests against real or mocked BMCs)
   - Documentation (driver-specific README, supported hardware, configuration guide)
-  - `snap/snapcraft.yaml` (snap build configuration)
-  - Metadata JSON template (processed during snap build to include version, executable path, etc.)
+  - `snap/snapcraft.yaml` (snap build configuration, declares the service and content plug)
+  - Protocol client library (for testing: a small client that speaks the UNIX socket protocol)
 - **Independence**: Each repository builds, tests, and releases without requiring the MAAS monorepo
 
 ### Driver Grouping
@@ -199,15 +216,17 @@
 
 ## Success Criteria
 
-- MAAS rack controller discovers all connected driver snaps within 1 second of snap connection
+- MAAS rack controller discovers all connected driver services within 1 second of service start
 - Zero power driver tests fail after extraction (100% test pass rate preserved)
 - All 21 existing power driver types remain functional after extraction
 - The `maas-power` command prints a deprecation warning and exits (driver snaps provide their own CLI tools)
 - A new power driver can be added by building and connecting a driver snap (no MAAS core changes required)
-- A power driver written in a non-Python language (e.g., Go) can be discovered and invoked by MAAS
-- The metadata JSON schema is published and versioned for third-party driver authors
+- A power driver written in a non-Python language (e.g., Go) can be discovered and invoked by `rackd`
+- The UNIX socket protocol specification is published for third-party driver authors
 - No breaking changes to existing MAAS APIs or RPC interfaces
 - The MAAS snap declares a `power-drivers` content slot that driver snaps can connect to
+- The region controller receives timely notifications when drivers are added or removed from a rack
+- Each driver repository is self-contained (code, tests, docs, snapcraft config) and builds independently
 
 ## Non-Goals
 
@@ -219,3 +238,4 @@
 - This feature does not publish driver snaps to the Snap Store (that is a follow-up)
 - This feature does not define a driver SDK or CLI tooling for driver authors (that is a follow-up)
 - This feature does not preserve the `maas-power` CLI — it is deprecated in favor of per-driver CLI tools
+- This feature does not define a driver SDK or language bindings for the UNIX socket protocol (that is a follow-up)
