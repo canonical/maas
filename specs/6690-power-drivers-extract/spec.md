@@ -9,6 +9,7 @@
 
 - **Language-agnostic**: Power drivers may be implemented in any programming language (Python, Go, Rust, etc.). The interface between MAAS and drivers is a JSON-based protocol, not a language-specific API.
 - **Snap plug/slot discovery**: Drivers are distributed as separate snaps. When a driver snap connects to the MAAS snap (via a content plug and slot), it exposes driver metadata as a JSON file at a known path. MAAS discovers drivers by scanning these JSON files at runtime.
+- **`maas-power` CLI deprecated**: The `maas-power` command (currently in `provisioningserver/power_driver_command.py`) is deprecated. Driver snaps provide their own CLI tools for testing and direct invocation. MAAS no longer ships a unified power CLI.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -93,7 +94,7 @@
 
 ### User Story 6 - Existing power functionality is preserved after extraction (Priority: P1)
 
-**Description**: After moving drivers to separate packages, all existing power actions (on, off, query, cycle, reset, set-boot-order) continue to work as before. The `maas-power` CLI, RPC power commands, and UI power controls function identically.
+**Description**: After moving drivers to separate snaps, all existing power actions (on, off, query, cycle, reset, set-boot-order) continue to work as before. RPC power commands and UI power controls function identically. The `maas-power` CLI is deprecated — driver snaps provide their own CLI tools for testing and direct invocation.
 
 **Why this priority**: This is a refactoring feature. If existing functionality breaks, the extraction has failed. Must be verified for all 21 existing driver types.
 
@@ -101,10 +102,10 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** the refactored code with drivers in separate packages, **When** the existing test suite `bin/test.rack` is run for power drivers, **Then** all tests pass
-2. **Given** the refactored code, **When** `maas-power ipmi status --power-address 10.0.0.1 --power-user admin --power-pass secret` is run, **Then** the command executes and returns power status
-3. **Given** the refactored code, **When** the region controller requests power types from the rack controller via `DescribePowerTypes` RPC, **Then** all installed drivers are returned in the schema
-4. **Given** the refactored code, **When** a BMC's power parameters are sanitized, **Then** secret parameters are correctly separated from non-secret parameters using `sanitise_power_parameters()`
+1. **Given** the refactored code with drivers in separate snaps, **When** the existing test suite `bin/test.rack` is run for power drivers, **Then** all tests pass
+2. **Given** the refactored code, **When** the region controller requests power types from the rack controller via `DescribePowerTypes` RPC, **Then** all connected drivers are returned in the schema
+3. **Given** the refactored code, **When** a BMC's power parameters are sanitized, **Then** secret parameters are correctly separated from non-secret parameters using `sanitise_power_parameters()`
+4. **Given** the `maas-power` command is invoked, **When** it runs, **Then** it prints a deprecation warning directing users to the driver snap's own CLI tool
 
 ## Assumptions
 
@@ -173,7 +174,7 @@
 - MAAS rack controller discovers all connected driver snaps within 1 second of snap connection
 - Zero power driver tests fail after extraction (100% test pass rate preserved)
 - All 21 existing power driver types remain functional after extraction
-- The `maas-power` CLI works with all connected drivers without modification
+- The `maas-power` command prints a deprecation warning and exits (driver snaps provide their own CLI tools)
 - A new power driver can be added by building and connecting a driver snap (no MAAS core changes required)
 - A power driver written in a non-Python language (e.g., Go) can be discovered and invoked by MAAS
 - The metadata JSON schema is published and versioned for third-party driver authors
@@ -189,3 +190,4 @@
 - This feature does not require changes to the MAAS UI
 - This feature does not publish driver snaps to the Snap Store (that is a follow-up)
 - This feature does not define a driver SDK or CLI tooling for driver authors (that is a follow-up)
+- This feature does not preserve the `maas-power` CLI — it is deprecated in favor of per-driver CLI tools
