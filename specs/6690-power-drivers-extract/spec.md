@@ -10,11 +10,11 @@
 - **Language-agnostic**: Power drivers may be implemented in any programming language (Python, Go, Rust, etc.). The interface between MAAS and drivers is HTTP over UNIX domain sockets, not a language-specific API.
 - **Driver services**: Each power driver runs as a long-running snap service. The rack controller (`rackd`) communicates with driver services over HTTP on UNIX domain sockets exposed through the snap interface.
 - **No metadata JSON**: Driver capabilities are discovered by querying the live service at its UNIX socket. There is no static metadata file.
-- **`maas-power` CLI deprecated**: The `maas-power` command (currently in `provisioningserver/power_driver_command.py`) is deprecated. Driver snaps provide their own CLI tools for testing and direct invocation. MAAS no longer ships a unified power CLI.
+- **`maas-power` removed entirely**: The `maas-power` command (currently in `provisioningserver/power_driver_command.py`) is removed. It is not deprecated — it simply no longer exists. Driver snaps provide their own CLI tools for testing and direct invocation.
 - **Independent repositories**: Each power driver lives in its own git repository as an independent project. No driver grouping — one driver per repo, one driver per snap.
 - **`webhook` builtin**: The `webhook` power driver remains builtin in MAAS core (no external dependencies, useful for testing and custom integrations). All other drivers are external snaps.
 - **No `manual` driver**: The `manual` power driver is dropped entirely. It has no value in a service-based architecture.
-- **Rack-to-region driver lifecycle**: When drivers appear or disappear (snap connect/disconnect), the rack controller notifies the region controller so the region's view of available power types stays in sync.
+- **Rack-to-region driver lifecycle (v3 internal API)**: When drivers appear or disappear (snap connect/disconnect), the rack controller notifies the region controller via the v3 internal API so the region's view of available power types stays in sync. This is not the legacy RPC channel.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -113,9 +113,9 @@
 3. **Given** multiple driver snaps connected, **When** `rackd` scans the shared directory, **Then** each driver's UNIX socket is found and connected to
 4. **Given** a driver snap is disconnected, **When** `rackd` scans the shared directory, **Then** the disconnected driver's socket is no longer present
 
-### User Story 7 - Rack controller notifies region of driver lifecycle changes (Priority: P1)
+### User Story 7 - Rack controller notifies region of driver lifecycle changes via v3 internal API (Priority: P1)
 
-**Description**: When drivers appear or disappear on a rack (due to snap connect/disconnect/service start/stop), `rackd` notifies the region controller of the change. The region updates its view of available power types for that rack. This ensures the region's power type list stays in sync with what each rack actually supports.
+**Description**: When drivers appear or disappear on a rack (due to snap connect/disconnect/service start/stop), `rackd` notifies the region controller of the change via the v3 internal API. The region updates its view of available power types for that rack. This ensures the region's power type list stays in sync with what each rack actually supports. This notification does not use the legacy RPC channel.
 
 **Why this priority**: The region controller needs to know which power types each rack supports (for form generation, validation, documentation). Without lifecycle notifications, the region's view becomes stale when drivers are added or removed.
 
@@ -123,15 +123,15 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** a driver snap is connected to a rack controller, **When** `rackd` discovers the new driver, **Then** `rackd` sends a notification to the region controller with the driver's capabilities
-2. **Given** a driver snap is disconnected from a rack controller, **When** `rackd` detects the driver is gone, **Then** `rackd` sends a removal notification to the region controller
-3. **Given** the region controller receives a driver addition notification, **When** it processes the notification, **Then** the new power type appears in the rack's available power types
-4. **Given** the region controller receives a driver removal notification, **When** it processes the notification, **Then** the removed power type no longer appears in the rack's available power types
-5. **Given** `rackd` starts and discovers existing driver services, **When** it communicates with the region, **Then** the region receives the complete set of available power types for that rack
+1. **Given** a driver snap is connected to a rack controller, **When** `rackd` discovers the new driver, **Then** `rackd` calls the v3 internal API to register the driver's capabilities with the region controller
+2. **Given** a driver snap is disconnected from a rack controller, **When** `rackd` detects the driver is gone, **Then** `rackd` calls the v3 internal API to remove the driver from the region controller
+3. **Given** the region controller receives a driver addition via the v3 internal API, **When** it processes the notification, **Then** the new power type appears in the rack's available power types
+4. **Given** the region controller receives a driver removal via the v3 internal API, **When** it processes the notification, **Then** the removed power type no longer appears in the rack's available power types
+5. **Given** `rackd` starts and discovers existing driver services, **When** it communicates with the region, **Then** the region receives the complete set of available power types for that rack via the v3 internal API
 
 ### User Story 8 - Existing power functionality is preserved after extraction (Priority: P1)
 
-**Description**: After moving drivers to separate snap services, all existing power actions (on, off, query, cycle, reset, set-boot-order) continue to work as before. RPC power commands and UI power controls function identically. The `maas-power` CLI is deprecated — driver snaps provide their own CLI tools for testing and direct invocation.
+**Description**: After moving drivers to separate snap services, all existing power actions (on, off, query, cycle, reset, set-boot-order) continue to work as before. RPC power commands and UI power controls function identically. The `maas-power` command no longer exists.
 
 **Why this priority**: This is a refactoring feature. If existing functionality breaks, the extraction has failed. Must be verified for all 21 existing driver types.
 
@@ -142,8 +142,8 @@
 1. **Given** the refactored code with drivers as snap services, **When** the existing test suite `bin/test.rack` is run for power drivers, **Then** all tests pass
 2. **Given** the refactored code, **When** the region controller requests power types from the rack controller via `DescribePowerTypes` RPC, **Then** all connected drivers are returned in the schema
 3. **Given** the refactored code, **When** a BMC's power parameters are sanitized, **Then** secret parameters are correctly separated from non-secret parameters using `sanitise_power_parameters()`
-4. **Given** the `maas-power` command is invoked, **When** it runs, **Then** it prints a deprecation warning directing users to the driver snap's own CLI tool
-5. **Given** a driver snap is connected to a rack, **When** the region queries that rack for available power types, **Then** the new driver appears in the rack's power type list
+4. **Given** a driver snap is connected to a rack, **When** the region queries that rack for available power types, **Then** the new driver appears in the rack's power type list
+5. **Given** the MAAS monorepo after extraction, **When** searched for `maas-power` or `power_driver_command`, **Then** no traces of the command remain
 
 ## Assumptions
 
@@ -160,7 +160,7 @@
 - Driver code, tests, and documentation are maintained in driver repositories, not the MAAS monorepo
 - Third-party power drivers are a valid use case (anyone can build a driver snap)
 - Each driver repository has its own CI pipeline for testing and snap building
-- The rack controller is responsible for driver discovery and for notifying the region of driver lifecycle changes
+- The rack controller is responsible for driver discovery and for notifying the region of driver lifecycle changes via the v3 internal API
 
 ## Key Entities
 
@@ -169,14 +169,14 @@
 - **Transport**: HTTP over UNIX domain socket in the shared snap content directory
 - **Wire format**: Standard HTTP requests/responses with JSON bodies
 - **Endpoints**:
-  - `GET /` — returns driver capabilities (name, description, version, actions, settings, capability flags)
+  - `GET /metadata` — returns driver metadata (name, description, version, actions, settings, capability flags)
   - `POST /query` — returns current power state (`on`, `off`, `unknown`)
   - `POST /on` — powers on the node
   - `POST /off` — powers off the node
   - `POST /cycle` — cycles power
   - `POST /reset` — resets power
   - `POST /set-boot-order` — configures boot order
-- **Request body**: JSON object with `system_id`, `hostname`, `context` (power parameters)
+- **Request body**: JSON object with `system_id` and `context` (power parameters). `system_id` alone is sufficient to identify the target system.
 - **Response format**: JSON object with `status` (`ok`/`error`), optional `state` (for queries), optional `error_type` and `error_message`
 - **HTTP status codes**: 200 for success, 503 for unavailable, 400 for invalid parameters, 500 for driver errors
 - **Lifecycle**: Driver is a long-running service; `rackd` connects as needed, does not manage the service lifecycle
@@ -196,9 +196,9 @@
 ### Rack-to-Region Driver Lifecycle Notification
 - **Purpose**: Keeps the region's view of available power types in sync with each rack
 - **Trigger**: Driver service appears (snap connect + service start) or disappears (snap disconnect / service stop)
-- **Direction**: Rack controller → Region controller (via existing RPC channel)
-- **Payload**: Driver capabilities (same as the capabilities query response) for additions; driver name for removals
-- **On rack startup**: `rackd` sends the complete set of available drivers to the region during registration
+- **Direction**: Rack controller → Region controller (via v3 internal API, not legacy RPC)
+- **Payload**: Driver metadata (same as the `/metadata` endpoint response) for additions; driver name for removals
+- **On rack startup**: `rackd` registers the complete set of available drivers with the region via the v3 internal API
 
 ### Driver Repository Structure
 - **Purpose**: Standard layout for each driver's git repository
@@ -239,13 +239,13 @@
 - MAAS rack controller discovers all connected driver services within 1 second of service start
 - Zero power driver tests fail after extraction (100% test pass rate preserved)
 - All 20 external power driver types remain functional after extraction (webhook stays builtin)
-- The `maas-power` command prints a deprecation warning and exits (driver snaps provide their own CLI tools)
 - A new power driver can be added by building and connecting a driver snap (no MAAS core changes required)
 - A power driver written in a non-Python language (e.g., Go) can be discovered and invoked by `rackd`
 - The HTTP-over-UNIX-socket protocol specification is published for third-party driver authors
 - No breaking changes to existing MAAS APIs or RPC interfaces
 - The MAAS snap declares a `power-drivers` content slot that driver snaps can connect to
-- The region controller receives timely notifications when drivers are added or removed from a rack
+- The region controller receives timely notifications via the v3 internal API when drivers are added or removed from a rack
+- The `maas-power` command and `power_driver_command.py` are completely removed from the MAAS codebase
 - Each driver repository is self-contained (code, tests, docs, snapcraft config) and builds independently
 
 ## Non-Goals
@@ -257,5 +257,5 @@
 - This feature does not require changes to the MAAS UI
 - This feature does not publish driver snaps to the Snap Store (that is a follow-up)
 - This feature does not define a driver SDK or CLI tooling for driver authors (that is a follow-up)
-- This feature does not preserve the `maas-power` CLI — it is deprecated in favor of per-driver CLI tools
 - This feature does not define a driver SDK or language bindings for the HTTP-over-UNIX-socket protocol (that is a follow-up)
+- This feature does not preserve the `maas-power` command — it is removed entirely
