@@ -7,11 +7,11 @@ on:
     branches:
       - master
     paths:
-      - 'src/maasui/**'
+      - "src/maasui/**"
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - 'src/maasui/**'
+      - "src/maasui/**"
 
 defaults:
   run:

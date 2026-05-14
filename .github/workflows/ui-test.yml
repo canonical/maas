@@ -6,12 +6,12 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
-      - 'src/maasui/**'
+      - "src/maasui/**"
   push:
     branches:
       - master
     paths:
-      - 'src/maasui/**'
+      - "src/maasui/**"
   merge_group:
     types: [checks_requested]
 

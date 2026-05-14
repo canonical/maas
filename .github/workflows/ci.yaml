@@ -139,24 +139,24 @@ jobs:
     if: >-
       ${{ !github.event.pull_request.draft && needs.changes.outputs.docs == 'true' }}
     steps:
-    - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-      with:
-        fetch-depth: 0
-    - name: Create venv
-      working-directory: "docs"
-      run: make install
-    - name: Lint markdown
-      working-directory: "docs"
-      run: make lint-md
-    - name: Test build
-      working-directory: "docs"
-      run: make html
-    - name: Run scripts tests
-      working-directory: "docs"
-      run: |
-        source .sphinx/venv/bin/activate
-        pip install -r requirements-dev.txt
-        cd _scripts && python -m pytest .
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+        with:
+          fetch-depth: 0
+      - name: Create venv
+        working-directory: "docs"
+        run: make install
+      - name: Lint markdown
+        working-directory: "docs"
+        run: make lint-md
+      - name: Test build
+        working-directory: "docs"
+        run: make html
+      - name: Run scripts tests
+        working-directory: "docs"
+        run: |
+          source .sphinx/venv/bin/activate
+          pip install -r requirements-dev.txt
+          cd _scripts && python -m pytest .
 
   ci-check:
     runs-on: ubuntu-slim

@@ -4,13 +4,13 @@ name: UI Coverage
 
 on:
   schedule:
-    - cron: "30 0 * * 6"  # Weekly
+    - cron: "30 0 * * 6" # Weekly
   push:
     branches:
       - master
       - "tics-debug-*"
     paths:
-      - 'src/maasui/**'
+      - "src/maasui/**"
 
 defaults:
   run:
