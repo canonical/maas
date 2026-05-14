@@ -214,7 +214,7 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 	powerDiscovery := power.NewDiscovery(d.logger, socketDir)
 
 	// Create the API client for region communication
-	apiClient := client.New(d.cfg.ControllerURL,
+	powerAPIClient := client.New(d.cfg.ControllerURL,
 		client.NewTLSConfigWithCAValidationOnly(d.cert, caPool))
 
 	// Initial scan
@@ -227,7 +227,7 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 			powerRegistry.Register(drv)
 		}
 		// Register with region
-		regionClient := power.NewRegionClient(d.logger, apiClient)
+		regionClient := power.NewRegionClient(d.logger, powerAPIClient)
 		if err := regionClient.RegisterDrivers(ctx, id, initialDrivers); err != nil {
 			d.logger.Warn("failed to register initial drivers with region", "error", err)
 		}
@@ -236,7 +236,7 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 	// Set up SIGHUP signal handler for driver re-discovery
 	signalHandler := power.SetupSignalHandler(
 		d.logger, socketDir, powerRegistry, powerDiscovery,
-		power.NewRegionClient(d.logger, apiClient),
+		power.NewRegionClient(d.logger, powerAPIClient),
 		id,
 	)
 
