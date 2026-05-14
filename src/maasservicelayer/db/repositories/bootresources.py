@@ -109,6 +109,26 @@ class BootResourceClauseFactory(ClauseFactory):
             ],
         )
 
+    @classmethod
+    def with_filetype(cls, filetype: BootResourceFileType) -> Clause:
+        subquery = (
+            select(BootResourceSetTable.c.resource_id)
+            .distinct()
+            .select_from(BootResourceSetTable)
+            .join(
+                BootResourceFileTable,
+                eq(
+                    BootResourceFileTable.c.resource_set_id,
+                    BootResourceSetTable.c.id,
+                ),
+            )
+            .where(eq(BootResourceFileTable.c.filetype, filetype))
+            .scalar_subquery()
+        )
+        return Clause(
+            condition=BootResourceTable.c.id.in_(subquery),
+        )
+
 
 class BootResourceOrderByClauses(OrderByClauseFactory):
     @staticmethod
