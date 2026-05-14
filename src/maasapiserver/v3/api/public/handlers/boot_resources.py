@@ -318,7 +318,9 @@ class CustomImagesHandler(Handler):
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ImageListResponse:
-        clauses = [BootResourceClauseFactory.with_rtype(BootResourceType.UPLOADED)]
+        clauses = [
+            BootResourceClauseFactory.with_rtype(BootResourceType.UPLOADED)
+        ]
         if filter_clause := filters.to_clause():
             clauses.append(filter_clause)
         where_clause = BootResourceClauseFactory.and_clauses(clauses)

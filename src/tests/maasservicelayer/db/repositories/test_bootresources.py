@@ -465,14 +465,6 @@ class TestBootResourceRepository:
         fixture: Fixture,
     ):
         """Test that filtering by file type doesn't return duplicates when a resource has multiple sets."""
-        from maasservicelayer.db.filters import QuerySpec
-        from tests.fixtures.factories.bootresourcefiles import (
-            create_test_bootresourcefile_entry,
-        )
-        from tests.fixtures.factories.bootresourcesets import (
-            create_test_bootresourceset_entry,
-        )
-
         multi_version_resource = await create_test_bootresource_entry(
             fixture,
             rtype=BootResourceType.UPLOADED,
@@ -540,13 +532,6 @@ class TestBootResourceRepository:
         fixture: Fixture,
     ):
         """Test combining file type filter with other filters."""
-        from maasservicelayer.db.filters import QuerySpec
-        from tests.fixtures.factories.bootresourcefiles import (
-            create_test_bootresourcefile_entry,
-        )
-        from tests.fixtures.factories.bootresourcesets import (
-            create_test_bootresourceset_entry,
-        )
 
         resources = []
         for i in range(3):
