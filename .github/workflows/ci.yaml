@@ -158,8 +158,7 @@ jobs:
           pip install -r requirements-dev.txt
           cd _scripts && python -m pytest .
 
-  ui-lint:
-    name: UI Lint
+  lint-ui:
     runs-on: ubuntu-24.04
     needs: changes
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.ui == 'true' }}
@@ -187,8 +186,7 @@ jobs:
 
       - run: yarn lint
 
-  ui-test:
-    name: UI Test
+  test-ui:
     runs-on: ubuntu-24.04
     needs: changes
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.ui == 'true' }}
@@ -223,8 +221,7 @@ jobs:
           name: test-timings
           path: src/maasui/test-timings.log
 
-  ui-accessibility:
-    name: UI Accessibility (cypress-axe)
+  accessibility:
     runs-on: ubuntu-24.04
     needs: changes
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.ui == 'true' }}
@@ -277,7 +274,8 @@ jobs:
   ci-check:
     runs-on: ubuntu-slim
     if: always()
-    needs: [lint, test-python, test-go, test-docs, ui-lint, ui-test, ui-accessibility]
+    needs:
+      [lint, test-python, test-go, test-docs, lint-ui, test-ui, accessibility]
     steps:
       - name: Check job results
         if: contains(needs.*.result, 'failure')
