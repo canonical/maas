@@ -119,25 +119,17 @@ jobs:
             chore
             docs
           scopes: |
-            fe-base
-            fe-images
-            fe-accounts
-            fe-sites
-            fe-settings
-            fe-tokens
-            be-config
-            be-settings
-            be-sites
-            be-tokens
-            be-accounts
-            be-db
-            be-images
-            docs
+            bootresources
+            dhcp
+            dns
+            network
+            power
+            proxy
+            security
+            storage
+            tftp
+            deps
             ci
-            structural
-            content
-            linting
-            links
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify BREAKING CHANGE in description
