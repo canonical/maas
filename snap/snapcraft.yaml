@@ -161,6 +161,7 @@ parts:
       - python3-netaddr
       - python3-netifaces
       - python3-oauthlib
+      - python3-openai
       - python3-packaging
       - python3-paramiko
       - python3-passlib
@@ -217,7 +218,7 @@ parts:
       usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers/
       usr/lib/*-linux-gnu/blas/*: usr/lib/
       usr/local/bin/*: usr/bin/
-      usr/local/lib/python3.14/*: usr/lib/python3.14/
+      usr/local/lib/python3.14/dist-packages/*: usr/lib/python3/dist-packages/
     stage:
       - etc/bind
       - etc/chrony
@@ -274,23 +275,23 @@ parts:
     prime:
       - usr/share/maas/web/static
 
-  offline-docs:
-    plugin: make
-    source: .
-    build-packages:
-      - python3-venv
-      - python3-pip
-      - libcairo2
-      - python3-dev    # netifaces requirement
-      - git            # for git+https://git.launchpad.net/django-piston3 in requirements.txt
-    override-build: |
-      cd $CRAFT_PART_SRC/docs
-      make html
-      INSTALL_DIR="$CRAFT_PART_INSTALL/usr/share/maas/web/static/docs"
-      mkdir -p "$INSTALL_DIR"
-      cp -a _build/* "$INSTALL_DIR/"
-    prime:
-      - usr/share/maas/web/static/docs
+  # offline-docs:
+  #   plugin: make
+  #   source: .
+  #   build-packages:
+  #     - python3-venv
+  #     - python3-pip
+  #     - libcairo2
+  #     - python3-dev    # netifaces requirement
+  #     - git            # for git+https://git.launchpad.net/django-piston3 in requirements.txt
+  #   override-build: |
+  #     cd $CRAFT_PART_SRC/docs
+  #     make html
+  #     INSTALL_DIR="$CRAFT_PART_INSTALL/usr/share/maas/web/static/docs"
+  #     mkdir -p "$INSTALL_DIR"
+  #     cp -a _build/* "$INSTALL_DIR/"
+  #   prime:
+  #     - usr/share/maas/web/static/docs
 
   host-info:
     plugin: make
