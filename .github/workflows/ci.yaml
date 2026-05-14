@@ -16,6 +16,18 @@ permissions:
   packages: read
 
 jobs:
+  save-pr-number:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - name: Save PR number to artifact
+        run: echo "${{ github.event.pull_request.number }}" > pr-number.txt
+      - name: Upload PR number artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-number
+          path: pr-number.txt
+
   changes:
     runs-on: ubuntu-24.04
     if: ${{ !github.event.pull_request.draft }}
@@ -35,7 +47,7 @@ jobs:
           ref="${{ github.event.merge_group.base_ref || github.base_ref || github.ref_name }}"
           echo "tag=${ref#refs/heads/}" >> $GITHUB_OUTPUT
 
-      - uses: dorny/paths-filter@61f87a10cd2c304679af17bb73ef192addf33c1c
+      - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
@@ -89,6 +101,74 @@ jobs:
       - name: Run lint
         run: |
           su ubuntu -c "make lint"
+
+  validate-conventional-commit:
+    if: ${{ github.event_name == 'pull_request' }}
+    name: Validate Conventional Commit standard
+    runs-on: ubuntu-slim
+    steps:
+      - name: Check PR title for Conventional Commits format
+        uses: amannn/action-semantic-pull-request@v5
+        with:
+          types: |
+            feat
+            fix
+            refactor
+            perf
+            test
+            chore
+            docs
+          scopes: |
+            fe-base
+            fe-images
+            fe-accounts
+            fe-sites
+            fe-settings
+            fe-tokens
+            be-config
+            be-settings
+            be-sites
+            be-tokens
+            be-accounts
+            be-db
+            be-images
+            docs
+            ci
+            structural
+            content
+            linting
+            links
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify BREAKING CHANGE in description
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+
+          # Safely read the multiline PR body from the environment variable
+          PR_BODY="$PR_BODY_ENV"
+
+          # Extract everything before the first colon in the title
+          # e.g., "feat(ui)!: rewrite" becomes "feat(ui)!"
+          PREFIX="${PR_TITLE%%:*}"
+
+          # If the prefix contains an exclamation mark, it's a breaking change
+          if [[ "$PREFIX" == *"!"* ]]; then
+            echo "⚠️ Breaking change indicator ('!') detected in PR title."
+
+            # Check if the body contains the required text
+            if [[ "$PR_BODY" != *"BREAKING CHANGE:"* ]]; then
+              echo "❌ Error: PR title indicates a breaking change, but 'BREAKING CHANGE:' is missing from the PR description."
+              exit 1
+            fi
+
+            echo "✅ 'BREAKING CHANGE:' found in the description."
+          else
+            echo "ℹ️ No breaking change indicator in title. Skipping description check."
+          fi
+        env:
+          # We pass the body as an env var to prevent bash syntax errors
+          # that occur when injecting multiline strings directly via ${{ }}
+          PR_BODY_ENV: ${{ github.event.pull_request.body }}
 
   test-python:
     needs: changes
@@ -156,10 +236,20 @@ jobs:
         cd _scripts && python -m pytest .
 
   ci-check:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     if: always()
-    needs: [lint, test-python, test-go, test-docs]
+    needs: [lint, test-python, test-go, test-docs, validate-conventional-commit]
     steps:
-      - name: Check job results
-        if: contains(needs.*.result, 'failure')
+      - name: Determine overall CI status
+        id: status
+        run: |
+          # If any dependency failed or was cancelled, mark as failure
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "state=failure" >> $GITHUB_OUTPUT
+          else
+            echo "state=success" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fail pipeline if dependencies failed
+        if: steps.status.outputs.state == 'failure'
         run: exit 1
