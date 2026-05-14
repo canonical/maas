@@ -1,25 +1,34 @@
 name: maas-power-driver-wedge
 version: '1.0.0'
-summary: MAAS power driver for HP Power Distribution Unit Wedge
-description: MAAS power driver for HP Power Distribution Unit Wedge BMCs
+summary: MAAS power driver for HP Wedge
+description: MAAS power driver for HP Wedge BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
+    target: $SNAP_COMMON/power-driver
+  network-bind:
+
+apps:
+  wedge:
+    command: bin/wedge-driver start
+    sockets:
+      wedge:
+        listen-stream: $SNAP_COMMON/power-driver/wedge.sock
+  status:
+    command: bin/wedge-driver status
 
 parts:
   wedge-driver:
     plugin: python
     source: .
-services:
-  wedge-driver:
-    command: bin/wedge-driver start
-    plugs:
-      - network
-    sockets:
-      wedge:
-        listen-stream: $SNAP_COMMON/power-drivers/wedge.sock
+    build-attributes:
+      - enable-usrmerge
+    override-build: |
+      /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
+      find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#!.*python3.*$|#!/usr/bin/env python3|' {} +

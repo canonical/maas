@@ -228,7 +228,7 @@ def main():
     )
     parser.add_argument(
         "--socket-path",
-        default="/var/snap/maas-power-driver-hmcz/common/power-drivers/hmcz.sock",
+        default="/var/snap/maas-power-driver-hmcz/common/power-driver/hmcz.sock",
         help="Path to the UNIX domain socket",
     )
     parser.add_argument(

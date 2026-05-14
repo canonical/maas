@@ -123,3 +123,10 @@ func (c *Client) GetConfig(ctx context.Context,
 
 	return configResp, nil
 }
+
+// Request performs an HTTP request against the internal API.
+// It returns the raw response for the caller to handle.
+func (c *Client) Request(ctx context.Context, method, path string,
+	body []byte) (*http.Response, error) {
+	return c.request(ctx, method, path, body)
+}

@@ -5,11 +5,23 @@ description: MAAS power driver for IPMI BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
+    target: $SNAP_COMMON/power-driver
+  network-bind:
+
+apps:
+  ipmi:
+    command: bin/ipmi-driver start
+    sockets:
+      ipmi:
+        listen-stream: $SNAP_COMMON/power-driver/ipmi.sock
+  status:
+    command: bin/ipmi-driver status
 
 parts:
   ipmi-driver:
@@ -17,12 +29,8 @@ parts:
     source: .
     stage-packages:
       - freeipmi-tools
-
-services:
-  ipmi-driver:
-    command: bin/ipmi-driver start
-    plugs:
-      - network
-    sockets:
-      ipmi:
-        listen-stream: $SNAP_COMMON/power-drivers/ipmi.sock
+    build-attributes:
+      - enable-usrmerge
+    override-build: |
+      /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
+      find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#!.*python3.*$|#!/usr/bin/env python3|' {} +

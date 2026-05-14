@@ -5,21 +5,30 @@ description: MAAS power driver for Cisco UCSM BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
+    target: $SNAP_COMMON/power-driver
+  network-bind:
+
+apps:
+  ucsm:
+    command: bin/ucsm-driver start
+    sockets:
+      ucsm:
+        listen-stream: $SNAP_COMMON/power-driver/ucsm.sock
+  status:
+    command: bin/ucsm-driver status
 
 parts:
   ucsm-driver:
     plugin: python
     source: .
-services:
-  ucsm-driver:
-    command: bin/ucsm-driver start
-    plugs:
-      - network
-    sockets:
-      ucsm:
-        listen-stream: $SNAP_COMMON/power-drivers/ucsm.sock
+    build-attributes:
+      - enable-usrmerge
+    override-build: |
+      /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
+      find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#!.*python3.*$|#!/usr/bin/env python3|' {} +

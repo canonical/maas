@@ -1,25 +1,34 @@
 name: maas-power-driver-recs
 version: '1.0.0'
-summary: MAAS power driver for RECS
-description: MAAS power driver for RECS BMCs
+summary: MAAS power driver for Recs
+description: MAAS power driver for Recs BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
+    target: $SNAP_COMMON/power-driver
+  network-bind:
+
+apps:
+  recs:
+    command: bin/recs-driver start
+    sockets:
+      recs:
+        listen-stream: $SNAP_COMMON/power-driver/recs.sock
+  status:
+    command: bin/recs-driver status
 
 parts:
   recs-driver:
     plugin: python
     source: .
-services:
-  recs-driver:
-    command: bin/recs-driver start
-    plugs:
-      - network
-    sockets:
-      recs:
-        listen-stream: $SNAP_COMMON/power-drivers/recs.sock
+    build-attributes:
+      - enable-usrmerge
+    override-build: |
+      /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
+      find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#!.*python3.*$|#!/usr/bin/env python3|' {} +

@@ -228,7 +228,7 @@ def main():
     )
     parser.add_argument(
         "--socket-path",
-        default="/var/snap/maas-power-driver-openbmc/common/power-drivers/openbmc.sock",
+        default="/var/snap/maas-power-driver-openbmc/common/power-driver/openbmc.sock",
         help="Path to the UNIX domain socket",
     )
     parser.add_argument(

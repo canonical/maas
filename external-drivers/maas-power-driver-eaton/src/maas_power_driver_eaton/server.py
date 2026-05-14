@@ -228,7 +228,7 @@ def main():
     )
     parser.add_argument(
         "--socket-path",
-        default="/var/snap/maas-power-driver-eaton/common/power-drivers/eaton.sock",
+        default="/var/snap/maas-power-driver-eaton/common/power-driver/eaton.sock",
         help="Path to the UNIX domain socket",
     )
     parser.add_argument(

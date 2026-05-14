@@ -228,7 +228,7 @@ def main():
     )
     parser.add_argument(
         "--socket-path",
-        default="/var/snap/maas-power-driver-seamicro/common/power-drivers/seamicro.sock",
+        default="/var/snap/maas-power-driver-seamicro/common/power-driver/seamicro.sock",
         help="Path to the UNIX domain socket",
     )
     parser.add_argument(

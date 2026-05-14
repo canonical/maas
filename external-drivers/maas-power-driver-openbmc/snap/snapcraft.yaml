@@ -5,21 +5,30 @@ description: MAAS power driver for OpenBMC BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
+    target: $SNAP_COMMON/power-driver
+  network-bind:
+
+apps:
+  openbmc:
+    command: bin/openbmc-driver start
+    sockets:
+      openbmc:
+        listen-stream: $SNAP_COMMON/power-driver/openbmc.sock
+  status:
+    command: bin/openbmc-driver status
 
 parts:
   openbmc-driver:
     plugin: python
     source: .
-services:
-  openbmc-driver:
-    command: bin/openbmc-driver start
-    plugs:
-      - network
-    sockets:
-      openbmc:
-        listen-stream: $SNAP_COMMON/power-drivers/openbmc.sock
+    build-attributes:
+      - enable-usrmerge
+    override-build: |
+      /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
+      find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#!.*python3.*$|#!/usr/bin/env python3|' {} +

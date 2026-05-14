@@ -5,21 +5,30 @@ description: MAAS power driver for Proxmox BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
+    target: $SNAP_COMMON/power-driver
+  network-bind:
+
+apps:
+  proxmox:
+    command: bin/proxmox-driver start
+    sockets:
+      proxmox:
+        listen-stream: $SNAP_COMMON/power-driver/proxmox.sock
+  status:
+    command: bin/proxmox-driver status
 
 parts:
   proxmox-driver:
     plugin: python
     source: .
-services:
-  proxmox-driver:
-    command: bin/proxmox-driver start
-    plugs:
-      - network
-    sockets:
-      proxmox:
-        listen-stream: $SNAP_COMMON/power-drivers/proxmox.sock
+    build-attributes:
+      - enable-usrmerge
+    override-build: |
+      /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
+      find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#!.*python3.*$|#!/usr/bin/env python3|' {} +

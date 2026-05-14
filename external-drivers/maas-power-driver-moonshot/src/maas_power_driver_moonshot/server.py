@@ -228,7 +228,7 @@ def main():
     )
     parser.add_argument(
         "--socket-path",
-        default="/var/snap/maas-power-driver-moonshot/common/power-drivers/moonshot.sock",
+        default="/var/snap/maas-power-driver-moonshot/common/power-driver/moonshot.sock",
         help="Path to the UNIX domain socket",
     )
     parser.add_argument(

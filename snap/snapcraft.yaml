@@ -39,12 +39,12 @@ slots:
     interface: content
     read:
       - $SNAP_COMMON/log
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
     default-provider: maas-power-ipmi
     write:
-      - $SNAP_INSTANCE_NAME/power-drivers
+      - $SNAP_INSTANCE_NAME/power-driver
 
 apps:
   pebble:
@@ -323,10 +323,10 @@ parts:
     source-type: git
 
 hooks:
-  connect-power-drivers:
+  connect-power-driver:
     plugs:
       - network
-  disconnect-power-drivers:
+  disconnect-power-driver:
     plugs:
       - network
   install:

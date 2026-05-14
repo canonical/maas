@@ -5,21 +5,30 @@ description: MAAS power driver for Eaton BMCs
 grade: devel
 confinement: strict
 base: core26
+build-base: devel
 
 plugs:
-  power-drivers:
+  power-driver:
     interface: content
-    content: power-drivers
+    content: power-driver
+    target: $SNAP_COMMON/power-driver
+  network-bind:
+
+apps:
+  eaton:
+    command: bin/eaton-driver start
+    sockets:
+      eaton:
+        listen-stream: $SNAP_COMMON/power-driver/eaton.sock
+  status:
+    command: bin/eaton-driver status
 
 parts:
   eaton-driver:
     plugin: python
     source: .
-services:
-  eaton-driver:
-    command: bin/eaton-driver start
-    plugs:
-      - network
-    sockets:
-      eaton:
-        listen-stream: $SNAP_COMMON/power-drivers/eaton.sock
+    build-attributes:
+      - enable-usrmerge
+    override-build: |
+      /usr/bin/python3 -m pip install --prefix=$CRAFT_PART_INSTALL/usr --no-build-isolation --root-user-action=ignore .
+      find $CRAFT_PART_INSTALL -type f -executable -exec sed -i '1 s|^#!.*python3.*$|#!/usr/bin/env python3|' {} +

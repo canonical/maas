@@ -36,6 +36,8 @@ type SignalHandler struct {
 	agentUUID    string
 	mu           sync.Mutex
 	prevDrivers  []SocketDriver
+	ctx          context.Context
+	cancel       context.CancelFunc
 	stopCh       chan struct{}
 }
 
@@ -49,12 +51,16 @@ func SetupSignalHandler(
 	regionClient *RegionClient,
 	agentUUID string,
 ) *SignalHandler {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	h := &SignalHandler{
 		logger:       logger,
 		discovery:    discovery,
 		registry:     registry,
 		regionClient: regionClient,
 		agentUUID:    agentUUID,
+		ctx:          ctx,
+		cancel:       cancel,
 		stopCh:       make(chan struct{}),
 	}
 
@@ -68,6 +74,7 @@ func SetupSignalHandler(
 
 // Stop stops the signal handler and releases resources.
 func (h *SignalHandler) Stop() {
+	h.cancel()
 	close(h.stopCh)
 }
 
@@ -89,7 +96,7 @@ func (h *SignalHandler) listen(sigCh <-chan os.Signal) {
 // rescan performs a full re-scan of the socket directory, computes the diff,
 // updates the registry, and notifies the region of changes.
 func (h *SignalHandler) rescan() error {
-	ctx := context.Background()
+	ctx := h.ctx
 
 	current, err := h.discovery.Scan(ctx)
 	if err != nil {
