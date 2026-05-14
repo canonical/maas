@@ -52,6 +52,7 @@ scripts."test.region.legacy" = "maastesting.scripts:run_region_legacy"
 scripts.maas = "maascli:main"
 scripts.maas-apiserver = "maasapiserver.main:run"
 scripts.maas-common = "provisioningserver.rack_script:run"
+scripts.maas-mcp-server = "maasmcpserver.__main__:main"
 scripts.maas-power = "provisioningserver.power_driver_command:run"
 scripts.maas-rack = "provisioningserver.rack_script:run"
 scripts.maas-region = "maasserver.region_script:run"
@@ -78,6 +79,7 @@ packages.find.include = [
   "maascommon*",
   "maasserver*",
   "maasservicelayer*",
+  "maasmcpserver*",
   "maastemporalworker*",
   "metadataserver*",
   "provisioningserver*",

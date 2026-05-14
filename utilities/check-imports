@@ -523,6 +523,21 @@ ServiceLayerRule = Rule(
     Allow("oauthlib.oauth1"),
 )
 
+MCPServer = files("src/maasmcpserver/**/*.py")
+
+MCPServerRule = Rule(
+    Allow("httpx|httpx.**"),
+    Allow("maasmcpserver|maasmcpserver.**"),
+    Allow("maascommon|maascommon.**"),
+    Allow("mcp|mcp.**"),
+    Allow("pydantic|pydantic.**"),
+    Allow("pydantic_settings|pydantic_settings.**"),
+    Allow("pythonjsonlogger|pythonjsonlogger.**"),
+    Allow("structlog|structlog.**"),
+    Allow("uvicorn|uvicorn.**"),
+    Allow(StandardLibraries),
+)
+
 Tests = files(
     "src/**/test_*.py",
     "src/**/testing/**/*.py",
@@ -602,6 +617,20 @@ checks = [
     (
         Common,
         CommonRule,
+    ),
+    #
+    # MCP Server
+    #
+    (
+        MCPServer - Tests,
+        MCPServerRule,
+    ),
+    (
+        MCPServer & Tests,
+        MCPServerRule
+        | Rule(
+            Allow(TestingLibraries),
+        ),
     ),
     #
     # MAAS CLI

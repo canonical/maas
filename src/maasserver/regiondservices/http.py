@@ -84,6 +84,7 @@ class RegionHTTPService(Service):
             "tls_cert_path": cert_path,
             "worker_socket_paths": worker_socket_paths(),
             "apiserver_socket_path": apiserver_socket_path,
+            "mcp_socket_path": get_maas_data_path("mcp.sock"),
             "static_dir": str(get_root_path() / "usr/share/maas"),
             "boot_resources_dir": str(get_bootresource_store_path()),
         }

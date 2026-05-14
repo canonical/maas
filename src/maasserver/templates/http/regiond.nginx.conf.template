@@ -10,6 +10,10 @@ upstream apiserver {
     server unix:{{apiserver_socket_path}};
 }
 
+upstream mcpserver {
+    server unix:{{mcp_socket_path}};
+}
+
 upstream temporal-metrics {
     server localhost:9000;
 }
@@ -172,3 +176,24 @@ server {
     }
 }
 {{endif}}
+
+# MCP server — AI assistant interface
+# nginx always listens on TCP 5275 and proxies to the MCP Unix socket.
+# If maas-mcp-server is not running, connections to port 5275 will receive
+# a 502 Bad Gateway until the service starts.
+server {
+    listen [::]:5275;
+    listen 5275;
+
+    proxy_http_version 1.1;
+    proxy_buffering off;
+    proxy_read_timeout 3600s;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    location / {
+        proxy_pass http://mcpserver;
+    }
+}

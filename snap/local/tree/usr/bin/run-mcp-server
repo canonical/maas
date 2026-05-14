@@ -1,0 +1,15 @@
+#!/bin/bash -e
+# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+export MAAS_PATH="$SNAP"
+export MAAS_ROOT="$SNAP_DATA"
+export MAAS_DATA="$SNAP_COMMON/maas"
+
+# Source operator-supplied config if present (missing file is not an error).
+if [ -f "$SNAP_DATA/mcp-server.env" ]; then
+    # shellcheck disable=SC1091
+    source "$SNAP_DATA/mcp-server.env"
+fi
+
+exec "$SNAP/usr/bin/maas-mcp-server"

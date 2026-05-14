@@ -155,6 +155,7 @@ parts:
       - python3-lxml
       - python3-macaroonbakery
       - python3-markupsafe
+      - python3-mcp
       - python3-mimeparse
       - python3-python-multipart
       - python3-nacl # for macaroonbakery
@@ -171,6 +172,7 @@ parts:
       - python3-protobuf # for macaroonbakery
       - python3-psycopg2
       - python3-pydantic
+      - python3-pydantic-settings
       - python3-pylxd
       - python3-pymacaroons # for macaroonbakery
       - python3-pyparsing

@@ -355,3 +355,22 @@ Description: MAAS agent replacing rack controller functionality
  The MAAS Agent is progressively replacing the MAAS rack controller and
  assimilating its services, including DHCP/TFTP, power management, and
  hardware inventory used for provisioning and lifecycle operations.
+
+Package: maas-mcp-server
+Architecture: all
+Section: net
+Depends: python3-mcp,
+         python3-httpx,
+         python3-pydantic (>= 2.0.0),
+         python3-pydantic-settings,
+         uvicorn | python3-uvicorn,
+         python3-structlog,
+         python3-pythonjsonlogger,
+         ${misc:Depends},
+         ${python3:Depends}
+Description: MAAS MCP Server — AI assistant interface for MAAS
+ The MAAS Model Context Protocol (MCP) server exposes MAAS fleet discovery,
+ network management, and diagnostics tools to AI assistants via the MCP
+ protocol over a Unix domain socket fronted by nginx on TCP port 5275.
+ .
+ Enabled by default when installed alongside the MAAS region controller.

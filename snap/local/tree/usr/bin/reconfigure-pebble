@@ -25,6 +25,7 @@ MAAS_MODE=$(<"$MAAS_MODE_FILE")
 case "$MAAS_MODE" in
   "region")
     link_layer "002-maas-region-layer.yaml"
+    link_layer "004-maas-mcp-layer.yaml"
     ;;
   "rack")
     link_layer "003-maas-rack-layer.yaml"
@@ -32,5 +33,6 @@ case "$MAAS_MODE" in
   "region+rack")
     link_layer "002-maas-region-layer.yaml"
     link_layer "003-maas-rack-layer.yaml"
+    link_layer "004-maas-mcp-layer.yaml"
     ;;
 esac

@@ -1,0 +1,17 @@
+[Unit]
+Description=MAAS MCP Server
+Documentation=https://maas.io/docs
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+User=maas
+Group=maas
+Restart=on-failure
+RestartSec=10s
+KillMode=mixed
+EnvironmentFile=-/etc/maas/mcp-server.env
+ExecStart=/usr/sbin/maas-mcp-server
+
+[Install]
+WantedBy=multi-user.target

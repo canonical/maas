@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+
+deb-systemd-helper enable 'maas-mcp-server.service' >/dev/null || true
+deb-systemd-invoke restart 'maas-mcp-server.service' >/dev/null || true
+
+#DEBHELPER#
