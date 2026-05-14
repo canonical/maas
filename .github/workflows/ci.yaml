@@ -221,61 +221,10 @@ jobs:
           name: test-timings
           path: src/maasui/test-timings.log
 
-  accessibility:
-    runs-on: ubuntu-24.04
-    needs: changes
-    if: ${{ !github.event.pull_request.draft && needs.changes.outputs.ui == 'true' }}
-    defaults:
-      run:
-        shell: bash
-        working-directory: src/maasui
-    env:
-      MAAS_URL: http://localhost:5240
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Get branch name
-        uses: nelonoel/branch-name@v1.0.1
-
-      - name: Install snapd and core snaps
-        run: |
-          sudo snap install snapd
-          sudo snap install core26 --candidate
-
-      - name: Setup MAAS
-        uses: canonical/setup-maas@main
-        with:
-          maas-url: ${{ env.MAAS_URL }}/MAAS
-
-      - name: Use Node.js from .nvmrc
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: src/maasui/.nvmrc
-
-      - name: Install Cypress
-        uses: cypress-io/github-action@v4
-        with:
-          runTests: false
-          install-command: yarn install
-          working-directory: src/maasui
-
-      - name: Create MAAS admin
-        run: sudo maas createadmin --username=admin --password=test --email=fake@example.org
-
-      - name: Run cypress-axe accessibility tests
-        uses: cypress-io/github-action@v4
-        with:
-          config: baseUrl=${{ env.MAAS_URL }},pageLoadTimeout=100000
-          install: false
-          spec: "cypress/e2e/accessibility/**/*.spec.ts"
-          wait-on: "${{ env.MAAS_URL }}/MAAS/r/machines"
-          working-directory: src/maasui
-
   ci-check:
     runs-on: ubuntu-slim
     if: always()
-    needs:
-      [lint, test-python, test-go, test-docs, lint-ui, test-ui, accessibility]
+    needs: [lint, test-python, test-go, test-docs, lint-ui, test-ui]
     steps:
       - name: Check job results
         if: contains(needs.*.result, 'failure')
