@@ -1,5 +1,7 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+name: Accessibility
+
 on:
   push:
     branches:
@@ -18,7 +20,7 @@ defaults:
 
 jobs:
   accessibility:
-    name: Accessibility (cypress-axe)
+    name: cypress-axe
     runs-on: ubuntu-24.04
     env:
       MAAS_URL: http://localhost:5240

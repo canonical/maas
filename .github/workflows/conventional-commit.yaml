@@ -1,3 +1,5 @@
+name: Commit lint
+
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
