@@ -1,5 +1,8 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 BASE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-SRC_DIR := $(BASE_DIR)/src
+SRC_DIR := $(BASE_DIR)
 BUILD_DIR := $(BASE_DIR)/build
 NODEJS_DIR := $(BASE_DIR)/nodejs
 NODEJS_BIN := $(NODEJS_DIR)/bin
@@ -11,14 +14,14 @@ YARN_VERSION := 1.22.22
 
 UNAME_ARCH := $(shell uname -m)
 NODEJS_ARCH := $(shell \
-	if [ "$(UNAME_ARCH)" = "x86_64" ]; then echo "x64"; \
-	elif [ "$(UNAME_ARCH)" = "aarch64" ]; then echo "arm64"; \
-	elif [ "$(UNAME_ARCH)" = "ppc64le" ]; then echo "ppc64le"; \
-	elif [ "$(UNAME_ARCH)" = "s390x" ]; then echo "s390x"; \
-	else echo "unknown"; \
-	fi)
+        if [ "$(UNAME_ARCH)" = "x86_64" ]; then echo "x64"; \
+        elif [ "$(UNAME_ARCH)" = "aarch64" ]; then echo "arm64"; \
+        elif [ "$(UNAME_ARCH)" = "ppc64le" ]; then echo "ppc64le"; \
+        elif [ "$(UNAME_ARCH)" = "s390x" ]; then echo "s390x"; \
+        else echo "unknown"; \
+        fi)
 
-UI_REVISION := $(shell git -C $(SRC_DIR) rev-parse HEAD)
+UI_REVISION := $(shell git -C $(BASE_DIR) rev-parse HEAD)
 TARBALL_NAME := maas_ui_$(UI_REVISION).tgz
 
 .DEFAULT_GOAL := build
@@ -28,11 +31,11 @@ build:
 .PHONY: build
 
 clean-build:
-	rm -rf $(BUILD_DIR) $(SRC_DIR)/build
+	rm -rf $(BUILD_DIR)
 .PHONY: clean-build
 
 clean: clean-build
-	rm -rf src/node_modules $(NODEJS_DIR)
+	rm -rf $(SRC_DIR)/node_modules $(NODEJS_DIR)
 .PHONY: clean
 
 # fetch prebuilt UI
@@ -58,14 +61,8 @@ $(NODEJS_BIN)/yarn: $(NODEJS_BIN)/node
 	curl -sfL https://github.com/yarnpkg/yarn/releases/download/v$(YARN_VERSION)/yarn-v$(YARN_VERSION).tar.gz | tar --one-top-level=$(NODEJS_DIR) --strip-components=1 --extract -z
 	@touch --no-create $@
 
-$(SRC_DIR)/yarn.lock:
-	git submodule update --init --remote
-
-$(SRC_DIR)/build: $(NODEJS_BIN)/yarn $(SRC_DIR)/yarn.lock
+$(BUILD_DIR)/index.html: $(NODEJS_BIN)/yarn $(NODEJS_DIR)
 	yarn --cwd $(SRC_DIR) build
 
-$(BUILD_DIR)/index.html: $(BUILD_DIR) $(SRC_DIR)/build
-	cp -a $(SRC_DIR)/build/* $(BUILD_DIR)
-
-$(BUILD_DIR) $(NODEJS_DIR) $(TARBALLS_DIR):
+$(NODEJS_DIR):
 	mkdir -p $@

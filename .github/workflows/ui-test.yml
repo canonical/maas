@@ -1,0 +1,78 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+name: UI CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'src/maasui/**'
+  push:
+    branches:
+      - master
+    paths:
+      - 'src/maasui/**'
+  merge_group:
+    types: [checks_requested]
+
+defaults:
+  run:
+    working-directory: src/maasui
+
+jobs:
+  ui-lint:
+    name: UI Lint
+    runs-on: ubuntu-24.04
+    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore node_modules
+        id: yarn-cache
+        uses: actions/cache@v4
+        with:
+          path: src/maasui/node_modules
+          key: ${{ runner.os }}-ui-modules-${{ hashFiles('src/maasui/yarn.lock') }}
+
+      - name: Use Node.js from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/maasui/.nvmrc
+
+      - name: Install
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: CYPRESS_INSTALL_BINARY=0 yarn install
+
+      - run: yarn lint
+
+  ui-test:
+    name: UI Test
+    runs-on: ubuntu-24.04
+    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore node_modules
+        id: yarn-cache
+        uses: actions/cache@v4
+        with:
+          path: src/maasui/node_modules
+          key: ${{ runner.os }}-ui-modules-${{ hashFiles('src/maasui/yarn.lock') }}
+
+      - name: Use Node.js from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/maasui/.nvmrc
+
+      - name: Install
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: CYPRESS_INSTALL_BINARY=0 yarn install
+
+      - run: MEASURE_UNIT_PERFORMANCE=true yarn test
+
+      - name: Upload timing logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-timings
+          path: src/maasui/test-timings.log
