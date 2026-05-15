@@ -2,9 +2,9 @@ summary: MAAS MCP Server layer
 
 description: |
   MCP (Model Context Protocol) server for AI-assisted MAAS operations.
-  Binds a Unix domain socket fronted by nginx on TCP port 5275.
-  Defaults to http://localhost:5240 for MAAS_URL; override via
-  $SNAP_DATA/mcp-server.env.
+  Binds a Unix domain socket proxied by nginx at /MAAS/mcp on the standard
+  MAAS HTTP/HTTPS port. Defaults to http://localhost:5240 for MAAS_URL;
+  override via $SNAP_DATA/mcp-server.env.
 
 services:
   mcp-server:

@@ -1,6 +1,6 @@
 # Use the MAAS MCP server
 
-The MAAS MCP (Model Context Protocol) server exposes MAAS fleet discovery, network management, diagnostics, and boot-source tools to AI assistants such as Claude, Cursor, and any MCP-compatible client. It runs on the region controller and listens on TCP port `5275`.
+The MAAS MCP (Model Context Protocol) server exposes MAAS fleet discovery, network management, diagnostics, and boot-source tools to AI assistants such as Claude, Cursor, and any MCP-compatible client. It runs on the region controller and is accessible at the `/MAAS/mcp` path on the standard MAAS HTTP/HTTPS port.
 
 ## Prerequisites
 
@@ -32,7 +32,13 @@ Authorization: Bearer <token>
 The MCP server endpoint is:
 
 ```text
-http://<region-host>:5275/mcp
+http://<region-host>:5240/MAAS/mcp
+```
+
+or, when TLS is enabled:
+
+```text
+https://<region-host>:5443/MAAS/mcp
 ```
 
 ### Claude Desktop
@@ -43,7 +49,7 @@ Add the following to your Claude Desktop MCP configuration (`claude_desktop_conf
 {
   "mcpServers": {
     "maas": {
-      "url": "http://<region-host>:5275/mcp",
+      "url": "http://<region-host>:5240/MAAS/mcp",
       "headers": {
         "Authorization": "Bearer <token>"
       }
@@ -57,7 +63,7 @@ Add the following to your Claude Desktop MCP configuration (`claude_desktop_conf
 Verify the server is reachable and list available tools:
 
 ```text
-curl -s -X POST http://<region-host>:5275/mcp \
+curl -s -X POST http://<region-host>:5240/MAAS/mcp \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
@@ -98,7 +104,7 @@ curl -s -X POST http://<region-host>:5275/mcp \
 
 ## Firewall
 
-Port `5275` must be open on the region controller for MCP clients to connect. See [Manage network ports](/how-to-guides/enhance-maas-security.md#manage-network-ports).
+No additional firewall rules are needed for the MCP server. It is accessible through the standard MAAS port (`5240` for HTTP, `5443` for HTTPS) which you have already opened.
 
 ## Token expiry
 

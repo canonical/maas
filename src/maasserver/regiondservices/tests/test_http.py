@@ -101,7 +101,8 @@ class TestRegionHTTPService(
         self.assertIn("ssl_certificate_key key_path;", nginx_config)
         self.assertIn(f"root {boot_resources_dir};", nginx_config)
         self.assertIn(f"server unix:{data_path}/mcp.sock;", nginx_config)
-        self.assertIn("listen 5275;", nginx_config)
+        self.assertIn("location /MAAS/mcp", nginx_config)
+        self.assertNotIn("listen 5275;", nginx_config)
 
         nginx_stream_config = nginx_stream_conf.read_text()
         self.assertIn("listen 5242;", nginx_stream_config)
@@ -158,7 +159,8 @@ class TestRegionHTTPService(
         self.assertIn("ssl_certificate_key key_path;", nginx_config)
         self.assertIn(f"root {boot_resources_dir};", nginx_config)
         self.assertIn(f"server unix:{data_path}/mcp.sock;", nginx_config)
-        self.assertIn("listen 5275;", nginx_config)
+        self.assertIn("location /MAAS/mcp", nginx_config)
+        self.assertNotIn("listen 5275;", nginx_config)
 
         nginx_stream_config = nginx_stream_conf.read_text()
         self.assertIn("listen 5242;", nginx_stream_config)

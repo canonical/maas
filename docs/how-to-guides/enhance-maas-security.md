@@ -257,10 +257,7 @@ sudo ufw allow 5241:5247/tcp
 sudo ufw allow 5241:5247/udp
 sudo ufw allow 5250:5270/tcp
 sudo ufw allow 5250:5270/udp
-sudo ufw allow 5275
 ```
-
-Port `5275` is used by the MAAS MCP server (AI assistant interface). If you are not using the MCP service, you may omit this rule.
 
 Your specifics may vary, so refer to the relevant firewall documentation and the required MAAS controller port settings.
 

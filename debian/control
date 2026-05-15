@@ -371,6 +371,7 @@ Depends: python3-mcp,
 Description: MAAS MCP Server — AI assistant interface for MAAS
  The MAAS Model Context Protocol (MCP) server exposes MAAS fleet discovery,
  network management, and diagnostics tools to AI assistants via the MCP
- protocol over a Unix domain socket fronted by nginx on TCP port 5275.
+ protocol over a Unix domain socket proxied by nginx at /MAAS/mcp on the
+ standard MAAS HTTP/HTTPS port.
  .
  Enabled by default when installed alongside the MAAS region controller.

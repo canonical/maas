@@ -72,7 +72,6 @@ Essential TCP ports for MAAS communication:
 | `5248`          | Designated for rack HTTP communication.                                                  |
 | `5250` - `5270` | Reserved for region workers (RPC).                                                       |
 | `5271` - `5274` | Required for communication between Rack Controller (specifically maas-agent) and Region Controller |
-| `5275`          | MCP server — AI assistant interface (region controller only) |
 | `5281` - `5284` | Region Controller Temporal cluster membership gossip communication         |
 
 ## Interface parameters
