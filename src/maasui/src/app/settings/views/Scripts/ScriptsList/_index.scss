@@ -1,0 +1,64 @@
+@mixin ScriptsList {
+  .scripts-list td,
+  .scripts-list th {
+    // Script name
+    &:nth-child(1) {
+      flex: 0.3 0 0;
+    }
+
+    // Description
+    &:nth-child(2) {
+      flex: 0.45 0 0;
+    }
+
+    // Uploaded on
+    &:nth-child(3) {
+      flex: 0.15 0 0;
+    }
+
+    // Actions
+    &:nth-child(4) {
+      flex: 0.1 0 0;
+    }
+  }
+
+  @media screen and (max-width: 830px) {
+    .scripts-list td,
+    .scripts-list th {
+      // Description
+      &:nth-child(2) {
+        flex-grow: 0.55;
+      }
+
+      // Uploaded on
+      &:nth-child(3) {
+        display: none;
+      }
+
+      // Actions:
+      &:nth-child(4) {
+        flex-grow: 0.15;
+      }
+    }
+  }
+
+  @media screen and (max-width: 460px) {
+    .scripts-list td,
+    .scripts-list th {
+      // Script name
+      &:nth-child(1) {
+        flex-grow: 0.75;
+      }
+
+      // Description
+      &:nth-child(2) {
+        display: none;
+      }
+
+      // Actions:
+      &:nth-child(4) {
+        flex-grow: 0.25;
+      }
+    }
+  }
+}

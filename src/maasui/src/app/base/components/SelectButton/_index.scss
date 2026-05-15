@@ -1,0 +1,14 @@
+@mixin SelectButton {
+  .p-button--select {
+    display: flex;
+    width: 100%;
+    text-align: left;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 0;
+    padding-left: $sph--small;
+  }
+  .p-button--select:hover {
+    background-color: inherit;
+  }
+}

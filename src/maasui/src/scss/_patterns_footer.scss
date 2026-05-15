@@ -1,0 +1,7 @@
+@mixin maas-footer {
+  .p-footer {
+    grid-row-end: span 1;
+    grid-row-start: auto;
+    background-color: $color-x-light;
+  }
+}

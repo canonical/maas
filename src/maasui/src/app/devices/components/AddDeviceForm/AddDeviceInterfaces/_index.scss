@@ -1,0 +1,35 @@
+@mixin AddDeviceInterfaces {
+  .add-device-interfaces {
+    .name-col {
+      width: 26%;
+    }
+
+    .mac-col {
+      width: 12rem;
+    }
+
+    .ip-assignment-col {
+      width: 10rem;
+    }
+
+    .subnet-col {
+      width: 37%;
+    }
+
+    .ip-address-col {
+      width: 37%;
+    }
+
+    .actions-col {
+      width: 4.5rem;
+    }
+
+    @media only screen and (max-width: $breakpoint-small) {
+      .mac-col,
+      .ip-assignment-col,
+      .actions-col {
+        width: auto;
+      }
+    }
+  }
+}

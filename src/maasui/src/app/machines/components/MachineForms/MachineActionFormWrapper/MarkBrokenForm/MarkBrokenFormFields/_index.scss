@@ -1,0 +1,8 @@
+@mixin MarkBrokenFormFields {
+  // Vertically align inline form help text
+  .p-form__help {
+    @extend %small-text;
+    color: $color-mid-dark;
+    margin-top: $sp-large;
+  }
+}

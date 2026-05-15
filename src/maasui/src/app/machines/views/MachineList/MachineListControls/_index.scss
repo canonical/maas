@@ -1,0 +1,40 @@
+@mixin MachineListControls {
+  .machine-list-controls {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: row;
+    column-gap: 0.5rem;
+    flex-wrap: wrap;
+
+    h1 {
+      min-width: 100%;
+    }
+    // using container query as the layout depends on the state of the side navigation
+    @container (min-width: #{$breakpoint-small}) {
+      h1 {
+        min-width: auto;
+      }
+    }
+
+    .machine-list-controls-inputs {
+      align-items: baseline;
+      display: inline-flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      flex-grow: 1;
+      column-gap: 1rem;
+
+      .machine-list-controls__item,
+      .p-form__group {
+        width: 100%;
+        .p-contextual-menu {
+          width: 100%;
+        }
+        @container (min-width: #{$breakpoint-small}) {
+          width: auto;
+        }
+      }
+    }
+  }
+}

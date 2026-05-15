@@ -1,0 +1,19 @@
+@mixin PrefixedInput {
+  .prefixed-input {
+    position: relative;
+
+    .prefixed-input__text {
+      position: absolute;
+      pointer-events: none;
+      padding-left: $spv--small;
+      padding-bottom: calc(0.4rem - 1px);
+      padding-top: calc(0.4rem - 1px);
+    }
+
+    &--with-label {
+      .prefixed-input__text {
+        top: 2.5rem;
+      }
+    }
+  }
+}

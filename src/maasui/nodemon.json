@@ -1,0 +1,3 @@
+{
+  "watch": [".env.local", "scripts/proxy*.js"]
+}

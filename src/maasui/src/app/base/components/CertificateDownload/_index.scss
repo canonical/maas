@@ -1,0 +1,9 @@
+@mixin CertificateDownload {
+  .certificate-download {
+    @extend %vf-is-bordered;
+
+    margin-bottom: $spv--large;
+    max-height: 15rem;
+    overflow-y: auto;
+  }
+}

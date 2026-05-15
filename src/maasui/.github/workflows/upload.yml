@@ -1,0 +1,43 @@
+name: Build upload
+on:
+  push:
+    branches:
+      - main
+      - "3.*"
+jobs:
+  upload-build:
+    if: github.repository_owner == 'canonical'
+    name: Upload build artifacts
+    runs-on: ubuntu-24.04
+    env:
+      PACKAGE_NAME: maas_ui_${{ github.sha }}.tgz
+      VITE_APP_GIT_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get branch name
+        uses: nelonoel/branch-name@v1.0.1
+      - name: Restore node_modules
+        id: yarn-cache
+        uses: actions/cache@v4
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
+      - name: Use Node.js from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+      - name: Install
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: CYPRESS_INSTALL_BINARY=0 yarn install
+      - name: Build
+        run: VITE_APP_GIT_SHA=${{env.VITE_APP_GIT_SHA}} yarn build
+        env:
+          CI: false
+      - name: Compress
+        run: cd build && tar -czf ../${{env.PACKAGE_NAME}} ./ && ls -hs ../${{env.PACKAGE_NAME}}
+      - name: Install upload-assets snap
+        run: sudo snap install upload-assets
+      - name: Upload to assets server
+        run: upload-assets --url-path ${{env.PACKAGE_NAME}} ${{env.PACKAGE_NAME}}
+        env:
+          UPLOAD_ASSETS_API_TOKEN: ${{secrets.UPLOAD_ASSETS_API_TOKEN}}

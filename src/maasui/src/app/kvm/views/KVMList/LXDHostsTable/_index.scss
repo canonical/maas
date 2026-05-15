@@ -1,0 +1,15 @@
+.p-generic-table.lxd-table {
+  th, td {
+    &.name, &.hostType {
+      width: 16%;
+    }
+
+    &.vms, &.zone, &.storage {
+      text-align: left !important;
+
+      button {
+        text-align: left !important;
+      }
+    }
+  }
+}

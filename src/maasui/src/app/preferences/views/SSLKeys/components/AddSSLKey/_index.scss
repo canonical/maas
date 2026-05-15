@@ -1,0 +1,7 @@
+@mixin AddSSLKey {
+  $textarea-min-height: 25rem;
+
+  .ssl-key-form-fields__key {
+    min-height: $textarea-min-height;
+  }
+}

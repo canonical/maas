@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+     body {
+      background: #000;
+      color: #fff;
+     } 
+
+      /* Light mode for system preference */
+      @media (prefers-color-scheme: light) {
+        body {
+          background: #FFF; /* Light background */
+          color: #000;
+        }
+      }
+    </style>
+    <meta >
+    <title>MAAS</title>
+    <link rel="shortcut icon" href="/maas-favicon-32px.png" />
+  </head>
+  <body class="is-dark">
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>

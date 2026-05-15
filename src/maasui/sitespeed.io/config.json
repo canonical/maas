@@ -1,0 +1,8 @@
+{
+  "browsertime": {
+    "domain": "localhost",
+    "port": 5240,
+    "preScript": "./login.js"
+  },
+  "outputFolder": "./results"
+}

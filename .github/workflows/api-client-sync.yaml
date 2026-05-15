@@ -17,13 +17,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-
-      - name: Checkout canonical/maas-ui
-        uses: actions/checkout@v5
-        with:
-          repository: canonical/maas-ui
           token: ${{ secrets.LANDER_GH_TOKEN }}
-          path: fe-repo
 
       - name: Setup LXD
         uses: canonical/setup-lxd@v1
@@ -81,27 +75,27 @@ jobs:
           MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
           curl --noproxy "${MAAS_IP}" -L \
             "http://${MAAS_IP}:5240/MAAS/a/openapi.json" \
-            -o fe-repo/openapi-spec.json
+            -o src/maasui/openapi-spec.json
 
       - name: Upload OpenAPI spec artifact
         uses: actions/upload-artifact@v4
         with:
           name: openapi-spec
-          path: fe-repo/openapi-spec.json
+          path: src/maasui/openapi-spec.json
 
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: src/maasui/.nvmrc
           cache: yarn
-          cache-dependency-path: fe-repo/yarn.lock
+          cache-dependency-path: src/maasui/yarn.lock
 
       - name: Install MAAS UI dependencies
-        working-directory: fe-repo
+        working-directory: src/maasui
         run: yarn install --frozen-lockfile
 
       - name: Update openapi-ts config to use local spec
-        working-directory: fe-repo
+        working-directory: src/maasui
         run: |
           python3 -c "
           import re, pathlib
@@ -110,24 +104,25 @@ jobs:
           "
 
       - name: Generate API client
-        working-directory: fe-repo
+        working-directory: src/maasui
         run: yarn generate-api-client
 
       - name: Create PR branch and push
         id: push-branch
-        working-directory: fe-repo
         env:
           GH_TOKEN: ${{ secrets.LANDER_GH_TOKEN }}
         run: |
-          git checkout openapi-ts.config.ts
           git config user.name "${{ vars.LANDER_USERNAME }}"
           git config user.email "${{ vars.LANDER_EMAIL }}"
-          git remote set-url origin "https://x-access-token:${{ secrets.LANDER_GH_TOKEN }}@github.com/canonical/maas-ui.git"
+          git remote set-url origin "https://x-access-token:${{ secrets.LANDER_GH_TOKEN }}@github.com/canonical/maas.git"
 
-          git add src/app/apiclient/
+          # Restore the openapi-ts config to avoid committing local-spec override
+          git checkout src/maasui/openapi-ts.config.ts
+
+          git add src/maasui/src/app/apiclient/
 
           existing_branch=$(gh pr list \
-            --repo canonical/maas-ui \
+            --repo canonical/maas \
             --state open \
             --json headRefName \
             --jq '[.[] | select(.headRefName | startswith("chore/update-api-client-"))] | first | .headRefName')
@@ -159,15 +154,15 @@ jobs:
           Triggered by: ${{ github.repository }}@${{ github.sha }}"
           git push origin "$BRANCH"
 
-      - name: Open PR on MAAS UI repo
+      - name: Open PR on MAAS repo
         if: steps.push-branch.outputs.has_changes == 'true' && steps.push-branch.outputs.is_new_pr == 'true'
         env:
           GH_TOKEN: ${{ secrets.LANDER_GH_TOKEN }}
         run: |
           PR_URL=$(gh pr create \
-            --repo "canonical/maas-ui" \
+            --repo "canonical/maas" \
             --head "${{ steps.push-branch.outputs.branch }}" \
-            --base main \
+            --base master \
             --title "chore(api): regenerated API client" \
             --body "$(cat <<'EOF'
           ## Done

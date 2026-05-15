@@ -1,0 +1,10 @@
+@mixin maas-tabs {
+  // Remove the 1px border underneath the standard Vanilla Tabs pattern. Used in
+  // the SectionHeader component which has a drop shadow.
+  .p-tabs.no-border {
+    .p-tabs__list::after,
+    .p-tabs__link[aria-selected="false"]:not(:hover)::before {
+      content: none;
+    }
+  }
+}

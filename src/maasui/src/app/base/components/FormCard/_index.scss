@@ -1,0 +1,11 @@
+@mixin FormCard {
+  .form-card {
+    overflow: visible; // Allows absolutely positioned elements to extend beyond bottom of card
+  }
+
+  .form-card__help {
+    @extend %small-text;
+    color: $color-mid-dark;
+    margin-top: $spv--x-small;
+  }
+}

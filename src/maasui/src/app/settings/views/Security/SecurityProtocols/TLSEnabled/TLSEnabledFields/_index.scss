@@ -1,0 +1,36 @@
+@mixin TLSEnabledFields {
+  // TODO: Rewrite using Slider classNames instead of targeting Vanilla classes.
+  // https://github.com/canonical/react-components/issues/765
+  .p-slider--inline {
+    .p-form__group {
+      display: inline-flex;
+      gap: $sph--large;
+      width: 100%;
+    }
+
+    .p-form__control {
+      width: 100%;
+    }
+
+    .p-slider__wrapper {
+      margin-bottom: 0;
+    }
+
+    .p-form-help-text {
+      display: inline-flex;
+      justify-content: space-between;
+      max-width: none;
+      width: calc(100% - 4rem);
+    }
+
+    .p-slider__input {
+      flex: 0 1 3rem;
+      min-width: initial;
+    }
+
+    input[type="range"] {
+      background-color: transparent;
+      flex: 1;
+    }
+  }
+}

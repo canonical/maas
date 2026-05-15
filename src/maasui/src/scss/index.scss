@@ -1,0 +1,301 @@
+@use "sass:math";
+
+// Import settings
+@import "./settings";
+
+// Import and include Vanilla classes/placeholders needed for custom styling.
+// NOTE: If you add another mixin here be sure to check every instance of that
+// component as it alters the class ordering in Vanilla and may cause
+// regressions.
+@import "vanilla-framework";
+
+@include vanilla;
+@include vf-p-icon-back-to-top;
+@include vf-p-icon-begin-downloading;
+@include vf-p-icon-change-version;
+@include vf-p-icon-edit;
+@include vf-p-icon-inspector-debug;
+@include vf-p-icon-lock-locked-active;
+@include vf-p-icon-power-off;
+@include vf-p-icon-restart;
+@include vf-p-icon-settings;
+@include vf-p-icon-status-waiting;
+@include vf-p-icon-success-grey;
+@include vf-p-icon-task-outstanding;
+@include vf-p-icon-unit-running;
+@include vf-p-icon-machines;
+@include vf-p-icon-profile;
+@include vf-p-icon-units;
+@include vf-p-icon-tag;
+@include vf-p-icon-connected;
+@include vf-p-icon-task-outstanding;
+@include vf-p-icon-upload;
+
+// Import MAAS overrides of Vanilla patterns
+@import "./vanilla-overrides";
+
+// Import MAAS global mixins
+@import "./breakpoint-widths";
+@import "./truncated-border";
+
+// Import and include MAAS global styles
+@import "./patterns_application";
+@import "./patterns_buttons";
+@import "./patterns_contextual-menu";
+@import "./patterns_double-row";
+@import "./patterns_footer";
+@import "./patterns_forms";
+@import "./patterns_grids";
+@import "./patterns_icons";
+@import "./patterns_links";
+@import "./patterns_list-trees";
+@import "./patterns_navigation";
+@import "./patterns_status-bar";
+@import "./patterns_switches";
+@import "./patterns_tables";
+@import "./patterns_tabs";
+@import "./patterns_typography";
+@import "./pseudo-border";
+@import "./utilities";
+@include maas-application;
+@include maas-buttons;
+@include maas-contextual-menu;
+@include maas-double-row;
+@include maas-footer;
+@include maas-forms;
+@include maas-grids;
+@include maas-icons;
+@include maas-links;
+@include maas-list-trees;
+@include maas-navigation;
+@include maas-status-bar;
+@include maas-switches;
+@include maas-tables;
+@include maas-tabs;
+@include maas-typography;
+@include maas-utilities;
+
+// MAAS React Components
+@import "../../node_modules/@canonical/maas-react-components/dist/maas-react-components.css";
+
+// Import and include MAAS component styles
+// base
+@import "@/app/base/components/ActionBar";
+@import "@/app/base/components/AppSideNavigation";
+@import "@/app/base/components/CertificateDownload";
+@import "@/app/base/components/CertificateMetadata";
+@import "@/app/base/components/ColumnToggle";
+@import "@/app/base/components/DebounceSearchBox";
+@import "@/app/base/components/DHCPTable";
+@import "@/app/base/components/DoughnutChart";
+@import "@/app/base/components/FilterAccordion";
+@import "@/app/base/components/FormCard";
+@import "@/app/base/components/LabelledList";
+@import "@/app/login/Login";
+@import "@/app/base/components/MachineSelectTable";
+@import "@/app/base/components/ListDisplayCount";
+@import "@/app/base/components/node/HardwareCard";
+@import "@/app/base/components/node/networking/NetworkTable";
+@import "@/app/base/components/node/NodeLogs/DownloadMenu";
+@import "@/app/base/components/node/NodeTestsTable/components/NodeTestsTable";
+@import "@/app/base/components/node/OverviewCard";
+@import "@/app/base/components/node/StorageTables/AvailableStorageTable";
+@import "@/app/base/components/NodeName";
+@import "@/app/base/components/NodeSummaryNetworkCard";
+@import "@/app/base/components/NodeSummaryNetworkCard/NetworkCardTable";
+@import "@/app/base/components/NotificationGroup";
+@import "@/app/base/components/Placeholder";
+@import "@/app/base/components/Popover";
+@import "@/app/base/components/PrefixedInput";
+@import "@/app/base/components/SecondaryNavigation";
+@import "@/app/base/components/SectionHeader";
+@import "@/app/base/components/SelectButton";
+@import "@/app/base/components/ShowAdvanced";
+@import "@/app/base/components/TableMenu";
+@import "@/app/base/components/TagSelector";
+@include ActionBar;
+@include AvailableStorageTable;
+@include AppSideNavigation;
+@include CertificateDownload;
+@include CertificateMetadata;
+@include ColumnToggle;
+@include DebounceSearchBox;
+@include DHCPTable;
+@include DoughnutChart;
+@include DownloadMenu;
+@include FilterAccordion;
+@include FormCard;
+@include HardwareCard;
+@include LabelledList;
+@include Login;
+@include MachineSelectTable;
+@include NetworkCardTable;
+@include NetworkTable;
+@include NodeName;
+@include NodeSummaryNetworkCard;
+@include NodeTestsTable;
+@include NotificationGroup;
+@include OverviewCard;
+@include Placeholder;
+@include Popover;
+@include PrefixedInput;
+@include SecondaryNavigation;
+@include SectionHeader;
+@include SelectButton;
+@include ShowAdvanced;
+@include TableMenu;
+@include TagSelector;
+
+// controllers
+@import "@/app/controllers/views/ControllerDetails/ControllerSummary";
+@include ControllerSummary;
+
+// devices
+@import "@/app/devices/components/AddDeviceForm/AddDeviceInterfaces";
+@import "@/app/devices/components/DeviceNetwork/DeviceNetworkTable";
+@import "../app/devices/components/DeviceSummary";
+@include AddDeviceInterfaces;
+@include DeviceNetworkTable;
+@include DeviceSummary;
+
+// images
+@import "@/app/images/components/ImagesTable";
+@import "@/app/images/components/SelectUpstreamImagesForm";
+@include ImagesTable;
+@include DownloadImages;
+
+// intro
+@import "@/app/intro/views/MaasIntro";
+@include MaasIntro;
+
+// kvm
+@import "@/app/kvm/components/CoreResources";
+@import "@/app/kvm/components/CPUColumn/CPUPopover";
+@import "@/app/kvm/components/KVMDetailsHeader";
+@import "@/app/base/components/DhcpFormFields/MachineSelect";
+@import "@/app/kvm/components/ComposeForm/InterfacesTable";
+@import "@/app/kvm/components/ComposeForm/InterfacesTable/SubnetSelect";
+@import "@/app/kvm/components/ComposeForm/StorageTable/PoolSelect";
+@import "@/app/kvm/components/KVMResourcesCard";
+@import "@/app/kvm/components/KVMStorageCards";
+@import "@/app/kvm/components/LXDHostToolbar";
+@import "@/app/kvm/components/LXDHostVMs/NumaResources";
+@import "@/app/kvm/components/LXDHostVMs/NumaResources/NumaResourcesCard";
+@import "@/app/kvm/components/LXDVMsSummaryCard";
+@import "@/app/kvm/components/LXDVMsTable";
+@import "@/app/kvm/components/RAMColumn/RAMPopover";
+@import "@/app/kvm/components/RamResources";
+@import "@/app/kvm/components/StorageColumn/StoragePopover";
+@import "@/app/kvm/components/StorageResources";
+@import "@/app/kvm/components/StorageResources/StorageCards";
+@import "@/app/kvm/components/VfResources";
+@import "@/app/kvm/components/VmResources";
+@import "@/app/kvm/components/SettingsBackLink";
+@import "@/app/kvm/views/LXDClusterDetails/LXDClusterHosts/LXDClusterHostsTable";
+@import "@/app/kvm/views/LXDClusterDetails/LXDClusterSummaryCard";
+@import "@/app/controllers/views/ControllerDetails/ControllerVLANs/ControllerVLANsTable";
+@include ControllerVLANsTable;
+@include CoreResources;
+@include CPUPopover;
+@include KVMComposeInterfacesTable;
+@include KVMDetailsHeader;
+@include KVMPoolSelect;
+@include KVMResourcesCard;
+@include KVMStorageCards;
+@include KVMSubnetSelect;
+@include LXDClusterSummaryCard;
+@include LXDHostToolbar;
+@include LXDVMsSummaryCard;
+@include MachineSelect;
+@include NumaResources;
+@include NumaResourcesCard;
+@include RAMPopover;
+@include RamResources;
+@include StorageCards;
+@include StoragePopover;
+@include StorageResources;
+@include VfResources;
+@include VmResources;
+@include SettingsBackLink;
+@include VMsTable;
+
+// Network Discovery
+@import "@/app/networkDiscovery/views/DiscoveriesList";
+@include DiscoveriesList;
+
+// machines
+@import "@/app/machines/components/MachineForms/MachineActionFormWrapper/CloneForm/CloneFormFields";
+@import "@/app/machines/components/MachineForms/MachineActionFormWrapper/CloneForm/CloneFormFields/SourceMachineSelect";
+@import "@/app/machines/components/MachineForms/MachineActionFormWrapper/MarkBrokenForm/MarkBrokenFormFields";
+@import "@/app/machines/components/MachineForms/MachineActionFormWrapper/TagForm";
+@import "@/app/machines/views/MachineDetails/MachineSummary";
+@import "@/app/machines/views/MachineDetails/MachineSummary/NumaCard";
+@import "@/app/machines/views/MachineList";
+@import "@/app/machines/views/MachineList/MachineListControls";
+@import "@/app/machines/views/MachineList/MachineListTable/MachineListPagination";
+@include CloneFormFields;
+@include MachineList;
+@include MachineListControls;
+@include ListDisplayCount;
+@include MachineListPagination;
+@include MachineSummary;
+@include MarkBrokenFormFields;
+@include NumaCard;
+@include SourceMachineSelect;
+@include TagForm;
+
+// preferences
+@import "@/app/preferences/views/SSLKeys/components/AddSSLKey";
+@import "@/app/preferences/views/SSLKeys/views";
+@import "@/app/preferences/views/SSHKeys/components/SSHKeysTable";
+@include AddSSLKey;
+@include SSLKeyList;
+@include SSHKeysTable;
+
+//racks
+@import "@/app/racks/components/RegisterController/components/GuidedProvisioning";
+@include GuidedProvisioning;
+
+// settings
+@import "@/app/settings";
+@import "@/app/settings/views/Configuration/GeneralForm";
+@import "@/app/settings/views/Configuration/GeneralForm/ThemedRadioButton";
+@import "@/app/settings/views/Security/SecurityProtocols/TLSEnabled/TLSEnabledFields";
+@import "@/app/settings/views/Dhcp/DhcpList";
+@import "@/app/settings/views/LicenseKeys/views";
+@import "@/app/settings/views/Repositories/views";
+@import "@/app/settings/views/Repositories/components/RepositoryFormFields";
+@import "@/app/settings/views/Scripts/ScriptsList";
+@import "@/app/settings/views/Scripts/ScriptsUpload";
+@import "@/app/settings/views/Scripts/ScriptDetails";
+@import "@/app/settings/views/UserManagement/views/UsersList/components/UsersTable";
+@include SettingsTable;
+@include DhcpList;
+@include LicenseKeyList;
+@include RepositoriesList;
+@include RepositoryFormFields;
+@include ScriptsList;
+@include ScriptsUpload;
+@include TLSEnabledFields;
+@include UsersTable;
+@include GeneralForm;
+@include ThemedRadioButton;
+@include ScriptDetails;
+
+// subnets
+@import "@/app/networks/components/ReservedRangesTable";
+@import "@/app/networks/views/Fabrics/views/FabricDetails/components/FabricVLANsTable";
+@import "@/app/networks/views/Subnets/views/SubnetDetails/views/StaticRoutes";
+@import "@/app/networks/views/Subnets/views/SubnetDetails/views/SubnetUsedIPs";
+@import "@/app/networks/views/Subnets/views/SubnetsList";
+@import "@/app/networks/views/VLANs/views/VLANDetails/components/VLANSubnetsTable";
+@include FabricVLANsTable;
+@include ReservedRanges;
+@include StaticRoutes;
+@include SubnetsList;
+@include UsedIpTable;
+@include VLANSubnets;
+
+// tags
+@import "@/app/tags/components/DeleteTagForm/DeleteTagFormWarnings";
+@include DeleteTagFormWarnings;

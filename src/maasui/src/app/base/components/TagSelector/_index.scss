@@ -1,0 +1,102 @@
+@mixin TagSelector {
+  $dropdown-max-height: 20rem;
+
+  .tag-selector {
+    position: relative;
+  }
+
+  .tag-selector .p-form-validation__message {
+    margin-top: 0;
+  }
+
+  .tag-selector__input {
+    position: relative;
+    cursor: pointer;
+
+    &.tags-selected {
+      border-top: 0;
+      box-shadow: none;
+      top: -#{$border-radius};
+    }
+
+    &[disabled],
+    &[disabled="disabled"] {
+      opacity: 1;
+    }
+  }
+
+  .tag-selector__dropdown {
+    @extend %vf-has-box-shadow;
+    background-color: var(--vf-color-background-default);
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: calc(100% - #{$input-margin-bottom});
+    z-index: 10;
+  }
+
+  .tag-selector__dropdown-list {
+    @extend %vf-list;
+    margin-bottom: 0;
+    max-height: $dropdown-max-height;
+    overflow: auto;
+  }
+
+  .tag-selector__dropdown-header {
+    margin-bottom: 0;
+    padding: $spv--x-small $sph--small;
+    position: relative;
+
+    &::after {
+      border-bottom: 1px solid $color-mid-light;
+      bottom: 0;
+      content: "";
+      height: 1px;
+      left: 0;
+      position: absolute;
+      right: 0;
+    }
+  }
+
+  .tag-selector__dropdown-item {
+    @extend %vf-list-item;
+    @include vf-list-item-divided;
+  }
+
+  .tag-selector__dropdown-item-description {
+    @extend %small-text;
+    color: $color-mid-dark;
+  }
+
+  .tag-selector__dropdown-button {
+    border: 0;
+    margin-bottom: 0;
+    padding-left: $sph--small;
+    padding-right: $sph--small;
+    text-align: left;
+    width: 100%;
+  }
+
+  .tag-selector__selected-list {
+    background-color: $colors--light-theme--background-inputs;
+    border-bottom: 0;
+    margin: 0;
+    padding: $spv--x-small $sph--small;
+  }
+
+  .is-dark .tag-selector__selected-list {
+    background-color: $colors--dark-theme--background-inputs;
+  }
+
+  .is-error .tag-selector__selected-list {
+    border-color: $color-negative;
+  }
+
+  .tag-selector__selected-item {
+    @include vf-inline-list-item;
+  }
+
+  .tag-selector__selected-button {
+    padding: 0 $sph--small 0 0 !important;
+  }
+}

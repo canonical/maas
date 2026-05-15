@@ -1,0 +1,66 @@
+@mixin ImagesTable {
+  .p-generic-table {
+    margin-bottom: 0;
+
+    .version, .status {
+      width: 20%;
+
+      .p-button--column-header {
+        text-align: left;
+      }
+
+      .p-icon--information {
+        margin-left: $sph--x-small;
+      }
+
+      .p-progress {
+        position: relative;
+        width: 10rem;
+        height: $x-height;
+        background-color: var(--vf-color-background-active);
+        border-radius: $x-height;
+        overflow: hidden;
+        vertical-align: middle;
+        margin-right: $sph--small;
+        display: inline-block;
+      }
+
+      .p-progress__value {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background-color: var(--vf-color-link-default);
+        border-radius: $x-height;
+        transition: width 0.3s ease;
+
+        &::before {
+          content: '';
+          border-radius: $x-height;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(
+                          -45deg,
+                          transparent 35%,
+                          lch(from var(--vf-color-link-default) calc(l + 10) c h) 50%,
+                          transparent 65%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 3s infinite linear;
+        }
+      }
+
+      @keyframes shimmer {
+        0% {
+          background-position-x: 200%;
+        }
+        100% {
+          background-position-x: -200%;
+        }
+      }
+    }
+  }
+}

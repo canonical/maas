@@ -1,0 +1,96 @@
+@import "../index";
+
+$ratio-total: $subnet-col-ratio + $fabric-col-ratio + $vlan-col-ratio;
+$ratio-multiplier: math.div($ratio-total, $subnet-col-ratio);
+$padding: 2 * $sph--small;
+$pxe-col-compensation: $pxe-col-width - $sph--small;
+
+@mixin KVMSubnetSelect {
+  .kvm-subnet-select__dropdown {
+    z-index: $side-panel-z-index + 1;
+  }
+  .kvm-subnet-select {
+    display: block;
+    width: 100%;
+
+    .kvm-subnet-select__toggle {
+      @extend %vf-input-elements;
+      &.has-icon {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        padding-left: $sph--small;
+        width: 100%;
+
+        > :nth-child(1) {
+          text-overflow: ellipsis;
+          overflow: hidden;
+        }
+
+        > :nth-child(2) {
+          flex-shrink: 0;
+          margin-right: 0;
+        }
+      }
+
+      &.is-error {
+        border-color: $color-negative;
+      }
+    }
+
+    .kvm-subnet-select__subnet {
+      z-index: $side-panel-z-index + 1;
+      align-items: center;
+      display: flex;
+      width: 100%;
+
+      & > * {
+        overflow: hidden;
+        overflow-wrap: anywhere;
+        white-space: break-spaces;
+
+        // Subnet
+        &:nth-child(1) {
+          width: calc(
+            #{percentage(math.div($subnet-col-ratio, $ratio-total))} - #{2 * $sph--small}
+          );
+        }
+
+        // Fabric
+        &:nth-child(2) {
+          width: percentage(math.div($fabric-col-ratio, $ratio-total));
+        }
+
+        // VLAN
+        &:nth-child(3) {
+          width: percentage(math.div($vlan-col-ratio, $ratio-total));
+        }
+
+        // PXE
+        &:nth-child(4) {
+          width: #{$pxe-col-width - 3 * $sph--small};
+        }
+
+        &:not(:last-child) {
+          padding-right: $sph--small;
+        }
+
+        @media only screen and (max-width: $breakpoint-small) {
+          &:nth-child(1) {
+            width: 100%;
+          }
+
+          &:nth-child(2),
+          &:nth-child(3),
+          &:nth-child(4) {
+            display: none;
+          }
+        }
+      }
+    }
+
+    .p-contextual-menu__non-interactive {
+      padding-top: $spv--small;
+    }
+  }
+}

@@ -1,0 +1,19 @@
+@mixin LicenseKeyList {
+  .license-key-list td,
+  .license-key-list th {
+    // Actions
+    &:nth-child(3) {
+      flex: 0.3 0 0;
+    }
+  }
+
+  @media screen and (max-width: 570px) {
+    .license-key-list td,
+    .license-key-list th {
+      // Distro series
+      &:nth-child(2) {
+        display: none;
+      }
+    }
+  }
+}

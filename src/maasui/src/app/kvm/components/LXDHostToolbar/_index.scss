@@ -1,0 +1,82 @@
+@mixin LXDHostToolbar {
+  .lxd-host-toolbar {
+    // Add space between the toolbar and the content below it.
+    padding-bottom: $spv--medium;
+  }
+
+  @media only screen and (min-width: $breakpoint-small) {
+    .lxd-host-toolbar {
+      display: grid;
+      // The last column needs to take a minimum of the content width so that
+      // the numa label doesn't wrap and a max of auto so that it extends to the
+      // edge of the container.
+      grid-template-columns: repeat(3, minmax(auto, max-content)) minmax(
+          max-content,
+          auto
+        );
+      grid-template-rows: auto;
+      // The first row of content is given template areas, but the second row is
+      // not so that remaining elements appear as columns.
+      grid-template-areas: "title title title switch";
+    }
+
+    .lxd-host-toolbar__block {
+      border-left: $border;
+      padding-left: $sph--large;
+      margin-bottom: $spv--medium;
+      margin-top: $spv--medium;
+
+      &:not(:last-of-type) {
+        padding-right: $sph--large;
+      }
+
+      &.no-divider {
+        border-left: 0;
+        padding-left: 0;
+      }
+
+      &.lxd-host-toolbar__title {
+        padding-left: 0;
+        padding-right: 0;
+        border-left: 0;
+        grid-area: title;
+      }
+
+      &.lxd-host-toolbar__switch {
+        border-left: 0;
+        // Position the content to the right of the given space.
+        justify-self: end;
+        padding-left: 0;
+        grid-area: switch;
+      }
+    }
+  }
+
+  @media only screen and (min-width: $breakpoint-large) {
+    .lxd-host-toolbar {
+      grid-template-columns: repeat(4, minmax(auto, max-content)) minmax(
+          max-content,
+          auto
+        );
+      // Remove the template from the small breakpoint.
+      grid-template-areas: none;
+    }
+
+    .lxd-host-toolbar__block {
+      &.no-divider {
+        border-left: 0;
+        padding-left: $sph--large;
+      }
+
+      &.lxd-host-toolbar__title {
+        // Remove the template from the small breakpoint.
+        grid-area: unset;
+      }
+
+      &.lxd-host-toolbar__switch {
+        // Remove the template from the small breakpoint.
+        grid-area: unset;
+      }
+    }
+  }
+}

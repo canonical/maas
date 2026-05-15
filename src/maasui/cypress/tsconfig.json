@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": "../ui/node_modules",
+    "target": "es6",
+    "lib": ["es2017", "dom"],
+    "types": ["node", "cypress", "cypress-axe", "@testing-library/cypress", "@percy/cypress"],
+    "moduleResolution": "Node"
+  },
+  "include": ["**/*.ts"]
+}

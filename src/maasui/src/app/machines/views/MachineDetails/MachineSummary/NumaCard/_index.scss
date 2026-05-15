@@ -1,0 +1,51 @@
+@use "sass:map";
+
+@mixin NumaCard {
+
+  .numa-card {
+    padding: $spv--small $sph--large $spv--large $sph--large;
+  }
+
+  .numa-card__list {
+    position: relative;
+    padding-top: 0 !important;
+
+    .p-list__item-label {
+      text-align: left;
+      margin-right: 0;
+    }
+
+    .p-list__item {
+      padding: $spv--small 0 !important;
+    }
+  }
+
+  .numa-card__button {
+    @include vf-icon-plus($color-mid-dark);
+    @extend %vf-button-base;
+    background-position: right center;
+    background-repeat: no-repeat;
+    background-size: map.get($icon-sizes, default);
+    border: 0;
+    margin: 0;
+    padding: 0 #{$sp-unit * 5} 0 0;
+    text-align: left;
+    width: 100%;
+
+    &.is-open {
+      @include vf-icon-minus($color-mid-dark);
+    }
+  }
+
+  .numa-card__collapsed-details {
+    color: $color-mid-dark;
+    font-size: 0.75rem;
+    font-weight: 400;
+    left: $sp-unit * 11;
+    line-height: 1;
+    max-width: $sp-unit * 20;
+    position: absolute;
+    pointer-events: none;
+    top: $spv--x-small;
+  }
+}

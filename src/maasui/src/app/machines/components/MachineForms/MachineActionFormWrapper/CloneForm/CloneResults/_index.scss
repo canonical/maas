@@ -1,0 +1,12 @@
+.p-generic-table.clone-results-table {
+  th,td {
+    &.error {
+      text-align: left !important;
+      width: 100%;
+    }
+
+    &.affectedMachines {
+      width: 9rem;
+    }
+  }
+}

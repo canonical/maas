@@ -1,0 +1,56 @@
+@import 'vanilla-framework';
+
+@include vf-base;
+
+@include vf-p-icons;
+
+.p-generic-table.sources-table {
+  tr {
+    .name {
+      width: 20%;
+    }
+
+    .priority {
+      width: 15%;
+      text-align: right;
+    }
+
+    .signed {
+      width: 20%;
+      text-align: center;
+    }
+
+    .actions {
+      width: 20%;
+    }
+  }
+
+  tr:has(.disabled-source-tooltip) {
+    td {
+      color: var(--vf-color-text-muted);
+
+      &:has(.disabled-source-tooltip) {
+        position: relative;
+        overflow: visible;
+      }
+    }
+
+    .disabled-source-tooltip {
+      position: absolute;
+      left: -23px;
+    }
+
+    .p-icon--help {
+      @include vf-themed-icon($light-value: vf-icon-help-url($colors--light-theme--text-muted), $dark-value: vf-icon-help-url($colors--dark-theme--text-muted));
+    }
+
+    .p-icon--success-grey {
+      @include vf-themed-icon($light-value: vf-icon-success-grey-url($colors--light-theme--text-muted), $dark-value: vf-icon-success-grey-url($colors--dark-theme--text-muted));
+    }
+
+    .p-icon--error-grey {
+      @include vf-themed-icon($light-value: vf-icon-error-grey-url($colors--light-theme--text-muted), $dark-value: vf-icon-error-grey-url($colors--dark-theme--text-muted));
+    }
+  }
+}
+

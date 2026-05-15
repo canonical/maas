@@ -1,0 +1,7 @@
+@mixin VMsTable {
+  .vms-table {
+    th, td {
+      text-align: left !important;
+    }
+  }
+}

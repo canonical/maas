@@ -1,0 +1,17 @@
+@mixin NetworkCardTable {
+  .network-card-table {
+    th:first-of-type,
+    td:first-of-type {
+      padding-left: 0;
+    }
+
+    th:last-of-type,
+    td:last-of-type {
+      padding-right: 0;
+    }
+
+    .name {
+      width: 30%;
+    }
+  }
+}

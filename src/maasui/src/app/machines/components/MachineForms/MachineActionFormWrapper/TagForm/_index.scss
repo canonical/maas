@@ -1,0 +1,27 @@
+@mixin TagForm {
+  .tag-form__changes {
+    margin-bottom: $spv--small;
+
+    .label-col {
+      width: 40%;
+    }
+
+    .name-col {
+      width: 60%;
+    }
+
+    .options-col {
+      @include breakpoint-widths(0, 7.5rem, 7.5rem, 7.5rem, 7.5rem);
+    }
+
+    .action-col {
+      width: 7rem;
+    }
+  }
+
+  @media (min-width: $breakpoint-large) {
+    .tag-form__modal .p-modal__dialog {
+      width: 50%;
+    }
+  }
+}

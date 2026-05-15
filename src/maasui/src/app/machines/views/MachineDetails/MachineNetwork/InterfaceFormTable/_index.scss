@@ -1,0 +1,13 @@
+.interface-form-table.p-generic-table {
+  .p-generic-table__table {
+    th.p-column-header.dhcp {
+      text-align: left;
+    }
+
+    tbody {
+      td.dhcp:last-child {
+        text-align: left;
+      }
+    }
+  }
+}

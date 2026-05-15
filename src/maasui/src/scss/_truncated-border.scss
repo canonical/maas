@@ -1,0 +1,18 @@
+// Truncates the border above a table row, usually to signify table grouping.
+// $width sets the size of the indent from the left. If it's not supplied then
+// the indent is the size of the first td.
+@mixin truncated-border($width: 100%) {
+  .truncated-border td:first-child {
+    overflow: visible;
+    position: relative;
+
+    &::after {
+      content: "";
+      height: 1px;
+      left: 0;
+      position: absolute;
+      top: -1px;
+      width: $width;
+    }
+  }
+}

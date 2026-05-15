@@ -1,0 +1,80 @@
+@mixin VfResources {
+  .vf-resources {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    padding: $spv--medium $sph--large;
+  }
+
+  .vf-resources__table-container {
+    max-height: $sp-unit * 20;
+    margin-top: $spv--medium;
+    padding-right: $sph--small;
+  }
+
+  .vf-resources__table {
+    margin-bottom: 0;
+    margin-top: -$spv--small;
+    position: relative;
+
+    th {
+      background-color: var(--vf-color-background-default);
+    }
+
+    th,
+    td {
+      &.name {
+        overflow-wrap: break-word;
+        padding-left: 0;
+        width: 100%;
+      }
+
+      &.allocated {
+        text-align: right;
+        width: 6.25rem;
+      }
+
+      &.free {
+        text-align: right;
+        padding-right: $sph--large;
+        width: 4.5rem;
+      }
+    }
+  }
+
+  // Additional styles for when the component changes layout depending on the
+  // viewport size. Otherwise, the component keeps the "mobile" styling.
+  .vf-resources--dynamic-layout {
+    @media only screen and (min-width: $breakpoint-small) {
+      .vf-resources__header {
+        flex: 1;
+        margin-right: $sph--large;
+      }
+
+      .vf-resources__table-container {
+        flex: 3;
+      }
+
+      .vf-resources__meter {
+        flex: 3;
+      }
+    }
+
+    @media only screen and (min-width: $breakpoint-kvm-resources-card) {
+      flex-direction: column;
+
+      .vf-resources__header {
+        flex: 0;
+        margin-right: 0;
+      }
+
+      .vf-resources__table-container {
+        flex: 1;
+      }
+
+      .vf-resources__meter {
+        flex: 0;
+      }
+    }
+  }
+}

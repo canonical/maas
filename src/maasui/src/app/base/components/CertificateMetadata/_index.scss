@@ -1,0 +1,7 @@
+@mixin CertificateMetadata {
+  .certificate-metadata {
+    .p-list__item-label {
+      flex-grow: 0.75;
+    }
+  }
+}

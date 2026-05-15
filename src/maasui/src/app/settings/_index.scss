@@ -1,0 +1,44 @@
+@use "sass:color";
+
+@mixin SettingsTable {
+  .settings-table {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    height: 100%;
+    position: relative;
+  }
+
+  .settings-table__loader {
+    align-items: center;
+    background-color: rgba($color-light, 0.3);
+    bottom: 0;
+    display: grid;
+    justify-items: center;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    // Needs to be above content.
+    z-index: 1;
+  }
+
+  .settings-table__lines {
+    @extend .u-baseline-grid;
+
+    &::after {
+      background: linear-gradient(
+        to top,
+        color.scale($color-mid-light, $alpha: -85%),
+        color.scale($color-mid-light, $alpha: -85%) 1px,
+        transparent 1px,
+        transparent
+      );
+      background-size: 100% $sp-x-large;
+    }
+  }
+
+  .settings-table__help {
+    align-items: flex-end;
+    display: flex;
+  }
+}

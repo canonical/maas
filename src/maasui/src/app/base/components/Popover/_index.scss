@@ -1,0 +1,8 @@
+@mixin Popover {
+  .p-popover {
+    @extend %vf-bg--x-light;
+    @extend %vf-has-box-shadow;
+    @extend %vf-has-round-corners;
+    z-index: 10;
+  }
+}

@@ -1,0 +1,28 @@
+@mixin SSHKeysTable {
+  .ssh-keys-table {
+    .p-generic-table {
+      padding-top: 1rem !important;
+      margin-bottom: 10%;
+
+      .source, .id {
+        width: 20%;
+      }
+
+      .keys {
+        width: 50%;
+      }
+
+      .actions {
+        width: 10%;
+      }
+    }
+
+    @media screen and (max-width: 500px) {
+      .p-generic-table {
+        .source {
+          display: none;
+        }
+      }
+    }
+  }
+}

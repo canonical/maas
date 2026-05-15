@@ -1,0 +1,23 @@
+@mixin VLANSubnets {
+  .vlan-subnets {
+    .subnet-col {
+      width: 30%;
+    }
+
+    .usage-col {
+      width: 10%;
+    }
+
+    .managed-col {
+      width: 20%;
+    }
+
+    .proxy-col {
+      width: 20%;
+    }
+
+    .dns-col {
+      width: 20%;
+    }
+  }
+}

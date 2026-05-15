@@ -1,0 +1,91 @@
+@mixin storage-cards($height) {
+  $min-aspect-ratio: 0.65;
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax($height * $min-aspect-ratio, 1fr)
+  );
+
+  .storage-card {
+    height: $height;
+  }
+}
+
+@mixin StorageCards {
+  $small-card-height: 50px;
+
+  .storage-cards {
+    // Max height is given to be 3 * the height of the small card, including the
+    // vertical space between card rows. This max-height is identical to 2 * the
+    // height of the medium card, and 1 * the height of the large card.
+    max-height: #{($small-card-height + 2) * 3};
+    overflow: auto;
+  }
+
+  .storage-cards--small {
+    @include storage-cards($small-card-height);
+
+    .storage-card__text-container {
+      padding-right: $sp-xx-small;
+    }
+
+    .storage-card__small-text {
+      font-size: 0.675rem;
+      line-height: 1.5;
+    }
+
+    .storage-card__meter {
+      height: 6px;
+    }
+  }
+
+  .storage-cards--medium {
+    @include storage-cards($small-card-height * 1.5);
+
+    .storage-card__text-container {
+      padding-right: $sp-x-small;
+    }
+
+    .storage-card__small-text {
+      @extend %x-small-text;
+    }
+
+    .storage-card__meter {
+      height: 8px;
+    }
+  }
+
+  .storage-cards--large {
+    @include storage-cards($small-card-height * 3);
+
+    .storage-card__text-container {
+      padding: calc(#{$spv--x-small} + 1px) $sph--small $spv--x-small;
+    }
+
+    .storage-card__meter {
+      height: 12px;
+    }
+  }
+
+  .storage-card-container {
+    padding: 1px;
+  }
+
+  .storage-card {
+    border: $border;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .storage-card__text-container {
+    flex: 1;
+  }
+
+  .storage-card__meter {
+    bottom: -1px;
+    left: -1px;
+    min-height: math.div($sp-unit, 2);
+    position: relative;
+    width: calc(100% + 2px);
+  }
+}

@@ -1,0 +1,134 @@
+@use "sass:map";
+
+@mixin NetworkTable {
+  .network-table {
+    th, td {
+      &:is(.name, .pxe, .speed, .fabric, .subnet, .dhcp) {
+        text-align: left;
+      }
+
+      &.name {
+        width: 12rem;
+      }
+
+      &.pxe {
+        width: 3.5rem;
+      }
+
+      &.fabric {
+        width: 6rem;
+      }
+
+      &.actions {
+        width: 4rem;
+        overflow: visible;
+      }
+    }
+
+  th {
+      button.p-button--column-header {
+        display: flex;
+        justify-content: left;
+        text-align: left;
+      }
+    }
+
+    tr.p-generic-table__group-row + tr.p-generic-table__individual-row {
+      display: none;
+    }
+
+    tr.p-generic-table__group-row {
+      td.p-generic-table__select {
+        display: none;
+      }
+
+      td.name {
+        width: 14rem;
+      }
+    }
+
+    .p-generic-table__select-alignment {
+      display: none;
+    }
+
+    @include truncated-border(
+            $width: #{2 * map.get($icon-sizes, default) + $sph--small}
+    );
+
+    th,
+    td {
+      &.name {
+        @include breakpoint-widths(0.5, 0.5, 0.26, 0.23, 0.17, true);
+      }
+
+      &.pxe {
+        @include breakpoint-widths(0, 0.06, 0.05, 0.05, 0.05, true);
+      }
+
+      &.speed {
+        @include breakpoint-widths(0, 0, 0, 0.16, 0.14, true);
+      }
+
+      &.type {
+        @include breakpoint-widths(0.5, 0.5, 0.2, 0.15, 0.14, true);
+      }
+
+      &.fabric {
+        @include breakpoint-widths(0, 0, 0.17, 0.12, 0.11, true);
+      }
+
+      &.subnet {
+        @include breakpoint-widths(0, 0, 0, 0.13, 0.12, true);
+      }
+
+      &.ip {
+        @include breakpoint-widths(0, 0, 0.17, 0.13, 0.13, true);
+      }
+
+      &.dhcp {
+        @include breakpoint-widths(0, 0, 0, 0, 0.14, true);
+      }
+    }
+
+    &.network-table--has-actions {
+      th,
+      td {
+        &.name {
+          @include breakpoint-widths(0.45, 0.45, 0.26, 0.2, 0.16, true);
+        }
+
+        &.pxe {
+          @include breakpoint-widths(0, 0.06, 0.05, 0.05, 0.05, true);
+        }
+
+        &.speed {
+          @include breakpoint-widths(0, 0, 0, 0.16, 0.14, true);
+        }
+
+        &.type {
+          @include breakpoint-widths(0.45, 0.45, 0.2, 0.15, 0.14, true);
+        }
+
+        &.fabric {
+          @include breakpoint-widths(0, 0, 0.17, 0.12, 0.11, true);
+        }
+
+        &.subnet {
+          @include breakpoint-widths(0, 0, 0, 0.13, 0.12, true);
+        }
+
+        &.ip {
+          @include breakpoint-widths(0, 0, 0.17, 0.12, 0.11, true);
+        }
+
+        &.dhcp {
+          @include breakpoint-widths(0, 0, 0, 0, 0.12, true);
+        }
+
+        &:last-child {
+          @include breakpoint-widths(0, 0.1, 0.1, 0.06, 0.05, true);
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+@mixin DeviceSummary {
+  .device-summary {
+    @extend %base-grid;
+    grid:
+      [row1-start] "overview" min-content [row1-end]
+      [row2-start] "network" min-content [row2-end]
+      / 100%;
+    padding-left: 0;
+    padding-right: 0;
+
+    @media only screen and (min-width: $breakpoint-large) {
+      grid:
+        [row1-start] "overview network" min-content [row1-end]
+        / 1fr 2fr ;
+    }
+  }
+
+  .device-summary__overview {
+    grid-area: overview;
+  }
+
+  .device-summary__network {
+    grid-area: network;
+  }
+}

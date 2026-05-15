@@ -1,0 +1,57 @@
+@mixin ReservedRanges {
+  .reserved-ranges-table {
+    .start-ip-col {
+      flex: 0.25;
+    }
+
+    .end-ip-col {
+      flex: 0.25;
+    }
+
+    .owner-col {
+      flex: 0.13;
+    }
+
+    .type-col {
+      flex: 0.13;
+    }
+
+    .comment-col {
+      flex: 0.2;
+    }
+
+    .actions-col {
+      flex: 0.12;
+    }
+  }
+
+  .reserved-ranges-table--has-subnet {
+    .subnet-col {
+      flex: 0.17;
+    }
+
+    .start-ip-col {
+      flex: 0.18;
+    }
+
+    .end-ip-col {
+      flex: 0.18;
+    }
+
+    .owner-col {
+      flex: 0.1;
+    }
+
+    .type-col {
+      flex: 0.1;
+    }
+
+    .comment-col {
+      flex: 0.17;
+    }
+
+    .actions-col {
+      flex: 0.1;
+    }
+  }
+}

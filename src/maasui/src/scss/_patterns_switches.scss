@@ -1,0 +1,9 @@
+@mixin maas-switches {
+  .p-switch--inline-label {
+    display: flex;
+
+    .p-switch__slider {
+      margin-left: $sph--large;
+    }
+  }
+}

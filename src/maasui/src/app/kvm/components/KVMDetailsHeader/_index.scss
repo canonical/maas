@@ -1,0 +1,56 @@
+@mixin KVMDetailsHeader {
+  .kvm-details-header {
+      margin-bottom: $spv--medium;
+  }
+  .kvm-details-header__title-block {
+    border-left: $border;
+    padding-left: $sph--large;
+
+    &:first-of-type {
+      padding-left: $sph--large;
+    }
+
+    &:not(:last-of-type) {
+      padding-right: $sph--large;
+    }
+  }
+
+  @media only screen and (max-width: $breakpoint-small) {
+    .kvm-details-header__title-blocks {
+      width: 100%;
+    }
+
+    .kvm-details-header__title-block {
+      &:first-of-type {
+        border-left: 0;
+        padding-left: 0;
+      }
+    }
+  }
+
+  @media only screen and (max-width: $breakpoint-small) {
+    .kvm-details-header__title-blocks {
+      flex-direction: column;
+      margin-right: 0;
+    }
+
+    .kvm-details-header__title-block {
+      border-left: 0;
+      padding-left: 0;
+      padding-right: 0;
+
+      &:not(:first-of-type) {
+        border-top: $border;
+        padding-top: $spv--small;
+
+        .kvm-details-header.has-icon & {
+          padding-left: $sph--large;
+        }
+      }
+
+      &:not(:last-of-type) {
+        padding-bottom: $spv--small;
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+@mixin maas-buttons {
+  // Custom class for sort buttons in table headers. We don't use the default
+  // Vanilla th[aria-sort] pattern due to the use of double rows in MAAS, so we
+  // approximate it with these styles.
+  .p-button--table-header {
+    @extend %table-header-label;
+    color: $color-dark;
+    margin: 0;
+    padding: 0;
+
+    &:hover {
+      color: $color-link;
+    }
+
+    [class*="p-icon"] {
+      @include vf-icon-size(0.875rem);
+      margin-left: $sp-x-small;
+    }
+  }
+
+  [class*="p-button"].no-background {
+    background-color: transparent;
+  }
+}

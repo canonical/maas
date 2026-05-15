@@ -1,0 +1,44 @@
+@mixin SecondaryNavigation {
+  .p-side-navigation {
+    transition-duration: 0.165s;
+    transition-property: width, box-shadow, background;
+    transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+    width: 0;
+    visibility: hidden;
+    overflow-y: auto;
+
+    &.is-open {
+      visibility: visible;
+      width: 100%;
+      @media (min-width: $breakpoint-small) {
+        width: $application-layout--side-nav-width-expanded;
+      }
+    }
+
+    &,
+    .p-side-navigation__drawer {
+      min-height: 100%;
+    }
+    .p-side-navigation__drawer {
+      transform: none;
+      position: static;
+      max-width: 100%;
+    }
+    .p-side-navigation__title {
+      @extend %vf-heading-4;
+      padding-left: 1.5rem;
+      margin-bottom: 2rem !important;
+    }
+
+    .p-side-navigation__text,
+    .p-side-navigation__item--title .p-side-navigation__item .p-side-navigation__link {
+      @media (min-width: $breakpoint-small) {
+        padding-left: 1.5rem;
+      }
+    }
+
+    .p-side-navigation__item .p-side-navigation__link {
+      padding-left: 3rem !important;
+    }
+  }
+}

@@ -1,0 +1,36 @@
+@use "sass:map";
+@use "sass:math";
+
+@mixin TableMenu {
+  $icon-size: map.get($icon-sizes, default);
+  $icon-space: $icon-size + $sph--small + $sph--large;
+
+  .p-table-menu--hasIcon .p-contextual-menu__non-interactive {
+    padding-left: $icon-space;
+  }
+
+  .p-table-menu .p-contextual-menu__dropdown {
+    margin-left: -$sph--large;
+    min-width: 13rem;
+
+    .p-table-menu__icon-space,
+    [class*="p-icon"] {
+      margin-right: $sph--small;
+    }
+  }
+
+  .p-table-menu--hasIcon .p-contextual-menu__dropdown {
+    margin-left: -$icon-space;
+  }
+
+  .p-table-menu__toggle {
+    line-height: $icon-size;
+    padding: 0 math.div($icon-size, 2);
+  }
+
+  .p-table-menu__icon-space {
+    $icon-space: map.get($icon-sizes, default);
+    display: inline-block;
+    width: $icon-space;
+  }
+}

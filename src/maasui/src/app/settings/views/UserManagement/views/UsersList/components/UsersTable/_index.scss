@@ -1,0 +1,13 @@
+@mixin UsersTable {
+  .users-table {
+    .p-generic-table {
+      .username, .email {
+        width: 22%;
+      }
+
+      .machines_count, .sshkeys_count {
+        text-align: right;
+      }
+    }
+  }
+}

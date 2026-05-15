@@ -1,0 +1,55 @@
+@mixin ActionBar {
+  .action-bar {
+    display: grid;
+    grid-template-areas:
+      "act"
+      "pag"
+      "sea";
+    grid-template-columns: auto;
+    grid-template-rows: min-content min-content min-content;
+    padding: $spv--medium 0;
+
+    .action-bar__actions {
+      align-items: center;
+      display: flex;
+      grid-area: act;
+    }
+
+    .action-bar__pagination {
+      grid-area: pag;
+      margin-top: $spv--small;
+    }
+
+    .action-bar__search {
+      grid-area: sea;
+      margin-top: $spv--medium;
+    }
+
+    @media only screen and (min-width: $breakpoint-x-small) {
+      grid-template-areas:
+        "act pag"
+        "sea sea";
+      grid-template-columns: auto auto;
+      grid-template-rows: min-content min-content;
+
+      .action-bar__pagination {
+        margin-top: 0;
+        text-align: right;
+      }
+    }
+
+    @media only screen and (min-width: $breakpoint-large) {
+      grid-template-areas: "act sea pag";
+      grid-template-columns: max-content 1fr max-content;
+      grid-template-rows: min-content;
+
+      .action-bar__actions {
+        margin-right: $sph--large;
+      }
+
+      .action-bar__search {
+        margin: 0 $sph--large 0 0;
+      }
+    }
+  }
+}

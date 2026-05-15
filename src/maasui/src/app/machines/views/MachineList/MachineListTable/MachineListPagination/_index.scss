@@ -1,0 +1,38 @@
+@mixin MachineListPagination {
+  .p-pagination--machines .p-pagination--items {
+    padding-bottom: $spv--small;
+
+    .p-button {
+      margin: 0;
+      border: 0;
+    }
+
+    .p-pagination__link--next {
+      margin-right: $spv--large * 2;
+    }
+
+    .p-pagination__input {
+      margin: 0 $spv--small;
+      appearance: none;
+      width: 3rem;
+      min-width: 0;
+      text-align: center;
+    }
+
+    .p-form-validation__message {
+      position: absolute;
+      margin-top: $spv--small;
+      margin-left: $spv--small;
+    }
+
+    // required to get rid of buttons/arrows while keeping number-only input
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      appearance: none;
+    }
+
+    input[type="number"] {
+      appearance: textfield;
+    }
+  }
+}

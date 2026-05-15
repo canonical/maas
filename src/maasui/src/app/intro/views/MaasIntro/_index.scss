@@ -1,0 +1,7 @@
+@mixin MaasIntro {
+  .maas-intro {
+    &__card .p-card__title {
+      max-width: 100%;
+    }
+  }
+}

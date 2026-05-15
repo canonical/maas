@@ -1,0 +1,250 @@
+@use "sass:map";
+
+@mixin OverviewCard {
+  .overview-card {
+    @extend %base-grid;
+    grid:
+      [row1-start] "status cpu memory storage" min-content [row1-end]
+      [row2-start] "test-warning cpu-tests memory-tests storage-tests" min-content [row2-end]
+      [row3-start] "details details details details" min-content [row2-end]
+      / minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+
+    .overview-card__status {
+      grid-area: status;
+      padding: $spv--small 0 0 $sph--large;
+    }
+
+    .overview-card__cpu {
+      @media only screen and (min-width: ($breakpoint-small + 1)){
+        @include pseudo-border(left);
+      };
+      grid-area: cpu;
+      padding: $spv--small 0 0 0;
+    }
+
+    .overview-card__memory {
+      @media only screen and (min-width: ($breakpoint-large + 1)){
+        @include pseudo-border(left);
+      };
+      grid-area: memory;
+      padding: $spv--small 0 0 0;
+    }
+
+    .overview-card__storage {
+      @media only screen and (min-width: ($breakpoint-small + 1)){
+        @include pseudo-border(left);
+      };
+      grid-area: storage;
+      padding: $spv--small $sph--large 0 0;
+    }
+
+    .overview-card__test-warning {
+      grid-area: test-warning;
+      padding: $spv--small 0 $spv--small $sph--large;
+    }
+
+    .overview-card__test-text {
+      margin-bottom: 0.1rem;
+      padding-top: calc(0.4rem - 1px);
+    }
+
+    .overview-card__cpu-tests {
+      @include pseudo-border(left);
+      grid-area: cpu-tests;
+      padding: $spv--small 0;
+    }
+
+    .overview-card__memory-tests {
+      @include pseudo-border(left);
+      grid-area: memory-tests;
+      padding: $spv--small 0;
+    }
+
+    .overview-card__storage-tests {
+      @include pseudo-border(left);
+      grid-area: storage-tests;
+      padding: $spv--small $sph--large $spv--small 0;
+    }
+
+    .overview-card__details {
+      @include pseudo-border(top);
+      display: flex;
+      flex: 1 0 auto;
+      justify-content: space-between;
+      gap: $sph--large;
+      grid-area: details;
+      padding: $spv--small 0;
+      margin: 0 $spv--large;
+
+      > * {
+
+        &:last-child {
+          overflow: hidden;
+          padding-right: 0;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 50rem;
+        }
+      }
+
+      .p-link__chevron {
+        white-space: nowrap;
+      }
+    }
+
+    @media only screen and (max-width: $breakpoint-large) {
+      grid:
+        [row1-start] "status cpu" min-content [row1-end]
+        [row2-start] "test-warning cpu-tests" min-content [row2-end]
+        [row3-start] "memory storage" min-content [row3-end]
+        [row4-start] "memory-tests storage-tests" min-content [row4-end]
+        [row5-start] "details details" min-content [row5-end]
+        / minmax(0, 1fr) minmax(0, 1fr);
+
+      .overview-card__status,
+      .overview-card__memory {
+        padding: $spv--large 0 0 $sph--large;
+        &::before {
+          content: none;
+        }
+      }
+
+      .overview-card__test-warning,
+      .overview-card__memory-tests {
+        padding: $spv--large 0 $spv--large $sph--large;
+        &::before {
+          content: none;
+        }
+      }
+
+      .overview-card__cpu {
+        @media only screen and (min-width: ($breakpoint-small + 1)){
+          @include pseudo-border(left);
+        };
+        padding: $spv--large $sph--large 0 0;
+      }
+
+      .overview-card__storage {
+        padding: $spv--large $sph--large 0 0;
+      }
+
+      .overview-card__cpu-tests,
+      .overview-card__storage-tests {
+        @include pseudo-border(left);
+        padding: $spv--large $sph--large $spv--large 0;
+      }
+
+      .overview-card__memory {
+        @include pseudo-border(top);
+        &::before {
+          right: -#{map.get($grid-gutter-widths, default)};
+        }
+        margin-left: $sph--large;
+        padding-left: 0;
+      }
+
+      .overview-card__storage {
+        @include pseudo-border(top);
+        margin-right: $sph--large;
+        padding-right: 0;
+      }
+
+      .overview-card__details {
+        &.for-controller,
+        &.for-machine {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        > * {
+          padding-bottom: $spv--small;
+
+          &:last-child {
+            grid-column-end: 4;
+            grid-column-start: 1;
+            overflow: ellipsis;
+            padding-right: 0;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+      }
+    }
+
+    @media only screen and (max-width: $breakpoint-small) {
+      grid:
+        [row1-start] "status" min-content [row1-end]
+        [row2-start] "test-warning" min-content [row2-end]
+        [row3-start] "cpu" min-content [row3-end]
+        [row4-start] "cpu-tests" min-content [row4-end]
+        [row5-start] "memory" min-content [row5-end]
+        [row6-start] "memory-tests" min-content [row6-end]
+        [row7-start] "storage" min-content [row7-end]
+        [row8-start] "storage-tests" min-content [row8-end]
+        [row9-start] "details" min-content [row9-end]
+        / 1fr;
+
+      .overview-card__status {
+        padding: $spv--large $sph--large 0 $sph--large;
+      }
+
+      .overview-card__cpu,
+      .overview-card__memory,
+      .overview-card__storage {
+        @include pseudo-border(top);
+        padding: $spv--large $sph--large 0 $sph--large;
+        &::before {
+          left: 0;
+          right: 0;
+        }
+      }
+
+      .overview-card__cpu {
+        padding: $spv--large 0 0 0;
+        margin-left: $sph--large;
+        margin-right: $sph--large;
+      }
+
+      .overview-card__memory {
+        padding: $spv--large 0 0 0;
+        margin-right: $sph--large;
+      }
+
+      .overview-card__storage {
+        padding: $spv--large 0 0 0;
+        margin-left: $sph--large;
+      }
+
+      .overview-card__test-warning,
+      .overview-card__cpu-tests,
+      .overview-card__memory-tests,
+      .overview-card__storage-tests,
+      .overview-card__details {
+        padding: $spv--large $sph--large;
+      }
+
+      .overview-card__details {
+        &.for-controller,
+        &.for-machine {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        padding: $spv--large 0;
+
+        > *:last-child {
+          grid-column-end: 3;
+          overflow: ellipsis;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+
+  .overview-card__placeholder {
+    align-items: center;
+    display: flex;
+    height: 10rem;
+    justify-content: center;
+  }
+}

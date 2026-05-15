@@ -1,0 +1,41 @@
+@mixin maas-status-bar {
+  .p-status-bar {
+    bottom: 0;
+    left: 0;
+    padding: $spv--small 0;
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+
+    .expand-button {
+     align-items: center;
+     border: none;
+     display: flex;
+     gap: $sph--x-small;
+     padding: 0 $sph--small !important;
+     background: none;
+
+     .total-count {
+       margin-left: 0.2rem;
+     }
+   }
+  }
+
+  .p-status-bar__row {
+    @extend %fixed-width-container;
+    column-gap: $sph--small;
+    flex-direction: column;
+
+    @media only screen and (min-width: $breakpoint-large) {
+      flex-direction: row;
+    }
+  }
+
+  .p-status-bar__secondary {
+    @media only screen and (min-width: $breakpoint-large) {
+      justify-content: flex-end;
+    }
+  }
+}

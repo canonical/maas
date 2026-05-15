@@ -1,0 +1,49 @@
+@use "sass:map";
+
+@mixin VmResources {
+  .vm-resources {
+    padding: $sph--large;
+  }
+
+  .p-contextual-menu .vm-resources__dropdown {
+    max-width: none;
+    min-width: 0;
+    padding: $spv--x-small $sph--small;
+    // Subtract small screen gutter width and card inner padding to center dropdown.
+    width: calc(
+      100vw - #{(map.get($grid-gutter-widths, small) + $sph--large) * 2}
+    );
+
+    .fqdn-col,
+    .status-col {
+      width: 50%;
+    }
+
+    .power-col,
+    .cores-col,
+    .ram-col {
+      display: none;
+    }
+
+    @media only screen and (min-width: $breakpoint-small) {
+      width: calc(
+        100vw - #{(map.get($grid-gutter-widths, default) + $sph--large) * 2}
+      );
+
+      .power-col {
+        display: table-cell;
+        width: 7rem;
+      }
+    }
+
+    @media only screen and (min-width: $breakpoint-small) {
+      width: 40rem;
+
+      .cores-col,
+      .ram-col {
+        display: table-cell;
+        width: 5rem;
+      }
+    }
+  }
+}

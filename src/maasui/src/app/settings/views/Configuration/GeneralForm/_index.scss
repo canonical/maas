@@ -1,0 +1,20 @@
+@mixin GeneralForm {
+
+    .general-form__theme-label {
+        margin-bottom: 0.2rem;
+    }
+
+    @media screen and (min-width: $breakpoint-large) {
+        .general-form__radio-row {
+            grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
+            grid-gap: 0 3rem;
+        }
+      }
+    
+    @media screen and (min-width: $breakpoint-small) and (max-width: ($breakpoint-large - 1)) {
+        .general-form__radio-row {
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+            grid-gap: 0 5rem;
+        }
+    }
+}

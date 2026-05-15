@@ -1,0 +1,58 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# MAAS build tooling (downloaded by src/maasui/Makefile)
+/tarballs
+/nodejs
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# dotrun package
+.docker-project
+.yarn.*.hash
+.dotrun.json
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# build
+/build
+
+# cypress
+cypress/screenshots
+cypress/videos
+cypress.env.json
+
+# local configuration
+.env.*.local
+.env.local
+
+# Visual Studio Code
+.vscode
+
+# Vim
+*.swp
+
+# WebStorm
+.idea
+
+# junk
+*.DS_Store
+*.fuse*
+
+# test results
+sitespeed.io/results
+/test-results/
+/playwright-report/
+/playwright/.cache/
+coverage/
+.coverage/
+
+# openapi-ts error logs
+openapi-ts-error-*.log
+
+# git patches
+*.patch

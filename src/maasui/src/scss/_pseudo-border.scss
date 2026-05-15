@@ -1,0 +1,29 @@
+@use "sass:map";
+@use "sass:math";
+
+@mixin pseudo-border($pos) {
+  position: relative;
+
+  &::after,
+  &::before {
+    background-color: var(--vf-color-border-default);
+    content: "";
+    position: absolute;
+  }
+
+  @if $pos == top {
+    &::before {
+      height: 1px;
+      left: 0;
+      right: 0;
+      top: 0;
+    }
+  } @else if $pos == left {
+    &::after {
+      bottom: 0;
+      left: -#{math.div(map.get($grid-gutter-widths, default), 2)};
+      top: 0;
+      width: 1px;
+    }
+  }
+}

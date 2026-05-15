@@ -1,0 +1,27 @@
+@mixin maas-contextual-menu {
+  // Used to add titles/group headers to the Vanilla contextual menu pattern.
+  .p-contextual-menu__non-interactive {
+    border-bottom: 1px solid $color-mid-light;
+    color: $color-mid-dark;
+    font-size: 0.75rem;
+    font-weight: 400;
+    padding: $spv--x-small $sph--large;
+    text-transform: uppercase;
+  }
+  // to match input of type select styles
+  .p-contextual-menu.is-maas-select {
+    [class^="p-button"].p-contextual-menu__toggle {
+      @extend %vf-input-elements;
+      padding-left: $spv--small;
+      text-align: left;
+      padding-right: 2rem;
+      min-width: auto;
+
+      i.p-contextual-menu__indicator {
+        position: absolute;
+        right: $spv--large;
+        top: calc(#{$spv--medium} - 2.5px);
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+@mixin SectionHeader {
+  .section-header__title {
+    margin: 0 $sph--large $spv--large 0;
+    padding-top: 0.051rem;
+  }
+
+  .section-header__subtitle {
+    margin: 0 $sph--large $spv--large 0;
+  }
+
+  .section-header__buttons {
+    margin-bottom: 0;
+
+    // We want the title to dictate the overall size of the header, so we reduce
+    // the margin of any buttons inside. We don't remove margin entirely, so at
+    // small screens they stack properly.
+    > [class*="p-button"],
+    > * > [class*="p-button"],
+    .p-contextual-menu__toggle {
+      margin-bottom: $spv--small;
+    }
+  }
+  .section-header__tabs {
+    margin-bottom: $spv--medium;
+  }
+}

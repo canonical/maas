@@ -1,0 +1,28 @@
+@use "sass:map";
+
+@mixin DeviceNetworkTable {
+  .device-network-table {
+    @include truncated-border(
+      $width: #{2 * map.get($icon-sizes, default) + $sph--small}
+    );
+
+    th,
+    td {
+      &:nth-child(1) {
+        @include breakpoint-widths(0.3);
+      }
+      &:nth-child(2) {
+        @include breakpoint-widths(0.2);
+      }
+      &:nth-child(3) {
+        @include breakpoint-widths(0.2);
+      }
+      &:nth-child(4) {
+        @include breakpoint-widths(0.2);
+      }
+      &:nth-child(5) {
+        @include breakpoint-widths(0.1);
+      }
+    }
+  }
+}

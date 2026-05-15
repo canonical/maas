@@ -1,0 +1,8 @@
+domain: maas-ui.demos.haus
+image: prod-web-team-demos.docker-registry.canonical.com/maas-ui.demos.haus
+readinessPath: "/"
+
+demo:
+  env:
+    - name: MAAS_URL
+      value: "https://maas-ui-demo.internal:5443/"

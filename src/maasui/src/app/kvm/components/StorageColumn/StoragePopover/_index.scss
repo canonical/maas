@@ -1,0 +1,31 @@
+@mixin StoragePopover {
+  %storage-popover-grid {
+    display: grid;
+    grid-column-gap: $sph--large;
+    grid-template-columns: 1fr 5rem 1fr;
+    padding-left: $sph--large;
+    padding-right: $sph--large;
+  }
+
+  .storage-popover {
+    width: 40rem;
+  }
+
+  .storage-popover__header {
+    @extend %storage-popover-grid;
+  }
+
+  .storage-popover__row {
+    @extend %storage-popover-grid;
+    padding-bottom: $spv--small;
+    padding-top: $spv--small;
+
+    > * {
+      overflow: hidden;
+    }
+
+    &:not(:last-child) {
+      border-bottom: 1px solid #cdcdcd;
+    }
+  }
+}

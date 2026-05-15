@@ -37,6 +37,7 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
       docs: ${{ steps.filter.outputs.docs }}
       lint: ${{ steps.filter.outputs.lint }}
+      ui: ${{ steps.filter.outputs.ui }}
       image: ${{ steps.image.outputs.tag }}
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
@@ -82,6 +83,8 @@ jobs:
               - 'tox.ini'
               - 'required-packages/base'
               - 'snap/snapcraft.yaml'
+            ui:
+              - 'src/maasui/**'
 
   lint:
     runs-on: ubuntu-24.04
@@ -130,6 +133,28 @@ jobs:
             tftp
             deps
             ci
+            ui/api
+            ui/base
+            ui/controllers
+            ui/deps
+            ui/deps-dev
+            ui/devices
+            ui/domains
+            ui/images
+            ui/intro
+            ui/kvm
+            ui/login
+            ui/machines
+            ui/networkDiscovery
+            ui/networks
+            ui/pools
+            ui/preferences
+            ui/racks
+            ui/settings
+            ui/store
+            ui/tags
+            ui/utils
+            ui/zones
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify BREAKING CHANGE in description
@@ -208,29 +233,101 @@ jobs:
     if: >-
       ${{ !github.event.pull_request.draft && needs.changes.outputs.docs == 'true' }}
     steps:
-    - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-      with:
-        fetch-depth: 0
-    - name: Create venv
-      working-directory: "docs"
-      run: make install
-    - name: Lint markdown
-      working-directory: "docs"
-      run: make lint-md
-    - name: Test build
-      working-directory: "docs"
-      run: make html
-    - name: Run scripts tests
-      working-directory: "docs"
-      run: |
-        source .sphinx/venv/bin/activate
-        pip install -r requirements-dev.txt
-        cd _scripts && python -m pytest .
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+        with:
+          fetch-depth: 0
+      - name: Create venv
+        working-directory: "docs"
+        run: make install
+      - name: Lint markdown
+        working-directory: "docs"
+        run: make lint-md
+      - name: Test build
+        working-directory: "docs"
+        run: make html
+      - name: Run scripts tests
+        working-directory: "docs"
+        run: |
+          source .sphinx/venv/bin/activate
+          pip install -r requirements-dev.txt
+          cd _scripts && python -m pytest .
+
+  lint-ui:
+    runs-on: ubuntu-24.04
+    needs: changes
+    if: ${{ !github.event.pull_request.draft && needs.changes.outputs.ui == 'true' }}
+    defaults:
+      run:
+        working-directory: src/maasui
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore node_modules
+        id: yarn-cache
+        uses: actions/cache@v4
+        with:
+          path: src/maasui/node_modules
+          key: ${{ runner.os }}-ui-modules-${{ hashFiles('src/maasui/yarn.lock') }}
+
+      - name: Use Node.js from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/maasui/.nvmrc
+
+      - name: Install
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: CYPRESS_INSTALL_BINARY=0 yarn install
+
+      - run: yarn lint
+
+  test-ui:
+    runs-on: ubuntu-24.04
+    needs: changes
+    if: ${{ !github.event.pull_request.draft && needs.changes.outputs.ui == 'true' }}
+    defaults:
+      run:
+        working-directory: src/maasui
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore node_modules
+        id: yarn-cache
+        uses: actions/cache@v4
+        with:
+          path: src/maasui/node_modules
+          key: ${{ runner.os }}-ui-modules-${{ hashFiles('src/maasui/yarn.lock') }}
+
+      - name: Use Node.js from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/maasui/.nvmrc
+
+      - name: Install
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: CYPRESS_INSTALL_BINARY=0 yarn install
+
+      - run: MEASURE_UNIT_PERFORMANCE=true yarn test
+
+      - name: Upload timing logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-timings
+          path: src/maasui/test-timings.log
 
   ci-check:
     runs-on: ubuntu-slim
     if: always()
-    needs: [lint, test-python, test-go, test-docs, validate-conventional-commit]
+    needs:
+      [
+        lint,
+        test-python,
+        test-go,
+        test-docs,
+        validate-conventional-commit,
+        lint-ui,
+        test-ui,
+      ]
     steps:
       - name: Determine overall CI status
         id: status

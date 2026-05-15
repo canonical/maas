@@ -1,0 +1,68 @@
+name: sitespeed.io
+on:
+  push:
+    branches:
+      - main
+      - "3.*"
+jobs:
+  run-sitespeed:
+    name: Run sitespeed.io
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+    env:
+      MAAS_DOMAIN: localhost
+      MAAS_URL: http://localhost:5240
+    steps:
+      - uses: actions/checkout@main
+      - name: Install snapd and core snaps
+        run: |
+          sudo snap install snapd
+          sudo snap install core26 --candidate
+      - name: Setup MAAS
+        uses: canonical/setup-maas@main
+        with:
+          maas-url: ${{ env.MAAS_URL }}/MAAS
+          use-maasdb-dump: true
+          maasdb-dump-url: https://github.com/canonical/maas-ui-testing/raw/main/db/maasdb-24.04-master-1000.dump
+      - name: Create MAAS admin
+        run: sudo maas createadmin --username=admin --password=test --email=fake@example.org
+      - name: Wait for MAAS
+        uses: nev7n/wait_for_response@v1
+        with:
+          url: "http://${{env.MAAS_DOMAIN}}:5240/MAAS/r"
+          responseCode: 200
+          timeout: 200000
+          interval: 500
+      - name: Login MAAS admin
+        run: |
+          # Retry admin login up to 5 times with 10s intervals to account for delays in MAAS becoming fully operational
+          for attempt in {1..5}; do
+            export API_KEY=$(sudo maas apikey --username=admin)
+            if maas login admin http://localhost:5240/MAAS $API_KEY; then
+              echo "Login successful."
+              break
+            else
+              echo "Login attempt $attempt failed. Retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+      - name: Wait for MAAS boot resources
+        shell: bash
+        run: while [ $(maas admin boot-resources is-importing | cat) == "true" ]; do sleep 10; done; echo "syncing finished"
+      - name: Run sitespeed.io tests
+        run: yarn sitespeed:ci --browsertime.domain=${{env.MAAS_DOMAIN}}
+      - name: Collect MAAS logs
+        if: failure()
+        shell: bash
+        run: journalctl -u snap.maas.pebble.service --since="1 hour ago" > sitespeed.io/maas_logs.txt
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: maas_logs
+          path: sitespeed.io/maas_logs.txt
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: sitespeed.io-results
+          path: sitespeed.io/results

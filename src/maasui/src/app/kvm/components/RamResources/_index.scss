@@ -1,0 +1,69 @@
+@mixin RamResources {
+  $donut-size: 6.5rem;
+  $donut-width: 14px;
+
+  .ram-resources {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    padding: $spv--medium $sph--large $spv--x-small $sph--large;
+
+    .ram-resources__chart-container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ram-resources__chart {
+      align-self: center;
+      margin-top: -$spv--large;
+      width: $donut-size;
+    }
+
+    .ram-resources__table {
+      margin-bottom: 0;
+      margin-top: -$spv--small;
+      width: 100%;
+
+      th,
+      td {
+        &.type {
+          width: 6rem;
+        }
+
+        &.allocated, &.others, &.free {
+          text-align: right;
+        }
+      }
+    }
+  }
+
+  // Additional styles for when the component changes layout depending on the
+  // viewport size. Otherwise, the component keeps the "mobile" styling.
+  .ram-resources--dynamic-layout {
+    @media only screen and (min-width: $breakpoint-small) {
+      flex-direction: row;
+
+      .ram-resources__chart-container {
+        flex: 1;
+        margin-right: $sph--large;
+      }
+
+      .ram-resources__table-container {
+        flex: 3;
+      }
+    }
+
+    @media only screen and (min-width: $breakpoint-kvm-resources-card) {
+      flex-direction: column;
+
+      .ram-resources__chart-container {
+        flex: 0;
+        margin-right: $sph--large;
+      }
+
+      .ram-resources__chart {
+        flex: 0;
+      }
+    }
+  }
+}
