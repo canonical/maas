@@ -267,6 +267,34 @@ async def test_list_resource_pools_returns_message_when_empty(
 
 
 @pytest.mark.asyncio
+async def test_list_resource_pools_follows_pagination(
+    registered_tools: dict[str, Callable[..., object]],
+    mock_maas_client: tuple[MagicMock, MagicMock],
+) -> None:
+    _, client = mock_maas_client
+    client.get.side_effect = [
+        _response(
+            {
+                "items": [{"name": "default", "description": "Default"}],
+                "next": "/MAAS/a/v3/resource_pools?page=2&size=1",
+            }
+        ),
+        _response({"items": [{"name": "gpu", "description": "GPU"}]}),
+    ]
+
+    result = await registered_tools["list_resource_pools"]()
+
+    assert client.get.await_count == 2
+    assert client.get.await_args_list[0].args == ("/MAAS/a/v3/resource_pools",)
+    assert client.get.await_args_list[1].args == (
+        "/MAAS/a/v3/resource_pools?page=2&size=1",
+    )
+    assert "default" in result
+    assert "gpu" in result
+    client.client.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_list_zones_returns_table(
     registered_tools: dict[str, Callable[..., object]],
     mock_maas_client: tuple[MagicMock, MagicMock],

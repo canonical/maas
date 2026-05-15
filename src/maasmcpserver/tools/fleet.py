@@ -20,7 +20,11 @@ from maasmcpserver.models.machines import (
     MachineDetail,
     MachineSummary,
 )
-from maasmcpserver.tools.common import items_from_payload, markdown_table
+from maasmcpserver.tools.common import (
+    fetch_all_pages,
+    items_from_payload,
+    markdown_table,
+)
 from maasmcpserver.tools.common import run_tool as _run_tool
 
 _MACHINES_PATH = "/MAAS/a/v3/machines"
@@ -591,8 +595,7 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
     async def list_resource_pools() -> str:
         client = make_client(_pool, get_api_key())
         try:
-            response = await client.get(_RESOURCE_POOLS_PATH)
-            items = items_from_payload(response.json())
+            items = await fetch_all_pages(client, _RESOURCE_POOLS_PATH)
             if not items:
                 return "No resource pools found."
 
@@ -634,8 +637,7 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
     async def list_zones() -> str:
         client = make_client(_pool, get_api_key())
         try:
-            response = await client.get(_ZONES_PATH)
-            items = items_from_payload(response.json())
+            items = await fetch_all_pages(client, _ZONES_PATH)
             if not items:
                 return "No zones found."
 

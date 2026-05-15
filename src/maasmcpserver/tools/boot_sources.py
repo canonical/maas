@@ -15,7 +15,11 @@ from maasmcpserver.client import MAASClient, MAASClientPool
 from maasmcpserver.logging_events import log_tool_outcome, log_tool_received
 from maasmcpserver.middleware import get_api_key, get_session_id
 from maasmcpserver.models.boot_sources import BootSource, BootSourceSelection
-from maasmcpserver.tools.common import items_from_payload, safe_text
+from maasmcpserver.tools.common import (
+    fetch_all_pages,
+    items_from_payload,
+    safe_text,
+)
 from maasmcpserver.tools.common import run_tool as _run_tool
 
 _BOOT_SOURCES_PATH = "/MAAS/a/v3/boot_sources"
@@ -210,11 +214,8 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     async def list_boot_sources() -> str:
         client = make_client(pool, get_api_key())
         try:
-            response = await client.get(_BOOT_SOURCES_PATH)
-            sources = [
-                _boot_source_from_payload(item)
-                for item in items_from_payload(_response_json(response))
-            ]
+            items = await fetch_all_pages(client, _BOOT_SOURCES_PATH)
+            sources = [_boot_source_from_payload(item) for item in items]
             return _format_boot_sources(sources)
         finally:
             if getattr(client, "_close_after_use", False):
@@ -365,8 +366,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     async def list_available_images() -> str:
         client = make_client(pool, get_api_key())
         try:
-            response = await client.get(_AVAILABLE_IMAGES_PATH)
-            items = items_from_payload(_response_json(response))
+            items = await fetch_all_pages(client, _AVAILABLE_IMAGES_PATH)
             return _format_image_list("Available Images", items)
         finally:
             if getattr(client, "_close_after_use", False):
@@ -381,8 +381,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     async def list_selections() -> str:
         client = make_client(pool, get_api_key())
         try:
-            response = await client.get(_SELECTIONS_PATH)
-            items = items_from_payload(_response_json(response))
+            items = await fetch_all_pages(client, _SELECTIONS_PATH)
             return _format_image_list("Image Selections", items)
         finally:
             if getattr(client, "_close_after_use", False):

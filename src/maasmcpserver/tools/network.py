@@ -16,6 +16,7 @@ from maasmcpserver.logging_events import log_tool_outcome, log_tool_received
 from maasmcpserver.middleware import get_api_key, get_session_id
 from maasmcpserver.models.network import Fabric, Subnet, VLAN
 from maasmcpserver.tools.common import (
+    fetch_all_pages,
     items_from_payload,
     markdown_table,
     safe_text,
@@ -244,11 +245,8 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     async def list_fabrics() -> str:
         client = make_client(pool, get_api_key())
         try:
-            response = await client.get(_FABRICS_PATH)
-            fabrics = [
-                _fabric_from_payload(item)
-                for item in items_from_payload(response.json())
-            ]
+            items = await fetch_all_pages(client, _FABRICS_PATH)
+            fabrics = [_fabric_from_payload(item) for item in items]
             if not fabrics:
                 return "No fabrics found."
 

@@ -25,6 +25,33 @@ def items_from_payload(payload: Any) -> list[dict[str, Any]]:
     return []
 
 
+async def fetch_all_pages(
+    client: MAASClient,
+    path: str,
+) -> list[dict[str, Any]]:
+    """Fetch every page from a MAAS v3 paginated endpoint.
+
+    The MAAS v3 API uses offset pagination: each response contains an
+    optional ``next`` URL pointing to the following page.  This helper
+    follows those links until ``next`` is absent or null.
+
+    Note: MCP resources do not receive a Context object in v1.27.0, so
+    per-page progress reporting via ``ctx.report_progress()`` is not
+    possible here.  When FastMCP adds Context injection for resources
+    this function should be updated to accept and use a Context arg.
+    """
+    all_items: list[dict[str, Any]] = []
+    next_path: str | None = path
+    while next_path is not None:
+        response = await client.get(next_path)
+        payload = response.json()
+        all_items.extend(items_from_payload(payload))
+        next_path = (
+            payload.get("next") if isinstance(payload, dict) else None
+        )
+    return all_items
+
+
 def safe_text(value: Any, default: str = "-") -> str:
     """Convert a value to display text with a fallback for None/empty."""
     if value in (None, "", []):
