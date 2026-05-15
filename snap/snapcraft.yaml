@@ -123,6 +123,7 @@ parts:
       - nmap
       - openssh-client
       - perl-base
+      - python3
       - python3-aiodns
       - python3-aiofiles
       - python3-aiohttp
