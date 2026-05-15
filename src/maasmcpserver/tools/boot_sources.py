@@ -3,14 +3,22 @@
 
 """MCP tools for MAAS boot source management."""
 
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import Annotated, Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from pydantic import Field
 
 from maasmcpserver.client import MAASClient, MAASClientPool
+from maasmcpserver.logging_events import log_tool_outcome, log_tool_received
+from maasmcpserver.middleware import get_api_key, get_session_id
 from maasmcpserver.models.boot_sources import BootSource, BootSourceSelection
-from maasmcpserver.tools.common import items_from_payload, run_tool, safe_text
+from maasmcpserver.tools.common import (
+    items_from_payload,
+    run_tool as _run_tool,
+    safe_text,
+)
 
 _BOOT_SOURCES_PATH = "/MAAS/a/v3/boot_sources"
 _BOOT_SOURCE_PATH = "/MAAS/a/v3/boot_sources/{boot_source_id}"
@@ -23,6 +31,39 @@ _BOOT_SOURCE_SYNC_PATH = (
 _AVAILABLE_IMAGES_PATH = "/MAAS/a/v3/available_images"
 _SELECTIONS_PATH = "/MAAS/a/v3/selections"
 _CUSTOM_IMAGES_PATH = "/MAAS/a/v3/custom_images"
+
+
+
+def make_client(pool: Any, api_key: str) -> MAASClient:
+    if hasattr(pool, "client"):
+        client = pool.client(api_key)
+        client._close_after_use = False
+        return client
+
+    client = MAASClient(pool, api_key)
+    client._close_after_use = True
+    return client
+
+
+async def run_tool(
+    tool_name: str,
+    params: dict[str, Any],
+    pool: MAASClientPool,
+    operation: Callable[[MAASClient], Awaitable[str]],
+    not_found_message: str | None = None,
+) -> str:
+    return await _run_tool(
+        tool_name,
+        params,
+        pool,
+        operation,
+        not_found_message=not_found_message,
+        get_api_key_func=get_api_key,
+        get_session_id_func=get_session_id,
+        log_tool_received_func=log_tool_received,
+        log_tool_outcome_func=log_tool_outcome,
+        make_client_func=make_client,
+    )
 
 
 def _response_json(response: httpx.Response) -> Any:
@@ -183,8 +224,18 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         description="Trigger an asynchronous sync for a specific boot source selection.",
     )
     async def trigger_boot_source_sync(
-        boot_source_id: int,
-        selection_id: int,
+        boot_source_id: Annotated[
+            int,
+            Field(description="Numeric ID of the boot source."),
+        ],
+        selection_id: Annotated[
+            int,
+            Field(
+                description=(
+                    "Numeric ID of the boot source selection to sync."
+                )
+            ),
+        ],
     ) -> str:
         params = {
             "boot_source_id": boot_source_id,
@@ -219,7 +270,12 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         title="Delete Boot Source",
         description="Permanently delete a boot source and all its selections from MAAS.",
     )
-    async def delete_boot_source(boot_source_id: int) -> str:
+    async def delete_boot_source(
+        boot_source_id: Annotated[
+            int,
+            Field(description="Numeric ID of the boot source to delete."),
+        ],
+    ) -> str:
         params = {"boot_source_id": boot_source_id}
 
         async def operation(client: MAASClient) -> str:
@@ -263,9 +319,18 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         description="Return all image selections configured for a specific boot source.",
     )
     async def list_boot_source_selections(
-        boot_source_id: int,
-        page: int = 1,
-        page_size: int = 100,
+        boot_source_id: Annotated[
+            int,
+            Field(description="Numeric ID of the boot source."),
+        ],
+        page: Annotated[
+            int,
+            Field(description="Page number (1-based)."),
+        ] = 1,
+        page_size: Annotated[
+            int,
+            Field(description="Number of results per page."),
+        ] = 100,
     ) -> str:
         params = {
             "boot_source_id": boot_source_id,
@@ -304,7 +369,16 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         title="List Selections",
         description="Return all active image selections across all boot sources.",
     )
-    async def list_selections(page: int = 1, page_size: int = 100) -> str:
+    async def list_selections(
+        page: Annotated[
+            int,
+            Field(description="Page number (1-based)."),
+        ] = 1,
+        page_size: Annotated[
+            int,
+            Field(description="Number of results per page."),
+        ] = 100,
+    ) -> str:
         params = {"page": page, "page_size": page_size}
 
         async def operation(client: MAASClient) -> str:
@@ -321,7 +395,16 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         title="List Custom Images",
         description="Return all custom (uploaded) boot images available in MAAS.",
     )
-    async def list_custom_images(page: int = 1, page_size: int = 100) -> str:
+    async def list_custom_images(
+        page: Annotated[
+            int,
+            Field(description="Page number (1-based)."),
+        ] = 1,
+        page_size: Annotated[
+            int,
+            Field(description="Number of results per page."),
+        ] = 100,
+    ) -> str:
         params = {"page": page, "page_size": page_size}
 
         async def operation(client: MAASClient) -> str:

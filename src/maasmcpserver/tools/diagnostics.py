@@ -3,18 +3,59 @@
 
 """MCP diagnostic tools for MAAS machines."""
 
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Annotated, Any
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import Field
 
 from maasmcpserver.client import MAASClient, MAASClientPool
+from maasmcpserver.logging_events import log_tool_outcome, log_tool_received
+from maasmcpserver.middleware import get_api_key, get_session_id
 from maasmcpserver.models.diagnostics import MachineEvent, ScriptResult
-from maasmcpserver.tools.common import items_from_payload, run_tool, safe_text
+from maasmcpserver.tools.common import (
+    items_from_payload,
+    run_tool as _run_tool,
+    safe_text,
+)
 
 _EVENTS_PATH = "/MAAS/a/v3/events"
 _MACHINES_PATH = "/MAAS/a/v3/machines"
 _SCRIPT_RESULTS_PATH = "/MAAS/a/v3/machines/{system_id}/script_results"
+
+
+
+def make_client(pool: Any, api_key: str) -> MAASClient:
+    if hasattr(pool, "client"):
+        client = pool.client(api_key)
+        client._close_after_use = False
+        return client
+
+    client = MAASClient(pool, api_key)
+    client._close_after_use = True
+    return client
+
+
+async def run_tool(
+    tool_name: str,
+    params: dict[str, Any],
+    pool: MAASClientPool,
+    operation: Callable[[MAASClient], Awaitable[str]],
+    not_found_message: str | None = None,
+) -> str:
+    return await _run_tool(
+        tool_name,
+        params,
+        pool,
+        operation,
+        not_found_message=not_found_message,
+        get_api_key_func=get_api_key,
+        get_session_id_func=get_session_id,
+        log_tool_received_func=log_tool_received,
+        log_tool_outcome_func=log_tool_outcome,
+        make_client_func=make_client,
+    )
 
 
 def _parse_created(value: str) -> datetime | None:
@@ -100,8 +141,14 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         description="Return recent audit and lifecycle events for a machine, optionally filtered by event type and limited by count.",
     )
     async def get_machine_events(
-        identifier: str,
-        since_hours: int | None = None,
+        identifier: Annotated[
+            str,
+            Field(description="System ID, hostname, or FQDN of the machine."),
+        ],
+        since_hours: Annotated[
+            int | None,
+            Field(description="Only return events from the last N hours."),
+        ] = None,
     ) -> str:
         """Return recent machine events for a hostname or system_id."""
         params = {
@@ -184,8 +231,18 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         description="Return commissioning or testing script results for a machine, optionally filtered by script type (commissioning/testing) and script name.",
     )
     async def get_script_results(
-        identifier: str,
-        script_type: str | None = None,
+        identifier: Annotated[
+            str,
+            Field(description="System ID, hostname, or FQDN of the machine."),
+        ],
+        script_type: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Filter by script type: 'commissioning' or 'testing'."
+                )
+            ),
+        ] = None,
     ) -> str:
         """Return script results for a hostname or system_id."""
         params = {
@@ -249,9 +306,18 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         description="Return paginated MAAS audit and lifecycle events, optionally filtered by one or more machine system IDs.",
     )
     async def list_events(
-        system_ids: list[str] | None = None,
-        page: int = 1,
-        page_size: int = 100,
+        system_ids: Annotated[
+            list[str] | None,
+            Field(description="Filter events to these machine system IDs."),
+        ] = None,
+        page: Annotated[
+            int,
+            Field(description="Page number (1-based)."),
+        ] = 1,
+        page_size: Annotated[
+            int,
+            Field(description="Number of results per page."),
+        ] = 100,
     ) -> str:
         params: dict[str, Any] = {"page": page, "page_size": page_size}
         if system_ids:

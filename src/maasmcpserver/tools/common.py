@@ -44,9 +44,9 @@ def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
     return "\n".join(lines)
 
 
-def make_client(pool: MAASClientPool) -> MAASClient:
+def make_client(pool: MAASClientPool, api_key: str) -> MAASClient:
     """Return a request-scoped client from the shared pool."""
-    return pool.client(get_api_key())
+    return pool.client(api_key)
 
 
 async def run_tool(
@@ -55,6 +55,13 @@ async def run_tool(
     pool: MAASClientPool,
     operation: Callable[[MAASClient], Awaitable[str]],
     not_found_message: str | None = None,
+    get_api_key_func: Callable[[], str] = get_api_key,
+    get_session_id_func: Callable[[], str] = get_session_id,
+    log_tool_received_func: Callable[[str, str, dict[str, Any]], None] = (
+        log_tool_received
+    ),
+    log_tool_outcome_func: Callable[..., None] = log_tool_outcome,
+    make_client_func: Callable[[Any, str], MAASClient] = make_client,
 ) -> str:
     """Run an MCP tool with standard logging and MAAS error handling.
 
@@ -72,42 +79,75 @@ async def run_tool(
         not_found_message: Optional message returned when the MAAS API responds
             with HTTP 404.  When *None* a generic http_error is returned.
     """
-    session_id = get_session_id()
-    log_tool_received(session_id, tool_name, params)
+    session_id = get_session_id_func()
+    log_tool_received_func(session_id, tool_name, params)
 
-    client = make_client(pool)
+    client = make_client_func(pool, get_api_key_func())
     try:
         result = await operation(client)
     except MAASUnreachableError as error:
-        log_tool_outcome(session_id, tool_name, "error", "maas_unreachable")
+        log_tool_outcome_func(
+            session_id,
+            tool_name,
+            "error",
+            "maas_unreachable",
+        )
         return (
             'Error (error_code: "maas_unreachable"): MAAS unreachable '
             f"({error.failure_mode}) at {error.url_pattern}"
         )
     except MAASPermissionError as error:
-        log_tool_outcome(session_id, tool_name, "error", "permission_denied")
+        log_tool_outcome_func(
+            session_id,
+            tool_name,
+            "error",
+            "permission_denied",
+        )
         return (
             'Error (error_code: "permission_denied"): '
             f"Permission denied (HTTP {error.status_code})."
         )
     except httpx.HTTPStatusError as error:
         if error.response.status_code == 404 and not_found_message is not None:
-            log_tool_outcome(session_id, tool_name, "error", "not_found")
+            log_tool_outcome_func(
+                session_id,
+                tool_name,
+                "error",
+                "not_found",
+            )
             return not_found_message
-        log_tool_outcome(session_id, tool_name, "error", "http_error")
+        log_tool_outcome_func(
+            session_id,
+            tool_name,
+            "error",
+            "http_error",
+        )
         return (
             'Error (error_code: "http_error"): HTTP '
             f"{error.response.status_code}: {error.response.text[:200]}"
         )
     except ValueError as error:
-        log_tool_outcome(session_id, tool_name, "error", "not_found")
+        log_tool_outcome_func(
+            session_id,
+            tool_name,
+            "error",
+            "not_found",
+        )
         return f'Error (error_code: "not_found"): {error}'
     except Exception as error:  # pragma: no cover - defensive guard
-        log_tool_outcome(session_id, tool_name, "error", "unexpected_error")
+        log_tool_outcome_func(
+            session_id,
+            tool_name,
+            "error",
+            "unexpected_error",
+        )
         return (
             'Error (error_code: "unexpected_error"): '
             f"{type(error).__name__}: {error}"
         )
+    finally:
+        if getattr(client, "_close_after_use", False):
+            await client.client.aclose()
 
-    log_tool_outcome(session_id, tool_name, "success")
+    log_tool_outcome_func(session_id, tool_name, "success")
     return result

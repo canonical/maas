@@ -4,16 +4,56 @@
 """MCP tool for MAAS deployment information."""
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from maasmcpserver.client import MAASClient, MAASClientPool
+from maasmcpserver.logging_events import log_tool_outcome, log_tool_received
+from maasmcpserver.middleware import get_api_key, get_session_id
 from maasmcpserver.models.info import MAASInfo, RackController
-from maasmcpserver.tools.common import items_from_payload, run_tool, safe_text
+from maasmcpserver.tools.common import (
+    items_from_payload,
+    run_tool as _run_tool,
+    safe_text,
+)
 
 _CONFIG_PATH = "/MAAS/a/v3/configurations/maas_name"
 _RACKS_PATH = "/MAAS/a/v3/racks"
+
+
+
+def make_client(pool: Any, api_key: str) -> MAASClient:
+    if hasattr(pool, "client"):
+        client = pool.client(api_key)
+        client._close_after_use = False
+        return client
+
+    client = MAASClient(pool, api_key)
+    client._close_after_use = True
+    return client
+
+
+async def run_tool(
+    tool_name: str,
+    params: dict[str, Any],
+    pool: MAASClientPool,
+    operation: Callable[[MAASClient], Awaitable[str]],
+    not_found_message: str | None = None,
+) -> str:
+    return await _run_tool(
+        tool_name,
+        params,
+        pool,
+        operation,
+        not_found_message=not_found_message,
+        get_api_key_func=get_api_key,
+        get_session_id_func=get_session_id,
+        log_tool_received_func=log_tool_received,
+        log_tool_outcome_func=log_tool_outcome,
+        make_client_func=make_client,
+    )
 
 
 def _rack_controller_from_payload(payload: dict[str, Any]) -> RackController:

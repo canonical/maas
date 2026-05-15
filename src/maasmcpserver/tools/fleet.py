@@ -3,12 +3,16 @@
 
 """Fleet discovery MCP tools for MAAS machines, pools, and zones."""
 
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import Annotated, Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from pydantic import Field
 
 from maasmcpserver.client import MAASClient, MAASClientPool
+from maasmcpserver.logging_events import log_tool_outcome, log_tool_received
+from maasmcpserver.middleware import get_api_key, get_session_id
 from maasmcpserver.models.machines import (
     BlockDevice,
     InterfaceSummary,
@@ -18,7 +22,7 @@ from maasmcpserver.models.machines import (
 from maasmcpserver.tools.common import (
     items_from_payload,
     markdown_table,
-    run_tool,
+    run_tool as _run_tool,
 )
 
 _MACHINES_PATH = "/MAAS/a/v3/machines"
@@ -26,6 +30,39 @@ _MACHINE_PATH = "/MAAS/a/v3/machines/{system_id}"
 _INTERFACES_PATH = "/MAAS/a/v3/machines/{system_id}/interfaces"
 _RESOURCE_POOLS_PATH = "/MAAS/a/v3/resource_pools"
 _ZONES_PATH = "/MAAS/a/v3/zones"
+
+
+
+def make_client(pool: Any, api_key: str) -> MAASClient:
+    if hasattr(pool, "client"):
+        client = pool.client(api_key)
+        client._close_after_use = False
+        return client
+
+    client = MAASClient(pool, api_key)
+    client._close_after_use = True
+    return client
+
+
+async def run_tool(
+    tool_name: str,
+    params: dict[str, Any],
+    pool: MAASClientPool,
+    operation: Callable[[MAASClient], Awaitable[str]],
+    not_found_message: str | None = None,
+) -> str:
+    return await _run_tool(
+        tool_name,
+        params,
+        pool,
+        operation,
+        not_found_message=not_found_message,
+        get_api_key_func=get_api_key,
+        get_session_id_func=get_session_id,
+        log_tool_received_func=log_tool_received,
+        log_tool_outcome_func=log_tool_outcome,
+        make_client_func=make_client,
+    )
 
 
 def _machine_from_payload(payload: Any) -> dict[str, Any] | None:
@@ -304,19 +341,60 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
         description="Return a paginated list of machines in the fleet, optionally filtered by hostname, status, resource pool, zone, or tags.",
     )
     async def list_machines(
-        status: str | None = None,
-        zone: str | None = None,
-        pool: str | None = None,
-        architecture: str | None = None,
-        tags: str | None = None,
-        owner: str | None = None,
-        power_state: str | None = None,
-        page: int = 1,
-        page_size: int = 50,
+        status: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Filter by machine status (e.g. 'ready', 'deployed', "
+                    "'commissioning')."
+                )
+            ),
+        ] = None,
+        hostname: Annotated[
+            str | None,
+            Field(description="Filter by hostname (substring match)."),
+        ] = None,
+        zone: Annotated[
+            str | None,
+            Field(description="Filter by availability zone name."),
+        ] = None,
+        pool: Annotated[
+            str | None,
+            Field(description="Filter by resource pool name."),
+        ] = None,
+        architecture: Annotated[
+            str | None,
+            Field(
+                description="Filter by architecture (e.g. 'amd64/generic')."
+            ),
+        ] = None,
+        tags: Annotated[
+            str | None,
+            Field(description="Filter by tag (comma-separated or repeated)."),
+        ] = None,
+        owner: Annotated[
+            str | None,
+            Field(description="Filter by owning username."),
+        ] = None,
+        power_state: Annotated[
+            str | None,
+            Field(
+                description="Filter by power state ('on', 'off', 'unknown')."
+            ),
+        ] = None,
+        page: Annotated[
+            int,
+            Field(description="Page number (1-based)."),
+        ] = 1,
+        page_size: Annotated[
+            int,
+            Field(description="Number of results per page."),
+        ] = 50,
     ) -> str:
         """List MAAS machines using optional fleet filters."""
         params = {
             "status": status,
+            "hostname": hostname,
             "zone": zone,
             "pool": pool,
             "architecture": architecture,
@@ -332,6 +410,7 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
                 key: value
                 for key, value in {
                     "status": status,
+                    "hostname": hostname,
                     "zone": zone,
                     "pool": pool,
                     "architecture": architecture,
@@ -398,7 +477,12 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
         title="Get Machine",
         description="Return full details for a single machine identified by system_id, hostname, or FQDN.",
     )
-    async def get_machine(identifier: str) -> str:
+    async def get_machine(
+        identifier: Annotated[
+            str,
+            Field(description="System ID, hostname, or FQDN of the machine."),
+        ],
+    ) -> str:
         """Return detailed machine information by hostname or system_id."""
 
         async def operation(client: MAASClient) -> str:
@@ -504,8 +588,14 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
         description="Return a paginated list of resource pools available in this MAAS instance.",
     )
     async def list_resource_pools(
-        page: int = 1,
-        page_size: int = 100,
+        page: Annotated[
+            int,
+            Field(description="Page number (1-based)."),
+        ] = 1,
+        page_size: Annotated[
+            int,
+            Field(description="Number of results per page."),
+        ] = 100,
     ) -> str:
         """List MAAS resource pools."""
 
@@ -555,7 +645,16 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
         title="List Zones",
         description="Return a paginated list of availability zones defined in this MAAS instance.",
     )
-    async def list_zones(page: int = 1, page_size: int = 100) -> str:
+    async def list_zones(
+        page: Annotated[
+            int,
+            Field(description="Page number (1-based)."),
+        ] = 1,
+        page_size: Annotated[
+            int,
+            Field(description="Number of results per page."),
+        ] = 100,
+    ) -> str:
         """List MAAS availability zones."""
 
         async def operation(client: MAASClient) -> str:
@@ -587,7 +686,12 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
         title="Get Machine Power State",
         description="Return the current power state (on/off/unknown) for a machine identified by system_id, hostname, or FQDN.",
     )
-    async def get_machine_power_state(identifier: str) -> str:
+    async def get_machine_power_state(
+        identifier: Annotated[
+            str,
+            Field(description="System ID, hostname, or FQDN of the machine."),
+        ],
+    ) -> str:
         """Return a machine power state by hostname or system_id."""
 
         async def operation(client: MAASClient) -> str:
