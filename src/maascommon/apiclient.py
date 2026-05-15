@@ -1,7 +1,6 @@
-# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-import os
 import random
 from typing import Any
 
@@ -16,7 +15,7 @@ class MAASAPIClient:
         self.url = url.rstrip("/")
         self.user_agent = user_agent
         self._oauth = MAASOAuth(*token.split(":"))
-        self._unix_client: httpx.AsyncClient | None = None
+        self._unix_client = self._create_unix_client()
 
     def _create_unix_client(self) -> httpx.AsyncClient:
         # Calls to Region API over a UNIX socket.
@@ -47,8 +46,6 @@ class MAASAPIClient:
 
     @property
     def unix_client(self) -> httpx.AsyncClient:
-        if self._unix_client is None:
-            self._unix_client = self._create_unix_client()
         return self._unix_client
 
     def make_client(
