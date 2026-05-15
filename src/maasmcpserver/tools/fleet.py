@@ -296,7 +296,7 @@ async def _get_machine_payload(
     return payload
 
 
-def register(mcp: FastMCP, pool: MAASClientPool) -> None:
+def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
     """Register fleet discovery tools on a FastMCP application."""
 
     @mcp.tool(
@@ -390,7 +390,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         return await run_tool(
             "list_machines",
             params,
-            pool,
+            _pool,
             operation,
         )
 
@@ -491,7 +491,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         return await run_tool(
             "get_machine",
             {"identifier": identifier},
-            pool,
+            _pool,
             operation,
             not_found_message=(
                 f'Error (error_code: "not_found"): Machine '
@@ -547,7 +547,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         return await run_tool(
             "list_resource_pools",
             {"page": page, "page_size": page_size},
-            pool,
+            _pool,
             operation,
         )
 
@@ -579,7 +579,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         return await run_tool(
             "list_zones",
             {"page": page, "page_size": page_size},
-            pool,
+            _pool,
             operation,
         )
 
@@ -602,7 +602,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         return await run_tool(
             "get_machine_power_state",
             {"identifier": identifier},
-            pool,
+            _pool,
             operation,
             not_found_message=(
                 f'Error (error_code: "not_found"): Machine '
