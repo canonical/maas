@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -7,7 +7,7 @@ import httpx
 from httpx import Request, Response
 import pytest
 
-from maastemporalworker.workflow.api_client import MAASAPIClient
+from maascommon.apiclient import MAASAPIClient
 
 
 @pytest.fixture
@@ -24,34 +24,55 @@ def client(dummy_token):
 
 class TestMAASAPIClient:
     @patch(
-        "maastemporalworker.workflow.api_client.worker_socket_paths",
+        "maascommon.apiclient.worker_socket_paths",
         return_value=["/tmp/socket1", "/tmp/socket2"],
     )
+    @patch("maascommon.apiclient.os.path.exists", return_value=True)
     @patch(
-        "maastemporalworker.workflow.api_client.random.choice",
+        "maascommon.apiclient.random.choice",
         return_value="/tmp/socket1",
     )
-    @patch("maastemporalworker.workflow.api_client.httpx.AsyncHTTPTransport")
-    @patch("maastemporalworker.workflow.api_client.httpx.AsyncClient")
+    @patch("maascommon.apiclient.httpx.AsyncHTTPTransport")
+    @patch("maascommon.apiclient.httpx.AsyncClient")
     def test_create_unix_client(
         self,
         mock_async_client,
         mock_transport,
         mock_choice,
+        mock_exists,
         mock_paths,
         dummy_token,
     ):
         mock_transport_instance = MagicMock()
         mock_transport.return_value = mock_transport_instance
 
-        MAASAPIClient("http://example.com", dummy_token, user_agent="MAAS")
+        client = MAASAPIClient(
+            "http://example.com", dummy_token, user_agent="MAAS"
+        )
+        # Access unix_client to trigger lazy creation
+        _ = client.unix_client
 
         mock_transport.assert_called_once_with(uds="/tmp/socket1")
         mock_async_client.assert_called_once()
         _, kwargs = mock_async_client.call_args
         assert kwargs["headers"]["User-Agent"] == "MAAS"
 
-    @patch("maastemporalworker.workflow.api_client.httpx.AsyncClient")
+    @patch(
+        "maascommon.apiclient.worker_socket_paths",
+        return_value=["/tmp/socket1", "/tmp/socket2"],
+    )
+    @patch("maascommon.apiclient.os.path.exists", return_value=False)
+    def test_create_unix_client_no_available_sockets(
+        self,
+        mock_exists,
+        mock_paths,
+        dummy_token,
+    ):
+        client = MAASAPIClient("http://example.com", dummy_token)
+        with pytest.raises(FileNotFoundError, match="No regiond worker"):
+            _ = client.unix_client
+
+    @patch("maascommon.apiclient.httpx.AsyncClient")
     def test_create_client_with_proxy(self, mock_async_client, dummy_token):
         client = MAASAPIClient(
             "http://example.com", dummy_token, user_agent="MAAS"
@@ -66,7 +87,7 @@ class TestMAASAPIClient:
         assert kwargs["verify"] is False
         assert isinstance(kwargs["timeout"], httpx.Timeout)
 
-    @patch("maastemporalworker.workflow.api_client.httpx.AsyncClient")
+    @patch("maascommon.apiclient.httpx.AsyncClient")
     def test_create_client_empty_proxy(self, mock_async_client, dummy_token):
         client = MAASAPIClient(
             "http://example.com", dummy_token, user_agent="MAAS"
@@ -78,7 +99,7 @@ class TestMAASAPIClient:
         assert kwargs["proxy"] is None
 
     @pytest.mark.asyncio
-    @patch("maastemporalworker.workflow.api_client.MAASOAuth")
+    @patch("maascommon.apiclient.MAASOAuth")
     async def test_request_async_success(self, mock_oauth, dummy_token):
         mock_oauth_instance = mock_oauth.return_value
         mock_oauth_instance.sign_request = MagicMock()
@@ -108,7 +129,7 @@ class TestMAASAPIClient:
         assert result == {"result": "ok"}
 
     @pytest.mark.asyncio
-    @patch("maastemporalworker.workflow.api_client.MAASOAuth")
+    @patch("maascommon.apiclient.MAASOAuth")
     async def test_request_async_raises_http_error(
         self, mock_oauth, dummy_token
     ):
