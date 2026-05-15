@@ -39,18 +39,13 @@ class TestMAASAPIClient:
         mock_async_client,
         mock_transport,
         mock_choice,
-        mock_exists,
         mock_paths,
         dummy_token,
     ):
         mock_transport_instance = MagicMock()
         mock_transport.return_value = mock_transport_instance
 
-        client = MAASAPIClient(
-            "http://example.com", dummy_token, user_agent="MAAS"
-        )
-        # Access unix_client to trigger lazy creation
-        _ = client.unix_client
+        MAASAPIClient("http://example.com", dummy_token, user_agent="MAAS")
 
         mock_transport.assert_called_once_with(uds="/tmp/socket1")
         mock_async_client.assert_called_once()
