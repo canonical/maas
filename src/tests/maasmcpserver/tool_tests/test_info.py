@@ -27,30 +27,12 @@ def set_maas_url(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def mock_context() -> Iterator[tuple[MagicMock, MagicMock]]:
-    with (
-        patch(
-            "maasmcpserver.middleware.get_api_key",
-            return_value="test-api-key",
-        ),
-        patch(
-            "maasmcpserver.middleware.get_session_id",
-            return_value="test-session-id",
-        ),
-        patch(
-            "maasmcpserver.tools.info.get_api_key",
-            return_value="test-api-key",
-        ),
-        patch(
-            "maasmcpserver.tools.info.get_session_id",
-            return_value="test-session-id",
-        ),
-        patch(
-            "maasmcpserver.tools.info.log_tool_received"
-        ) as log_tool_received,
-        patch("maasmcpserver.tools.info.log_tool_outcome") as log_tool_outcome,
+def mock_api_key() -> Iterator[None]:
+    with patch(
+        "maasmcpserver.tools.info.get_api_key",
+        return_value="test-api-key",
     ):
-        yield log_tool_received, log_tool_outcome
+        yield
 
 
 @pytest.fixture
@@ -59,15 +41,16 @@ def config() -> MaasServerConfig:
 
 
 @pytest.fixture
-def registered_tools(
+def registered_resources(
     config: MaasServerConfig,
 ) -> dict[str, Callable[..., object]]:
     registered: dict[str, Callable[..., object]] = {}
 
     class FakeMCP:
-        def tool(
+        def resource(
             self,
-            **_: object,
+            _uri: str,
+            **_kwargs: object,
         ) -> Callable[[Callable[..., object]], Callable[..., object]]:
             def decorator(
                 func: Callable[..., object],
@@ -98,12 +81,10 @@ def mock_maas_client() -> Iterator[tuple[MagicMock, MagicMock]]:
 @pytest.mark.asyncio
 async def test_get_maas_info_fetches_configuration_and_racks_via_gather(
     config: MaasServerConfig,
-    registered_tools: dict[str, Callable[..., object]],
+    registered_resources: dict[str, Callable[..., object]],
     mock_maas_client: tuple[MagicMock, MagicMock],
-    mock_context: tuple[MagicMock, MagicMock],
 ) -> None:
     client_class, client = mock_maas_client
-    log_tool_received, log_tool_outcome = mock_context
     config_response = make_response({"value": "my-maas"})
     racks_response = make_response(
         {
@@ -129,7 +110,7 @@ async def test_get_maas_info_fetches_configuration_and_racks_via_gather(
         "maasmcpserver.tools.info.asyncio.gather",
         new=recording_gather,
     ):
-        result = await registered_tools["get_maas_info"]()
+        result = await registered_resources["get_maas_info"]()
 
     client_class.assert_called_once_with(config, "test-api-key")
     assert len(gather_calls) == 1
@@ -146,22 +127,12 @@ async def test_get_maas_info_fetches_configuration_and_racks_via_gather(
     assert "connected" in result
     assert "instance_uuid" not in result
     assert "region_controllers" not in result
-    log_tool_received.assert_called_once_with(
-        "test-session-id",
-        "get_maas_info",
-        {},
-    )
-    log_tool_outcome.assert_called_once_with(
-        "test-session-id",
-        "get_maas_info",
-        "success",
-    )
     client.client.aclose.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_get_maas_info_supports_flat_racks_payload(
-    registered_tools: dict[str, Callable[..., object]],
+    registered_resources: dict[str, Callable[..., object]],
     mock_maas_client: tuple[MagicMock, MagicMock],
 ) -> None:
     _, client = mock_maas_client
@@ -178,7 +149,7 @@ async def test_get_maas_info_supports_flat_racks_payload(
         ),
     ]
 
-    result = await registered_tools["get_maas_info"]()
+    result = await registered_resources["get_maas_info"]()
 
     assert "rack-1" in result
     assert "xyz789" in result
@@ -188,14 +159,12 @@ async def test_get_maas_info_supports_flat_racks_payload(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("failing_path", [CONFIG_PATH, RACKS_PATH])
-async def test_get_maas_info_returns_maas_unreachable_error_string(
+async def test_get_maas_info_raises_on_maas_unreachable(
     failing_path: str,
-    registered_tools: dict[str, Callable[..., object]],
+    registered_resources: dict[str, Callable[..., object]],
     mock_maas_client: tuple[MagicMock, MagicMock],
-    mock_context: tuple[MagicMock, MagicMock],
 ) -> None:
     _, client = mock_maas_client
-    _, log_tool_outcome = mock_context
     config_response = make_response({"value": "my-maas"})
     racks_response = make_response({"items": []})
 
@@ -208,49 +177,29 @@ async def test_get_maas_info_returns_maas_unreachable_error_string(
 
     client.get.side_effect = fake_get
 
-    result = await registered_tools["get_maas_info"]()
+    with pytest.raises(MAASUnreachableError):
+        await registered_resources["get_maas_info"]()
 
-    assert result == (
-        'Error (error_code: "maas_unreachable"): MAAS '
-        f"unreachable (connection_refused) at {failing_path}"
-    )
-    log_tool_outcome.assert_called_once_with(
-        "test-session-id",
-        "get_maas_info",
-        "error",
-        "maas_unreachable",
-    )
     client.client.aclose.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_get_maas_info_returns_permission_error_string(
-    registered_tools: dict[str, Callable[..., object]],
+async def test_get_maas_info_raises_on_permission_error(
+    registered_resources: dict[str, Callable[..., object]],
     mock_maas_client: tuple[MagicMock, MagicMock],
-    mock_context: tuple[MagicMock, MagicMock],
 ) -> None:
     _, client = mock_maas_client
-    _, log_tool_outcome = mock_context
     client.get.side_effect = MAASPermissionError(403)
 
-    result = await registered_tools["get_maas_info"]()
+    with pytest.raises(MAASPermissionError):
+        await registered_resources["get_maas_info"]()
 
-    assert result == (
-        'Error (error_code: "permission_denied"): '
-        "Permission denied (HTTP 403)."
-    )
-    log_tool_outcome.assert_called_once_with(
-        "test-session-id",
-        "get_maas_info",
-        "error",
-        "permission_denied",
-    )
     client.client.aclose.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_get_maas_info_reports_when_no_rack_controllers_registered(
-    registered_tools: dict[str, Callable[..., object]],
+    registered_resources: dict[str, Callable[..., object]],
     mock_maas_client: tuple[MagicMock, MagicMock],
 ) -> None:
     _, client = mock_maas_client
@@ -259,7 +208,7 @@ async def test_get_maas_info_reports_when_no_rack_controllers_registered(
         make_response({"items": []}),
     ]
 
-    result = await registered_tools["get_maas_info"]()
+    result = await registered_resources["get_maas_info"]()
 
     assert "**Deployment Name**: my-maas" in result
     assert "No rack controllers registered." in result

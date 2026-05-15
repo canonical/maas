@@ -69,6 +69,14 @@ curl -s -X POST http://<region-host>:5240/MAAS/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
+## Available resources
+
+| Resource URI | Description |
+|--------------|-------------|
+| `maas://info` | Deployment name and rack controller status |
+
+Resources are also accessible as tools via `list_resources` and `read_resource` (see below).
+
 ## Available tools
 
 | Tool | Description |
@@ -78,7 +86,8 @@ curl -s -X POST http://<region-host>:5240/MAAS/mcp \
 | `get_machine_power_state` | Current power state for a machine |
 | `list_resource_pools` | All resource pools |
 | `list_zones` | All availability zones |
-| `get_maas_info` | Deployment name and rack controller status |
+| `list_resources` | List all available MCP resources (including `maas://info`) |
+| `read_resource` | Read a resource by URI (e.g. `read_resource {"uri": "maas://info"}`) |
 | `list_fabrics` | All network fabrics |
 | `get_fabric` | Detail for a single fabric |
 | `list_vlans` | VLANs for a fabric |
