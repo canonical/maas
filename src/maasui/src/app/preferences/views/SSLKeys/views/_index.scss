@@ -1,0 +1,9 @@
+@mixin SSLKeyList {
+  .sslkey-list td,
+  .sslkey-list th {
+    // Actions:
+    &:nth-child(2) {
+      flex: 0.3 0 0;
+    }
+  }
+}

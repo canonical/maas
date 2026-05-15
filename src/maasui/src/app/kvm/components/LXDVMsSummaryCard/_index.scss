@@ -1,0 +1,57 @@
+@mixin LXDVMsSummaryCard {
+  .lxd-vms-summary-card {
+    @extend %vf-is-bordered;
+    display: grid;
+    grid-template-areas:
+      "ram ram ram ram"
+      "cor cor cor cor"
+      "sto sto sto sto"
+      "vfs vfs vfs vfs";
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: min-content;
+
+    .ram-resources {
+      grid-area: ram;
+    }
+
+    .core-resources {
+      border-top: $border;
+      grid-area: cor;
+    }
+
+    .storage-resources {
+      border-top: $border;
+      grid-area: sto;
+    }
+
+    .vf-resources {
+      border-top: $border;
+      grid-area: vfs;
+    }
+
+    @media only screen and (min-width: $breakpoint-small) {
+      grid-template-areas:
+        "ram ram ram ram ram ram"
+        "cor cor cor cor cor cor"
+        "sto sto sto vfs vfs vfs"
+        "sto sto sto vfs vfs vfs";
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+
+      .vf-resources {
+        border-left: $border;
+      }
+    }
+
+    @media only screen and (min-width: $breakpoint-kvm-resources-card) {
+      grid-template-areas: "ram cor sto vfs";
+      grid-template-columns: 26fr 20fr 22fr 20fr;
+
+      .core-resources,
+      .storage-resources,
+      .vf-resources {
+        border-left: $border;
+        border-top: 0;
+      }
+    }
+  }
+}

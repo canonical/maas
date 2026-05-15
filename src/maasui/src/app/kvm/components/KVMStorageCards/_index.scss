@@ -1,0 +1,25 @@
+@mixin KVMStorageCards {
+  .kvm-storage-cards {
+    @extend %base-grid;
+    grid-template-columns: 1fr;
+
+    @media only screen and (min-width: $breakpoint-large) {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    @media only screen and (min-width: $breakpoint-x-large) {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+  }
+
+  .kvm-storage-cards__meter {
+    display: grid;
+    grid-column-gap: $sph--large;
+    grid-template-columns: 1fr;
+    grid-template-rows: min-content;
+
+    @media only screen and (min-width: $breakpoint-small) {
+      grid-template-columns: 1fr 3fr;
+    }
+  }
+}

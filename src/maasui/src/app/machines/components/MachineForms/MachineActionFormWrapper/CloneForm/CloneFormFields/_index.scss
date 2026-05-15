@@ -1,0 +1,85 @@
+@mixin CloneFormFields {
+  .clone-tables {
+    @extend %vf-has-round-corners;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .clone-table-card {
+    @extend %vf-is-bordered;
+    padding: $spv--medium 0 0 $sph--large;
+  }
+
+  .clone-table-container {
+    max-height: 22rem;
+    min-height: 8rem;
+    overflow: auto;
+  }
+
+  %clone-table {
+    th,
+    td {
+      padding-left: $sph--x-small;
+      padding-right: $sph--x-small;
+    }
+
+    th:first-child,
+    td:first-child {
+      padding-left: 0;
+    }
+
+    th:last-child,
+    td:last-child {
+      padding-right: 1rem;
+    }
+
+    &.not-selected {
+      opacity: 0.5;
+    }
+  }
+
+  .clone-table--network {
+    @extend %clone-table;
+
+    .name-col {
+      width: 27%;
+    }
+
+    .fabric-col {
+      width: 33%;
+    }
+
+    .type-col {
+      width: 40%;
+    }
+
+    .dhcp-col {
+      width: 4.5rem;
+    }
+  }
+
+  .clone-table--storage {
+    @extend %clone-table;
+
+    .name-col {
+      width: 33%;
+    }
+
+    .model-col {
+      width: 34%;
+    }
+
+    .type-col {
+      width: 33%;
+    }
+
+    .size-col {
+      width: 5.5rem;
+    }
+
+    .available-col {
+      width: 4.5rem;
+    }
+  }
+}

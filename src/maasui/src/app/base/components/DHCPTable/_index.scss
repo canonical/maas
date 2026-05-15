@@ -1,0 +1,25 @@
+@mixin DHCPTable {
+  .dhcp-snippets-table {
+    th,
+    td {
+      &:nth-child(1) {
+        @include breakpoint-widths(0.45, 0.45, 0.35, 0.2, 0.2, true);
+      }
+      &:nth-child(2) {
+        @include breakpoint-widths(0, 0, 0.1, 0.1, 0.1, true);
+      }
+      &:nth-child(3) {
+        @include breakpoint-widths(0, 0, 0, 0.2, 0.2, true);
+      }
+      &:nth-child(4) {
+        @include breakpoint-widths(0, 0.1, 0.1, 0.1, 0.1, true);
+      }
+      &:nth-child(5) {
+        @include breakpoint-widths(0.55, 0.35, 0.35, 0.35, 0.35, true);
+      }
+      &:nth-child(6) {
+        @include breakpoint-widths(0, 0.1, 0.1, 0.05, 0.05, true);
+      }
+    }
+  }
+}

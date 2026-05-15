@@ -1,0 +1,32 @@
+@mixin FabricVLANsTable {
+  .fabric-vlans {
+    $vlan-width: 25%;
+    $space-width: 25%;
+    $subnets-width: 40%;
+    $available-width: 10%;
+
+    tr.p-generic-table__nested-row {
+      border-top: none;
+
+      td.subnets, td.available {
+        border-top: 1px solid var(--vf-color-border-low-contrast);
+      }
+    }
+
+    .vlan {
+      width: $vlan-width;
+    }
+
+    .space {
+      width: $space-width;
+    }
+
+    .subnets {
+      width: $subnets-width;
+    }
+
+    .available {
+      width: $available-width;
+    }
+  }
+}

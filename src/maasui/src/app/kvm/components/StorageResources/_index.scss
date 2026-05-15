@@ -1,0 +1,56 @@
+@mixin StorageResources {
+  .storage-resources {
+    display: flex;
+    flex-direction: row;
+    padding: $spv--medium $sph--large;
+  }
+
+  .single-pool {
+    flex-direction: column;
+  }
+
+  .storage-resources__content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .storage-resources__header {
+    flex: 0;
+    margin-right: 0;
+
+    &-no-pool {
+      flex: 1;
+    }
+  }
+
+  @media only screen and (min-width: $breakpoint-small) {
+    .storage-resources__header {
+      flex: 1;
+      margin-right: $sph--large;
+    }
+
+    .storage-resources__content {
+      flex: 3;
+    }
+  }
+
+  @media only screen and (min-width: $breakpoint-kvm-resources-card) {
+    .storage-resources.single-pool {
+      flex-direction: column;
+    }
+
+    .storage-resources__header {
+      flex: 0;
+      margin-right: 0;
+
+      &-no-pool {
+        flex: 1;
+      }
+    }
+
+    .storage-resources__content {
+      flex: 1;
+    }
+  }
+}

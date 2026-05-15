@@ -1,0 +1,22 @@
+@mixin DeleteTagFormWarnings {
+  .delete-tag-form-warnings {
+    margin: $spv--large 0;
+
+    .delete-tag-form-warnings__notification {
+      background-position: $sph--large $spv--medium;
+      border: 0;
+      margin-bottom: 0;
+      padding-bottom: 0;
+      padding-top: 0;
+
+      .p-notification__content {
+        padding-bottom: $sp-small;
+      }
+
+      &:not(:last-child) .p-notification__content {
+        border-bottom: 1px solid $color-mid-light;
+        margin-bottom: 0;
+      }
+    }
+  }
+}

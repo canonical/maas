@@ -1,0 +1,12 @@
+@use "sass:map";
+
+@mixin maas-grids {
+  %base-grid {
+    display: grid;
+    grid-column-gap: map.get($grid-gutter-widths, default);
+
+    @media only screen and (max-width: $breakpoint-small) {
+      grid-column-gap: map.get($grid-gutter-widths, small);
+    }
+  }
+}

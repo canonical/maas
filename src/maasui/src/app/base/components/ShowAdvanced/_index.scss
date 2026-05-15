@@ -1,0 +1,6 @@
+@mixin ShowAdvanced {
+  .show-advanced__content {
+    @extend .p-accordion__panel;
+    padding-left: 0;
+  }
+}

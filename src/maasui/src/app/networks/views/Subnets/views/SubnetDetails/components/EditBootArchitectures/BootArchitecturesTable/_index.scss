@@ -1,0 +1,26 @@
+.boot-architectures-table {
+  th.name,
+  td.name {
+    width: 25%;
+  }
+
+  th.bios_boot_method,
+  td.bios_boot_method {
+    width: 20%;
+  }
+
+  th.bootloader_arches,
+  td.bootloader_arches {
+    width: 20%;
+  }
+
+  th.protocol,
+  td.protocol {
+    width: 10%;
+  }
+
+  th.arch_octet,
+  td.arch_octet {
+    width: 20%;
+  }
+}

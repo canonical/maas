@@ -1,0 +1,57 @@
+// Values used to calculate width of subnet select dropdown.
+// When changing these, ensure column widths add to 100% + any rem widths.
+$subnet-col-ratio: 0.2;
+$fabric-col-ratio: 0.15;
+$vlan-col-ratio: 0.15;
+$pxe-col-width: 2.5rem;
+
+@mixin KVMComposeInterfacesTable {
+  .kvm-compose-interfaces-table {
+    td,
+    th {
+      // Name
+      &:nth-child(1) {
+        width: 11%;
+      }
+
+      // IP address
+      &:nth-child(2) {
+        width: 24%;
+      }
+
+      // Space
+      &:nth-child(3) {
+        width: 15%;
+      }
+
+      // Subnet
+      &:nth-child(4) {
+        width: percentage(math.div($subnet-col-ratio, 1));
+      }
+
+      // Fabric
+      &:nth-child(5) {
+        width: percentage(math.div($fabric-col-ratio, 1));
+      }
+
+      // VLAN
+      &:nth-child(6) {
+        width: percentage(math.div($vlan-col-ratio, 1));
+      }
+
+      // PXE
+      &:nth-child(7) {
+        width: $pxe-col-width;
+      }
+
+      // Actions
+      &:nth-child(8) {
+        width: 4.5rem;
+      }
+    }
+
+    .kvm-compose-interfaces-table__error-row {
+      border: 0;
+    }
+  }
+}

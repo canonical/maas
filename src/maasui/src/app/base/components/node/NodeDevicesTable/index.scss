@@ -1,0 +1,18 @@
+.p-generic-table, [class^="node-devices-table--"] {
+  th,td {
+    &.vendor, &.product {
+      width: 25%;
+    }
+
+    &.numa_node {
+      text-align: right;
+      width: 10%;
+    }
+  }
+
+  .p-generic-table__no-data {
+    * {
+      max-width: none;
+    }
+  }
+}

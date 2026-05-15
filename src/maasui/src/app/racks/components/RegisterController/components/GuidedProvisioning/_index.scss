@@ -1,0 +1,10 @@
+@mixin GuidedProvisioning {
+    .p-agent-token code
+    {
+        word-break: break-all;
+        white-space: normal;
+        margin-top: $spv--medium;
+        margin-bottom: $spv--medium;
+
+    }
+}

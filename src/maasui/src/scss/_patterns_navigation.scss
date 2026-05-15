@@ -1,0 +1,71 @@
+@use "sass:color";
+//Local overrides to the navigation pattern
+@mixin maas-navigation {
+  $breakpoint-hardware-menu: 1200px;
+
+  .p-navigation {
+    @include vf-animation('background-color');
+  }
+
+  .p-navigation__hardware-menu {
+    display: none;
+
+    @media (min-width: $breakpoint-navigation-threshold) and (max-width: $breakpoint-hardware-menu) {
+      display: inherit;
+    }
+  }
+
+  .u-hide--hardware-menu-threshold {
+    @media (min-width: $breakpoint-navigation-threshold) and (max-width: $breakpoint-hardware-menu) {
+      display: none;
+    }
+  }
+
+  $nav-theme-colors: (
+    "default": $colors--dark-theme--background-default,
+    "bark": #585841,
+    "sage": #4e5f51,
+    "olive": #3d5f11,
+    "viridian": #025a3d,
+    "prussian_green": #225d5c,
+    "blue": #0060bf,
+    "purple": #7764d8,
+    "magenta": #974097,
+    "red": #a71b33,
+  );
+  @each $name, $color in $nav-theme-colors {
+    .is-maas-#{$name} {
+      background-color: $color !important;
+    }
+  }
+
+  @each $name, $color in $nav-theme-colors {
+    .is-maas-#{$name}--accent {
+      background-color: color.scale($color, $lightness: 5%) !important;
+    }
+
+    .is-maas-#{$name}  {
+      .p-side-navigation__link:hover, [aria-current=page].p-side-navigation__link, .p-button--base:hover {
+        background-color: color.scale($color, $lightness: 8%) !important;
+      }
+
+      @media (min-width: $breakpoint-small) {
+        .p-side-navigation__item.has-active-child {
+          background-color: color.scale($color, $lightness: 8%);
+        }
+      } 
+
+      @media (min-width: $application-layout--breakpoint-side-nav-expanded) {
+        .p-side-navigation__item.has-active-child {
+          background-color: transparent;
+        }
+      }
+    }
+
+    .is-maas-#{$name}--accent {
+      .p-side-navigation__link:hover, [aria-current=page].p-side-navigation__link {
+        background-color: color.scale($color, $lightness: 12%) !important;
+      }
+    }
+  }
+}

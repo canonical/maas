@@ -1,0 +1,16 @@
+@mixin SettingsBackLink {
+  .settings-back-link {
+    .settings-back-link__link {
+      display: inline-block;
+      margin-bottom: $spv--medium;
+    }
+
+    .p-icon--chevron-up {
+      @include vf-icon-chevron($color-link);
+    }
+
+    .settings-back-link__divider {
+      margin-bottom: $spv--x-large;
+    }
+  }
+}

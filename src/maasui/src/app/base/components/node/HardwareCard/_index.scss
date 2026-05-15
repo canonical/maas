@@ -1,0 +1,18 @@
+@mixin HardwareCard {
+    .hardware-card {
+        padding: $spv--small $sph--large $spv--large $sph--large;
+
+        li.p-list__item {
+            padding: $spv--small 0 !important;
+        }
+
+        .p-list__item-label {
+            text-align: left !important;
+            margin-right: 0;
+        }
+
+        .hardware-card__section {
+            margin-bottom: $spv--large;
+        }
+    }
+}

@@ -1,0 +1,58 @@
+@mixin SubnetsList {
+  $grouped-subnet-indentation: $sph--x-large;
+
+  .subnets-table {
+    td {
+      padding-top: $spv--x-small;
+      padding-bottom: $spv--x-small;
+    }
+
+    .subnets-table__cell--fabric {
+      width: 13%;
+    }
+
+    .subnets-table__cell--space {
+      width: 14%;
+    }
+
+    .subnets-table__cell--vlan {
+      width: 13%;
+    }
+
+    .subnets-table__cell--subnet {
+      width: 28%;
+    }
+
+    .subnets-table__cell--ips {
+      width: 12%;
+    }
+
+    .subnets-table__cell--dhcp {
+      width: 20%;
+    }
+  }
+
+  @media (min-width: 773px) {
+    .subnets-table__visually-hidden {
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      height: 1px;
+      overflow: hidden;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
+  }
+
+  .fabric-table,
+  .space-table {
+    @include truncated-border($width: $grouped-subnet-indentation);
+    .subnet-row td:first-child {
+      padding-left: $grouped-subnet-indentation;
+    }
+  }
+
+  .subnet-group__select {
+    min-width: 10rem;
+  }
+}

@@ -1,0 +1,98 @@
+@mixin NodeName {
+  button.node-name--editable {
+    @extend %vf-heading-4;
+    margin-bottom: 0;
+    padding: 0 $spv--large;
+
+    &:active,
+    &:focus,
+    &:hover {
+      background-color: transparent;
+      cursor: text;
+      outline: 1px solid $color-mid-light;
+    }
+  }
+
+  .node-name__error {
+    // Force the errors to wrap onto a new line rather than appear on the same
+    // row as the inline fields.
+    flex-basis: 100%;
+  }
+
+  .node-name__error .p-form-validation__message {
+    margin-top: $spv--small;
+  }
+
+  .node-name__hostname-wrapper {
+    // Make the wrapping element take the space of the spacer.
+    flex-basis: min-content;
+
+    .p-form__control {
+      // Make the input's wrapper take up the space that's determined by the spacer.
+      width: 100%;
+    }
+  }
+
+  .node-name__hostname-spacer {
+    @extend %vf-heading-4;
+    // Collapse the spacer so it's taking up horizontal space but not vertical space.
+    height: 0;
+    margin: 0;
+    // Include space for the left and right borders on the input.
+    padding: 0 calc(#{$sph--large} + 1px);
+    visibility: hidden;
+    // Need to use pre so that the width includes any trailing whitespace.
+    white-space: pre;
+  }
+
+  .node-name__hostname--no-edit {
+    @extend %vf-heading-4;
+
+    @media only screen and (min-width: $breakpoint-large) {
+      padding: $sp-xx-small 0 calc(#{$sp-xx-small} + 1px) calc(#{$spv--large} + 1px);
+      margin-right: 0;
+      margin-bottom: 0;
+    }
+  }
+
+  [type="text"].node-name__hostname {
+    @extend %vf-heading-4;
+
+    @media only screen and (min-width: $breakpoint-large) {
+      margin-bottom: -1px;
+      min-width: 3rem;
+      // Remove 2px to account for the top and bottom borders.
+      padding: calc(#{$sp-xx-small} - 2px) $spv--large
+        calc(#{$sp-xx-small} + 1px);
+    }
+  }
+
+  @media only screen and (max-width: $breakpoint-large) {
+    .node-name__dot {
+      // Hide the dot on small screens.
+      display: none;
+    }
+
+    .node-name__hostname {
+      // Don't auto size the name input to match the content.
+      width: 100% !important;
+    }
+
+    .node-name__domain {
+      // Add space before the buttons.
+      margin-bottom: $spv--small;
+    }
+  }
+
+  @media only screen and (min-width: $breakpoint-large) {
+    .node-name__hostname {
+      // Add space before the dot.
+      margin-right: $sph--small;
+    }
+
+    .node-name label {
+      // Hide the labels on large screens.
+      display: none;
+    }
+  }
+}

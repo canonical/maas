@@ -1,0 +1,64 @@
+@use "sass:map";
+
+@mixin FilterAccordion {
+  [class^="p-button"].has-icon.filter-accordion__toggle,
+  .filter-accordion__item,
+  .filter-accordion {
+    width: 100%;
+  }
+
+  [class^="p-button"].has-icon.filter-accordion__toggle {
+    @extend %vf-input-elements;
+    padding-left: $spv--small;
+    text-align: left;
+
+    i {
+      position: absolute;
+      right: $spv--large;
+      top: calc(#{$spv--medium} - 1px);
+    }
+  }
+
+  .filter-accordion .p-accordion__list {
+    margin-bottom: 0;
+  }
+
+  .filter-accordion__dropdown {
+    max-height: 66vh;
+    overflow-y: auto;
+  }
+
+  .filter-accordion .p-accordion__panel {
+    padding-left: 0;
+  }
+
+  .filter-accordion .p-list__item {
+    padding-bottom: 0;
+    padding-top: 0;
+  }
+
+  .filter-accordion .p-contextual-menu__dropdown {
+    max-width: none;
+    width: calc(100% - 1px);
+  }
+
+  .filter-accordion--expanded .p-contextual-menu__dropdown {
+    max-width: none !important;
+    min-width: 20rem !important;
+  }
+
+  .filter-accordion__item {
+    padding-left: $sp-unit * 6;
+
+    &.is-active {
+      background-image: url("data:image/svg+xml,%3Csvg width='22' height='16' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cpath d='M-1-1h24v24H-1z'/%3E%3Cpath fill='" + vf-url-friendly-color(
+          $color-mid-dark
+        ) + "' fill-rule='nonzero' d='M2.872 5.933L.6 8.205l7.733 7.734L21.4 2.872 19.128.6 8.333 11.397z'/%3E%3C/g%3E%3C/svg%3E");
+      background-position-x: $sph--large;
+      background-position-y: center;
+      background-repeat: no-repeat;
+      background-size: map.get($icon-sizes, default);
+      font-weight: 400;
+    }
+  }
+}

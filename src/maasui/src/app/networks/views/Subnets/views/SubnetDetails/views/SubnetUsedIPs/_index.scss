@@ -1,0 +1,22 @@
+@mixin UsedIpTable {
+  .used-ip-table {
+    th, td {
+      &.ip {
+        width: 20%;
+      }
+
+      &.nodeHostName {
+        width: 24%;
+      }
+
+      &.usage {
+        width: 12%;
+      }
+
+      &.updated {
+        width: 14%;
+        text-align: left !important;
+      }
+    }
+  }
+}

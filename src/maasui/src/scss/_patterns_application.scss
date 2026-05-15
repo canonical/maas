@@ -1,0 +1,58 @@
+@mixin maas-application {
+  .l-application {
+    .l-main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      @media (min-width: $breakpoint-small) {
+        flex-direction: row;
+      }
+      .l-main__nav {
+        flex-shrink: 0;
+        overflow-y: auto;
+        height: 30%;
+        scrollbar-gutter: stable;
+
+        @media (min-width: $breakpoint-small) {
+          height: calc(100vh - 2.5rem);
+        }
+      }
+      .l-main__content {
+        width: 100%;
+        overflow-y: auto;
+      }
+    }
+    .l-aside {
+      z-index: $side-panel-z-index;
+      background-color: $color-x-light;
+    }
+    // override to allow for large width aside
+    .l-aside {
+      // add width transition for transition between aside sizes
+      @include vf-transition(
+        $property: #{transform,
+        box-shadow,
+        visibility, width},
+        $duration: snap
+      );
+      @media (min-width: $breakpoint-x-small) {
+        &.is-large {
+          width: 67rem;
+        }
+      }
+    }
+    .l-navigation-bar.is-pinned {
+      width: 100%;
+      display: block;
+      visibility: visible;
+      grid-area: navbar;
+      height: 3.5rem;
+    }
+  }
+
+  .is-dark .l-application {
+    .l-aside {
+      background-color: $colors--dark-theme--background-default;
+    }
+  }
+}

@@ -1,0 +1,65 @@
+@use "sass:map";
+
+@mixin maas-forms {
+  // Adds an "X" close button to the right of an input. Used in Add Machine form
+  // for removing extra MAC addresses.
+  .p-input--closeable {
+    position: relative;
+
+    .p-close-input {
+      margin: 0;
+      position: absolute;
+      right: 0;
+      top: 0;
+    }
+  }
+
+  // Align icon size with form validation font size
+  .p-form-validation__message [class*="p-icon--"] {
+    @extend %icon;
+    @include vf-icon-size(#{map.get($font-sizes, small)}rem);
+  }
+
+  // Add class to checkbox so that label does not change opacity when disabled
+  input[disabled],
+  input[disabled="disabled"] {
+    &[type="checkbox"].keep-label-opacity + label {
+      opacity: 1;
+
+      &::before,
+      &::after {
+        opacity: 0.5;
+      }
+    }
+  }
+
+  // Custom styling for form fields inside a table.
+  .p-form--table {
+    input,
+    select {
+      margin-bottom: 0;
+      min-width: 0;
+    }
+
+    .p-form-validation__message {
+      margin-top: 0;
+    }
+  }
+
+  // Make text small for readonly text areas.
+  // Used for displaying very long strings, e.g. certificates.
+  .p-textarea--readonly {
+    font-size: #{map.get($font-sizes, small)}rem;
+  }
+
+  // Override checkbox labels when the text should not appear as
+  // disabled when the input is disabled.
+  .p-checkbox--non-disabled-label {
+    .p-checkbox__input:disabled + .p-checkbox__label {
+      opacity: 1;
+      &:before {
+        opacity: 0.33;
+      }
+    }
+  }
+}

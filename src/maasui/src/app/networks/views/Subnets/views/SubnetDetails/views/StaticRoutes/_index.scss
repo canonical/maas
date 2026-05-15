@@ -1,0 +1,27 @@
+@mixin StaticRoutes {
+  .static-routes-table {
+    td {
+      white-space: normal;
+    }
+
+    th:nth-child(1),
+    td:nth-child(1) {
+      flex-grow: 0.37;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+      flex-grow: 0.37;
+    }
+
+    th:nth-child(3),
+    td:nth-child(3) {
+      flex-grow: 0.13;
+    }
+
+    th:nth-child(4),
+    td:nth-child(4) {
+      flex-grow: 0.13;
+    }
+  }
+}

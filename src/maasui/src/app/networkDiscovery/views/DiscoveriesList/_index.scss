@@ -1,0 +1,30 @@
+@mixin DiscoveriesList {
+  .p-table--network-discoveries > tbody > {
+    th,
+    td {
+      &:nth-child(1) {
+        @include breakpoint-widths(0.3, 0.2, 0.15, 0.15, 0.15, true);
+      }
+
+      &:nth-child(2) {
+        @include breakpoint-widths(0.55, 0.35, 0.2, 0.2, 0.2, true);
+      }
+
+      &:nth-child(3) {
+        @include breakpoint-widths(0, 0.35, 0.25, 0.25, 0.25, true);
+      }
+
+      &:nth-child(4) {
+        @include breakpoint-widths(0, 0, 0.15, 0.15, 0.15, true);
+      }
+
+      &:nth-child(5) {
+        @include breakpoint-widths(0, 0, 0.2, 0.25, 0.25, true);
+      }
+
+      &:nth-child(6) {
+        @include breakpoint-widths(0.15, 0.1, 0.1, 0.05, 0.05, true);
+      }
+    }
+  }
+}

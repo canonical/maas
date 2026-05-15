@@ -1,0 +1,24 @@
+name: MAAS Docs link checker
+on:
+  schedule:
+    - cron: "0 05 * * 1-5" # At 05:00 every day-of-week from Monday through Friday.
+  push:
+    branches:
+      - fix-docs-links-* # Branches that start with fix-docs-links-
+
+jobs:
+  docs:
+    name: maas.io/docs links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+      - name: Install dependencies
+        run: yarn
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Run docs links checks
+        run: yarn test-docs-links

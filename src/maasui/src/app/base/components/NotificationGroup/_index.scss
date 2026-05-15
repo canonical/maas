@@ -1,0 +1,51 @@
+@use "sass:map";
+
+@mixin NotificationGroup {
+  .p-notification-group {
+    // When the notification group is expanded, we override the usual spacing
+    // and borders so that "inner" notifications appear to be inside one
+    // "outer" notification.
+    .p-notification-group__summary.is-open {
+      border-bottom: 0;
+      margin-bottom: 0;
+    }
+
+    // The icon is removed from internal notifications in a group because it
+    // would be repetitive otherwise.
+    .p-notification-group__notification {
+      background-image: none;
+      border-top: 0;
+      position: relative;
+
+      // We only maintain the "normal" spacing and borders on bottom of the last
+      // notification in a group.
+      &:not(:last-child) {
+        border-bottom: 0;
+        border-radius: 0;
+        margin-bottom: 0;
+      }
+
+      // The usual notification is replaced with a pseudo-border that is padded
+      // on the left in order to visualise the hierarchy better.
+      &::after {
+        background-color: $color-mid-light;
+        content: "";
+        height: 1px;
+        left: 2 * $sph--large + map.get($icon-sizes, default);
+        position: absolute;
+        right: 0;
+        top: 0;
+      }
+
+      // The meta block border is removed and padding reduced, otherwise the
+      // internal notifications can get a bit "liney".
+      .p-notification__meta {
+        padding-top: 0;
+
+        &::after {
+          content: none;
+        }
+      }
+    }
+  }
+}

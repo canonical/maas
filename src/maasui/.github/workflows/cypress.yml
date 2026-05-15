@@ -1,0 +1,192 @@
+name: Cypress
+on:
+  push:
+    branches:
+      - main
+      - "3.*"
+      - "*cypress*"
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  cypress:
+    name: Cypress
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        groups: [ "no-users", "with-users" ]
+    env:
+      MAAS_URL: https://localhost:5443
+      MAAS_UI_URL: https://localhost:8400
+    steps:
+      - uses: actions/checkout@main
+      - name: Get branch name
+        uses: nelonoel/branch-name@v1.0.1
+      - name: Install snapd and core snaps
+        run: |
+          sudo snap install snapd
+          sudo snap install core26 --candidate
+      - name: Setup MAAS
+        uses: canonical/setup-maas@main
+        with:
+          maas-url: http://localhost:5240/MAAS
+      - name: Setup Keycloak for SSO tests
+        run: |
+          CONTAINER_NAME=keycloak-test
+          CONTAINER_PORT=8080
+          docker run -d --name keycloak-test \
+          -p 8080:8080 \
+          -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+          -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+          quay.io/keycloak/keycloak:26.5.5 start-dev
+          
+          # Wait for Keycloak to accept connections
+          echo "Waiting for Keycloak to be ready..."
+          until curl -s http://localhost:8080/realms/master >/dev/null; do
+            sleep 5
+          done
+          echo "Keycloak is ready"
+
+          # Log in as admin
+          docker exec -i $CONTAINER_NAME /bin/bash -c "\
+            /opt/keycloak/bin/kcadm.sh config credentials \
+              --server http://localhost:8080 \
+              --realm master \
+              --user admin \
+              --password admin
+          "
+
+          # Create test realm and client
+          docker exec -i $CONTAINER_NAME /bin/bash -c "\
+            /opt/keycloak/bin/kcadm.sh create realms -s realm=test-realm -s enabled=true
+          "
+          docker exec -i $CONTAINER_NAME /bin/bash -c "\
+            /opt/keycloak/bin/kcadm.sh create clients \
+              -r test-realm \
+              -s clientId=maas-client \
+              -s enabled=true \
+              -s publicClient=false \
+              -s 'standardFlowEnabled=true' \
+              -s \"redirectUris=[\\\"https://localhost:8400/MAAS/r/login/oidc/callback\\\"]\" \
+              -s \"webOrigins=[\\\"https://localhost:8400\\\"]\"
+          "
+
+          # Get client secret
+          KC_CLIENT_SECRET=$(docker exec $CONTAINER_NAME /bin/bash -c "\
+            CLIENT_ID=\$(/opt/keycloak/bin/kcadm.sh get clients -r test-realm -q clientId=maas-client --fields id --format csv | tail -n1 | tr -d '\"'); \
+            /opt/keycloak/bin/kcadm.sh get clients/\$CLIENT_ID/client-secret -r test-realm | grep value | cut -d'\"' -f4
+          ")
+          echo "KC_CLIENT_SECRET=$KC_CLIENT_SECRET" >> $GITHUB_ENV
+
+          USERNAME=johndoe
+          REALM=test-realm
+
+          # Create test user
+          docker exec -i $CONTAINER_NAME /bin/bash -c "\
+            /opt/keycloak/bin/kcadm.sh create users -r $REALM \
+              -s username=$USERNAME \
+              -s email=john.doe@example.com \
+              -s firstName=john \
+              -s lastName=doe \
+              -s enabled=true
+          "
+
+          # Wait until the user exists and get its ID
+          echo "Waiting for user $USERNAME to be fully created..."
+          USER_ID=""
+          while [ -z "$USER_ID" ]; do
+            USER_ID=$(docker exec -i $CONTAINER_NAME /bin/bash -c "\
+              /opt/keycloak/bin/kcadm.sh get users -r $REALM -q username=$USERNAME --fields id --format csv | tail -n1 | tr -d '\"' \
+            ")
+            [ -z "$USER_ID" ] && sleep 2
+          done
+          echo "User created with ID $USER_ID, setting password..."
+
+          # Set password for new user
+          docker exec -i $CONTAINER_NAME /bin/bash -c "\
+            /opt/keycloak/bin/kcadm.sh set-password -r $REALM \
+              --userid $USER_ID \
+              --new-password abc123 \
+              --temporary=false
+          "
+      - name: Use Node.js from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+      - name: Install Cypress
+        uses: cypress-io/github-action@v4
+        with:
+          runTests: false
+          install-command: yarn install
+          build: yarn build
+      - name: Create MAAS admin
+        if: matrix.groups == 'with-users'
+        run: sudo maas createadmin --username=admin --password=test --email=fake@example.org
+      - name: Create MAAS non-admin user
+        if: matrix.groups == 'with-users'
+        run: |
+          export API_KEY=`sudo maas apikey --username=admin`
+          maas login admin http://localhost:5240/MAAS $API_KEY
+          maas admin users create username=user password=test email=fake-user@example.org is_superuser=0
+      - name: Add Keycloak as OIDC provider in MAAS
+        if: matrix.groups == 'with-users'
+        shell: bash
+        run: |
+          maas admin oidc-providers create \
+            name="Keycloak" \
+            client_id="maas-client" \
+            client_secret="$KC_CLIENT_SECRET" \
+            enabled=True \
+            issuer_url="http://localhost:8080/realms/test-realm" \
+            token_type="JWT" \
+            redirect_uri="https://localhost:8400/MAAS/r/login/oidc/callback" \
+            scopes="openid profile email offline_access"
+      - name: Enable TLS for MAAS
+        shell: bash
+        run: |
+          echo "Generating self-signed certificate"
+          sudo mkdir -p /var/snap/maas/common/certs && \
+          sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout /var/snap/maas/common/certs/key.pem \
+            -out /var/snap/maas/common/certs/cert.pem \
+            -subj "/C=US/ST=State/L=City/O=Org/OU=Unit/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" && \
+          
+          echo "y" | sudo maas config-tls enable /var/snap/maas/common/certs/key.pem /var/snap/maas/common/certs/cert.pem
+          sudo chmod 644 /var/snap/maas/common/certs/key.pem /var/snap/maas/common/certs/cert.pem
+      - name: Trust self-signed certificate
+        run: |
+          sudo cp /var/snap/maas/common/certs/cert.pem /usr/local/share/ca-certificates/maas-selfsigned.crt
+          sudo update-ca-certificates
+      - name: Wait for MAAS boot resources
+        if: matrix.groups == 'with-users'
+        shell: bash
+        run: while [ $(maas admin boot-resources is-importing -k | cat) == "true" ]; do sleep 10; done; echo "syncing finished"
+      - name: Run Cypress tests
+        uses: cypress-io/github-action@v4
+        env:
+          HTTPS_CERT: /var/snap/maas/common/certs/cert.pem
+          HTTPS_KEY: /var/snap/maas/common/certs/key.pem
+          NODE_EXTRA_CA_CERTS: /var/snap/maas/common/certs/cert.pem
+        with:
+          config: baseUrl=${{env.MAAS_UI_URL}},pageLoadTimeout=100000
+          install: false
+          start: yarn start
+          spec: cypress/e2e/${{ matrix.groups }}/**/*.{spec.ts,feature}
+          wait-on: ${{env.MAAS_UI_URL}}/MAAS/r/machines
+          wait-on-timeout: 120
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+      - name: Collect MAAS logs
+        if: failure()
+        shell: bash
+        run: journalctl -u snap.maas.pebble.service --since="1 hour ago" > cypress/maas_logs.txt
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: maas_logs
+          path: cypress/maas_logs.txt

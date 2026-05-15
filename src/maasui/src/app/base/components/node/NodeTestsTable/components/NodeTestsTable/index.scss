@@ -1,0 +1,38 @@
+@mixin NodeTestsTable {
+  .node-tests-table {
+    .suppress-col {
+      width: 5rem;
+    }
+
+    .name-col {
+      @include breakpoint-widths(100, 40, 40, 35, 25, true);
+    }
+
+    .tags-col {
+      @include breakpoint-widths(0, 0, 0, 0, 18, true);
+    }
+
+    .result-col {
+      @include breakpoint-widths(0, 60, 60, 30, 20, true);
+    }
+
+    .date-col {
+      @include breakpoint-widths(0, 0, 0, 35, 22, true);
+    }
+
+    .runtime-col {
+      @include breakpoint-widths(0, 0, 0, 0, 15, true);
+    }
+
+    .actions-col {
+      flex: 0 0 4.5rem;
+    }
+
+    .p-table__expanding-panel {
+      margin-left: 0;
+      margin-right: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+}

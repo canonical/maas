@@ -1,0 +1,30 @@
+@mixin ScriptsUpload {
+  .scripts-upload {
+    @include vf-focus;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    border-width: 1px;
+    border-radius: 2px;
+    border-color: $color-mid-x-light;
+    border-style: dashed;
+    background-color: $color-light;
+    color: $color-mid;
+    outline: none;
+    transition: border 0.24s ease-in-out;
+  }
+
+  .scripts-upload--active {
+    border-color: $color-link;
+  }
+
+  .scripts-upload--accept {
+    border-color: $color-positive;
+  }
+
+  .scripts-upload--reject {
+    border-color: $color-negative;
+  }
+}

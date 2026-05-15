@@ -1,0 +1,11 @@
+.p-generic-table.event-logs-table {
+  th, td {
+    &.time {
+      width: 30%;
+    }
+
+    &.event {
+      text-align: left !important;
+    }
+  }
+}

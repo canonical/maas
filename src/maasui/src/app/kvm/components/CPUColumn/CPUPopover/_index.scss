@@ -1,0 +1,31 @@
+@mixin CPUPopover {
+  %cpu-popover-grid {
+    display: grid;
+    grid-column-gap: $sph--small;
+    grid-template-columns: 2rem $sph--small auto;
+    padding: $spv--small $spv--large;
+  }
+
+  .cpu-popover {
+    width: 13.5rem;
+  }
+
+  .cpu-popover__header {
+    margin: 0 $sph--large;
+  }
+
+  .cpu-popover__primary {
+    @extend %cpu-popover-grid;
+  }
+
+  .cpu-popover__secondary {
+    @extend %cpu-popover-grid;
+    background: $color-light;
+  }
+
+  .cpu-popover__separator {
+    grid-column-start: 1;
+    grid-column-end: 4;
+    margin-top: $spv--small;
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "extends": ["config:base", "group:allNonMajor", "schedule:weekly"],
+  "labels": ["Maintenance 🔨"],
+  "timezone": "Europe/London",
+  "packageRules": [
+    {
+      "groupName": "internal dependencies",
+      "groupSlug": "internal",
+      "matchPackagePatterns": ["^@canonical", "^vanilla-framework"],
+      "schedule": ["at any time"]
+    },
+    {
+      "matchPackagePatterns": ["^@sentry"],
+      "enabled": false
+    },
+    {
+      "groupName": "React ecosystem",
+      "groupSlug": "react-ecosystem",
+      "matchPackagePatterns": ["^react", "^@types/react"],
+      "excludePackagePatterns": ["^@canonical"],
+      "schedule": ["before 5am on monday"]
+    },
+    {
+      "groupName": "Testing libraries",
+      "groupSlug": "testing-libraries",
+      "matchPackagePatterns": [
+        "^@testing-library",
+        "^jest",
+        "^cypress",
+        "^@cypress",
+        "^@percy"
+      ],
+      "schedule": ["before 5am on tuesday"]
+    },
+    {
+      "groupName": "Redux ecosystem",
+      "groupSlug": "redux-ecosystem",
+      "matchPackagePatterns": ["^redux", "^@reduxjs/toolkit", "^react-redux"],
+      "schedule": ["before 5am on wednesday"]
+    },
+    {
+      "groupName": "Development tools",
+      "groupSlug": "dev-tools",
+      "matchPackageNames": ["typescript", "eslint", "prettier", "nodemon"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "schedule": ["before 5am on thursday"]
+    }
+  ]
+}

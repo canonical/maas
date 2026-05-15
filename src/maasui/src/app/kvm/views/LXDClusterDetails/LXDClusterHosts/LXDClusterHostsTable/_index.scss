@@ -1,0 +1,12 @@
+.p-generic-table.lxd-cluster-table {
+  th, td {
+    &.name {
+      text-align: left !important;
+
+      button {
+        text-align: left !important;
+        display: flex;
+      }
+    }
+  }
+}

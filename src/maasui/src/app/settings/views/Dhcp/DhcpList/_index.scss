@@ -1,0 +1,114 @@
+@mixin DhcpList {
+  .dhcp-list td,
+  .dhcp-list th {
+    // Snippet name:
+    &:nth-child(1) {
+      flex: 0.2 0 0;
+    }
+
+    // Type
+    &:nth-child(2) {
+      flex: 0.08 0 0;
+    }
+
+    // Applies to
+    &:nth-child(3) {
+      flex: 0.12 0 0;
+    }
+
+    // Description
+    &:nth-child(4) {
+      flex: 0.3 0 0;
+    }
+
+    // Enabled
+    &:nth-child(5) {
+      flex: 0.08 0 0;
+    }
+
+    // Last edited
+    &:nth-child(6) {
+      flex: 0.14 0 0;
+    }
+
+    // Actions
+    &:nth-child(7) {
+      flex: 0.08 0 0;
+    }
+  }
+
+  @media screen and (max-width: 1050px) {
+    .dhcp-list td,
+    .dhcp-list th {
+      // Applies to
+      &:nth-child(3) {
+        flex-grow: 0.2;
+      }
+
+      // Last edited
+      &:nth-child(6) {
+        display: none;
+      }
+
+      // Actions:
+      &:nth-child(7) {
+        flex-grow: 0.14;
+      }
+    }
+  }
+
+  @media screen and (max-width: 930px) {
+    .dhcp-list td,
+    .dhcp-list th {
+      // Snippet name:
+      &:nth-child(1) {
+        flex-grow: 0.28;
+      }
+
+      // Type
+      &:nth-child(2) {
+        display: none;
+      }
+    }
+  }
+
+  @media screen and (max-width: 660px) {
+    .dhcp-list td,
+    .dhcp-list th {
+      // Snippet name:
+      &:nth-child(1) {
+        flex-grow: 0.43;
+      }
+
+      // Applies to
+      &:nth-child(3) {
+        flex-grow: 0.35;
+      }
+
+      // Description
+      &:nth-child(4) {
+        display: none;
+      }
+    }
+  }
+
+  @media screen and (max-width: 530px) {
+    .dhcp-list td,
+    .dhcp-list th {
+      // Snippet name:
+      &:nth-child(1) {
+        flex-grow: 0.68;
+      }
+
+      // Applies to
+      &:nth-child(3) {
+        display: none;
+      }
+
+      // Actions:
+      &:nth-child(7) {
+        flex-grow: 0.24;
+      }
+    }
+  }
+}

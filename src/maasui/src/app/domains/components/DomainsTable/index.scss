@@ -1,0 +1,7 @@
+.p-generic-table.domains-table {
+  th,td {
+    &.hosts, &.resource_count {
+      text-align: right;
+    }
+  }
+}

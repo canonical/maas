@@ -1,0 +1,58 @@
+.p-accordion__tab {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.p-accordion__panel {
+  margin-left: 32px;
+  padding: 0 16px;
+  overflow: hidden;
+
+  table {
+    table-layout: fixed;
+    width: 100%;
+
+    th, td {
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    th:first-child,
+    td:first-child {
+      width: 30%;
+    }
+
+    th:last-child,
+    td:last-child {
+      width: 70%;
+    }
+  }
+
+  tbody {
+    tr {
+      border: none;
+
+      td {
+        vertical-align: middle;
+        overflow: visible;
+      }
+
+      button[role="combobox"] {
+        margin: 0;
+        color: var(--vf-color-text-muted);
+      }
+    }
+  }
+}
+
+.multi-select__dropdown {
+  margin-top: 20px;
+}
+
+.multi-select__condensed-text {
+  margin-right: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 250px;
+}

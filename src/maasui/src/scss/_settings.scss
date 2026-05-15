@@ -1,0 +1,19 @@
+@use 'sass:color';
+@use 'sass:math';
+
+// Vanilla settings:
+$grid-max-width: math.div(1920, 16) * 1rem; // express in rems for easier calculations
+
+$color-navigation-background: #666;
+$color-navigation-background--hover: color.scale($color-navigation-background, $lightness: -3%);
+
+$breakpoint-node-action-menu-group: 793px;
+$breakpoint-kvm-resources-card: 1300px;
+$breakpoint-x-large: 1440px;
+$breakpoint-xx-large: 1920px;
+$breakpoint-navigation-threshold: 925px;
+$increase-font-size-on-larger-screens: false;
+$side-panel-z-index: 101;
+$side-navigation-z-index: 103;
+$application-layout--breakpoint-side-nav-expanded: $breakpoint-xx-large;
+$assets-path: "/assets/fonts/";

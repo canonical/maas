@@ -1,0 +1,38 @@
+@mixin ControllerSummary {
+  .controller-summary {
+    @extend %base-grid;
+    grid:
+      [row1-start] "overview-card overview-card overview-card" min-content [row1-end]
+      [row2-start] "services-card hardware-card empty" min-content [row2-end]
+      / 1fr 1fr 1fr;
+    padding-left: 0;
+    padding-right: 0;
+
+    @media only screen and (max-width: $breakpoint-large) {
+      grid:
+        [row1-start] "overview-card overview-card" min-content [row1-end]
+        [row2-start] "services-card hardware-card" min-content [row2-end]
+        / 1fr 1fr;
+    }
+
+    @media only screen and (max-width: $breakpoint-small) {
+      grid:
+        [row1-start] "overview-card" min-content [row1-end]
+        [row2-start] "services-card" min-content [row2-end]
+        [row3-start] "hardware-card" min-content [row3-end]
+        / 1fr;
+    }
+  }
+
+  .controller-summary__overview-card {
+    grid-area: overview-card;
+  }
+
+  .controller-summary__services-card {
+    grid-area: services-card;
+  }
+
+  .controller-summary__hardware-card {
+    grid-area: hardware-card;
+  }
+}

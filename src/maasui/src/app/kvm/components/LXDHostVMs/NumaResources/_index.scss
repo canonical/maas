@@ -1,0 +1,16 @@
+@mixin NumaResources {
+  .numa-resources {
+    @extend %base-grid;
+    grid-template-columns: 1fr;
+
+    @media only screen and (min-width: $breakpoint-large) {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    @media only screen and (min-width: $breakpoint-x-large) {
+      &:not(.is-wide) {
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+      }
+    }
+  }
+}

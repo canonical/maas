@@ -1,0 +1,11 @@
+@mixin DownloadMenu {
+  .download-menu {
+    text-align: right;
+
+    @media only screen and (min-width: $breakpoint-small) {
+      position: absolute;
+      right: 0;
+      top: 0;
+    }
+  }
+}

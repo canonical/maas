@@ -1,0 +1,11 @@
+@mixin maas-list-trees {
+  // Display a list tree without any styling for handling opening and closing
+  // items.
+  .p-list-tree--static {
+    display: block !important;
+
+    .p-list-tree--static::after {
+      display: none !important;
+    }
+  }
+}

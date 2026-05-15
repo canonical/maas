@@ -1,0 +1,35 @@
+@mixin CoreResources {
+  .core-resources {
+    display: flex;
+    flex-direction: column;
+    padding: $spv--medium $sph--large;
+  }
+
+  // Additional styles for when the component changes layout depending on the
+  // viewport size. Otherwise, the component keeps the "mobile" styling.
+  .core-resources--dynamic-layout {
+    @media only screen and (min-width: $breakpoint-small) {
+      .core-resources__header {
+        flex: 1;
+        margin-right: $sph--large;
+      }
+
+      .core-resources__meter {
+        flex: 3;
+      }
+    }
+
+    @media only screen and (min-width: $breakpoint-kvm-resources-card) {
+      flex-direction: column;
+
+      .core-resources__header {
+        flex: 0;
+        margin-right: 0;
+      }
+
+      .core-resources__meter {
+        flex: 0;
+      }
+    }
+  }
+}

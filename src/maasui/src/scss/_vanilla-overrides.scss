@@ -1,0 +1,72 @@
+/**
+ * Vanilla overrides.
+ * {Date} {Person}: {Description of issue}
+ * {Link to relevant GitHub issue}
+ */
+
+// 10-07-2020 Caleb: Slider input misaligned when using type="number" + wrapper
+// should mirror normal form field spacing.
+// https://github.com/canonical/vanilla-framework/issues/3163
+.p-slider__wrapper {
+  margin-bottom: $input-margin-bottom;
+}
+.p-slider__input {
+  -moz-appearance: textfield;
+  height: auto;
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+// 09-05-2022 Caleb: Side nav sets background to white on full-screen
+// https://github.com/canonical/vanilla-framework/issues/4458
+.p-side-navigation .p-side-navigation__drawer {
+  @media screen and (min-width: $breakpoint-large) {
+    background-color: transparent;
+  }
+}
+
+// 24-01-2023 Peter: tooltip message is hidden behind side panel
+// https://github.com/canonical/vanilla-framework/issues/4607
+.p-contextual-menu__dropdown,
+.p-tooltip__message {
+  z-index: $side-navigation-z-index + 1;
+}
+
+// 05-01-2024 Nick: Using MainToolbar without ContentSection means no padding at top of page.
+// Will be fixed once all main pages use MainToolbar and ContentSection is implemented
+// https://warthogs.atlassian.net/browse/MAASENG-2440
+// https://github.com/canonical/maas-ui/pull/5244
+.main-toolbar {
+  padding: $spv--medium 0;
+}
+
+// 29.07.2025 Kasia: When clicking the chevron button, horizontal and vertical scrool bars briefly appear.
+// https://github.com/canonical/maas-ui/pull/5757
+body {
+  overflow: hidden;
+}
+
+// Dark mode fixes
+
+body.is-dark {
+  
+  .p-button--link.p-button--table-header, .p-button--link.p-button--column-header {
+    color: var(--vf-color-text-default)
+  }
+
+  a.p-link__chevron {
+    color: var(--vf-color-link-default)
+  }
+}
+
+.multi-select div {
+  background-color: var(--vf-color-background-default);
+}
+
+.multi-select__select-button[aria-expanded=true] {
+  background-color: var(--vf-color-background-default) !important;
+}

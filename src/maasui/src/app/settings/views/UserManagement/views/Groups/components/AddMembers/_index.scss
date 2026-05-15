@@ -1,0 +1,21 @@
+.p-generic-table.add-members-table {
+  section.controls-bar {
+    margin-top: 0;
+    border-top: none;
+    padding: 8px;
+  }
+
+  th {
+    vertical-align: middle;
+  }
+
+  th,td {
+    &:last-of-type{
+      text-align: left !important;
+    }
+  }
+
+  tr:has(label[aria-disabled="true"]) {
+    color: var(--vf-color-text-muted);
+  }
+}

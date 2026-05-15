@@ -1,0 +1,26 @@
+@mixin LabelledList {
+  .p-list--labelled {
+    @extend %vf-list;
+
+    .p-list__item {
+      @extend %vf-list-item;
+      display: flex;
+      // Vanilla lists have a different padding inside forms, but since this is
+      // a custom component we need to make sure it doesn't change.
+      padding: $spv--small 0 !important;
+      word-wrap: break-word;
+    }
+
+    .p-list__item-label {
+      color: var(--vf-color-text-muted);
+      flex: 1 0 0;
+      margin-right: $sph--small;
+      text-align: right;
+    }
+
+    .p-list__item-value {
+      flex: 2 1 0;
+      word-break: break-word;
+    }
+  }
+}

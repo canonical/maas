@@ -1,0 +1,7 @@
+.p-generic-table.devices-table {
+  th,td {
+    &.owner {
+      text-align: left !important;
+    }
+  }
+}

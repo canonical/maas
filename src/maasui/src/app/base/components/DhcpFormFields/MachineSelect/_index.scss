@@ -1,0 +1,19 @@
+@mixin MachineSelect() {
+  .machine-select {
+    margin-bottom: $spv--large;
+  }
+  .machine-select-box-wrapper {
+    transform: translate3d(0, -0.5rem, 0);
+    @include vf-animation(#{transform, opacity});
+    opacity: 0;
+    &--is-open {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+  .machine-select-box {
+    @extend %vf-has-box-shadow;
+    @extend %vf-is-bordered;
+    padding: $spv--medium $sph--large 0 $sph--large;
+  }
+}

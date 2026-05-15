@@ -1,0 +1,51 @@
+@mixin AppSideNavigation {
+  .l-navigation.is-maas {
+    box-shadow: 0 0 2rem 0 rgba(0, 0, 0, 0.2);
+    @include vf-transition(
+      $property: #{width,
+      box-shadow,
+      background},
+      $duration: fast
+    );
+
+    .p-panel__controls {
+      @include vf-transition(
+        $property: #{opacity,
+        visibility,
+        transform,
+        background},
+        $duration: fast
+      );
+
+      @media only screen and (min-width: ($breakpoint-xx-large)) {
+        display: none;
+      }
+    }
+  }
+
+  .p-panel.is-dark {
+    background: inherit;
+
+    .p-panel__header {
+      background-color: inherit;
+      @include vf-transition(
+        $property: #{width,
+        box-shadow,
+        background},
+        $duration: fast
+      );
+    }
+  }
+  .l-navigation-bar {
+    display: block;
+  }
+
+  .dark-mode-toggle {
+    align-self: flex-end;
+    margin: 0 0.5rem 0.5rem 0;
+
+    .p-button--base {
+      margin-bottom: 0;
+    }
+  }
+}

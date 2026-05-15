@@ -1,0 +1,91 @@
+name: Test coverage and TiCS Report
+on:
+  schedule:
+    - cron: "30 0 * * 6" # Weekly full analysis
+  push:
+    branches:
+      - "tics-debug-*"
+#  We cannot run the TiCS job on pull requests because TiCS
+#  requires us to use secret tokens, and that cannot be done
+#  on PRs from forked repositories.
+#  pull_request:
+#    types: [ opened, synchronize, reopened ]
+
+jobs:
+  test-coverage-tics:
+    name: Run tests with coverage and generate TiCS report
+    runs-on: [ self-hosted, reactive, linux, amd64, large-tiobe, jammy ]
+    timeout-minutes: 720
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Important for TICS to analyze history
+
+      - name: Setup Node.js from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: 'yarn'
+
+      - name: Install packages
+        run: CYPRESS_INSTALL_BINARY=0 yarn install --frozen-lockfile
+
+      - name: Run tests with coverage
+        run: yarn test-coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+          retention-days: 1
+
+      - name: Run TICS Analyzer
+        uses: tiobe/tics-github-action@v3
+        env:
+          # Add environment variables to optimize TICS performance
+          TICS_NUM_THREADS: 4  # Adjust based on your runner's capabilities
+        with:
+          mode: ${{ github.event_name == 'pull_request' && 'client' || 'qserver' }}
+          project: maas-ui
+          viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=default
+          ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
+          installTics: true
+          tmpdir: /tmp/tics
+
+      - name: Upload TICS Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: tics-report
+          path: /tmp/tics
+          retention-days: 7
+
+  publish-coverage-report:
+    name: Publish Coverage Report
+    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    runs-on: [ self-hosted, reactive, linux, amd64, tiobe, jammy ]
+    needs: test-coverage-tics
+    permissions:
+      id-token: write
+      pages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: coverage
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

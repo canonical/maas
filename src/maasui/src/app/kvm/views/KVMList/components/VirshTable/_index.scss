@@ -1,0 +1,23 @@
+.p-generic-table.virsh-table {
+  th {
+      button.p-button--column-header {
+        display: flex;
+        justify-content: left;
+        text-align: left;
+      }
+    }
+
+  th, td {
+    &.name, &.hostType {
+      width: 16%;
+    }
+
+    &.vms, &.zone, &.storage {
+      text-align: left !important;
+
+      button {
+        text-align: left !important;
+      }
+    }
+  }
+}
