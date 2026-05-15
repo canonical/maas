@@ -8,6 +8,7 @@ from typing import Annotated, Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from maasmcpserver.client import MAASClient, MAASClientPool
@@ -19,18 +20,14 @@ from maasmcpserver.models.machines import (
     MachineDetail,
     MachineSummary,
 )
-from maasmcpserver.tools.common import (
-    items_from_payload,
-    markdown_table,
-    run_tool as _run_tool,
-)
+from maasmcpserver.tools.common import items_from_payload, markdown_table
+from maasmcpserver.tools.common import run_tool as _run_tool
 
 _MACHINES_PATH = "/MAAS/a/v3/machines"
 _MACHINE_PATH = "/MAAS/a/v3/machines/{system_id}"
 _INTERFACES_PATH = "/MAAS/a/v3/machines/{system_id}/interfaces"
 _RESOURCE_POOLS_PATH = "/MAAS/a/v3/resource_pools"
 _ZONES_PATH = "/MAAS/a/v3/zones"
-
 
 
 def make_client(pool: Any, api_key: str) -> MAASClient:
@@ -339,6 +336,7 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Machines",
         description="Return a paginated list of machines in the fleet, optionally filtered by hostname, status, resource pool, zone, or tags.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_machines(
         status: Annotated[
@@ -476,6 +474,7 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Get Machine",
         description="Return full details for a single machine identified by system_id, hostname, or FQDN.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_machine(
         identifier: Annotated[
@@ -586,6 +585,7 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Resource Pools",
         description="Return a paginated list of resource pools available in this MAAS instance.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_resource_pools(
         page: Annotated[
@@ -644,6 +644,7 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Zones",
         description="Return a paginated list of availability zones defined in this MAAS instance.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_zones(
         page: Annotated[
@@ -685,6 +686,7 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Get Machine Power State",
         description="Return the current power state (on/off/unknown) for a machine identified by system_id, hostname, or FQDN.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_machine_power_state(
         identifier: Annotated[

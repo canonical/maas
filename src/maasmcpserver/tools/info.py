@@ -8,20 +8,17 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from maasmcpserver.client import MAASClient, MAASClientPool
 from maasmcpserver.logging_events import log_tool_outcome, log_tool_received
 from maasmcpserver.middleware import get_api_key, get_session_id
 from maasmcpserver.models.info import MAASInfo, RackController
-from maasmcpserver.tools.common import (
-    items_from_payload,
-    run_tool as _run_tool,
-    safe_text,
-)
+from maasmcpserver.tools.common import items_from_payload, safe_text
+from maasmcpserver.tools.common import run_tool as _run_tool
 
 _CONFIG_PATH = "/MAAS/a/v3/configurations/maas_name"
 _RACKS_PATH = "/MAAS/a/v3/racks"
-
 
 
 def make_client(pool: Any, api_key: str) -> MAASClient:
@@ -125,6 +122,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Get MAAS Info",
         description="Return MAAS instance metadata: version, UUID, active controllers, and deployment statistics.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_maas_info() -> str:
         async def operation(client: MAASClient) -> str:

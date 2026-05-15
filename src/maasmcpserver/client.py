@@ -53,9 +53,7 @@ class MAASClient:
     ) -> None:
         self.config = config
         self.api_key = api_key
-        self.client = http or httpx.AsyncClient(
-            verify=config.maas_tls_verify
-        )
+        self.client = http or httpx.AsyncClient(verify=config.maas_tls_verify)
 
     async def _request(
         self,

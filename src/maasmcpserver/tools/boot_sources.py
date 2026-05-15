@@ -8,17 +8,15 @@ from typing import Annotated, Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from maasmcpserver.client import MAASClient, MAASClientPool
 from maasmcpserver.logging_events import log_tool_outcome, log_tool_received
 from maasmcpserver.middleware import get_api_key, get_session_id
 from maasmcpserver.models.boot_sources import BootSource, BootSourceSelection
-from maasmcpserver.tools.common import (
-    items_from_payload,
-    run_tool as _run_tool,
-    safe_text,
-)
+from maasmcpserver.tools.common import items_from_payload, safe_text
+from maasmcpserver.tools.common import run_tool as _run_tool
 
 _BOOT_SOURCES_PATH = "/MAAS/a/v3/boot_sources"
 _BOOT_SOURCE_PATH = "/MAAS/a/v3/boot_sources/{boot_source_id}"
@@ -31,7 +29,6 @@ _BOOT_SOURCE_SYNC_PATH = (
 _AVAILABLE_IMAGES_PATH = "/MAAS/a/v3/available_images"
 _SELECTIONS_PATH = "/MAAS/a/v3/selections"
 _CUSTOM_IMAGES_PATH = "/MAAS/a/v3/custom_images"
-
 
 
 def make_client(pool: Any, api_key: str) -> MAASClient:
@@ -207,6 +204,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Boot Sources",
         description="Return all configured boot sources and their sync selections.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_boot_sources() -> str:
         async def operation(client: MAASClient) -> str:
@@ -269,6 +267,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Delete Boot Source",
         description="Permanently delete a boot source and all its selections from MAAS.",
+        annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_boot_source(
         boot_source_id: Annotated[
@@ -317,6 +316,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Boot Source Selections",
         description="Return all image selections configured for a specific boot source.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_boot_source_selections(
         boot_source_id: Annotated[
@@ -356,6 +356,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Available Images",
         description="Return all OS images available from all configured boot sources.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_available_images() -> str:
         async def operation(client: MAASClient) -> str:
@@ -368,6 +369,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Selections",
         description="Return all active image selections across all boot sources.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_selections(
         page: Annotated[
@@ -394,6 +396,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Custom Images",
         description="Return all custom (uploaded) boot images available in MAAS.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_custom_images(
         page: Annotated[

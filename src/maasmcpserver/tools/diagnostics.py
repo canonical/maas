@@ -8,22 +8,19 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from maasmcpserver.client import MAASClient, MAASClientPool
 from maasmcpserver.logging_events import log_tool_outcome, log_tool_received
 from maasmcpserver.middleware import get_api_key, get_session_id
 from maasmcpserver.models.diagnostics import MachineEvent, ScriptResult
-from maasmcpserver.tools.common import (
-    items_from_payload,
-    run_tool as _run_tool,
-    safe_text,
-)
+from maasmcpserver.tools.common import items_from_payload, safe_text
+from maasmcpserver.tools.common import run_tool as _run_tool
 
 _EVENTS_PATH = "/MAAS/a/v3/events"
 _MACHINES_PATH = "/MAAS/a/v3/machines"
 _SCRIPT_RESULTS_PATH = "/MAAS/a/v3/machines/{system_id}/script_results"
-
 
 
 def make_client(pool: Any, api_key: str) -> MAASClient:
@@ -139,6 +136,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Get Machine Events",
         description="Return recent audit and lifecycle events for a machine, optionally filtered by event type and limited by count.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_machine_events(
         identifier: Annotated[
@@ -229,6 +227,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Get Script Results",
         description="Return commissioning or testing script results for a machine, optionally filtered by script type (commissioning/testing) and script name.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_script_results(
         identifier: Annotated[
@@ -304,6 +303,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Events",
         description="Return paginated MAAS audit and lifecycle events, optionally filtered by one or more machine system IDs.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_events(
         system_ids: Annotated[

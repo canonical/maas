@@ -8,6 +8,7 @@ from typing import Annotated, Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from maasmcpserver.client import MAASClient, MAASClientPool
@@ -17,9 +18,9 @@ from maasmcpserver.models.network import Fabric, Subnet, VLAN
 from maasmcpserver.tools.common import (
     items_from_payload,
     markdown_table,
-    run_tool as _run_tool,
     safe_text,
 )
+from maasmcpserver.tools.common import run_tool as _run_tool
 
 _FABRICS_PATH = "/MAAS/a/v3/fabrics"
 _FABRIC_PATH = "/MAAS/a/v3/fabrics/{fabric_id}"
@@ -29,7 +30,6 @@ _SUBNETS_PATH = "/MAAS/a/v3/fabrics/{fabric_id}/vlans/{vlan_id}/subnets"
 _SUBNET_PATH = (
     "/MAAS/a/v3/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}"
 )
-
 
 
 def make_client(pool: Any, api_key: str) -> MAASClient:
@@ -64,7 +64,7 @@ async def run_tool(
     )
     if result == (
         'Error (error_code: "permission_denied"): '
-        'Permission denied (HTTP 403).'
+        "Permission denied (HTTP 403)."
     ):
         return "Error: Permission denied (HTTP 403)"
     if result.startswith('Error (error_code: "http_error"): HTTP 404: '):
@@ -284,6 +284,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Fabrics",
         description="Return a paginated list of all network fabrics defined in MAAS.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_fabrics(
         page: Annotated[
@@ -331,6 +332,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Get Fabric",
         description="Return details for a single fabric by its numeric ID.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_fabric(
         fabric_id: Annotated[
@@ -355,6 +357,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List VLANs",
         description="Return a paginated list of VLANs belonging to a specific fabric.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_vlans(
         fabric_id: Annotated[
@@ -412,6 +415,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Get VLAN",
         description="Return details for a single VLAN identified by fabric ID and VLAN ID.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_vlan(
         fabric_id: Annotated[
@@ -440,6 +444,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="List Subnets",
         description="Return a paginated list of subnets within a specific VLAN (fabric_id and vlan_id are required).",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_subnets(
         fabric_id: Annotated[
@@ -504,6 +509,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Get Subnet",
         description="Return details for a single subnet by its numeric ID, including CIDR, gateway, DNS servers, and VLAN membership.",
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_subnet(
         fabric_id: Annotated[
@@ -609,6 +615,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Delete Fabric",
         description="Permanently delete a fabric and all its VLANs from MAAS.",
+        annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_fabric(
         fabric_id: Annotated[
@@ -642,7 +649,9 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     async def create_vlan(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric to create the VLAN in."),
+            Field(
+                description="Numeric ID of the fabric to create the VLAN in."
+            ),
         ],
         vid: Annotated[
             int,
@@ -745,6 +754,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Delete VLAN",
         description="Permanently delete a VLAN from a fabric.",
+        annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_vlan(
         fabric_id: Annotated[
@@ -814,7 +824,9 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
         ],
         vlan_id: Annotated[
             int,
-            Field(description="Numeric ID of the VLAN to attach the subnet to."),
+            Field(
+                description="Numeric ID of the VLAN to attach the subnet to."
+            ),
         ],
         cidr: Annotated[
             str,
@@ -943,6 +955,7 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     @mcp.tool(
         title="Delete Subnet",
         description="Permanently delete a subnet from MAAS.",
+        annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_subnet(
         fabric_id: Annotated[
