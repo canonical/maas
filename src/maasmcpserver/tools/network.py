@@ -50,7 +50,7 @@ async def run_tool(
     operation: Callable[[MAASClient], Awaitable[str]],
     not_found_message: str | None = None,
 ) -> str:
-    result = await _run_tool(
+    return await _run_tool(
         tool_name,
         params,
         pool,
@@ -62,17 +62,6 @@ async def run_tool(
         log_tool_outcome_func=log_tool_outcome,
         make_client_func=make_client,
     )
-    if result == (
-        'Error (error_code: "permission_denied"): '
-        "Permission denied (HTTP 403)."
-    ):
-        return "Error: Permission denied (HTTP 403)"
-    if result.startswith('Error (error_code: "http_error"): HTTP 404: '):
-        detail = result.removeprefix(
-            'Error (error_code: "http_error"): HTTP 404: '
-        )
-        return f"Error: Resource not found (HTTP 404): {detail}"
-    return result
 
 
 def _build_body(values: dict[str, Any]) -> dict[str, Any]:
@@ -115,41 +104,6 @@ def _dns_servers_text(value: Any) -> str:
         servers = [str(item) for item in value if item not in (None, "")]
         return ", ".join(servers) if servers else "-"
     return str(value)
-
-
-def _response_detail(response: httpx.Response) -> str:
-    try:
-        payload = response.json()
-    except ValueError:
-        payload = None
-
-    if isinstance(payload, dict):
-        detail = (
-            payload.get("detail")
-            or payload.get("message")
-            or payload.get("error")
-        )
-        if detail not in (None, ""):
-            if isinstance(detail, list):
-                return ", ".join(str(item) for item in detail)
-            return str(detail)
-
-    text = response.text.strip()
-    if text:
-        return text[:200]
-    return "Request failed."
-
-
-def _not_found_result(detail: str) -> str:
-    return f"Error: Resource not found (HTTP 404): {detail}"
-
-
-def _http_error_result(error: httpx.HTTPStatusError) -> str:
-    status_code = error.response.status_code
-    detail = _response_detail(error.response)
-    if status_code == 404:
-        return _not_found_result(detail)
-    return f"Error: HTTP {status_code}: {detail}"
 
 
 def _fabric_from_payload(payload: dict[str, Any]) -> Fabric:
@@ -777,8 +731,8 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
                 )
             except httpx.HTTPStatusError as error:
                 if error.response.status_code == 404:
-                    return _not_found_result(
-                        "VLAN ID="
+                    return (
+                        'Error (error_code: "not_found"): VLAN ID='
                         f"{vlan_id} was not found in fabric {fabric_id}."
                     )
                 raise
@@ -795,8 +749,8 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
                 )
             except httpx.HTTPStatusError as error:
                 if error.response.status_code == 404:
-                    return _not_found_result(
-                        "VLAN ID="
+                    return (
+                        'Error (error_code: "not_found"): VLAN ID='
                         f"{vlan_id} was not found in fabric {fabric_id}."
                     )
                 raise
@@ -983,8 +937,8 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
                 )
             except httpx.HTTPStatusError as error:
                 if error.response.status_code == 404:
-                    return _not_found_result(
-                        "Subnet ID="
+                    return (
+                        'Error (error_code: "not_found"): Subnet ID='
                         f"{subnet_id} was not found in fabric {fabric_id}, "
                         f"VLAN {vlan_id}."
                     )
@@ -1007,8 +961,8 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
                 )
             except httpx.HTTPStatusError as error:
                 if error.response.status_code == 404:
-                    return _not_found_result(
-                        "Subnet ID="
+                    return (
+                        'Error (error_code: "not_found"): Subnet ID='
                         f"{subnet_id} was not found in fabric {fabric_id}, "
                         f"VLAN {vlan_id}."
                     )

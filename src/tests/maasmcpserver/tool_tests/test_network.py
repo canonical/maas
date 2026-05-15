@@ -243,7 +243,7 @@ async def test_get_fabric_returns_descriptive_404_error(
 
     result = await registered_tools["get_fabric"](fabric_id=1)
 
-    assert result == "Error: Resource not found (HTTP 404): Not found"
+    assert result == 'Error (error_code: "http_error"): HTTP 404: Not found'
     client.get.assert_awaited_once()
     client.client.aclose.assert_awaited_once()
 
@@ -263,7 +263,7 @@ async def test_delete_vlan_returns_descriptive_404_error(
     result = await registered_tools["delete_vlan"](fabric_id=1, vlan_id=5001)
 
     assert result == (
-        "Error: Resource not found (HTTP 404): VLAN ID=5001 was not "
+        'Error (error_code: "not_found"): VLAN ID=5001 was not '
         "found in fabric 1."
     )
     client.client.aclose.assert_awaited_once()
@@ -281,7 +281,10 @@ async def test_permission_error_is_returned_without_retry(
 
     result = await registered_tools["create_fabric"](name="fabric-1")
 
-    assert result == "Error: Permission denied (HTTP 403)"
+    assert (
+        result
+        == 'Error (error_code: "permission_denied"): Permission denied (HTTP 403).'
+    )
     assert client.post.await_count == 1
     log_tool_outcome.assert_called_once_with(
         "test-session-id",
