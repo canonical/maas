@@ -201,21 +201,24 @@ def _format_custom_images(items: list[dict[str, Any]]) -> str:
 def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     """Register boot source tools on a FastMCP application."""
 
-    @mcp.tool(
-        title="List Boot Sources",
-        description="Return all configured boot sources and their sync selections.",
-        annotations=ToolAnnotations(readOnlyHint=True),
+    @mcp.resource(
+        "maas://boot-sources",
+        name="Boot Sources",
+        description="All configured boot sources and their sync selections.",
+        mime_type="text/plain",
     )
     async def list_boot_sources() -> str:
-        async def operation(client: MAASClient) -> str:
+        client = make_client(pool, get_api_key())
+        try:
             response = await client.get(_BOOT_SOURCES_PATH)
             sources = [
                 _boot_source_from_payload(item)
                 for item in items_from_payload(_response_json(response))
             ]
             return _format_boot_sources(sources)
-
-        return await run_tool("list_boot_sources", {}, pool, operation)
+        finally:
+            if getattr(client, "_close_after_use", False):
+                await client.client.aclose()
 
     @mcp.tool(
         title="Trigger Boot Source Sync",
@@ -353,45 +356,37 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
             "list_boot_source_selections", params, pool, operation
         )
 
-    @mcp.tool(
-        title="List Available Images",
-        description="Return all OS images available from all configured boot sources.",
-        annotations=ToolAnnotations(readOnlyHint=True),
+    @mcp.resource(
+        "maas://available-images",
+        name="Available Images",
+        description="All OS images available from all configured boot sources.",
+        mime_type="text/plain",
     )
     async def list_available_images() -> str:
-        async def operation(client: MAASClient) -> str:
+        client = make_client(pool, get_api_key())
+        try:
             response = await client.get(_AVAILABLE_IMAGES_PATH)
             items = items_from_payload(_response_json(response))
             return _format_image_list("Available Images", items)
+        finally:
+            if getattr(client, "_close_after_use", False):
+                await client.client.aclose()
 
-        return await run_tool("list_available_images", {}, pool, operation)
-
-    @mcp.tool(
-        title="List Selections",
-        description="Return all active image selections across all boot sources.",
-        annotations=ToolAnnotations(readOnlyHint=True),
+    @mcp.resource(
+        "maas://selections",
+        name="Image Selections",
+        description="All active image selections across all boot sources.",
+        mime_type="text/plain",
     )
-    async def list_selections(
-        page: Annotated[
-            int,
-            Field(description="Page number (1-based)."),
-        ] = 1,
-        page_size: Annotated[
-            int,
-            Field(description="Number of results per page."),
-        ] = 100,
-    ) -> str:
-        params = {"page": page, "page_size": page_size}
-
-        async def operation(client: MAASClient) -> str:
-            response = await client.get(
-                _SELECTIONS_PATH,
-                query_params={"page": page, "size": page_size},
-            )
+    async def list_selections() -> str:
+        client = make_client(pool, get_api_key())
+        try:
+            response = await client.get(_SELECTIONS_PATH)
             items = items_from_payload(_response_json(response))
             return _format_image_list("Image Selections", items)
-
-        return await run_tool("list_selections", params, pool, operation)
+        finally:
+            if getattr(client, "_close_after_use", False):
+                await client.client.aclose()
 
     @mcp.tool(
         title="List Custom Images",

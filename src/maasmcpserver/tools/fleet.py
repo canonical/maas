@@ -582,28 +582,16 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
             ),
         )
 
-    @mcp.tool(
-        title="List Resource Pools",
-        description="Return a paginated list of resource pools available in this MAAS instance.",
-        annotations=ToolAnnotations(readOnlyHint=True),
+    @mcp.resource(
+        "maas://resource-pools",
+        name="Resource Pools",
+        description="All resource pools available in this MAAS instance.",
+        mime_type="text/plain",
     )
-    async def list_resource_pools(
-        page: Annotated[
-            int,
-            Field(description="Page number (1-based)."),
-        ] = 1,
-        page_size: Annotated[
-            int,
-            Field(description="Number of results per page."),
-        ] = 100,
-    ) -> str:
-        """List MAAS resource pools."""
-
-        async def operation(client: MAASClient) -> str:
-            response = await client.get(
-                _RESOURCE_POOLS_PATH,
-                query_params={"page": page, "size": page_size},
-            )
+    async def list_resource_pools() -> str:
+        client = make_client(_pool, get_api_key())
+        try:
+            response = await client.get(_RESOURCE_POOLS_PATH)
             items = items_from_payload(response.json())
             if not items:
                 return "No resource pools found."
@@ -633,36 +621,20 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
                 ["name", "description", "machine_count"],
                 rows,
             )
+        finally:
+            if getattr(client, "_close_after_use", False):
+                await client.client.aclose()
 
-        return await run_tool(
-            "list_resource_pools",
-            {"page": page, "page_size": page_size},
-            _pool,
-            operation,
-        )
-
-    @mcp.tool(
-        title="List Zones",
-        description="Return a paginated list of availability zones defined in this MAAS instance.",
-        annotations=ToolAnnotations(readOnlyHint=True),
+    @mcp.resource(
+        "maas://zones",
+        name="Availability Zones",
+        description="All availability zones defined in this MAAS instance.",
+        mime_type="text/plain",
     )
-    async def list_zones(
-        page: Annotated[
-            int,
-            Field(description="Page number (1-based)."),
-        ] = 1,
-        page_size: Annotated[
-            int,
-            Field(description="Number of results per page."),
-        ] = 100,
-    ) -> str:
-        """List MAAS availability zones."""
-
-        async def operation(client: MAASClient) -> str:
-            response = await client.get(
-                _ZONES_PATH,
-                query_params={"page": page, "size": page_size},
-            )
+    async def list_zones() -> str:
+        client = make_client(_pool, get_api_key())
+        try:
+            response = await client.get(_ZONES_PATH)
             items = items_from_payload(response.json())
             if not items:
                 return "No zones found."
@@ -675,13 +647,9 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
                 for item in items
             ]
             return markdown_table(["name", "description"], rows)
-
-        return await run_tool(
-            "list_zones",
-            {"page": page, "page_size": page_size},
-            _pool,
-            operation,
-        )
+        finally:
+            if getattr(client, "_close_after_use", False):
+                await client.client.aclose()
 
     @mcp.tool(
         title="Get Machine Power State",

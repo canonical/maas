@@ -166,6 +166,19 @@ def registered_tools(
 
             return decorator
 
+        def resource(
+            self,
+            _uri: str,
+            **_kwargs: object,
+        ) -> Callable[[Callable[..., object]], Callable[..., object]]:
+            def decorator(
+                func: Callable[..., object],
+            ) -> Callable[..., object]:
+                registered[func.__name__] = func
+                return func
+
+            return decorator
+
     boot_sources.register(FakeMCP(), config)
     return registered
 
@@ -347,6 +360,7 @@ async def test_list_available_images_returns_formatted_list(
     assert "Release: noble" in result
     assert "Source ID: 1" in result
     assert "Source URL: http://images.maas.io" in result
+    client.client.aclose.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -360,26 +374,25 @@ async def test_list_available_images_returns_empty_message_when_none(
     result = await registered_tools["list_available_images"]()
 
     assert "No available images found." in result
+    client.client.aclose.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_list_selections_returns_paginated_list(
+async def test_list_selections_returns_list(
     registered_tools: dict[str, Callable[..., object]],
     mock_maas_client: tuple[MagicMock, MagicMock],
 ) -> None:
     _, client = mock_maas_client
     client.get.return_value = make_response(SELECTIONS_PAYLOAD)
 
-    result = await registered_tools["list_selections"](page=1, page_size=50)
+    result = await registered_tools["list_selections"]()
 
-    client.get.assert_awaited_once_with(
-        "/MAAS/a/v3/selections",
-        query_params={"page": 1, "size": 50},
-    )
+    client.get.assert_awaited_once_with("/MAAS/a/v3/selections")
     assert "## Image Selections" in result
     assert "OS: ubuntu" in result
     assert "Release: noble" in result
     assert "Release: jammy" in result
+    client.client.aclose.assert_awaited_once()
 
 
 @pytest.mark.asyncio

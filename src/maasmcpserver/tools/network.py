@@ -235,26 +235,16 @@ def _format_subnet_detail(
 def register(mcp: FastMCP, pool: MAASClientPool) -> None:
     """Register network management tools on a FastMCP app."""
 
-    @mcp.tool(
-        title="List Fabrics",
-        description="Return a paginated list of all network fabrics defined in MAAS.",
-        annotations=ToolAnnotations(readOnlyHint=True),
+    @mcp.resource(
+        "maas://fabrics",
+        name="Network Fabrics",
+        description="All network fabrics defined in MAAS.",
+        mime_type="text/plain",
     )
-    async def list_fabrics(
-        page: Annotated[
-            int,
-            Field(description="Page number (1-based)."),
-        ] = 1,
-        page_size: Annotated[
-            int,
-            Field(description="Number of results per page."),
-        ] = 100,
-    ) -> str:
-        async def _operation(client: MAASClient) -> str:
-            response = await client.get(
-                _FABRICS_PATH,
-                query_params={"page": page, "size": page_size},
-            )
+    async def list_fabrics() -> str:
+        client = make_client(pool, get_api_key())
+        try:
+            response = await client.get(_FABRICS_PATH)
             fabrics = [
                 _fabric_from_payload(item)
                 for item in items_from_payload(response.json())
@@ -275,13 +265,9 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
                 ["ID", "Name", "Class Type", "Description"],
                 rows,
             )
-
-        return await run_tool(
-            "list_fabrics",
-            {"page": page, "page_size": page_size},
-            pool,
-            _operation,
-        )
+        finally:
+            if getattr(client, "_close_after_use", False):
+                await client.client.aclose()
 
     @mcp.tool(
         title="Get Fabric",

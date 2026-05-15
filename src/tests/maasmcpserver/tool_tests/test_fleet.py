@@ -81,6 +81,19 @@ def registered_tools(
 
             return decorator
 
+        def resource(
+            self,
+            _uri: str,
+            **_kwargs: object,
+        ) -> Callable[[Callable[..., object]], Callable[..., object]]:
+            def decorator(
+                func: Callable[..., object],
+            ) -> Callable[..., object]:
+                registered[func.__name__] = func
+                return func
+
+            return decorator
+
     fleet.register(FakeMCP(), config)
     return registered
 
@@ -213,4 +226,78 @@ async def test_get_machine_power_state_extracts_power_state(
     result = await registered_tools["get_machine_power_state"]("node-1")
 
     assert result == "node-1: power state is on"
+    client.client.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_list_resource_pools_returns_table(
+    registered_tools: dict[str, Callable[..., object]],
+    mock_maas_client: tuple[MagicMock, MagicMock],
+) -> None:
+    _, client = mock_maas_client
+    client.get.return_value = _response(
+        {
+            "items": [
+                {"name": "default", "description": "Default pool"},
+                {"name": "gpu", "description": "GPU pool"},
+            ]
+        }
+    )
+
+    result = await registered_tools["list_resource_pools"]()
+
+    client.get.assert_awaited_once_with("/MAAS/a/v3/resource_pools")
+    assert "default" in result
+    assert "gpu" in result
+    client.client.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_list_resource_pools_returns_message_when_empty(
+    registered_tools: dict[str, Callable[..., object]],
+    mock_maas_client: tuple[MagicMock, MagicMock],
+) -> None:
+    _, client = mock_maas_client
+    client.get.return_value = _response({"items": []})
+
+    result = await registered_tools["list_resource_pools"]()
+
+    assert result == "No resource pools found."
+    client.client.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_list_zones_returns_table(
+    registered_tools: dict[str, Callable[..., object]],
+    mock_maas_client: tuple[MagicMock, MagicMock],
+) -> None:
+    _, client = mock_maas_client
+    client.get.return_value = _response(
+        {
+            "items": [
+                {"name": "default", "description": "Default zone"},
+                {"name": "us-east", "description": "US East"},
+            ]
+        }
+    )
+
+    result = await registered_tools["list_zones"]()
+
+    client.get.assert_awaited_once_with("/MAAS/a/v3/zones")
+    assert "default" in result
+    assert "us-east" in result
+    client.client.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_list_zones_returns_message_when_empty(
+    registered_tools: dict[str, Callable[..., object]],
+    mock_maas_client: tuple[MagicMock, MagicMock],
+) -> None:
+    _, client = mock_maas_client
+    client.get.return_value = _response({"items": []})
+
+    result = await registered_tools["list_zones"]()
+
+    assert result == "No zones found."
     client.client.aclose.assert_awaited_once()

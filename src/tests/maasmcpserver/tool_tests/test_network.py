@@ -118,6 +118,19 @@ def registered_tools(
 
             return decorator
 
+        def resource(
+            self,
+            _uri: str,
+            **_kwargs: object,
+        ) -> Callable[[Callable[..., object]], Callable[..., object]]:
+            def decorator(
+                func: Callable[..., object],
+            ) -> Callable[..., object]:
+                registered[func.__name__] = func
+                return func
+
+            return decorator
+
     network.register(FakeMCP(), config)
     return registered
 
@@ -292,4 +305,36 @@ async def test_permission_error_is_returned_without_retry(
         "error",
         "permission_denied",
     )
+    client.client.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_list_fabrics_returns_table(
+    registered_tools: dict[str, Callable[..., object]],
+    mock_maas_client: tuple[MagicMock, MagicMock],
+) -> None:
+    _, client = mock_maas_client
+    client.get.return_value = make_response(
+        {"items": [FABRIC_PAYLOAD, {"id": 2, "name": "fabric-1", "class_type": None, "description": ""}]}
+    )
+
+    result = await registered_tools["list_fabrics"]()
+
+    client.get.assert_awaited_once_with("/MAAS/a/v3/fabrics")
+    assert "fabric-0" in result
+    assert "fabric-1" in result
+    client.client.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_list_fabrics_returns_message_when_empty(
+    registered_tools: dict[str, Callable[..., object]],
+    mock_maas_client: tuple[MagicMock, MagicMock],
+) -> None:
+    _, client = mock_maas_client
+    client.get.return_value = make_response({"items": []})
+
+    result = await registered_tools["list_fabrics"]()
+
+    assert result == "No fabrics found."
     client.client.aclose.assert_awaited_once()
