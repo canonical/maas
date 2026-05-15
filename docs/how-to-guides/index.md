@@ -107,6 +107,7 @@ Finally, make MAAS part of your larger automation pipeline. Learn how to use the
 
 * [Using the MAAS API](/reference/api-reference/index.md) <!-- & webhooks -->
 * [Using Terraform](/reference/configuration-guides/terraform.md)
+* [Using the MCP server (AI assistant interface)](/how-to-guides/use-the-mcp-server.md)
 
 <!-- * Integrating MAAS into a cloud-provisioning workflow -->
 <!-- * Scripting with the MAAS CLI -->
@@ -142,4 +143,5 @@ deploy-dpus-without-bmc
 deploy-a-dpu-host-pair
 sso
 user-groups-and-entitlements
+use-the-mcp-server
 ```
