@@ -57,21 +57,6 @@ class TestMAASAPIClient:
         _, kwargs = mock_async_client.call_args
         assert kwargs["headers"]["User-Agent"] == "MAAS"
 
-    @patch(
-        "maascommon.apiclient.worker_socket_paths",
-        return_value=["/tmp/socket1", "/tmp/socket2"],
-    )
-    @patch("maascommon.apiclient.os.path.exists", return_value=False)
-    def test_create_unix_client_no_available_sockets(
-        self,
-        mock_exists,
-        mock_paths,
-        dummy_token,
-    ):
-        client = MAASAPIClient("http://example.com", dummy_token)
-        with pytest.raises(FileNotFoundError, match="No regiond worker"):
-            _ = client.unix_client
-
     @patch("maascommon.apiclient.httpx.AsyncClient")
     def test_create_client_with_proxy(self, mock_async_client, dummy_token):
         client = MAASAPIClient(

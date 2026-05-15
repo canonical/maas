@@ -53,6 +53,7 @@ from maasapiserver.v3.middlewares.client_certificate import (
 )
 from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
+from maascommon.worker import set_max_workers_count
 from maasservicelayer.db import Database
 from maasservicelayer.db.listeners import PostgresListenersTaskFactory
 from maasservicelayer.db.locks import wait_for_startup
@@ -185,6 +186,9 @@ def run(app_config: Config | None = None):
 
     if app_config is None:
         app_config = loop.run_until_complete(read_config())
+
+    # TODO: terrible. Refactor when maasserver will be dropped, please!
+    set_max_workers_count(app_config.num_workers)
 
     configure_logging(
         level=logging.DEBUG if app_config.debug else logging.INFO,

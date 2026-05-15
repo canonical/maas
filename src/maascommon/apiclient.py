@@ -20,13 +20,7 @@ class MAASAPIClient:
 
     def _create_unix_client(self) -> httpx.AsyncClient:
         # Calls to Region API over a UNIX socket.
-        available = [p for p in worker_socket_paths() if os.path.exists(p)]
-        if not available:
-            raise FileNotFoundError(
-                "No regiond worker unix sockets available. "
-                "Ensure regiond is running."
-            )
-        path = random.choice(available)
+        path = random.choice(worker_socket_paths())
         transport = httpx.AsyncHTTPTransport(uds=path)
         headers = {}
         if self.user_agent:
