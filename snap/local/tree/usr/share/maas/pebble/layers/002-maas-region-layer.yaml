@@ -45,3 +45,8 @@ services:
     command: sh -c "exec systemd-cat -t maas-openfga $SNAP/usr/bin/run-openfga"
     before:
       - syslog
+
+  mcp-server:
+    override: replace
+    command: sh -c "exec systemd-cat -t maas-mcp-server $SNAP/usr/bin/run-mcp-server"
+    startup: enabled
