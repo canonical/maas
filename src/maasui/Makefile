@@ -27,7 +27,7 @@ TARBALL_NAME := maas_ui_$(UI_REVISION).tgz
 .DEFAULT_GOAL := build
 
 build:
-	$(MAKE) fetch-build || $(MAKE) build-local
+	$(MAKE) build-local
 .PHONY: build
 
 clean-build:
@@ -37,14 +37,6 @@ clean-build:
 clean: clean-build
 	rm -rf $(SRC_DIR)/node_modules $(NODEJS_DIR)
 .PHONY: clean
-
-# fetch prebuilt UI
-
-fetch-build:
-	curl -sfL https://assets.ubuntu.com/v1/$(TARBALL_NAME) | tar --recursive-unlink --one-top-level=build --extract -z
-.PHONY: fetch-build
-
-# build UI locally
 
 build-local: $(BUILD_DIR)/index.html
 .PHONY: build-local
