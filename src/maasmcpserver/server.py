@@ -3,15 +3,12 @@
 
 """FastMCP application factory for MAAS MCP server."""
 
-import json
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Annotated, Any
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
-from mcp.types import ToolAnnotations
-from pydantic import Field
 
 from maasmcpserver.client import MAASClientPool
 from maasmcpserver.config import MaasServerConfig
@@ -31,60 +28,6 @@ _TRANSPORT_SECURITY = TransportSecuritySettings(
 )
 
 
-def _register_resources_as_tools(app: FastMCP) -> None:
-    """Expose resources via tools for clients that lack native resource support.
-
-    Mirrors the ResourcesAsTools transform from gofastmcp.com: adds
-    ``list_resources`` and ``read_resource`` tools that route through the
-    server's resource manager so that all middleware (auth, visibility) applies
-    exactly as it would for direct ``resources/read`` calls.
-    """
-
-    @app.tool(
-        title="List Resources",
-        description="List all available MCP resources.",
-        annotations=ToolAnnotations(readOnlyHint=True),
-    )
-    async def list_resources() -> str:
-        resources = await app.list_resources()
-        templates = await app.list_resource_templates()
-        items: list[dict[str, Any]] = [
-            {
-                "uri": str(r.uri),
-                "name": r.name,
-                "description": r.description,
-                "mime_type": r.mimeType,
-            }
-            for r in resources
-        ]
-        items += [
-            {
-                "uri_template": str(t.uriTemplate),
-                "name": t.name,
-                "description": t.description,
-            }
-            for t in templates
-        ]
-        return json.dumps(items)
-
-    @app.tool(
-        title="Read Resource",
-        description="Read a resource by URI (e.g. 'maas://info').",
-        annotations=ToolAnnotations(readOnlyHint=True),
-    )
-    async def read_resource(
-        uri: Annotated[str, Field(description="URI of the resource to read.")],
-    ) -> str:
-        contents = await app.read_resource(uri)
-        parts = []
-        for item in contents:
-            if isinstance(item.content, bytes):
-                parts.append(item.content.decode("utf-8", errors="replace"))
-            else:
-                parts.append(str(item.content))
-        return "\n".join(parts)
-
-
 def get_app(config: MaasServerConfig):
     """Create and wrap the ASGI application with auth middleware.
 
@@ -101,7 +44,8 @@ def get_app(config: MaasServerConfig):
     info_tools.register(app, pool)
     network_tools.register(app, pool)
     boot_sources_tools.register(app, pool)
-    _register_resources_as_tools(app)
+    # TODO: add ResourcesAsTools transform once available in python3-mcp
+    # https://gofastmcp.com/servers/transforms/resources-as-tools
 
     inner_asgi = app.streamable_http_app()
 

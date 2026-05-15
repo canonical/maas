@@ -86,8 +86,6 @@ Resources are also accessible as tools via `list_resources` and `read_resource` 
 | `get_machine_power_state` | Current power state for a machine |
 | `list_resource_pools` | All resource pools |
 | `list_zones` | All availability zones |
-| `list_resources` | List all available MCP resources (including `maas://info`) |
-| `read_resource` | Read a resource by URI (e.g. `read_resource {"uri": "maas://info"}`) |
 | `list_fabrics` | All network fabrics |
 | `get_fabric` | Detail for a single fabric |
 | `list_vlans` | VLANs for a fabric |
