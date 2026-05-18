@@ -27,7 +27,6 @@ class TestMAASAPIClient:
         "maascommon.apiclient.worker_socket_paths",
         return_value=["/tmp/socket1", "/tmp/socket2"],
     )
-    @patch("maascommon.apiclient.os.path.exists", return_value=True)
     @patch(
         "maascommon.apiclient.random.choice",
         return_value="/tmp/socket1",
