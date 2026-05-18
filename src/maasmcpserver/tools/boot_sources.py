@@ -223,19 +223,19 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Trigger Boot Source Sync",
-        description="Trigger an asynchronous sync for a specific boot source selection.",
+        description="Initiate an asynchronous image sync for a specific boot source selection. Use this when the user wants to pull or refresh images from a boot source. Do NOT use this to inspect sync status or list images — use list_boot_sources or list_available_images instead. Returns a confirmation message with boot source ID, selection ID, and HTTP status.",
     )
     async def trigger_boot_source_sync(
         boot_source_id: Annotated[
             int,
-            Field(description="Numeric ID of the boot source."),
+            Field(
+                description="Integer ID of the boot source to sync against. Obtain from list_boot_sources if not provided by the user."
+            ),
         ],
         selection_id: Annotated[
             int,
             Field(
-                description=(
-                    "Numeric ID of the boot source selection to sync."
-                )
+                description="Integer ID of the specific image selection within the boot source. Obtain from list_boot_source_selections if not provided by the user."
             ),
         ],
     ) -> str:
@@ -270,13 +270,15 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Delete Boot Source",
-        description="Permanently delete a boot source and all its selections from MAAS.",
+        description="Permanently delete a boot source and ALL of its image selections from MAAS. Use this only when the user explicitly confirms deletion. Do NOT use this to remove a single selection or to disable syncing — it removes the entire source irreversibly. Returns the deleted source ID and URL on success.",
         annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_boot_source(
         boot_source_id: Annotated[
             int,
-            Field(description="Numeric ID of the boot source to delete."),
+            Field(
+                description="Integer ID of the boot source to delete. Obtain from list_boot_sources if not provided by the user. Deleting this ID removes all associated selections permanently."
+            ),
         ],
     ) -> str:
         params = {"boot_source_id": boot_source_id}
@@ -319,21 +321,27 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="List Boot Source Selections",
-        description="Return all image selections configured for a specific boot source.",
+        description="Fetch and list all OS image selections configured under a specific boot source. Use this to inspect what OS/release/arch combinations are selected for syncing. Do NOT use this to trigger a sync or to list already-available images — use trigger_boot_source_sync or list_available_images for those. Returns a paginated markdown list of selections.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_boot_source_selections(
         boot_source_id: Annotated[
             int,
-            Field(description="Numeric ID of the boot source."),
+            Field(
+                description="Integer ID of the boot source whose selections to list. Obtain from list_boot_sources if not provided by the user."
+            ),
         ],
         page: Annotated[
             int,
-            Field(description="Page number (1-based)."),
+            Field(
+                description="Page number to retrieve, 1-based integer. Defaults to 1. Increment to paginate through large result sets."
+            ),
         ] = 1,
         page_size: Annotated[
             int,
-            Field(description="Number of results per page."),
+            Field(
+                description="Number of selections to return per page, integer. Defaults to 100. Reduce if responses are too large."
+            ),
         ] = 100,
     ) -> str:
         params = {
@@ -389,17 +397,21 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="List Custom Images",
-        description="Return all custom (uploaded) boot images available in MAAS.",
+        description="List all custom (user-uploaded) boot images registered in MAAS. Use this when the user asks about non-standard or manually imported OS images. Do NOT use this for Canonical-synced images — use list_available_images for those. Returns a paginated markdown list with image ID, OS, release, arch, and sub-arch.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_custom_images(
         page: Annotated[
             int,
-            Field(description="Page number (1-based)."),
+            Field(
+                description="Page number to retrieve, 1-based integer. Defaults to 1. Increment to paginate through results."
+            ),
         ] = 1,
         page_size: Annotated[
             int,
-            Field(description="Number of results per page."),
+            Field(
+                description="Number of custom images to return per page, integer. Defaults to 100."
+            ),
         ] = 100,
     ) -> str:
         params = {"page": page, "page_size": page_size}

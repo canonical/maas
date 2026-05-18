@@ -339,7 +339,7 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="List Machines",
-        description="Return a paginated list of machines in the fleet, optionally filtered by hostname, status, resource pool, zone, or tags.",
+        description="List machines in the MAAS fleet. Use when the user asks to 'list machines', 'show all nodes', 'find servers', or 'what machines are available'. Supports optional filters. Do NOT use this tool to retrieve details of a single known machine — use get_machine instead. Returns a paginated Markdown table of matching machines.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_machines(
@@ -347,50 +347,64 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
             str | None,
             Field(
                 description=(
-                    "Filter by machine status (e.g. 'ready', 'deployed', "
-                    "'commissioning')."
+                    "String status value to filter machines by (e.g. 'ready', 'deployed', 'commissioning', 'allocated'). "
+                    "Derive from user phrasing such as 'ready machines' or 'deployed servers'. Omit if the user did not specify a status."
                 )
             ),
         ] = None,
         hostname: Annotated[
             str | None,
-            Field(description="Filter by hostname (substring match)."),
+            Field(
+                description="Partial or full hostname string to filter results. Used for substring matching — pass the hostname fragment the user mentioned. Omit if no hostname filter was requested."
+            ),
         ] = None,
         zone: Annotated[
             str | None,
-            Field(description="Filter by availability zone name."),
+            Field(
+                description="Exact availability zone name string to filter by (e.g. 'default', 'us-east-1'). Source from user input or a prior list_zones call. Omit if no zone filter was requested."
+            ),
         ] = None,
         pool: Annotated[
             str | None,
-            Field(description="Filter by resource pool name."),
+            Field(
+                description="Exact resource pool name string to filter by (e.g. 'default'). Source from user input or a prior list_resource_pools call. Omit if no pool filter was requested."
+            ),
         ] = None,
         architecture: Annotated[
             str | None,
             Field(
-                description="Filter by architecture (e.g. 'amd64/generic')."
+                description="Exact architecture string in 'arch/subarch' format (e.g. 'amd64/generic'). Source from user input. Omit if no architecture filter was requested."
             ),
         ] = None,
         tags: Annotated[
             str | None,
-            Field(description="Filter by tag (comma-separated or repeated)."),
+            Field(
+                description="Comma-separated tag names to filter by (e.g. 'gpu,storage'). Source from user input. Omit if no tag filter was requested."
+            ),
         ] = None,
         owner: Annotated[
             str | None,
-            Field(description="Filter by owning username."),
+            Field(
+                description="Exact MAAS username string of the machine owner. Source from user input or context. Omit if no owner filter was requested."
+            ),
         ] = None,
         power_state: Annotated[
             str | None,
             Field(
-                description="Filter by power state ('on', 'off', 'unknown')."
+                description="Power state string to filter by — must be exactly 'on', 'off', or 'unknown'. Source from user phrasing such as 'powered on machines'. Omit if no power-state filter was requested."
             ),
         ] = None,
         page: Annotated[
             int,
-            Field(description="Page number (1-based)."),
+            Field(
+                description="1-based integer page number for paginated results. Default is 1. Increment to retrieve subsequent pages."
+            ),
         ] = 1,
         page_size: Annotated[
             int,
-            Field(description="Number of results per page."),
+            Field(
+                description="Integer number of machines to return per page. Default is 50. Adjust only if the user requests a different page size."
+            ),
         ] = 50,
     ) -> str:
         """List MAAS machines using optional fleet filters."""
@@ -477,13 +491,15 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Get Machine",
-        description="Return full details for a single machine identified by system_id, hostname, or FQDN.",
+        description="Retrieve full hardware, network, and OS details for a single machine. Use when the user asks to 'show details for', 'describe', 'inspect', or 'get info on' a specific machine by name or ID. Do NOT use this tool to list multiple machines — use list_machines instead. Returns a structured Markdown report.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_machine(
         identifier: Annotated[
             str,
-            Field(description="System ID, hostname, or FQDN of the machine."),
+            Field(
+                description="The machine's system ID (e.g. 'abc123'), short hostname (e.g. 'node-01'), or FQDN (e.g. 'node-01.maas'). Source directly from user input or a prior list_machines result. Must identify exactly one machine."
+            ),
         ],
     ) -> str:
         """Return detailed machine information by hostname or system_id."""
@@ -655,13 +671,15 @@ def register(mcp: FastMCP, _pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Get Machine Power State",
-        description="Return the current power state (on/off/unknown) for a machine identified by system_id, hostname, or FQDN.",
+        description="Fetch the live power state (on, off, or unknown) of a single machine. Use when the user asks 'is this machine on?', 'what is the power state of', or 'is node X powered up?'. Do NOT use this tool to power machines on or off — use a power-action tool instead. Returns a plain-text string stating the current power state.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_machine_power_state(
         identifier: Annotated[
             str,
-            Field(description="System ID, hostname, or FQDN of the machine."),
+            Field(
+                description="The machine's system ID (e.g. 'abc123'), short hostname (e.g. 'node-01'), or FQDN (e.g. 'node-01.maas'). Source directly from user input or a prior list_machines result. Must identify exactly one machine."
+            ),
         ],
     ) -> str:
         """Return a machine power state by hostname or system_id."""

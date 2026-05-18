@@ -135,17 +135,21 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Get Machine Events",
-        description="Return recent audit and lifecycle events for a machine, optionally filtered by event type and limited by count.",
+        description="Retrieve recent audit and lifecycle events for a specific machine. Use this when the user asks about a machine's history, recent actions, or operational log. Optionally filter to only the last N hours. Do NOT use this to get events across all machines — use list_events for that. Returns a markdown table of timestamped events with type, level, and description.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_machine_events(
         identifier: Annotated[
             str,
-            Field(description="System ID, hostname, or FQDN of the machine."),
+            Field(
+                description="Machine identifier: system ID (e.g. 'abc123'), hostname (e.g. 'node-1'), or FQDN (e.g. 'node-1.maas'). Use list_machines to find the system ID if not provided."
+            ),
         ],
         since_hours: Annotated[
             int | None,
-            Field(description="Only return events from the last N hours."),
+            Field(
+                description="Restrict results to events created within the last N hours. Positive integer (e.g. 24 for the last day). Omit or pass null to return all available events."
+            ),
         ] = None,
     ) -> str:
         """Return recent machine events for a hostname or system_id."""
@@ -226,20 +230,20 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Get Script Results",
-        description="Return commissioning or testing script results for a machine, optionally filtered by script type (commissioning/testing) and script name.",
+        description="Fetch commissioning or hardware-testing script results for a specific machine. Use this when the user asks about test outcomes, hardware checks, or commissioning failures. Optionally filter by script type. Do NOT use this to view machine lifecycle events — use get_machine_events for that. Returns a markdown summary per script with status, exit code, runtime, and truncated output.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_script_results(
         identifier: Annotated[
             str,
-            Field(description="System ID, hostname, or FQDN of the machine."),
+            Field(
+                description="Machine identifier: system ID (e.g. 'abc123'), hostname (e.g. 'node-1'), or FQDN (e.g. 'node-1.maas'). Use list_machines to find the system ID if not provided."
+            ),
         ],
         script_type: Annotated[
             str | None,
             Field(
-                description=(
-                    "Filter by script type: 'commissioning' or 'testing'."
-                )
+                description="Filter results by script category. Accepted values: 'commissioning' or 'testing' (string). Omit or pass null to return results for all script types."
             ),
         ] = None,
     ) -> str:
@@ -302,21 +306,27 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="List Events",
-        description="Return paginated MAAS audit and lifecycle events, optionally filtered by one or more machine system IDs.",
+        description="Browse paginated MAAS audit and lifecycle events across the entire fleet, optionally scoped to one or more machines. Use this for fleet-wide event history or multi-machine investigation. Do NOT use this to inspect a single machine's events in detail — use get_machine_events for that. Returns a paginated markdown table with timestamp, level, node, owner, action, and description.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_events(
         system_ids: Annotated[
             list[str] | None,
-            Field(description="Filter events to these machine system IDs."),
+            Field(
+                description="Optional list of machine system IDs (strings, e.g. ['abc123', 'def456']) to scope events to specific machines. Obtain system IDs from list_machines. Omit or pass null to return events for all machines."
+            ),
         ] = None,
         page: Annotated[
             int,
-            Field(description="Page number (1-based)."),
+            Field(
+                description="Page number to retrieve, 1-based integer. Defaults to 1. Increment to paginate through results."
+            ),
         ] = 1,
         page_size: Annotated[
             int,
-            Field(description="Number of results per page."),
+            Field(
+                description="Number of events to return per page, integer. Defaults to 100. Reduce if responses are too large."
+            ),
         ] = 100,
     ) -> str:
         params: dict[str, Any] = {"page": page, "page_size": page_size}

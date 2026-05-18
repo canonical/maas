@@ -315,7 +315,17 @@ async def test_list_fabrics_returns_table(
 ) -> None:
     _, client = mock_maas_client
     client.get.return_value = make_response(
-        {"items": [FABRIC_PAYLOAD, {"id": 2, "name": "fabric-1", "class_type": None, "description": ""}]}
+        {
+            "items": [
+                FABRIC_PAYLOAD,
+                {
+                    "id": 2,
+                    "name": "fabric-1",
+                    "class_type": None,
+                    "description": "",
+                },
+            ]
+        }
     )
 
     result = await registered_tools["list_fabrics"]()

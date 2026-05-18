@@ -46,9 +46,7 @@ async def fetch_all_pages(
         response = await client.get(next_path)
         payload = response.json()
         all_items.extend(items_from_payload(payload))
-        next_path = (
-            payload.get("next") if isinstance(payload, dict) else None
-        )
+        next_path = payload.get("next") if isinstance(payload, dict) else None
     return all_items
 
 

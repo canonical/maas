@@ -269,13 +269,15 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Get Fabric",
-        description="Return details for a single fabric by its numeric ID.",
+        description="Fetch and return full details for a single fabric as a formatted summary. Use when the user asks 'show me fabric <id>', 'get fabric details', or 'what is fabric <id>'. Do NOT use to list all fabrics — use list_fabrics instead. Returns fabric ID, name, class type, and associated VLANs.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_fabric(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric."),
+            Field(
+                description="Integer ID of the fabric to retrieve. Obtain from list_fabrics if the user has not provided it explicitly."
+            ),
         ],
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -294,21 +296,27 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="List VLANs",
-        description="Return a paginated list of VLANs belonging to a specific fabric.",
+        description="List all VLANs in a fabric, returned as a paginated markdown table. Use when the user asks 'list VLANs', 'show VLANs in fabric <id>', or 'what VLANs exist'. Requires a fabric_id — call list_fabrics first if unknown. Returns columns: ID, VID, Name, MTU, DHCP.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_vlans(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric."),
+            Field(
+                description="Integer ID of the fabric whose VLANs to list. Obtain from list_fabrics if not provided by the user."
+            ),
         ],
         page: Annotated[
             int,
-            Field(description="Page number (1-based)."),
+            Field(
+                description="1-based page number for paginated results. Defaults to 1."
+            ),
         ] = 1,
         page_size: Annotated[
             int,
-            Field(description="Number of results per page."),
+            Field(
+                description="Number of VLAN rows to return per page. Defaults to 100."
+            ),
         ] = 100,
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -352,17 +360,21 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Get VLAN",
-        description="Return details for a single VLAN identified by fabric ID and VLAN ID.",
+        description="Fetch and return full details for a single VLAN as a formatted summary. Use when the user asks 'show VLAN <id>', 'get VLAN details', or 'describe VLAN <id> in fabric <id>'. Do NOT use to list VLANs — use list_vlans instead. Returns VID, name, MTU, DHCP status, and relay target.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_vlan(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric."),
+            Field(
+                description="Integer ID of the fabric that owns the VLAN. Obtain from list_fabrics if not provided by the user."
+            ),
         ],
         vlan_id: Annotated[
             int,
-            Field(description="Numeric ID of the VLAN."),
+            Field(
+                description="Integer ID of the VLAN to retrieve. Obtain from list_vlans if not provided by the user."
+            ),
         ],
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -381,25 +393,33 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="List Subnets",
-        description="Return a paginated list of subnets within a specific VLAN (fabric_id and vlan_id are required).",
+        description="List all subnets within a specific VLAN, returned as a paginated markdown table. Use when the user asks 'list subnets', 'show subnets in VLAN <id>', or 'what subnets are in fabric <id>'. Both fabric_id and vlan_id are required — call list_fabrics then list_vlans first if unknown. Returns columns: ID, Name, CIDR, Gateway, DNS Servers.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def list_subnets(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric."),
+            Field(
+                description="Integer ID of the fabric. Obtain from list_fabrics if not provided by the user."
+            ),
         ],
         vlan_id: Annotated[
             int,
-            Field(description="Numeric ID of the VLAN."),
+            Field(
+                description="Integer ID of the VLAN whose subnets to list. Obtain from list_vlans if not provided by the user."
+            ),
         ],
         page: Annotated[
             int,
-            Field(description="Page number (1-based)."),
+            Field(
+                description="1-based page number for paginated results. Defaults to 1."
+            ),
         ] = 1,
         page_size: Annotated[
             int,
-            Field(description="Number of results per page."),
+            Field(
+                description="Number of subnet rows to return per page. Defaults to 100."
+            ),
         ] = 100,
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -446,21 +466,27 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Get Subnet",
-        description="Return details for a single subnet by its numeric ID, including CIDR, gateway, DNS servers, and VLAN membership.",
+        description="Fetch and return full details for a single subnet as a formatted summary, including CIDR, gateway, DNS servers, and VLAN membership. Use when the user asks 'show subnet <id>', 'get subnet details', or 'describe subnet <id>'. Do NOT use to list subnets — use list_subnets instead.",
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def get_subnet(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric."),
+            Field(
+                description="Integer ID of the fabric. Obtain from list_fabrics if not provided by the user."
+            ),
         ],
         vlan_id: Annotated[
             int,
-            Field(description="Numeric ID of the VLAN."),
+            Field(
+                description="Integer ID of the VLAN that contains the subnet. Obtain from list_vlans if not provided by the user."
+            ),
         ],
         subnet_id: Annotated[
             int,
-            Field(description="Numeric ID of the subnet."),
+            Field(
+                description="Integer ID of the subnet to retrieve. Obtain from list_subnets if not provided by the user."
+            ),
         ],
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -487,16 +513,20 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Create Fabric",
-        description="Create a new network fabric with an optional name and class type.",
+        description="Create a new network fabric in MAAS and return its ID and name. Use when the user asks 'create a fabric', 'add a new fabric', or 'set up a fabric named <name>'. Do NOT use to create VLANs or subnets — use create_vlan or create_subnet for those. Returns the new fabric ID and name.",
     )
     async def create_fabric(
         name: Annotated[
             str,
-            Field(description="Name for the new fabric."),
+            Field(
+                description="Human-readable name for the new fabric. Must be a non-empty string provided by the user."
+            ),
         ],
         class_type: Annotated[
             str | None,
-            Field(description="Optional class type label for the fabric."),
+            Field(
+                description="Optional class type label (string) to categorise the fabric, e.g. 'flat'. Omit or pass null if not specified by the user."
+            ),
         ] = None,
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -514,20 +544,26 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Update Fabric",
-        description="Update the name or class type of an existing fabric.",
+        description="Update the name or class type of an existing fabric and return the updated details. Use when the user asks 'rename fabric <id>', 'update fabric', or 'change class type of fabric <id>'. Do NOT use to modify VLANs or subnets — use update_vlan or update_subnet instead. Returns the updated fabric summary.",
     )
     async def update_fabric(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric to update."),
+            Field(
+                description="Integer ID of the fabric to update. Obtain from list_fabrics if not provided by the user."
+            ),
         ],
         name: Annotated[
             str | None,
-            Field(description="New name for the fabric."),
+            Field(
+                description="New name string for the fabric. Omit or pass null to leave unchanged."
+            ),
         ] = None,
         class_type: Annotated[
             str | None,
-            Field(description="New class type label."),
+            Field(
+                description="New class type label string for the fabric. Omit or pass null to leave unchanged."
+            ),
         ] = None,
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -552,13 +588,15 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Delete Fabric",
-        description="Permanently delete a fabric and all its VLANs from MAAS.",
+        description="Permanently and irreversibly delete a fabric and ALL of its VLANs and subnets from MAAS. Use ONLY when the user explicitly confirms deletion with phrases like 'delete fabric <id>', 'remove fabric <id>', or 'destroy fabric <id>'. Do NOT use if the user is asking to rename, inspect, or list fabrics. Do NOT use if the user has not confirmed the destructive action. This cannot be undone. Returns confirmation of the deleted fabric name and ID.",
         annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_fabric(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric to delete."),
+            Field(
+                description="Integer ID of the fabric to permanently delete. Obtain from list_fabrics if not provided by the user. Confirm with the user before passing this value."
+            ),
         ],
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -582,30 +620,38 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Create VLAN",
-        description="Create a new VLAN in a fabric with a given VID and optional name, MTU, and DHCP relay settings.",
+        description="Create a new 802.1Q VLAN inside a fabric and return its details. Use when the user asks 'create a VLAN', 'add VLAN <vid> to fabric <id>', or 'set up a VLAN'. Do NOT use to create subnets — use create_subnet instead. Requires a valid VID (1–4094). Returns the new VLAN ID, VID, and name.",
     )
     async def create_vlan(
         fabric_id: Annotated[
             int,
             Field(
-                description="Numeric ID of the fabric to create the VLAN in."
+                description="Integer ID of the fabric in which to create the VLAN. Obtain from list_fabrics if not provided by the user."
             ),
         ],
         vid: Annotated[
             int,
-            Field(description="VLAN ID (802.1Q VID, 1–4094)."),
+            Field(
+                description="802.1Q VLAN ID integer in the range 1–4094. Must be unique within the fabric. Provided by the user."
+            ),
         ],
         name: Annotated[
             str | None,
-            Field(description="Optional name for the VLAN."),
+            Field(
+                description="Optional human-readable name string for the VLAN. Omit or pass null if not specified by the user."
+            ),
         ] = None,
         mtu: Annotated[
             int | None,
-            Field(description="Optional MTU for the VLAN."),
+            Field(
+                description="Optional MTU integer for the VLAN (e.g. 1500 or 9000). Omit or pass null to use the fabric default."
+            ),
         ] = None,
         dhcp_relay_target: Annotated[
             int | None,
-            Field(description="Optional VLAN ID to relay DHCP to."),
+            Field(
+                description="Optional integer VLAN ID to relay DHCP traffic to. Obtain from list_vlans if needed. Omit or pass null if DHCP relay is not required."
+            ),
         ] = None,
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -643,28 +689,38 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Update VLAN",
-        description="Update properties of an existing VLAN such as name, MTU, DHCP state, or relay VLAN.",
+        description="Update one or more properties of an existing VLAN (name, VID, MTU) and return the updated details. Use when the user asks 'rename VLAN <id>', 'change MTU of VLAN', 'update VLAN <id> in fabric <id>', or similar. Do NOT use to delete or create VLANs. Only fields provided will be changed. Returns the updated VLAN summary.",
     )
     async def update_vlan(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric."),
+            Field(
+                description="Integer ID of the fabric that owns the VLAN. Obtain from list_fabrics if not provided by the user."
+            ),
         ],
         vlan_id: Annotated[
             int,
-            Field(description="Numeric ID of the VLAN to update."),
+            Field(
+                description="Integer ID of the VLAN to update. Obtain from list_vlans if not provided by the user."
+            ),
         ],
         vid: Annotated[
             int | None,
-            Field(description="New VLAN ID (802.1Q VID)."),
+            Field(
+                description="New 802.1Q VID integer (1–4094) to assign. Omit or pass null to leave unchanged."
+            ),
         ] = None,
         name: Annotated[
             str | None,
-            Field(description="New name for the VLAN."),
+            Field(
+                description="New name string for the VLAN. Omit or pass null to leave unchanged."
+            ),
         ] = None,
         mtu: Annotated[
             int | None,
-            Field(description="New MTU for the VLAN."),
+            Field(
+                description="New MTU integer for the VLAN (e.g. 1500 or 9000). Omit or pass null to leave unchanged."
+            ),
         ] = None,
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -691,17 +747,21 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Delete VLAN",
-        description="Permanently delete a VLAN from a fabric.",
+        description="Permanently and irreversibly delete a VLAN and all its subnets from a fabric. Use ONLY when the user explicitly confirms deletion with phrases like 'delete VLAN <id>', 'remove VLAN <vid>', or 'destroy VLAN <id> in fabric <id>'. Do NOT use if the user is asking to inspect, list, or rename VLANs. Do NOT use if the user has not confirmed the destructive action. This cannot be undone. Returns confirmation of the deleted VLAN VID and ID.",
         annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_vlan(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric."),
+            Field(
+                description="Integer ID of the fabric that owns the VLAN. Obtain from list_fabrics if not provided by the user."
+            ),
         ],
         vlan_id: Annotated[
             int,
-            Field(description="Numeric ID of the VLAN to delete."),
+            Field(
+                description="Integer ID of the VLAN to permanently delete. Obtain from list_vlans if not provided by the user. Confirm with the user before passing this value."
+            ),
         ],
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -753,38 +813,46 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Create Subnet",
-        description="Create a new subnet with a CIDR, optionally specifying gateway, DNS servers, VLAN membership, and IP range management settings.",
+        description="Create a new IP subnet within a VLAN and return its details. Use when the user asks 'create a subnet', 'add subnet <cidr> to VLAN <id>', or 'set up a network <cidr>'. Requires both fabric_id and vlan_id — call list_fabrics then list_vlans first if unknown. CIDR must be in standard notation (e.g. '10.0.0.0/24'). Returns the new subnet ID, CIDR, and name.",
     )
     async def create_subnet(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric."),
+            Field(
+                description="Integer ID of the fabric. Obtain from list_fabrics if not provided by the user."
+            ),
         ],
         vlan_id: Annotated[
             int,
             Field(
-                description="Numeric ID of the VLAN to attach the subnet to."
+                description="Integer ID of the VLAN to attach the subnet to. Obtain from list_vlans if not provided by the user."
             ),
         ],
         cidr: Annotated[
             str,
             Field(
                 description=(
-                    "CIDR notation for the subnet (e.g. '192.168.1.0/24')."
+                    "IP subnet in CIDR notation, e.g. '192.168.1.0/24' or '10.0.0.0/8'. Must be a valid, non-overlapping CIDR provided by the user."
                 )
             ),
         ],
         name: Annotated[
             str | None,
-            Field(description="Optional name for the subnet."),
+            Field(
+                description="Optional human-readable name string for the subnet. Omit or pass null if not specified by the user."
+            ),
         ] = None,
         gateway_ip: Annotated[
             str | None,
-            Field(description="Optional gateway IP address."),
+            Field(
+                description="Optional gateway IPv4/IPv6 address string (e.g. '192.168.1.1'). Must be within the subnet CIDR. Omit or pass null if not specified."
+            ),
         ] = None,
         dns_servers: Annotated[
             list[str] | None,
-            Field(description="Optional list of DNS server IP addresses."),
+            Field(
+                description="Optional list of DNS server IP address strings (e.g. ['8.8.8.8', '1.1.1.1']). Omit or pass null if not specified by the user."
+            ),
         ] = None,
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -823,36 +891,50 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Update Subnet",
-        description="Update properties of an existing subnet such as name, CIDR, gateway, DNS servers, or VLAN membership.",
+        description="Update one or more properties of an existing subnet (name, CIDR, gateway, DNS servers) and return the updated details. Use when the user asks 'update subnet <id>', 'change gateway of subnet', 'rename subnet <id>', or 'set DNS on subnet <id>'. Do NOT use to delete or create subnets. Only fields provided will be changed. Returns the updated subnet summary.",
     )
     async def update_subnet(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric."),
+            Field(
+                description="Integer ID of the fabric. Obtain from list_fabrics if not provided by the user."
+            ),
         ],
         vlan_id: Annotated[
             int,
-            Field(description="Numeric ID of the VLAN."),
+            Field(
+                description="Integer ID of the VLAN that contains the subnet. Obtain from list_vlans if not provided by the user."
+            ),
         ],
         subnet_id: Annotated[
             int,
-            Field(description="Numeric ID of the subnet to update."),
+            Field(
+                description="Integer ID of the subnet to update. Obtain from list_subnets if not provided by the user."
+            ),
         ],
         name: Annotated[
             str | None,
-            Field(description="New name for the subnet."),
+            Field(
+                description="New name string for the subnet. Omit or pass null to leave unchanged."
+            ),
         ] = None,
         cidr: Annotated[
             str | None,
-            Field(description="New CIDR notation for the subnet."),
+            Field(
+                description="New CIDR notation string for the subnet (e.g. '10.0.1.0/24'). Omit or pass null to leave unchanged."
+            ),
         ] = None,
         gateway_ip: Annotated[
             str | None,
-            Field(description="New gateway IP address."),
+            Field(
+                description="New gateway IPv4/IPv6 address string. Must be within the subnet CIDR. Omit or pass null to leave unchanged."
+            ),
         ] = None,
         dns_servers: Annotated[
             list[str] | None,
-            Field(description="New list of DNS server IP addresses."),
+            Field(
+                description="New list of DNS server IP address strings (e.g. ['8.8.8.8']). Replaces the existing list. Omit or pass null to leave unchanged."
+            ),
         ] = None,
     ) -> str:
         async def _operation(client: MAASClient) -> str:
@@ -892,21 +974,27 @@ def register(mcp: FastMCP, pool: MAASClientPool) -> None:
 
     @mcp.tool(
         title="Delete Subnet",
-        description="Permanently delete a subnet from MAAS.",
+        description="Permanently and irreversibly delete a subnet from MAAS. Use ONLY when the user explicitly confirms deletion with phrases like 'delete subnet <id>', 'remove subnet <cidr>', or 'destroy subnet <id>'. Do NOT use if the user is asking to inspect, list, or modify subnets. Do NOT use if the user has not confirmed the destructive action. This cannot be undone. Returns confirmation of the deleted subnet CIDR and ID.",
         annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_subnet(
         fabric_id: Annotated[
             int,
-            Field(description="Numeric ID of the fabric."),
+            Field(
+                description="Integer ID of the fabric. Obtain from list_fabrics if not provided by the user."
+            ),
         ],
         vlan_id: Annotated[
             int,
-            Field(description="Numeric ID of the VLAN."),
+            Field(
+                description="Integer ID of the VLAN that contains the subnet. Obtain from list_vlans if not provided by the user."
+            ),
         ],
         subnet_id: Annotated[
             int,
-            Field(description="Numeric ID of the subnet to delete."),
+            Field(
+                description="Integer ID of the subnet to permanently delete. Obtain from list_subnets if not provided by the user. Confirm with the user before passing this value."
+            ),
         ],
     ) -> str:
         async def _operation(client: MAASClient) -> str:
