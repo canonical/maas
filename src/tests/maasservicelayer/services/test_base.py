@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Type
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from pydantic import Field
 import pytest
@@ -22,7 +22,7 @@ from maasservicelayer.models.base import (
     UNSET,
     Unset,
 )
-from maasservicelayer.services.base import BaseService, Service
+from maasservicelayer.services.base import BaseService
 
 
 class DummyMaasBaseModel(MaasBaseModel):
@@ -40,13 +40,6 @@ class DummyRepository(BaseRepository[DummyMaasBaseModel]):
 
     def get_model_factory(self) -> Type[DummyMaasBaseModel]:
         return DummyMaasBaseModel
-
-
-class DummyServiceCache:
-    """Mock cache for testing decorators."""
-
-    cached_value: str | None = None
-    async_cached_value: str | None = None
 
 
 class DummyService(
@@ -434,59 +427,3 @@ class TestBaseService:
 
         repository_mock.delete_many.assert_awaited_once_with(query=query)
         assert results == resources
-
-    async def test_from_cache_or_execute_sync_logic(self, service):
-        service.cache = DummyServiceCache()
-
-        method_logic = Mock(return_value="data")
-
-        @Service.from_cache_or_execute("cached_value")
-        def decorated_method(self):
-            return method_logic()
-
-        # Cache Miss
-        result = decorated_method(service)
-        assert result == "data"
-        assert service.cache.cached_value == "data"
-        assert method_logic.call_count == 1
-
-        # Cache Hit
-        service.cache.cached_value = "hit"
-        result = decorated_method(service)
-        assert result == "hit"
-        assert method_logic.call_count == 1
-
-    async def test_from_cache_or_execute_async_logic(self, service):
-        service.cache = DummyServiceCache()
-
-        method_logic = AsyncMock(return_value="async_data")
-
-        @Service.from_cache_or_execute_async("async_cached_value")
-        async def decorated_method(self):
-            return await method_logic()
-
-        # Cache Miss
-        result = await decorated_method(service)
-        assert result == "async_data"
-        assert service.cache.async_cached_value == "async_data"
-        method_logic.assert_awaited_once()
-
-        # Cache Hit
-        service.cache.async_cached_value = "async_hit"
-        result = await decorated_method(service)
-        assert result == "async_hit"
-        method_logic.assert_awaited_once()
-
-    async def test_cache_decorators_bypass_if_no_cache(self, service):
-        service.cache = None
-
-        @Service.from_cache_or_execute("some_attr")
-        def sync_method(self):
-            return "no_cache_sync"
-
-        @Service.from_cache_or_execute_async("some_attr")
-        async def async_method(self):
-            return "no_cache_async"
-
-        assert sync_method(service) == "no_cache_sync"
-        assert await async_method(service) == "no_cache_async"

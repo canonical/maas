@@ -35,7 +35,7 @@ class AgentsService(Service):
     def build_cache_object() -> AgentsServiceCache:
         return AgentsServiceCache()
 
-    @Service.from_cache_or_execute_async(attr="api_client")
+    @Service.from_cache_or_execute(attr="api_client")
     async def _get_apiclient(self) -> MAASAPIClient:
         if self._apiclient:
             return self._apiclient
