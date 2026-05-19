@@ -93,7 +93,7 @@ class TestConnectionPool(MAASTestCase):
         self.assertEqual(
             "_reap_extra_connection", clock.calls[0].func.__name__
         )
-        self.assertEqual(cp._keepalive, clock.calls[0].time)
+        self.assertEqual(cp._keepalive / 1000, clock.calls[0].time)
 
     def test_is_staged(self):
         cp = ConnectionPool(Clock(), Mock())
