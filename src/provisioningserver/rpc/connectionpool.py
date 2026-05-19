@@ -74,7 +74,10 @@ class ConnectionPool:
             self.disconnect(conn)
             return self.remove_connection(eventloop, conn)
         return self.clock.callLater(
-            self._keepalive, self._reap_extra_connection, eventloop, conn
+            self._keepalive / 1000,  # callLater expects seconds!
+            self._reap_extra_connection,
+            eventloop,
+            conn,
         )
 
     def is_staged(self, eventloop):
