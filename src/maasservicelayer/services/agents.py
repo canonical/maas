@@ -1,7 +1,8 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from dataclasses import dataclass
 
+from maascommon.apiclient import MAASAPIClient
 from maasservicelayer.apiclient.client import APIClient
 from maasservicelayer.context import Context
 from maasservicelayer.models.configurations import MAASUrlConfig
@@ -12,11 +13,10 @@ from maasservicelayer.services.users import UsersService
 
 @dataclass(slots=True)
 class AgentsServiceCache(ServiceCache):
-    api_client: APIClient | None = None
+    api_client: MAASAPIClient | None = None
 
     async def close(self) -> None:
-        if self.api_client:
-            await self.api_client.close()
+        pass
 
 
 class AgentsService(Service):
@@ -36,8 +36,8 @@ class AgentsService(Service):
     def build_cache_object() -> AgentsServiceCache:
         return AgentsServiceCache()
 
-    @Service.from_cache_or_execute(attr="api_client")
-    async def _get_apiclient(self) -> APIClient:
+    @Service.from_cache_or_execute_async(attr="api_client")
+    async def _get_apiclient(self) -> MAASAPIClient:
         if self._apiclient:
             return self._apiclient
 
@@ -47,7 +47,7 @@ class AgentsService(Service):
 
         apikey = await self.users_service.get_MAAS_user_apikey()
 
-        apiclient = APIClient(f"{maas_url}/api/2.0/", apikey)
+        apiclient = MAASAPIClient(url=maas_url, token=apikey)
         self._apiclient = apiclient
         return apiclient
 
@@ -55,5 +55,5 @@ class AgentsService(Service):
         self, system_id: str, service_name: str
     ):
         apiclient = await self._get_apiclient()
-        path = f"agents/{system_id}/services/{service_name}/config/"
-        return await apiclient.request(method="GET", path=path)
+        url = f"{apiclient.url}/api/2.0/agents/{system_id}/services/{service_name}/config/"
+        return await apiclient.request_async(method="GET", url=url)

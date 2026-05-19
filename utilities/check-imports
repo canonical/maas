@@ -230,6 +230,7 @@ APIServerRule = Rule(
 Common = files("src/maascommon/**/*.py")
 CommonRule = Rule(
     Allow(StandardLibraries),
+    Allow("apiclient.maas_client.MAASOAuth"),
     Allow("distro_info|distro_info.*"),
     Allow("lxml|lxml.**"),
     Allow("maascommon|maascommon.**"),
@@ -339,7 +340,6 @@ RegionControllerRule = Rule(
     Allow("aiohttp|aiohttp.**"),
     Allow("alembic|alembic.**"),
     Allow("apiclient.creds.*"),
-    Allow("apiclient.maas_client.MAASOAuth"),
     Allow("apiclient.multipart.*"),
     Allow("apiclient.utils.*"),
     Allow("attr|attr.**"),

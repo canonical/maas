@@ -13,7 +13,7 @@ from temporalio.testing import ActivityEnvironment
 
 from maasservicelayer.db import Database
 from maasservicelayer.services import CacheForServices
-from maastemporalworker.workflow.api_client import MAASAPIClient
+from maascommon.apiclient import MAASAPIClient
 from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
     SpaceRequirementParam,
