@@ -948,7 +948,6 @@ class ClusterClientService(TimerService):
 
     def _handle_scale_up_failure(self, failure):
         """If scale-up fails, fall back to returning a busy connection."""
-        failure.trap(exceptions.MaxConnectionsOpen)
         log.warn(
             f"Failed to scale up due to {failure}. Falling back to a busy connection."
         )
