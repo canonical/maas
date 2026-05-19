@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
 from contextlib import suppress
@@ -26,6 +26,7 @@ from temporalio.workflow import (
     random,
 )
 
+from maascommon.apiclient import MAASAPIClient
 from maascommon.enums.boot_resources import BootResourceType
 from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.notifications import (
@@ -94,7 +95,6 @@ from maasservicelayer.utils.image_local_files import (
 )
 from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.activity import ActivityBase
-from maastemporalworker.workflow.api_client import MAASAPIClient
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
     get_error_message_from_temporal_exc,

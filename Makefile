@@ -462,6 +462,7 @@ package-clean:
 #
 
 snap-clean:
+	$(MAKE) --no-print-directory -C docs clean
 	$(snapcraft) clean
 .PHONY: snap-clean
 
