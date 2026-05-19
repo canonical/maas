@@ -253,6 +253,7 @@ async def main() -> None:
                 msm_activity.verify_token,
                 msm_activity.set_bootsource,
                 msm_activity.disable_bootsources,
+                msm_activity.delete_msm_bootsource,
                 msm_activity.restore_default_boot_source,
                 msm_activity.set_selections,
                 msm_activity.set_global_config,

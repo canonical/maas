@@ -363,7 +363,9 @@ async def authenticated_api_client(
 async def build_client(
     app: FastAPI, base_url: str, username: str, password: str
 ):
-    async with AsyncClient(app=app, base_url=base_url) as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url=base_url
+    ) as client:
         response = await client.post(
             f"{V3_API_PREFIX}/auth/login",
             data={"username": username, "password": password},

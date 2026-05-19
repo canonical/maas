@@ -73,7 +73,7 @@ CURTIN_INSTALL_LOG = "/tmp/install.log"
 
 
 # The path to where the error_tarfile is located. Curtin uploads this file to
-# MAAS only when an error has occured.
+# MAAS only when an error has occurred.
 CURTIN_ERROR_TARFILE = "/tmp/curtin-logs.tar"
 
 

@@ -9,7 +9,10 @@ from maasapiserver.v3.api.public.models.requests.boot_resources import (
     BootResourceFileTypeChoice,
     CustomImageFilterParams,
 )
-from maascommon.enums.boot_resources import BootResourceType
+from maascommon.enums.boot_resources import (
+    BootResourceFileType,
+    BootResourceType,
+)
 from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
@@ -558,16 +561,80 @@ class TestCustomImageFilterParams:
             ([1, 2, 3], BootResourceClauseFactory.with_ids([1, 2, 3])),
         ],
     )
-    def test_to_clause(self, ids, expected):
-        filters = CustomImageFilterParams(ids=ids)
+    def test_to_clause_ids(self, ids, expected):
+        filters = CustomImageFilterParams(ids=ids, file_type=None)
         clause = filters.to_clause()
+        assert clause == expected
+
+    @pytest.mark.parametrize(
+        "file_type,expected",
+        [
+            (None, None),
+            (
+                BootResourceFileTypeChoice.SELF_EXTRACTING,
+                BootResourceClauseFactory.with_filetype(
+                    BootResourceFileType.SELF_EXTRACTING
+                ),
+            ),
+            (
+                BootResourceFileTypeChoice.TGZ,
+                BootResourceClauseFactory.with_filetype(
+                    BootResourceFileType.ROOT_TGZ
+                ),
+            ),
+        ],
+    )
+    def test_to_clause_file_type(self, file_type, expected):
+        filters = CustomImageFilterParams(ids=None, file_type=file_type)
+        clause = filters.to_clause()
+        assert clause == expected
+
+    def test_to_clause_combined_filters(self):
+        filters = CustomImageFilterParams(
+            ids=[1, 2], file_type=BootResourceFileTypeChoice.SELF_EXTRACTING
+        )
+        clause = filters.to_clause()
+        # Should return an and_clauses with both filters
+        assert clause is not None
+        # The clause should be a combination of both filters
+        expected = BootResourceClauseFactory.and_clauses(
+            [
+                BootResourceClauseFactory.with_ids([1, 2]),
+                BootResourceClauseFactory.with_filetype(
+                    BootResourceFileType.SELF_EXTRACTING
+                ),
+            ]
+        )
         assert clause == expected
 
     @pytest.mark.parametrize(
         "ids,expected",
         [(None, None), ([1], "id=1"), ([1, 2, 3], "id=1&id=2&id=3")],
     )
-    def test_to_href_format(self, ids, expected):
-        filters = CustomImageFilterParams(ids=ids)
+    def test_to_href_format_ids(self, ids, expected):
+        filters = CustomImageFilterParams(ids=ids, file_type=None)
         href = filters.to_href_format()
         assert href == expected
+
+    @pytest.mark.parametrize(
+        "file_type,expected",
+        [
+            (None, None),
+            (
+                BootResourceFileTypeChoice.SELF_EXTRACTING,
+                "file_type=self-extracting",
+            ),
+            (BootResourceFileTypeChoice.TGZ, "file_type=tgz"),
+        ],
+    )
+    def test_to_href_format_file_type(self, file_type, expected):
+        filters = CustomImageFilterParams(ids=None, file_type=file_type)
+        href = filters.to_href_format()
+        assert href == expected
+
+    def test_to_href_format_combined_filters(self):
+        filters = CustomImageFilterParams(
+            ids=[1, 2], file_type=BootResourceFileTypeChoice.SELF_EXTRACTING
+        )
+        href = filters.to_href_format()
+        assert href == "id=1&id=2&file_type=self-extracting"

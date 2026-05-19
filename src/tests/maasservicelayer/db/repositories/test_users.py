@@ -40,6 +40,17 @@ class TestUserClauseFactory:
             "lower(auth_user.username) LIKE lower('%foo%') OR lower(auth_user.email) LIKE lower('%foo%')"
         )
 
+    def test_with_ids(self):
+        clause = UserClauseFactory.with_ids([1, 2])
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "auth_user.id IN (1, 2)"
+        )
+
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
@@ -203,7 +214,7 @@ class TestUsersRepository:
         assert users_list.total == 0
         assert users_list.items == []
 
-    async def test_list_with_summary(
+    async def test_list_statistics(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         user1 = await create_test_user(
@@ -235,7 +246,7 @@ class TestUsersRepository:
         await create_test_user_profile(fixture, user_id=user4.id)
 
         users_repository = UsersRepository(Context(connection=db_connection))
-        users_list = await users_repository.list_with_summary(
+        users_list = await users_repository.list_statistics(
             page=1, size=1000, query=QuerySpec(where=None)
         )
         # only active users should be listed
@@ -248,14 +259,14 @@ class TestUsersRepository:
         assert users_list.items[2].machines_count == 3
         assert users_list.items[2].sshkeys_count == 0
 
-    async def test_list_with_summary_special_users(
+    async def test_list_statistics_special_users(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         await create_test_user(fixture, username="MAAS")
         await create_test_user(fixture, username="maas-init-node")
 
         users_repository = UsersRepository(Context(connection=db_connection))
-        users_list = await users_repository.list_with_summary(
+        users_list = await users_repository.list_statistics(
             page=1, size=1000, query=QuerySpec(where=None)
         )
         assert users_list.total == 0
@@ -271,25 +282,29 @@ class TestUsersRepository:
             ("example", 3),
         ],
     )
-    async def test_list_with_summary_filters(
+    async def test_list_statistics_filters(
         self,
         db_connection: AsyncConnection,
         fixture: Fixture,
         query: str,
         num_results: int,
     ) -> None:
-        await create_test_user(
+        user1 = await create_test_user(
             fixture, username="foo", email="foo@example.com"
         )
-        await create_test_user(
+        user2 = await create_test_user(
             fixture, username="FOOOOO!", email="hello@example.com"
         )
-        await create_test_user(
+        user3 = await create_test_user(
             fixture, username="bar!", email="bar@example.com"
         )
 
+        await create_test_user_profile(fixture, user_id=user1.id)
+        await create_test_user_profile(fixture, user_id=user2.id)
+        await create_test_user_profile(fixture, user_id=user3.id)
+
         users_repository = UsersRepository(Context(connection=db_connection))
-        users_list = await users_repository.list_with_summary(
+        users_list = await users_repository.list_statistics(
             page=1,
             size=1000,
             query=QuerySpec(
@@ -297,8 +312,58 @@ class TestUsersRepository:
             ),
         )
         assert users_list.total == num_results
+        assert len(users_list.items) == num_results
 
-    async def test_get_by_id_with_summary(
+    async def test_list_statistics_filter_by_ids(
+        self,
+        db_connection: AsyncConnection,
+        fixture: Fixture,
+    ) -> None:
+        user1 = await create_test_user(
+            fixture, username="arthurmorgan", email="arthur.morgan@example.com"
+        )
+        user2 = await create_test_user(
+            fixture,
+            username="hoseamatthews",
+            email="hosea.matthews@example.com",
+        )
+        user3 = await create_test_user(
+            fixture, username="johnmarston", email="john.marston@example.com"
+        )
+
+        await create_test_user_profile(fixture, user_id=user1.id)
+        await create_test_user_profile(fixture, user_id=user2.id)
+        await create_test_user_profile(fixture, user_id=user3.id)
+
+        users_repository = UsersRepository(Context(connection=db_connection))
+
+        users_statistics = await users_repository.list_statistics(
+            page=1,
+            size=1000,
+            query=QuerySpec(
+                where=UserClauseFactory.with_ids([user1.id, user3.id])
+            ),
+        )
+
+        assert len(users_statistics.items) == 2
+        assert users_statistics.total == 2
+        assert users_statistics.items[0].id == user3.id
+        assert users_statistics.items[1].id == user1.id
+
+        users_statistics = await users_repository.list_statistics(
+            page=1,
+            size=1000,
+            query=QuerySpec(
+                where=UserClauseFactory.with_ids(
+                    [user1.id, user2.id, user3.id]
+                )
+            ),
+        )
+
+        assert len(users_statistics.items) == 3
+        assert users_statistics.total == 3
+
+    async def test_get_by_id_statistics(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         user = await create_test_user(fixture, username="user", is_active=True)
@@ -308,23 +373,19 @@ class TestUsersRepository:
         await create_test_user_sshkey(fixture, key="bar", user_id=user.id)
         users_repository = UsersRepository(Context(connection=db_connection))
 
-        user_with_summary = await users_repository.get_by_id_with_summary(
-            user.id
-        )
-        assert user_with_summary.username == "user"
-        assert user_with_summary.machines_count == 1
-        assert user_with_summary.sshkeys_count == 2
+        user_statistics = await users_repository.get_by_id_statistics(user.id)
+        assert user_statistics
+        assert user_statistics.machines_count == 1
+        assert user_statistics.sshkeys_count == 2
 
-    async def test_get_by_id_with_summary_system_user(
+    async def test_get_by_id_statistics_system_user(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         user = await create_test_user(fixture, username="MAAS")
         users_repository = UsersRepository(Context(connection=db_connection))
 
-        user_with_summary = await users_repository.get_by_id_with_summary(
-            user.id
-        )
-        assert user_with_summary is None
+        user_statistics = await users_repository.get_by_id_statistics(user.id)
+        assert user_statistics is None
 
     async def test_count_by_provider(
         self, db_connection: AsyncConnection, fixture: Fixture

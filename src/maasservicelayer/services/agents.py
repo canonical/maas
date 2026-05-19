@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 
-from maasservicelayer.apiclient.client import APIClient
+from maascommon.apiclient import MAASAPIClient
 from maasservicelayer.builders.agents import AgentBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.agents import AgentsRepository
@@ -16,11 +16,10 @@ from maasservicelayer.services.users import UsersService
 
 @dataclass(slots=True)
 class AgentsServiceCache(ServiceCache):
-    api_client: APIClient | None = None
+    api_client: MAASAPIClient | None = None
 
     async def close(self) -> None:
-        if self.api_client:
-            await self.api_client.close()
+        pass
 
 
 class AgentsService(BaseService[Agent, AgentsRepository, AgentBuilder]):
@@ -42,7 +41,7 @@ class AgentsService(BaseService[Agent, AgentsRepository, AgentBuilder]):
         return AgentsServiceCache()
 
     @Service.from_cache_or_execute_async(attr="api_client")
-    async def _get_apiclient(self) -> APIClient:
+    async def _get_apiclient(self) -> MAASAPIClient:
         if self._apiclient:
             return self._apiclient
 
@@ -52,7 +51,7 @@ class AgentsService(BaseService[Agent, AgentsRepository, AgentBuilder]):
 
         apikey = await self.users_service.get_MAAS_user_apikey()
 
-        apiclient = APIClient(f"{maas_url}/api/2.0/", apikey)
+        apiclient = MAASAPIClient(url=maas_url, token=apikey)
         self._apiclient = apiclient
         return apiclient
 
@@ -60,5 +59,5 @@ class AgentsService(BaseService[Agent, AgentsRepository, AgentBuilder]):
         self, system_id: str, service_name: str
     ):
         apiclient = await self._get_apiclient()
-        path = f"agents/{system_id}/services/{service_name}/config/"
-        return await apiclient.request(method="GET", path=path)
+        url = f"{apiclient.url}/api/2.0/agents/{system_id}/services/{service_name}/config/"
+        return await apiclient.request_async(method="GET", url=url)

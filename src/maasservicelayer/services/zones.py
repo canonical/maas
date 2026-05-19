@@ -5,6 +5,7 @@ from typing import List
 
 from maasservicelayer.builders.zones import ZoneBuilder
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
@@ -14,7 +15,7 @@ from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.zones import Zone, ZoneWithSummary
+from maasservicelayer.models.zones import Zone, ZoneWithStatistics
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.vmcluster import VmClustersService
@@ -72,7 +73,9 @@ class ZonesService(BaseService[Zone, ZonesRepository, ZoneBuilder]):
         )
         await self.vmcluster_service.move_to_zone(resource.id, default_zone.id)
 
-    async def list_with_summary(
-        self, page: int, size: int
-    ) -> ListResult[ZoneWithSummary]:
-        return await self.repository.list_with_summary(page=page, size=size)
+    async def list_with_statistics(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[ZoneWithStatistics]:
+        return await self.repository.list_with_statistics(
+            page=page, size=size, query=query
+        )

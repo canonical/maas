@@ -58,14 +58,14 @@ def login(request):
             logger.info(
                 AUTHN_LOGIN_SUCCESSFUL,
                 type=SECURITY,
-                userID=request.user.username,
+                user_id=request.user.username,
                 role=ADMIN if request.user.is_superuser else USER,
             )
             return HttpResponse(status=204)
         logger.info(
             AUTHN_LOGIN_UNSUCCESSFUL,
             type=SECURITY,
-            userID=request.POST.get("username"),
+            user_id=request.POST.get("username"),
         )
         return HttpResponseBadRequest(
             json.dumps(form.errors), content_type="application/json"

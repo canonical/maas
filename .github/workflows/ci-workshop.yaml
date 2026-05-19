@@ -1,0 +1,47 @@
+name: CI check using workshop
+
+# This workflow is only meant to show how the tests can be run using
+# workshop. It's not meant to be run automatically, until we can make
+# it faster. For our normal CI workflow we pre-build the image so that
+# we don't have install them on every run, which is time-consuming.
+on:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  tests-in-workshop:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: canonical/setup-lxd@8c6a87bfb56aa48f3fb9b830baa18562d8bfd4ee # v1
+        with:
+          bridges: lxdbr0,workshopbr0
+
+      - name: Install workshop
+        run: |
+          sudo snap install workshop --classic
+
+      - name: Start workshop
+        run: |
+          workshop launch --verbose
+      - name: Run make
+        run: |
+          workshop exec -- make
+
+      - name: Run lint
+        run: |
+          workshop exec -- make lint
+
+      - name: Run Go tests
+        run: |
+          workshop exec -- make test-go
+
+      - name: Run Python tests
+        run: |
+          workshop exec -- make test-py

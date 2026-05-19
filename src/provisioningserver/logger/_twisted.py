@@ -181,7 +181,7 @@ class LogFormatter:
         # Add security logging items if they exist
         security_items = [
             "type",
-            "userID",
+            "user_id",
             "role",
             "request_path",
             "useragent",

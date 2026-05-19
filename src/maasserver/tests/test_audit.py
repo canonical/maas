@@ -106,7 +106,7 @@ class TestCreateAuditEvent(MAASServerTestCase):
         mock_logger.info.assert_called_once_with(
             f"{audit_module.AUTHZ_ADMIN}:{EVENT_TYPES.SETTINGS.title()}:testaction:testid",
             type=audit_module.SECURITY,
-            userID="testuser",
+            user_id="testuser",
             role=USER,
             useragent="",
             request_remote_ip=None,

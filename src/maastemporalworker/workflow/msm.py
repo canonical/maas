@@ -101,7 +101,7 @@ MSM_SET_BOOT_SOURCE_ACTIVITY_NAME = "msm-set-bootsource"
 MSM_SET_GLOBAL_CONFIG_ACTIVITY_NAME = "msm-set-global-config"
 MSM_SET_SELECTIONS_ACTIVITY_NAME = "msm-set-selections"
 MSM_START_IMAGE_SYNC_ACTIVITY_NAME = "msm-start-image-sync"
-
+MSM_DELETE_MSM_BOOT_SOURCE_ACTIVITY_NAME = "msm-delete-msm-bootsource"
 MSM_DISABLE_BOOT_SOURCES_ACTIVITY_NAME = "msm-disable-bootsources"
 MSM_GET_FULL_PROFILE_CONFIG_ACTIVITY_NAME = "msm-get-full-profile-config"
 MSM_REPORT_CONFIG_PROGRESS_ACTIVITY_NAME = "msm-report-config-progress"
@@ -347,6 +347,20 @@ class MSMConnectorActivity(ActivityBase):
         """Disable all existing boot sources."""
         async with self.start_transaction() as services:
             await services.boot_sources.disable_all()
+
+    @activity_defn_with_context(name=MSM_DELETE_MSM_BOOT_SOURCE_ACTIVITY_NAME)
+    async def delete_msm_bootsource(
+        self, input: MSMRestoreDefaultBootSourceParam
+    ) -> None:
+        """Delete the Site Manager boot source."""
+        async with self.start_transaction() as services:
+            await services.boot_sources.delete_one(
+                QuerySpec(
+                    where=BootSourcesClauseFactory.with_url(
+                        input.sm_url + MSM_SS_EP
+                    )
+                )
+            )
 
     @activity_defn_with_context(name=MSM_SET_BOOT_SOURCE_ACTIVITY_NAME)
     async def set_bootsource(self, input: MSMSetBootSourceParam) -> None:
@@ -780,7 +794,8 @@ class MSMRestoreDefaultBootSourceWorkflow:
     @workflow_run_with_context
     async def run(self, input: MSMRestoreDefaultBootSourceParam) -> None:
         await workflow.execute_activity(
-            MSM_DISABLE_BOOT_SOURCES_ACTIVITY_NAME,
+            MSM_DELETE_MSM_BOOT_SOURCE_ACTIVITY_NAME,
+            input,
             start_to_close_timeout=MSM_TIMEOUT,
         )
         await workflow.execute_activity(

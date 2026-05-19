@@ -135,7 +135,7 @@ class TestLogin(MAASServerTestCase):
         mock_logger.info.assert_called_once_with(
             AUTHN_LOGIN_SUCCESSFUL,
             type=SECURITY,
-            userID=user.username,
+            user_id=user.username,
             role="User",
         )
 
@@ -150,7 +150,7 @@ class TestLogin(MAASServerTestCase):
         mock_logger.info.assert_called_once_with(
             AUTHN_LOGIN_UNSUCCESSFUL,
             type=SECURITY,
-            userID=user.username,
+            user_id=user.username,
         )
 
 
