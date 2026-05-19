@@ -115,7 +115,6 @@ class ConnectionPool:
                     # complete so the connection is in the pool before we
                     # release the pending slot.
                     yield conn.ready.get(timeout=self.SCALE_UP_TIMEOUT)
-                    raise Exception("BOOM")
                     self.clock.callLater(
                         self._keepalive / 1000,  # callLater expects seconds!
                         self._reap_extra_connection,
