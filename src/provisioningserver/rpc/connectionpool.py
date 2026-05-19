@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2022-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC Connection Pooling and Lifecycle"""
@@ -10,9 +10,13 @@ from twisted.internet.endpoints import connectProtocol, TCP6ClientEndpoint
 
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc import exceptions
+from provisioningserver.rpc.common import Client
 
 
 class ConnectionPool:
+    # Maximum time in seconds to wait for a scale-up connection handshake before giving up and releasing the pending slot.
+    SCALE_UP_TIMEOUT = 30
+
     def __init__(
         self, reactor, service, max_idle_conns=1, max_conns=1, keepalive=1000
     ):
@@ -25,6 +29,10 @@ class ConnectionPool:
 
         self.connections = {}
         self.try_connections = {}
+        # Track in-flight scale-up connections to prevent race conditions
+        # where concurrent callers all pass the capacity check before any
+        # connection handshake completes (LP:2074122).
+        self._pending_connections = {}
         self.clock = reactor
         self._service = service
 
@@ -84,16 +92,47 @@ class ConnectionPool:
     @PROMETHEUS_METRICS.failure_counter("maas_rpc_pool_exhaustion_count")
     @inlineCallbacks
     def scale_up_connections(self):
+        """Spawn one additional connection to a region event loop and return a client using that new connection.
+
+        Finds the first event loop with capacity for another connection, clones an existing connection to it, and waits for the handshake to complete.
+
+        A pending counter prevents concurrent callers from exceeding _max_connections while handshakes are in flight.
+
+        Ephemeral connections are reaped after _keepalive if not in use.
+
+        :raises MaxConnectionsOpen: When all event loops are at capacity or when the new connection fails to become ready.
+        """
         for ev, ev_conns in self.connections.items():
-            # pick first group with room for additional conns
-            if len(ev_conns) < self._max_connections:
-                # spawn an extra connection
-                conn_to_clone = random.choice(list(ev_conns))
-                conn = yield self.connect(ev, conn_to_clone.address)
-                self.clock.callLater(
-                    self._keepalive, self._reap_extra_connection, ev, conn
-                )
-                return
+            pending = self._pending_connections.get(ev, 0)
+            # Account for both established and in-flight connections
+            if len(ev_conns) + pending < self._max_connections:
+                self._pending_connections[ev] = pending + 1
+                conn = None
+                try:
+                    conn_to_clone = random.choice(list(ev_conns))
+                    conn = yield self.connect(ev, conn_to_clone.address)
+                    # Wait for the full handshake (auth + registration) to
+                    # complete so the connection is in the pool before we
+                    # release the pending slot.
+                    yield conn.ready.get(timeout=self.SCALE_UP_TIMEOUT)
+                    self.clock.callLater(
+                        self._keepalive / 1000,  # callLater expects seconds!
+                        self._reap_extra_connection,
+                        ev,
+                        conn,
+                    )
+                except Exception as e:
+                    # clean up and let the caller handle the case.
+                    if conn is not None:
+                        self.disconnect(conn)
+                    raise exceptions.MaxConnectionsOpen(
+                        "Scale-up connection failed to become ready"
+                    ) from e
+                finally:
+                    self._pending_connections[ev] -= 1
+                    if self._pending_connections[ev] == 0:
+                        del self._pending_connections[ev]
+                return Client(conn)
         raise exceptions.MaxConnectionsOpen()
 
     def get_connection(self, eventloop):
