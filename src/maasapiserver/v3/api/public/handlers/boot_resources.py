@@ -314,18 +314,34 @@ class CustomImagesHandler(Handler):
     )
     async def list_custom_images(
         self,
+        filters: CustomImageFilterParams = Depends(),  # noqa: B008
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ImageListResponse:
+        clauses = [
+            BootResourceClauseFactory.with_rtype(BootResourceType.UPLOADED)
+        ]
+        if filter_clause := filters.to_clause():
+            clauses.append(filter_clause)
+        where_clause = BootResourceClauseFactory.and_clauses(clauses)
+
         boot_resources = await services.boot_resources.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_rtype(
-                    BootResourceType.UPLOADED
-                )
-            ),
+            query=QuerySpec(where=where_clause),
         )
+
+        next_link = None
+        if boot_resources.has_next(
+            pagination_params.page, pagination_params.size
+        ):
+            next_link = (
+                f"{V3_API_PREFIX}/custom_images?"
+                f"{pagination_params.to_next_href_format()}"
+            )
+            if query_filters := filters.to_href_format():
+                next_link += f"&{query_filters}"
+
         return ImageListResponse(
             items=[
                 ImageResponse.from_boot_resource(
@@ -335,14 +351,7 @@ class CustomImagesHandler(Handler):
                 for boot_resource in boot_resources.items
             ],
             total=boot_resources.total,
-            next=(
-                f"{V3_API_PREFIX}/custom_images?"
-                + f"{pagination_params.to_next_href_format()}"
-                if boot_resources.has_next(
-                    pagination_params.page, pagination_params.size
-                )
-                else None
-            ),
+            next=next_link,
         )
 
     @handler(

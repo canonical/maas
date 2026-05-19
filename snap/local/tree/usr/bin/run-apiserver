@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# Copyright 2023 Canonical Ltd.  This software is licensed under the
+# Copyright 2023-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 # override configs to work in the snap
@@ -7,6 +7,7 @@ export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
 export MAAS_DATA="$SNAP_COMMON/maas"
 export MAAS_APISERVER_HTTP_SOCKET_PATH="$SNAP_DATA/apiserver-http.sock"
+export MAAS_HTTP_SOCKET_WORKER_BASE_PATH="$SNAP_DATA/maas-regiond-webapp.sock"
 export MAAS_INTERNALAPISERVER_HTTP_SOCKET_PATH="$SNAP_DATA/internalapiserver-http.sock"
 export MAAS_REGION_CONFIG="$SNAP_DATA/regiond.conf"
 export MAAS_OPENFGA_HTTP_SOCKET_PATH="$SNAP_DATA/openfga-http.sock"
