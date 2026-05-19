@@ -9,8 +9,10 @@ import asyncio
 import dataclasses
 from datetime import timedelta
 from enum import StrEnum
+import hashlib
+import json
 import ssl
-from typing import Any
+from typing import Any, ClassVar
 
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -18,7 +20,7 @@ import structlog
 from temporalio import workflow
 from temporalio.client import Client
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
-from temporalio.exceptions import ApplicationError
+from temporalio.exceptions import ApplicationError, WorkflowAlreadyStartedError
 from temporalio.workflow import ParentClosePolicy
 import yaml
 
@@ -35,6 +37,7 @@ from maascommon.workflows.msm import (
     MSMConnectorParam,
     MSMEnrolParam,
     MSMHeartbeatParam,
+    MSMHeartbeatResponse,
     MSMRestoreDefaultBootSourceParam,
     MSMSetBootSourceParam,
     MSMSetGlobalConfigParam,
@@ -54,6 +57,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.models.configurations import UpstreamDnsConfig
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.worker import REGION_TASK_QUEUE
@@ -86,9 +90,10 @@ MSM_CHECK_ENROL_ACTIVITY_NAME = "msm-check-enrol"
 MSM_GET_TOKEN_REFRESH_ACTIVITY_NAME = "msm-get-token-refresh"
 MSM_SET_ENROL_ACTIVITY_NAME = "msm-set-enrol"
 MSM_VERIFY_TOKEN_ACTIVITY_NAME = "msm-verify-token"
+MSM_GET_CONFIG_HASH_ACTIVITY_NAME = "msm-get-config-hash"
 MSM_GET_ENROL_ACTIVITY_NAME = "msm-get-enrol"
 MSM_GET_HEARTBEAT_DATA_ACTIVITY_NAME = "msm-get-heartbeat-data"
-MSM_GET_KNOWN_CONFIG_OPTIONS = "msm-get-known-config-options"
+MSM_GET_KNOWN_CONFIG_OPTIONS_ACTIVITY_NAME = "msm-get-known-config-options"
 MSM_GET_VERSION_ACTIVITY_NAME = "msm-get-version"
 MSM_SEND_HEARTBEAT_ACTIVITY_NAME = "msm-send-heartbeat"
 MSM_SEND_ENROL_ACTIVITY_NAME = "msm-send-enrol"
@@ -103,6 +108,50 @@ MSM_REPORT_CONFIG_PROGRESS_ACTIVITY_NAME = "msm-report-config-progress"
 MSM_RESTORE_DEFAULT_BOOT_SOURCE_ACTIVITY_NAME = (
     "msm-restore-default-bootsource"
 )
+
+CONFIGURATION_ACTIVITIES = {
+    "global_config",
+    "selections",
+    "trigger_image_sync",
+}
+
+
+def _normalize_config_value(obj: Any) -> Any:
+    """Recursively sort dict keys and sort all lists."""
+    if isinstance(obj, dict):
+        return {k: _normalize_config_value(obj[k]) for k in sorted(obj)}
+    if isinstance(obj, list):
+        return sorted(obj)
+    return obj
+
+
+@dataclasses.dataclass
+class MSMConfigProfile:
+    global_config: dict[str, Any]
+    selections: list[str]
+    trigger_image_sync: bool
+
+    _RETAIN_ORDER_OPTIONS: ClassVar[list[str]] = [UpstreamDnsConfig.name]
+
+    def hash(self) -> str:
+        self._normalize()
+        serialized = json.dumps(
+            dataclasses.asdict(self),
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        return hashlib.sha256(serialized).hexdigest()
+
+    def _normalize(self):
+        self.global_config = {
+            k: (
+                _normalize_config_value(self.global_config[k])
+                if k not in self._RETAIN_ORDER_OPTIONS
+                else self.global_config[k]
+            )
+            for k in sorted(self.global_config)
+        }
+        self.selections = sorted(self.selections)
 
 
 # Activities parameters
@@ -421,7 +470,9 @@ class MSMConnectorActivity(ActivityBase):
         version = get_running_version()
         return f"{version.major}.{version.minor}.{version.point}"
 
-    @activity_defn_with_context(name=MSM_GET_KNOWN_CONFIG_OPTIONS)
+    @activity_defn_with_context(
+        name=MSM_GET_KNOWN_CONFIG_OPTIONS_ACTIVITY_NAME
+    )
     async def get_known_config_options(self) -> list[str]:
         """Get the configuration changes that this MAAS knows
         how to handle.
@@ -429,13 +480,29 @@ class MSMConnectorActivity(ActivityBase):
         Returns:
             list[str]: the list of configuration option keys supported
         """
-        # TODO: return the actual options when they're implemented
-        return []
+        return list(CONFIGURATION_ACTIVITIES)
+
+    @activity_defn_with_context(name=MSM_GET_CONFIG_HASH_ACTIVITY_NAME)
+    async def get_config_hash(self) -> str:
+        """Get the config hash to compare with that provided by Site Manager.
+
+        Returns:
+            str: the hash of the current configuration
+        """
+        async with self.start_transaction() as services:
+            cfg = await services.configurations.get_msm_config()
+            selections = await services.boot_source_selections.get_all_highest_priority()
+        config = MSMConfigProfile(
+            global_config=cfg,
+            selections=[f"{s.os}/{s.release}/{s.arch}" for s in selections],
+            trigger_image_sync=False,
+        )
+        return config.hash()
 
     @activity_defn_with_context(name=MSM_SEND_HEARTBEAT_ACTIVITY_NAME)
     async def send_heartbeat(
         self, input: MSMHeartbeatParam
-    ) -> tuple[int, bool]:
+    ) -> MSMHeartbeatResponse:
         """Send heartbeat data to MSM.
 
         Args:
@@ -466,15 +533,22 @@ class MSMConnectorActivity(ActivityBase):
             match response.status:
                 case 200:
                     body = await response.json()
-                    return (
-                        int(
+                    return MSMHeartbeatResponse(
+                        interval=int(
                             response.headers["MSM-Heartbeat-Interval-Seconds"]
                         ),
-                        body.get("config_options_requested", False),
+                        send_config_options=body.get(
+                            "config_options_requested", False
+                        ),
+                        config_hash=body.get("config_hash", ""),
                     )
                 case 401 | 404:
                     logger.error("Enrolment cancelled by MSM, aborting")
-                    return -1, False
+                    return MSMHeartbeatResponse(
+                        interval=-1,
+                        send_config_options=False,
+                        config_hash="",
+                    )
                 case _:
                     raise ApplicationError(
                         f"got unexpected return code: HTTP {response.status}"
@@ -747,7 +821,7 @@ class MSMHeartbeatWorkflow:
         self._running = True
         next_update = 0
         send_config_opts = False
-        while next_update >= 0:
+        while True:
             secret = await workflow.execute_activity(
                 MSM_GET_ENROL_ACTIVITY_NAME,
                 start_to_close_timeout=MSM_TIMEOUT,
@@ -762,30 +836,56 @@ class MSMHeartbeatWorkflow:
             )
             config_opts = (
                 await workflow.execute_activity(
-                    MSM_GET_KNOWN_CONFIG_OPTIONS,
+                    MSM_GET_KNOWN_CONFIG_OPTIONS_ACTIVITY_NAME,
                     start_to_close_timeout=MSM_TIMEOUT,
                 )
                 if send_config_opts
                 else None
             )
-            next_update, send_config_opts = await workflow.execute_activity(
-                MSM_SEND_HEARTBEAT_ACTIVITY_NAME,
-                dataclasses.replace(
-                    input,
-                    status=data,
-                    jwt=secret["jwt"],
-                    version=version,
-                    known_config_options=config_opts,
-                ),
-                start_to_close_timeout=MSM_TIMEOUT,
-                retry_policy=RetryPolicy(
-                    backoff_coefficient=1.0,
-                    initial_interval=timedelta(seconds=next_update),
-                ),
+            heartbeat_response: MSMHeartbeatResponse = (
+                await workflow.execute_activity(
+                    MSM_SEND_HEARTBEAT_ACTIVITY_NAME,
+                    dataclasses.replace(
+                        input,
+                        status=data,
+                        jwt=secret["jwt"],
+                        version=version,
+                        known_config_options=config_opts,
+                    ),
+                    start_to_close_timeout=MSM_TIMEOUT,
+                    retry_policy=RetryPolicy(
+                        backoff_coefficient=1.0,
+                        initial_interval=timedelta(seconds=next_update),
+                    ),
+                    result_type=MSMHeartbeatResponse,
+                )
             )
+            next_update = heartbeat_response.interval
+            if next_update < 0:
+                break
+            send_config_opts = heartbeat_response.send_config_options
+            current_hash = await workflow.execute_activity(
+                MSM_GET_CONFIG_HASH_ACTIVITY_NAME,
+                start_to_close_timeout=MSM_TIMEOUT,
+            )
+            if (
+                heartbeat_response.config_hash
+                and current_hash != heartbeat_response.config_hash
+            ):
+                try:
+                    await workflow.start_child_workflow(
+                        MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
+                        MSMConfigureProfileParam(
+                            sm_url=input.sm_url, jwt=secret["jwt"]
+                        ),
+                        id=MSM_CONFIGURE_PROFILE_WORKFLOW_NAME,
+                        task_queue=REGION_TASK_QUEUE,
+                        parent_close_policy=ParentClosePolicy.ABANDON,
+                    )
+                except WorkflowAlreadyStartedError:
+                    pass
             logger.debug(f"next refresh in {next_update} seconds")
-            if next_update > 0:
-                await asyncio.sleep(next_update)
+            await asyncio.sleep(next_update)
         self._running = False
         await workflow.start_child_workflow(
             MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME,
@@ -850,12 +950,6 @@ class MSMTokenRefreshWorkflow:
 class MSMConfigureProfileWorkflow:
     """Configure this MAAS according to the profile supplied by Site Manager."""
 
-    _CONFIGURATION_ACTIVITIES = {
-        "global_config",
-        "selections",
-        "trigger_image_sync",
-    }
-
     @workflow_run_with_context
     async def run(self, input: MSMConfigureProfileParam) -> None:
         """Run workflow.
@@ -878,7 +972,7 @@ class MSMConfigureProfileWorkflow:
                 start_to_close_timeout=MSM_TIMEOUT,
             )
 
-        unknown_keys = set(full_config.keys()) - self._CONFIGURATION_ACTIVITIES
+        unknown_keys = set(full_config.keys()) - CONFIGURATION_ACTIVITIES
         if unknown_keys:
             await report(
                 SiteStatus(
@@ -888,7 +982,7 @@ class MSMConfigureProfileWorkflow:
                 )
             )
             return
-        missing_keys = self._CONFIGURATION_ACTIVITIES - set(full_config.keys())
+        missing_keys = CONFIGURATION_ACTIVITIES - set(full_config.keys())
         if missing_keys:
             await report(
                 SiteStatus(

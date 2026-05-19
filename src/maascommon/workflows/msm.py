@@ -56,6 +56,13 @@ class MSMHeartbeatParam:
 
 
 @dataclasses.dataclass
+class MSMHeartbeatResponse:
+    interval: int
+    send_config_options: bool
+    config_hash: str
+
+
+@dataclasses.dataclass
 class MSMTokenRefreshParam:
     sm_url: str
     jwt: str
