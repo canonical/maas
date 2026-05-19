@@ -15,6 +15,7 @@ from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ActivityCancellationType, random
 
+from maascommon.apiclient import MAASAPIClient
 from maasserver.utils.bootresource import (
     get_bootresource_store_path,
     LocalBootResourceFile,
@@ -27,7 +28,6 @@ from maasservicelayer.models.configurations import MAASUrlConfig
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.activity import ActivityBase
-from maastemporalworker.workflow.api_client import MAASAPIClient
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
     workflow_run_with_context,
