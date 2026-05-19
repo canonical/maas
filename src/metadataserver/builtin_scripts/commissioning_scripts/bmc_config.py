@@ -56,7 +56,7 @@
 #     - ipmitool
 #     - python3-paramiko
 # timeout: 00:05:00
-# --- End MAAS 1.0 script metadata --
+# --- End MAAS 1.0 script metadata ---
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 import argparse

@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
 from collections.abc import AsyncGenerator
@@ -24,6 +24,7 @@ from temporalio.exceptions import ApplicationError, CancelledError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
+from maascommon.apiclient import MAASAPIClient
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
@@ -106,7 +107,6 @@ from maastemporalworker.worker import (
     custom_sandbox_runner,
     pydantic_data_converter,
 )
-from maastemporalworker.workflow.api_client import MAASAPIClient
 from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
     CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME,

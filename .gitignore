@@ -43,3 +43,4 @@ __pycache__
 *.*.swp
 /.dev-certificates
 /cli.json
+.workshop.lock
