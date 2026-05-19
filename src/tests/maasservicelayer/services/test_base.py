@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Type
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from pydantic import Field
 import pytest
@@ -490,4 +490,3 @@ class TestBaseService:
 
         assert sync_method(service) == "no_cache_sync"
         assert await async_method(service) == "no_cache_async"
-

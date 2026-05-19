@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 
 from maascommon.apiclient import MAASAPIClient
-from maasservicelayer.apiclient.client import APIClient
 from maasservicelayer.context import Context
 from maasservicelayer.models.configurations import MAASUrlConfig
 from maasservicelayer.services.base import Service, ServiceCache

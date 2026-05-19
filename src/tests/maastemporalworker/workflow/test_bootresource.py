@@ -11,9 +11,9 @@ from unittest.mock import Mock
 import pytest
 from temporalio.testing import ActivityEnvironment
 
+from maascommon.apiclient import MAASAPIClient
 from maasservicelayer.db import Database
 from maasservicelayer.services import CacheForServices
-from maascommon.apiclient import MAASAPIClient
 from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
     SpaceRequirementParam,

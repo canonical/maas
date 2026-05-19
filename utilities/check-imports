@@ -232,6 +232,7 @@ CommonRule = Rule(
     Allow(StandardLibraries),
     Allow("apiclient.maas_client.MAASOAuth"),
     Allow("distro_info|distro_info.*"),
+    Allow("httpx|httpx.**"),
     Allow("lxml|lxml.**"),
     Allow("maascommon|maascommon.**"),
     Allow("OpenSSL|OpenSSL.**"),

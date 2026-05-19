@@ -71,11 +71,11 @@ class Service(ABC):  # noqa: B024
         """
 
         def inner_decorator(fn):
-            async def wrapped(self, *args, **kwargs):
+            def wrapped(self, *args, **kwargs):
                 if self.cache is None:
-                    return await fn(self, *args, **kwargs)
+                    return fn(self, *args, **kwargs)
                 if self.cache.__getattribute__(attr) is None:  # Cache miss
-                    value = await fn(self, *args, **kwargs)
+                    value = fn(self, *args, **kwargs)
                     self.cache.__setattr__(attr, value)
                 return self.cache.__getattribute__(attr)
 
