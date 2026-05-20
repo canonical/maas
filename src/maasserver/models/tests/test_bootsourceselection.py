@@ -4,6 +4,7 @@
 """Tests for `BootSourceSelection`."""
 
 from unittest.mock import call
+
 from maasserver.models import BootSource
 import maasserver.models.bootsourceselection as bootsourceselection_module
 from maasserver.models.bootsourceselection import (
