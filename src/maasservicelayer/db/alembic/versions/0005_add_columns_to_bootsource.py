@@ -121,6 +121,7 @@ def create_selection_stable(stable_boot_source_id: int):
         text("""
             INSERT INTO maasserver_bootsourceselection (created, updated, os, release, arches, subarches, labels, boot_source_id)
             VALUES (:created, :updated, :os, :release, :arches, '{*}', '{*}', :boot_source_id)
+            ON CONFLICT DO NOTHING
         """),
         {
             "created": now,
