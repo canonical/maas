@@ -942,9 +942,16 @@ class ClusterClientService(TimerService):
         except exceptions.NoConnectionsAvailable:
             return self._tryUpdate().addCallback(call, self.getClient)
         except exceptions.AllConnectionsBusy:
-            return self.connections.scale_up_connections().addCallback(
-                call, self.getClient, busy_ok=True
+            return self.connections.scale_up_connections().addErrback(
+                self._handle_scale_up_failure
             )
+
+    def _handle_scale_up_failure(self, failure):
+        """If scale-up fails, fall back to returning a busy connection."""
+        log.warn(
+            f"Failed to scale up due to {failure}. Falling back to a busy connection."
+        )
+        return self.getClient(busy_ok=True)
 
     def getAllClients(self):
         """Return a list of all connected :class:`common.Client`s."""
