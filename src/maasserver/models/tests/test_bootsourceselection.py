@@ -3,7 +3,9 @@
 
 """Tests for `BootSourceSelection`."""
 
+from unittest.mock import call
 from maasserver.models import BootSource
+import maasserver.models.bootsourceselection as bootsourceselection_module
 from maasserver.models.bootsourceselection import (
     BootSourceSelection,
     BootSourceSelectionNew,
@@ -51,6 +53,7 @@ class TestBootSourceSelectionLegacy(MAASServerTestCase):
         # BootSource deletion cascade-deletes related
         # BootSourceSelections. This is implicit in Django but it's
         # worth adding a test for it all the same.
+        self.patch(bootsourceselection_module, "stop_workflow")
         boot_source = factory.make_BootSource()
         boot_source_selection = factory.make_BootSourceSelection(
             boot_source=boot_source
@@ -73,6 +76,7 @@ class TestBootSourceSelectionLegacy(MAASServerTestCase):
         self.assertEqual(expected, boot_source_selection.to_dict())
 
     def test_delete_deletes_selection(self):
+        self.patch(bootsourceselection_module, "stop_workflow")
         boot_source_selection_legacy = factory.make_BootSourceSelection()
         boot_source_selection_new = factory.make_BootSourceSelectionNew(
             legacy_selection=boot_source_selection_legacy
@@ -89,6 +93,29 @@ class TestBootSourceSelectionLegacy(MAASServerTestCase):
                 id=boot_source_selection_new.id
             ).exists()
         )
+
+    def test_delete_stops_temporal_workflows(self):
+        stop_wf_mock = self.patch(bootsourceselection_module, "stop_workflow")
+        boot_source_selection_legacy = factory.make_BootSourceSelection(
+            arches=["amd64"]
+        )
+        selection = BootSourceSelectionNew.objects.get(
+            legacy_selection=boot_source_selection_legacy
+        )
+        boot_source_selection_legacy.delete()
+        stop_wf_mock.assert_called_once_with(f"sync-selection:{selection.id}")
+
+    def test_delete_stops_temporal_workflows_multiple_selections(self):
+        stop_wf_mock = self.patch(bootsourceselection_module, "stop_workflow")
+        boot_source_selection_legacy = factory.make_BootSourceSelection(
+            arches=["amd64", "arm64", "s390x"]
+        )
+        selections = BootSourceSelectionNew.objects.filter(
+            legacy_selection=boot_source_selection_legacy
+        )
+        boot_source_selection_legacy.delete()
+        calls = [call(f"sync-selection:{s.id}") for s in selections]
+        stop_wf_mock.assert_has_calls(calls, any_order=True)
 
     def test_create_new_selections_single_arch(self):
         boot_source = factory.make_BootSource()
