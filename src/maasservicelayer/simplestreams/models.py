@@ -255,7 +255,7 @@ class ImageProduct(Product):
     release_title: str
     subarch: str
     subarches: str
-    support_eol: datetime | None
+    support_eol: datetime | None = None
     version: str
 
     # TODO: switch to field_validator when we migrate to pydantic 2.x
@@ -265,9 +265,9 @@ class ImageProduct(Product):
 
 
 class MultiFileProduct(ImageProduct):
-    kflavor: str
-    krel: str  # seems to not be used
-    release_codename: str
+    kflavor: str | None = None
+    krel: str | None = None  # seems to not be used
+    release_codename: str | None = None
     versions: list[MultiFileImageVersion]
 
     @override
