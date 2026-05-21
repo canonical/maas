@@ -1,9 +1,14 @@
-# Copyright 2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2022-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock, PropertyMock
 
-from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.internet.defer import (
+    CancelledError,
+    Deferred,
+    inlineCallbacks,
+    succeed,
+)
 from twisted.internet.endpoints import TCP6ClientEndpoint
 from twisted.internet.task import Clock
 
@@ -89,7 +94,7 @@ class TestConnectionPool(MAASTestCase):
         self.assertEqual(
             "_reap_extra_connection", clock.calls[0].func.__name__
         )
-        self.assertEqual(cp._keepalive, clock.calls[0].time)
+        self.assertEqual(cp._keepalive / 1000, clock.calls[0].time)
 
     def test_is_staged(self):
         cp = ConnectionPool(Clock(), Mock())
@@ -345,3 +350,66 @@ class TestConnectionPool(MAASTestCase):
         cp.connections[eventloop] = [connection]
         cp.remove_connection(eventloop, connection)
         self.assertEqual(cp.connections, {})
+
+    def test_scale_up_connections_prevents_concurrent_over_allocation(self):
+        """Concurrent calls to scale_up_connections must not exceed max_conns.
+
+        When the connect handshake is pending, subsequent calls should see the in-flight connection and refuse to open another one.
+        """
+        cp = ConnectionPool(Clock(), Mock(), max_conns=2)
+        eventloop = Mock()
+        connection1 = Mock()
+        connection1.address = (factory.make_ip_address(), 5240)
+        cp[eventloop] = [connection1]
+
+        # Simulate a pending connection that is not becoming ready.
+        ready_deferred = Deferred()
+        new_conn = Mock()
+        new_conn.ready.get.return_value = ready_deferred
+
+        connect = self.patch(cp, "connect")
+        connect.return_value = succeed(new_conn)
+        self.patch(connectionpoolModule, "Client")
+
+        # First call: simulate a pending connection waiting to become ready.
+        d1 = cp.scale_up_connections()
+        self.assertEqual(cp._pending_connections[eventloop], 1)
+
+        # Second call: should raise MaxConnectionsOpen because established (1) + pending (1) == max_conns (2).
+        self.assertRaises(
+            exceptions.MaxConnectionsOpen,
+            extract_result,
+            cp.scale_up_connections(),
+        )
+
+        # Unblock the first call
+        ready_deferred.callback(eventloop)
+        extract_result(d1)
+
+        # After the first call completes, pending count is cleared.
+        self.assertNotIn(eventloop, cp._pending_connections)
+
+    def test_scale_up_connections_clears_pending_on_timeout(self):
+        """If the new connection does not work for some reasons (for example, due to CancelledError while waiting for the connection to become ready), pending is cleared and MaxConnectionsOpen is raised."""
+        cp = ConnectionPool(Clock(), Mock(), max_conns=2)
+        eventloop = Mock()
+        connection1 = Mock()
+        connection1.address = (factory.make_ip_address(), 5240)
+        cp[eventloop] = [connection1]
+
+        ready_deferred = Deferred()
+        new_conn = Mock()
+        new_conn.ready.get.return_value = ready_deferred
+
+        connect = self.patch(cp, "connect")
+        connect.return_value = succeed(new_conn)
+        disconnect = self.patch(cp, "disconnect")
+
+        d1 = cp.scale_up_connections()
+        self.assertEqual(cp._pending_connections[eventloop], 1)
+
+        ready_deferred.errback(CancelledError())
+
+        self.assertRaises(exceptions.MaxConnectionsOpen, extract_result, d1)
+        self.assertNotIn(eventloop, cp._pending_connections)
+        disconnect.assert_called_once_with(new_conn)
