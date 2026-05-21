@@ -96,7 +96,6 @@ exclude = """
 /parts
 /snap
 /src/maasui
-/src/maas-offline-docs
 """
 
 [tool.isort]
