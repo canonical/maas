@@ -11,9 +11,9 @@
 **Location**: `src/maasservicelayer/services/bootresources.py`  
 **Base Class**: `Service` (existing)  
 **Existing Dependencies**: `BootResourcesRepository`, `BootResourceSetsService`  
-**Additional Dependencies**: (none — uses existing repository dependencies)
+**Additional Dependencies**: `BootResourceFilesService` (added in this feature — upload logic moved to service layer)
 
-**Rationale**: The existing `BootResourceService` already manages the same tables (BootResource → BootResourceSet → BootResourceFile), has `get_next_version_name()` for YYYYMMDD[.N] versioning, cascade deletion hooks (`pre_delete_hook`, `pre_delete_many_hook`), and custom image-scoped methods (`get_custom_image_status_by_id`, `list_custom_images_status`). Adding custom boot asset upload methods follows this established pattern.
+**Rationale**: The existing `BootResourceService` already manages the same tables (BootResource → BootResourceSet → BootResourceFile), has `get_next_version_name()` for YYYYMMDD[.N] versioning, cascade deletion hooks (`pre_delete_hook`, `pre_delete_many_hook`), and custom image-scoped methods (`get_custom_image_status_by_id`, `list_custom_images_status`). Adding custom boot asset upload methods follows this established pattern. File streaming and sync triggering remain in the handler layer; the service receives the `filename_on_disk` after streaming is complete.
 
 **Note**: List, get-by-ID, delete, and bulk-delete operations use the existing service methods (already called by `CustomImagesHandler`). No new service methods are needed for these operations.
 
@@ -31,9 +31,37 @@
 
 ---
 
+### Method: `upload_custom_image`
+
+**Purpose**: Create DB records for an uploaded custom image. File must already be streamed to disk by the handler before calling this method.
+
+```python
+async def upload_custom_image(
+    self,
+    name: str,
+    architecture: str,
+    sha256: str,
+    filetype: BootResourceFileType,
+    filename: str,
+    filename_on_disk: str,
+    size: int,
+    base_image: str,
+    extra: dict[str, object],
+) -> tuple[BootResource, BootResourceFile]:
+```
+
+**Logic**:
+1. Find or create `BootResource` with `(name, architecture, rtype=UPLOADED)`
+2. Generate next version via `get_next_version_name()`
+3. Create `BootResourceSet`
+4. Create `BootResourceFile` using the pre-written `filename_on_disk`
+5. Return `(boot_resource, resource_file)`
+
+---
+
 ### Method: `upload_bootloader`
 
-**Purpose**: Upload a bootloader tarball, extract contents, create/version the asset.
+**Purpose**: Create DB records for a custom bootloader tarball. File must already be streamed to disk by the handler.
 
 ```python
 async def upload_bootloader(
@@ -41,55 +69,77 @@ async def upload_bootloader(
     name: str,
     architecture: str,
     sha256: str,
-    file_content: AsyncIterator[bytes],
-) -> BootResource:
+    primary_file: str,
+    filename_on_disk: str,
+    size: int,
+) -> tuple[BootResource, str]:
 ```
 
+**Parameters**:
+- `primary_file`: filename of the EFI binary inside the tarball (used as DHCP option 67 value, stored in `BootResourceFile.extra["primary_file"]`)
+
 **Logic**:
-1. Validate architecture format (`{arch}/{subarch}`)
-2. Find or create `BootResource` with `(name, architecture, rtype=UPLOADED, bootloader_type="custom")`
-3. Generate next version name via `get_next_version_name(resource.id)`
-4. Create `BootResourceSet` with the new version
-5. Stream tarball to temporary storage, verify SHA256
-6. Extract tarball to isolated directory (validate: no path traversal, no symlinks)
-7. Create `BootResourceFile` entries for each extracted file
-8. Return the `BootResource` with version info
+1. Call `repository.find_or_create_bootloader(name, architecture)` — creates `BootResource` with `bootloader_type="custom"` if not found
+2. Generate next version via `get_next_version_name()`
+3. Create `BootResourceSet`
+4. Create `BootResourceFile` with `filetype=BOOTLOADER_TARBALL`, `filename="bootloader.tar.gz"`, `extra={"primary_file": primary_file}`
+5. Return `(boot_resource, version)`
 
 **Errors**:
-- `BadRequestException`: Invalid architecture format, SHA256 mismatch, invalid tarball
+- `BadRequestException`: Missing required header, SHA256 mismatch
 
 ---
 
-### Method: `upload_kernel_pair`
+### Method: `upload_kernel`
 
-**Purpose**: Upload a kernel + initrd pair as a complete asset.
+**Purpose**: Create DB records for a kernel binary (step 1 of 2). File must already be streamed to disk.
 
 ```python
-async def upload_kernel_pair(
+async def upload_kernel(
     self,
     name: str,
     architecture: str,
     kflavor: str,
-    kernel_sha256: str,
-    initrd_sha256: str,
-    kernel_content: AsyncIterator[bytes],
-    initrd_content: AsyncIterator[bytes],
-) -> BootResource:
+    sha256: str,
+    filename_on_disk: str,
+    size: int,
+) -> tuple[BootResource, str]:
 ```
 
 **Logic**:
-1. Validate both files are provided (reject partial uploads)
-2. Validate architecture format
-3. Find or create `BootResource` with `(name, architecture, kflavor, rtype=UPLOADED, bootloader_type=NULL)`
-4. Generate next version name
-5. Create `BootResourceSet`
-6. Stream kernel to storage, verify SHA256
-7. Stream initrd to storage, verify SHA256
-8. Create `BootResourceFile` entries (filetype: `boot-kernel`, `boot-initrd`)
-9. Return the `BootResource` with version info
+1. Call `repository.find_or_create_kernel(name, architecture, kflavor)` — creates `BootResource` with `kflavor` set and `bootloader_type=NULL`
+2. Generate next version via `get_next_version_name()`
+3. Create `BootResourceSet`
+4. Create `BootResourceFile` with `filetype=BOOT_KERNEL`, `filename="kernel"`
+5. Return `(boot_resource, version)`
 
 **Errors**:
-- `BadRequestException`: Missing kernel/initrd, SHA256 mismatch, invalid architecture
+- `BadRequestException`: SHA256 mismatch
+
+---
+
+### Method: `upload_kernel_initrd`
+
+**Purpose**: Append an initrd file to an existing kernel resource's latest version (step 2 of 2). File must already be streamed to disk.
+
+```python
+async def upload_kernel_initrd(
+    self,
+    resource_id: int,
+    sha256: str,
+    filename_on_disk: str,
+    size: int,
+) -> tuple[BootResource, str]:
+```
+
+**Logic**:
+1. Fetch `BootResource` by `resource_id` — raise `NotFoundException` if not found
+2. Fetch all `BootResourceSet` entries for the resource; pick the latest by `id` (highest)
+3. Create `BootResourceFile` with `filetype=BOOT_INITRD`, `filename="initrd"`, attached to that set
+4. Return `(boot_resource, version)`
+
+**Errors**:
+- `NotFoundException`: `resource_id` not found, or resource has no sets
 
 ---
 
@@ -135,12 +185,12 @@ async def get_bootloader_path_for_machine(
 **Logic**:
 1. Find `BootResource` matching `(name=bootloader_name, architecture, rtype=UPLOADED, bootloader_type IS NOT NULL)`
 2. If not found → return `None` (no custom bootloader)
-3. Fetch latest `BootResourceSet` for the resource
-4. Fetch `BootResourceFile` entries for the set with filetype `bootloader`
-5. Compute the Rack-relative serving path for the primary bootloader file
-6. Return the path string (e.g., `bootloaders/{resource_id}/{version}/{filename}`)
+3. Fetch latest `BootResourceSet` for the resource via `repository.get_latest_version()`
+4. Fetch `BootResourceFile` for the set via `repository.get_bootloader_file_for_set()`
+5. Read `primary_file` from `BootResourceFile.extra["primary_file"]`; log warning and return `None` if absent
+6. Compute Rack-relative path: `bootloaders/{safe_name}/{safe_arch}/{version}/{primary_file}` where slashes in `name` and `architecture` are replaced with `__` (e.g. `ubuntu/jammy` → `ubuntu__jammy`)
 
-**Returns**: `None` if no matching custom bootloader found, otherwise the relative path for DHCP option 67.
+**Returns**: `None` if no matching custom bootloader found or `primary_file` is unset, otherwise the relative path string for DHCP option 67.
 
 ---
 

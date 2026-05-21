@@ -13,16 +13,17 @@
 | Upload bootloader | `POST /api/v3/boot_assets/bootloaders` | **NEW** |
 | List bootloaders | `GET /api/v3/boot_assets/bootloaders` | **NEW** |
 | Get bootloader by ID | `GET /api/v3/boot_assets/bootloaders/{id}` | **NEW** |
-| Upload kernel pair | `POST /api/v3/boot_assets/kernels` | **NEW** |
-| List kernels | `GET /api/v3/boot_assets/kernels` | **NEW** |
-| Get kernel by ID | `GET /api/v3/boot_assets/kernels/{id}` | **NEW** |
-| List all assets | `GET /api/v3/custom_images` | **EXISTING** — add `type` filter param |
+| Upload kernel (step 1) | `POST /api/v3/boot_assets/kernels` | **NEW** |
+| Upload initrd (step 2) | `POST /api/v3/boot_assets/kernels/{resource_id}/initrd` | **NEW** |
+| List kernels | `GET /api/v3/kernels` | **NEW** (`KernelsHandler`) |
+| Get kernel by ID | `GET /api/v3/kernels/{id}` | **NEW** (`KernelsHandler`) |
+| List all assets | `GET /api/v3/custom_images` | **EXISTING** — add `type` + `file_type` filter params |
 | Get asset by ID | `GET /api/v3/custom_images/{id}` | **EXISTING** — no changes |
 | Delete asset by ID | `DELETE /api/v3/custom_images/{id}` | **EXISTING** — no changes |
 | Bulk delete assets | `DELETE /api/v3/custom_images` | **EXISTING** — no changes |
 | Deploy with custom asset | `POST /api/2.0/machines/{system_id}/op-deploy` | **EXISTING** — add params |
 
-**Rationale**: Upload endpoints live under `/boot_assets/bootloaders` and `/boot_assets/kernels` because bootloader tarball extraction and kernel pair validation differ from plain image uploads. Dedicated list/get endpoints on the same sub-resources return concrete, non-union response types (`BootloaderAssetResponse` and `KernelAssetResponse`) with no `?type=` filter required. The existing `/custom_images` endpoints are retained for callers that need all uploaded assets in a single mixed-type call.
+**Rationale**: Upload endpoints live under `/boot_assets/bootloaders` and `/boot_assets/kernels` because bootloader tarball extraction and kernel pair validation differ from plain image uploads. Kernel upload is intentionally split into two sequential calls (kernel first, then initrd) to allow large files to be streamed independently; a kernel resource without an initrd is valid but marked incomplete. List and get endpoints for kernels are served by a dedicated `KernelsHandler` at `/api/v3/kernels` with typed response models. The existing `/custom_images` endpoints are retained for callers that need all uploaded assets in a single mixed-type call. All upload endpoints accept raw `application/octet-stream` bodies with metadata passed via custom `x-*` request headers.
 
 **Per-version deletion**: NOT supported. Deletion at `BootResource` level only (all versions removed), consistent with custom images today.
 
@@ -32,6 +33,8 @@
 
 **Handler**: `CustomImagesHandler` in `src/maasapiserver/v3/api/public/handlers/boot_resources.py`
 
+Upload endpoints stream raw `application/octet-stream` bodies. Metadata (name, architecture, sha256, etc.) is passed via custom `x-*` request headers. The handler streams the body to disk first, then calls the service method to create DB records.
+
 ### POST `/api/v3/boot_assets/bootloaders`
 
 **User Story**: US1 — Upload Custom Bootloader Tarball
@@ -40,14 +43,23 @@
 
 **Request**:
 ```
-Content-Type: multipart/form-data (streaming/chunked)
+Content-Type: application/octet-stream (raw streaming body)
 
-Fields:
-  name: string (required) — e.g., "ubuntu/jammy"
-  architecture: string (required) — e.g., "amd64/generic"  
-  sha256: string (required) — SHA256 hash of the tarball
-  file: binary (required) — tarball file (.tar.gz, .tar.xz, .tar.bz2)
+Headers (required):
+  x-name:         string — e.g., "ubuntu/jammy"
+  x-architecture: string — e.g., "amd64/generic"
+  x-sha256:       string — SHA256 hash of the tarball body
+  x-primary-file: string — filename of the EFI binary inside the tarball
+                           used as DHCP option 67 value (e.g., "grubx64.efi")
+  content-length: integer — total byte length of the tarball body
+
+Body: raw tarball bytes (.tar.gz, .tar.xz, .tar.bz2)
 ```
+
+**Validation** (handler delegates to service after streaming):
+- `x-name` validated via `validate_boot_asset_name()` — rejects reserved OS names
+- `x-architecture` validated via `validate_architecture()` — must match a known usable architecture
+- SHA256 verified on-disk after streaming; mismatch raises 400
 
 **Response** (201 Created):
 ```json
@@ -58,15 +70,13 @@ Fields:
   "bootloader_type": "custom",
   "version": "20250718",
   "files": [
-    {"filename": "grubx64.efi", "size": 1048576, "sha256": "abc..."},
-    {"filename": "shimx64.efi", "size": 524288, "sha256": "def..."}
-  ],
-  "created_at": "2025-07-18T12:00:00Z"
+    {"filename": "bootloader.tar.gz", "filetype": "bootloader-tarball", "size": 1048576, "sha256": "abc..."}
+  ]
 }
 ```
 
 **Errors**:
-- `400`: Invalid tarball format, path traversal detected, SHA256 mismatch
+- `400`: Missing required header, SHA256 mismatch, invalid name/architecture
 - `403`: Insufficient permissions
 - `409`: N/A (new version created on duplicate identity)
 
@@ -74,23 +84,25 @@ Fields:
 
 ### POST `/api/v3/boot_assets/kernels`
 
-**User Story**: US2 — Upload Custom Kernel and Initrd Pair
+**User Story**: US2 — Upload Custom Kernel (step 1 of 2)
 
 **Permission**: Admin (`CAN_EDIT_BOOT_ENTITIES`)
 
 **Request**:
 ```
-Content-Type: multipart/form-data (streaming/chunked)
+Content-Type: application/octet-stream (raw streaming body)
 
-Fields:
-  name: string (required) — e.g., "ubuntu/noble"
-  architecture: string (required) — e.g., "arm64/generic"
-  kflavor: string (required) — e.g., "generic", "lowlatency"
-  kernel_sha256: string (required) — SHA256 of kernel binary
-  initrd_sha256: string (required) — SHA256 of initrd file
-  kernel: binary (required) — kernel binary file
-  initrd: binary (required) — initrd file
+Headers (required):
+  x-name:         string — e.g., "ubuntu/noble"
+  x-architecture: string — e.g., "arm64/generic"
+  x-kflavor:      string — e.g., "generic", "lowlatency"
+  x-sha256:       string — SHA256 hash of the kernel binary
+  content-length: integer — total byte length of the kernel binary
+
+Body: raw kernel binary bytes
 ```
+
+**Note**: This endpoint uploads the kernel binary only. The initrd must be uploaded separately via `POST /boot_assets/kernels/{resource_id}/initrd`. A kernel resource without an initrd is considered incomplete; the `complete` field on `KernelResponse` reflects this.
 
 **Response** (201 Created):
 ```json
@@ -101,24 +113,72 @@ Fields:
   "kflavor": "generic",
   "version": "20250718",
   "files": [
-    {"filename": "boot-kernel", "filetype": "boot-kernel", "size": 12582912, "sha256": "abc..."},
-    {"filename": "boot-initrd", "filetype": "boot-initrd", "size": 268435456, "sha256": "def..."}
-  ],
-  "created_at": "2025-07-18T12:00:00Z"
+    {"filename": "kernel", "filetype": "boot-kernel", "size": 12582912, "sha256": "abc..."}
+  ]
 }
 ```
 
 **Errors**:
-- `400`: Missing kernel or initrd ("Both kernel and initrd files are required"), SHA256 mismatch
+- `400`: Missing required header, SHA256 mismatch, invalid name/architecture
 - `403`: Insufficient permissions
+
+---
+
+### POST `/api/v3/boot_assets/kernels/{resource_id}/initrd`
+
+**User Story**: US2 — Upload Custom Initrd (step 2 of 2)
+
+**Permission**: Admin (`CAN_EDIT_BOOT_ENTITIES`)
+
+**Request**:
+```
+Content-Type: application/octet-stream (raw streaming body)
+
+Path params:
+  resource_id: int — ID of the kernel BootResource created by step 1
+
+Headers (required):
+  x-sha256:       string — SHA256 hash of the initrd file
+  content-length: integer — total byte length of the initrd file
+
+Body: raw initrd bytes
+```
+
+**Note**: The initrd is appended to the **latest** `BootResourceSet` of the given kernel resource. After this call the kernel set is complete (`complete=true`).
+
+**Response** (201 Created):
+```json
+{
+  "id": 43,
+  "name": "ubuntu/noble",
+  "architecture": "arm64/generic",
+  "kflavor": "generic",
+  "version": "20250718",
+  "files": [
+    {"filename": "kernel",  "filetype": "boot-kernel",  "size": 12582912,  "sha256": "abc..."},
+    {"filename": "initrd",  "filetype": "boot-initrd",  "size": 268435456, "sha256": "def..."}
+  ]
+}
+```
+
+**Errors**:
+- `400`: Missing `x-sha256` header, SHA256 mismatch
+- `403`: Insufficient permissions
+- `404`: `resource_id` not found or has no resource set
 
 ---
 
 ## v3 API — New List/Get Endpoints
 
-### GET `/api/v3/boot_assets/bootloaders`
+### Handler: `KernelsHandler`
 
-**Permission**: Authenticated user
+**Location**: `src/maasapiserver/v3/api/public/handlers/boot_resources.py`
+
+Kernel list and get endpoints are served by a dedicated `KernelsHandler` class (separate from `CustomImagesHandler`), mounted at `/api/v3/kernels`.
+
+### GET `/api/v3/kernels`
+
+**Permission**: Authenticated user (`CAN_VIEW_BOOT_ENTITIES`)
 
 **Query Parameters**:
 
@@ -126,50 +186,20 @@ Fields:
 |-----------|------|-------------|
 | `name` | string (optional) | Filter by asset name (e.g. `myos/jammy`) |
 | `architecture` | string (optional) | Filter by architecture (e.g. `amd64/generic`) |
-
-**Response** (200 OK): Paginated list of `BootloaderAssetResponse`.
-
-**Errors**:
-- `403`: Insufficient permissions
-
----
-
-### GET `/api/v3/boot_assets/bootloaders/{id}`
-
-**Permission**: Authenticated user
-
-**Response** (200 OK): Single `BootloaderAssetResponse`.
-
-**Errors**:
-- `403`: Insufficient permissions
-- `404`: Asset not found or not a bootloader
-
----
-
-### GET `/api/v3/boot_assets/kernels`
-
-**Permission**: Authenticated user
-
-**Query Parameters**:
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `name` | string (optional) | Filter by asset name |
-| `architecture` | string (optional) | Filter by architecture |
 | `kflavor` | string (optional) | Filter by kernel flavour (e.g. `generic`, `lowlatency`) |
 
-**Response** (200 OK): Paginated list of `KernelAssetResponse`.
+**Response** (200 OK): Paginated list of `KernelResponse`.
 
 **Errors**:
 - `403`: Insufficient permissions
 
 ---
 
-### GET `/api/v3/boot_assets/kernels/{id}`
+### GET `/api/v3/kernels/{kernel_id}`
 
-**Permission**: Authenticated user
+**Permission**: Authenticated user (`CAN_VIEW_BOOT_ENTITIES`)
 
-**Response** (200 OK): Single `KernelAssetResponse`.
+**Response** (200 OK): Single `KernelResponse`.
 
 **Errors**:
 - `403`: Insufficient permissions
@@ -185,11 +215,14 @@ Fields:
 
 **Existing handler**: `list_custom_images` in `CustomImagesHandler`
 
-**New Query Parameter**:
+**New Query Parameters**:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `type` | enum (optional) | Filter by asset type: `bootloader`, `kernel`, or `image`. If omitted, returns all uploaded resources (existing behavior). |
+| `name` | string (optional) | Filter by asset name (e.g. `ubuntu/jammy`). |
+| `architecture` | string (optional) | Filter by architecture (e.g. `amd64/generic`). |
+| `kflavor` | string (optional) | Filter by kernel flavour (e.g. `generic`, `lowlatency`). Only meaningful when `type=kernel`; ignored for other types. |
 
 **Filter logic**:
 - `type=bootloader` → `WHERE bootloader_type IS NOT NULL`
@@ -199,7 +232,7 @@ Fields:
 
 **Response**: Paginated list of `BootAssetResponse` (discriminated union — see **Response Models** section below). Each item includes a `type` field that identifies its concrete variant.
 
-**Note**: Additional filters (`name`, `architecture`, `kflavor`) may also be added as query parameters following the same pattern, but `type` is the primary discriminator needed.
+**Note**: All filter parameters are combinable; each supplied parameter further narrows the result set.
 
 ---
 

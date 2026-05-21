@@ -113,11 +113,11 @@ The Rack Controller already acts as a caching proxy for standard boot assets. Cu
 
 ### FR-1: Bootloader Tarball Upload and Extraction
 
-The system must accept bootloader uploads in tarball format via the **v3 API** (FastAPI, `src/maasapiserver`) and extract their contents into an isolated directory. Each upload to the same composite identity (`name + architecture`) creates a new version of the asset (following the same versioning convention as custom images). Previous versions are retained indefinitely (garbage collection is deferred to future work). Note: `kflavor` is not part of bootloader identity.
+The system must accept bootloader uploads in tarball format via the **v3 API** (FastAPI, `src/maasapiserver`) and extract their contents into an isolated directory. The nginx reverse proxy (`src/maasserver/templates/http/regiond.nginx.conf.template`) must set `client_max_body_size 200G` for the `/MAAS/a/v3/boot_assets` location to permit large file uploads; this applies to both `/boot_assets/bootloaders` and `/boot_assets/kernels` via nginx prefix matching. Each upload to the same composite identity (`name + architecture`) creates a new version of the asset (following the same versioning convention as custom images). Previous versions are retained indefinitely (garbage collection is deferred to future work). Note: `kflavor` is not part of bootloader identity.
 
 ### FR-2: Complete Kernel Asset Pair Enforcement
 
-The system must require both a kernel binary and an associated initrd file for every kernel upload. Partial uploads (kernel without initrd, or initrd without kernel) are rejected with an informative error message.
+The system must require both a kernel binary and an associated initrd file for every kernel asset. Upload is intentionally split into two sequential API calls: the kernel binary is uploaded first (`POST /boot_assets/kernels`) returning a `resource_id`, then the initrd is uploaded separately (`POST /boot_assets/kernels/{resource_id}/initrd`). A kernel resource without an initrd is considered incomplete and the `complete` field on the response reflects this. Deployment of an incomplete kernel asset is rejected.
 
 ### FR-3: Dual-Purpose Kernel Support
 
@@ -156,6 +156,8 @@ The current Simplestreams bootloader index (`com.ubuntu.maas:candidate:1:bootloa
 3. When the new index is available, prefer it for bootloader discovery; fall back to the existing index if the new index is absent.
 
 This requirement does not block the upload/management path (FR-1 through FR-6) but is required for full Simplestreams-based bootloader distribution to support multiple bootloaders per architecture.
+
+> **Implementation tracking**: The Simplestreams index format proposal deliverable for FR-7 is tracked as **T044** in `tasks.md`.
 
 ### FR-8: Asset Selection (Explicit Only, Latest Version)
 

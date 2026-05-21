@@ -80,6 +80,8 @@ src/
 
 ## Implementation Phases
 
+> **Note**: Task IDs in this document are superseded by `tasks.md` (authoritative). Use `tasks.md` for all actionable task tracking, status updates, and dependency management.
+
 ### Phase 0: Research & Discovery
 
 **Goal**: Answer open questions, finalize architecture decisions
@@ -103,18 +105,20 @@ src/
 
 **Deliverables**: `contracts/api.md`
 
-**Tasks**:
-- [ ] T001: Add `upload_bootloader` handler method to `CustomImagesHandler` (new route `/boot_assets/bootloaders`)
-- [ ] T002: Add `upload_kernel_pair` handler method to `CustomImagesHandler` (new route `/boot_assets/kernels`)
-- [ ] T003: Add `type` filter parameter to existing `list_custom_images` handler (query param: `?type=bootloader|kernel|image`)
-- [ ] T004: Define Pydantic request/response models for upload endpoints
-- [ ] T005: Write API integration tests for new upload endpoints
-- [ ] T006: Write API integration tests for filter parameter on list endpoint
+**Tasks**: See `tasks.md` for actionable task tracking.
+
+**Key Design Decisions (implemented)**:
+- Upload endpoints use `application/octet-stream` + `x-*` request headers (not multipart/form-data); handler streams body to disk, then calls service
+- Kernel upload split into two endpoints: `POST /boot_assets/kernels` (kernel binary) → `POST /boot_assets/kernels/{resource_id}/initrd` (append initrd)
+- `x-primary-file` header on bootloader upload names the EFI binary for DHCP option 67
+- `KernelsHandler` is a separate handler class serving `GET /kernels` and `GET /kernels/{id}`; `CustomImagesHandler` handles all upload endpoints and `GET /custom_images`
+- Common streaming/sync helpers (`_stream_to_disk`, `_trigger_sync_workflow`, `_build_boot_asset_upload_response`) extracted as private handler methods
 
 **Quality Gates**:
 - All endpoints have permission decorators (Admin for uploads)
 - Pydantic models pass strict validation
 - Tests use `mocked_api_client` fixtures
+- nginx template (`src/maasserver/templates/http/regiond.nginx.conf.template`) includes `client_max_body_size 200G` for `location /MAAS/a/v3/boot_assets` (covers both `/bootloaders` and `/kernels` sub-paths via prefix matching)
 
 **Duration**: ~2 days
 
@@ -126,13 +130,14 @@ src/
 
 **Deliverables**: `contracts/services.md`
 
-**Tasks**:
-- [ ] T100: Implement `upload_bootloader()` on `BootResourceService`
-- [ ] T101: Implement `upload_kernel_pair()` on `BootResourceService`
-- [ ] T102: Implement `resolve_boot_asset_for_deployment()` on `BootResourceService`
-- [ ] T103: Implement `get_bootloader_path_for_machine()` on `BootResourceService`
-- [ ] T104: Implement `assign_bootloader_and_trigger_dhcp()` on `BootResourceService`
-- [ ] T105: Write service unit tests (mock repositories)
+**Tasks**: See `tasks.md` for actionable task tracking.
+
+**Key Design Decisions (implemented)**:
+- `BootResourceFilesService` added as a constructor dependency of `BootResourceService` (required for upload methods to create `BootResourceFile` records)
+- Upload logic fully moved to service layer: `upload_custom_image`, `upload_bootloader`, `upload_kernel`, `upload_kernel_initrd` are all service methods
+- Handler is responsible only for streaming bytes to disk and triggering sync; service creates all DB records
+- `validate_boot_asset_name()` and `validate_architecture()` extracted as module-level async functions in `requests/boot_resources.py` and shared between `BootResourceCreateRequest` and new upload handlers
+- Bootloader DHCP path uses `__` as separator: `bootloaders/{name_with__}/{arch_with__}/{version}/{primary_file}`
 
 **Quality Gates**:
 - Services use existing builders
@@ -150,13 +155,7 @@ src/
 
 **Deliverables**: `contracts/repos.md`
 
-**Tasks**:
-- [ ] T200: Extend `BootResourceClauseFactory` with type discrimination clauses
-- [ ] T201: Implement `find_or_create_bootloader()` repository method
-- [ ] T202: Implement `find_or_create_kernel()` repository method
-- [ ] T203: Implement `get_latest_version()` repository method
-- [ ] T204: Implement `get_bootloader_for_architecture()` repository method
-- [ ] T205: Write repository unit tests (real database)
+**Tasks**: See `tasks.md` for actionable task tracking.
 
 **Quality Gates**:
 - All queries use SQLAlchemy Core (no ORM)
@@ -174,10 +173,7 @@ src/
 
 **Deliverables**: `data-model.md`, Alembic migration
 
-**Tasks**:
-- [ ] T300: Add partial unique index definitions to `db/tables.py`
-- [ ] T301: Generate Alembic migration for unique constraints
-- [ ] T302: Test migration up/down
+**Tasks**: See `tasks.md` for actionable task tracking.
 
 **Quality Gates**:
 - Migration is reversible
@@ -192,13 +188,7 @@ src/
 
 **Goal**: Implement deploy-time asset selection and DHCP bootloader path override
 
-**Tasks**:
-- [ ] T400: Add `custom_bootloader`, `custom_kernel`, `custom_kernel_kflavor` params to v2 deploy endpoint
-- [ ] T401: Implement custom asset resolution in deploy handler (call service layer)
-- [ ] T402: Add `bootloader_path` field to DHCP host declarations (`make_hosts_for_subnets()`)
-- [ ] T403: Update DHCP template to render per-host `filename` directive
-- [ ] T404: Write integration tests for deploy with custom assets
-- [ ] T405: Write tests for DHCP bootloader path override
+**Tasks**: See `tasks.md` for actionable task tracking.
 
 **Quality Gates**:
 - v2 API backward compatible (new params are optional)
@@ -215,12 +205,7 @@ src/
 
 **Deliverables**: `quickstart.md`, functional tests
 
-**Tasks**:
-- [ ] T500: Create functional test for bootloader upload → list → deploy → DHCP flow
-- [ ] T501: Create functional test for kernel pair upload → list → deploy flow
-- [ ] T502: Test filter parameter on existing list endpoint
-- [ ] T503: Test deletion via existing `/custom_images` delete endpoints
-- [ ] T504: Test permission enforcement
+**Tasks**: See `tasks.md` for actionable task tracking.
 
 **Quality Gates**:
 - All user stories tested end-to-end

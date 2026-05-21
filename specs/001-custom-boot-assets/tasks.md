@@ -25,6 +25,7 @@
 - [ ] T001 Add partial unique index definitions to `src/maasservicelayer/db/tables.py` for bootloader identity (`name + architecture WHERE rtype=2 AND bootloader_type IS NOT NULL`) and kernel identity (`name + architecture + kflavor WHERE rtype=2 AND bootloader_type IS NULL AND kflavor IS NOT NULL`)
 - [ ] T002 Generate Alembic migration in `src/maasservicelayer/db/alembic/versions/` adding the two partial unique indexes (`UK_bootresource_bootloader_identity`, `UK_bootresource_kernel_identity`) and the lookup index `idx_bootresource_rtype_name_arch`
 - [ ] T003 [P] Verify migration up/down reversibility with `alembic upgrade head && alembic downgrade -1 && alembic upgrade head`
+- [x] T046 [P] Add `location /MAAS/a/v3/boot_assets { client_max_body_size 200G; proxy_pass http://apiserver; }` block to `src/maasserver/templates/http/regiond.nginx.conf.template` — permits large tarball and kernel/initrd uploads through nginx for both `/boot_assets/bootloaders` and `/boot_assets/kernels` via prefix matching (**done**)
 
 ---
 
@@ -56,8 +57,8 @@
 - [ ] T016 [P] [US1] Define `BootAssetFileInfo` and `BootAssetUploadResponse` Pydantic models in `src/maasapiserver/v3/api/public/models/responses/boot_resources.py`
 - [ ] T017 [US1] Implement `upload_bootloader()` service method on `BootResourceService` in `src/maasservicelayer/services/bootresources.py` (validate arch format, find_or_create resource, generate version, stream tarball, verify SHA256, extract with path traversal checks, create BootResourceFile entries)
 - [ ] T018 [US1] Add `upload_bootloader` handler method to `CustomImagesHandler` in `src/maasapiserver/v3/api/public/handlers/boot_resources.py` — route: `POST /boot_assets/bootloaders`, permission: `CAN_EDIT_BOOT_ENTITIES`, multipart/form-data (name, architecture, sha256, file)
-- [ ] T019 [US1] Write repository tests for `find_or_create_bootloader()` and `get_latest_version()` in `tests/maasservicelayer/db/repositories/test_bootresources.py`
-- [ ] T020 [P] [US1] Write service unit tests for `upload_bootloader()` (mock repos) in `tests/maasservicelayer/services/test_bootresources.py` — cover: valid upload, SHA256 mismatch, path traversal rejection, duplicate identity versioning
+- [ ] T019 [US1] Write repository tests for `find_or_create_bootloader()`, `get_latest_version()`, and `get_bootloader_file_for_set()` in `tests/maasservicelayer/db/repositories/test_bootresources.py` — cover: `find_or_create_bootloader()` identity uniqueness, `get_latest_version()` ordering, `get_bootloader_file_for_set()` with a valid set containing a file (verify JOIN correctness), set with no file, and set not found. Test class must inherit from `RepositoryCommonTests`.
+- [ ] T020 [P] [US1] Write service unit tests for `upload_bootloader()` (mock repos) in `tests/maasservicelayer/services/test_bootresources.py` — cover: valid upload, SHA256 mismatch, path traversal rejection, duplicate identity versioning. Test class must inherit from `ServiceCommonTests`; use `mocked_api_client` fixture pattern consistent with existing service tests.
 - [ ] T021 [P] [US1] Write API integration tests for `POST /boot_assets/bootloaders` in `tests/maasapiserver/v3/api/public/handlers/test_boot_resources.py` — cover: successful upload (201), invalid tarball (400), permission denied (403)
 
 ---
@@ -70,8 +71,8 @@
 
 - [ ] T022 [US2] Implement `upload_kernel_pair()` service method on `BootResourceService` in `src/maasservicelayer/services/bootresources.py` (validate both files present, validate arch format, find_or_create resource, generate version, stream+verify kernel SHA256, stream+verify initrd SHA256, create BootResourceFile entries with filetypes `boot-kernel` and `boot-initrd`)
 - [ ] T023 [US2] Add `upload_kernel_pair` handler method to `CustomImagesHandler` in `src/maasapiserver/v3/api/public/handlers/boot_resources.py` — route: `POST /boot_assets/kernels`, permission: `CAN_EDIT_BOOT_ENTITIES`, multipart/form-data (name, architecture, kflavor, kernel_sha256, initrd_sha256, kernel, initrd)
-- [ ] T024 [US2] Write repository tests for `find_or_create_kernel()` in `tests/maasservicelayer/db/repositories/test_bootresources.py`
-- [ ] T025 [P] [US2] Write service unit tests for `upload_kernel_pair()` (mock repos) in `tests/maasservicelayer/services/test_bootresources.py` — cover: valid pair upload, missing initrd (400), missing kernel (400), SHA256 mismatch
+- [ ] T024 [US2] Write repository tests for `find_or_create_kernel()` in `tests/maasservicelayer/db/repositories/test_bootresources.py`. Test class must inherit from `RepositoryCommonTests`.
+- [ ] T025 [P] [US2] Write service unit tests for `upload_kernel_pair()` (mock repos) in `tests/maasservicelayer/services/test_bootresources.py` — cover: valid pair upload, missing initrd (400), missing kernel (400), SHA256 mismatch. Test class must inherit from `ServiceCommonTests`; use `mocked_api_client` fixture pattern consistent with existing service tests.
 - [ ] T026 [P] [US2] Write API integration tests for `POST /boot_assets/kernels` in `tests/maasapiserver/v3/api/public/handlers/test_boot_resources.py` — cover: successful pair upload (201), partial upload rejection (400), permission denied (403)
 
 ---
@@ -82,8 +83,8 @@
 
 **Independent Test**: Upload a bootloader, a kernel pair, and verify filtering: `?type=bootloader` shows only bootloaders, `?type=kernel` shows only kernels, `?type=image` excludes both, no filter shows all.
 
-- [ ] T027 [US3] Add `type` query parameter (enum: `bootloader|kernel|image`, optional) to `list_custom_images` handler in `src/maasapiserver/v3/api/public/handlers/boot_resources.py` — build `QuerySpec` with appropriate clause from `BootResourceClauseFactory`
-- [ ] T028 [P] [US3] Write API integration tests for `type` filter on `GET /custom_images` in `tests/maasapiserver/v3/api/public/handlers/test_boot_resources.py` — cover: each filter value returns correct subset, no filter returns all, invalid type value returns 422
+- [ ] T027 [US3] Add `type` (enum: `bootloader|kernel|image`), `name` (string), `architecture` (string), and `kflavor` (string) query filter parameters (all optional) to `list_custom_images` handler in `src/maasapiserver/v3/api/public/handlers/boot_resources.py` — build `QuerySpec` with appropriate clauses from `BootResourceClauseFactory` for each supplied filter
+- [ ] T028 [P] [US3] Write API integration tests for filter parameters on `GET /custom_images` in `tests/maasapiserver/v3/api/public/handlers/test_boot_resources.py` — cover: each `type` value returns correct subset, `name` filter returns only matching name, `architecture` filter returns only matching architecture, `kflavor` filter returns only matching kflavor, combined filters narrow results correctly, no filter returns all, invalid `type` value returns 422
 
 ---
 
@@ -96,12 +97,12 @@
 - [ ] T029 [US4] Implement `resolve_boot_asset_for_deployment(name, architecture, kflavor, asset_type)` service method on `BootResourceService` in `src/maasservicelayer/services/bootresources.py`
 - [ ] T030 [US4] Implement `get_bootloader_path_for_machine(machine_id, bootloader_name, architecture)` service method on `BootResourceService` in `src/maasservicelayer/services/bootresources.py` (resolve latest version → compute Rack-relative serving path)
 - [ ] T031 [US4] Implement `assign_bootloader_and_trigger_dhcp(machine_id, bootloader_name, architecture)` service method on `BootResourceService` in `src/maasservicelayer/services/bootresources.py` (resolve asset → trigger `ConfigureDHCPWorkflow`)
-- [ ] T032 [US4] Add `custom_bootloader`, `custom_kernel`, `custom_kernel_kflavor` parameters to v2 deploy endpoint in `src/maasserver/api/machines.py` — resolve via service layer, trigger DHCP update if bootloader set
+- [ ] T032 [US4] Add `custom_bootloader`, `custom_kernel`, `custom_kernel_kflavor` parameters to v2 deploy endpoint in `src/maasserver/api/machines.py` — resolve via service layer, trigger DHCP update if bootloader set; validate that the supplied `custom_bootloader` name/architecture matches the target machine's architecture and return HTTP 400 on mismatch
 - [ ] T033 [US4] Add `bootloader_path` field to DHCP host declarations in `src/maasserver/dhcp.py` (`make_hosts_for_subnets()`) — include only when machine has custom bootloader assigned
 - [ ] T034 [US4] Update DHCP template to render per-host `filename "{bootloader_path}";` directive when `bootloader_path` is present in host dict
-- [ ] T035 [P] [US4] Write service unit tests for `resolve_boot_asset_for_deployment()` and `assign_bootloader_and_trigger_dhcp()` in `tests/maasservicelayer/services/test_bootresources.py` — cover: found resolution, not-found error, DHCP workflow trigger
+- [ ] T035 [P] [US4] Write service unit tests for `resolve_boot_asset_for_deployment()` and `assign_bootloader_and_trigger_dhcp()` in `tests/maasservicelayer/services/test_bootresources.py` — cover: found resolution, not-found error, DHCP workflow trigger. Test class must inherit from `ServiceCommonTests`; use `mocked_api_client` fixture pattern consistent with existing service tests.
 - [ ] T036 [P] [US4] Write tests for DHCP bootloader path override in `tests/maasserver/test_dhcp.py` — cover: host with custom bootloader has `filename` directive, host without does not
-- [ ] T037 [P] [US4] Write integration tests for v2 deploy endpoint with custom asset params in `tests/maasserver/api/test_machines.py` — cover: valid deploy with custom bootloader, valid deploy with custom kernel, missing asset (400), no permissions (403), default fallback when no params
+- [ ] T037 [P] [US4] Write integration tests for v2 deploy endpoint with custom asset params in `tests/maasserver/api/test_machines.py` — cover: valid deploy with custom bootloader, valid deploy with custom kernel, missing asset (400), no permissions (403), default fallback when no params, architecture mismatch between supplied `custom_bootloader` and target machine returns HTTP 400
 
 ---
 
@@ -113,6 +114,7 @@
 
 - [ ] T038 [US5] Verify custom boot assets (`rtype=UPLOADED`) are included in existing Temporal sync workflow scope in `src/maastemporalworker/workflow/bootresource.py` — add filter inclusion if needed
 - [ ] T039 [US5] Write integration test verifying custom boot assets sync via existing `SYNC_ALL_LOCAL_BOOTRESOURCES_WORKFLOW_NAME` workflow in `tests/maastemporalworker/workflow/test_bootresource.py`
+- [ ] T045 [P] [US5] Write integration test verifying Rack Controller cache hit/miss for custom boot assets in `tests/maastemporalworker/` or `tests/maasserver/` — first request must fetch from Region Controller (cache miss), subsequent requests must be served from local cache (cache hit); mock or use a real Rack Controller in test environment
 
 ---
 
@@ -120,10 +122,11 @@
 
 **Purpose**: Final validation, lint, formatting, documentation updates.
 
-- [ ] T040 [P] Run full lint and formatting pass: `make format-py && make lint-py`
+- [ ] T040 [P] Run full lint and formatting pass: `make format-py && make lint-py && make lint-oapi` (the `make lint-oapi` step validates the generated OpenAPI spec against the schema; if T042 manual inspection is done separately, `make lint-oapi` must still be run as a scripted step)
 - [ ] T041 [P] Run full test suite: `make test-py` — verify no regressions
 - [ ] T042 [P] Verify OpenAPI spec generation includes new upload endpoints: check `openapi.yaml` reflects `/boot_assets/bootloaders` and `/boot_assets/kernels`
 - [ ] T043 Update `specs/001-custom-boot-assets/quickstart.md` if any endpoint signatures changed during implementation
+- [ ] T044 Research the current Simplestreams bootloader index format (`com.ubuntu.maas:candidate:1:bootloader-download.json`), draft a proposal for a new companion index file format that supports multiple bootloader entries per architecture (backward-compatible — existing single-bootloader-per-arch index must remain unchanged), and document the proposal as a spec deliverable in `specs/001-custom-boot-assets/` (addresses FR-7; see also External Dependencies table in spec.md)
 
 ---
 
@@ -145,10 +148,10 @@ Phase 3 (US1: T016-T021) Phase 4 (US2: T022-T026) Phase 5 (US3: T027-T028)
                     Phase 6 (US4: T029-T037)
                            │
                            ▼
-                    Phase 7 (US5: T038-T039)
+                    Phase 7 (US5: T038-T039, T045)
                            │
                            ▼
-                    Phase 8 (Polish: T040-T043)
+                    Phase 8 (Polish: T040-T044)
 ```
 
 **Key dependencies**:
@@ -182,6 +185,6 @@ T035, T036, T037 (test tasks) can run in parallel after T029-T034 complete.
 4. **Sync verification (Phase 7)**: Confirm existing Temporal workflow includes custom assets.
 5. **Ship (Phase 8)**: Lint, test, documentation pass.
 
-**Total tasks**: 43  
-**Parallelizable tasks**: 22 (marked [P])  
+**Total tasks**: 46  
+**Parallelizable tasks**: 24 (marked [P])  
 **Critical path**: T001 → T002 → T011 → T017 → T018 → T029 → T032 → T040
