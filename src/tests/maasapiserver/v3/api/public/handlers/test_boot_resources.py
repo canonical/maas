@@ -1180,6 +1180,168 @@ class TestCustomImagesApi(ApiCommonTests):
             ),
         )
 
+    async def test_list_custom_images_filters_by_name(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+        test_boot_resource_1: BootResource,
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootResource
+        ](items=[test_boot_resource_1], total=1)
+
+        response = await client.get(
+            f"{self.BASE_PATH}?size=10&name=custom/noble-image"
+        )
+
+        assert response.status_code == 200
+        services_mock.boot_resources.list.assert_awaited_once_with(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_uploaded_type(),
+                        BootResourceClauseFactory.with_name(
+                            "custom/noble-image"
+                        ),
+                    ]
+                )
+            ),
+        )
+
+    async def test_list_custom_images_filters_by_architecture(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+        test_boot_resource_1: BootResource,
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootResource
+        ](items=[test_boot_resource_1], total=1)
+
+        response = await client.get(
+            f"{self.BASE_PATH}?size=10&architecture=amd64/generic"
+        )
+
+        assert response.status_code == 200
+        services_mock.boot_resources.list.assert_awaited_once_with(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_uploaded_type(),
+                        BootResourceClauseFactory.with_architecture(
+                            "amd64/generic"
+                        ),
+                    ]
+                )
+            ),
+        )
+
+    async def test_list_custom_images_filters_by_kflavor(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+        test_kernel_resource: BootResource,
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootResource
+        ](items=[test_kernel_resource], total=1)
+
+        response = await client.get(
+            f"{self.BASE_PATH}?size=10&kflavor=generic"
+        )
+
+        assert response.status_code == 200
+        services_mock.boot_resources.list.assert_awaited_once_with(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_uploaded_type(),
+                        BootResourceClauseFactory.with_kflavor("generic"),
+                    ]
+                )
+            ),
+        )
+
+    async def test_list_custom_images_combined_filters(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+        test_kernel_resource: BootResource,
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootResource
+        ](items=[test_kernel_resource], total=1)
+
+        response = await client.get(
+            f"{self.BASE_PATH}?size=10&type=kernel"
+            "&name=ubuntu/noble&architecture=amd64/generic&kflavor=generic"
+        )
+
+        assert response.status_code == 200
+        services_mock.boot_resources.list.assert_awaited_once_with(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_asset_type_kernel(),
+                        BootResourceClauseFactory.with_name("ubuntu/noble"),
+                        BootResourceClauseFactory.with_architecture(
+                            "amd64/generic"
+                        ),
+                        BootResourceClauseFactory.with_kflavor("generic"),
+                    ]
+                )
+            ),
+        )
+
+    async def test_list_custom_images_name_filter_next_link(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+        test_boot_resource_1: BootResource,
+        test_boot_resource_2: BootResource,
+    ) -> None:
+        """Next link includes name filter param when pagination is needed."""
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootResource
+        ](items=[test_boot_resource_1, test_boot_resource_2], total=3)
+
+        response = await client.get(
+            f"{self.BASE_PATH}?size=2&name=custom/noble-image"
+        )
+
+        assert response.status_code == 200
+        boot_resources_response = ImageListResponse(**response.json())
+        assert boot_resources_response.next is not None
+        assert "name=custom/noble-image" in boot_resources_response.next
+
     async def test_get_custom_image_by_id_200(
         self,
         services_mock: ServiceCollectionV3,
@@ -1966,7 +2128,7 @@ class TestONIEImageUpload(ApiCommonTests):
 
 
 class TestBootloadersApi(ApiCommonTests):
-    BASE_PATH = f"{V3_API_PREFIX}/bootloaders"
+    BASE_PATH = f"{V3_API_PREFIX}/boot_assets/bootloaders"
 
     @pytest.fixture
     def endpoints_with_authorization(self) -> list[Endpoint]:
@@ -2018,6 +2180,12 @@ class TestBootloadersApi(ApiCommonTests):
             items=[bootloader],
             total=2,
         )
+        services_mock.boot_resources.get_versions_for_resources.return_value = {
+            bootloader.id: ["20250101"]
+        }
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {
+            bootloader.id: []
+        }
 
         response = await client.get(f"{self.BASE_PATH}?size=1")
 
@@ -2055,6 +2223,12 @@ class TestBootloadersApi(ApiCommonTests):
             items=[bootloader],
             total=1,
         )
+        services_mock.boot_resources.get_versions_for_resources.return_value = {
+            bootloader.id: ["20250101"]
+        }
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {
+            bootloader.id: []
+        }
 
         response = await client.get(f"{self.BASE_PATH}?size=1")
 
@@ -2077,12 +2251,21 @@ class TestBootloadersApi(ApiCommonTests):
         )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = bootloader
+        services_mock.boot_resources.get_versions_for_resources.return_value = {
+            bootloader.id: ["20250101", "20240101"]
+        }
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {
+            bootloader.id: []
+        }
 
         response = await client.get(f"{self.BASE_PATH}/1")
 
         assert response.status_code == 200
         stat_response = BootloaderResponse(**response.json())
         assert stat_response.id == 1
+        assert stat_response.type == "bootloader"
+        assert stat_response.versions == ["20250101", "20240101"]
+        assert stat_response.latest_version == "20250101"
         services_mock.boot_resources.get_one.assert_awaited_once_with(
             query=QuerySpec(
                 where=BootResourceClauseFactory.and_clauses(
@@ -2115,6 +2298,69 @@ class TestBootloadersApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 404
+
+    async def test_bootloader_response_type_discriminator(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+        bootloader: BootResource,
+    ) -> None:
+        """BootloaderResponse carries type='bootloader' discriminator."""
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = bootloader
+        services_mock.boot_resources.get_versions_for_resources.return_value = {}
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {}
+
+        response = await client.get(f"{self.BASE_PATH}/1")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["type"] == "bootloader"
+
+    async def test_bootloader_response_primary_file_populated(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+        bootloader: BootResource,
+        test_boot_resource_file: BootResourceFile,
+    ) -> None:
+        """primary_file is extracted from the BOOTLOADER_TARBALL file extra."""
+        from maascommon.enums.boot_resources import BootResourceFileType
+        from maasservicelayer.models.bootresourcefiles import BootResourceFile
+
+        tarball_file = BootResourceFile(
+            id=99,
+            created=utcnow(),
+            updated=utcnow(),
+            filename="bootloader.tar.gz",
+            filetype=BootResourceFileType.BOOTLOADER_TARBALL,
+            extra={"primary_file": "grubx64.efi"},
+            sha256="abc123",
+            size=1024,
+            filename_on_disk="bootloader.tar.gz",
+            resource_set_id=1,
+        )
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = bootloader
+        services_mock.boot_resources.get_versions_for_resources.return_value = {
+            bootloader.id: ["20250101"]
+        }
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {
+            bootloader.id: [tarball_file]
+        }
+
+        response = await client.get(f"{self.BASE_PATH}/1")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["primary_file"] == "grubx64.efi"
+        assert len(data["files"]) == 1
 
 
 class TestKernelsApi(ApiCommonTests):
@@ -2170,6 +2416,12 @@ class TestKernelsApi(ApiCommonTests):
             items=[kernel],
             total=2,
         )
+        services_mock.boot_resources.get_versions_for_resources.return_value = {
+            kernel.id: ["20250101"]
+        }
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {
+            kernel.id: []
+        }
 
         response = await client.get(f"{self.BASE_PATH}?size=1")
 
@@ -2197,6 +2449,12 @@ class TestKernelsApi(ApiCommonTests):
             items=[kernel],
             total=1,
         )
+        services_mock.boot_resources.get_versions_for_resources.return_value = {
+            kernel.id: ["20250101"]
+        }
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {
+            kernel.id: []
+        }
 
         response = await client.get(f"{self.BASE_PATH}?size=1")
 
@@ -2232,6 +2490,12 @@ class TestKernelsApi(ApiCommonTests):
             items=[kernel],
             total=2,
         )
+        services_mock.boot_resources.get_versions_for_resources.return_value = {
+            kernel.id: []
+        }
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {
+            kernel.id: []
+        }
 
         response = await client.get(f"{self.BASE_PATH}?size=1&kflavor=generic")
 
@@ -2266,6 +2530,12 @@ class TestKernelsApi(ApiCommonTests):
         )
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = kernel
+        services_mock.boot_resources.get_versions_for_resources.return_value = {
+            kernel.id: ["20250101"]
+        }
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {
+            kernel.id: []
+        }
 
         response = await client.get(f"{self.BASE_PATH}/1")
 
@@ -2273,6 +2543,9 @@ class TestKernelsApi(ApiCommonTests):
         assert "ETag" in response.headers
         kernel_response = KernelResponse(**response.json())
         assert kernel_response.id == 1
+        assert kernel_response.type == "kernel"
+        assert kernel_response.versions == ["20250101"]
+        assert kernel_response.latest_version == "20250101"
 
         services_mock.boot_resources.get_one.assert_awaited_once_with(
             query=QuerySpec(
@@ -2302,3 +2575,97 @@ class TestKernelsApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 404
+
+    async def test_kernel_response_complete_flag(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+        kernel: BootResource,
+        test_boot_resource_file: BootResourceFile,
+    ) -> None:
+        """complete=True when both BOOT_KERNEL and BOOT_INITRD files exist."""
+        from maascommon.enums.boot_resources import BootResourceFileType
+        from maasservicelayer.models.bootresourcefiles import BootResourceFile
+
+        kernel_file = BootResourceFile(
+            id=10,
+            created=utcnow(),
+            updated=utcnow(),
+            filename="kernel",
+            filetype=BootResourceFileType.BOOT_KERNEL,
+            extra={},
+            sha256="k" * 64,
+            size=512,
+            filename_on_disk="kernel",
+            resource_set_id=1,
+        )
+        initrd_file = BootResourceFile(
+            id=11,
+            created=utcnow(),
+            updated=utcnow(),
+            filename="initrd",
+            filetype=BootResourceFileType.BOOT_INITRD,
+            extra={},
+            sha256="i" * 64,
+            size=256,
+            filename_on_disk="initrd",
+            resource_set_id=1,
+        )
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = kernel
+        services_mock.boot_resources.get_versions_for_resources.return_value = {
+            kernel.id: ["20250101"]
+        }
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {
+            kernel.id: [kernel_file, initrd_file]
+        }
+
+        response = await client.get(f"{self.BASE_PATH}/1")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["complete"] is True
+        assert data["type"] == "kernel"
+
+    async def test_kernel_response_incomplete_when_only_kernel(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+        kernel: BootResource,
+    ) -> None:
+        """complete=False when only BOOT_KERNEL file exists (no initrd)."""
+        from maascommon.enums.boot_resources import BootResourceFileType
+        from maasservicelayer.models.bootresourcefiles import BootResourceFile
+
+        kernel_file = BootResourceFile(
+            id=10,
+            created=utcnow(),
+            updated=utcnow(),
+            filename="kernel",
+            filetype=BootResourceFileType.BOOT_KERNEL,
+            extra={},
+            sha256="k" * 64,
+            size=512,
+            filename_on_disk="kernel",
+            resource_set_id=1,
+        )
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = kernel
+        services_mock.boot_resources.get_versions_for_resources.return_value = {
+            kernel.id: ["20250101"]
+        }
+        services_mock.boot_resources.get_files_for_latest_sets.return_value = {
+            kernel.id: [kernel_file]
+        }
+
+        response = await client.get(f"{self.BASE_PATH}/1")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["complete"] is False

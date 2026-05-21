@@ -196,6 +196,8 @@ async def get_bootloader_path_for_machine(
 
 ### Method: `assign_bootloader_and_trigger_dhcp`
 
+> **Note (Option B accepted)**: This method is **not implemented** in the service layer. The DHCP trigger logic stays in `machines.py` (Django layer) to avoid a Django/SQLAlchemy boundary violation. The v2 deploy endpoint in `src/maasserver/api/machines.py` calls `resolve_boot_asset_for_deployment()` directly on the service and then calls `configure_dhcp_on_agents()` from the Django `dhcp` module. This keeps the service layer free of Django ORM and Temporal coupling.
+
 **Purpose**: Resolve a custom bootloader for a machine and trigger DHCP configuration update on the serving Rack Controller. Called by the v2 deploy endpoint when `custom_bootloader` parameter is provided.
 
 ```python

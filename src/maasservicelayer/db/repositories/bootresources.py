@@ -608,3 +608,65 @@ class BootResourcesRepository(BaseRepository[BootResource]):
         if row is None:
             return None
         return BootResourceFile(**row._asdict())
+
+    async def get_versions_for_resources(
+        self, resource_ids: list[int]
+    ) -> dict[int, list[str]]:
+        """Batch-fetch all version strings for the given resource IDs.
+
+        Returns a mapping of resource_id → list of version strings (newest
+        first).  Avoids N+1 queries by using a single IN-clause select.
+        """
+        if not resource_ids:
+            return {}
+        stmt = (
+            select(
+                BootResourceSetTable.c.resource_id,
+                BootResourceSetTable.c.version,
+            )
+            .where(BootResourceSetTable.c.resource_id.in_(resource_ids))
+            .order_by(desc(BootResourceSetTable.c.id))
+        )
+        result = await self.execute_stmt(stmt)
+        versions: dict[int, list[str]] = {rid: [] for rid in resource_ids}
+        for row in result.all():
+            versions[row.resource_id].append(row.version)
+        return versions
+
+    async def get_files_for_latest_sets(
+        self, resource_ids: list[int]
+    ) -> dict[int, list[BootResourceFile]]:
+        """Batch-fetch files from the latest set for the given resource IDs.
+
+        Returns a mapping of resource_id → list of BootResourceFile objects.
+        Uses a subquery to find the max set id per resource, then fetches
+        all files for those sets in one query.
+        """
+        if not resource_ids:
+            return {}
+        latest_set_subq = (
+            select(
+                BootResourceSetTable.c.resource_id,
+                func.max(BootResourceSetTable.c.id).label("max_set_id"),
+            )
+            .where(BootResourceSetTable.c.resource_id.in_(resource_ids))
+            .group_by(BootResourceSetTable.c.resource_id)
+            .subquery()
+        )
+        stmt = select(
+            BootResourceFileTable,
+            latest_set_subq.c.resource_id,
+        ).join(
+            latest_set_subq,
+            BootResourceFileTable.c.resource_set_id
+            == latest_set_subq.c.max_set_id,
+        )
+        result = await self.execute_stmt(stmt)
+        files: dict[int, list[BootResourceFile]] = {
+            rid: [] for rid in resource_ids
+        }
+        for row in result.all():
+            row_dict = row._asdict()
+            resource_id = row_dict.pop("resource_id")
+            files[resource_id].append(BootResourceFile(**row_dict))
+        return files

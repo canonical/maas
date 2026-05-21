@@ -2,7 +2,8 @@
 
 **Feature Branch**: `6688-custom-boot-assets`  
 **Date**: 2025-07-18  
-**Updated**: 2025-07-18 — Simplified endpoint strategy (reuse existing list/get/delete)
+**Updated**: 2025-07-18 — Simplified endpoint strategy (reuse existing list/get/delete)  
+**Updated**: 2025-07-24 — T049: Bootloader list/get paths aligned to `/boot_assets/bootloaders`
 
 ---
 
@@ -17,13 +18,13 @@
 | Upload initrd (step 2) | `POST /api/v3/boot_assets/kernels/{resource_id}/initrd` | **NEW** |
 | List kernels | `GET /api/v3/kernels` | **NEW** (`KernelsHandler`) |
 | Get kernel by ID | `GET /api/v3/kernels/{id}` | **NEW** (`KernelsHandler`) |
-| List all assets | `GET /api/v3/custom_images` | **EXISTING** — add `type` + `file_type` filter params |
+| List all assets | `GET /api/v3/custom_images` | **EXISTING** — add `type` + `name` + `architecture` + `kflavor` filter params |
 | Get asset by ID | `GET /api/v3/custom_images/{id}` | **EXISTING** — no changes |
 | Delete asset by ID | `DELETE /api/v3/custom_images/{id}` | **EXISTING** — no changes |
 | Bulk delete assets | `DELETE /api/v3/custom_images` | **EXISTING** — no changes |
 | Deploy with custom asset | `POST /api/2.0/machines/{system_id}/op-deploy` | **EXISTING** — add params |
 
-**Rationale**: Upload endpoints live under `/boot_assets/bootloaders` and `/boot_assets/kernels` because bootloader tarball extraction and kernel pair validation differ from plain image uploads. Kernel upload is intentionally split into two sequential calls (kernel first, then initrd) to allow large files to be streamed independently; a kernel resource without an initrd is valid but marked incomplete. List and get endpoints for kernels are served by a dedicated `KernelsHandler` at `/api/v3/kernels` with typed response models. The existing `/custom_images` endpoints are retained for callers that need all uploaded assets in a single mixed-type call. All upload endpoints accept raw `application/octet-stream` bodies with metadata passed via custom `x-*` request headers.
+**Rationale**: Upload endpoints live under `/boot_assets/bootloaders` and `/boot_assets/kernels` because bootloader tarball extraction and kernel pair validation differ from plain image uploads. List/get endpoints for bootloaders are also under `/boot_assets/bootloaders` for consistency (T049 resolution: implementation path renamed to match contract). Kernel list/get are at `/api/v3/kernels` (separate `KernelsHandler`). The existing `/custom_images` endpoints are retained for callers that need all uploaded assets in a single mixed-type call. All upload endpoints accept raw `application/octet-stream` bodies with metadata passed via custom `x-*` request headers.
 
 **Per-version deletion**: NOT supported. Deletion at `BootResource` level only (all versions removed), consistent with custom images today.
 

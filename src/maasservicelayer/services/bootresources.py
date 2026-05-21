@@ -573,3 +573,21 @@ class BootResourceService(
             architecture=architecture,
             asset_type="bootloader",
         )
+
+    async def get_versions_for_resources(
+        self, resource_ids: list[int]
+    ) -> dict[int, list[str]]:
+        """Return all version strings for the given resource IDs (newest first).
+
+        Delegates to the repository batch method to avoid N+1 queries.
+        """
+        return await self.repository.get_versions_for_resources(resource_ids)
+
+    async def get_files_for_latest_sets(
+        self, resource_ids: list[int]
+    ) -> dict[int, list]:
+        """Return files from the latest set for the given resource IDs.
+
+        Delegates to the repository batch method to avoid N+1 queries.
+        """
+        return await self.repository.get_files_for_latest_sets(resource_ids)

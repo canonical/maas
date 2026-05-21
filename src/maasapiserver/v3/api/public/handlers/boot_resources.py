@@ -627,6 +627,18 @@ class CustomImagesHandler(Handler):
                 description="Filter by asset type.",
             ),
         ] = None,
+        name: Annotated[
+            str | None,
+            Query(description="Filter by asset name."),
+        ] = None,
+        architecture: Annotated[
+            str | None,
+            Query(description="Filter by architecture."),
+        ] = None,
+        kflavor: Annotated[
+            str | None,
+            Query(description="Filter by kernel flavor."),
+        ] = None,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ImageListResponse:
@@ -634,9 +646,25 @@ class CustomImagesHandler(Handler):
         # When a type is specified, the per-type clause already embeds the
         # rtype=UPLOADED constraint, so with_uploaded_type() is not applied
         # separately to avoid redundancy.
-        query_clause = BootResourceClauseFactory.with_uploaded_type()
-        if asset_type is not None:
-            query_clause = asset_type.to_clause()
+        clauses = [
+            asset_type.to_clause()
+            if asset_type is not None
+            else BootResourceClauseFactory.with_uploaded_type()
+        ]
+        if name is not None:
+            clauses.append(BootResourceClauseFactory.with_name(name))
+        if architecture is not None:
+            clauses.append(
+                BootResourceClauseFactory.with_architecture(architecture)
+            )
+        if kflavor is not None:
+            clauses.append(BootResourceClauseFactory.with_kflavor(kflavor))
+
+        query_clause = (
+            BootResourceClauseFactory.and_clauses(clauses)
+            if len(clauses) > 1
+            else clauses[0]
+        )
 
         boot_resources = await services.boot_resources.list(
             page=pagination_params.page,
@@ -654,6 +682,12 @@ class CustomImagesHandler(Handler):
             )
             if asset_type is not None:
                 next_link += f"&type={asset_type.value}"
+            if name is not None:
+                next_link += f"&name={name}"
+            if architecture is not None:
+                next_link += f"&architecture={architecture}"
+            if kflavor is not None:
+                next_link += f"&kflavor={kflavor}"
 
         return ImageListResponse(
             items=[
@@ -968,7 +1002,7 @@ class BootloadersHandler(Handler):
     TAGS = ["Bootloaders"]
 
     @handler(
-        path="/bootloaders",
+        path="/boot_assets/bootloaders",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -1000,18 +1034,29 @@ class BootloadersHandler(Handler):
                 )
             ),
         )
+        resource_ids = [b.id for b in bootloaders.items]
+        versions_map = (
+            await services.boot_resources.get_versions_for_resources(
+                resource_ids
+            )
+        )
+        files_map = await services.boot_resources.get_files_for_latest_sets(
+            resource_ids
+        )
+        base = f"{V3_API_PREFIX}/boot_assets/bootloaders"
         return BootloaderListResponse(
             items=[
                 BootloaderResponse.from_model(
                     boot_resource=bootloader,
-                    self_base_hyperlink=f"{V3_API_PREFIX}/bootloaders",
+                    self_base_hyperlink=base,
+                    versions=versions_map.get(bootloader.id, []),
+                    resource_files=files_map.get(bootloader.id, []),
                 )
                 for bootloader in bootloaders.items
             ],
             total=bootloaders.total,
             next=(
-                f"{V3_API_PREFIX}/bootloaders?"
-                f"{pagination_params.to_next_href_format()}"
+                f"{base}?{pagination_params.to_next_href_format()}"
                 if bootloaders.has_next(
                     pagination_params.page, pagination_params.size
                 )
@@ -1020,7 +1065,7 @@ class BootloadersHandler(Handler):
         )
 
     @handler(
-        path="/bootloaders/{bootloader_id}",
+        path="/boot_assets/bootloaders/{bootloader_id}",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -1063,9 +1108,20 @@ class BootloadersHandler(Handler):
         if bootloader is None:
             raise NotFoundException()
         response.headers["ETag"] = bootloader.etag()
+        versions_map = (
+            await services.boot_resources.get_versions_for_resources(
+                [bootloader.id]
+            )
+        )
+        files_map = await services.boot_resources.get_files_for_latest_sets(
+            [bootloader.id]
+        )
+        base = f"{V3_API_PREFIX}/boot_assets/bootloaders"
         return BootloaderResponse.from_model(
             boot_resource=bootloader,
-            self_base_hyperlink=f"{V3_API_PREFIX}/bootloaders",
+            self_base_hyperlink=base,
+            versions=versions_map.get(bootloader.id, []),
+            resource_files=files_map.get(bootloader.id, []),
         )
 
 
@@ -1120,6 +1176,15 @@ class KernelsHandler(Handler):
             size=pagination_params.size,
             query=QuerySpec(where=where),
         )
+        resource_ids = [k.id for k in kernels.items]
+        versions_map = (
+            await services.boot_resources.get_versions_for_resources(
+                resource_ids
+            )
+        )
+        files_map = await services.boot_resources.get_files_for_latest_sets(
+            resource_ids
+        )
         extra_params = ""
         if name is not None:
             extra_params += f"&name={name}"
@@ -1132,6 +1197,8 @@ class KernelsHandler(Handler):
                 KernelResponse.from_model(
                     boot_resource=kernel,
                     self_base_hyperlink=f"{V3_API_PREFIX}/kernels",
+                    versions=versions_map.get(kernel.id, []),
+                    resource_files=files_map.get(kernel.id, []),
                 )
                 for kernel in kernels.items
             ],
@@ -1186,7 +1253,17 @@ class KernelsHandler(Handler):
         if kernel is None:
             raise NotFoundException()
         response.headers["ETag"] = kernel.etag()
+        versions_map = (
+            await services.boot_resources.get_versions_for_resources(
+                [kernel.id]
+            )
+        )
+        files_map = await services.boot_resources.get_files_for_latest_sets(
+            [kernel.id]
+        )
         return KernelResponse.from_model(
             boot_resource=kernel,
             self_base_hyperlink=f"{V3_API_PREFIX}/kernels",
+            versions=versions_map.get(kernel.id, []),
+            resource_files=files_map.get(kernel.id, []),
         )
