@@ -61,7 +61,7 @@ async def create_test_custom_bootresource_status_entry(
     architecture: str,
     file_size: int = 1024,
     sync_size: int = 1024,
-    region_controller: dict | None = None,
+    region_controllers: list[dict] | None = None,
 ) -> CustomBootResourceStatus:
     boot_resource = await create_test_bootresource_entry(
         fixture,
@@ -87,15 +87,18 @@ async def create_test_custom_bootresource_status_entry(
         resource_set_id=boot_resource_set.id,
     )
 
-    if region_controller is None:
-        region_controller = await create_test_region_controller_entry(fixture)
+    if region_controllers is None:
+        region_controllers = [
+            await create_test_region_controller_entry(fixture)
+        ]
 
-    await create_test_bootresourcefilesync_entry(
-        fixture,
-        size=sync_size,
-        file_id=boot_resource_file.id,
-        region_id=region_controller["id"],
-    )
+    for region in region_controllers:
+        await create_test_bootresourcefilesync_entry(
+            fixture,
+            size=sync_size,
+            file_id=boot_resource_file.id,
+            region_id=region["id"],
+        )
 
     if sync_size == file_size:
         status = ImageStatus.READY
