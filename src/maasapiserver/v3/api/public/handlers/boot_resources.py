@@ -1131,7 +1131,7 @@ class KernelsHandler(Handler):
     TAGS = ["Kernels"]
 
     @handler(
-        path="/kernels",
+        path="/boot_assets/kernels",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -1196,7 +1196,7 @@ class KernelsHandler(Handler):
             items=[
                 KernelResponse.from_model(
                     boot_resource=kernel,
-                    self_base_hyperlink=f"{V3_API_PREFIX}/kernels",
+                    self_base_hyperlink=f"{V3_API_PREFIX}/boot_assets/kernels",
                     versions=versions_map.get(kernel.id, []),
                     resource_files=files_map.get(kernel.id, []),
                 )
@@ -1204,7 +1204,7 @@ class KernelsHandler(Handler):
             ],
             total=kernels.total,
             next=(
-                f"{V3_API_PREFIX}/kernels?"
+                f"{V3_API_PREFIX}/boot_assets/kernels?"
                 f"{pagination_params.to_next_href_format()}{extra_params}"
                 if kernels.has_next(
                     pagination_params.page, pagination_params.size
@@ -1214,7 +1214,7 @@ class KernelsHandler(Handler):
         )
 
     @handler(
-        path="/kernels/{kernel_id}",
+        path="/boot_assets/kernels/{kernel_id}",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -1263,7 +1263,7 @@ class KernelsHandler(Handler):
         )
         return KernelResponse.from_model(
             boot_resource=kernel,
-            self_base_hyperlink=f"{V3_API_PREFIX}/kernels",
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_assets/kernels",
             versions=versions_map.get(kernel.id, []),
             resource_files=files_map.get(kernel.id, []),
         )

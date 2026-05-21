@@ -2,7 +2,7 @@
 
 **Feature Branch**: `6688-custom-boot-assets`  
 **Date**: 2025-07-18  
-**Updated**: 2025-07-18 — Simplified endpoint strategy (reuse existing `/custom_images` for list/get/delete)
+**Updated**: 2025-07-23 — Renamed typed endpoints to `/boot_assets/bootloaders` and `/boot_assets/kernels`; added enriched response field notes; added `name`/`architecture`/`kflavor` filter params for `/custom_images`
 
 ---
 
@@ -105,12 +105,16 @@ curl "http://localhost:5240/MAAS/a/v3/custom_images?type=kernel" \
 
 ### 4. List and Filter Assets (Existing Endpoint)
 
+The `/custom_images` endpoint lists all uploaded boot assets (bootloaders,
+kernels, and custom OS images). In addition to the `type` filter, `name`,
+`architecture`, and `kflavor` query parameters can narrow results further.
+
 ```bash
 # List all custom uploaded assets (existing behavior — includes bootloaders, kernels, images)
 curl http://localhost:5240/MAAS/a/v3/custom_images \
   -H "$AUTH" | jq
 
-# Filter bootloaders only (new filter parameter)
+# Filter bootloaders only (type filter)
 curl "http://localhost:5240/MAAS/a/v3/custom_images?type=bootloader" \
   -H "$AUTH" | jq
 
@@ -121,30 +125,56 @@ curl "http://localhost:5240/MAAS/a/v3/custom_images?type=kernel" \
 # Filter plain images only (custom OS images, existing custom images)
 curl "http://localhost:5240/MAAS/a/v3/custom_images?type=image" \
   -H "$AUTH" | jq
+
+# Filter by name (works with or without type filter)
+curl "http://localhost:5240/MAAS/a/v3/custom_images?name=custom/jammy" \
+  -H "$AUTH" | jq
+
+# Filter by architecture
+curl "http://localhost:5240/MAAS/a/v3/custom_images?architecture=amd64/generic" \
+  -H "$AUTH" | jq
+
+# Filter by kflavor (kernels only)
+curl "http://localhost:5240/MAAS/a/v3/custom_images?type=kernel&kflavor=generic" \
+  -H "$AUTH" | jq
 ```
 
 ### 4b. List and Filter by Sub-Resource (Typed Endpoints)
 
 These endpoints return concrete typed responses — `BootloaderResponse` for
-`/bootloaders` and `KernelResponse` for `/kernels` — with no discriminator
-field needed. Use them when you want only one asset type; use `/custom_images`
-when you need all asset types in a single call.
+`/boot_assets/bootloaders` and `KernelResponse` for `/boot_assets/kernels` —
+with no discriminator field needed. Use them when you want only one asset type;
+use `/custom_images` when you need all asset types in a single call.
+
+Each typed response now includes enriched metadata beyond the bare resource
+fields:
+
+| Field | Bootloader | Kernel | Description |
+|-------|-----------|--------|-------------|
+| `type` | `"bootloader"` | `"kernel"` | Discriminator (also present on `/custom_images` items via `ImageAssetResponse`) |
+| `versions` | ✅ | ✅ | All version strings for this asset identity, newest first |
+| `latest_version` | ✅ | ✅ | Most recent version string |
+| `created_at` | ✅ | ✅ | ISO-8601 creation timestamp |
+| `updated_at` | ✅ | ✅ | ISO-8601 last-modified timestamp |
+| `primary_file` | ✅ | — | EFI filename used for DHCP `option filename` (e.g. `shimx64.efi`) |
+| `files` | ✅ | — | List of `{filename, filetype, sha256, size}` entries in the tarball |
+| `complete` | — | ✅ | `true` when both `boot-kernel` and `boot-initrd` files are present |
 
 ```bash
-# List bootloaders only — returns BootloaderResponse items, no ?type= needed
-curl http://localhost:5240/MAAS/a/v3/bootloaders \
+# List bootloaders — returns BootloaderResponse items (type="bootloader")
+curl http://localhost:5240/MAAS/a/v3/boot_assets/bootloaders \
   -H "$AUTH" | jq
 
 # Get a specific bootloader by ID
-curl http://localhost:5240/MAAS/a/v3/bootloaders/42 \
+curl http://localhost:5240/MAAS/a/v3/boot_assets/bootloaders/42 \
   -H "$AUTH" | jq
 
 # List kernels — supports ?name=, ?architecture=, ?kflavor= filters
-curl "http://localhost:5240/MAAS/a/v3/kernels?kflavor=generic" \
+curl "http://localhost:5240/MAAS/a/v3/boot_assets/kernels?kflavor=generic" \
   -H "$AUTH" | jq
 
 # Get a specific kernel by ID
-curl http://localhost:5240/MAAS/a/v3/kernels/43 \
+curl http://localhost:5240/MAAS/a/v3/boot_assets/kernels/43 \
   -H "$AUTH" | jq
 ```
 

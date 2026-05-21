@@ -2364,7 +2364,7 @@ class TestBootloadersApi(ApiCommonTests):
 
 
 class TestKernelsApi(ApiCommonTests):
-    BASE_PATH = f"{V3_API_PREFIX}/kernels"
+    BASE_PATH = f"{V3_API_PREFIX}/boot_assets/kernels"
 
     @pytest.fixture
     def endpoints_with_authorization(self) -> list[Endpoint]:
