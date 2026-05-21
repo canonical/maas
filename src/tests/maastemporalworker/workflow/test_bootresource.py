@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
 from collections.abc import AsyncGenerator
@@ -24,6 +24,7 @@ from temporalio.exceptions import ApplicationError, CancelledError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
+from maascommon.apiclient import MAASAPIClient
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
@@ -106,7 +107,6 @@ from maastemporalworker.worker import (
     custom_sandbox_runner,
     pydantic_data_converter,
 )
-from maastemporalworker.workflow.api_client import MAASAPIClient
 from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
     CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME,
@@ -702,7 +702,7 @@ class TestFetchManifestAndUpdateCacheActivity:
         await activity_env.run(boot_activities.fetch_manifest_and_update_cache)
 
         assert heartbeats == ["Downloaded images descriptions"]
-        services_mock.image_sync.ensure_boot_source_definition.assert_awaited_once()
+        services_mock.image_sync.check_boot_source_enabled.assert_awaited_once()
         services_mock.boot_sources.get_many.assert_awaited_once()
         services_mock.image_manifests.fetch_and_update.assert_awaited_once()
         services_mock.boot_source_cache.update_from_image_manifest.assert_awaited_once()
@@ -728,11 +728,13 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.boot_sources.get_many.return_value = [
             BootSource(
                 id=1,
+                name="Test Boot Source",
                 url="http://foo.com",
                 keyring_filename="/tmp/foo",
                 keyring_data=None,
                 priority=1,
                 skip_keyring_verification=True,
+                enabled=True,
             )
         ]
         services_mock.image_manifests = Mock(ImageManifestsService)
@@ -777,11 +779,13 @@ class TestGetFilesToDownloadForSelectionActivity:
     ) -> None:
         boot_source = BootSource(
             id=1,
+            name="Test Boot Source",
             url="http://foo.com",
             keyring_filename="/tmp/foo",
             keyring_data=None,
             priority=1,
             skip_keyring_verification=True,
+            enabled=True,
         )
         boot_source_selection = BootSourceSelection(
             id=1,

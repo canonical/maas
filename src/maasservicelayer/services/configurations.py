@@ -15,6 +15,13 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsClauseFactory,
 )
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.configurations import (
     Config,
     ConfigFactory,
@@ -156,6 +163,20 @@ class ConfigurationsService(Service):
         )
         return configs
 
+    async def get_msm_config(self) -> dict[str, Any]:
+        """Get all configuration items known to MSM that are stored in the
+        database, ignoring defaults.
+        """
+        nv_pairs = await self.database_configurations_service.get_many(
+            query=QuerySpec()
+        )
+        configs = {}
+        for name, val in nv_pairs.items():
+            cfg = ConfigFactory.get_config_model(name)
+            if cfg.supported_by_msm and val != cfg.default:
+                configs[name] = val
+        return configs
+
     async def set(
         self, name: str, value: Any, hook_guard: bool = True
     ) -> None:
@@ -180,6 +201,36 @@ class ConfigurationsService(Service):
             await self.database_configurations_service.create_or_update(
                 DatabaseConfigurationBuilder(name=name, value=value)
             )
+
+    async def clear_and_set_many(self, configuration: dict[str, Any]) -> None:
+        """Clear the currently stored configuration and set it again. Does not support secrets."""
+        try:
+            if any(
+                [
+                    ConfigFactory.parse(name, value).stored_as_secret
+                    for name, value in configuration.items()
+                ]
+            ):
+                raise ValidationException(
+                    [
+                        BaseExceptionDetail(
+                            type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                            message="clear_and_set_many does not support setting secrets.",
+                        )
+                    ]
+                )
+        except ValueError as err:
+            raise ValidationException(
+                [
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message="Some configuration options are unknown or invalid.",
+                    )
+                ]
+            ) from err
+        await self.database_configurations_service.clear_and_set_many(
+            configuration
+        )
 
     async def get_maas_user_agent(self):
         # TODO: move get_running_version to maascommon.

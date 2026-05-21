@@ -9,7 +9,6 @@ from joserfc import jwt
 from joserfc.jwk import OctKey
 import pytest
 from temporalio.client import Client, WorkflowExecutionDescription
-from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.enums.msm import MSMStatusEnum
 from maascommon.workflows.msm import (
@@ -311,5 +310,4 @@ class TestMSMWithdraw:
             arg=MSMRestoreDefaultBootSourceParam(sm_url=secret["url"]),
             id=f"{MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME}:{REGION_TASK_QUEUE}",
             task_queue=REGION_TASK_QUEUE,
-            id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
         )

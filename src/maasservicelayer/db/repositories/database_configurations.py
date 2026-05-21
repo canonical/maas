@@ -1,7 +1,9 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from sqlalchemy import select
+from typing import Any
+
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.operators import eq
 
@@ -60,3 +62,23 @@ class DatabaseConfigurationsRepository(Repository):
         )
         result = (await self.execute_stmt(upsert_stmt)).one()
         return DatabaseConfiguration(**result._asdict())
+
+    async def clear(self) -> None:
+        await self.execute_stmt(delete(ConfigTable))
+
+    async def set_many(
+        self, configuration: dict[str, Any]
+    ) -> list[DatabaseConfiguration]:
+        """
+        Set many configuration items at once.
+        Args:
+            configuration: The configuration to set in the database. Keys of
+            this dict are the names of the configuration items.
+        """
+        data = [
+            {"name": key, "value": value}
+            for key, value in configuration.items()
+        ]
+        stmt = pg_insert(ConfigTable).values(data).returning(ConfigTable)
+        result = await self.execute_stmt(stmt)
+        return [DatabaseConfiguration(**row._asdict()) for row in result.all()]

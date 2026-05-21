@@ -61,3 +61,7 @@ class DatabaseConfigurationsService(Service):
         return await self.database_configurations_repository.create_or_update(
             builder
         )
+
+    async def clear_and_set_many(self, configuration: dict[str, Any]) -> None:
+        await self.database_configurations_repository.clear()
+        await self.database_configurations_repository.set_many(configuration)

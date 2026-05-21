@@ -497,6 +497,66 @@ class TestCustomImagesApi(ApiCommonTests):
             boot_resources_response.next == f"{self.BASE_PATH}?page=2&size=1"
         )
 
+    async def test_list_custom_images_filter_by_file_type(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootResource
+        ](items=[TEST_BOOT_RESOURCE_1], total=1)
+
+        response = await client.get(
+            f"{self.BASE_PATH}?file_type=self-extracting"
+        )
+
+        assert response.status_code == 200
+
+        boot_resources_response = ImageListResponse(**response.json())
+
+        assert len(boot_resources_response.items) == 1
+        assert boot_resources_response.total == 1
+        assert boot_resources_response.next is None
+
+        services_mock.boot_resources.list.assert_called_once()
+        call_args = services_mock.boot_resources.list.call_args
+        query_spec = call_args.kwargs["query"]
+        assert query_spec is not None
+        assert query_spec.where is not None
+
+    async def test_list_custom_images_filter_combined(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
+        )
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.list.return_value = ListResult[
+            BootResource
+        ](items=[TEST_BOOT_RESOURCE_1], total=2)
+
+        response = await client.get(
+            f"{self.BASE_PATH}?size=1&id=1&id=2&file_type=self-extracting"
+        )
+
+        assert response.status_code == 200
+
+        boot_resources_response = ImageListResponse(**response.json())
+
+        assert len(boot_resources_response.items) == 1
+        assert boot_resources_response.total == 2
+        assert boot_resources_response.next is not None
+        assert (
+            boot_resources_response.next
+            == f"{self.BASE_PATH}?page=2&size=1&id=1&id=2&file_type=self-extracting"
+        )
+
     async def test_get_custom_image_by_id_200(
         self,
         services_mock: ServiceCollectionV3,

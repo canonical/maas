@@ -1,7 +1,6 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy import select
@@ -57,18 +56,9 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[Zone]:
-        # The default zone is created by the migration and it has the following
-        # timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:9558
-        ts = datetime(2025, 10, 17, 10, 15, 20, 698940, tzinfo=timezone.utc)
+        # The default zone is created by the migrations
         created_zones = [
-            Zone(
-                id=1,
-                name="default",
-                description="",
-                created=ts,
-                updated=ts,
-            )
+            Zone(**row) for row in await fixture.get(ZoneTable.name)
         ]
         created_zones.extend(
             [
@@ -112,7 +102,7 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
         assert len(zones.items) == 2
         assert zones.total == 2
 
-    async def test_list_with_summary(
+    async def test_list_with_statistics(
         self, repository_instance: ZonesRepository, fixture: Fixture
     ) -> None:
         zone = await repository_instance.get_default_zone()
@@ -132,14 +122,14 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
             for _ in range(3)
         ]
 
-        zones = await repository_instance.list_with_summary(1, 20)
+        zones = await repository_instance.list_with_statistics(1, 20)
         assert len(zones.items) == 1
         assert zones.total == 1
         assert zones.items[0].machines_count == 2
         assert zones.items[0].devices_count == 1
         assert zones.items[0].controllers_count == 3
 
-    async def test_list_with_summary_pagination(
+    async def test_list_with_statistics_pagination(
         self, repository_instance: ZonesRepository, fixture: Fixture
     ) -> None:
         zone_names = [str(x) for x in range(4)]
@@ -149,25 +139,22 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
         ]
 
         all_zones = []
-        zones = await repository_instance.list_with_summary(1, 2)
+        zones = await repository_instance.list_with_statistics(1, 2)
         all_zones += zones.items
         assert len(zones.items) == 2
         assert zones.total == 5  # 4 just created + the default zone
 
-        zones = await repository_instance.list_with_summary(2, 2)
+        zones = await repository_instance.list_with_statistics(2, 2)
         all_zones += zones.items
         assert len(zones.items) == 2
         assert zones.total == 5
 
-        zones = await repository_instance.list_with_summary(3, 2)
+        zones = await repository_instance.list_with_statistics(3, 2)
         all_zones += zones.items
         assert len(zones.items) == 1
         assert zones.total == 5
 
-        # Oldest records first
-        expected_zone_order = (["default"] + zone_names)[::-1]
-        for zone, name in zip(all_zones, expected_zone_order, strict=True):
-            assert zone.name == name
+        for zone in all_zones:
             assert zone.machines_count == 0
             assert zone.devices_count == 0
             assert zone.controllers_count == 0

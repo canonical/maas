@@ -169,6 +169,12 @@ ini_options.asyncio_mode = "auto"
 ini_options.filterwarnings = "error::BytesWarning"
 ini_options.testpaths = [ "src/tests" ]
 
+[tool.coverage]
+run.branch = true
+run.relative_files = true
+run.source = [ "src" ]
+paths.source = [ "src", "*/maas/src" ]
+
 [tool.pyright]
 include = [ "src/maascommon", "src/maasservicelayer", "src/maasapiserver", "src/maastemporalworker" ]
 exclude = [ "src/maasservicelayer/auth/macaroons", "src/maasservicelayer/services/machines_v2.py" ]

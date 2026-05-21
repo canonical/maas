@@ -1,7 +1,8 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import dataclasses
+from typing import Any
 
 # Workflows names
 MSM_ENROL_SITE_WORKFLOW_NAME = "msm-enrol-site"
@@ -10,6 +11,7 @@ MSM_HEARTBEAT_WORKFLOW_NAME = "msm-heartbeat"
 MSM_RESTORE_DEFAULT_BOOT_SOURCE_WORKFLOW_NAME = (
     "msm-restore-default-boot-source"
 )
+MSM_CONFIGURE_PROFILE_WORKFLOW_NAME = "msm-configure-profile"
 
 
 # Workflows parameters
@@ -54,6 +56,13 @@ class MSMHeartbeatParam:
 
 
 @dataclasses.dataclass
+class MSMHeartbeatResponse:
+    interval: int
+    send_config_options: bool
+    config_hash: str
+
+
+@dataclasses.dataclass
 class MSMTokenRefreshParam:
     sm_url: str
     jwt: str
@@ -66,5 +75,22 @@ class MSMSetBootSourceParam:
 
 
 @dataclasses.dataclass
+class MSMSetSelectionsParam:
+    selections: list[str]
+    sm_url: str
+
+
+@dataclasses.dataclass
+class MSMSetGlobalConfigParam:
+    configuration: dict[str, Any]
+
+
+@dataclasses.dataclass
 class MSMRestoreDefaultBootSourceParam:
     sm_url: str
+
+
+@dataclasses.dataclass
+class MSMConfigureProfileParam:
+    sm_url: str
+    jwt: str

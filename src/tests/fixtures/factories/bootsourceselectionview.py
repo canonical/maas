@@ -52,7 +52,7 @@ async def create_test_selection_status_entry(
             fixture,
             name="test-boot_source",
             url="http://example.com",
-            priority=1,
+            priority=100,
         )
     await create_test_bootsourcecache_entry(
         fixture,

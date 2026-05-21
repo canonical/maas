@@ -4,8 +4,9 @@
 from datetime import datetime, timezone
 from typing import Any
 
+from ulid import ULID
+
 from maascommon.enums.openfga import OPENFGA_STORE_ID
-from maascommon.utils.ulid import generate_ulid
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -28,7 +29,7 @@ async def create_openfga_tuple(
         "object_type": object_type,
         "object_id": object_id,
         "inserted_at": inserted_at,
-        "ulid": generate_ulid(),
+        "ulid": str(ULID()),
     }
     t.update(extra_details)
 

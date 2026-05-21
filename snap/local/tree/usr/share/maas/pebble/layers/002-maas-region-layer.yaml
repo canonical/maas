@@ -7,7 +7,7 @@ services:
   regiond:
     override: replace
     # Note: we use `sh -c` to expand the `$SNAP` environment variable
-    command: sh -c "exec systemd-cat -t maas-regiond $SNAP/bin/run-regiond"
+    command: sh -c "exec systemd-cat -t maas-regiond $SNAP/usr/bin/run-regiond"
     startup: enabled
     # Workaround for https://github.com/canonical/pebble/issues/231
     before:
@@ -20,7 +20,7 @@ services:
 
   apiserver:
     override: replace
-    command: sh -c "exec systemd-cat -t maas-apiserver $SNAP/bin/run-apiserver"
+    command: sh -c "exec systemd-cat -t maas-apiserver $SNAP/usr/bin/run-apiserver"
     startup: enabled
     before:
       - http
@@ -31,17 +31,17 @@ services:
 
   temporal:
     override: replace
-    command: sh -c "exec systemd-cat -t maas-temporal $SNAP/bin/run-temporal"
+    command: sh -c "exec systemd-cat -t maas-temporal $SNAP/usr/bin/run-temporal"
     startup: disabled
 
   temporal-worker:
     override: replace
-    command: sh -c "exec systemd-cat -t maas-temporal-worker $SNAP/bin/run-temporal-worker"
+    command: sh -c "exec systemd-cat -t maas-temporal-worker $SNAP/usr/bin/run-temporal-worker"
     startup: disabled
 
   openfga:
     override: replace
     startup: enabled
-    command: sh -c "exec systemd-cat -t maas-openfga $SNAP/bin/run-openfga"
+    command: sh -c "exec systemd-cat -t maas-openfga $SNAP/usr/bin/run-openfga"
     before:
       - syslog

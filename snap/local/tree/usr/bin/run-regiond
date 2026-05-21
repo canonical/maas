@@ -27,8 +27,8 @@ export MAAS_OPENFGA_HTTP_SOCKET_PATH="$SNAP_DATA/openfga-http.sock"
 # ensure these dirs exist here since the region creates config files for other
 # services
 mkdir -p \
-      "$MAAS_DNS_CONFIG_DIR" \
-      "$MAAS_PROXY_CONFIG_DIR" \
-      "$MAAS_SYSLOG_CONFIG_DIR"
+  "$MAAS_DNS_CONFIG_DIR" \
+  "$MAAS_PROXY_CONFIG_DIR" \
+  "$MAAS_SYSLOG_CONFIG_DIR"
 
-exec "$SNAP/bin/regiond"
+exec "$SNAP/usr/bin/regiond"

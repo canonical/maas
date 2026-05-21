@@ -33,6 +33,7 @@ class UbuntuOS(OperatingSystem):
 
     def get_lts_release(self):
         """Return the latest Ubuntu LTS release."""
+        # When updating this, also update the alembic migration 0005
         return "noble"
 
     def get_default_release(self):

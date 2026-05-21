@@ -137,6 +137,13 @@ swagger-css: $(swagger-dist)
 go-bins: build-host-info build-agent build-openfga
 .PHONY: go-bins
 
+generate-go:
+	@find src -maxdepth 3 -type f -name go.mod -execdir sh -c '\
+		if make -n generate >/dev/null 2>&1; then \
+			make generate; \
+		fi' \;
+.PHONY: generate-go
+
 build-host-info:
 	$(MAKE) --no-print-directory -j -C src/host-info build
 .PHONY: build-host-info
@@ -455,6 +462,7 @@ package-clean:
 #
 
 snap-clean:
+	$(MAKE) --no-print-directory -C docs clean
 	$(snapcraft) clean
 .PHONY: snap-clean
 
@@ -493,9 +501,6 @@ snap-tree-sync: $(UI_BUILD) clean-agent clean-openfga go-bins $(SNAP_UNPACKED_DI
 	$(RSYNC) \
 		$(UI_BUILD)/ \
 		$(SNAP_UNPACKED_DIR)/usr/share/maas/web/static/
-	$(RSYNC) \
-		$(OFFLINE_DOCS)/production-html-snap/ \
-		$(SNAP_UNPACKED_DIR)/usr/share/maas/web/static/docs/
 	$(RSYNC) \
 		snap/local/tree/ \
 		$(SNAP_UNPACKED_DIR)/

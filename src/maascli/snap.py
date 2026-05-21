@@ -320,7 +320,7 @@ def migrate_db(capture=False):
     if capture:
         process = subprocess.Popen(
             [
-                os.path.join(os.environ["SNAP"], "bin", "maas-region"),
+                os.path.join(os.environ["SNAP"], "usr", "bin", "maas-region"),
                 "dbupgrade",
             ],
             stdout=subprocess.PIPE,
@@ -337,7 +337,7 @@ def migrate_db(capture=False):
     else:
         subprocess.check_call(
             [
-                os.path.join(os.environ["SNAP"], "bin", "maas-region"),
+                os.path.join(os.environ["SNAP"], "usr", "bin", "maas-region"),
                 "dbupgrade",
             ]
         )
@@ -959,7 +959,9 @@ class cmd_status(SnapCommand):
         else:
             process = subprocess.Popen(
                 [
-                    os.path.join(os.environ["SNAP"], "bin", "run-pebble"),
+                    os.path.join(
+                        os.environ["SNAP"], "usr", "bin", "run-pebble"
+                    ),
                     "services",
                 ],
                 stdout=subprocess.PIPE,

@@ -10,6 +10,7 @@ from maasservicelayer.builders.configurations import (
     DatabaseConfigurationBuilder,
 )
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsRepository,
 )
@@ -80,3 +81,33 @@ class TestDatabaseConfigurationsRepository:
         assert created_dbconfig.id == updated_dbconfig.id
         assert created_dbconfig.name == updated_dbconfig.name
         assert updated_dbconfig.value == "newbar"
+
+    async def test_clear(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        await create_test_configuration(
+            fixture=fixture, name="test1", value="value1"
+        )
+        await create_test_configuration(fixture=fixture, name="test2", value=2)
+        database_configuration_repository = DatabaseConfigurationsRepository(
+            Context(connection=db_connection)
+        )
+        await database_configuration_repository.clear()
+        configurations = await database_configuration_repository.get_many(
+            QuerySpec()
+        )
+        assert len(configurations) == 0
+
+    async def test_set_many(self, db_connection: AsyncConnection) -> None:
+        database_configuration_repository = DatabaseConfigurationsRepository(
+            Context(connection=db_connection)
+        )
+        test_cfg = {"test1": "value1", "test2": 2}
+        configuration = await database_configuration_repository.set_many(
+            test_cfg
+        )
+        assert len(configuration) == 2
+        assert configuration[0].name == "test1"
+        assert configuration[0].value == "value1"
+        assert configuration[1].name == "test2"
+        assert configuration[1].value == 2

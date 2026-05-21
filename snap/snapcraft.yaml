@@ -123,6 +123,7 @@ parts:
       - nmap
       - openssh-client
       - perl-base
+      - python3
       - python3-aiodns
       - python3-aiofiles
       - python3-aiohttp
@@ -190,6 +191,7 @@ parts:
       - python3-twisted
       - python3-txtftp
       - python3-tz
+      - python3-ulid
       - python3-urllib3 # for macaroonbakery
       - python3-uvicorn
       - python3-yaml
@@ -228,6 +230,7 @@ parts:
       - -lib/python3.*/site-packages/usr
       - -lib/python3/dist-packages/maastesting
       - usr/bin
+      - usr/bin/python3
       - -usr/bin/xdg-*
       - -usr/bin/maas-sampledata
       - usr/lib

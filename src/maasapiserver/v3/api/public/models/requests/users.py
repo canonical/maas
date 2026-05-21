@@ -13,11 +13,21 @@ from maasservicelayer.models.base import UNSET
 
 
 class UsersFiltersParams(BaseModel):
+    ids: list[int] | None = Field(
+        Query(
+            default=None,
+            alias="id",
+            description="Filter by User ID",
+        )
+    )
+
     username_or_email: str | None = Field(
         Query(default=None, title="Filter by username or email")
     )
 
     def to_clause(self) -> Clause | None:
+        if self.ids:
+            return UserClauseFactory.with_ids(self.ids)
         if self.username_or_email:
             return UserClauseFactory.with_username_or_email_like(
                 self.username_or_email
@@ -25,11 +35,12 @@ class UsersFiltersParams(BaseModel):
         return None
 
     def to_href_format(self) -> str:
-        return (
-            f"&username_or_email={self.username_or_email}"
-            if self.username_or_email
-            else ""
-        )
+        parts = []
+        if self.ids:
+            parts.extend([f"id={id}" for id in self.ids])
+        if self.username_or_email:
+            parts.append(f"username_or_email={self.username_or_email}")
+        return "&".join(parts) if parts else ""
 
 
 class BaseUserRequest(BaseModel):

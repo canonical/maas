@@ -9,14 +9,14 @@ Before installing anything, make sure MAAS is the right fit. Confirm that your i
 <!-- * *Confirm intended use matches reference architecture* -->
 
 * [Examine and confirm requirements](/reference/configuration-guides/installation-requirements.md)
-* [Choose the installation type](/how-to-guides/get-maas-up-and-running.md#install-maas)
+* [Choose the installation type](/how-to-guides/get-started/install-maas.md)
 
 ## Install and set up
 
 Here, you'll install and initialize MAAS, then configure it to manage your infrastructure. Whether you're working with LXD, KVM, or another cloud provider, this section walks you through connecting MAAS to your virtual or physical environment.
 
-* [Install MAAS](/how-to-guides/get-maas-up-and-running.md)
-* [Initialize MAAS](/how-to-guides/get-maas-up-and-running.md#post-install-setup)
+* [Install MAAS](/how-to-guides/get-started/install-maas.md)
+* [Configure MAAS](/how-to-guides/get-started/configure-maas.md)
 * [Set up your cloud](/how-to-guides/manage-machines.md#enable-new-machines)
 
 ## Provision and deploy
@@ -31,6 +31,10 @@ This section covers how to enlist machines into MAAS, test and commission them, 
 * Special deployments
   * [Custom images: building, using, and maintaining](/how-to-guides/build-custom-images.md)
   * [Ephemeral deployments](/how-to-guides/manage-machines.md#deploy-machines)
+  * DPU deployments
+    * [Deploy DPUs with BMC (BlueField 3)](/how-to-guides/deploy-dpus.md)
+    * [Deploy DPUs without BMC (BlueField 2)](/how-to-guides/deploy-dpus-without-bmc.md)
+    * [Deploy a host-DPU pair using Terraform](/how-to-guides/deploy-a-dpu-host-pair.md)
 
 <!--  * *Enlisting running machines (as if deployed by MAAS)* -->
 
@@ -74,7 +78,7 @@ Once your systems are running, it's time to manage them effectively. Learn how t
 <!--  * Integrating with corporate systems -->
 <!--  * Fabrics -->
 <!--  * Spaces -->
-  
+
 ## Monitor and troubleshoot
 
 This section helps you observe and debug your MAAS deployment using tools like Prometheus and Loki. Learn to identify issues with logs, performance, or machine behavior—and get strategies for fixing common problems across your infrastructure.
@@ -113,8 +117,9 @@ Finally, make MAAS part of your larger automation pipeline. Learn how to use the
 :maxdepth: 2
 :hidden:
 
-get-maas-up-and-running
+get-started/index
 back-up-maas
+upgrade-maas
 manage-networks
 manage-network-services
 manage-switches
@@ -133,6 +138,8 @@ set-up-air-gapped-maas
 script-maas-with-python
 deploy-vms-on-ibm-z
 deploy-dpus
+deploy-dpus-without-bmc
+deploy-a-dpu-host-pair
 sso
 user-groups-and-entitlements
 ```

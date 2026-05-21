@@ -3,9 +3,7 @@
 
 """Tests for `BootSourceSelection`."""
 
-from django.core.exceptions import ValidationError
-
-from maasserver.models import BootSource, Config
+from maasserver.models import BootSource
 from maasserver.models.bootsourceselection import (
     BootSourceSelection,
     BootSourceSelectionNew,
@@ -74,32 +72,13 @@ class TestBootSourceSelectionLegacy(MAASServerTestCase):
         }
         self.assertEqual(expected, boot_source_selection.to_dict())
 
-    def test_cannt_delete_commissioning_os(self):
-        boot_source_selection = factory.make_BootSourceSelection()
-        commissioning_osystem, _ = Config.objects.get_or_create(
-            name="commissioning_osystem"
-        )
-        commissioning_series, _ = Config.objects.get_or_create(
-            name="commissioning_distro_series"
-        )
-        commissioning_osystem.value = boot_source_selection.os
-        commissioning_osystem.save()
-        commissioning_series.value = boot_source_selection.release
-        commissioning_series.save()
-        expected = (
-            f"Unable to delete {commissioning_osystem.value} {commissioning_series.value}. "
-            "It is the operating system used for commissioning."
-        )
-        with self.assertRaisesRegex(ValidationError, expected):
-            boot_source_selection.delete()
-
-    def test_force_delete_deletes_selection(self):
+    def test_delete_deletes_selection(self):
         boot_source_selection_legacy = factory.make_BootSourceSelection()
         boot_source_selection_new = factory.make_BootSourceSelectionNew(
             legacy_selection=boot_source_selection_legacy
         )
 
-        boot_source_selection_legacy.force_delete()
+        boot_source_selection_legacy.delete()
         self.assertFalse(
             BootSourceSelection.objects.filter(
                 id=boot_source_selection_legacy.id

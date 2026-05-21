@@ -7,7 +7,7 @@ services:
   rackd:
     override: replace
     # Note: we use `sh -c` to expand the `$SNAP` environment variable
-    command: sh -c "exec systemd-cat -t maas-rackd $SNAP/bin/run-rackd"
+    command: sh -c "exec systemd-cat -t maas-rackd $SNAP/usr/bin/run-rackd"
     startup: enabled
     # Workaround for https://github.com/canonical/pebble/issues/231
     before:
@@ -22,14 +22,14 @@ services:
   dhcpd:
     override: replace
     startup: disabled
-    command: sh -c "exec systemd-cat -t dhcpd $SNAP/bin/run-dhcpd"
+    command: sh -c "exec systemd-cat -t dhcpd $SNAP/usr/bin/run-dhcpd"
 
   dhcpd6:
     override: replace
     startup: disabled
-    command: sh -c "exec systemd-cat -t dhcpd6 $SNAP/bin/run-dhcpd6"
+    command: sh -c "exec systemd-cat -t dhcpd6 $SNAP/usr/bin/run-dhcpd6"
 
   agent:
     override: replace
     startup: disabled
-    command: sh -c "exec systemd-cat -t maas-agent $SNAP/bin/run-maas-agent"
+    command: sh -c "exec systemd-cat -t maas-agent $SNAP/usr/bin/run-maas-agent"

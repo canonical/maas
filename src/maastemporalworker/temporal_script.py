@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
@@ -56,6 +56,7 @@ from maastemporalworker.workflow.dhcp import (
     DHCPConfigActivity,
 )
 from maastemporalworker.workflow.msm import (
+    MSMConfigureProfileWorkflow,
     MSMConnectorActivity,
     MSMEnrolSiteWorkflow,
     MSMHeartbeatWorkflow,
@@ -195,6 +196,7 @@ async def main() -> None:
                 DeployWorkflow,
                 CommissionNWorkflow,
                 # MSM Connector service
+                MSMConfigureProfileWorkflow,
                 MSMEnrolSiteWorkflow,
                 MSMRestoreDefaultBootSourceWorkflow,
                 MSMHeartbeatWorkflow,
@@ -239,6 +241,7 @@ async def main() -> None:
                 dhcp_activity.get_dhcp_data_for_agent,
                 # MSM connector activities,
                 msm_activity.check_enrol,
+                msm_activity.get_config_hash,
                 msm_activity.get_enrol,
                 msm_activity.get_heartbeat_data,
                 msm_activity.get_running_version,
@@ -249,8 +252,14 @@ async def main() -> None:
                 msm_activity.set_enrol,
                 msm_activity.verify_token,
                 msm_activity.set_bootsource,
-                msm_activity.delete_bootsources,
+                msm_activity.disable_bootsources,
+                msm_activity.delete_msm_bootsource,
                 msm_activity.restore_default_boot_source,
+                msm_activity.set_selections,
+                msm_activity.set_global_config,
+                msm_activity.start_image_sync,
+                msm_activity.get_full_profile_config,
+                msm_activity.report_config_progress,
                 # Tag evaluation activities
                 tag_evaluation_activity.evaluate_tag,
                 # Power state activities
