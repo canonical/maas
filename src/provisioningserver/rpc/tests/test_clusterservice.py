@@ -82,6 +82,7 @@ from provisioningserver.rpc.clusterservice import (
     get_scan_all_networks_args,
     spawnProcessAndNullifyStdout,
 )
+from provisioningserver.rpc.common import Client
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing import (
     call_responder,
@@ -1099,7 +1100,7 @@ class TestClusterClientService(MAASTestCase):
                 if len(conns) < service.connections._max_connections:
                     conn = yield service.connections.connect()
                     service.connections[ev].append(conn)
-                    break
+                    return Client(conn)
 
         scale_up = self.patch(service.connections, "scale_up_connections")
         scale_up.side_effect = mock_scale_up_connections
