@@ -230,7 +230,7 @@ parts:
       - -lib/python3.*/site-packages/usr
       - -lib/python3/dist-packages/maastesting
       - usr/bin
-      - usr/bin/python3
+      - usr/bin/python3*
       - -usr/bin/xdg-*
       - -usr/bin/maas-sampledata
       - usr/lib
