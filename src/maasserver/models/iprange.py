@@ -274,15 +274,69 @@ class IPRange(CleanSave, TimestampedModel):
         else:
             message += "IP address or range."
 
-        # Find unused range for start_ip
+        start_ip = IPAddress(self.start_ip)
+        end_ip = IPAddress(self.end_ip)
+
+        # Success when start and end are in the same unused range.
         for unused_range in unused:
-            if IPAddress(self.start_ip) in unused_range:
-                if IPAddress(self.end_ip) in unused_range:
-                    # Success, start and end IP are in an unused range.
-                    return
-                else:
-                    self._raise_validation_error(message)
+            if start_ip in unused_range and end_ip in unused_range:
+                return
+
+        if self._is_existing_dynamic_range_resize_allowed(
+            start_ip, end_ip, unused
+        ):
+            return
+
         self._raise_validation_error(message)
+
+    def _is_existing_dynamic_range_resize_allowed(
+        self, start_ip: IPAddress, end_ip: IPAddress, unused
+    ) -> bool:
+        """Allow resizing a dynamic range despite existing in-range allocations."""
+        if self.id is None or self.type != IPRANGE_TYPE.DYNAMIC:
+            return False
+
+        existing = (
+            type(self)
+            .objects.filter(id=self.id)
+            .values("type", "start_ip", "end_ip")
+            .first()
+        )
+        if existing is None or existing["type"] != IPRANGE_TYPE.DYNAMIC:
+            return False
+
+        existing_start_ip = IPAddress(existing["start_ip"])
+        existing_end_ip = IPAddress(existing["end_ip"])
+
+        start = int(start_ip)
+        end = int(end_ip)
+        existing_start = int(existing_start_ip)
+        existing_end = int(existing_end_ip)
+
+        added_segments = []
+
+        left_end = min(end, existing_start - 1)
+        if start <= left_end:
+            added_segments.append((start, left_end))
+
+        right_start = max(start, existing_end + 1)
+        if right_start <= end:
+            added_segments.append((right_start, end))
+
+        if not added_segments:
+            return True
+
+        version = start_ip.version
+        for segment_start, segment_end in added_segments:
+            added_start_ip = IPAddress(segment_start, version=version)
+            added_end_ip = IPAddress(segment_end, version=version)
+            if not any(
+                added_start_ip in unused_range and added_end_ip in unused_range
+                for unused_range in unused
+            ):
+                return False
+
+        return True
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
