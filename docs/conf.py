@@ -78,9 +78,9 @@ author = "Canonical Ltd."
 # Sidebar documentation title; best kept reasonably short
 #
 # TODO: To include a version number, add it here (hardcoded or automated).
-#
-# TODO: To disable the title, set to an empty string.
+version = f"{os.environ.get('READTHEDOCS_VERSION', 'local')}"
 
+# TODO: To disable the title, set to an empty string.
 html_title = project + " documentation"
 
 
@@ -117,7 +117,7 @@ copyright = "%s CC-BY-SA, %s" % (datetime.date.today().year, author)
 # NOTE: The Open Graph Protocol (OGP) enhances page display in a social graph
 #       and is used by social media platforms; see https://ogp.me/
 
-ogp_site_url = "https://canonical-starter-pack.readthedocs-hosted.com/"
+ogp_site_url = f"https://canonical.com/maas/docs/{version}/"
 
 
 # Preview name of the documentation website
@@ -138,7 +138,7 @@ ogp_image = "https://assets.ubuntu.com/v1/cc828679-docs_illustration.svg"
 
 # TODO: To customise the favicon, uncomment and update as needed.
 
-html_favicon = '_static/bdcff402-maas-2022-favicon-64.png'
+html_favicon = "_static/bdcff402-maas-2022-favicon-64.png"
 
 
 # Dictionary of values to pass into the Sphinx context for all pages:
@@ -220,7 +220,7 @@ if os.getenv("OPENAPI", ""):
 # TODO: If your documentation is hosted on https://docs.ubuntu.com/,
 #       uncomment and update as needed.
 
-# slug = ''
+slug = "maas/docs"
 
 #######################
 # Sitemap configuration: https://sphinx-sitemap.readthedocs.io/
@@ -228,7 +228,7 @@ if os.getenv("OPENAPI", ""):
 
 # Use RTD canonical URL to ensure duplicate pages have a specific canonical URL
 
-html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "/")
+html_baseurl = f"https://canonical.com/maas/docs/{version}/"
 
 # sphinx-sitemap uses html_baseurl to generate the full URL for each page:
 
@@ -367,7 +367,7 @@ exclude_patterns = [
 
 # Adds custom JavaScript files, located under 'html_static_path'
 
-# html_js_files = []
+html_js_files = ["js/overwrite_links.js"]
 
 
 # Specifies a reST snippet to be appended to each .rst file
