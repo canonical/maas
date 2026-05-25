@@ -1135,7 +1135,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 f"{script_result.name} - {script_result.interface.name}"
                 for script_result in sorted(
                     script_results,
-                    key=lambda script_result: (script_result.interface.name),
+                    key=lambda script_result: script_result.interface.name,
                 )
             ],
         )
@@ -1184,3 +1184,51 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         binary.write(other_result.result)
         binary.write(b"\n")
         self.assertEqual(binary.getvalue(), response.content)
+
+    def test_GET_raises_error_when_script_set_is_none(self):
+        if self.id_value is None:
+            return
+
+        node = factory.make_Node()
+        setattr(node, self.key, None)
+        node.save()
+
+        response = self.client.get(
+            reverse(
+                "script_result_handler",
+                args=[node.system_id, self.id_value],
+            )
+        )
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+        expected_message = f"No {self.id_value.replace('-', ' ')} script set exists for this node."
+        self.assertIn(expected_message, response.content.decode())
+
+    def test_GET_raises_error_for_invalid_id(self):
+        node = factory.make_Node()
+        invalid_id = "invalid-script-set"
+
+        response = self.client.get(
+            reverse(
+                "script_result_handler",
+                args=[node.system_id, invalid_id],
+            )
+        )
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+        self.assertIn(
+            'Unknown id "invalid-script-set" must be current-commissioning, '
+            "current-testing, current-installation, or the id number of a "
+            "specific result.",
+            response.content.decode(),
+        )
+
+    def test_GET_returns_404_for_nonexistent_numeric_id(self):
+        node = factory.make_Node()
+        nonexistent_id = 999999
+
+        response = self.client.get(
+            reverse(
+                "script_result_handler",
+                args=[node.system_id, nonexistent_id],
+            )
+        )
+        self.assertEqual(response.status_code, http.client.NOT_FOUND)
