@@ -735,12 +735,14 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         subnet_id = self.subnet_id
         alloc_type = self.alloc_type
         temp_expires = self.temp_expires_on
+        ip = self.ip
 
         super().delete(*args, **kwargs)
 
         if (
             alloc_type != IPADDRESS_TYPE.DISCOVERED
-            and temp_expires is not None
+            and ip is not None
+            and temp_expires is None
         ):
             post_commit_do(
                 start_workflow,
