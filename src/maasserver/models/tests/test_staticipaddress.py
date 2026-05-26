@@ -1725,7 +1725,7 @@ class TestStaticIPAddress(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip="10.0.0.1",
             subnet=subnet,
-            temp_expires_on=timezone.now(),
+            temp_expires_on=None,
         )
 
         with post_commit_hooks:
@@ -1740,6 +1740,28 @@ class TestStaticIPAddress(MAASServerTestCase):
             ),
             mock_start_workflow.mock_calls,
         )
+
+    def test_delete_temp_ip_does_not_call_dhcp_configure_workflow(self):
+        mock_start_workflow = self.patch(
+            static_ip_address_module, "start_workflow"
+        )
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        ip = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="10.0.0.1",
+            subnet=subnet,
+            temp_expires_on=timezone.now(),
+        )
+
+        with post_commit_hooks:
+            ip.save()
+
+        mock_start_workflow.reset_mock()
+
+        with post_commit_hooks:
+            ip.delete()
+
+        mock_start_workflow.assert_not_called()
 
     def test_discovered_ips_do_not_call_dhcp_configure_workflow(self):
         mock_start_workflow = self.patch(
@@ -1761,17 +1783,16 @@ class TestStaticIPAddress(MAASServerTestCase):
         )
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         ip = StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
-            ip="10.0.0.1",
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=None,
             subnet=subnet,
-            temp_expires_on=None,
         )
 
         with post_commit_hooks:
             ip.save()
             ip.delete()
 
-        assert len(mock_start_workflow.mock_calls) == 1
+        mock_start_workflow.assert_not_called()
 
 
 class TestUserReservedStaticIPAddress(MAASServerTestCase):
