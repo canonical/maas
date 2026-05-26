@@ -36,6 +36,9 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.auth.cookie_manager import (
     EncryptedCookieManager,
+    MAASDjangoCookie,
+    MAASLocalCookie,
+    MAASMacaroonCookie,
     MAASOAuth2Cookie,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -531,24 +534,39 @@ class AuthHandler(Handler):
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> None:
-        id_token, refresh_token, session_key = (
-            cookie_manager.get_cookie(key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN),
-            cookie_manager.get_cookie(
-                key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN
-            ),
-            cookie_manager.get_unsafe_cookie(key="sessionid"),
+        oauth2_id_token = cookie_manager.get_cookie(
+            key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN
         )
-        if id_token and refresh_token:
+        oauth2_refresh_token = cookie_manager.get_cookie(
+            key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN
+        )
+        if oauth2_id_token and oauth2_refresh_token:
             await services.external_oauth.revoke_token(
-                id_token=id_token, refresh_token=refresh_token
+                id_token=oauth2_id_token, refresh_token=oauth2_refresh_token
             )
-        if session_key:
+
+        if session_key := cookie_manager.get_unsafe_cookie(
+            key=MAASDjangoCookie.SESSION_ID
+        ):
             await services.django_session.delete_session(
                 session_key=session_key
             )
 
-        cookie_manager.clear_cookie(key=MAASOAuth2Cookie.OAUTH2_ID_TOKEN)
-        cookie_manager.clear_cookie(key=MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN)
-        cookie_manager.clear_cookie(key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN)
-        cookie_manager.clear_cookie(key="sessionid")
-        cookie_manager.clear_cookie(key="csrftoken")
+        if local_refresh_token := cookie_manager.get_unsafe_cookie(
+            MAASLocalCookie.REFRESH_TOKEN
+        ):
+            await services.refresh_tokens.revoke_refresh_token(
+                local_refresh_token
+            )
+
+        for key in (
+            MAASOAuth2Cookie.OAUTH2_ID_TOKEN,
+            MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN,
+            MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN,
+            MAASDjangoCookie.SESSION_ID,
+            MAASDjangoCookie.CSRF_TOKEN,
+            MAASLocalCookie.JWT_TOKEN,
+            MAASLocalCookie.REFRESH_TOKEN,
+            MAASMacaroonCookie.MACAROON_MAAS,
+        ):
+            cookie_manager.clear_cookie(key=key)

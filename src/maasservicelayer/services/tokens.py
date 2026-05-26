@@ -4,14 +4,25 @@
 from datetime import timedelta
 import hashlib
 
+import structlog
+
+from maascommon.logging.security import (
+    AUTHN_TOKEN_CREATED,
+    AUTHN_TOKEN_DELETED,
+    hash_token_for_logging,
+    REFRESH_TOKEN,
+    SECURITY,
+)
 from maasservicelayer.builders.tokens import (
     OIDCRevokedTokenBuilder,
     RefreshTokenBuilder,
     TokenBuilder,
 )
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.tokens import (
     OIDCRevokedTokenRepository,
+    RefreshTokenClauseFactory,
     RefreshTokenRepository,
     TokensRepository,
 )
@@ -24,6 +35,8 @@ from maasservicelayer.models.tokens import (
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.utils.date import utcnow
+
+logger = structlog.getLogger()
 
 
 class TokensService(BaseService[Token, TokensRepository, TokenBuilder]):
@@ -66,7 +79,23 @@ class RefreshTokenService(
         builder = RefreshTokenBuilder(
             user_id=user_id, token=token_hash, expires_at=expires_at
         )
-        return await super().create(builder)
+        refresh_token = await super().create(builder)
+        logger.info(
+            f"{AUTHN_TOKEN_CREATED}:JWT:{REFRESH_TOKEN}",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(token),
+        )
+        return refresh_token
+
+    async def revoke_refresh_token(self, token: str) -> None:
+        await super().delete_one(
+            query=QuerySpec(where=RefreshTokenClauseFactory.with_token(token))
+        )
+        logger.info(
+            f"{AUTHN_TOKEN_DELETED}:JWT:{REFRESH_TOKEN}",
+            type=SECURITY,
+            token_hash=hash_token_for_logging(token),
+        )
 
     async def create(self, builder):
         raise NotImplementedError(

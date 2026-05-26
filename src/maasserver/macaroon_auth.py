@@ -30,7 +30,8 @@ from maasserver.sqlalchemy import service_layer, ServiceLayerAdapter
 from maasserver.utils.views import request_headers
 from maasservicelayer.auth.external_auth import ExternalAuthType
 
-MACAROON_LIFESPAN = timedelta(days=1)
+# TODO: change me after testing
+MACAROON_LIFESPAN = timedelta(minutes=2)
 
 EXTERNAL_USER_CHECK_INTERVAL = timedelta(hours=1)
 
@@ -177,12 +178,20 @@ class MacaroonDischargeRequest:
             user,
             backend="maasserver.macaroon_auth.MacaroonAuthorizationBackend",
         )
-        return JsonResponse(
+        response = JsonResponse(
             {
                 attr: getattr(user, attr)
                 for attr in ("id", "username", "is_superuser")
             }
         )
+        response.set_cookie(
+            "macaroon-maas",
+            req_headers["Macaroons"],
+            samesite="Strict",
+            httponly=True,
+            path="/",
+        )
+        return response
 
 
 class APIError(Exception):

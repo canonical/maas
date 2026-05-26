@@ -21,6 +21,15 @@ MAAS_OAUTH2_ID_TOKEN_COOKIE_NAME = "maas.oauth2_id_token_cookie"
 MAAS_OAUTH2_REFRESH_TOKEN_COOKIE_NAME = "maas.oauth2_refresh_token_cookie"
 
 
+class MAASDjangoCookie(StrEnum):
+    SESSION_ID = "sessionid"
+    CSRF_TOKEN = "csrf-token"
+
+
+class MAASMacaroonCookie(StrEnum):
+    MACAROON_MAAS = "macaroon-maas"
+
+
 class MAASLocalCookie(StrEnum):
     JWT_TOKEN = MAAS_LOCAL_JWT_TOKEN_COOKIE_NAME
     REFRESH_TOKEN = MAAS_LOCAL_REFRESH_TOKEN_COOKIE_NAME

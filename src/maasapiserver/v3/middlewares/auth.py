@@ -17,7 +17,9 @@ import structlog
 from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.auth.cookie_manager import (
     EncryptedCookieManager,
+    MAASDjangoCookie,
     MAASLocalCookie,
+    MAASMacaroonCookie,
     MAASOAuth2Cookie,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -231,6 +233,23 @@ class MacaroonAuthenticationProvider:
             username=user.username,
         )
 
+    async def _clear_cookies(self, request: Request) -> None:
+        cookie_manager = request.state.cookie_manager
+        session_id = cookie_manager.get_unsafe_cookie(
+            MAASDjangoCookie.SESSION_ID
+        )
+        for key in (
+            MAASDjangoCookie.SESSION_ID,
+            MAASDjangoCookie.CSRF_TOKEN,
+            MAASMacaroonCookie.MACAROON_MAAS,
+        ):
+            cookie_manager.clear_cookie(key)
+
+        if session_id:
+            await request.state.services.django_session.delete_session(
+                session_id
+            )
+
     async def _raise_discharge_exception(self, request, caveats, ops):
         macaroon_bakery = (
             await request.state.services.external_auth.get_bakery(
@@ -243,6 +262,8 @@ class MacaroonAuthenticationProvider:
             ops=ops,
             req_headers=request.headers,
         )
+        # Clear all the cookies. This forces a re-login in the UI.
+        await self._clear_cookies(request)
         raise DischargeRequiredException(macaroon=discharge_macaroon)
 
     def extract_macaroons(self, request: Request) -> list[list[Macaroon]]:
