@@ -100,7 +100,7 @@ class SubnetHandler(TimestampedModelHandler):
         assert self.user.has_perm(NodePermission.admin, subnet), (
             "Permission denied."
         )
-        subnet.delete()
+        subnet.delete(force=parameters.get("force", False))
 
     def scan(self, parameters):
         """Scan the subnet for connected neighbours.
