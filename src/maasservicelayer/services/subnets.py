@@ -5,6 +5,7 @@ from ipaddress import IPv4Address, IPv6Address
 from typing import List
 
 from maascommon.enums.dns import DnsUpdateAction
+from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.subnet import RdnsMode
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -34,7 +35,14 @@ from maasservicelayer.db.repositories.subnets import (
     SubnetClauseFactory,
     SubnetsRepository,
 )
-from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    PreconditionFailedException,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_SUBNET_WITH_IPS_IN_USE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import Unset
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
@@ -174,6 +182,34 @@ class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
 
     async def post_update_many_hook(self, resources: List[Subnet]) -> None:
         raise NotImplementedError("Not implemented yet.")
+
+    async def pre_delete_hook(self, resource_to_be_deleted: Subnet) -> None:
+        has_ips_in_use = await self.staticipaddress_service.exists(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory.and_clauses(
+                    [
+                        StaticIPAddressClauseFactory.with_subnet_id(
+                            resource_to_be_deleted.id
+                        ),
+                        StaticIPAddressClauseFactory.with_linked_to_interface(),
+                        StaticIPAddressClauseFactory.with_alloc_type_not_in(
+                            [IpAddressType.DISCOVERED, IpAddressType.DHCP]
+                        ),
+                        StaticIPAddressClauseFactory.with_ip_not_null(),
+                    ]
+                )
+            )
+        )
+        if has_ips_in_use:
+            raise PreconditionFailedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CANNOT_DELETE_SUBNET_WITH_IPS_IN_USE_VIOLATION_TYPE,
+                        message="Cannot delete a subnet that has IP addresses in use by nodes. "
+                        "Use the 'force' flag to override.",
+                    )
+                ]
+            )
 
     async def post_delete_hook(self, resource: Subnet) -> None:
         # cascade delete

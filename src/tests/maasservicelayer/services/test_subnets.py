@@ -36,6 +36,9 @@ from maasservicelayer.exceptions.catalog import (
     PreconditionFailedException,
     ValidationException,
 )
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_SUBNET_WITH_IPS_IN_USE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
@@ -376,6 +379,7 @@ class TestSubnetsService:
 
         mock_temporal = Mock(TemporalService)
         staticipaddress_service_mock = Mock(StaticIPAddressService)
+        staticipaddress_service_mock.exists.return_value = False
         ipranges_service_mock = Mock(IPRangesService)
         staticroutes_service_mock = Mock(StaticRoutesService)
         reservedips_service_mock = Mock(ReservedIPsService)
@@ -483,6 +487,7 @@ class TestSubnetsService:
 
         mock_temporal = Mock(TemporalService)
         staticipaddress_service_mock = Mock(StaticIPAddressService)
+        staticipaddress_service_mock.exists.return_value = False
         ipranges_service_mock = Mock(IPRangesService)
         staticroutes_service_mock = Mock(StaticRoutesService)
         reservedips_service_mock = Mock(ReservedIPsService)
@@ -609,3 +614,59 @@ class TestSubnetsService:
         reservedips_service_mock.delete_many.assert_not_called()
         dhcpsnippets_service_mock.delete_many.assert_not_called()
         nodegrouptorackcontrollers_service_mock.delete_many.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "has_ips_in_use, should_raise",
+        [
+            (True, True),
+            (False, False),
+        ],
+    )
+    async def test_pre_delete_hook(
+        self, has_ips_in_use: bool, should_raise: bool
+    ) -> None:
+        now = utcnow()
+        subnet = Subnet(
+            id=1,
+            name="my subnet",
+            description="subnet description",
+            cidr=IPv4Network("10.0.0.0/24"),
+            rdns_mode=RdnsMode.DEFAULT,
+            gateway_ip=IPv4Address("10.0.0.1"),
+            dns_servers=[],
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=False,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=2,
+            created=now,
+            updated=now,
+        )
+
+        staticipaddress_service_mock = Mock(StaticIPAddressService)
+        staticipaddress_service_mock.exists.return_value = has_ips_in_use
+
+        subnets_service = SubnetsService(
+            context=Context(),
+            temporal_service=Mock(TemporalService),
+            staticipaddress_service=staticipaddress_service_mock,
+            ipranges_service=Mock(IPRangesService),
+            staticroutes_service=Mock(StaticRoutesService),
+            reservedips_service=Mock(ReservedIPsService),
+            subnets_repository=Mock(SubnetsRepository),
+            dhcpsnippets_service=Mock(DhcpSnippetsService),
+            dnspublications_service=Mock(DNSPublicationsService),
+            nodegrouptorackcontrollers_service=Mock(
+                NodeGroupToRackControllersService
+            ),
+        )
+
+        if should_raise:
+            with pytest.raises(PreconditionFailedException) as exc_info:
+                await subnets_service.pre_delete_hook(subnet)
+            assert exc_info.value.details[0].type == (
+                CANNOT_DELETE_SUBNET_WITH_IPS_IN_USE_VIOLATION_TYPE
+            )
+        else:
+            await subnets_service.pre_delete_hook(subnet)
