@@ -30,8 +30,7 @@ from maasserver.sqlalchemy import service_layer, ServiceLayerAdapter
 from maasserver.utils.views import request_headers
 from maasservicelayer.auth.external_auth import ExternalAuthType
 
-# TODO: change me after testing
-MACAROON_LIFESPAN = timedelta(minutes=2)
+MACAROON_LIFESPAN = timedelta(days=1)
 
 EXTERNAL_USER_CHECK_INTERVAL = timedelta(hours=1)
 
