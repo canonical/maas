@@ -99,8 +99,11 @@ clean: clean-doc
 	rm -rf $(VALE_CONFIG)
 
 clean-doc:
-	git clean -fx "$(BUILDDIR)"
-	rm -rf $(SPHINXDIR)/.doctrees
+ifeq "$(shell git rev-parse --is-inside-work-tree 2>/dev/null | tr -d '\n' || true)" "true"
+        git clean -fx "$(BUILDDIR)"
+endif
+        rm -rf $(SPHINXDIR)/.doctrees
+
 
 linkcheck: install
 	. $(VENV) ; $(SPHINXBUILD) -b linkcheck "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) || { grep --color -F "[broken]" "$(BUILDDIR)/output.txt"; exit 1; }
