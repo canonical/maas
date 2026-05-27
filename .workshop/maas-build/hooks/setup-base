@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "#################################"
+echo "Installing the MAAS test database"
+if command -v snap >/dev/null 2>&1; then
+    snap install maas-test-db --channel=latest/edge
+else
+    echo "snap command not available, skipping maas-test-db installation"
+    echo "You can install it later with: snap install maas-test-db --channel=latest/edge"
+fi
+
+echo "..done"

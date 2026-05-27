@@ -1,0 +1,84 @@
+#!/bin/bash
+set -euo pipefail
+
+cd /project
+
+# The .ve venv may have been created on the host with hardcoded paths
+# that don't exist inside the container (/home/... vs /project/).
+# Remove it so make build recreates it with the correct container paths.
+if [ -d .ve ] && head -1 .ve/bin/python3 2>/dev/null | grep -qv '/project/'; then
+    echo "###############################"
+    echo "Recreating venv for container paths"
+    rm -rf .ve
+fi
+
+echo "####################################"
+echo "Building MAAS"
+make build
+
+echo "#######################"
+echo "Building Go binaries"
+make go-bins
+
+echo "#######################"
+echo "Unpacking the snap tree"
+if command -v snap >/dev/null 2>&1; then
+    make snap-tree
+    echo "###########################"
+    echo "Syncing built files into snap tree"
+    # Use sudo because snap-tree-sync runs clean-agent/clean-openfga
+    # which may need to remove root-owned files from a previous snap try
+    sudo make snap-tree-sync
+    echo "###########################"
+    echo "Installing MAAS snap (try)"
+    sudo snap try /project/dev-snap/tree
+    echo "##########################"
+    echo "Connecting snap interfaces"
+    /project/utilities/connect-snap-interfaces || echo "Warning: Some snap interfaces could not be connected"
+    echo "#######################"
+    echo "Restarting MAAS snap"
+    sudo snap restart maas
+else
+    echo "snap not available, skipping snap tree build and interface connections"
+fi
+
+echo "#####################"
+echo "Starting the database"
+container_ip=$(hostname -I | cut -d' ' -f1)
+if command -v maas >/dev/null 2>&1; then
+    sudo maas init region+rack --maas-url="http://${container_ip}:5240/MAAS" --database-uri maas-test-db:///
+
+    echo "##########################"
+    echo "Creating a MAAS admin user"
+    sudo maas createadmin --username maas --password maas --email maas@example.com
+
+    echo "###########################"
+    echo "Waiting for MAAS API to be ready"
+    declare -i maas_up=1
+    while [ $maas_up -ne 0 ]; do
+        if curl -sf "http://${container_ip}:5240/MAAS/api/2.0/version/" > /dev/null 2>&1; then
+            maas login admin "http://${container_ip}:5240/MAAS/api/2.0/" $(sudo maas apikey --username=maas)
+            maas_up=$?
+        else
+            echo "Retrying in 5 seconds..."
+            sleep 5
+        fi
+    done
+else
+    echo "maas command not available, skipping MAAS initialization"
+    echo "You can initialize MAAS later with: workshop run init-maas"
+fi
+
+echo
+echo "#################################################################"
+echo "MAAS dev environment setup complete!"
+echo "  Access MAAS at: http://${container_ip}:5240"
+echo "  username: maas"
+echo "  password: maas"
+echo
+echo "To connect your host LXD for VM provisioning:"
+echo "  1. Go to http://${container_ip}:5240/MAAS/r/kvm/lxd"
+echo "  2. Click maas-host -> KVM host settings -> Download certificate"
+echo "  3. Run: lxc config trust add <path/to/certificate>"
+echo "  4. Click 'Refresh host'"
+echo

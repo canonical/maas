@@ -1,4 +1,37 @@
 name: dev
 base: ubuntu@26.04
 sdks:
-  - name: project-maas-setup
+  - name: go
+    channel: 1.24/stable
+  - name: project-maas-deps
+  - name: project-maas-build
+  - name: system
+    plugs:
+      maas-ui:
+        interface: tunnel
+        endpoint: 5240
+connections:
+  - plug: system:maas-ui
+    slot: maas-build:maas-ui
+actions:
+  build: |
+    make build
+    make go-bins
+    make snap-tree-sync
+    sudo snap restart maas
+  restart: |
+    sudo snap restart maas
+  logs: |
+    journalctl -u snap.maas.pebble.service -f -t maas-apiserver
+  test: |
+    ./bin/pytest "$@"
+  test-region: |
+    ./bin/test.region "$@"
+  lint: |
+    make lint
+  format: |
+    make format-py
+  init-maas: |
+    container_ip=$(hostname -I | cut -d' ' -f1)
+    sudo maas init region+rack --maas-url="http://${container_ip}:5240/MAAS" --database-uri maas-test-db:///
+    sudo maas createadmin --username maas --password maas --email maas@example.com

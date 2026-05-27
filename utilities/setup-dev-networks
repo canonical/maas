@@ -1,0 +1,131 @@
+#!/bin/bash
+#
+# Setup LXD networks for MAAS VM provisioning.
+# This script is idempotent — if any network already exists, it is skipped.
+#
+# Creates the following networks:
+#   maas-ctrl       - 10.10.0.1/24 (DHCP enabled, NAT)
+#   maas-kvm        - 10.20.0.1/24 (no DHCP, NAT)
+#   maas-ipv6       - fd42:be3f:b08a:3d6c::1/64 (IPv6 only, NAT)
+#   maas-dual-stack - 10.30.0.1/24 + fd42:be3f:b08b:3d6d::1/64 (dual stack, NAT)
+
+set -euo pipefail
+
+network_exists() {
+    lxc network list --format csv | cut -d',' -f1 | grep -qxF "$1"
+}
+
+echo "###############################"
+echo "Setting up LXD networks for MAAS VM provisioning"
+
+# maas-ctrl
+if network_exists maas-ctrl; then
+    echo "Network maas-ctrl already exists, skipping"
+else
+    echo "Creating maas-ctrl network..."
+    lxc network create maas-ctrl
+    cat <<EOF | lxc network edit maas-ctrl
+config:
+  dns.domain: maas-ctrl
+  ipv4.address: 10.10.0.1/24
+  ipv4.dhcp: "true"
+  ipv4.dhcp.ranges: 10.10.0.16-10.10.0.31
+  ipv4.nat: "true"
+  ipv6.address: none
+description: ""
+name: maas-ctrl
+type: bridge
+used_by: []
+managed: true
+status: Created
+locations:
+- none
+EOF
+fi
+
+# maas-kvm
+if network_exists maas-kvm; then
+    echo "Network maas-kvm already exists, skipping"
+else
+    echo "Creating maas-kvm network..."
+    lxc network create maas-kvm
+    cat <<EOF | lxc network edit maas-kvm
+config:
+  ipv4.address: 10.20.0.1/24
+  ipv4.dhcp: "false"
+  ipv4.nat: "true"
+  ipv6.address: none
+description: ""
+name: maas-kvm
+type: bridge
+used_by: []
+managed: true
+status: Created
+locations:
+- none
+EOF
+fi
+
+# maas-ipv6
+if network_exists maas-ipv6; then
+    echo "Network maas-ipv6 already exists, skipping"
+else
+    echo "Creating maas-ipv6 network..."
+    lxc network create maas-ipv6
+    cat <<EOF | lxc network edit maas-ipv6
+config:
+  ipv4.address: none
+  ipv6.address: fd42:be3f:b08a:3d6c::1/64
+  ipv6.dhcp: "false"
+  ipv6.nat: "true"
+description: "An IPv6 only network"
+name: maas-ipv6
+type: bridge
+used_by: []
+managed: true
+status: Created
+locations:
+- none
+EOF
+fi
+
+# maas-dual-stack
+if network_exists maas-dual-stack; then
+    echo "Network maas-dual-stack already exists, skipping"
+else
+    echo "Creating maas-dual-stack network..."
+    lxc network create maas-dual-stack
+    cat <<EOF | lxc network edit maas-dual-stack
+config:
+  ipv4.address: 10.30.0.1/24
+  ipv4.nat: "true"
+  ipv4.dhcp: "false"
+  ipv6.address: fd42:be3f:b08b:3d6d::1/64
+  ipv6.nat: "true"
+  ipv6.dhcp: "false"
+description: "A dual stack (IPv4 and IPv6) network"
+name: maas-dual-stack
+type: bridge
+used_by: []
+managed: true
+status: Created
+locations:
+- none
+EOF
+fi
+
+echo "################################"
+echo "Setting LXD HTTPS address to 8443"
+current_addr=$(lxc config get core.https_address 2>/dev/null || echo "")
+if [ "$current_addr" = "[::]:8443" ] || [ "$current_addr" = ":8443" ]; then
+    echo "LXD HTTPS address already set, skipping"
+else
+    lxc config set core.https_address '[::]:8443'
+fi
+
+echo
+echo "LXD networks for MAAS are ready!"
+echo "  maas-ctrl:       10.10.0.1/24 (DHCP enabled)"
+echo "  maas-kvm:        10.20.0.1/24 (no DHCP)"
+echo "  maas-ipv6:       fd42:be3f:b08a:3d6c::1/64"
+echo "  maas-dual-stack: 10.30.0.1/24 + fd42:be3f:b08b:3d6d::1/64"

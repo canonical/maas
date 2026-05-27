@@ -259,6 +259,7 @@ lint-shell:
 		utilities/run-performanced \
 		utilities/run-py-tests-ci \
 		utilities/schemaspy \
+		utilities/setup-dev-networks \
 		utilities/update-initial-sql \
 		utilities/version-bump.sh
 .PHONY: lint-shell
@@ -542,3 +543,30 @@ cli-docs-generate:
 cli-docs: cli-docs-introspect
 	@$(if $(CHECK_DOCSTRING_SYNC),,$(MAKE) cli-docs-generate)
 .PHONY: cli-docs
+
+#
+# Workshop dev environment
+#
+
+dev-env:
+	workshop launch --verbose
+	@echo ""
+	@echo "MAAS dev environment is ready!"
+	@echo "Access MAAS at: http://localhost:5240"
+	@echo "  username: maas"
+	@echo "  password: maas"
+	@echo ""
+	@echo "Useful commands:"
+	@echo "  workshop shell        - Open a shell in the workshop"
+	@echo "  workshop run restart  - Restart MAAS"
+	@echo "  workshop run logs     - View MAAS logs"
+	@echo "  workshop run test     - Run Python tests"
+.PHONY: dev-env
+
+dev-networks:
+	@utilities/setup-dev-networks
+.PHONY: dev-networks
+
+dev-env-clean:
+	workshop remove
+.PHONY: dev-env-clean

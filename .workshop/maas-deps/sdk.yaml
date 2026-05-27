@@ -1,0 +1,8 @@
+name: maas-deps
+version: "0.1"
+summary: MAAS development dependencies
+description: |
+  Installs all system packages, snaps, and service configurations
+  required for MAAS development.
+platforms:
+  amd64:
