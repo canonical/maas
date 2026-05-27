@@ -494,8 +494,7 @@ snap-tree-sync: RSYNC := rsync -v -r -u -l -t -W -L
 snap-tree-sync: $(UI_BUILD) clean-agent clean-openfga go-bins $(SNAP_UNPACKED_DIR_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
 		--exclude 'maasui' --exclude 'maasagent' --exclude 'maasopenfga' --exclude 'machine-resources' \
-		--exclude 'host-info' --exclude 'maas-offline-docs' \
-		--exclude '*.pyc' --exclude '__pycache__' \
+		--exclude 'host-info' --exclude '*.pyc' --exclude '__pycache__' \
 		src/ \
 		$(SNAP_UNPACKED_DIR)/usr/lib/python3.*/dist-packages/
 	$(RSYNC) \
