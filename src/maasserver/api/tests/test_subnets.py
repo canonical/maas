@@ -5,6 +5,7 @@
 import http.client
 import json
 import random
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.http import QueryDict
@@ -670,6 +671,42 @@ class TestSubnetAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
         )
+
+    def test_delete_fails_when_ips_in_use_by_nodes(self):
+        self.become_admin()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.current_config.interface_set.first()
+        subnet = iface.vlan.subnet_set.first()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            interface=iface,
+            subnet=subnet,
+        )
+        uri = get_subnet_uri(subnet)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+        self.assertIsNotNone(reload_object(subnet))
+
+    def test_delete_with_force_succeeds_when_ips_in_use_by_nodes(self):
+        self.become_admin()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.current_config.interface_set.first()
+        subnet = iface.vlan.subnet_set.first()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            interface=iface,
+            subnet=subnet,
+        )
+        uri = get_subnet_uri(subnet)
+        response = self.client.delete(
+            uri, QUERY_STRING=urlencode({"force": "true"}, doseq=True)
+        )
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
+        self.assertIsNone(reload_object(subnet))
 
 
 class TestSubnetAPIAuth(APITestCase.ForAnonymous):
