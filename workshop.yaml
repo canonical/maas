@@ -2,7 +2,7 @@ name: dev
 base: ubuntu@26.04
 sdks:
   - name: go
-    channel: 1.24/stable
+    channel: 1.26/stable
   - name: project-maas-deps
   - name: project-maas-build
   - name: system

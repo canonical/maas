@@ -18,6 +18,11 @@ make build
 
 echo "#######################"
 echo "Building Go binaries"
+# Allow Go to auto-download the required toolchain version when the
+# installed SDK version is older than what go.mod requires (e.g. go.mod
+# requires go >= 1.26 but the SDK provides 1.24). The Workshop go SDK
+# sets GOTOOLCHAIN=local by default, which prevents auto-downloading.
+export GOTOOLCHAIN=auto
 make go-bins
 
 echo "#######################"
