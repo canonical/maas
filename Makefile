@@ -549,6 +549,20 @@ cli-docs: cli-docs-introspect
 #
 
 dev-env:
+	@# Clean root-owned build dirs that may remain from a previous snap try.
+	@# These cause "permission denied" when the workshop user tries to rebuild.
+	@for d in src/maasagent/build src/host-info/bin src/maasopenfga/build; do \
+		if [ -d "$$d" ] && [ ! -w "$$d" ]; then \
+			echo "Removing root-owned directory: $$d"; \
+			sudo rm -rf "$$d"; \
+		fi; \
+	done
+	@# Build the snap tree on the host first. snapcraft pack needs LXD,
+	@# which can't run inside the workshop container (lxdbr0 conflicts).
+	@if [ ! -f dev-snap/tree.marker ]; then \
+		echo "Building snap tree on host (requires LXD)..."; \
+		make snap-tree; \
+	fi
 	workshop launch --verbose
 	@echo ""
 	@echo "MAAS dev environment is ready!"

@@ -26,9 +26,16 @@ export GOTOOLCHAIN=auto
 make go-bins
 
 echo "#######################"
-echo "Unpacking the snap tree"
+echo "Setting up the snap tree"
 if command -v snap >/dev/null 2>&1; then
-    make snap-tree
+    # The snap tree must be built on the host (make snap-tree calls
+    # snapcraft pack which needs LXD, and lxdbr0 conflicts inside
+    # the container). Just verify the tree exists and sync into it.
+    if [ ! -d dev-snap/tree ]; then
+        echo "ERROR: dev-snap/tree not found. Run 'make snap-tree' on the host first."
+        echo "Or run 'make dev-env' which builds it automatically."
+        exit 1
+    fi
     echo "###########################"
     echo "Syncing built files into snap tree"
     # Use sudo because snap-tree-sync runs clean-agent/clean-openfga
@@ -44,7 +51,7 @@ if command -v snap >/dev/null 2>&1; then
     echo "Restarting MAAS snap"
     sudo snap restart maas
 else
-    echo "snap not available, skipping snap tree build and interface connections"
+    echo "snap not available, skipping snap tree setup"
 fi
 
 echo "#####################"
