@@ -782,6 +782,25 @@ class TestMacaroonDischargeRequest(
         )
         self.assertTrue(response.cookies["macaroon-maas"]["httponly"])
 
+    def test_authenticated_user_created(self):
+        username = factory.make_string()
+        self.mock_auth_info(username=username)
+        macaroons = factory.make_string()
+        response = self.client.get(
+            "/accounts/discharge-request/", headers={"Macaroons": macaroons}
+        )
+        user = User.objects.get(username=username)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "id": user.id,
+                "username": user.username,
+                "is_superuser": user.is_superuser,
+            },
+        )
+        self.assertEqual(response.cookies["macaroon-maas"].value, macaroons)
+
     def test_user_not_allowed(self):
         self.mock_validate.return_value = False
         self.mock_auth_info(username="user")
