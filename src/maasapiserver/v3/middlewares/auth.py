@@ -234,21 +234,29 @@ class MacaroonAuthenticationProvider:
         )
 
     async def _clear_cookies(self, request: Request) -> None:
+        """Clears Django and Macaroon cookies.
+
+        When Candid/RBAC is enabled, the authorization relies exclusively on the
+        macaroon. When this expires, the user has to login again through the UI
+        and so we delete the Django related-cookies and the Macaroon.
+        This method is called whenever a macaroon discharge required exception is
+        raised, which could mean that either the macaroon has expired or that the
+        macaroon is invalid.
+        """
         cookie_manager = request.state.cookie_manager
         session_id = cookie_manager.get_unsafe_cookie(
             MAASDjangoCookie.SESSION_ID
         )
+        if session_id:
+            await request.state.services.django_session.delete_session(
+                session_id
+            )
         for key in (
             MAASDjangoCookie.SESSION_ID,
             MAASDjangoCookie.CSRF_TOKEN,
             MAASMacaroonCookie.MACAROON_MAAS,
         ):
             cookie_manager.clear_cookie(key)
-
-        if session_id:
-            await request.state.services.django_session.delete_session(
-                session_id
-            )
 
     async def _raise_discharge_exception(self, request, caveats, ops):
         macaroon_bakery = (
@@ -262,7 +270,6 @@ class MacaroonAuthenticationProvider:
             ops=ops,
             req_headers=request.headers,
         )
-        # Clear all the cookies. This forces a re-login in the UI.
         await self._clear_cookies(request)
         raise DischargeRequiredException(macaroon=discharge_macaroon)
 
