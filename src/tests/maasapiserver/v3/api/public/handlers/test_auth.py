@@ -24,7 +24,12 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
     PreLoginInfoResponse,
     TokenResponse,
 )
-from maasapiserver.v3.auth.cookie_manager import MAASOAuth2Cookie
+from maasapiserver.v3.auth.cookie_manager import (
+    MAASDjangoCookie,
+    MAASLocalCookie,
+    MAASMacaroonCookie,
+    MAASOAuth2Cookie,
+)
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.utils.jwt import decode_unverified_jwt
@@ -68,6 +73,7 @@ from maasservicelayer.services.external_auth import (
     ExternalAuthService,
     ExternalOAuthService,
 )
+from maasservicelayer.services.tokens import RefreshTokenService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 
@@ -1029,7 +1035,7 @@ class TestAuthApi:
     @patch(
         "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.get_unsafe_cookie"
     )
-    async def test_get_logout_success(
+    async def test_post_logout_success(
         self,
         cookie_manager_get_unsafe_cookie: MagicMock,
         cookie_manager_get_cookie: MagicMock,
@@ -1040,8 +1046,13 @@ class TestAuthApi:
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.django_session = Mock(DjangoSessionService)
         services_mock.django_session.delete_session.return_value = None
-        cookie_manager_get_unsafe_cookie.return_value = "sessionid123"
-        cookie_manager_get_cookie.side_effect = ["abc123", "def123"]
+        services_mock.refresh_tokens = Mock(RefreshTokenService)
+        services_mock.refresh_tokens.revoke_refresh_token = AsyncMock()
+        cookie_manager_get_unsafe_cookie.side_effect = [
+            "sessionid123",
+            "local-refresh-token",
+        ]
+        cookie_manager_get_cookie.side_effect = ["idtoken", "refreshtoken"]
         cookie_manager_clear_cookie.return_value = None
         services_mock.external_oauth.revoke_token = AsyncMock(
             return_value=None
@@ -1058,10 +1069,29 @@ class TestAuthApi:
         cookie_manager_clear_cookie.assert_any_call(
             key=MAASOAuth2Cookie.OAUTH2_REFRESH_TOKEN
         )
-        cookie_manager_clear_cookie.assert_any_call(key="sessionid")
-        cookie_manager_clear_cookie.assert_any_call(key="csrftoken")
+        cookie_manager_clear_cookie.assert_any_call(
+            key=MAASDjangoCookie.SESSION_ID
+        )
+        cookie_manager_clear_cookie.assert_any_call(
+            key=MAASDjangoCookie.CSRF_TOKEN
+        )
+        cookie_manager_clear_cookie.assert_any_call(
+            key=MAASLocalCookie.JWT_TOKEN
+        )
+        cookie_manager_clear_cookie.assert_any_call(
+            key=MAASLocalCookie.REFRESH_TOKEN
+        )
+        cookie_manager_clear_cookie.assert_any_call(
+            key=MAASMacaroonCookie.MACAROON_MAAS
+        )
+        services_mock.django_session.delete_session.assert_awaited_once_with(
+            session_key="sessionid123"
+        )
         services_mock.external_oauth.revoke_token.assert_awaited_once_with(
-            id_token="abc123", refresh_token="def123"
+            id_token="idtoken", refresh_token="refreshtoken"
+        )
+        services_mock.refresh_tokens.revoke_refresh_token.assert_awaited_once_with(
+            "local-refresh-token"
         )
         assert response.status_code == 204
 

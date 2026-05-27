@@ -21,6 +21,7 @@ from maasservicelayer.db.repositories.base import (
 )
 from maasservicelayer.db.repositories.tokens import (
     OIDCRevokedTokenRepository,
+    RefreshTokenClauseFactory,
     RefreshTokenRepository,
     TokenClauseFactory,
     TokensRepository,
@@ -66,6 +67,19 @@ class TestTokenClauseFactory:
         assert str(
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("piston3_token.consumer_id IN (1, 2)")
+
+
+class TestRefreshTokenClauseFactory:
+    def test_with_token(self) -> None:
+        clause = RefreshTokenClauseFactory.with_token("refresh-token")
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_refreshtoken.token = 'refresh-token'"
+        )
 
 
 class TestConsumersRepository(RepositoryCommonTests[Token]):

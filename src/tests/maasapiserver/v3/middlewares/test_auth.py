@@ -25,7 +25,9 @@ from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
 from maasapiserver.v3.api.public.models.responses.oauth2 import TokenResponse
 from maasapiserver.v3.auth.cookie_manager import (
     EncryptedCookieManager,
+    MAASDjangoCookie,
     MAASLocalCookie,
+    MAASMacaroonCookie,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.auth import (
@@ -540,6 +542,8 @@ class TestMacaroonAuthenticationProvider:
     def mock_request(self) -> Mock:
         request = Mock(Request)
         request.state.services.external_auth = Mock(ExternalAuthService)
+        request.state.services.django_session.delete_session = AsyncMock()
+        request.state.cookie_manager = Mock(EncryptedCookieManager)
         return request
 
     async def test_dispatch_with_headers(self) -> None:
@@ -633,6 +637,15 @@ class TestMacaroonAuthenticationProvider:
             ops=[bakery.LOGIN_OP],
             req_headers=request.headers,
         )
+        request.state.cookie_manager.clear_cookie.assert_any_call(
+            MAASDjangoCookie.SESSION_ID
+        )
+        request.state.cookie_manager.clear_cookie.assert_any_call(
+            MAASDjangoCookie.CSRF_TOKEN
+        )
+        request.state.cookie_manager.clear_cookie.assert_any_call(
+            MAASMacaroonCookie.MACAROON_MAAS
+        )
 
     async def test_dispatch_unverified_macaroon_generates_discharge_macaroon(
         self,
@@ -662,6 +675,15 @@ class TestMacaroonAuthenticationProvider:
             caveats=cavs,
             ops=ops,
             req_headers=request.headers,
+        )
+        request.state.cookie_manager.clear_cookie.assert_any_call(
+            MAASDjangoCookie.SESSION_ID
+        )
+        request.state.cookie_manager.clear_cookie.assert_any_call(
+            MAASDjangoCookie.CSRF_TOKEN
+        )
+        request.state.cookie_manager.clear_cookie.assert_any_call(
+            MAASMacaroonCookie.MACAROON_MAAS
         )
 
     def _check_macaroons(self, macaroons: list[list[Macaroon]]):

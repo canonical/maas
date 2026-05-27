@@ -762,7 +762,10 @@ class TestMacaroonDischargeRequest(
     def test_authenticated_user(self):
         user = factory.make_User()
         self.mock_auth_info(username=user.username)
-        response = self.client.get("/accounts/discharge-request/")
+        macaroons = factory.make_string()
+        response = self.client.get(
+            "/accounts/discharge-request/", headers={"Macaroons": macaroons}
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
@@ -772,21 +775,12 @@ class TestMacaroonDischargeRequest(
                 "is_superuser": user.is_superuser,
             },
         )
-
-    def test_authenticated_user_created(self):
-        username = factory.make_string()
-        self.mock_auth_info(username=username)
-        response = self.client.get("/accounts/discharge-request/")
-        user = User.objects.get(username=username)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.cookies["macaroon-maas"].value, macaroons)
+        self.assertEqual(response.cookies["macaroon-maas"]["path"], "/")
         self.assertEqual(
-            response.json(),
-            {
-                "id": user.id,
-                "username": user.username,
-                "is_superuser": user.is_superuser,
-            },
+            response.cookies["macaroon-maas"]["samesite"], "Strict"
         )
+        self.assertTrue(response.cookies["macaroon-maas"]["httponly"])
 
     def test_user_not_allowed(self):
         self.mock_validate.return_value = False
