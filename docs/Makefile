@@ -99,7 +99,11 @@ clean: clean-doc
 	rm -rf $(VALE_CONFIG)
 
 clean-doc:
-	git clean -fx "$(BUILDDIR)"
+# Check if we are in a git directory before executing the `git clean` command otherwise it will fail.
+# (Known to fail when building the deb package)
+	if git status > /dev/null; then \
+		git clean -fx "$(BUILDDIR)"; \
+	fi
 	rm -rf $(SPHINXDIR)/.doctrees
 
 linkcheck: install
