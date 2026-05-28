@@ -106,7 +106,6 @@ clean-doc:
 	fi
 	rm -rf $(SPHINXDIR)/.doctrees
 
-
 linkcheck: install
 	. $(VENV) ; $(SPHINXBUILD) -b linkcheck "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) || { grep --color -F "[broken]" "$(BUILDDIR)/output.txt"; exit 1; }
 	exit 0
