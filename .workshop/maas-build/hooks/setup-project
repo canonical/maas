@@ -34,9 +34,7 @@ if command -v snap >/dev/null 2>&1; then
     fi
     echo "###########################"
     echo "Syncing built files into snap tree"
-    # Use sudo because snap-tree-sync runs clean-agent/clean-openfga
-    # which may need to remove root-owned files from a previous snap try
-    sudo make snap-tree-sync
+    make snap-tree-sync
     echo "###########################"
     echo "Installing MAAS snap (try)"
     sudo snap try /project/dev-snap/tree

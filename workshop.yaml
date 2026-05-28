@@ -17,7 +17,7 @@ actions:
   build: |
     export GOTOOLCHAIN=auto
     make build
-    sudo make snap-tree-sync
+    make snap-tree-sync
     sudo snap restart maas
   restart: |
     sudo snap restart maas
