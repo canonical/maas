@@ -193,6 +193,34 @@ class TestCommonSubnetsService(ServiceCommonTests):
             updated=now,
         )
 
+    async def test_delete_one(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        service_instance.staticipaddress_service.exists.return_value = False
+        await super().test_delete_one(service_instance, test_instance)
+
+    async def test_delete_one_etag_match(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        service_instance.staticipaddress_service.exists.return_value = False
+        await super().test_delete_one_etag_match(
+            service_instance, test_instance
+        )
+
+    async def test_delete_by_id(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        service_instance.staticipaddress_service.exists.return_value = False
+        await super().test_delete_by_id(service_instance, test_instance)
+
+    async def test_delete_by_id_etag_match(
+        self, service_instance, test_instance: MaasBaseModel
+    ):
+        service_instance.staticipaddress_service.exists.return_value = False
+        await super().test_delete_by_id_etag_match(
+            service_instance, test_instance
+        )
+
     async def test_update_many(
         self, service_instance, test_instance: MaasBaseModel, builder_model
     ):
