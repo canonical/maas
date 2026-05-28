@@ -99,10 +99,12 @@ clean: clean-doc
 	rm -rf $(VALE_CONFIG)
 
 clean-doc:
+# Check if we are in a git directory before executing the `git clean` command otherwise it will fail.
+# (Known to fail when building the deb package)
 ifeq "$(shell git rev-parse --is-inside-work-tree 2>/dev/null | tr -d '\n' || true)" "true"
-        git clean -fx "$(BUILDDIR)"
+	git clean -fx "$(BUILDDIR)"
 endif
-        rm -rf $(SPHINXDIR)/.doctrees
+	rm -rf $(SPHINXDIR)/.doctrees
 
 
 linkcheck: install
