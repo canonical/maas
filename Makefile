@@ -417,7 +417,7 @@ endif
 .PHONY: -packaging-export-tree
 
 -packaging-tarball:
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) \
 		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) --no-print-directory -C src/host-info vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/host-info/vendor \
@@ -432,7 +432,7 @@ endif
 .PHONY: -packaging-tarball
 
 -package-tree: changelog := $(packaging-build-area)/$(packaging-dir)/debian/changelog
--package-tree: $(UI_BUILD) $(OFFLINE_DOCS) $(packaging-build-area) -packaging-export-tree -packaging-tarball
+-package-tree: $(UI_BUILD) $(packaging-build-area) -packaging-export-tree -packaging-tarball
 	(cd $(packaging-build-area) && tar xfz $(packaging-orig-targz))
 	cp -r debian $(packaging-build-area)/$(packaging-dir)
 	echo "maas (1:$(packaging-version)-0ubuntu1) UNRELEASED; urgency=medium" \
@@ -494,8 +494,7 @@ snap-tree-sync: RSYNC := rsync -v -r -u -l -t -W -L
 snap-tree-sync: $(UI_BUILD) clean-agent clean-openfga go-bins $(SNAP_UNPACKED_DIR_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
 		--exclude 'maasui' --exclude 'maasagent' --exclude 'maasopenfga' --exclude 'machine-resources' \
-		--exclude 'host-info' --exclude 'maas-offline-docs' \
-		--exclude '*.pyc' --exclude '__pycache__' \
+		--exclude 'host-info' --exclude '*.pyc' --exclude '__pycache__' \
 		src/ \
 		$(SNAP_UNPACKED_DIR)/usr/lib/python3.*/dist-packages/
 	$(RSYNC) \
