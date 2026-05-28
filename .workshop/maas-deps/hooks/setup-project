@@ -45,6 +45,13 @@ if command -v snap >/dev/null 2>&1; then
         # Split package name from flags
         pkg=$(echo "$line" | awk '{print $1}')
         flags=$(echo "$line" | awk '{$1=""; print $0}' | sed 's/^ *//')
+        # Skip snapcraft — it cannot be used inside the workshop container
+        # (snapcraft pack needs LXD which conflicts with the host bridge).
+        # The snap tree is built on the host instead.
+        if [ "$pkg" = "snapcraft" ]; then
+            echo "Skipping snapcraft (only needed on host for 'make snap-tree')"
+            continue
+        fi
         if [ -n "$flags" ]; then
             sudo snap install "$pkg" $flags 2>/dev/null || echo "Warning: Failed to install snap: $pkg $flags"
         else

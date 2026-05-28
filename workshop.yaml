@@ -15,9 +15,9 @@ connections:
     slot: maas-build:maas-ui
 actions:
   build: |
+    export GOTOOLCHAIN=auto
     make build
-    make go-bins
-    make snap-tree-sync
+    sudo make snap-tree-sync
     sudo snap restart maas
   restart: |
     sudo snap restart maas

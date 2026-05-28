@@ -561,7 +561,7 @@ dev-env:
 	@# which can't run inside the workshop container (lxdbr0 conflicts).
 	@if [ ! -f dev-snap/tree.marker ]; then \
 		echo "Building snap tree on host (requires LXD)..."; \
-		make snap-tree; \
+		sudo make snap-tree; \
 	fi
 	workshop launch --verbose
 	@echo ""
