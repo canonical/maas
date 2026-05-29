@@ -2,6 +2,7 @@ import datetime
 import importlib
 import os
 from pathlib import Path
+import subprocess
 import sys
 import warnings
 
@@ -14,10 +15,25 @@ from types import ModuleType
 
 extensions = []
 
-if (
-    len(Path(__file__).parents) >= 2
-    and not (Path(__file__).parents[1] / ".git").exists()
-):
+
+def _has_usable_git_worktree() -> bool:
+    repo_root = Path(__file__).resolve().parents[1]
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=repo_root,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except OSError:
+        return False
+
+    return result.returncode == 0 and result.stdout.strip() == "true"
+
+
+if not _has_usable_git_worktree():
     # Some surgery in order to accomodate the fact that
     # canonical_sphinx and sphinx_sitemap both require
     # sphinx_last_updated_by_git in a way that is not possible
