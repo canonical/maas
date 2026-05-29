@@ -23,7 +23,7 @@ MAAS_OAUTH2_REFRESH_TOKEN_COOKIE_NAME = "maas.oauth2_refresh_token_cookie"
 
 class MAASDjangoCookie(StrEnum):
     SESSION_ID = "sessionid"
-    CSRF_TOKEN = "csrf-token"
+    CSRF_TOKEN = "csrftoken"
 
 
 class MAASMacaroonCookie(StrEnum):

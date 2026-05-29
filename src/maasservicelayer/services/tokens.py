@@ -88,8 +88,11 @@ class RefreshTokenService(
         return refresh_token
 
     async def revoke_refresh_token(self, token: str) -> None:
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
         await super().delete_one(
-            query=QuerySpec(where=RefreshTokenClauseFactory.with_token(token))
+            query=QuerySpec(
+                where=RefreshTokenClauseFactory.with_token(token_hash)
+            )
         )
         logger.info(
             f"{AUTHN_TOKEN_DELETED}:JWT:{REFRESH_TOKEN}",
