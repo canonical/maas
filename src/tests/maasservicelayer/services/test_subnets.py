@@ -643,16 +643,8 @@ class TestSubnetsService:
         dhcpsnippets_service_mock.delete_many.assert_not_called()
         nodegrouptorackcontrollers_service_mock.delete_many.assert_not_called()
 
-    @pytest.mark.parametrize(
-        "has_ips_in_use, should_raise",
-        [
-            (True, True),
-            (False, False),
-        ],
-    )
-    async def test_pre_delete_hook(
-        self, has_ips_in_use: bool, should_raise: bool
-    ) -> None:
+    @pytest.mark.parametrize("has_ips_in_use", [True, False])
+    async def test_pre_delete_hook(self, has_ips_in_use: bool) -> None:
         now = utcnow()
         subnet = Subnet(
             id=1,
@@ -690,7 +682,7 @@ class TestSubnetsService:
             ),
         )
 
-        if should_raise:
+        if has_ips_in_use:
             with pytest.raises(PreconditionFailedException) as exc_info:
                 await subnets_service.pre_delete_hook(subnet)
             assert exc_info.value.details[0].type == (

@@ -491,7 +491,7 @@ class Subnet(CleanSave, TimestampedModel):
             and self.staticipaddress_set.filter(
                 ~Q(alloc_type=IPADDRESS_TYPE.DISCOVERED),
                 ~Q(alloc_type=IPADDRESS_TYPE.DHCP),
-                ~Q(ip__isnull=True),
+                Q(ip__isnull=False),
                 interface__isnull=False,
             ).exists()
         ):
