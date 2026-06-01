@@ -74,6 +74,37 @@ apps:
       - network
 
 parts:
+  maas-slices:
+    plugin: nil
+    stage-packages:
+      - bind9_core
+      - bind9_standard
+      - bind9_config
+      - bind9_data
+      - bind9-dnsutils_bins
+      - dns-root-data_data
+      - gpgv_bins
+      - iproute2_ip-bin
+      - libpq5_libs
+      - libxtables12_libs
+      - openssh-client_bins
+      - perl-base_bins
+      - perl-base_modules
+      - ubuntu-keyring_keys
+      - wget_bins
+    stage:
+      - etc/bind
+      - usr/bin
+      - -usr/bin/python3*
+      - usr/lib
+      - -usr/lib/systemd
+      - -usr/lib/tmpfiles.d
+      - usr/sbin
+      - usr/share/dns
+      - usr/share/keyrings
+      - var/cache/bind
+      - var/lib/bind
+
   pebble:
     plugin: go
     build-packages:
@@ -99,44 +130,32 @@ parts:
       - python3-setuptools
       - python3-wheel
     stage-packages:
-      - amtterm # AMT
+      - amtterm # AMT power driver
       - avahi-utils
-      - bind9
-      - bind9-dnsutils
       - chrony
-      - dns-root-data # for bind9
-      - freeipmi-tools # IPMI
-      - gpgv
-      - ipmitool # Moonshot
-      - iproute2
+      - freeipmi-tools # IPMI power driver
+      - ipmitool # Moonshot power driver
       - isc-dhcp-client
       - isc-dhcp-server
       - libatm1
-      - libpq5
-      - libsoap-lite-perl # Dependencies for AMT
-      - libvirt-clients # Virsh
-      - libxml-parser-lite-perl # Dependencies for AMT
-      - libxml-parser-perl # Dependencies for AMT
-      - libxtables12
+      - libsoap-lite-perl # AMT power driver
+      - libvirt-clients # Virsh pod driver
+      - libxml-parser-lite-perl # AMT power driver
+      - libxml-parser-perl # AMT power driver
       - lshw
       - nginx-core
       - nmap
-      - openssh-client
-      - perl-base
       - python3
-      - python3-aiodns
+      - python3-aiodns # optional async DNS resolver for aiohttp
       - python3-aiofiles
       - python3-aiohttp
       - python3-alembic
       - python3-asyncpg
       - python3-attr
       - python3-authlib
-      - python3-babel
+      - python3-babel # transitive dep of python3-seamicroclient
       - python3-bson
-      - python3-certifi # for macaroonbakery
-      - python3-cffi # for macaroonbakery
-      - python3-cffi-backend # for macaroonbakery
-      - python3-chardet
+      - python3-cffi-backend # C extension required at runtime by nacl and cryptography
       - python3-crochet
       - python3-cryptography
       - python3-curtin
@@ -149,15 +168,13 @@ parts:
       - python3-httplib2
       - python3-httpx
       - python3-hvac
-      - python3-idna # for macaroonbakery
       - python3-joserfc
       - python3-jsonschema
       - python3-lxml
       - python3-macaroonbakery
       - python3-markupsafe
-      - python3-mimeparse
-      - python3-python-multipart
-      - python3-nacl # for macaroonbakery
+      - python3-mimeparse # transitive dep of python3-django-piston3
+      - python3-python-multipart # required by FastAPI for Form/UploadFile
       - python3-netaddr
       - python3-netifaces
       - python3-oauthlib
@@ -165,24 +182,21 @@ parts:
       - python3-paramiko
       - python3-passlib
       - python3-petname
-      - python3-pexpect
-      - python3-pkg-resources
+      - python3-pexpect # Virsh pod driver
+      - python3-pkg-resources # transitive dep of python3-seamicroclient (hard import)
+      - python3-platformdirs # transitive dep of python3-pkg-resources
       - python3-prometheus-client
-      - python3-protobuf # for macaroonbakery
       - python3-psycopg2
       - python3-pydantic
       - python3-pylxd
-      - python3-pymacaroons # for macaroonbakery
-      - python3-pyparsing
-      - python3-pyrsistent # for jsonschema
+      - python3-pyparsing # transitive dep of python3-httplib2
       - python3-pythonjsonlogger
-      - python3-pyvmomi
-      - python3-referencing
+      - python3-pyvmomi # VMware power driver
+      - python3-referencing # transitive dep of python3-jsonschema
       - python3-requests
-      - python3-requests-toolbelt  # for pylxd
+      - python3-requests-toolbelt # transitive dep of python3-pylxd
       - python3-requests-unixsocket
-      - python3-rfc3339 # for macaroonbakery
-      - python3-seamicroclient
+      - python3-seamicroclient # SeaMicro power driver
       - python3-sqlalchemy
       - python3-starlette
       - python3-structlog
@@ -192,20 +206,17 @@ parts:
       - python3-txtftp
       - python3-tz
       - python3-ulid
-      - python3-urllib3 # for macaroonbakery
       - python3-uvicorn
+      - python3-uvloop
       - python3-yaml
-      - python3-zhmcclient
+      - python3-zhmcclient # IBM Z HMC power driver
       - python3-zope.interface
       - rsyslog
-      - snmp # APC
+      - snmp # APC power driver
       - squid
       - tcpdump
       - temporal
-      - ubuntu-keyring
-      - util-linux
-      - wget # DLI
-      - wsmancli # AMT
+      - wsmancli # AMT power driver
     build-attributes:
       - enable-usrmerge
     organize:
@@ -219,7 +230,6 @@ parts:
       usr/local/bin/*: usr/bin/
       usr/local/lib/python3.14/*: usr/lib/python3.14/
     stage:
-      - etc/bind
       - etc/chrony
       - etc/freeipmi
       - etc/libvirt
@@ -234,14 +244,24 @@ parts:
       - -usr/bin/xdg-*
       - -usr/bin/maas-sampledata
       - usr/lib
+      - -usr/lib/python3.14/test
+      - -usr/lib/systemd
+      - -usr/lib/udev
+      - -usr/lib/tmpfiles.d
+      - -usr/lib/sysctl.d
+      - -usr/lib/sysusers.d
+      - -usr/lib/binfmt.d
+      - -usr/lib/x86_64-linux-gnu/gconv
+      - -usr/lib/python3/dist-packages/setuptools
+      - -usr/lib/python3/dist-packages/setuptools-*.dist-info
+      - -usr/lib/python3/dist-packages/*-stubs
+      - -usr/lib/python3/dist-packages/*_stubs
+      - -usr/lib/python3/dist-packages/pygments
+      - -usr/lib/python3/dist-packages/pygments-*.dist-info
       - usr/sbin
-      - usr/share/dns
       - usr/share/ieee-data
-      - usr/share/keyrings
       - usr/share/maas
       - usr/share/nginx
-      - usr/share/perl
-      - usr/share/perl5
       - usr/share/squid*
       - var/lib/ieee-data
       - var/lib/temporal
