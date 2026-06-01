@@ -29,6 +29,7 @@ from temporalio.workflow import (
 from maascommon.apiclient import MAASAPIClient
 from maascommon.enums.boot_resources import BootResourceType
 from maascommon.enums.msm import MSMStatusEnum
+from maascommon.enums.node import NodeTypeEnum
 from maascommon.enums.notifications import (
     NotificationCategoryEnum,
     NotificationComponent,
@@ -81,8 +82,12 @@ from maasservicelayer.db.repositories.bootsources import (
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
+from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
+)
+from maasservicelayer.db.repositories.staticipaddress import (
+    StaticIPAddressClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.configurations import MAASUrlConfig
@@ -185,22 +190,45 @@ class BootResourcesActivity(ActivityBase):
         name=GET_BOOTRESOURCEFILE_ENDPOINTS_ACTIVITY_NAME
     )
     async def get_bootresourcefile_endpoints(self) -> dict[str, list]:
-        url = f"{self.apiclient.url}/api/2.0/regioncontrollers/"
-        regions = await self.apiclient.request_async("GET", url)
         regions_endpoints = {}
-        for region in regions:
-            # https://bugs.launchpad.net/maas/+bug/2058037
-            if region["ip_addresses"]:
-                regions_endpoints[region["system_id"]] = [
-                    compose_URL("http://:5240/MAAS/boot-resources/", src)
-                    for src in region["ip_addresses"]
-                ]
-            else:
-                raise ApplicationError(
-                    f"Could not retrieve the IP addresses of the region controller '{region['system_id']}' from the API. This "
-                    f"activity will be retried until we have the IP for all the region controllers.",
-                    non_retryable=False,
+        async with self.start_transaction() as services:
+            regions = await services.nodes.get_many(
+                query=QuerySpec(
+                    where=NodeClauseFactory.or_clauses(
+                        [
+                            NodeClauseFactory.with_type(
+                                NodeTypeEnum.REGION_CONTROLLER
+                            ),
+                            NodeClauseFactory.with_type(
+                                NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                            ),
+                        ]
+                    )
                 )
+            )
+            for region in regions:
+                ip_addresses = await services.staticipaddress.get_for_nodes(
+                    query=QuerySpec(
+                        where=StaticIPAddressClauseFactory.with_node_system_id(
+                            region.system_id
+                        )
+                    )
+                )
+                # https://bugs.launchpad.net/maas/+bug/2058037
+                if ip_addresses:
+                    regions_endpoints[region.system_id] = [
+                        compose_URL(
+                            "http://:5240/MAAS/boot-resources/",
+                            str(static_ip.ip),
+                        )
+                        for static_ip in ip_addresses
+                    ]
+                else:
+                    raise ApplicationError(
+                        f"Could not retrieve the IP addresses of the region controller '{region.system_id}' from the API. This "
+                        f"activity will be retried until we have the IP for all the region controllers.",
+                        non_retryable=False,
+                    )
         return regions_endpoints
 
     @activity_defn_with_context(name=DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME)

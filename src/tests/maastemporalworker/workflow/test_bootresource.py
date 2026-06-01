@@ -5,6 +5,7 @@ import asyncio
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 import hashlib
+from ipaddress import IPv4Address, IPv6Address
 import os
 from pathlib import Path
 import shutil
@@ -73,6 +74,8 @@ from maasservicelayer.models.bootsourcecache import BootSourceCache
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.image_manifests import ImageManifest
+from maasservicelayer.models.nodes import Node
+from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.bootresourcefiles import (
@@ -90,7 +93,9 @@ from maasservicelayer.services.bootsourceselections import (
 from maasservicelayer.services.image_manifests import ImageManifestsService
 from maasservicelayer.services.image_sync import ImageSyncService
 from maasservicelayer.services.msm import MSMService, MSMStatus
+from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.notifications import NotificationsService
+from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.simplestreams.client import SimpleStreamsClientException
 from maasservicelayer.simplestreams.models import (
@@ -249,25 +254,33 @@ class TestGetSyncedRegionsForFilesActivity:
 
 
 class TestGetBootresourcefileEndpointsActivity:
-    async def test_calls_apiclient(
-        self, boot_activities: BootResourcesActivity, mock_apiclient: Mock
+    async def test_calls_service_layer(
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
     ) -> None:
-        mock_apiclient.request_async = AsyncMock(
-            return_value=[
-                {
-                    "system_id": "abcdef",
-                    "ip_addresses": ["10.0.0.1"],
-                },
-                {
-                    "system_id": "ghijkl",
-                    "ip_addresses": ["10.0.0.2"],
-                },
-                {
-                    "system_id": "mnopqr",
-                    "ip_addresses": ["10.0.0.3"],
-                },
-            ]
+        services_mock.nodes = Mock(NodesService)
+        region1, region2, region3 = Mock(Node), Mock(Node), Mock(Node)
+        region1.system_id = "abcdef"
+        region2.system_id = "ghijkl"
+        region3.system_id = "mnopqr"
+        services_mock.nodes.get_many.return_value = [region1, region2, region3]
+
+        services_mock.staticipaddress = Mock(StaticIPAddressService)
+        ip1, ip2, ip3 = (
+            Mock(StaticIPAddress),
+            Mock(StaticIPAddress),
+            Mock(StaticIPAddress),
         )
+        ip1.ip = IPv4Address("10.0.0.1")
+        ip2.ip = IPv4Address("10.0.0.2")
+        ip3.ip = IPv6Address("fd00::100")
+        services_mock.staticipaddress.get_for_nodes.side_effect = [
+            [ip1],
+            [ip2],
+            [ip3],
+        ]
+
         env = ActivityEnvironment()
         env.payload_converter = pydantic_data_converter
         endpoints = await env.run(
@@ -276,31 +289,33 @@ class TestGetBootresourcefileEndpointsActivity:
         assert endpoints == {
             "abcdef": ["http://10.0.0.1:5240/MAAS/boot-resources/"],
             "ghijkl": ["http://10.0.0.2:5240/MAAS/boot-resources/"],
-            "mnopqr": ["http://10.0.0.3:5240/MAAS/boot-resources/"],
+            "mnopqr": ["http://[fd00::100]:5240/MAAS/boot-resources/"],
         }
-        mock_apiclient.request_async.assert_awaited_once_with(
-            "GET", f"{mock_apiclient.url}/api/2.0/regioncontrollers/"
-        )
 
     async def test_bug_2058037(
-        self, boot_activities: BootResourcesActivity, mock_apiclient: Mock
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
     ) -> None:
-        mock_apiclient.request_async = AsyncMock(
-            return_value=[
-                {
-                    "system_id": "abcdef",
-                    "ip_addresses": [],
-                },
-                {
-                    "system_id": "ghijkl",
-                    "ip_addresses": ["10.0.0.2"],
-                },
-                {
-                    "system_id": "mnopqr",
-                    "ip_addresses": ["10.0.0.3"],
-                },
-            ]
+        services_mock.nodes = Mock(NodesService)
+        region1, region2, region3 = Mock(Node), Mock(Node), Mock(Node)
+        region1.system_id = "abcdef"
+        region2.system_id = "ghijkl"
+        region3.system_id = "mnopqr"
+        services_mock.nodes.get_many.return_value = [region1, region2, region3]
+
+        services_mock.staticipaddress = Mock(StaticIPAddressService)
+        ip2, ip3 = (
+            Mock(StaticIPAddress),
+            Mock(StaticIPAddress),
         )
+        ip2.ip = IPv4Address("10.0.0.2")
+        ip3.ip = IPv6Address("fd00::100")
+        services_mock.staticipaddress.get_for_nodes.side_effect = [
+            [],
+            [ip2],
+            [ip3],
+        ]
         env = ActivityEnvironment()
         env.payload_converter = pydantic_data_converter
         with pytest.raises(ApplicationError) as err:
