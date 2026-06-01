@@ -7,6 +7,7 @@ import base64
 from http import HTTPStatus
 import re
 
+import structlog
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.web.client import (
@@ -23,6 +24,7 @@ from provisioningserver.drivers import (
     make_setting_field,
 )
 from provisioningserver.drivers.power import PowerActionError, PowerDriver
+from provisioningserver.drivers.power.fips import enforce_tls_verification
 from provisioningserver.drivers.power.utils import WebClientContextFactory
 from provisioningserver.utils.twisted import asynchronous
 from provisioningserver.utils.version import get_running_version
@@ -31,6 +33,8 @@ SSL_INSECURE_YES = "y"
 SSL_INSECURE_NO = "n"
 
 SSL_INSECURE_CHOICES = [[SSL_INSECURE_NO, "No"], [SSL_INSECURE_YES, "Yes"]]
+
+logger = structlog.getLogger()
 
 
 class WebhookPowerDriver(PowerDriver):
@@ -121,6 +125,8 @@ class WebhookPowerDriver(PowerDriver):
         self, method, uri, headers, verify_ssl=False, bodyProducer=None
     ):
         """Send the webhook request and return the response."""
+
+        enforce_tls_verification(self.name, verify_ssl)
 
         agent = RedirectAgent(
             Agent(

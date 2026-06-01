@@ -15,6 +15,7 @@ from provisioningserver.drivers import (
     SETTING_SCOPE,
 )
 from provisioningserver.drivers.power import PowerActionError, PowerDriver
+from provisioningserver.drivers.power.fips import reject_if_fips_unsupported
 from provisioningserver.utils import shell
 
 
@@ -70,6 +71,7 @@ class RaritanPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on Raritan outlet."""
+        reject_if_fips_unsupported(self.name)
         if self.power_query(system_id, context) == "on":
             self.power_off(system_id, context)
         sleep(float(context["power_on_delay"]))
@@ -84,6 +86,7 @@ class RaritanPowerDriver(PowerDriver):
 
     def power_off(self, system_id, context):
         """Power off Raritan outlet."""
+        reject_if_fips_unsupported(self.name)
         self.run_process(
             "snmpset",
             *_get_common_args(
@@ -95,6 +98,7 @@ class RaritanPowerDriver(PowerDriver):
 
     def power_query(self, system_id, context):
         """Power query Raritan outlet."""
+        reject_if_fips_unsupported(self.name)
         power_state = self.run_process(
             "snmpget",
             *_get_common_args(

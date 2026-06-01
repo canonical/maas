@@ -16,6 +16,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerError,
 )
+from provisioningserver.drivers.power.fips import reject_if_fips_unsupported
 from provisioningserver.utils import shell
 from provisioningserver.utils.shell import (
     call_and_check,
@@ -143,6 +144,7 @@ class DLIPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on DLI outlet."""
+        reject_if_fips_unsupported(self.name)
         # Power off the outlet if it is currently on
         if self._query_outlet_state(**context) == "on":
             self._set_outlet_state("OFF", **context)
@@ -156,10 +158,12 @@ class DLIPowerDriver(PowerDriver):
 
     def power_off(self, system_id, context):
         """Power off DLI outlet."""
+        reject_if_fips_unsupported(self.name)
         self._set_outlet_state("OFF", **context)
 
     def power_query(self, system_id, context):
         """Power query DLI outlet."""
+        reject_if_fips_unsupported(self.name)
         return self._query_outlet_state(**context)
 
     def power_reset(self, system_id, context):

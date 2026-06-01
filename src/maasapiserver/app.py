@@ -48,6 +48,7 @@ class ServerConfig:
     ssl_certfile: str | None = None
     ssl_ca_certs: str | None = None
     ssl_cert_reqs: int = ssl.CERT_NONE
+    ssl_minimum_version: ssl.TLSVersion = ssl.TLSVersion.TLSv1_2
     http: type[asyncio.Protocol] | HTTPProtocolType = "auto"
 
 
@@ -130,6 +131,12 @@ class App:
             log_config=None,
             http=self._server_config.http,
         )
+        if self._server_config.ssl_certfile:
+            server_config.load()
+            if server_config.ssl is not None:
+                server_config.ssl.minimum_version = (
+                    self._server_config.ssl_minimum_version
+                )
         return uvicorn.Server(server_config)
 
     @property

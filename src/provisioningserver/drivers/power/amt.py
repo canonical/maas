@@ -9,7 +9,10 @@ import re
 from time import sleep
 
 from lxml import etree
+import structlog
 
+from maascommon.fips import is_fips_enabled
+from maascommon.logging.security import FIPS_CRYPTO_ERROR
 from provisioningserver.drivers import make_ip_extractor, make_setting_field
 from provisioningserver.drivers.power import (
     is_power_parameter_set,
@@ -17,6 +20,7 @@ from provisioningserver.drivers.power import (
     PowerAuthError,
     PowerConnError,
     PowerDriver,
+    PowerFatalError,
     PowerSettingError,
 )
 from provisioningserver.utils import shell, snap
@@ -47,6 +51,8 @@ HTTP_OR_HTTPS = [
 ]
 
 REQUIRED_PACKAGES = [["wsman", "wsmancli"]]
+
+logger = structlog.getLogger()
 
 
 class AMTPowerDriver(PowerDriver):
@@ -89,6 +95,32 @@ class AMTPowerDriver(PowerDriver):
         if port is None:
             port = AMT_DEFAULT_PORT
         return ip_address, power_user, power_pass, port
+
+    def _check_fips_tls_requirements(self, port) -> None:
+        if is_fips_enabled() and str(port) == AMT_HTTP_PORT:
+            logger.error(
+                FIPS_CRYPTO_ERROR,
+                operation="amt_connection",
+                reason=(
+                    "Plain HTTP (port 16992) is not permitted in FIPS mode; "
+                    "use HTTPS (port 16993)"
+                ),
+            )
+            raise PowerFatalError(
+                "AMT plain HTTP (port 16992) is not permitted in FIPS mode. "
+                "Configure AMT to use HTTPS (port 16993)."
+            )
+
+    def _get_wsman_endpoint(
+        self, ip_address: str, power_user: str, power_pass: str, port
+    ) -> str:
+        scheme = "https" if str(port) == AMT_HTTPS_PORT else "http"
+        return f"{scheme}://{power_user}:{power_pass}@{ip_address}:{port}"
+
+    def _get_wsman_verify_args(self) -> tuple[str, ...]:
+        if is_fips_enabled():
+            return ()
+        return ("--noverifypeer", "--noverifyhost")
 
     def detect_missing_packages(self):
         missing_packages = []
@@ -168,15 +200,21 @@ class AMTPowerDriver(PowerDriver):
                 ),
             ),
         }
+        self._check_fips_tls_requirements(port)
         wsman_opts = (
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
-            "--input",
-            "-",
-            "invoke",
-            "--method",
+            (
+                "--endpoint",
+                self._get_wsman_endpoint(
+                    ip_address, power_user, power_pass, port
+                ),
+            )
+            + self._get_wsman_verify_args()
+            + (
+                "--input",
+                "-",
+                "invoke",
+                "--method",
+            )
         )
         # Change boot order to PXE and enable boot config request
         for method, (schema_file, schema_uri) in wsman_pxe_options.items():
@@ -240,12 +278,11 @@ class AMTPowerDriver(PowerDriver):
             "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/"
             "CIM_AssociatedPowerManagementService"
         )
+        self._check_fips_tls_requirements(port)
         command_args = (
             "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
-        )
+            self._get_wsman_endpoint(ip_address, power_user, power_pass, port),
+        ) + self._get_wsman_verify_args()
         if power_change in ("on", "off", "restart"):
             stdin = self._render_wsman_state_xml(power_change)
             command_args += (
@@ -438,12 +475,12 @@ class AMTPowerDriver(PowerDriver):
         # XXX bug=1331214
         # Check if the AMT ver > 8
         # If so, we need wsman, not amttool
+        self._check_fips_tls_requirements(port)
         command = self._get_wsman_command(
             "identify",
             "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+            self._get_wsman_endpoint(ip_address, power_user, power_pass, port),
+            *self._get_wsman_verify_args(),
         )
         result = shell.run_command(*command)
         if not result.stdout:

@@ -28,6 +28,7 @@ class AsyncThirdPartyLocator(ThirdPartyLocator):
         """
         super().__init__(allow_insecure=allow_insecure)
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         tcp_conn = TCPConnector(ssl=context)
         self._session = ClientSession(
             headers=self.BAKERY_HEADERS,

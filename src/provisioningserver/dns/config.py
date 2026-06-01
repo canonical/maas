@@ -18,6 +18,7 @@ import sys
 
 from netaddr import AddrFormatError, IPAddress
 
+from maascommon.fips import is_fips_enabled
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import load_template, locate_config
 from provisioningserver.utils.fs import atomic_write
@@ -222,6 +223,8 @@ def generate_rndc(
     rndc_content = call_and_check(
         [
             "rndc-confgen",
+            "-A",
+            "hmac-sha256",
             "-b",
             "256",
             "-k",
@@ -325,6 +328,7 @@ def set_up_options_conf(overwrite=True, **kwargs):
     # template that uses this value.
     kwargs.setdefault("upstream_dns")
     kwargs.setdefault("dnssec_validation", "auto")
+    kwargs.setdefault("fips_enabled", is_fips_enabled())
 
     # Parse the options file and make sure MAAS doesn't define any options
     # that the user has already customized.

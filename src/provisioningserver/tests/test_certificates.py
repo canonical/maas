@@ -8,6 +8,7 @@ from OpenSSL import crypto
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from provisioningserver import certificates
 from provisioningserver.certificates import (
     Certificate,
     CertificateError,
@@ -37,6 +38,28 @@ class TestCertificateRequest(MAASTestCase):
             subject_alt_name_extension.get_short_name(), b"subjectAltName"
         )
         self.assertEqual(subject_alt_name_extension.get_critical(), False)
+
+    def test_rejects_short_rsa_key_in_fips_mode(self):
+        self.patch(certificates, "is_fips_enabled").return_value = True
+        mock_logger = self.patch(certificates, "logger")
+
+        error = self.assertRaises(
+            CertificateError,
+            CertificateRequest.generate,
+            "maas",
+            key_bits=1024,
+        )
+
+        self.assertEqual(
+            str(error),
+            "RSA key size 1024 is below FIPS minimum of 2048 bits",
+        )
+        mock_logger.error.assert_called_once_with(
+            "FIPS_crypto_error",
+            operation="key_generation",
+            algorithm="RSA-1024",
+            reason="RSA key size below FIPS minimum of 2048 bits",
+        )
 
 
 class TestCertificate(MAASTestCase):
@@ -229,6 +252,21 @@ class TestCertificate(MAASTestCase):
         cert = Certificate.generate("maas", key_bits=1024)
         self.assertEqual(cert.key.bits(), 1024)
 
+    def test_generate_certificate_rejects_short_rsa_key_in_fips_mode(self):
+        self.patch(certificates, "is_fips_enabled").return_value = True
+
+        error = self.assertRaises(
+            CertificateError,
+            Certificate.generate,
+            "maas",
+            key_bits=1024,
+        )
+
+        self.assertEqual(
+            str(error),
+            "RSA key size 1024 is below FIPS minimum of 2048 bits",
+        )
+
     def test_generate_certificate_validity(self):
         cert = Certificate.generate("maas", validity=timedelta(days=100))
         self.assertGreaterEqual(
@@ -269,6 +307,53 @@ class TestCertificate(MAASTestCase):
             cert.expiration(),
             cert.not_before(),
         )
+
+    def test_generate_certificate_uses_cryptographic_randomness(self):
+        mock_randbits = self.patch(certificates.secrets, "randbits")
+        mock_randbits.return_value = 123456789
+
+        cert = Certificate.generate("maas")
+
+        mock_randbits.assert_called_with(64)
+        self.assertEqual(cert.cert.get_serial_number(), 123456789)
+
+    def test_generate_ca_certificate_uses_cryptographic_randomness(self):
+        mock_randbits = self.patch(certificates.secrets, "randbits")
+        mock_randbits.return_value = 987654321
+
+        cert = Certificate.generate_ca_certificate("maas")
+
+        mock_randbits.assert_called_with(64)
+        self.assertEqual(cert.cert.get_serial_number(), 987654321)
+
+    def test_generate_ca_certificate_rejects_short_rsa_key_in_fips_mode(
+        self,
+    ):
+        self.patch(certificates, "is_fips_enabled").return_value = True
+
+        error = self.assertRaises(
+            CertificateError,
+            Certificate.generate_ca_certificate,
+            "maas",
+            key_bits=1024,
+        )
+
+        self.assertEqual(
+            str(error),
+            "RSA key size 1024 is below FIPS minimum of 2048 bits",
+        )
+
+    def test_rejects_dsa_key_generation_in_fips_mode(self):
+        self.patch(certificates, "is_fips_enabled").return_value = True
+
+        error = self.assertRaises(
+            CertificateError,
+            certificates._validate_key_generation_fips_policy,
+            crypto.TYPE_DSA,
+            2048,
+        )
+
+        self.assertEqual(str(error), "DSA keys are not permitted in FIPS mode")
 
     def test_generate_ca_certificate(self):
         cert = Certificate.generate_ca_certificate(

@@ -45,6 +45,7 @@ class TestHMCPowerDriver(MAASTestCase):
         driver = HMCPowerDriver()
         command = factory.make_name("command")
         context = make_context()
+        self.patch(hmc_module, "is_fips_enabled").return_value = False
         SSHClient = self.patch(hmc_module, "SSHClient")
         AutoAddPolicy = self.patch(hmc_module, "AutoAddPolicy")
         ssh_client = SSHClient.return_value
@@ -66,12 +67,49 @@ class TestHMCPowerDriver(MAASTestCase):
         )
         ssh_client.exec_command.assert_called_once_with(command)
 
+    def test_run_hmc_command_uses_fips_ssh_configuration(self):
+        driver = HMCPowerDriver()
+        command = factory.make_name("command")
+        context = make_context()
+        self.patch(hmc_module, "is_fips_enabled").return_value = True
+        get_fips_ssh_config = self.patch(hmc_module, "get_fips_ssh_config")
+        get_fips_ssh_config.return_value = {
+            "ciphers": [],
+            "kex": [],
+            "macs": [],
+            "keys": [],
+        }
+        SSHClient = self.patch(hmc_module, "SSHClient")
+        RejectPolicy = self.patch(hmc_module, "RejectPolicy")
+        ssh_client = SSHClient.return_value
+        expected = factory.make_name("output").encode("utf-8")
+        stdout = BytesIO(expected)
+        streams = factory.make_streams(stdout=stdout)
+        ssh_client.exec_command = Mock(return_value=streams)
+
+        output = driver.run_hmc_command(command, **context)
+
+        self.assertEqual(expected.decode("utf-8"), output)
+        ssh_client.set_missing_host_key_policy.assert_called_once_with(
+            RejectPolicy.return_value
+        )
+        ssh_client.connect.assert_called_once_with(
+            context["power_address"],
+            username=context["power_user"],
+            password=context["power_pass"],
+            ciphers=get_fips_ssh_config.return_value["ciphers"],
+            kex=get_fips_ssh_config.return_value["kex"],
+            macs=get_fips_ssh_config.return_value["macs"],
+            key_types=get_fips_ssh_config.return_value["key_types"],
+        )
+
     @settings(deadline=None)
     @given(sampled_from([SSHException, EOFError, SOCKETError]))
     def test_run_hmc_command_crashes_for_ssh_connection_error(self, error):
         driver = HMCPowerDriver()
         command = factory.make_name("command")
         context = make_context()
+        self.patch(hmc_module, "is_fips_enabled").return_value = False
         self.patch(hmc_module, "AutoAddPolicy")
         SSHClient = self.patch(hmc_module, "SSHClient")
         ssh_client = SSHClient.return_value

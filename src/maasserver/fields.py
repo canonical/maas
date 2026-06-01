@@ -23,6 +23,7 @@ from django.utils.encoding import force_str
 from netaddr import AddrFormatError, IPNetwork
 
 from maascommon.fields import MAC_FIELD_RE, MAC_RE, normalise_macaddress
+from maascommon.fips import is_fips_enabled
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.utils.dns import validate_domain_name
 from maasserver.utils.orm import get_one, validate_in_transaction
@@ -608,6 +609,13 @@ class VirshAddressField(forms.CharField):
     def validate(self, value):
         if value:
             VIRSH_ADDR_FIELD_VALIDATOR(value)
+            if is_fips_enabled():
+                parsed = urllib.parse.urlparse(value)
+                if parsed.scheme and "+tcp" in parsed.scheme:
+                    raise ValidationError(
+                        "Plain TCP transport is not allowed in FIPS mode. "
+                        "Use +ssh or +tls."
+                    )
 
     def clean(self, value):
         return super().clean(value)
@@ -619,6 +627,12 @@ class LXDAddressField(forms.CharField):
     def validate(self, value):
         if value:
             LXD_ADDR_FIELD_VALIDATOR(value)
+            if is_fips_enabled():
+                parsed = urllib.parse.urlparse(value)
+                if parsed.scheme == "http":
+                    raise ValidationError(
+                        "Plain HTTP is not allowed in FIPS mode. Use HTTPS."
+                    )
 
     def clean(self, value):
         return super().clean(value)

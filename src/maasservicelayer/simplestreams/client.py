@@ -97,6 +97,7 @@ class SimpleStreamsClient:
 
     def _get_session(self) -> ClientSession:
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         tcp_conn = TCPConnector(ssl=context)
         # TODO: set proxy on the session when we upgrade aiohttp to v3.11+
         return ClientSession(

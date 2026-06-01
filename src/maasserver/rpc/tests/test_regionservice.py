@@ -64,7 +64,7 @@ from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import RegisterRackController
 from provisioningserver.rpc.testing import call_responder
 from provisioningserver.rpc.testing.doubles import DummyConnection
-from provisioningserver.security import fernet_decrypt_psk
+from provisioningserver.security import decrypt_psk
 from provisioningserver.utils import events
 from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.version import get_running_version
@@ -391,9 +391,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             },
         )
         self.assertEqual(
-            json.loads(
-                fernet_decrypt_psk(response["encrypted_cluster_certificate"])
-            ),
+            json.loads(decrypt_psk(response["encrypted_cluster_certificate"])),
             {"key": "key", "cert": "cert", "cacerts": "cacerts"},
         )
 

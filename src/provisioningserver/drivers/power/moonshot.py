@@ -11,6 +11,7 @@ from provisioningserver.drivers import (
     SETTING_SCOPE,
 )
 from provisioningserver.drivers.power import PowerActionError, PowerDriver
+from provisioningserver.drivers.power.fips import reject_if_fips_unsupported
 from provisioningserver.utils import shell
 from provisioningserver.utils.shell import (
     call_and_check,
@@ -97,13 +98,16 @@ class MoonshotIPMIPowerDriver(PowerDriver):
                 return stdout if match is None else match.group(0)
 
     def power_on(self, system_id, context):
+        reject_if_fips_unsupported(self.name)
         self._issue_ipmitool_command("pxe", **context)
         self._issue_ipmitool_command("on", **context)
 
     def power_off(self, system_id, context):
+        reject_if_fips_unsupported(self.name)
         self._issue_ipmitool_command("off", **context)
 
     def power_query(self, system_id, context):
+        reject_if_fips_unsupported(self.name)
         return self._issue_ipmitool_command("status", **context)
 
     def power_reset(self, system_id, context):

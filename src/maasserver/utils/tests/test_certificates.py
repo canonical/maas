@@ -141,8 +141,8 @@ class TestGetSLLCertificate(MAASServerTestCase):
         )
         self.assertEqual("Let's Encrypt", cert.get_issuer().O)
 
-        # Verify fingerprint calculation (SHA1 of DER cert)
-        expected_fingerprint = hashlib.sha1(launchpad_crt).hexdigest()
+        # Verify fingerprint calculation (SHA-256 of DER cert)
+        expected_fingerprint = hashlib.sha256(launchpad_crt).hexdigest()
         self.assertEqual(expected_fingerprint, fingerprint)
 
         # Verify the socket was properly closed

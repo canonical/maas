@@ -183,6 +183,11 @@ class TestRegionHTTPService(
         self.assertIn("listen 5443 ssl http2;", nginx_config)
         self.assertIn("listen 5240;", nginx_config)
         self.assertIn("location /MAAS/api/2.0/machines {", nginx_config)
+        # WebSocket proxy directives
+        self.assertIn("location /MAAS/ws {", nginx_config)
+        self.assertIn("proxy_http_version 1.1;", nginx_config)
+        self.assertIn("proxy_set_header Upgrade $http_upgrade;", nginx_config)
+        self.assertIn('proxy_set_header Connection "upgrade";', nginx_config)
 
     def test_create_cert_files_writes_full_chain(self):
         cert = get_sample_cert_with_cacerts()

@@ -1,3 +1,6 @@
 debian/extras/99-maas-agent-sudoers etc/sudoers.d
 
 usr/sbin/maas-agent
+
+# Install FIPS wrapper for maas-agent
+debian/extras/maas-agent-fips-wrapper.sh usr/share/maas/

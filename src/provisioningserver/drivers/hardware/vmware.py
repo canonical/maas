@@ -1,15 +1,20 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+# FIPS TODO: This file requires the following changes for FIPS compliance:
+#   - Replace PROTOCOL_SSLv23 with a modern TLS client context.
+#   - Require CERT_REQUIRED and TLS 1.2+; remove unverified mode.
+#   (See specs/001-fips-compliant-maas/tasks.md for details)
 
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from importlib import import_module
-from inspect import getcallargs
+from inspect import signature
 import ssl
 import traceback
 from typing import Optional
 from urllib.parse import unquote
 
+from maascommon.fips import is_fips_enabled
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils.twisted import synchronous
@@ -177,28 +182,23 @@ class VMwarePyvmomiAPI(VMwareAPI):
         extra_args = {}
         if self.port is not None:
             extra_args["port"] = self.port
-        if self.protocol is not None:
-            if self.protocol == "https+unverified":
-                # This is a workaround for using untrusted certificates.
-                extra_args["protocol"] = "https"
-                if "sslContext" in getcallargs(vmomi_api.SmartConnect):
-                    context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-                    context.verify_mode = ssl.CERT_NONE
-                    extra_args["sslContext"] = context
-                else:
-                    maaslog.error(
-                        "Unable to use unverified SSL context to connect to "
-                        "'%s'. (In order to use this feature, you must update "
-                        "to a more recent version of the python3-pyvmomi "
-                        "package.)" % self.host
-                    )
-                    raise VMwareAPIException(
-                        "Failed to set up unverified SSL context. Please "
-                        "update to a more recent version of the "
-                        "python3-pyvmomi package."
-                    )
-            else:
-                extra_args["protocol"] = self.protocol
+        protocol = self.protocol
+        if protocol == "https+unverified":
+            if is_fips_enabled():
+                maaslog.warning(
+                    "FIPS mode: upgrading https+unverified to verified TLS. "
+                    "Connections to vCenter with self-signed certificates will fail."
+                )
+            protocol = "https"
+        if protocol is not None:
+            extra_args["protocol"] = protocol
+        if (
+            protocol in {None, "https"}
+            and "sslContext" in signature(vmomi_api.SmartConnect).parameters
+        ):
+            context = ssl.create_default_context()
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+            extra_args["sslContext"] = context
         self.service_instance = vmomi_api.SmartConnect(
             host=self.host, user=self.username, pwd=self.password, **extra_args
         )

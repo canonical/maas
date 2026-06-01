@@ -9,6 +9,10 @@ forwarders {
 dnssec-validation {{dnssec_validation}};
 empty-zones-enable no;
 
+{{if fips_enabled}}
+disable-algorithms "." { RSAMD5; DSA; };
+{{endif}}
+
 {{if not upstream_allow_query}}
 allow-query { any; };
 {{endif}}

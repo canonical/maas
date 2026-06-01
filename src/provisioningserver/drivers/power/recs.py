@@ -17,6 +17,7 @@ from provisioningserver.drivers import (
     SETTING_SCOPE,
 )
 from provisioningserver.drivers.power import PowerConnError, PowerDriver
+from provisioningserver.drivers.power.fips import reject_if_fips_unsupported
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils.twisted import synchronous
@@ -288,6 +289,7 @@ class RECSPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on RECS node."""
+        reject_if_fips_unsupported(self.name)
         power_change = "on"
         ip, port, username, password, node_id = extract_recs_parameters(
             context
@@ -307,6 +309,7 @@ class RECSPowerDriver(PowerDriver):
 
     def power_off(self, system_id, context):
         """Power off RECS node."""
+        reject_if_fips_unsupported(self.name)
         power_change = "off"
         ip, port, username, password, node_id = extract_recs_parameters(
             context
@@ -317,6 +320,7 @@ class RECSPowerDriver(PowerDriver):
 
     def power_query(self, system_id, context):
         """Power query RECS node."""
+        reject_if_fips_unsupported(self.name)
         ip, port, username, password, node_id = extract_recs_parameters(
             context
         )

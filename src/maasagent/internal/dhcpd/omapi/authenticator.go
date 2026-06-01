@@ -17,23 +17,22 @@ package omapi
 
 import (
 	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
-
-	//nolint:gosec // gosec flags MD5 as weak crypto, but it is required for omapi
-	"crypto/md5"
 	"hash"
 )
 
-type HMACMD5Authenticator struct {
+type HMACSHA256Authenticator struct {
 	hasher hash.Hash
 	object map[string][]byte
 	authID uint32
 }
 
-func NewHMACMD5Authenticator(name string, secret string) HMACMD5Authenticator {
+func NewHMACSHA256Authenticator(name string, secret string) HMACSHA256Authenticator {
 	object := make(map[string][]byte)
 
-	object["algorithm"] = []byte("hmac-md5.SIG-ALG.REG.INT.")
+	// ISC DHCP 4.4.3 expects the full DNS TSIG algorithm name format
+	object["algorithm"] = []byte("hmac-sha256.SIG-ALG.REG.INT.")
 	object["name"] = []byte(name)
 
 	key, err := base64.StdEncoding.DecodeString(secret)
@@ -41,17 +40,17 @@ func NewHMACMD5Authenticator(name string, secret string) HMACMD5Authenticator {
 		panic(err)
 	}
 
-	return HMACMD5Authenticator{
+	return HMACSHA256Authenticator{
 		object: object,
-		hasher: hmac.New(md5.New, key),
+		hasher: hmac.New(sha256.New, key),
 	}
 }
 
-func (h *HMACMD5Authenticator) AuthLen() uint32 {
-	return 16
+func (h *HMACSHA256Authenticator) AuthLen() uint32 {
+	return sha256.Size
 }
 
-func (h *HMACMD5Authenticator) Sign(data []byte) []byte {
+func (h *HMACSHA256Authenticator) Sign(data []byte) []byte {
 	h.hasher.Write(data)
 
 	signature := h.hasher.Sum(nil)
@@ -60,14 +59,14 @@ func (h *HMACMD5Authenticator) Sign(data []byte) []byte {
 	return signature
 }
 
-func (h *HMACMD5Authenticator) Object() map[string][]byte {
+func (h *HMACSHA256Authenticator) Object() map[string][]byte {
 	return h.object
 }
 
-func (h *HMACMD5Authenticator) AuthID() uint32 {
+func (h *HMACSHA256Authenticator) AuthID() uint32 {
 	return h.authID
 }
 
-func (h *HMACMD5Authenticator) SetAuthID(i uint32) {
+func (h *HMACSHA256Authenticator) SetAuthID(i uint32) {
 	h.authID = i
 }

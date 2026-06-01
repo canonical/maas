@@ -14,6 +14,7 @@ from provisioningserver.drivers.hardware.seamicro import (
     power_query_seamicro15k_v2,
 )
 from provisioningserver.drivers.power import PowerActionError, PowerDriver
+from provisioningserver.drivers.power.fips import reject_if_fips_unsupported
 from provisioningserver.utils import shell
 from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 
@@ -130,14 +131,17 @@ class SeaMicroPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on SeaMicro node."""
+        reject_if_fips_unsupported(self.name)
         self._power("on", context)
 
     def power_off(self, system_id, context):
         """Power off SeaMicro node."""
+        reject_if_fips_unsupported(self.name)
         self._power("off", context)
 
     def power_query(self, system_id, context):
         """Power query SeaMicro node."""
+        reject_if_fips_unsupported(self.name)
         # Query the state.
         # Only supported by REST v2.
         (

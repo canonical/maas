@@ -60,6 +60,7 @@ global:
         keyFile: {{ key_file }}
         clientCaFiles:
           - {{ cacert_file }}
+        minVersion: TLS1.2
       # This client section is used to configure the TLS clients within
       # the Temporal Cluster that connect to an Internode (history, matching, or
       # internal-frontend)
@@ -68,6 +69,7 @@ global:
         disableHostVerification: false
         rootCaFiles:
           - {{ cacert_file }}
+        minVersion: TLS1.2
     frontend:
       # This server section configures the TLS certificate that the Frontend
       # server presents to external clients.
@@ -77,11 +79,13 @@ global:
         keyFile: {{ key_file }}
         clientCaFiles:
           - {{ cacert_file }}
+        minVersion: TLS1.2
       client:
         serverName: maas
         disableHostVerification: false
         rootCaFiles:
           - {{ cacert_file }}
+        minVersion: TLS1.2
   metrics:
     prometheus:
       framework: "tally"

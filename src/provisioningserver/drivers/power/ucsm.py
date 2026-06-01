@@ -14,6 +14,7 @@ from provisioningserver.drivers.hardware.ucsm import (
     power_state_ucsm,
 )
 from provisioningserver.drivers.power import PowerDriver
+from provisioningserver.drivers.power.fips import reject_if_fips_unsupported
 
 
 def extract_ucsm_parameters(context):
@@ -55,11 +56,13 @@ class UCSMPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on UCSM node."""
+        reject_if_fips_unsupported(self.name)
         url, username, password, uuid = extract_ucsm_parameters(context)
         power_control_ucsm(url, username, password, uuid, maas_power_mode="on")
 
     def power_off(self, system_id, context):
         """Power off UCSM node."""
+        reject_if_fips_unsupported(self.name)
         url, username, password, uuid = extract_ucsm_parameters(context)
         power_control_ucsm(
             url, username, password, uuid, maas_power_mode="off"
@@ -67,6 +70,7 @@ class UCSMPowerDriver(PowerDriver):
 
     def power_query(self, system_id, context):
         """Power query UCSM node."""
+        reject_if_fips_unsupported(self.name)
         url, username, password, uuid = extract_ucsm_parameters(context)
         return power_state_ucsm(url, username, password, uuid)
 

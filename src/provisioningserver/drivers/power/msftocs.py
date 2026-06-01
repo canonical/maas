@@ -21,6 +21,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerFatalError,
 )
+from provisioningserver.drivers.power.fips import reject_if_fips_unsupported
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils.twisted import synchronous
 
@@ -150,6 +151,7 @@ class MicrosoftOCSPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on MicrosoftOCS blade."""
+        reject_if_fips_unsupported(self.name)
         if self.power_query(system_id, context) == "on":
             self.power_off(system_id, context)
         try:
@@ -169,6 +171,7 @@ class MicrosoftOCSPowerDriver(PowerDriver):
 
     def power_off(self, system_id, context):
         """Power off MicrosoftOCS blade."""
+        reject_if_fips_unsupported(self.name)
         try:
             # Power off blade
             self.get(
@@ -182,6 +185,7 @@ class MicrosoftOCSPowerDriver(PowerDriver):
 
     def power_query(self, system_id, context):
         """Power query MicrosoftOCS blade."""
+        reject_if_fips_unsupported(self.name)
         try:
             power_state = self.extract_from_response(
                 self.get(

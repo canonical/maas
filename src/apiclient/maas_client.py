@@ -137,7 +137,11 @@ class MAASDispatcher:
         handlers = []
         if insecure:
             handlers.append(PostHTTPRedirectHandler())
-            handlers.append(urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
+            ctx = ssl.create_default_context()
+            ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            handlers.append(urllib.request.HTTPSHandler(context=ctx))
         if not self.autodetect_proxies:
             handlers.append(urllib.request.ProxyHandler({}))
         for try_count in range(3):

@@ -8,6 +8,7 @@ import json
 import re
 from urllib.parse import urlencode, urlparse
 
+import structlog
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.web.client import FileBodyProducer
 
@@ -18,6 +19,7 @@ from provisioningserver.drivers import (
     SETTING_SCOPE,
 )
 from provisioningserver.drivers.power import PowerActionError
+from provisioningserver.drivers.power.fips import enforce_tls_verification
 from provisioningserver.drivers.power.webhook import (
     SSL_INSECURE_CHOICES,
     SSL_INSECURE_NO,
@@ -26,6 +28,8 @@ from provisioningserver.drivers.power.webhook import (
 )
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils.twisted import asynchronous
+
+logger = structlog.getLogger()
 
 
 class ProxmoxPowerDriver(WebhookPowerDriver):
@@ -71,6 +75,13 @@ class ProxmoxPowerDriver(WebhookPowerDriver):
     ip_extractor = make_ip_extractor(
         "power_address", IP_EXTRACTOR_PATTERNS.URL
     )
+
+    def _get_verify_ssl(self, context):
+        # Note: SSL_INSECURE_YES maps to the UI choice "Yes" for the field
+        # "Verify SSL connections", so it means verify=True despite the name.
+        verify_ssl = context.get("power_verify_ssl") == SSL_INSECURE_YES
+        enforce_tls_verification(self.name, verify_ssl)
+        return verify_ssl
 
     def _get_url(self, context, endpoint, params=None):
         url = urlparse(context["power_address"])
@@ -121,7 +132,7 @@ class ProxmoxPowerDriver(WebhookPowerDriver):
                 {},
                 {b"Content-Type": [b"application/json; charset=utf-8"]},
             ),
-            context.get("power_verify_ssl") == SSL_INSECURE_YES,
+            self._get_verify_ssl(context),
             FileBodyProducer(
                 BytesIO(
                     json.dumps(
@@ -154,7 +165,7 @@ class ProxmoxPowerDriver(WebhookPowerDriver):
             b"GET",
             self._get_url(context, "cluster/resources", {"type": "vm"}),
             self._make_auth_headers(system_id, {}, extra_headers),
-            context.get("power_verify_ssl") == SSL_INSECURE_YES,
+            self._get_verify_ssl(context),
         )
 
         def cb(response_data):
@@ -186,7 +197,7 @@ class ProxmoxPowerDriver(WebhookPowerDriver):
                     "status/start",
                 ),
                 self._make_auth_headers(system_id, {}, extra_headers),
-                context.get("power_verify_ssl") == SSL_INSECURE_YES,
+                self._get_verify_ssl(context),
             )
 
     @asynchronous
@@ -203,7 +214,7 @@ class ProxmoxPowerDriver(WebhookPowerDriver):
                     "status/stop",
                 ),
                 self._make_auth_headers(system_id, {}, extra_headers),
-                context.get("power_verify_ssl") == SSL_INSECURE_YES,
+                self._get_verify_ssl(context),
             )
 
     @asynchronous
@@ -262,6 +273,7 @@ def probe_proxmox_and_enlist(
     }
     mac_regex = re.compile(r"(([\dA-F]{2}[:]){5}[\dA-F]{2})", re.I)
 
+    enforce_tls_verification(proxmox.name, verify_ssl)
     d = proxmox._login("", context)
 
     @inlineCallbacks
@@ -325,7 +337,7 @@ def probe_proxmox_and_enlist(
                         "status/stop",
                     ),
                     proxmox._make_auth_headers(system_id, {}, extra_headers),
-                    context.get("power_verify_ssl") == SSL_INSECURE_YES,
+                    proxmox._get_verify_ssl(context),
                 )
 
             if accept_all:

@@ -340,6 +340,37 @@ class TestAMTPowerDriver(MAASTestCase):
 
         _run_mock.assert_called_once_with(command, power_pass, stdin=None)
 
+    def test_issue_wsman_command_omits_noverify_flags_in_fips_mode(self):
+        self.patch(amt_module, "is_fips_enabled").return_value = True
+        amt_power_driver = AMTPowerDriver()
+        ip_address = factory.make_ipv4_address()
+        power_user = factory.make_name("power_user")
+        power_pass = factory.make_name("power_pass")
+        wsman_query_schema_uri = (
+            "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/"
+            "CIM_AssociatedPowerManagementService"
+        )
+        command = (
+            "wsman",
+            "-C",
+            "/etc/openwsman/openwsman_client.conf",
+            "--endpoint",
+            f"https://{power_user}:{power_pass}@{ip_address}:16993",
+            "--optimize",
+            "--encoding",
+            "utf-8",
+            "enumerate",
+            wsman_query_schema_uri,
+        )
+        _run_mock = self.patch(amt_power_driver, "_run")
+        _run_mock.return_value = b"ignored"
+
+        amt_power_driver._issue_wsman_command(
+            "query", ip_address, power_user, power_pass, "16993"
+        )
+
+        _run_mock.assert_called_once_with(command, power_pass, stdin=None)
+
     def test_issue_wsman_has_config_file_from_snap(self):
         self.patch(
             amt_module.snap.SnapPaths, "from_environ"
@@ -831,6 +862,21 @@ class TestAMTPowerDriver(MAASTestCase):
             "--noverifyhost",
         )
         self.assertEqual(result, "wsman")
+
+    def test_get_amt_command_rejects_http_in_fips_mode(self):
+        self.patch(amt_module, "is_fips_enabled").return_value = True
+        amt_power_driver = AMTPowerDriver()
+        mock_run_command = self.patch(amt_module.shell, "run_command")
+
+        with self.assertRaisesRegex(PowerFatalError, "port 16992"):
+            amt_power_driver._get_amt_command(
+                factory.make_ipv4_address(),
+                factory.make_name("power_user"),
+                factory.make_name("power_pass"),
+                amt_module.AMT_HTTP_PORT,
+            )
+
+        mock_run_command.assert_not_called()
 
     def test_get_amt_command_crashes_when_amttool_has_no_output(self):
         amt_power_driver = AMTPowerDriver()

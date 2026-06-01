@@ -22,10 +22,10 @@ class APIClient:
             signature_method=oauth1.SIGNATURE_PLAINTEXT,
         )
 
+        context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         self._session = ClientSession(
-            connector=TCPConnector(
-                ssl=ssl.create_default_context(cafile=SYSTEM_CA_FILE)
-            ),
+            connector=TCPConnector(ssl=context),
         )
 
     async def request(
