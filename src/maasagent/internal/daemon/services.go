@@ -33,7 +33,6 @@ import (
 	"maas.io/core/src/maasagent/internal/cache"
 	"maas.io/core/src/maasagent/internal/certutil"
 	"maas.io/core/src/maasagent/internal/client"
-	"maas.io/core/src/maasagent/internal/cluster"
 	"maas.io/core/src/maasagent/internal/dhcp"
 	"maas.io/core/src/maasagent/internal/httpproxy"
 	"maas.io/core/src/maasagent/internal/pathutil"
@@ -53,20 +52,6 @@ type powerSvcConfig struct {
 
 func newPowerService(c powerSvcConfig) (*power.PowerService, error) {
 	return power.NewPowerService(c.systemID, c.pool), nil
-}
-
-type clusterSvcConfig struct {
-	meter     metric.Meter
-	agentUUID string
-	// TODO: systemID should be removed.
-	systemID string
-}
-
-func newClusterService(c clusterSvcConfig) (*cluster.ClusterService, error) {
-	return cluster.NewClusterService(
-		c.systemID,
-		cluster.WithMetricMeter(c.meter),
-	)
 }
 
 type resolverSvcConfig struct {
@@ -113,10 +98,9 @@ func newHTTPProxyService(cfg httpProxySvcConfig) (*httpproxy.HTTPProxyService, e
 }
 
 type dhcpSvcConfig struct {
-	meter      metric.Meter
-	clusterSvc *cluster.ClusterService
-	apiClient  *apiclient.APIClient
-	agentUUID  string
+	meter     metric.Meter
+	apiClient *apiclient.APIClient
+	agentUUID string
 	// TODO: systemID should be removed.
 	systemID string
 }
@@ -176,15 +160,6 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 		return err
 	}
 
-	clusterService, err := newClusterService(clusterSvcConfig{
-		agentUUID: id,
-		systemID:  d.dynCfg.SystemID,
-		meter:     d.meterProvider.Meter("cluster"),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to initialize cluster service: %w", err)
-	}
-
 	httpProxyService, err := newHTTPProxyService(httpProxySvcConfig{
 		HTTPProxyConfig: d.cfg.Services.HTTPProxy,
 		meter:           d.meterProvider.Meter("http_proxy"),
@@ -224,18 +199,16 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 		})
 
 	dhcpService, err := newDHCPService(dhcpSvcConfig{
-		agentUUID:  id,
-		systemID:   d.dynCfg.SystemID,
-		clusterSvc: clusterService,
-		apiClient:  apiClient,
-		meter:      d.meterProvider.Meter("dhcp"),
+		agentUUID: id,
+		systemID:  d.dynCfg.SystemID,
+		apiClient: apiClient,
+		meter:     d.meterProvider.Meter("dhcp"),
 	}, d.logger)
 	if err != nil {
 		return fmt.Errorf("failed to initialize dhcp service: %w", err)
 	}
 
 	services := []worker.Configurator{
-		clusterService,
 		powerService,
 		httpProxyService,
 		resolverService,
@@ -275,7 +248,6 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 	}
 	// TODO: Add support for cancellation context
 	g.Go(workerPool.Error)
-	g.Go(clusterService.Error)
 	g.Go(httpProxyService.Error)
 	g.Go(dhcpService.Error)
 	// Region controller will start configuration workflows based on certain

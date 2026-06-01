@@ -12,13 +12,11 @@ from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from maascommon.enums.node import NodeTypeEnum
 from maascommon.workflows.configure import (
     CONFIGURE_AGENT_WORKFLOW_NAME,
-    CONFIGURE_CLUSTER_SERVICE_WORKFLOW_NAME,
     CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
     CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME,
     CONFIGURE_POWER_SERVICE_WORKFLOW_NAME,
     CONFIGURE_RESOLVER_SERVICE_WORKFLOW_NAME,
     ConfigureAgentParam,
-    ConfigureClusterServiceParam,
     ConfigureDHCPServiceParam,
 )
 from maasservicelayer.db.filters import QuerySpec
@@ -237,16 +235,6 @@ class ConfigureAgentWorkflow:
         # Agent registers workflows for configuring it's services
         # during Temporal worker pool initialization using WithConfigurator.
         # Make sure that used workflow names are in sync with the Agent.
-        await workflow.execute_child_workflow(
-            CONFIGURE_CLUSTER_SERVICE_WORKFLOW_NAME,
-            ConfigureClusterServiceParam(),
-            id=f"configure-cluster-service:{param.system_id}",
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-            task_queue=f"{param.system_id}@agent:main",
-            task_timeout=timedelta(seconds=60),
-            retry_policy=RetryPolicy(maximum_attempts=1),
-        )
-
         await workflow.execute_child_workflow(
             CONFIGURE_POWER_SERVICE_WORKFLOW_NAME,
             param.system_id,

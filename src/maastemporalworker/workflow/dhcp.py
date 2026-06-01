@@ -192,17 +192,6 @@ class GetDHCPDataForAgentParam:
     system_id: str
 
 
-@dataclass
-class ConfigDQLiteParam:
-    vlans: list[VlanData]
-    subnets: list[SubnetData]
-    ipranges: list[IPRangeData]
-    interfaces: list[InterfaceData]
-    host_reservations: list[HostReservationData]
-    default_dns_servers: list[str]
-    ntp_servers: list[str]
-
-
 class DHCPConfigActivity(ActivityBase):
     OMAPI_KEY_SECRET = OMAPIKeySecret()
 
@@ -818,29 +807,6 @@ class ConfigureDHCPForAgentWorkflow:
             ),
             task_queue=f"{param.system_id}@agent:main",
             start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
-        )
-
-        await workflow.execute_activity(
-            "apply-dhcp-config-via-dqlite",
-            ConfigDQLiteParam(
-                vlans=[VlanData(**vlan) for vlan in data["vlans"]],
-                subnets=[SubnetData(**subnet) for subnet in data["subnets"]],
-                interfaces=[
-                    InterfaceData(**interface)
-                    for interface in data["interfaces"]
-                ],
-                ipranges=[
-                    IPRangeData(**iprange) for iprange in data["ipranges"]
-                ],
-                host_reservations=[
-                    HostReservationData(**host)
-                    for host in data["host_reservations"]
-                ],
-                ntp_servers=data["ntp_servers"],
-                default_dns_servers=data["default_dns_servers"],
-            ),
-            task_queue=f"{param.system_id}@agent:main",
-            start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
         )
 
     @workflow_run_with_context

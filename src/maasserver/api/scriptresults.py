@@ -268,17 +268,23 @@ class NodeScriptResultHandler(OperationsHandler):
             "current-testing": node.current_testing_script_set,
             "current-installation": node.current_installation_script_set,
         }
-        script_set = script_sets.get(id)
-        if script_set is None and not id.isdigit():
-            raise MAASAPIValidationError(
-                'Unknown id "%s" must be current-commissioning, '
-                "current-testing, current-installation, or the id number of a "
-                "specific result." % id
-            )
-        elif script_set is None:
-            return get_object_or_404(ScriptSet, id=id, node=node)
-        else:
+
+        if id in script_sets:
+            script_set = script_sets[id]
+            if script_set is None:
+                raise MAASAPIValidationError(
+                    f"No {id.replace('-', ' ')} script set exists for this node."
+                )
             return script_set
+
+        if id.isdigit():
+            return get_object_or_404(ScriptSet, id=id, node=node)
+
+        raise MAASAPIValidationError(
+            'Unknown id "%s" must be current-commissioning, '
+            "current-testing, current-installation, or the id number of a "
+            "specific result." % id
+        )
 
     def read(self, request, system_id, id):
         """@description-title Get specific script result

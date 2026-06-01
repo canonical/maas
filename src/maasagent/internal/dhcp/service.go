@@ -17,9 +17,7 @@ package dhcp
 
 import (
 	"context"
-	"database/sql"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,22 +27,16 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strconv"
-	"strings"
-	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
 
-	"github.com/canonical/microcluster/v2/state"
 	"github.com/cenkalti/backoff/v4"
-	"github.com/insomniacslk/dhcp/dhcpv4"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/activity"
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/apiclient"
 	"maas.io/core/src/maasagent/internal/atomicfile"
-	"maas.io/core/src/maasagent/internal/dhcp/xdp"
 	"maas.io/core/src/maasagent/internal/dhcpd"
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
 	"maas.io/core/src/maasagent/internal/logger"
@@ -65,7 +57,6 @@ var (
 	ErrV4NotActive               = errors.New("dhcpd4 is not active and cannot configure IPv4 hosts")
 	ErrV6NotActive               = errors.New("dhcpd6 is not active and cannot configure IPv6 hosts")
 	ErrFailedToPostNotifications = errors.New("error processing lease notifications")
-	ErrClusterStateNotSet        = errors.New("no cluster initialized")
 )
 
 var writeConfigFile func(path string, data []byte, mode os.FileMode) error
@@ -121,24 +112,18 @@ type DHCPService struct {
 	notificationSock   net.Conn
 	controllerV6       servicecontroller.Controller
 	controllerV4       servicecontroller.Controller
-	clusterState       state.State
 	runningV6          *atomic.Bool
 	dataPathFactory    dataPathFactory
-	server             *Server
-	expirationHandler  *ExpirationHandler
 	notificationCancel context.CancelFunc
 	serverCancel       context.CancelFunc
 	omapiConnFactory   omapiConnFactory
 	omapiClientFactory omapiClientFactory
-	serverStart        func(context.Context, LeaseReporter) error
-	stateLock          *sync.RWMutex
 	client             *apiclient.APIClient
 	runningV4          *atomic.Bool
 	fatal              chan error
 	running            *atomic.Bool
 	systemID           string
 	activeInterfaces   []string
-	internal           bool
 }
 
 type omapiConnFactory func(string, string) (net.Conn, error)
@@ -174,14 +159,10 @@ func NewDHCPService(
 		omapiClientFactory: omapi.NewClient,
 		//nolint:staticcheck // TODO: replace this with DataPath
 		dataPathFactory: pathutil.MAASDataPath,
-		internal:        internal,
-		stateLock:       &sync.RWMutex{},
 		runningV4:       &atomic.Bool{},
 		runningV6:       &atomic.Bool{},
 		running:         &atomic.Bool{},
 	}
-
-	s.serverStart = s.startInternalServer
 
 	for _, opt := range options {
 		opt(s)
@@ -214,12 +195,6 @@ func WithOMAPIClientFactory(factory omapiClientFactory) DHCPServiceOption {
 func WithDataPathFactory(factory dataPathFactory) DHCPServiceOption {
 	return func(s *DHCPService) {
 		s.dataPathFactory = factory
-	}
-}
-
-func WithServerStart(fn func(context.Context, LeaseReporter) error) DHCPServiceOption {
-	return func(s *DHCPService) {
-		s.serverStart = fn
 	}
 }
 
@@ -264,11 +239,10 @@ func (s *DHCPService) ConfigurationWorkflows() map[string]any {
 func (s *DHCPService) ConfigurationActivities() map[string]any {
 	return map[string]any{
 		// This activity should be called to force DHCP configuration update.
-		"apply-dhcp-config-via-file":   s.configureViaFile,
-		"apply-dhcp-config-via-omapi":  s.configureViaOMAPI,
-		"apply-dhcp-config-via-dqlite": s.configureDQLite,
-		"set-active-interfaces":        s.setActiveInterfaces,
-		"restart-dhcp-service":         s.restartService,
+		"apply-dhcp-config-via-file":  s.configureViaFile,
+		"apply-dhcp-config-via-omapi": s.configureViaOMAPI,
+		"set-active-interfaces":       s.setActiveInterfaces,
+		"restart-dhcp-service":        s.restartService,
 	}
 }
 
@@ -328,115 +302,6 @@ func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigP
 	}).Get(ctx, nil)
 }
 
-func (s *DHCPService) isLeader() bool {
-	leader, err := s.clusterState.Leader()
-	if err != nil {
-		return false
-	}
-
-	leaderURL := leader.URL()
-	leaderPtr := &leaderURL
-	localURL := s.clusterState.Address()
-
-	return leaderPtr.String() == localURL.String()
-}
-
-func (s *DHCPService) handleClusterStateUpdate(ctx context.Context, st state.State) error {
-	s.stateLock.Lock()
-	defer s.stateLock.Unlock()
-
-	s.clusterState = st
-
-	if s.isLeader() && !s.running.Load() {
-		err := s.start()
-		if err != nil {
-			return err
-		}
-	} else if !s.isLeader() && s.running.Load() {
-		return s.stop(ctx)
-	}
-
-	if s.server != nil {
-		h4, ok := s.server.handler4.(*DORAHandler)
-		if ok {
-			h4.SetClusterState(st)
-		}
-
-		// TODO set handler6 cluster state
-	}
-
-	if s.expirationHandler != nil {
-		s.expirationHandler.SetClusterState(st)
-	}
-
-	return nil
-}
-
-func (s *DHCPService) OnBootstrap(ctx context.Context, st state.State) error {
-	return s.handleClusterStateUpdate(ctx, st)
-}
-
-func (s *DHCPService) OnJoin(ctx context.Context, st state.State) error {
-	return s.handleClusterStateUpdate(ctx, st)
-}
-
-func (s *DHCPService) OnNewMember(ctx context.Context, st state.State) error {
-	return s.handleClusterStateUpdate(ctx, st)
-}
-
-func (s *DHCPService) startInternalServer(ctx context.Context, lr LeaseReporter) error {
-	s.logger.Info("Starting DHCP server")
-
-	allocator4, err := newDQLiteAllocator4(s.logger)
-	if err != nil {
-		return fmt.Errorf("error initializing allocator: %w", err)
-	}
-
-	handler4 := NewDORAHandler(allocator4, lr, logger.Noop())
-	if s.clusterState != nil {
-		handler4.SetClusterState(s.clusterState)
-	}
-	// TODO instantiate handler6
-
-	xdpProg := xdp.New()
-
-	err = xdpProg.Load()
-	if err != nil {
-		if errors.Is(err, xdp.ErrRemoveMemlock) {
-			s.logger.Warn("Unable to set rlimit, continuing with default",
-				slog.Any("error", err))
-		} else {
-			s.logger.Warn("Unable to initialize XDP reader, continuing with only AF_RAW socket",
-				slog.Any("error", err))
-
-			xdpProg = nil
-		}
-	}
-
-	s.server, err = NewServer(s.activeInterfaces, xdpProg, handler4, nil)
-	if err != nil {
-		return fmt.Errorf("error initializing dhcp server: %w", err)
-	}
-
-	s.expirationHandler = newExpirationHandler(expirationInterval, logger.Noop())
-
-	go func() {
-		err := s.server.Serve(ctx)
-		if err != nil {
-			s.logger.Error("Error starting DHCP server", slog.Any("error", err))
-		}
-	}()
-
-	go func() {
-		err := s.expirationHandler.Start(ctx)
-		if err != nil {
-			s.logger.Error("Expiration handler failed", slog.Any("error", err))
-		}
-	}()
-
-	return nil
-}
-
 func (s *DHCPService) start() error {
 	var err error
 
@@ -472,15 +337,6 @@ func (s *DHCPService) start() error {
 
 	go notificationListener.Listen(ctx)
 
-	if s.internal {
-		ctx, s.serverCancel = context.WithCancel(context.Background())
-
-		err = s.serverStart(ctx, notificationListener)
-		if err != nil {
-			return fmt.Errorf("failed to start dhcp server: %w", err)
-		}
-	}
-
 	s.running.Store(true)
 
 	return nil
@@ -489,15 +345,6 @@ func (s *DHCPService) start() error {
 func (s *DHCPService) stop(ctx context.Context) error {
 	if s.serverCancel != nil {
 		s.serverCancel()
-	}
-
-	if s.server != nil {
-		err := s.server.Close()
-		if err != nil {
-			return fmt.Errorf("error shutting down DHCP server: %w", err)
-		}
-
-		s.server = nil
 	}
 
 	if s.notificationCancel != nil {
@@ -771,269 +618,6 @@ type HostData struct {
 	DomainSearch []string `json:"domain_search"`
 	SubnetID     int      `json:"subnet_id"`
 	RangeID      int      `json:"range_id"`
-}
-
-type ConfigDQLiteParam struct {
-	Vlans             []VLANData      `json:"vlans"`
-	Subnets           []SubnetData    `json:"subnets"`
-	Interfaces        []InterfaceData `json:"interfaces"`
-	IPRanges          []IPRangeData   `json:"ipranges"`
-	HostReservations  []HostData      `json:"host_reservations"`
-	DefaultDNSServers []string        `json:"default_dns_servers"`
-	NTPServers        []string        `json:"ntp_servers"`
-}
-
-// ConfigureDQLiteDirect is for the DHCP test server, where configuration
-// is called directly, and not through temporal
-func (s *DHCPService) ConfigureDQLiteDirect(ctx context.Context, param ConfigDQLiteParam) error {
-	s.activeInterfaces = make([]string, len(param.Interfaces))
-	for i, iface := range param.Interfaces {
-		s.activeInterfaces[i] = iface.Name
-	}
-
-	return s.configureDQLite(ctx, param)
-}
-
-func (s *DHCPService) configureDQLite(ctx context.Context, param ConfigDQLiteParam) error {
-	s.stateLock.RLock()
-	defer s.stateLock.RUnlock()
-
-	// if clusterState is not set, retry activity until set
-	if s.clusterState == nil {
-		return ErrClusterStateNotSet
-	}
-
-	err := s.clusterState.Database().Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		var err error
-
-		for _, vlan := range param.Vlans {
-			v := &Vlan{
-				ID:            vlan.ID,
-				VID:           int16(vlan.VID), //nolint:gosec // overflow check for this value already happens in the region's DB
-				RelayedVlanID: vlan.RelayedVLANID,
-			}
-
-			err = v.InsertOrReplace(ctx, tx)
-			if err != nil {
-				return fmt.Errorf("failed configuring VLANs: %w", err)
-			}
-
-			err = v.InsertOption(ctx, tx, "mtu", int(dhcpv4.OptionInterfaceMTU), strconv.Itoa(vlan.MTU))
-			if err != nil {
-				return fmt.Errorf("failed configuring VLAN options: %w", err)
-			}
-
-			// TODO in the dhcpd implementation, we only ever had a lease lifetime of 600 seconds,
-			// but we should allow users to set it at any value on any DHCP object
-			err = v.InsertOption(ctx, tx, "lease-lifetime", int(dhcpv4.OptionIPAddressLeaseTime), "600")
-			if err != nil {
-				return fmt.Errorf("failed configuring lease-lifetime: %w", err)
-			}
-		}
-
-		hostname, err := os.Hostname()
-		if err != nil {
-			return fmt.Errorf("failed fetching hostname: %w", err)
-		}
-
-		for _, iface := range param.Interfaces {
-			var actualIface *net.Interface
-
-			actualIface, err = net.InterfaceByName(iface.Name)
-			if err != nil {
-				return fmt.Errorf("failed fetching interface '%s': %w", iface.Name, err)
-			}
-
-			_, err = tx.ExecContext(
-				ctx,
-				"INSERT OR REPLACE INTO interface (id, hostname, idx, vlan_id) VALUES ($1, $2, $3, $4);",
-				iface.ID,
-				hostname,
-				actualIface.Index,
-				iface.VlanID,
-			)
-			if err != nil {
-				return fmt.Errorf("failed configuring interfaces: %w", err)
-			}
-		}
-
-		for _, subnet := range param.Subnets {
-			var (
-				sIP  net.IP
-				cidr *net.IPNet
-			)
-
-			sIP, cidr, err = net.ParseCIDR(subnet.CIDR)
-			if err != nil {
-				return fmt.Errorf("failed parsing cidr '%s': %w", subnet.CIDR, err)
-			}
-
-			ipVer := 6
-			if sIP.To4() != nil {
-				ipVer = 4
-			}
-
-			s := &Subnet{
-				ID:            subnet.ID,
-				CIDR:          cidr,
-				AddressFamily: ipVer,
-				VlanID:        subnet.VlanID,
-			}
-
-			err = s.InsertOrReplace(ctx, tx)
-			if err != nil {
-				return fmt.Errorf("failed configuring subnet '%s': %w", subnet.CIDR, err)
-			}
-
-			err = s.InsertOption(ctx, tx, "subnet-mask", int(dhcpv4.OptionSubnetMask), cidr.Mask.String())
-			if err != nil {
-				return fmt.Errorf("failed configuring subnet mask: %w", err)
-			}
-
-			if subnet.GatewayIP != "" {
-				err = s.InsertOption(ctx, tx, "gateway", int(dhcpv4.OptionRouter), subnet.GatewayIP)
-				if err != nil {
-					return fmt.Errorf("failed configuring gateway: %w", err)
-				}
-			}
-
-			var dnsServers []string
-
-			if subnet.AllowDNS {
-				for _, dnsServerIP := range param.DefaultDNSServers {
-					if dnsIP := net.ParseIP(dnsServerIP); dnsIP != nil {
-						if subnet.GatewayIP != "" {
-							if (ipVer == 4 && dnsIP.To4() != nil) || ipVer == 6 {
-								dnsServers = append(dnsServers, dnsServerIP)
-							}
-						} else {
-							if cidr.Contains(dnsIP) {
-								dnsServers = append(dnsServers, dnsServerIP)
-							}
-						}
-					}
-				}
-			}
-
-			if len(subnet.DNSServers) > 0 {
-				dnsServers = append(dnsServers, subnet.DNSServers...)
-			}
-
-			if len(dnsServers) > 0 {
-				err = s.InsertOption(ctx, tx, "dns-servers", int(dhcpv4.OptionDomainNameServer), strings.Join(dnsServers, ","))
-				if err != nil {
-					return fmt.Errorf("failed configuring dns servers: %w", err)
-				}
-			}
-
-			var ntpServers []string
-
-			for _, ntpServerIP := range param.NTPServers {
-				if ntpIP := net.ParseIP(ntpServerIP); ntpIP != nil {
-					if (ipVer == 4 && ntpIP.To4() != nil) || ipVer == 6 {
-						ntpServers = append(ntpServers, ntpServerIP)
-					}
-				}
-			}
-
-			if len(ntpServers) > 0 {
-				err = s.InsertOption(ctx, tx, "ntp-servers", int(dhcpv4.OptionNTPServers), strings.Join(ntpServers, ","))
-				if err != nil {
-					return fmt.Errorf("failed configuring ntp servers: %w", err)
-				}
-			}
-		}
-
-		for _, iprange := range param.IPRanges {
-			row := tx.QueryRowContext(ctx, "SELECT * FROM ip_range WHERE id=$1;", iprange.ID)
-
-			iprangeModel := &IPRange{}
-
-			err = iprangeModel.ScanRow(row)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				return fmt.Errorf("failed finding existing IP range: %w", err)
-			}
-
-			startIP := net.ParseIP(iprange.StartIP)
-			endIP := net.ParseIP(iprange.EndIP)
-
-			var size int
-			if startIP.To4() != nil {
-				size = calcIPRangeSize4(startIP, endIP)
-			}
-
-			// TODO calc IPv6 range size
-
-			iprangeModel.ID = iprange.ID
-			iprangeModel.StartIP = startIP
-			iprangeModel.EndIP = endIP
-			iprangeModel.Size = size
-			iprangeModel.SubnetID = iprange.SubnetID
-			iprangeModel.Dynamic = iprange.Dynamic
-
-			err = iprangeModel.InsertOrReplace(ctx, tx)
-			if err != nil {
-				return fmt.Errorf("failed configuring IP range: %w", err)
-			}
-
-			// TODO queue small IPRange free IPs in allocator's memory
-		}
-
-		for _, hr := range param.HostReservations {
-			mac, err := net.ParseMAC(hr.MAC)
-			if err != nil {
-				return fmt.Errorf("failed to parse MAC address in host reservation: %w", err)
-			}
-
-			h := &HostReservation{
-				IPAddress:  net.ParseIP(hr.IP),
-				MACAddress: mac,
-				DUID:       hr.DUID,
-				SubnetID:   hr.SubnetID,
-			}
-
-			err = h.InsertOrReplace(ctx, tx)
-			if err != nil {
-				return err
-			}
-
-			err = h.InsertOption(ctx, tx, "hostname", int(dhcpv4.OptionHostName), hr.Hostname)
-			if err != nil {
-				return err
-			}
-
-			err = h.InsertOption(ctx, tx, "domain", int(dhcpv4.OptionDomainName), hr.Domain)
-			if err != nil {
-				return err
-			}
-
-			err = h.InsertOption(ctx, tx, "domain-search", int(dhcpv4.OptionDNSDomainSearchList), strings.Join(hr.DomainSearch, ","))
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	if s.running.Load() {
-		err = s.stop(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
-	return s.start()
-}
-
-func calcIPRangeSize4(start, end net.IP) int {
-	startInt := binary.BigEndian.Uint32(start.To4())
-	endInt := binary.BigEndian.Uint32(end.To4())
-
-	return int(endInt - startInt + 1)
 }
 
 func (s *DHCPService) setActiveInterfaces(ctx context.Context, param SetActiveInterfacesParam) error {
