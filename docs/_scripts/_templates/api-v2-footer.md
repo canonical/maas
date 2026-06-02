@@ -18,6 +18,16 @@ Power parameters:
 - power_on_delay (Power ON outlet delay (seconds)). Default: '5'.
 - pdu_type (PDU type). Choices: 'RPDU' (rPDU), 'MASTERSWITCH' (masterswitch) Default: 'RPDU'.
 
+### powertek (Powertek PDU)
+
+Power parameters:
+
+- power_address (IP for Powertek PDU).
+- pdu_number (PDU (1-16)). Default: '1'.
+- node_outlet (Outlet (1-72)).
+- power_community (SNMP Write community). Default: 'private'.
+- pdu_version (PDU version). Choices: '1' (Version 1), '2' (Version 2) Default: '1'.
+
 ### dli (Digital Loggers, Inc. PDU)
 
 Power parameters:

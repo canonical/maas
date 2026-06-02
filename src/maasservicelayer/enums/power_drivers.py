@@ -16,6 +16,7 @@ class PowerTypeEnum(str, Enum):
     MICROSOFT_OCS = "msftocs"
     NOVA = "nova"
     OPENBMC = "openbmc"
+    POWERTEK = "powertek"
     PROXMOX = "proxmox"
     RARITAN = "raritan"
     RECS = "recs_box"
