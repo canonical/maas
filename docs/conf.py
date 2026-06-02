@@ -371,7 +371,9 @@ html_css_files = []
 
 # CSS for google analytics tracker settings:
 if IS_ONLINE:
-    html_css_files.append("d86746ef-cookie_banner.css")
+    html_css_files.append(
+        "https://assets.ubuntu.com/v1/d86746ef-cookie_banner.css"
+    )
 
 
 # Adds custom JavaScript files, located under 'html_static_path'
@@ -380,7 +382,7 @@ html_js_files = ["js/overwrite_links.js"]
 
 # JS for google analytics tracker setup:
 if IS_ONLINE:
-    html_js_files.append("287a5e8f-bundle.js")
+    html_js_files.append("https://assets.ubuntu.com/v1/287a5e8f-bundle.js")
 
 
 # Specifies a reST snippet to be appended to each .rst file
