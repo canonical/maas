@@ -1,0 +1,3 @@
+include README.md
+
+recursive-include piston3/templates *

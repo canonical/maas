@@ -1,0 +1,63 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools",
+]
+
+[project]
+name = "django-piston3"
+version = "0.5.2"
+description = "Piston is a Django mini-framework creating APIs"
+readme = "README.md"
+license = { text = "BSD" }
+maintainers = [
+  { name = "MAAS developers", email = "maas-devel@lists.ubuntu.com" },
+]
+authors = [
+  { name = "Jesper Noehr", email = "jesper@noehr.org" },
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "django>=3.2",
+  "python-mimeparse",
+  "pyyaml",
+]
+optional-dependencies.testing = [
+  "pytest",
+  "pytest-django",
+]
+
+urls.Homepage = "https://launchpad.net/django-piston3"
+
+[tool.setuptools.packages.find]
+include = [
+  "piston3*",
+]
+
+[tool.ruff]
+line-length = 79
+
+lint.select = [
+  "F401", # unused imports
+  "I",    # isort
+  "RUF",  # ruff
+  "UP",   # pyupgrade
+]
+lint.isort.combine-as-imports = true
+lint.isort.force-sort-within-sections = true
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "test_project.settings"
+python_files = [
+  "tests.py",
+]
+pythonpath = "tests/"
+junit_logging = "all"

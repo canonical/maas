@@ -1,0 +1,16 @@
+Source: django-piston3
+Section: python
+Priority: optional
+Maintainer: MAAS developers <maas-devel@lists.ubuntu.com>
+Build-Depends: debhelper (>= 12),
+               dh-python,
+               python3-all,
+               python3-django,
+               python3-setuptools,
+Standards-Version: 3.9.6
+Homepage: https://launchpad.net/django-piston3
+
+Package: python3-django-piston3
+Architecture: all
+Depends: python3-django, ${misc:Depends}, ${python3:Depends}, ${shlibs:Depends}
+Description: A mini-framework for Django for creating RESTful APIs

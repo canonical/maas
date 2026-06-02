@@ -1,0 +1,68 @@
+django-piston3 (0.5.2) noble; urgency=medium
+
+  * Support for Django 4.0+
+
+ -- Alexsander de Souza <alexsander.souza@canonical.com>  Tue, 08 Oct 2024 15:02:40 +0000
+
+django-piston3 (0.5.1-1) jammy; urgency=medium
+
+  * New release 0.5.1
+  * Use precached relations for emitters.
+
+ -- Alberto Donato <alberto.donato@gmail.com>  Mon, 30 May 2022 13:41:20 +0200
+
+django-piston3 (0.5-1) jammy; urgency=medium
+
+  * New release 0.5
+  * Support for Django 3.2+
+  * Drop builtin install of signals
+  * Fix test env setup and reformat
+
+ -- Alberto Donato <alberto.donato@canonical.com>  Mon, 30 May 2022 09:12:01 +0200
+
+django-piston3 (0.4-2) focal; urgency=medium
+
+  * Set Architecture: all
+
+ -- Alberto Donato <alberto.donato@canonical.com>  Tue, 24 Nov 2020 11:34:19 +0100
+
+django-piston3 (0.4-1) focal; urgency=medium
+
+  * New release 0.4
+  * Only support Python3
+  * Only support Django 2.2+
+  * Run tests with pytest
+
+ -- Alberto Donato <alberto.donato@canonical.com>  Wed, 22 Jul 2020 12:32:27 +0200
+
+django-piston3 (0.3~rc2-3ubuntu1) xenial; urgency=medium
+
+  * Provides/Conflicts/Replaces: django-piston
+
+ -- LaMont Jones <lamont@canonical.com>  Mon, 23 Nov 2015 11:09:56 -0700
+
+django-piston3 (0.3~rc2-3build1) xenial; urgency=medium
+
+  * No-change upload to ubuntu.  (Debian is in NEW)
+
+ -- LaMont Jones <lamont@canonical.com>  Mon, 23 Nov 2015 09:33:54 -0700
+
+django-piston3 (0.3~rc2-3) unstable; urgency=medium
+
+  * Allow using "piston" as the module name.
+
+ -- LaMont Jones <lamont@ubuntu.com>  Mon, 23 Nov 2015 07:24:43 -0700
+
+django-piston3 (0.3~rc2-2) unstable; urgency=medium
+
+  * Does not handle related object manages on non specified field lists.
+    LP: #1518387
+  * Does not handle django 1.7 migrations correctly. LP: #1518389
+
+ -- LaMont Jones <lamont@ubuntu.com>  Fri, 20 Nov 2015 11:28:56 -0700
+
+django-piston3 (0.3~rc2-1) unstable; urgency=medium
+
+  * Initial Packaging
+
+ -- LaMont Jones <lamont@ubuntu.com>  Tue, 06 Oct 2015 10:14:49 -0600

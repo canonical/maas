@@ -1,0 +1,55 @@
+{% load markup %}
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+	<head>
+		<title>
+			Piston generated documentation
+		</title>
+		<style type="text/css">
+			body {
+				background: #fffff0;
+				font: 1em "Helvetica Neue", Verdana;
+				padding: 0 0 0 25px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>API Documentation</h1>
+		
+		{% for doc in docs %}
+		
+			<h3>{{ doc.name|cut:"Handler" }}:</h3>
+
+			<p>
+				{{ doc.get_doc|default:""|restructuredtext }}
+			</p>
+			
+			<p>
+				URL: <b>{{ doc.get_resource_uri_template }}</b>
+			</p>
+			
+			<p>
+				Accepted methods: {% for meth in doc.allowed_methods %}<b>{{ meth }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}
+			</p>
+					
+			<dl>
+				{% for method in doc.get_all_methods %}
+				
+					<dt>
+						method <i>{{ method.name }}</i>({{ method.signature }}){% if method.stale %} <i>- inherited</i>{% else %}:{% endif %}
+						
+					</dt>				
+										
+					{% if method.get_doc %}
+						<dd>
+							{{ method.get_doc|default:""|restructuredtext }}
+						<dd>
+					{% endif %}
+				
+				{% endfor %}
+			</dl>
+		
+		{% endfor %}
+	</body>
+</html>

@@ -1,0 +1,34 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<title>Blogposts</title>
+
+</head>
+
+<body>
+
+	<h1>Posts</h1>
+	
+	{% for post in posts %}
+	
+		<h3>{{ post.title }}</h3>
+	
+		<div>
+			
+			{{ post.content}}
+			
+		</div>
+		
+		<div>
+			Written on {{ post.created_on }} by {{ post.author.username }}.
+		</div>
+	
+	{% endfor %}
+
+</body>
+
+</html>

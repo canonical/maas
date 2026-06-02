@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
+
+<title>Test</title>
+
+<script type="text/javascript">
+// Basic 64 of user password
+var auth = "Basic dGVzdHVzZXI6Zm9vYmFy";
+
+function success_callback() {
+	$("<h3>").text(this.title).appendTo("#content");
+	$("<div>").text(this.content).appendTo("#content");
+	$("<h4>").text(this.created_on).appendTo("#content");
+};
+
+$(function() {
+	var dict = {
+		url: "/api/posts.json",
+		beforeSend: function(request) {
+			request.setRequestHeader('Authorization', auth)
+		},
+		success: function(json, textStatus) {$.each(json, success_callback)},
+		dataType: "json"
+	};
+		
+	$.ajax(dict);
+});
+
+function send_form() {
+	send_dict = {
+		url: "/api/posts.json",
+		beforeSend: function(request) {
+				request.setRequestHeader('Authorization', auth)
+		},
+		type: "POST",
+		data: $("#id_form").serialize(),
+		processData: false,
+		dataType: "json",
+		success: function(json, textStatus) {
+			$("<h3>").text(json.title).appendTo("#content");
+			$("<div>").text(json.content).appendTo("#content");
+			$("<h4>").text(json.created_on).appendTo("#content");
+		}
+	};
+	
+	$.ajax(send_dict);
+
+	return false;
+};
+</script>
+</head>
+
+<body>
+	<h1>JS Test</h1>
+	<div id="content">
+	</div>
+	<form id="id_form" action="." method="post">
+		<label for="id_title">Title:</label>
+		<input type="text" id="id_title" name="title" />
+		<br />
+		<label for="id_content">Content:</label>
+		<textarea cols="40" rows="20" id="id_content" name="content"></textarea>
+		<br />
+		<input type="submit" onclick="return send_form();" value="Submit" />
+	</form>
+</body>
+
+</html>

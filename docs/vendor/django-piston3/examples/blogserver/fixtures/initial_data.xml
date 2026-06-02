@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<django-objects version="1.0">
+	<object pk="1" model="auth.user">
+		<field type="CharField" name="username">testuser</field>
+		<field type="CharField" name="first_name"/>
+		<field type="CharField" name="last_name"/>
+		<field type="CharField" name="email"/>
+		<field type="CharField" name="password">sha1$97a04$0537e86889530ffd5c46a756fffbe0f745e4938e</field> <!-- foobar -->
+		<field type="BooleanField" name="is_staff">False</field>
+		<field type="BooleanField" name="is_active">True</field>
+		<field type="BooleanField" name="is_superuser">False</field>
+		<field type="DateTimeField" name="last_login">2009-04-27 04:55:09</field>
+		<field type="DateTimeField" name="date_joined">2009-04-27 04:55:09</field>
+		<field to="auth.group" name="groups" rel="ManyToManyRel"/>
+		<field to="auth.permission" name="user_permissions" rel="ManyToManyRel"/>
+	</object>
+	<object pk="1" model="sites.site">
+		<field type="CharField" name="domain">example.com</field>
+		<field type="CharField" name="name">example.com</field>
+	</object>
+	<object pk="1" model="blog.blogpost">
+		<field type="CharField" name="title">Sample blogpost 1</field>
+		<field type="TextField" name="content">This is just a sample post.</field>
+		<field to="auth.user" name="author" rel="ManyToOneRel">1</field>
+		<field type="DateTimeField" name="created_on">2009-04-27 04:55:23</field>
+	</object>
+	<object pk="2" model="blog.blogpost">
+		<field type="CharField" name="title">Another sample post</field>
+		<field type="TextField" name="content">This is yet another sample post.</field>
+		<field to="auth.user" name="author" rel="ManyToOneRel">1</field>
+		<field type="DateTimeField" name="created_on">2009-04-27 04:55:33</field>
+	</object>
+</django-objects>

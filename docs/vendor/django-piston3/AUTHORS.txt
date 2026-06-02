@@ -1,0 +1,30 @@
+django-piston was originally written by Jesper Noehr, but since
+its release, many people have contributed invaluable feedback and patches:
+
+Alberto Donato provided a fix for #26, contributed #35, #37 and #38
+Matthew Marshall provided fixes for #25 and #24
+Pete Karl reported #20
+Travis Jensen provided a fix for #24
+Benoit Chesneau provided some mimetype helpers
+Adam Lowry fixed a bug with the callmap construct
+Benjamin Pollack provided an ez_setup fix and more
+Seph Soliman for fixing a bug with AnonymousBaseHandler
+David Larlet for suggesting several improvements and including Piston in ROA
+Xavier Barbosa for improving QuerySet handling and providing Template URI code
+Michael Richardson for contributing an improvement to form validation handling
+Brian McMurray for contributing a patch for #41
+James Emerton for making the OAuth parts more usable/friendly
+Anton Tsigularov for providing a patch for incorrect multipart detection
+Remco Wendt for fixing up the example blog server to conform with 0.2.2, et. al
+Benoit Garret for providing a fix for oauth headers, issue #56
+Stephan Preeker for providing some fixes to documentation generation
+Taavi Taijala for alarming us to the dangers of arbitrary unpickling
+Joe Stump for testing and contributing the OAuth bits
+Mike Malone for giving a presentation on Piston, and fixing our throttler :-)
+Didier Deshommes for contributing a fix for #58
+Alexander Ljungberg for fixing a bug in the default behavior of `update`
+Gareth Rushgrove for plugging a hole in the JSON callback facility
+Matt Cordes for expanding on the rc.* facilities
+Rock Howard for improving form validation behavior
+Jim Robert for contributing a fix for #117
+Emanuele Rocca for improving error handling

@@ -1,0 +1,27 @@
+[
+    {
+        "pk": 1, 
+        "model": "piston.consumer", 
+        "fields": {
+            "status": "accepted", 
+            "name": "Piston Test Consumer", 
+            "secret": "T5XkNMkcjffDpC9mNQJbyQnJXGsenYbz", 
+            "user": 2, 
+            "key": "8aZSFj3W54h8J8sCpx", 
+            "description": "A test consumer record for Piston unit tests."
+        }
+    },
+    {
+        "pk": 1, 
+        "model": "piston.token", 
+        "fields": {
+            "is_approved": true, 
+            "timestamp": 1249347414, 
+            "token_type": 2, 
+            "secret": "qSWZq36t7yvkBquetYBkd8JxnuCu9jKk", 
+            "user": 2, 
+            "key": "Y7358vL5hDBbeP3HHL", 
+            "consumer": 1
+        }
+    }
+]

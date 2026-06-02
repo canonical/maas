@@ -1,0 +1,2 @@
+version=3
+https://github.com/davidmalcolm/django-piston3/releases .*/archive/v(.*).tar.gz
