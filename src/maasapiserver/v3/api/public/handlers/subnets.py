@@ -3,11 +3,12 @@
 
 from typing import Union
 
-from fastapi import Depends, Header, Response, status
+from fastapi import Depends, Header, Query, Response, status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
+    PreconditionFailedBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
@@ -260,6 +261,7 @@ class SubnetsHandler(Handler):
         responses={
             204: {},
             404: {"model": NotFoundBodyResponse},
+            412: {"model": PreconditionFailedBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=204,
@@ -275,6 +277,10 @@ class SubnetsHandler(Handler):
         etag_if_match: Union[str, None] = Header(
             alias="if-match", default=None
         ),
+        force: bool = Query(
+            description="If true, delete the subnet even if it has IP addresses in use by nodes.",
+            default=False,
+        ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         query = QuerySpec(
@@ -287,6 +293,6 @@ class SubnetsHandler(Handler):
             )
         )
         await services.subnets.delete_one(
-            query=query, etag_if_match=etag_if_match
+            query=query, etag_if_match=etag_if_match, force=force
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)

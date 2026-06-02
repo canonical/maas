@@ -329,4 +329,5 @@ class TestSubnetApi(ApiCommonTests):
                 )
             ),
             etag_if_match="wrong_etag",
+            force=False,
         )

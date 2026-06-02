@@ -744,6 +744,47 @@ class TestSubnet(MAASServerTestCase):
             ):
                 subnet.delete()
 
+    def test_cannot_delete_subnet_with_ips_in_use_by_nodes(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.current_config.interface_set.first()
+        subnet = iface.vlan.subnet_set.first()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            interface=iface,
+            subnet=subnet,
+        )
+        with post_commit_hooks:
+            with self.assertRaisesRegex(
+                ValidationError, "IP addresses in use by nodes"
+            ):
+                subnet.delete()
+
+    def test_can_delete_subnet_with_ips_in_use_by_nodes_when_forced(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.current_config.interface_set.first()
+        subnet = iface.vlan.subnet_set.first()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            interface=iface,
+            subnet=subnet,
+        )
+        with post_commit_hooks:
+            subnet.delete(force=True)
+        self.assertIsNone(reload_object(subnet))
+
+    def test_can_delete_subnet_with_discovered_ips(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.current_config.interface_set.first()
+        subnet = iface.vlan.subnet_set.first()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            interface=iface,
+            subnet=subnet,
+        )
+        with post_commit_hooks:
+            subnet.delete()
+        self.assertIsNone(reload_object(subnet))
+
     def test_overlapping_subnets_not_allowed(self):
         vlan = factory.make_VLAN()
         subnet = Subnet(

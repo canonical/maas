@@ -39,6 +39,11 @@ CANNOT_DELETE_DEFAULT_RESOURCEPOOL_VIOLATION_TYPE = (
     "CannotDeleteDefaultResourcePoolViolation"
 )
 
+# Subnets
+CANNOT_DELETE_SUBNET_WITH_IPS_IN_USE_VIOLATION_TYPE = (
+    "CannotDeleteSubnetWithIPsInUseViolation"
+)
+
 # VLANs
 CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE = (
     "CannotDeleteDefaultFabricVlanViolation"

@@ -478,7 +478,7 @@ class Subnet(CleanSave, TimestampedModel):
         self.validate_gateway_ip()
         self.validate_cidr(self.id)
 
-    def delete(self, *args, **kwargs):
+    def delete(self, force=False, *args, **kwargs):
         from maasserver.models.staticipaddress import FreeIPAddress
 
         # Check if DHCP is enabled on the VLAN this subnet is attached to.
@@ -486,6 +486,19 @@ class Subnet(CleanSave, TimestampedModel):
             raise ValidationError(
                 "Cannot delete a subnet that is actively servicing a dynamic "
                 "IP range. (Delete the dynamic range or disable DHCP first.)"
+            )
+        if (
+            not force
+            and self.staticipaddress_set.filter(
+                ~Q(alloc_type=IPADDRESS_TYPE.DISCOVERED),
+                ~Q(alloc_type=IPADDRESS_TYPE.DHCP),
+                Q(ip__isnull=False),
+                interface__isnull=False,
+            ).exists()
+        ):
+            raise ValidationError(
+                "Cannot delete a subnet that has IP addresses in use by nodes. "
+                "(Use the 'force' parameter to override.)"
             )
         FreeIPAddress.remove_cache(self)
         super().delete(*args, **kwargs)
