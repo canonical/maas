@@ -7,7 +7,7 @@ import warnings
 
 import yaml
 
-IS_ONLINE = not bool(os.getenv("MAAS_OFFLINE_DOCS", ""))
+IS_ONLINE = os.getenv("MAAS_OFFLINE_DOCS", "").lower() != "true"
 
 # Add custom extensions directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "_ext"))
