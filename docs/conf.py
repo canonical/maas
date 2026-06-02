@@ -358,6 +358,7 @@ suppress_warnings = ["myst.strikethrough"]
 exclude_patterns = [
     "doc-cheat-sheet*",
     "_scripts/_templates/*",  # Template files for API documentation generation
+    "vendor/*",  # Vendored dependencies
 ]
 
 # Adds custom CSS files, located under 'html_static_path'
