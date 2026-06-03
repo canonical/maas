@@ -759,6 +759,62 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         iprange.clean()
         iprange.save()
 
+    def test_modify_dynamic_range_shrink_without_original_query(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.30",
+        )
+
+        iprange = reload_object(iprange)
+        mock_filter = self.patch(IPRange.objects, "filter")
+
+        iprange.end_ip = "192.168.0.49"
+        iprange.clean()
+
+        mock_filter.assert_not_called()
+
+    def test_move_dynamic_range_to_new_subnet_disables_resize_shortcut(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        iprange = reload_object(iprange)
+        other_subnet = factory.make_Subnet(
+            cidr="192.168.1.0/24",
+            gateway_ip="192.168.1.1",
+            dns_servers=[],
+        )
+        iprange.subnet = other_subnet
+        iprange.start_ip = "192.168.1.20"
+        iprange.end_ip = "192.168.1.30"
+
+        unused = other_subnet.get_ipranges_available_for_dynamic_range(
+            exclude_ip_range_id=iprange.id
+        )
+
+        self.assertFalse(
+            iprange._is_existing_dynamic_range_resize_allowed(
+                iprange.netaddr_iprange.first,
+                iprange.netaddr_iprange.last,
+                unused,
+            )
+        )
+
     def test_dynamic_range_cant_overlap_gateway_ip(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
