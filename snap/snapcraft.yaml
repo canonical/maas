@@ -277,7 +277,7 @@ parts:
       - git            # for git+https://git.launchpad.net/django-piston3 in requirements.txt
     override-build: |
       cd $CRAFT_PART_SRC/docs
-      make html
+      MAAS_OFFLINE_DOCS=true make html
       INSTALL_DIR="$CRAFT_PART_INSTALL/usr/share/maas/web/static/docs"
       mkdir -p "$INSTALL_DIR"
       cp -a _build/* "$INSTALL_DIR/"
