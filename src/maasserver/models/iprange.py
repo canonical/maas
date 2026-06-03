@@ -97,6 +97,12 @@ class IPRange(CleanSave, TimestampedModel):
     """Represents a range of IP addresses used for a particular purpose in
     MAAS, such as a DHCP range or a range of reserved addresses."""
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        instance._loaded_values = dict(zip(field_names, values))
+        return instance
+
     objects = IPRangeManager()
 
     subnet = ForeignKey(
@@ -296,17 +302,20 @@ class IPRange(CleanSave, TimestampedModel):
         if self.id is None or self.type != IPRANGE_TYPE.DYNAMIC:
             return False
 
-        existing = (
-            type(self)
-            .objects.filter(id=self.id)
-            .values("type", "start_ip", "end_ip")
-            .first()
-        )
-        if existing is None or existing["type"] != IPRANGE_TYPE.DYNAMIC:
+        loaded_values = getattr(self, "_loaded_values", None)
+        if not loaded_values:
             return False
 
-        existing_start_ip = IPAddress(existing["start_ip"])
-        existing_end_ip = IPAddress(existing["end_ip"])
+        if loaded_values.get("subnet_id") != self.subnet_id:
+            return False
+
+        existing_start_ip = loaded_values.get("start_ip")
+        existing_end_ip = loaded_values.get("end_ip")
+        if existing_start_ip is None or existing_end_ip is None:
+            return False
+
+        existing_start_ip = IPAddress(existing_start_ip)
+        existing_end_ip = IPAddress(existing_end_ip)
 
         start = int(start_ip)
         end = int(end_ip)
@@ -338,8 +347,16 @@ class IPRange(CleanSave, TimestampedModel):
 
         return True
 
+    def _cache_loaded_values(self):
+        self._loaded_values = {
+            "subnet_id": self.subnet_id,
+            "start_ip": self.start_ip,
+            "end_ip": self.end_ip,
+        }
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+        self._cache_loaded_values()
 
         if self.subnet.vlan.dhcp_on:
             post_commit_do(
