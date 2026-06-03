@@ -43,8 +43,8 @@ class ContextMiddleware(BaseHTTPMiddleware):
         logger.info(
             "Start processing request",
             request_method=request.method,
-            request_path=request.url.path,
-            request_query=request.url.query,
+            request_path=request.scope["path"],
+            request_query=request.scope.get("query_string", b"").decode(),
             # From our nginx config
             request_remote_ip=request.headers.get("x-real-ip"),
             useragent=request.headers.get("user-agent"),

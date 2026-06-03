@@ -80,7 +80,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             match, _ = route.matches(request.scope)
             if match == Match.FULL:
                 return route.path
-        return request.url.path
+        return request.scope["path"]
 
 
 def _get_metrics() -> PrometheusMetrics:

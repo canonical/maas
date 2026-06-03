@@ -36,7 +36,7 @@ class ServicesMiddleware(BaseHTTPMiddleware):
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         # Just pass through the request if it's not a V3 endpoint.
-        if not request.url.path.startswith(V3_API_PREFIX):
+        if not request.scope["path"].startswith(V3_API_PREFIX):
             return await call_next(request)
 
         services = await ServiceCollectionV3.produce(

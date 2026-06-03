@@ -590,7 +590,7 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         # Just pass through the request if it's not for a V3 handler. The other V2 endpoints have another authentication
         # architecture/mechanism.
-        if not request.url.path.startswith(V3_API_PREFIX):
+        if not request.scope["path"].startswith(V3_API_PREFIX):
             return await call_next(request)
 
         encryptor = await request.state.services.external_oauth.get_encryptor()
