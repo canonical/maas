@@ -3,7 +3,6 @@
 
 # Inspired by UDS's conference proxy
 
-acl maas_proxy_manager proto cache_object
 # Make sure that localnet has at least one entry in it, to avoid errors.
 acl localnet src 127.0.0.0/8
 {{for cidr in cidrs}}
@@ -15,8 +14,6 @@ acl Safe_ports port 21          # ftp
 acl Safe_ports port 443         # https
 acl Safe_ports port 1025-65535  # unregistered ports
 acl CONNECT method CONNECT
-http_access allow maas_proxy_manager localhost
-http_access deny maas_proxy_manager
 http_access deny !Safe_ports
 http_access deny CONNECT !SSL_ports
 http_access allow localnet
