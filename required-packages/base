@@ -49,6 +49,7 @@ python3-paramiko
 python3-passlib
 python3-petname
 python3-pexpect
+python3-prometheus-client
 python3-psycopg2
 python3-pydantic
 python3-pyinotify
@@ -65,9 +66,11 @@ python3-starlette
 python3-structlog
 python3-tempita
 python3-temporalio
+python3-twisted
 python3-txtftp
 python3-tz
 python3-ulid
+python3-uvicorn
 python3-uvloop
 python3-venv
 python3-yaml
