@@ -51,6 +51,11 @@ class SyncServiceCollectionV3Adapter:
 
         return attr
 
+    @property
+    def service_collection(self) -> ServiceCollectionV3:
+        """Gives access to the async service collection in a synchronous way for functions that expect it as a parameter."""
+        return self._service_collection
+
     def _wrap_service(self, service: Service):
         """Wraps an async service so its methods can be called synchronously."""
 

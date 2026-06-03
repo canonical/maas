@@ -1,0 +1,40 @@
+{
+  "switches-read": [
+    {
+      "id": 1,
+      "target_image_id": 42,
+      "target_image": "onie/sonic-4.0",
+      "resource_uri": "/MAAS/api/2.0/switches/1/"
+    },
+    {
+      "id": 2,
+      "target_image_id": 43,
+      "target_image": "onie/mellanox-3.8.0",
+      "resource_uri": "/MAAS/api/2.0/switches/2/"
+    },
+    {
+      "id": 3,
+      "target_image_id": null,
+      "target_image": null,
+      "resource_uri": "/MAAS/api/2.0/switches/3/"
+    }
+  ],
+  "switches-create": {
+    "id": 1,
+    "target_image_id": 42,
+    "target_image": "onie/sonic-4.0",
+    "resource_uri": "/MAAS/api/2.0/switches/1/"
+  },
+  "switches-read-by-id": {
+    "id": 1,
+    "target_image_id": 42,
+    "target_image": "onie/sonic-4.0",
+    "resource_uri": "/MAAS/api/2.0/switches/1/"
+  },
+  "switches-update": {
+    "id": 1,
+    "target_image_id": 43,
+    "target_image": "onie/mellanox-3.8.0",
+    "resource_uri": "/MAAS/api/2.0/switches/1/"
+  }
+}
