@@ -530,7 +530,7 @@ class TestExternalAuthService:
             is_local=False, completed_intro=True, auth_last_check=now
         )
         users_service_mock = Mock(UsersService)
-        users_service_mock.get_or_create.return_value = (fake_user, False)
+        users_service_mock.get_or_create.return_value = (fake_user, True)
         users_service_mock.update_profile.return_value = fake_profile
 
         external_auth_service = ExternalAuthService(

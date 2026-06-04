@@ -84,6 +84,12 @@ class TokensRepository(BaseRepository[Token]):
         return [str(row[0]) for row in result]
 
 
+class RefreshTokenClauseFactory(ClauseFactory):
+    @classmethod
+    def with_token(cls, token: str) -> Clause:
+        return Clause(condition=eq(RefreshTokenTable.c.token, token))
+
+
 class RefreshTokenRepository(BaseRepository[RefreshToken]):
     def get_repository_table(self) -> Table:
         return RefreshTokenTable

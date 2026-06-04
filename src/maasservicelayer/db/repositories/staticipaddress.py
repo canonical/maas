@@ -67,6 +67,34 @@ class StaticIPAddressClauseFactory(ClauseFactory):
         )
 
     @classmethod
+    def with_linked_to_interface(cls) -> Clause:
+        return Clause(
+            condition=InterfaceIPAddressTable.c.interface_id.isnot(None),
+            joins=[
+                join(
+                    StaticIPAddressTable,
+                    InterfaceIPAddressTable,
+                    eq(
+                        StaticIPAddressTable.c.id,
+                        InterfaceIPAddressTable.c.staticipaddress_id,
+                    ),
+                ),
+            ],
+        )
+
+    @classmethod
+    def with_alloc_type_not_in(
+        cls, alloc_types: List[IpAddressType]
+    ) -> Clause:
+        return Clause(
+            condition=StaticIPAddressTable.c.alloc_type.notin_(alloc_types)
+        )
+
+    @classmethod
+    def with_ip_not_null(cls) -> Clause:
+        return Clause(condition=StaticIPAddressTable.c.ip.isnot(None))
+
+    @classmethod
     def with_interface_ids(cls, interface_ids: List[int]) -> Clause:
         return Clause(
             condition=InterfaceTable.c.id.in_(interface_ids),

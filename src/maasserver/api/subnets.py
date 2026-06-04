@@ -279,6 +279,9 @@ class SubnetHandler(OperationsHandler):
 
         @param (int) "{id}" [required=true] A subnet ID.
 
+        @param (boolean) "force" [required=false] If True, delete the subnet
+        even if it has IP addresses in use by nodes. Defaults to False.
+
         @success (http-status-code) "server-success" 204
 
         @error (http-status-code) "404" 404
@@ -289,7 +292,9 @@ class SubnetHandler(OperationsHandler):
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.admin
         )
-        subnet.delete()
+        subnet.delete(
+            force=get_optional_param(request.GET, "force", False, StringBool)
+        )
         return rc.DELETED
 
     @operation(idempotent=True)
