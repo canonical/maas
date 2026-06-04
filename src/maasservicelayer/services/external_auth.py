@@ -235,7 +235,7 @@ class ExternalAuthService(Service, RootKeyStore):
                 last_login=utcnow(),
             ),
         )
-        if not created:
+        if created:
             profile_builder = UserProfileBuilder(
                 is_local=False, completed_intro=True, auth_last_check=utcnow()
             )

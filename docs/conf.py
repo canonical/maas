@@ -8,6 +8,8 @@ import warnings
 
 import yaml
 
+IS_ONLINE = os.getenv("MAAS_OFFLINE_DOCS", "").lower() != "true"
+
 # Add custom extensions directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 
@@ -270,7 +272,10 @@ sitemap_excludes = [
 #######################
 
 html_static_path = ["_static"]
-# templates_path = ["_templates"]
+
+# Our _templates folder are only being used for google analytics.
+if IS_ONLINE:
+    templates_path = ["_templates"]
 
 
 #############
@@ -378,12 +383,22 @@ exclude_patterns = [
 
 # Adds custom CSS files, located under 'html_static_path'
 
-# html_css_files = []
+html_css_files = []
+
+# CSS for google analytics tracker settings:
+if IS_ONLINE:
+    html_css_files.append(
+        "https://assets.ubuntu.com/v1/d86746ef-cookie_banner.css"
+    )
 
 
 # Adds custom JavaScript files, located under 'html_static_path'
 
 html_js_files = ["js/overwrite_links.js"]
+
+# JS for google analytics tracker setup:
+if IS_ONLINE:
+    html_js_files.append("https://assets.ubuntu.com/v1/287a5e8f-bundle.js")
 
 
 # Specifies a reST snippet to be appended to each .rst file

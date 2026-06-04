@@ -177,12 +177,23 @@ class MacaroonDischargeRequest:
             user,
             backend="maasserver.macaroon_auth.MacaroonAuthorizationBackend",
         )
-        return JsonResponse(
+        response = JsonResponse(
             {
                 attr: getattr(user, attr)
                 for attr in ("id", "username", "is_superuser")
             }
         )
+
+        # The user is now authenticated. Set the cookie on the response to be
+        # used in later requests to the v3 API.
+        response.set_cookie(
+            "macaroon-maas",
+            req_headers["Macaroons"],
+            samesite="Strict",
+            httponly=True,
+            path="/",
+        )
+        return response
 
 
 class APIError(Exception):

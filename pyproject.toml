@@ -24,6 +24,7 @@ classifiers = [
   "Topic :: System :: Systems Administration",
 ]
 optional-dependencies.testing = [
+  "aiohttp<3.14",              # pin until https://github.com/pnuckowski/aioresponses/issues/289 is fixed"
   "aioresponses>=0.7,<0.8",
   "fixtures>=4.3,<4.4",
   "httpx>=0.28,<0.29",
