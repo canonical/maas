@@ -1107,9 +1107,16 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
             NODE_STATUS, but_not=[NODE_STATUS.DEPLOYING]
         )
         node = factory.make_Node(status=status)
-        NodeUserData.objects.set_user_data_for_ephemeral_env(
-            node, sample_binary_data
-        )
+        if status == NODE_STATUS.DEPLOYED:
+            # A deployed node receives the user data for the user env and not
+            # for the ephemeral env
+            NodeUserData.objects.set_user_data_for_user_env(
+                node, sample_binary_data
+            )
+        else:
+            NodeUserData.objects.set_user_data_for_ephemeral_env(
+                node, sample_binary_data
+            )
         client = make_node_client(node)
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual(http.client.OK, response.status_code)
