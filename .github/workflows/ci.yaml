@@ -134,7 +134,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify BREAKING CHANGE in description
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_TITLE="$PR_TITLE_ENV"
 
           # Safely read the multiline PR body from the environment variable
           PR_BODY="$PR_BODY_ENV"
@@ -161,6 +161,7 @@ jobs:
           # We pass the body as an env var to prevent bash syntax errors
           # that occur when injecting multiline strings directly via ${{ }}
           PR_BODY_ENV: ${{ github.event.pull_request.body }}
+          PR_TITLE_ENV: ${{ github.event.pull_request.title }}
 
   test-python:
     needs: changes
