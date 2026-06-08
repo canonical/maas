@@ -1743,7 +1743,7 @@ maasserver_operation_task = Table(
     "maasserver_operation_task",
     METADATA,
     Column("id", BigInteger, Identity(), primary_key=True),
-    Column("started_at", DateTime(timezone=True), nullable=False),
+    Column("started_at", DateTime(timezone=True), nullable=True),
     Column("finished_at", DateTime(timezone=True), nullable=True),
     Column("name", String(255), nullable=False),
     Column("status", String(64), nullable=False),

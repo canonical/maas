@@ -66,7 +66,7 @@ def upgrade() -> None:
         sa.Column(
             "id", sa.BigInteger(), sa.Identity(always=False), nullable=False
         ),
-        sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("status", sa.String(64), nullable=False),
