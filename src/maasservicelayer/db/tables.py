@@ -1782,6 +1782,20 @@ maasserver_operation = Table(
     Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
     Index("maasserver_operation_parent_id_idx", "parent_id"),
 )
+maasserver_machine_operation = Table(
+    "maasserver_machine_operation",
+    METADATA,
+    Column(
+        "operation_uuid",
+        String(36),
+        ForeignKey("maasserver_operation.uuid"),
+        primary_key=True,
+    ),
+    Column(
+        "node_id", Integer, ForeignKey("maasserver_node.id"), nullable=False
+    ),
+    Index("maasserver_machine_operation_node_id_idx", "node_id"),
+)
 
 OpenFGATupleTable = Table(
     "tuple",

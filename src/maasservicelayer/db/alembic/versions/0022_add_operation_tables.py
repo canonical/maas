@@ -86,6 +86,28 @@ def upgrade() -> None:
         ["operation_uuid"],
     )
 
+    # Create the maasserver_machine_operation table
+    op.create_table(
+        "maasserver_machine_operation",
+        sa.Column(
+            "operation_uuid",
+            sa.String(36),
+            sa.ForeignKey("maasserver_operation.uuid"),
+        ),
+        sa.Column(
+            "node_id",
+            sa.BigInteger(),
+            sa.ForeignKey("maasserver_node.id"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("operation_uuid"),
+    )
+    op.create_index(
+        "maasserver_machine_operation_node_id_idx",
+        "maasserver_machine_operation",
+        ["node_id"],
+    )
+
 
 def downgrade() -> None:
     # We do not support migration downgrade
