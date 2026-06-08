@@ -1739,6 +1739,64 @@ OIDCRevokedTokenTable = Table(
     Index("maasserver_oidcrevokedtoken_provider_id_3d1f3f6b", "provider_id"),
 )
 
+OperationTaskTable = Table(
+    "maasserver_operation_task",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("started_at", DateTime(timezone=True), nullable=True),
+    Column("finished_at", DateTime(timezone=True), nullable=True),
+    Column("name", String(255), nullable=False),
+    Column("status", String(64), nullable=False),
+    Column("result_errors", JSONB, nullable=True),
+    Column("task_number", Integer, nullable=False),
+    Column(
+        "operation_uuid",
+        String(36),
+        ForeignKey("maasserver_operation.uuid"),
+        nullable=False,
+    ),
+    Index("maasserver_operation_task_operation_uuid_idx", "operation_uuid"),
+)
+OperationTable = Table(
+    "maasserver_operation",
+    METADATA,
+    Column("uuid", String(36), unique=True, nullable=False),
+    Column("op_type", String(255), nullable=False),
+    Column("resource_id", Integer, nullable=True),
+    Column("resource_type", String(255), nullable=True),
+    Column("status", String(64), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+    Column("started_at", DateTime(timezone=True), nullable=True),
+    Column("finished_at", DateTime(timezone=True), nullable=True),
+    Column("current_task", String(255), nullable=True),
+    Column("parameters", JSONB, nullable=True),
+    Column("result_errors", JSONB, nullable=True),
+    Column("is_bulk", Boolean, nullable=False),
+    Column(
+        "parent_id",
+        String(36),
+        ForeignKey("maasserver_operation.uuid"),
+        nullable=True,
+    ),
+    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
+    Index("maasserver_operation_parent_id_idx", "parent_id"),
+)
+MachineOperationTable = Table(
+    "maasserver_machine_operation",
+    METADATA,
+    Column(
+        "operation_uuid",
+        String(36),
+        ForeignKey("maasserver_operation.uuid"),
+        primary_key=True,
+    ),
+    Column(
+        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=False
+    ),
+    Index("maasserver_machine_operation_node_id_idx", "node_id"),
+)
+
 OpenFGATupleTable = Table(
     "tuple",
     METADATA,
