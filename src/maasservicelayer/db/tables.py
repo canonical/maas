@@ -1749,7 +1749,12 @@ maasserver_operation_task = Table(
     Column("status", String(64), nullable=False),
     Column("result_errors", JSONB, nullable=True),
     Column("task_number", Integer, nullable=False),
-    Column("operation_uuid", String(36), ForeignKey("maasserver_operation.uuid"), nullable=False),
+    Column(
+        "operation_uuid",
+        String(36),
+        ForeignKey("maasserver_operation.uuid"),
+        nullable=False,
+    ),
     Index("maasserver_operation_task_operation_uuid_idx", "operation_uuid"),
 )
 maasserver_operation = Table(
@@ -1768,7 +1773,12 @@ maasserver_operation = Table(
     Column("parameters", JSONB, nullable=True),
     Column("result_errors", JSONB, nullable=True),
     Column("is_bulk", Boolean, nullable=False),
-    Column("parent_id", String(36), ForeignKey("maasserver_operation.uuid"), nullable=True),
+    Column(
+        "parent_id",
+        String(36),
+        ForeignKey("maasserver_operation.uuid"),
+        nullable=True,
+    ),
     Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
     Index("maasserver_operation_parent_id_idx", "parent_id"),
 )
