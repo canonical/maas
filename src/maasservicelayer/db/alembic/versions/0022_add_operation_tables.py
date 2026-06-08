@@ -3,9 +3,9 @@
 
 """add_operation_tables
 
-Revision ID: 0021
-Revises: 0020
-Create Date: 2026-03-17 13:50:56.078535+00:00
+Revision ID: 0022
+Revises: 0021
+Create Date: 2026-06-08 19:06:32.000000+00:00
 
 """
 
