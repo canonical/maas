@@ -1792,7 +1792,7 @@ maasserver_machine_operation = Table(
         primary_key=True,
     ),
     Column(
-        "node_id", Integer, ForeignKey("maasserver_node.id"), nullable=False
+        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=False
     ),
     Index("maasserver_machine_operation_node_id_idx", "node_id"),
 )
