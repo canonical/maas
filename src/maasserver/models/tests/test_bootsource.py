@@ -7,10 +7,6 @@ import os
 
 from django.core.exceptions import ValidationError
 
-from maascommon.constants import (
-    CANDIDATE_IMAGES_STREAM_URL,
-    STABLE_IMAGES_STREAM_URL,
-)
 from maascommon.workflows.bootresource import (
     POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
     PostUpdateBootSourceUrlParam,
@@ -176,14 +172,14 @@ class TestBootSource(MAASServerTestCase):
     def test_generate_priority_boot_source(self):
         # create a boot source
         boot_source_1 = make_BootSource()
-        # Candidate and stable boot sources are created with priority 1 and 2 respectively, so the next priority is 3
-        assert boot_source_1.priority == 3
+        # Stable boot source is created with priority 1, so the next priority is 2
+        assert boot_source_1.priority == 2
         # update boot source: _generate_priority() is called
         boot_source_1.url = "http://%s.com/" % factory.make_name("source-url")
         boot_source_1.save()
-        # create a new boot source (max priority == 3)
+        # create a new boot source (max priority == 2)
         boot_source_2 = make_BootSource()
-        assert boot_source_2.priority == 4
+        assert boot_source_2.priority == 3
         # create a new boot source (max priority == 10)
         boot_source_1.priority = 10
         boot_source_1.save()
@@ -246,20 +242,6 @@ class TestBootSource(MAASServerTestCase):
         self.assertEqual(boot_source.name, boot_source_dict["name"])
         self.assertEqual(boot_source.priority, boot_source_dict["priority"])
         self.assertEqual(boot_source.enabled, boot_source_dict["enabled"])
-
-    def test_cannot_delete_stable_default_boot_source(self):
-        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
-        self.assertRaises(ValidationError, boot_source.delete)
-
-    def test_cannot_delete_candidate_default_boot_source(self):
-        boot_source = BootSource.objects.get(url=CANDIDATE_IMAGES_STREAM_URL)
-        self.assertRaises(ValidationError, boot_source.delete)
-
-    def test_can_delete_non_default_boot_source(self):
-        boot_source = factory.make_BootSource(url="http://custom.example.com")
-        boot_source_id = boot_source.id
-        boot_source.delete()
-        self.assertFalse(BootSource.objects.filter(id=boot_source_id).exists())
 
     def test_verify_selection_after_url_update(self):
         mock_start_workflow = self.patch(boot_source_module, "start_workflow")

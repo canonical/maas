@@ -9,7 +9,7 @@ Create Date: 2025-06-24 11:16:07.410600+00:00
 
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import auto, IntFlag
 import os
@@ -37,16 +37,12 @@ KEYRINGS_PATH = (
 STABLE_IMAGES_STREAM_URL = "http://images.maas.io/ephemeral-v3/stable"
 STABLE_IMAGES_STREAM_NAME = "MAAS Stable"
 
-CANDIDATE_IMAGES_STREAM_URL = "http://images.maas.io/ephemeral-v3/candidate"
-CANDIDATE_IMAGES_STREAM_NAME = "MAAS Candidate"
-
 LATEST_UBUNTU_LTS = "noble"
 
 
 class BootSourceFlag(IntFlag):
     NO_BOOT_SOURCE = auto()
     STABLE = auto()
-    CANDIDATE = auto()
 
 
 def get_boot_source_status() -> BootSourceFlag:
@@ -61,8 +57,6 @@ def get_boot_source_status() -> BootSourceFlag:
     for boot_source in boot_sources:
         if boot_source["url"] == STABLE_IMAGES_STREAM_URL:
             flag |= BootSourceFlag.STABLE
-        elif boot_source["url"] == CANDIDATE_IMAGES_STREAM_URL:
-            flag |= BootSourceFlag.CANDIDATE
 
     return flag
 
@@ -72,7 +66,7 @@ class BootSourceCreateModel:
     name: str
     url: str
     priority: int
-    enabled: bool = field(init=False, default=False)
+    enabled: bool
 
     def create(self):
         return (
@@ -157,45 +151,25 @@ def upgrade() -> None:
         ),
     )
 
-    # Make sure that the URLs for stable and candidate don't have a trailing slash.
-    # In this way we'll make sure to find them in any case.
-    op.execute(f"""
-        UPDATE maasserver_bootsource
-        SET url = RTRIM(url, '/')
-        WHERE url IN ('{STABLE_IMAGES_STREAM_URL}/', '{CANDIDATE_IMAGES_STREAM_URL}/')
-    """)
+    # Make sure that the URLs don't have a trailing slash.
+    op.execute("UPDATE maasserver_bootsource SET url = RTRIM(url, '/')")
 
     status = get_boot_source_status()
 
     stable_boot_source = BootSourceCreateModel(
         name=STABLE_IMAGES_STREAM_NAME,
         url=STABLE_IMAGES_STREAM_URL,
-        priority=2,
-    )
-    candidate_boot_source = BootSourceCreateModel(
-        name=CANDIDATE_IMAGES_STREAM_NAME,
-        url=CANDIDATE_IMAGES_STREAM_URL,
         priority=1,
+        enabled=True,
     )
 
     if status & BootSourceFlag.NO_BOOT_SOURCE:
-        stable_boot_source.enabled = True
-        candidate_boot_source.enabled = False
-        create_default_selection = True
-    else:
-        stable_boot_source.enabled = (
-            True if status & BootSourceFlag.STABLE else False
-        )
-        candidate_boot_source.enabled = (
-            True if status & BootSourceFlag.CANDIDATE else False
-        )
-        create_default_selection = True
-
-    id = stable_boot_source.create()
-    candidate_boot_source.create()
-
-    if create_default_selection:
+        # New environment: create stable source and default selection
+        id = stable_boot_source.create()
         create_selection_stable(id)
+    elif status & BootSourceFlag.STABLE:
+        # Stable source exists: ensure it's up to date but don't create selection
+        stable_boot_source.create()
 
     # Backfill priority based on creation order:
     # - newer boot sources (later 'created' timestamps) get higher priority
@@ -203,13 +177,12 @@ def upgrade() -> None:
     #   insertions without immediate reordering
     # - a unique constraint will be added later, so all priorities must be
     #   distinct
-    # - stable and candidate boot sources are excluded as they were created
-    #   earlier
+    # - the stable boot source is excluded as it was created earlier
     op.execute(f"""
         WITH ranked AS (
             SELECT id, ROW_NUMBER() OVER (ORDER BY created ASC) AS priority
             FROM maasserver_bootsource
-            WHERE url NOT IN ('{STABLE_IMAGES_STREAM_URL}', '{CANDIDATE_IMAGES_STREAM_URL}')
+            WHERE url != '{STABLE_IMAGES_STREAM_URL}'
         )
         UPDATE maasserver_bootsource
         SET priority = ranked.priority*10
@@ -220,7 +193,7 @@ def upgrade() -> None:
     op.execute(f"""
         UPDATE maasserver_bootsource
         SET name = url
-        WHERE url NOT IN ('{STABLE_IMAGES_STREAM_URL}', '{CANDIDATE_IMAGES_STREAM_URL}')
+        WHERE url != '{STABLE_IMAGES_STREAM_URL}'
     """)
 
     # Set skip_keyring_verification to False for the unsigned streams (until

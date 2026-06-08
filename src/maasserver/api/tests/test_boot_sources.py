@@ -7,10 +7,6 @@ import http.client
 
 from django.urls import reverse
 
-from maascommon.constants import (
-    CANDIDATE_IMAGES_STREAM_URL,
-    STABLE_IMAGES_STREAM_URL,
-)
 import maasserver.api.boot_sources as boot_source_module
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.audit import Event
@@ -261,50 +257,6 @@ class TestBootSourceAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         boot_source = reload_object(boot_source)
         self.assertTrue(boot_source.skip_keyring_verification)
-
-    def test_PUT_default_boot_source_allows_priority_and_enabled(self):
-        self.become_admin()
-        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
-        new_values = {"priority": 42, "enabled": False}
-        response = self.client.put(
-            get_boot_source_uri(boot_source), new_values
-        )
-        self.assertEqual(http.client.OK, response.status_code)
-        boot_source = reload_object(boot_source)
-        self.assertEqual(boot_source.priority, 42)
-        self.assertFalse(boot_source.enabled)
-
-    def test_PUT_default_boot_source_rejects_url(self):
-        self.become_admin()
-        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
-        new_values = {"url": "http://other.example.com"}
-        response = self.client.put(
-            get_boot_source_uri(boot_source), new_values
-        )
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-
-    def test_PUT_default_boot_source_rejects_name(self):
-        self.become_admin()
-        boot_source = BootSource.objects.get(url=CANDIDATE_IMAGES_STREAM_URL)
-        new_values = {"name": "renamed"}
-        response = self.client.put(
-            get_boot_source_uri(boot_source), new_values
-        )
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-
-    def test_DELETE_rejects_stable_default_boot_source(self):
-        self.become_admin()
-        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
-        response = self.client.delete(get_boot_source_uri(boot_source))
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertIsNotNone(reload_object(boot_source))
-
-    def test_DELETE_rejects_candidate_default_boot_source(self):
-        self.become_admin()
-        boot_source = BootSource.objects.get(url=CANDIDATE_IMAGES_STREAM_URL)
-        response = self.client.delete(get_boot_source_uri(boot_source))
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertIsNotNone(reload_object(boot_source))
 
 
 class TestBootSourcesAPI(APITestCase.ForUser):
