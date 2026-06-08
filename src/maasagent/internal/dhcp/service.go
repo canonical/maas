@@ -204,6 +204,9 @@ func queueFlush(c *apiclient.APIClient, interval time.Duration) func(context.Con
 				return err
 			}
 
+			//nolint:errcheck // we do not care about possible error here
+			defer resp.Body.Close()
+
 			if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 				return ErrFailedToPostNotifications
 			}
