@@ -4,8 +4,8 @@
 
 \restrict jDB4gdI1N8dbUCAC3vcdCvWs48TBU3tT39yhtb0ijqwqYnAc3QoCur8LfK1MnsD
 
--- Dumped from database version 18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)
--- Dumped by pg_dump version 18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)
+-- Dumped from database version 18.3 (Ubuntu 18.3-0ubuntu0.26.04.1)
+-- Dumped by pg_dump version 18.3 (Ubuntu 18.3-0ubuntu0.26.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5388,7 +5388,7 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
            FROM (((public.maasserver_bootsourcecache cache
              JOIN public.maasserver_bootsource source ON ((source.id = cache.boot_source_id)))
              JOIN public.maasserver_bootsourceselection sel ON ((sel.boot_source_id = source.id)))
-             JOIN public.maasserver_bootresource res ON (((res.selection_id = sel.id) AND ((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND (((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text)) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
+             JOIN public.maasserver_bootresource res ON (((res.selection_id = sel.id) AND ((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND ((((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text))) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
         ), resource_set_counts AS (
          SELECT sync_stats.resource_id,
             count(*) AS set_count
