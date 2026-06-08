@@ -51,16 +51,6 @@ class BootSourceSelection(CleanSave, TimestampedModel):
 
     labels = ArrayField(TextField(), blank=True, null=True, default=list)
 
-    def to_dict(self):
-        """Return the current `BootSourceSelectionLegacy` as a dict."""
-        return {
-            "os": self.os,
-            "release": self.release,
-            "arches": self.arches,
-            "subarches": self.subarches,
-            "labels": self.labels,
-        }
-
     def delete(self, *args, **kwargs):
         """Delete without checking if this selection is the one used for commissioning."""
         selections_to_delete = BootSourceSelectionNew.objects.filter(
@@ -147,14 +137,6 @@ class BootSourceSelectionNew(CleanSave, TimestampedModel):
         blank=False,
         on_delete=CASCADE,
     )
-
-    def to_dict(self):
-        """Return the current `BootSourceSelection` as a dict."""
-        return {
-            "os": self.os,
-            "release": self.release,
-            "arch": self.arch,
-        }
 
     def delete(self, *args, **kwargs):
         """Delete without checking if this selection is the one used for commissioning."""

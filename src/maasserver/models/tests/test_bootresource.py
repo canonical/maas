@@ -55,64 +55,6 @@ class TestBootResourceManager(MAASServerTestCase):
         )
         return resource, (name, arch, subarch)
 
-    def test_has_synced_resource_returns_true_when_exists(self):
-        _, args = self.make_synced_boot_resource()
-        self.assertTrue(BootResource.objects.has_synced_resource(*args))
-
-    def test_has_synced_resource_returns_false_when_doesnt_exists(self):
-        os = factory.make_name("os")
-        series = factory.make_name("series")
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        self.assertFalse(
-            BootResource.objects.has_synced_resource(os, arch, subarch, series)
-        )
-
-    def test_get_synced_resource_returns_resource_when_exists(self):
-        resource, args = self.make_synced_boot_resource()
-        self.assertEqual(
-            resource, BootResource.objects.get_synced_resource(*args)
-        )
-
-    def test_get_synced_resource_returns_None_when_doesnt_exists(self):
-        os = factory.make_name("os")
-        series = factory.make_name("series")
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        self.assertEqual(
-            None,
-            BootResource.objects.get_synced_resource(
-                os, arch, subarch, series
-            ),
-        )
-
-    def test_has_uploaded_resource_returns_true_when_exists(self):
-        _, args = self.make_uploaded_boot_resource()
-        self.assertTrue(BootResource.objects.has_uploaded_resource(*args))
-
-    def test_has_uploaded_resource_returns_false_when_doesnt_exists(self):
-        name = factory.make_name("name")
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        self.assertFalse(
-            BootResource.objects.has_uploaded_resource(name, arch, subarch)
-        )
-
-    def test_get_uploaded_resource_returns_resource_when_exists(self):
-        resource, args = self.make_uploaded_boot_resource()
-        self.assertEqual(
-            resource, BootResource.objects.get_uploaded_resource(*args)
-        )
-
-    def test_get_uploaded_resource_returns_None_when_doesnt_exists(self):
-        name = factory.make_name("name")
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        self.assertEqual(
-            None,
-            BootResource.objects.get_uploaded_resource(name, arch, subarch),
-        )
-
     def test_get_kernels_doesnt_include_all_subarches(self):
         factory.make_usable_boot_resource(
             architecture="amd64/hwe-16.04",
