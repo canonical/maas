@@ -151,13 +151,8 @@ def upgrade() -> None:
         ),
     )
 
-    # Make sure that the URLs for stable and candidate don't have a trailing slash.
-    # In this way we'll make sure to find them in any case.
-    op.execute(f"""
-        UPDATE maasserver_bootsource
-        SET url = RTRIM(url, '/')
-        WHERE url = '{STABLE_IMAGES_STREAM_URL}/'
-    """)
+    # Make sure that the URLs don't have a trailing slash.
+    op.execute("UPDATE maasserver_bootsource SET url = RTRIM(url, '/')")
 
     status = get_boot_source_status()
 
