@@ -1739,7 +1739,7 @@ OIDCRevokedTokenTable = Table(
     Index("maasserver_oidcrevokedtoken_provider_id_3d1f3f6b", "provider_id"),
 )
 
-maasserver_operation_task = Table(
+OperationTaskTable = Table(
     "maasserver_operation_task",
     METADATA,
     Column("id", BigInteger, Identity(), primary_key=True),
@@ -1757,7 +1757,7 @@ maasserver_operation_task = Table(
     ),
     Index("maasserver_operation_task_operation_uuid_idx", "operation_uuid"),
 )
-maasserver_operation = Table(
+OperationTable = Table(
     "maasserver_operation",
     METADATA,
     Column("uuid", String(36), unique=True, nullable=False),
@@ -1782,7 +1782,7 @@ maasserver_operation = Table(
     Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
     Index("maasserver_operation_parent_id_idx", "parent_id"),
 )
-maasserver_machine_operation = Table(
+MachineOperationTable = Table(
     "maasserver_machine_operation",
     METADATA,
     Column(
