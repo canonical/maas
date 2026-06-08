@@ -18,10 +18,6 @@ from django.db.models import (
     URLField,
 )
 
-from maascommon.constants import (
-    CANDIDATE_IMAGES_STREAM_URL,
-    STABLE_IMAGES_STREAM_URL,
-)
 from maascommon.workflows.bootresource import (
     POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
     PostUpdateBootSourceUrlParam,
@@ -153,11 +149,6 @@ class BootSource(CleanSave, TimestampedModel):
         return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.url in (STABLE_IMAGES_STREAM_URL, CANDIDATE_IMAGES_STREAM_URL):
-            raise ValidationError(
-                "The MAAS default boot sources can't be deleted."
-            )
-
         related_selections = BootSourceSelection.objects.filter(
             boot_source=self
         )

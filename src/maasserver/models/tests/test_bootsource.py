@@ -72,14 +72,14 @@ class TestBootSource(MAASServerTestCase):
     def test_generate_priority_boot_source(self):
         # create a boot source
         boot_source_1 = make_BootSource()
-        # Candidate and stable boot sources are created with priority 1 and 2 respectively, so the next priority is 3
-        assert boot_source_1.priority == 3
+        # Stable boot source is created with priority 1, so the next priority is 2
+        assert boot_source_1.priority == 2
         # update boot source: _generate_priority() is called
         boot_source_1.url = "http://%s.com/" % factory.make_name("source-url")
         boot_source_1.save()
-        # create a new boot source (max priority == 3)
+        # create a new boot source (max priority == 2)
         boot_source_2 = make_BootSource()
-        assert boot_source_2.priority == 4
+        assert boot_source_2.priority == 3
         # create a new boot source (max priority == 10)
         boot_source_1.priority = 10
         boot_source_1.save()

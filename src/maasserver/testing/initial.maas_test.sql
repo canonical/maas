@@ -4,8 +4,8 @@
 
 \restrict jDB4gdI1N8dbUCAC3vcdCvWs48TBU3tT39yhtb0ijqwqYnAc3QoCur8LfK1MnsD
 
--- Dumped from database version 18.3 (Ubuntu 18.3-1)
--- Dumped by pg_dump version 18.3 (Ubuntu 18.3-1)
+-- Dumped from database version 18.3 (Ubuntu 18.3-0ubuntu0.26.04.1)
+-- Dumped by pg_dump version 18.3 (Ubuntu 18.3-0ubuntu0.26.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -11219,8 +11219,7 @@ COPY public.maasserver_bootresourceset (id, created, updated, version, label, re
 --
 
 COPY public.maasserver_bootsource (id, created, updated, url, keyring_filename, keyring_data, priority, name, enabled, skip_keyring_verification) FROM stdin;
-1	2026-04-20 16:27:58.892622+00	2026-04-20 16:27:58.892622+00	http://images.maas.io/ephemeral-v3/stable	/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg	\\x	2	MAAS Stable	t	f
-2	2026-04-20 16:27:58.892622+00	2026-04-20 16:27:58.892622+00	http://images.maas.io/ephemeral-v3/candidate	/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg	\\x	1	MAAS Candidate	f	f
+1	2026-04-20 16:27:58.892622+00	2026-04-20 16:27:58.892622+00	http://images.maas.io/ephemeral-v3/stable	/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg	\\x	1	MAAS Stable	t	f
 \.
 
 
