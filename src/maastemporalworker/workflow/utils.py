@@ -1,8 +1,8 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
-import functools
+from datetime import timedelta
 from functools import wraps
 import random
 
@@ -10,10 +10,18 @@ import structlog
 from temporalio import activity, workflow
 from temporalio.exceptions import ApplicationError, TemporalError
 
+from maascommon.enums.operations import OperationStatus
 from maascommon.tracing import get_or_set_trace_id
+from maascommon.workflows.operation import (
+    OPERATION_UUID_SEARCH_ATTRIBUTE,
+    UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
+    UpdateOperationStatusParam,
+)
 from maasservicelayer.context import Context
 
 logger = structlog.getLogger()
+
+UPDATE_OPERATION_STATUS_TIMEOUT = timedelta(seconds=30)
 
 
 def activity_defn_with_context(name):
@@ -63,9 +71,78 @@ def workflow_run_with_context(func):
     return wrapper
 
 
+def track_operation_status(func):
+    """Decorate a workflow run method to track its operation status in the DB.
+
+    The operation is moved to RUNNING before the run method executes,
+    COMPLETED on success and FAILED when an exception is raised. The
+    operation is identified through the OperationUUID search attribute, which
+    must have been set when the workflow was started.
+
+    Use it together with workflow_run_with_context, e.g.:
+
+        @workflow_run_with_context
+        @track_operation_status
+        async def run(self, param): ...
+    """
+
+    @wraps(func)
+    async def wrapper(self, param):
+        info = workflow.info()
+        operation_uuid = info.search_attributes.get(
+            OPERATION_UUID_SEARCH_ATTRIBUTE
+        )
+        if not operation_uuid:
+            raise ApplicationError(
+                f"Status tracking is enabled for workflow {info.workflow_type}"
+                f" but the search attribute {OPERATION_UUID_SEARCH_ATTRIBUTE}"
+                " has not been set."
+            )
+        # Search attributes are always returned as a list.
+        operation_uuid = str(operation_uuid[0])
+
+        try:
+            await workflow.execute_local_activity(
+                UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
+                UpdateOperationStatusParam(
+                    operation_uuid=operation_uuid,
+                    status=OperationStatus.RUNNING,
+                ),
+                start_to_close_timeout=UPDATE_OPERATION_STATUS_TIMEOUT,
+            )
+
+            result = await func(self, param)
+
+            await workflow.execute_local_activity(
+                UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
+                UpdateOperationStatusParam(
+                    operation_uuid=operation_uuid,
+                    status=OperationStatus.COMPLETED,
+                ),
+                start_to_close_timeout=UPDATE_OPERATION_STATUS_TIMEOUT,
+            )
+            return result
+        except Exception as e:
+            logger.error(
+                f"Workflow failed for operation {operation_uuid}: {e}"
+            )
+            await workflow.execute_local_activity(
+                UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
+                UpdateOperationStatusParam(
+                    operation_uuid=operation_uuid,
+                    status=OperationStatus.FAILED,
+                    error=str(e),
+                ),
+                start_to_close_timeout=UPDATE_OPERATION_STATUS_TIMEOUT,
+            )
+            raise
+
+    return wrapper
+
+
 def async_retry(retries=5, backoff_ms=1000):
     def wrapper(fn):
-        @functools.wraps(fn)
+        @wraps(fn)
         async def wrapped(*args, **kwargs):
             tries = 0
             while True:
