@@ -46,6 +46,7 @@ from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
+    ConflictException,
     NotFoundException,
     UnauthorizedException,
 )
@@ -177,13 +178,50 @@ class AuthHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
     ) -> AuthInfoResponse:
-        """Initiate the OAuth flow by generating the authorization URL and setting the necessary security cookies,
-        if the user is an OIDC user."""
-        is_oidc_user = await services.users.is_oidc_user(email)
-        if not is_oidc_user:
-            return AuthInfoResponse(
-                is_oidc=False,
-            )
+        """Decide whether the login should proceed via OIDC or local password.
+
+        Routing rules:
+          * OIDC enabled:
+            - if a local (non-provider-bound) profile exists for the email,
+              allow password authentication;
+            - otherwise (no profile, or profile bound to a provider) route
+              through OIDC. New users will be provisioned at the OIDC
+              callback.
+          * OIDC disabled: fall back to local password auth, unless the
+            account is permanently bound to an OIDC provider (in which case
+            it can never log in via password and we return 409).
+        """
+        provider = await services.external_oauth.get_provider()
+        user_profile = await services.users.get_user_profile(email)
+
+        if provider is None:
+            # OIDC is disabled. Profiles bound to an OIDC provider are
+            # never allowed to fall back to password auth.
+            if (
+                user_profile is not None
+                and user_profile.provider_id is not None
+            ):
+                raise ConflictException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                            message=(
+                                "This account is linked to an OIDC provider "
+                                "that is currently disabled."
+                            ),
+                        )
+                    ]
+                )
+            # Either the user does not exist (do not leak that fact) or the
+            # user is local: let them attempt password authentication.
+            return AuthInfoResponse(is_oidc=False)
+
+        # OIDC is enabled. Existing local accounts keep using password auth;
+        # everyone else (unknown email or provider-bound profile) goes
+        # through the OIDC flow.
+        if user_profile is not None and user_profile.provider_id is None:
+            return AuthInfoResponse(is_oidc=False)
+
         client = await services.external_oauth.get_client()
         data = client.generate_authorization_url(
             redirect_target=redirect_target or "/"
