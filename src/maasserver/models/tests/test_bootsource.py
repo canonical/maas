@@ -3,8 +3,6 @@
 
 """Tests for `BootSource`."""
 
-import os
-
 from django.core.exceptions import ValidationError
 
 from maascommon.workflows.bootresource import (
@@ -71,104 +69,6 @@ class TestBootSource(MAASServerTestCase):
         )
         boot_source.save()
 
-    def test_to_dict_returns_dict(self):
-        boot_source = factory.make_BootSource(
-            keyring_data=b"123445", keyring_filename=""
-        )
-        boot_source_selection = factory.make_BootSourceSelection(
-            boot_source=boot_source
-        )
-        boot_source_dict = boot_source.to_dict()
-        self.assertEqual(boot_source.url, boot_source_dict["url"])
-        self.assertEqual(
-            [boot_source_selection.to_dict()], boot_source_dict["selections"]
-        )
-
-    def test_to_dict_handles_keyring_file(self):
-        keyring_data = b"Some Keyring Data"
-        keyring_file = self.make_file(contents=keyring_data)
-        self.addCleanup(os.remove, keyring_file)
-
-        boot_source = factory.make_BootSource(
-            keyring_data=b"", keyring_filename=keyring_file
-        )
-        source = boot_source.to_dict()
-        self.assertEqual(source["keyring_data"], keyring_data)
-
-    def test_to_dict_handles_keyring_data(self):
-        keyring_data = b"Some Keyring Data"
-        boot_source = factory.make_BootSource(
-            keyring_data=keyring_data, keyring_filename=""
-        )
-        source = boot_source.to_dict()
-        self.assertEqual(source["keyring_data"], keyring_data)
-
-    def test_to_dict_with_selections_returns_dict_without_selections(self):
-        boot_source = factory.make_BootSource(
-            keyring_data=b"123445", keyring_filename=""
-        )
-        factory.make_BootSourceSelection(boot_source=boot_source)
-        boot_source_dict = boot_source.to_dict_without_selections()
-        self.assertEqual([], boot_source_dict["selections"])
-
-    def test_to_dict_with_selections_returns_bootloaders(self):
-        keyring_data = b"Some Keyring Data"
-        boot_source = factory.make_BootSource(
-            keyring_data=keyring_data, keyring_filename=""
-        )
-        boot_source_selection = factory.make_BootSourceSelection(
-            boot_source=boot_source
-        )
-        bootloaders = []
-        for arch in boot_source_selection.arches:
-            bootloader_type = factory.make_name("bootloader-type")
-            factory.make_BootSourceCache(
-                boot_source=boot_source,
-                bootloader_type=bootloader_type,
-                release=bootloader_type,
-                arch=arch,
-            )
-            bootloaders.append(bootloader_type)
-        self.assertCountEqual(
-            [
-                selection["release"]
-                for selection in boot_source.to_dict()["selections"]
-                if "bootloader-type" in selection["release"]
-            ],
-            bootloaders,
-        )
-
-    def test_compare_dict_without_selections_compares_True_to_self(self):
-        boot_source = make_BootSource()
-        boot_source_dict = boot_source.to_dict_without_selections()
-        self.assertTrue(
-            boot_source.compare_dict_without_selections(boot_source_dict)
-        )
-
-    def test_compare_dict_without_selections_compares_False_to_other(self):
-        boot_source_1 = make_BootSource()
-        boot_source_2 = make_BootSource()
-        self.assertFalse(
-            boot_source_1.compare_dict_without_selections(
-                boot_source_2.to_dict_without_selections()
-            )
-        )
-
-    def test_compare_dict_without_selections_ignores_selections(self):
-        boot_source = make_BootSource()
-        boot_source_dict = boot_source.to_dict()
-        self.assertTrue(
-            boot_source.compare_dict_without_selections(boot_source_dict)
-        )
-
-    def test_compare_dict_without_selections_ignores_other_keys(self):
-        boot_source = make_BootSource()
-        boot_source_dict = boot_source.to_dict()
-        boot_source_dict[factory.make_name("key")] = factory.make_name("value")
-        self.assertTrue(
-            boot_source.compare_dict_without_selections(boot_source_dict)
-        )
-
     def test_generate_priority_boot_source(self):
         # create a boot source
         boot_source_1 = make_BootSource()
@@ -233,15 +133,6 @@ class TestBootSource(MAASServerTestCase):
         )
         boot_source.save()
         self.assertTrue(boot_source.enabled)
-
-    def test_to_dict_without_selections_includes_name_priority_enabled(self):
-        boot_source = factory.make_BootSource(
-            keyring_data=b"123445", keyring_filename=""
-        )
-        boot_source_dict = boot_source.to_dict_without_selections()
-        self.assertEqual(boot_source.name, boot_source_dict["name"])
-        self.assertEqual(boot_source.priority, boot_source_dict["priority"])
-        self.assertEqual(boot_source.enabled, boot_source_dict["enabled"])
 
     def test_verify_selection_after_url_update(self):
         mock_start_workflow = self.patch(boot_source_module, "start_workflow")
