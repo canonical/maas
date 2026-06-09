@@ -30,7 +30,7 @@ from twisted.internet.defer import _failthru, CancelledError, Deferred
 from twisted.python.failure import Failure
 
 from maasserver.models import Node
-from maasserver.sqlalchemy import InvalidConnection, service_layer
+from maasserver.sqlalchemy import service_layer
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
