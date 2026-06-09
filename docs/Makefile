@@ -59,7 +59,7 @@ $(VENVDIR):
 	@echo "... setting up virtualenv"
 	python3 -m venv $(VENVDIR) || { echo "You must install python3-venv and python3-dev before you can build the documentation."; exit 1; }
 	. $(VENV); pip install $(PIPOPTS) --require-virtualenv \
-	    --upgrade -r requirements.txt \
+	    --upgrade -r requirements-launchpad.txt \
             --log $(VENVDIR)/pip_install.log
 	@test ! -f $(VENVDIR)/pip_list.txt || \
             mv $(VENVDIR)/pip_list.txt $(VENVDIR)/pip_list.txt.bak
