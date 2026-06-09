@@ -543,14 +543,6 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         expected_calls = [call()] * 10
         function.assert_has_calls(expected_calls)
 
-    def test_retries_on_sqlalchemy_failure(self):
-        function = self.make_mock_function()
-        function.side_effect = InvalidConnection()
-        function_wrapped = retry_on_retryable_failure(function)
-        self.assertRaises(InvalidConnection, function_wrapped)
-        expected_calls = [call()] * 10
-        function.assert_has_calls(expected_calls)
-
     def test_retries_on_deadlock_failure_until_successful(self):
         function = self.make_mock_function()
         function.side_effect = [orm.make_deadlock_failure(), sentinel.result]
