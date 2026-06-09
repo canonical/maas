@@ -16,4 +16,7 @@ The activities interfaces MUST NOT be defined in maascommon. Instead, they shoul
 When you create a new workflow or a new activity, you MUST NOT use @workflow.run nor @activity.defn. Instead, you should use
 the decorators @workflow_run_with_context and @activity_defn_with_context provided in maastemporalworker.workflow.utils. These
 decorators are wrapping the temporal decorators with the contextual logger.
+
+For workflows that track a long-running operation in the database, use @workflow_run_with_tracked_operation instead of
+@workflow_run_with_context. It combines context setup and operation status tracking into a single decorator.
 """

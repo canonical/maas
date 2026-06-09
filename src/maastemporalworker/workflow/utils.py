@@ -72,19 +72,7 @@ def workflow_run_with_context(func):
 
 
 def track_operation_status(func):
-    """Decorate a workflow run method to track its operation status in the DB.
-
-    The operation is moved to RUNNING before the run method executes,
-    COMPLETED on success and FAILED when an exception is raised. The
-    operation is identified through the OperationUUID search attribute, which
-    must have been set when the workflow was started.
-
-    Use it together with workflow_run_with_context, e.g.:
-
-        @workflow_run_with_context
-        @track_operation_status
-        async def run(self, param): ...
-    """
+    """Decorate a workflow run method to track its operation status in the DB."""
 
     @wraps(func)
     async def wrapper(self, param):
@@ -138,6 +126,14 @@ def track_operation_status(func):
             raise
 
     return wrapper
+
+
+def workflow_run_with_tracked_operation(func):
+    """
+    You MUST use this decorator instead of @workflow_run_with_context
+    on operation-tracked workflows.
+    """
+    return workflow_run_with_context(track_operation_status(func))
 
 
 def async_retry(retries=5, backoff_ms=1000):
