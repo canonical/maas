@@ -61,7 +61,7 @@ from psycopg2.errorcodes import (
 from twisted.internet.defer import Deferred
 
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIForbidden
-from maasserver.sqlalchemy import InvalidConnection, service_layer
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.asynchronous import DeferredHooks
 from provisioningserver.utils import flatten
 from provisioningserver.utils.backoff import exponential_growth, full_jitter
@@ -576,10 +576,8 @@ def retry_on_retryable_failure(func, reset=noop):
                 except RetryTransaction:
                     reset()  # Which may do nothing.
                     sleep(next(intervals))
-                except (DatabaseError, InvalidConnection) as error:
-                    if is_retryable_failure(error) or isinstance(
-                        error, InvalidConnection
-                    ):
+                except DatabaseError as error:
+                    if is_retryable_failure(error):
                         reset()  # Which may do nothing.
                         sleep(next(intervals))
                     else:
