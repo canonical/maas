@@ -1,0 +1,8 @@
+# Intended mainly for deb builds, since they cannot use
+# github sources. For consistency, we do the same for snaps and local tests.
+#
+# Suffers from availability issues in launchpad.
+
+-r requirements.txt
+
+git+https://git.launchpad.net/django-piston3

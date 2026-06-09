@@ -1,0 +1,6 @@
+# Intended mainly for RTD builds, to avoid
+# availability issues that we experience with launchpad.
+
+-r requirements.txt
+
+git+https://github.com/canonical/django-piston3.git
