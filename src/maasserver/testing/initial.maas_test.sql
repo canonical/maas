@@ -10061,7 +10061,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 00000000000000000000000000	maas	0	can_view_ipaddresses	group:1#member	userset	01KPNVGPQFD6TFV83MM70F64P8	2026-04-20 16:27:59.085151+00	\N	\N
 00000000000000000000000000	maas	0	can_view_dnsrecords	group:1#member	userset	01KPNVGPQFD6TFV83MM8FH4362	2026-04-20 16:27:59.085151+00	\N	\N
 00000000000000000000000000	maas	0	can_deploy_machines	group:2#member	userset	01KPNVGPQFD6TFV83MM94C9QPK	2026-04-20 16:27:59.085151+00	\N	\N
-00000000000000000000000000	maas	0	can_view_deployable_machines	group:2#member	userset	01KPNVGPQFD6TFV83MM9FY1WTP	2026-04-20 16:27:59.085151+00	\N	\N
+00000000000000000000000000	maas	0	can_view_available_machines	group:2#member	userset	01KPNVGPQFD6TFV83MM9FY1WTP	2026-04-20 16:27:59.085151+00	\N	\N
 00000000000000000000000000	maas	0	can_view_global_entities	group:2#member	userset	01KPNVGPQFD6TFV83MM9RA0ZEJ	2026-04-20 16:27:59.085151+00	\N	\N
 \.
 
