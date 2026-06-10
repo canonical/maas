@@ -145,12 +145,16 @@ class InterfaceAttachType:
     # Interface attached via an SR-IOV capable device.
     SRIOV = "sriov"
 
+    # Interface attached via OVN.
+    OVN = "ovn"
+
 
 InterfaceAttachTypeChoices = (
     (InterfaceAttachType.NETWORK, "Network"),
     (InterfaceAttachType.BRIDGE, "Bridge"),
     (InterfaceAttachType.MACVLAN, "Macvlan"),
     (InterfaceAttachType.SRIOV, "SR-IOV"),
+    (InterfaceAttachType.OVN, "OVN"),
 )
 
 
