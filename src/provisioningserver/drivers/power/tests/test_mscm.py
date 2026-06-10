@@ -145,62 +145,45 @@ class TestMSCMPowerDriver(MAASTestCase):
         driver = MSCMPowerDriver()
         command = factory.make_name("command")
         context = make_context()
-        self.patch(mscm_module, "is_fips_enabled").return_value = False
-        SSHClient = self.patch(mscm_module, "SSHClient")
-        AutoAddPolicy = self.patch(mscm_module, "AutoAddPolicy")
-        ssh_client = SSHClient.return_value
+        mock_ssh_client = Mock()
         expected = factory.make_name("output").encode("utf-8")
         stdout = BytesIO(expected)
         streams = factory.make_streams(stdout=stdout)
-        ssh_client.exec_command = Mock(return_value=streams)
+        mock_ssh_client.exec_command = Mock(return_value=streams)
+        self.patch(mscm_module, "connect_ssh").return_value = mock_ssh_client
+
         output = driver.run_mscm_command(command, **context)
 
         self.assertEqual(expected.decode("utf-8"), output)
-        SSHClient.assert_called_once_with()
-        ssh_client.set_missing_host_key_policy.assert_called_once_with(
-            AutoAddPolicy.return_value
-        )
-        ssh_client.connect.assert_called_once_with(
+        mscm_module.connect_ssh.assert_called_once_with(
+            driver.name,
             context["power_address"],
-            username=context["power_user"],
-            password=context["power_pass"],
+            context["power_user"],
+            context["power_pass"],
         )
-        ssh_client.exec_command.assert_called_once_with(command)
+        mock_ssh_client.exec_command.assert_called_once_with(command)
 
     def test_run_mscm_command_uses_fips_ssh_configuration(self):
         driver = MSCMPowerDriver()
         command = factory.make_name("command")
         context = make_context()
-        self.patch(mscm_module, "is_fips_enabled").return_value = True
-        get_fips_ssh_config = self.patch(mscm_module, "get_fips_ssh_config")
-        get_fips_ssh_config.return_value = {
-            "ciphers": [],
-            "kex": [],
-            "macs": [],
-            "keys": [],
-        }
-        SSHClient = self.patch(mscm_module, "SSHClient")
-        RejectPolicy = self.patch(mscm_module, "RejectPolicy")
-        ssh_client = SSHClient.return_value
+        mock_ssh_client = Mock()
         expected = factory.make_name("output").encode("utf-8")
         stdout = BytesIO(expected)
         streams = factory.make_streams(stdout=stdout)
-        ssh_client.exec_command = Mock(return_value=streams)
+        mock_ssh_client.exec_command = Mock(return_value=streams)
+        mock_connect_ssh = self.patch(mscm_module, "connect_ssh")
+        mock_connect_ssh.return_value = mock_ssh_client
+        self.patch(mscm_module, "is_fips_enabled").return_value = True
 
         output = driver.run_mscm_command(command, **context)
 
         self.assertEqual(expected.decode("utf-8"), output)
-        ssh_client.set_missing_host_key_policy.assert_called_once_with(
-            RejectPolicy.return_value
-        )
-        ssh_client.connect.assert_called_once_with(
+        mock_connect_ssh.assert_called_once_with(
+            driver.name,
             context["power_address"],
-            username=context["power_user"],
-            password=context["power_pass"],
-            ciphers=get_fips_ssh_config.return_value["ciphers"],
-            kex=get_fips_ssh_config.return_value["kex"],
-            macs=get_fips_ssh_config.return_value["macs"],
-            key_types=get_fips_ssh_config.return_value["key_types"],
+            context["power_user"],
+            context["power_pass"],
         )
 
     @settings(deadline=None)
@@ -209,11 +192,8 @@ class TestMSCMPowerDriver(MAASTestCase):
         driver = MSCMPowerDriver()
         command = factory.make_name("command")
         context = make_context()
-        self.patch(mscm_module, "is_fips_enabled").return_value = False
-        self.patch(mscm_module, "AutoAddPolicy")
-        SSHClient = self.patch(mscm_module, "SSHClient")
-        ssh_client = SSHClient.return_value
-        ssh_client.connect.side_effect = error
+        mock_connect_ssh = self.patch(mscm_module, "connect_ssh")
+        mock_connect_ssh.side_effect = error
         self.assertRaises(
             PowerConnError, driver.run_mscm_command, command, **context
         )

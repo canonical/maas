@@ -129,14 +129,14 @@ class TestWebhookPowerDriver(MAASTestCase):
 
         response = yield self.webhook._webhook_request(
             method,
-            headers,
             b"https://10.0.0.42/",
+            headers,
         )
         self.assertEqual(expected_response, response.decode())
         mock_agent.return_value.request.assert_called_once_with(
             method,
-            headers,
             b"https://10.0.0.42/",
+            headers,
             None,
         )
 
@@ -251,7 +251,9 @@ class TestWebhookPowerDriver(MAASTestCase):
         self.assertEqual([], self.webhook.detect_missing_packages())
 
     def test_webhook_request_rejects_unverified_tls_in_fips_mode(self):
-        self.patch(webhook_module, "is_fips_enabled").return_value = True
+        import provisioningserver.drivers.power.fips as fips_module
+
+        self.patch(fips_module, "is_fips_enabled").return_value = True
 
         with self.assertRaisesRegex(PowerFatalError, "webhook driver"):
             self.webhook._webhook_request(b"GET", b"https://10.0.0.42", {})
