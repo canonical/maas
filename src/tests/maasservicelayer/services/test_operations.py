@@ -6,15 +6,19 @@ from unittest.mock import Mock
 import pytest
 
 from maascommon.enums.operations import OperationStatus, OperationType
+from maasservicelayer.builders.operations import OperationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.operations import (
     OperationsClauseFactory,
     OperationsRepository,
 )
+from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.operations import Operation
+from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.utils.date import utcnow
+from tests.maasservicelayer.services.base import ServiceCommonTests
 
 ERROR_MESSAGE = "operation failed"
 
@@ -27,6 +31,24 @@ TEST_OPERATION = Operation(
     created=utcnow(),
     updated=utcnow(),
 )
+
+
+@pytest.mark.asyncio
+class TestCommonOperationsService(ServiceCommonTests):
+    @pytest.fixture
+    def service_instance(self) -> BaseService:
+        return OperationsService(
+            context=Context(),
+            operations_repository=Mock(OperationsRepository),
+        )
+
+    @pytest.fixture
+    def test_instance(self) -> MaasBaseModel:
+        return TEST_OPERATION
+
+    @pytest.fixture
+    def builder_model(self) -> type[ResourceBuilder]:
+        return OperationBuilder
 
 
 @pytest.mark.asyncio

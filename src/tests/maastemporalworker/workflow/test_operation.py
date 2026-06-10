@@ -29,7 +29,6 @@ class TestOperationActivity:
     ) -> None:
         services_mock.temporal = Mock(TemporalService)
         services_mock.operations = Mock(OperationsService)
-        services_mock.operations.update_status = AsyncMock()
         services_mock.produce.return_value = services_mock
         monkeypatch.setattr(
             activity_module, "ServiceCollectionV3", services_mock
