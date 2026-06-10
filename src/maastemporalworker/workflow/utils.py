@@ -112,7 +112,9 @@ def track_operation_status(func):
             return result
         except Exception as e:
             logger.error(
-                f"Workflow failed for operation {operation_uuid}: {e}"
+                "Workflow failed",
+                operation_uuid=operation_uuid,
+                error=str(e),
             )
             await workflow.execute_local_activity(
                 UPDATE_OPERATION_STATUS_ACTIVITY_NAME,

@@ -20,7 +20,6 @@ ERROR_MESSAGE = "operation failed"
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("maasdb")
 class TestOperationActivity:
     async def test_update_operation_status(
         self, services_mock: ServiceCollectionV3, monkeypatch
