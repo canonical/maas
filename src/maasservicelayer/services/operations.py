@@ -41,7 +41,7 @@ class OperationsService(
         if error is not None:
             builder.result_errors = {"error": error}
 
-        return await self.repository.update_one(
+        return await self.update_one(
             query=QuerySpec(
                 where=OperationsClauseFactory.with_uuid(operation_uuid)
             ),

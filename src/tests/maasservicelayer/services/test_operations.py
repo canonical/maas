@@ -28,16 +28,19 @@ class TestOperationsService:
 
     async def test_update_status_running_sets_started(self) -> None:
         repository = Mock(OperationsRepository)
-        repository.update_one = AsyncMock(return_value=Mock(Operation))
+        existing = Mock(Operation)
+        existing.id = 1
+        repository.get_one = AsyncMock(return_value=existing)
+        repository.update_by_id = AsyncMock(return_value=Mock(Operation))
         service = self._service(repository)
 
         await service.update_status("op-uuid", OperationStatus.RUNNING)
 
-        query = repository.update_one.call_args.kwargs["query"]
+        query = repository.get_one.call_args.kwargs["query"]
         assert query == QuerySpec(
             where=OperationsClauseFactory.with_uuid("op-uuid")
         )
-        builder = repository.update_one.call_args.kwargs["builder"]
+        builder = repository.update_by_id.call_args.kwargs["builder"]
         populated = builder.populated_fields()
         assert populated["status"] == OperationStatus.RUNNING
         assert "started" in populated
@@ -46,14 +49,17 @@ class TestOperationsService:
 
     async def test_update_status_failed_stores_error(self) -> None:
         repository = Mock(OperationsRepository)
-        repository.update_one = AsyncMock(return_value=Mock(Operation))
+        existing = Mock(Operation)
+        existing.id = 1
+        repository.get_one = AsyncMock(return_value=existing)
+        repository.update_by_id = AsyncMock(return_value=Mock(Operation))
         service = self._service(repository)
 
         await service.update_status(
             "op-uuid", OperationStatus.FAILED, error=ERROR_MESSAGE
         )
 
-        builder = repository.update_one.call_args.kwargs["builder"]
+        builder = repository.update_by_id.call_args.kwargs["builder"]
         populated = builder.populated_fields()
         assert populated["status"] == OperationStatus.FAILED
         assert "finished" in populated
