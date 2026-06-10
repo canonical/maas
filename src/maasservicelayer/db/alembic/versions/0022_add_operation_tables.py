@@ -26,15 +26,18 @@ def upgrade() -> None:
     # Create the maasserver_operation table
     op.create_table(
         "maasserver_operation",
+        sa.Column(
+            "id", sa.BigInteger(), sa.Identity(always=False), nullable=False
+        ),
         sa.Column("uuid", sa.String(36), nullable=False),
         sa.Column("op_type", sa.String(255), nullable=False),
         sa.Column("resource_id", sa.Integer(), nullable=True),
         sa.Column("resource_type", sa.String(255), nullable=True),
         sa.Column("status", sa.String(64), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("started", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("finished", sa.DateTime(timezone=True), nullable=True),
         sa.Column("current_task", sa.String(255), nullable=True),
         sa.Column("parameters", postgresql.JSONB(), nullable=True),
         sa.Column("result_errors", postgresql.JSONB(), nullable=True),
@@ -51,7 +54,8 @@ def upgrade() -> None:
             sa.ForeignKey("auth_user.id"),
             nullable=True,
         ),
-        sa.PrimaryKeyConstraint("uuid"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("uuid"),
     )
 
     op.create_index(
