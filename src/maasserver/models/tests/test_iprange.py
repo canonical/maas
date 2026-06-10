@@ -682,6 +682,31 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             },
         )
 
+    def test_create_dynamic_range_spanning_assigned_ip_fails(self):
+        subnet = make_plain_subnet()
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.30",
+        )
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.20",
+            end_ip="192.168.0.40",
+        )
+
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
+
     def test_modify_existing_performs_validation(self):
         subnet = make_plain_subnet()
         IPRange(
@@ -759,6 +784,62 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         iprange.clean()
         iprange.save()
 
+    def test_modify_dynamic_range_expand_start_fails_on_busy_edge_ip(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.9",
+        )
+
+        iprange.start_ip = "192.168.0.9"
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
+
+    def test_modify_dynamic_range_expand_end_fails_on_busy_edge_ip(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.51",
+        )
+
+        iprange.end_ip = "192.168.0.51"
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
+
     def test_modify_dynamic_range_shrink_without_original_query(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
@@ -813,6 +894,44 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
                 iprange.netaddr_iprange.last,
                 unused,
             )
+        )
+
+    def test_move_dynamic_range_to_new_subnet_with_clash_fails_clean(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        other_subnet = factory.make_Subnet(
+            cidr="192.168.1.0/24",
+            gateway_ip="192.168.1.1",
+            dns_servers=[],
+        )
+        IPRange(
+            subnet=other_subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.1.25",
+            end_ip="192.168.1.35",
+        ).save()
+
+        iprange = reload_object(iprange)
+        iprange.subnet = other_subnet
+        iprange.start_ip = "192.168.1.20"
+        iprange.end_ip = "192.168.1.30"
+
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
         )
 
     def test_dynamic_range_cant_overlap_gateway_ip(self):
