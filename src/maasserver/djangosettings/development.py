@@ -8,6 +8,7 @@ from os.path import abspath
 
 from formencode.validators import StringBool
 
+from maascommon.fips import is_fips_enabled
 from maasserver.djangosettings import (
     fix_up_databases,
     import_settings,
@@ -109,9 +110,12 @@ if prevent_migrations:
 else:
     MIGRATION_MODULES["maastesting"] = "maastesting.migrations"
 
-PASSWORD_HASHERS = (
+_base_hashers = (
     "django.contrib.auth.hashers.MD5PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+)
+PASSWORD_HASHERS = tuple(
+    h for h in _base_hashers if not (is_fips_enabled() and "MD5" in h)
 )
 
 # This tells django-nose to load the given Nose plugins.
