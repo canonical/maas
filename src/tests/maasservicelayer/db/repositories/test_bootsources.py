@@ -54,7 +54,7 @@ class TestBootSourcesRepository(RepositoryCommonTests[BootSource]):
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[BootSource]:
-        # The migration creates 2 boot sources (stable + candidate)
+        # The migration creates the stable boot source by default
         items = [
             BootSource(**row)
             for row in await fixture.get(BootSourceTable.name)

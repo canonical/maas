@@ -18,10 +18,6 @@ from django.db.models import (
     URLField,
 )
 
-from maascommon.constants import (
-    CANDIDATE_IMAGES_STREAM_URL,
-    STABLE_IMAGES_STREAM_URL,
-)
 from maascommon.workflows.bootresource import (
     POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
     PostUpdateBootSourceUrlParam,
@@ -148,94 +144,11 @@ class BootSource(CleanSave, TimestampedModel):
             skip = self.url.endswith(".json")
         return skip
 
-    def to_dict_without_selections(self):
-        """Return the current `BootSource` as a dict, without including any
-        `BootSourceSelection` items.
-
-        The dict will contain the details of the `BootSource`.
-
-        If the `BootSource` has keyring_data, that data will be returned
-        base64 encoded. Otherwise the `BootSource` will have a value in
-        its keyring_filename field, and that file's contents will be
-        base64 encoded and returned.
-        """
-        if len(self.keyring_data) > 0:
-            keyring_data = self.keyring_data
-        else:
-            with open(self.keyring_filename, "rb") as keyring_file:
-                keyring_data = keyring_file.read()
-        return {
-            "name": self.name,
-            "url": self.url,
-            "priority": self.priority,
-            "enabled": self.enabled,
-            "keyring_data": bytes(keyring_data),
-            "selections": [],
-        }
-
-    def compare_dict_without_selections(self, other):
-        """Compare this `BootSource`, as a dict, to another, as a dict.
-
-        Only the keys ``url`` and ``keyring_data`` are relevant.
-        """
-        keys = "url", "keyring_data"
-        this = self.to_dict_without_selections()
-        return all(this[key] == other[key] for key in keys)
-
-    def to_dict(self):
-        """Return the current `BootSource` as a dict.
-
-        The dict will contain the details of the `BootSource` and all
-        its `BootSourceSelection` items.
-
-        If the `BootSource` has keyring_data, that data will be returned
-        base64 encoded. Otherwise the `BootSource` will have a value in
-        its keyring_filename field, and that file's contents will be
-        base64 encoded and returned.
-        """
-        data = self.to_dict_without_selections()
-        data["selections"] = [
-            selection.to_dict()
-            for selection in self.bootsourceselection_set.all()
-        ]
-        # Always download all bootloaders from the stream. This will allow
-        # machines to boot and get a 'Booting under direction of MAAS' message
-        # even if boot images for that arch haven't downloaded yet.
-        for bootloader in self.bootsourcecache_set.exclude(
-            bootloader_type=None
-        ):
-            data["selections"].append(
-                {
-                    "os": bootloader.os,
-                    "release": bootloader.bootloader_type,
-                    "arch": [bootloader.arch],
-                }
-            )
-        # NOTE: release notifications are not a thing anymore in MAAS from 2.9 (IIRC)
-        # Leaving this here if we'll ever decide to re-use them.
-        # Always download all release notifications from the stream.
-        for release_notification in self.bootsourcecache_set.filter(
-            release="notifications"
-        ):
-            data["selections"].append(
-                {
-                    "os": release_notification.os,
-                    "release": release_notification.release,
-                    "arch": [release_notification.arch],
-                }
-            )
-        return data
-
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.url in (STABLE_IMAGES_STREAM_URL, CANDIDATE_IMAGES_STREAM_URL):
-            raise ValidationError(
-                "The MAAS default boot sources can't be deleted."
-            )
-
         related_selections = BootSourceSelection.objects.filter(
             boot_source=self
         )

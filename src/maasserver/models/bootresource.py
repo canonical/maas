@@ -34,57 +34,11 @@ from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import now, TimestampedModel
-from maasserver.utils.orm import get_first, get_one
+from maasserver.utils.orm import get_first
 from provisioningserver.utils.twisted import undefined
 
 
 class BootResourceManager(Manager):
-    def _has_resource(self, rtype, name, architecture, subarchitecture):
-        """Return True if `BootResource` exists with given rtype, name,
-        architecture, and subarchitecture."""
-        arch = f"{architecture}/{subarchitecture}"
-        return self.filter(rtype=rtype, name=name, architecture=arch).exists()
-
-    def _get_resource(self, rtype, name, architecture, subarchitecture):
-        """Return `BootResource` with given rtype, name, architecture, and
-        subarchitecture."""
-        arch = f"{architecture}/{subarchitecture}"
-        return get_one(self.filter(rtype=rtype, name=name, architecture=arch))
-
-    def has_synced_resource(
-        self, osystem, architecture, subarchitecture, series
-    ):
-        """Return True if `BootResource` exists with type of SYNCED, and given
-        osystem, architecture, subarchitecture, and series."""
-        name = f"{osystem}/{series}"
-        return self._has_resource(
-            BOOT_RESOURCE_TYPE.SYNCED, name, architecture, subarchitecture
-        )
-
-    def get_synced_resource(
-        self, osystem, architecture, subarchitecture, series
-    ):
-        """Return `BootResource` with type of SYNCED, and given
-        osystem, architecture, subarchitecture, and series."""
-        name = f"{osystem}/{series}"
-        return self._get_resource(
-            BOOT_RESOURCE_TYPE.SYNCED, name, architecture, subarchitecture
-        )
-
-    def has_uploaded_resource(self, name, architecture, subarchitecture):
-        """Return True if `BootResource` exists with type of UPLOADED, and
-        given name, architecture, and subarchitecture."""
-        return self._has_resource(
-            BOOT_RESOURCE_TYPE.UPLOADED, name, architecture, subarchitecture
-        )
-
-    def get_uploaded_resource(self, name, architecture, subarchitecture):
-        """Return `BootResource` with type of UPLOADED, and given
-        name, architecture, and subarchitecture."""
-        return self._get_resource(
-            BOOT_RESOURCE_TYPE.UPLOADED, name, architecture, subarchitecture
-        )
-
     def get_commissionable_resource(self, osystem, series):
         """Return generator for all commissionable resources for the
         given osystem and series."""
