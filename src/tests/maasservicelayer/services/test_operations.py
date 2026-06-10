@@ -7,7 +7,12 @@ import pytest
 
 from maascommon.enums.operations import OperationStatus
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.operations import OperationsRepository
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.operations import (
+    OperationsClauseFactory,
+    OperationsRepository,
+)
+from maasservicelayer.models.operations import Operation
 from maasservicelayer.services.operations import OperationsService
 
 ERROR_MESSAGE = "operation failed"
@@ -15,22 +20,42 @@ ERROR_MESSAGE = "operation failed"
 
 @pytest.mark.asyncio
 class TestOperationsService:
-    async def test_update_status(self) -> None:
-        repository = Mock(OperationsRepository)
-        repository.update_status = AsyncMock()
-        service = OperationsService(
+    def _service(self, repository: Mock) -> OperationsService:
+        return OperationsService(
             context=Context(),
             operations_repository=repository,
         )
 
+    async def test_update_status_running_sets_started(self) -> None:
+        repository = Mock(OperationsRepository)
+        repository.update_one = AsyncMock(return_value=Mock(Operation))
+        service = self._service(repository)
+
+        await service.update_status("op-uuid", OperationStatus.RUNNING)
+
+        query = repository.update_one.call_args.kwargs["query"]
+        assert query == QuerySpec(
+            where=OperationsClauseFactory.with_uuid("op-uuid")
+        )
+        builder = repository.update_one.call_args.kwargs["builder"]
+        populated = builder.populated_fields()
+        assert populated["status"] == OperationStatus.RUNNING
+        assert "started" in populated
+        assert "finished" not in populated
+        assert "result_errors" not in populated
+
+    async def test_update_status_failed_stores_error(self) -> None:
+        repository = Mock(OperationsRepository)
+        repository.update_one = AsyncMock(return_value=Mock(Operation))
+        service = self._service(repository)
+
         await service.update_status(
-            operation_uuid="op-uuid",
-            status=OperationStatus.FAILED,
-            error=ERROR_MESSAGE,
+            "op-uuid", OperationStatus.FAILED, error=ERROR_MESSAGE
         )
 
-        repository.update_status.assert_called_once_with(
-            operation_uuid="op-uuid",
-            status=OperationStatus.FAILED,
-            error=ERROR_MESSAGE,
-        )
+        builder = repository.update_one.call_args.kwargs["builder"]
+        populated = builder.populated_fields()
+        assert populated["status"] == OperationStatus.FAILED
+        assert "finished" in populated
+        assert "started" not in populated
+        assert populated["result_errors"] == {"error": ERROR_MESSAGE}

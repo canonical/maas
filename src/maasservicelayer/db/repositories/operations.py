@@ -1,55 +1,26 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from sqlalchemy import update
+from operator import eq
+from typing import Type
 
-from maascommon.enums.operations import OperationStatus
-from maasservicelayer.db.repositories.base import Repository
+from sqlalchemy import Table
+
+from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import OperationTable
-from maasservicelayer.exceptions.catalog import (
-    BaseExceptionDetail,
-    NotFoundException,
-)
-from maasservicelayer.exceptions.constants import (
-    UNEXISTING_RESOURCE_VIOLATION_TYPE,
-)
-from maasservicelayer.utils.date import utcnow
+from maasservicelayer.models.operations import Operation
 
 
-class OperationsRepository(Repository):
-    """Repository for managing long-running operations."""
+class OperationsClauseFactory(ClauseFactory):
+    @classmethod
+    def with_uuid(cls, uuid: str) -> Clause:
+        return Clause(condition=eq(OperationTable.c.uuid, uuid))
 
-    async def update_status(
-        self,
-        operation_uuid: str,
-        status: OperationStatus,
-        error: str | None = None,
-    ) -> None:
-        now = utcnow()
-        values: dict = {"status": status, "updated_at": now}
-        if status == OperationStatus.RUNNING:
-            values["started_at"] = now
-        elif status in (
-            OperationStatus.COMPLETED,
-            OperationStatus.FAILED,
-        ):
-            values["finished_at"] = now
-        if error is not None:
-            values["result_errors"] = {"error": error}
 
-        stmt = (
-            update(OperationTable)
-            .where(OperationTable.c.uuid == operation_uuid)
-            .values(**values)
-            .returning(OperationTable.c.uuid)
-        )
-        row = (await self.execute_stmt(stmt)).one_or_none()
-        if row is None:
-            raise NotFoundException(
-                details=[
-                    BaseExceptionDetail(
-                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                        message="Resource with such identifiers does not exist.",
-                    )
-                ]
-            )
+class OperationsRepository(BaseRepository[Operation]):
+    def get_repository_table(self) -> Table:
+        return OperationTable
+
+    def get_model_factory(self) -> Type[Operation]:
+        return Operation

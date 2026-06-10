@@ -2,30 +2,48 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maascommon.enums.operations import OperationStatus
+from maasservicelayer.builders.operations import OperationBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.operations import OperationsRepository
-from maasservicelayer.services.base import Service
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.operations import (
+    OperationsClauseFactory,
+    OperationsRepository,
+)
+from maasservicelayer.models.operations import Operation
+from maasservicelayer.services.base import BaseService
+from maasservicelayer.utils.date import utcnow
 
 
-class OperationsService(Service):
-    """Service for managing long-running operations."""
-
+class OperationsService(
+    BaseService[Operation, OperationsRepository, OperationBuilder]
+):
     def __init__(
         self,
         context: Context,
         operations_repository: OperationsRepository,
     ):
-        super().__init__(context)
-        self.operations_repository = operations_repository
+        super().__init__(context, operations_repository)
 
     async def update_status(
         self,
         operation_uuid: str,
         status: OperationStatus,
         error: str | None = None,
-    ) -> None:
-        await self.operations_repository.update_status(
-            operation_uuid=operation_uuid,
-            status=status,
-            error=error,
+    ) -> Operation:
+        builder = OperationBuilder(status=status)
+        if status == OperationStatus.RUNNING:
+            builder.started = utcnow()
+        elif status in (
+            OperationStatus.COMPLETED,
+            OperationStatus.FAILED,
+        ):
+            builder.finished = utcnow()
+        if error is not None:
+            builder.result_errors = {"error": error}
+
+        return await self.repository.update_one(
+            query=QuerySpec(
+                where=OperationsClauseFactory.with_uuid(operation_uuid)
+            ),
+            builder=builder,
         )
