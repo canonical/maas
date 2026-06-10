@@ -5,19 +5,16 @@ from collections.abc import Sequence
 import uuid as uuid_module
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.operations import OperationStatus, OperationType
 from maasservicelayer.builders.operations import OperationBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db._debug import CompiledQuery
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.operations import (
     OperationsClauseFactory,
     OperationsRepository,
 )
-from maasservicelayer.db.tables import OperationTable
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.operations import Operation
@@ -29,18 +26,14 @@ from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 class TestOperationsClauseFactory:
     def test_with_uuid(self) -> None:
         clause = OperationsClauseFactory.with_uuid("op-uuid")
-        stmt = (
-            select(OperationTable.c.uuid)
-            .select_from(OperationTable)
-            .where(clause.condition)
-        )
         assert (
-            str(CompiledQuery(stmt).sql)
-            == "SELECT maasserver_operation.uuid \n"
-            "FROM maasserver_operation \n"
-            "WHERE maasserver_operation.uuid = :uuid_1"
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.uuid = 'op-uuid'"
         )
-        assert CompiledQuery(stmt).params == {"uuid_1": "op-uuid"}
 
 
 class TestOperationsRepository(RepositoryCommonTests[Operation]):

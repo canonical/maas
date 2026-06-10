@@ -1,12 +1,22 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maascommon.workflows.operation import (
-    UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
-    UpdateOperationStatusParam,
-)
+from dataclasses import dataclass
+
+from maascommon.enums.operations import OperationStatus
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import activity_defn_with_context
+
+OPERATION_UUID_SEARCH_ATTRIBUTE = "OperationUUID"
+
+UPDATE_OPERATION_STATUS_ACTIVITY_NAME = "update-operation-status"
+
+
+@dataclass
+class UpdateOperationStatusParam:
+    operation_uuid: str
+    status: OperationStatus
+    error: str | None = None
 
 
 class OperationActivity(ActivityBase):

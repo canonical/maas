@@ -7,7 +7,9 @@ import pytest
 from temporalio.exceptions import ApplicationError
 
 from maascommon.enums.operations import OperationStatus
-from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
+from maastemporalworker.workflow.operation import (
+    OPERATION_UUID_SEARCH_ATTRIBUTE,
+)
 import maastemporalworker.workflow.utils as utils_module
 from maastemporalworker.workflow.utils import (
     async_retry,

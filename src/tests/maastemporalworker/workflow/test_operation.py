@@ -8,13 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.client import Client
 
 from maascommon.enums.operations import OperationStatus
-from maascommon.workflows.operation import UpdateOperationStatusParam
 from maasservicelayer.db import Database
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.services.temporal import TemporalService
 import maastemporalworker.workflow.activity as activity_module
-from maastemporalworker.workflow.operation import OperationActivity
+from maastemporalworker.workflow.operation import (
+    OperationActivity,
+    UpdateOperationStatusParam,
+)
 
 ERROR_MESSAGE = "operation failed"
 

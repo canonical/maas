@@ -12,11 +12,6 @@ from temporalio.exceptions import ApplicationError, TemporalError
 
 from maascommon.enums.operations import OperationStatus
 from maascommon.tracing import get_or_set_trace_id
-from maascommon.workflows.operation import (
-    OPERATION_UUID_SEARCH_ATTRIBUTE,
-    UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
-    UpdateOperationStatusParam,
-)
 from maasservicelayer.context import Context
 
 logger = structlog.getLogger()
@@ -73,6 +68,11 @@ def workflow_run_with_context(func):
 
 def track_operation_status(func):
     """Decorate a workflow run method to track its operation status in the DB."""
+    from maastemporalworker.workflow.operation import (
+        OPERATION_UUID_SEARCH_ATTRIBUTE,
+        UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
+        UpdateOperationStatusParam,
+    )
 
     @wraps(func)
     async def wrapper(self, param):
