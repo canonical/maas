@@ -135,6 +135,15 @@ class BootResourceFilesService(
                 parameter_merge_func=merge_resource_delete_param,
             )
 
+    async def create_uploaded_file(
+        self, builder: BootResourceFileBuilder
+    ) -> BootResourceFile:
+        """Create a BootResourceFile, auto-computing filename_on_disk from sha256."""
+        builder.filename_on_disk = await self.calculate_filename_on_disk(
+            builder.ensure_set(builder.sha256)
+        )
+        return await self.create(builder)
+
     async def get_files_in_resource_set(
         self, resource_set_id: int
     ) -> list[BootResourceFile]:

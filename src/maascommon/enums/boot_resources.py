@@ -71,6 +71,10 @@ class BootResourceFileType(StrEnum):
     # by MAAS
     ARCHIVE_TAR_XZ = "archive.tar.xz"
 
+    # Tarball of bootloader files (e.g. grub EFI binaries). Stored as-is and
+    # extracted into a versioned directory on each Rack after syncing.
+    BOOTLOADER_TARBALL = "bootloader-tarball"
+
 
 class ImageStatus(StrEnum):
     READY = "Ready"

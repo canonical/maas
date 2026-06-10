@@ -124,6 +124,11 @@ server {
         client_max_body_size 200G;
         proxy_pass http://apiserver;
     }
+
+    location /MAAS/a/v3/boot_assets {
+        client_max_body_size 200G;
+        proxy_pass http://apiserver;
+    }
 }
 
 {{if tls_enabled}}

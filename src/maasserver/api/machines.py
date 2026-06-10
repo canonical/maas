@@ -97,6 +97,7 @@ from maasserver.node_constraint_filter_forms import (
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.permissions import NodePermission, PodPermission
 from maasserver.preseed import get_curtin_merged_config
+from maasserver.sqlalchemy import service_layer
 from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutForm,
@@ -787,6 +788,15 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         will be deployed with a small agent periodically pushing hardware data to detect
         any change in devices.
 
+        @param (string) "custom_bootloader" [required=false] Optional custom
+        bootloader asset name matched against the machine architecture.
+
+        @param (string) "custom_kernel" [required=false] Optional custom
+        kernel asset name matched against the machine architecture.
+
+        @param (string) "custom_kernel_kflavor" [required=false] Optional
+        kernel flavour for custom kernel selection. Defaults to "generic".
+
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing information
         about the deployed machine.
@@ -809,6 +819,11 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         series = request.POST.get("distro_series", None)
         license_key = request.POST.get("license_key", None)
         hwe_kernel = request.POST.get("hwe_kernel", None)
+        custom_bootloader = request.POST.get("custom_bootloader")
+        custom_kernel = request.POST.get("custom_kernel")
+        custom_kernel_kflavor = (
+            request.POST.get("custom_kernel_kflavor") or "generic"
+        )
         enable_kernel_crash_dump = request.POST.get(
             "enable_kernel_crash_dump", None
         )
@@ -893,6 +908,72 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
                 get_curtin_merged_config(request, machine)
             except Exception as e:
                 raise MAASAPIBadRequest("Failed to render preseed: %s" % e)  # noqa: B904
+
+        from maasserver.dhcp import configure_dhcp_on_agents
+        from maasservicelayer.exceptions.catalog import NotFoundException
+
+        existing_custom_bootloader_meta = NodeMetadata.objects.filter(
+            node=machine, key="custom_bootloader"
+        ).first()
+        existing_custom_bootloader = (
+            existing_custom_bootloader_meta.value
+            if existing_custom_bootloader_meta
+            else None
+        )
+        try:
+            if custom_bootloader:
+                service_layer.services.boot_resources.resolve_boot_asset_for_deployment(
+                    name=custom_bootloader,
+                    architecture=machine.architecture,
+                    asset_type="bootloader",
+                )
+            if custom_kernel:
+                service_layer.services.boot_resources.resolve_boot_asset_for_deployment(
+                    name=custom_kernel,
+                    architecture=machine.architecture,
+                    kflavor=custom_kernel_kflavor,
+                    asset_type="kernel",
+                )
+        except NotFoundException as exc:
+            error_message = (
+                exc.details[0].message
+                if exc.details
+                else "Requested boot asset was not found"
+            )
+            raise MAASAPIBadRequest(error_message) from exc
+
+        bootloader_changed = custom_bootloader != existing_custom_bootloader
+
+        if custom_bootloader:
+            NodeMetadata.objects.update_or_create(
+                node=machine,
+                key="custom_bootloader",
+                defaults={"value": custom_bootloader},
+            )
+        else:
+            NodeMetadata.objects.filter(
+                node=machine, key="custom_bootloader"
+            ).delete()
+
+        if bootloader_changed:
+            configure_dhcp_on_agents()
+
+        if custom_kernel:
+            NodeMetadata.objects.update_or_create(
+                node=machine,
+                key="custom_kernel",
+                defaults={"value": custom_kernel},
+            )
+            NodeMetadata.objects.update_or_create(
+                node=machine,
+                key="custom_kernel_kflavor",
+                defaults={"value": custom_kernel_kflavor},
+            )
+        else:
+            NodeMetadata.objects.filter(
+                node=machine,
+                key__in=["custom_kernel", "custom_kernel_kflavor"],
+            ).delete()
 
         if machine.osystem == "esxi" and request.user.has_perm(
             NodePermission.admin, machine

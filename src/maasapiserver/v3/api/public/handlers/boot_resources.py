@@ -2,7 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
-from typing import Annotated
+from collections.abc import AsyncGenerator
+from typing import Annotated, NoReturn
 
 from fastapi import Depends, Header, Query, Request, Response
 from pydantic import Field
@@ -20,6 +21,9 @@ from maasapiserver.v3.api.public.models.requests.boot_resources import (
     BootResourceCreateRequest,
     BootResourceFileTypeChoice,
     CustomImageFilterParams,
+    CustomImageTypeChoice,
+    validate_architecture,
+    validate_boot_asset_name,
 )
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.base import (
@@ -34,8 +38,11 @@ from maasapiserver.v3.api.public.models.responses.boot_images_common import (
     ImageStatusResponse,
 )
 from maasapiserver.v3.api.public.models.responses.boot_resources import (
+    BootAssetUploadResponse,
     BootloaderListResponse,
     BootloaderResponse,
+    KernelListResponse,
+    KernelResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -50,17 +57,18 @@ from maascommon.workflows.bootresource import (
     SYNC_BOOTRESOURCES_WORKFLOW_NAME,
     SyncRequestParam,
 )
-from maasservicelayer.builders.bootresourcefiles import BootResourceFileBuilder
 from maasservicelayer.builders.bootresourcefilesync import (
     BootResourceFileSyncBuilder,
 )
-from maasservicelayer.builders.bootresourcesets import BootResourceSetBuilder
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresourcefilesync import (
     BootResourceFileSyncClauseFactory,
 )
 from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
+)
+from maasservicelayer.db.repositories.bootresourcesets import (
+    BootResourceSetClauseFactory,
 )
 from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.exceptions.catalog import (
@@ -100,6 +108,9 @@ class CustomImagesHandler(Handler):
             "list_custom_images_statistic",
             "get_custom_image_statistic",
             "upload_custom_image",
+            "upload_bootloader",
+            "upload_kernel",
+            "upload_kernel_initrd",
             "list_custom_images",
             "get_custom_image_by_id",
             "bulk_delete_custom_images",
@@ -116,6 +127,162 @@ class CustomImagesHandler(Handler):
             BootResourceFileType.SELF_EXTRACTING: "installer.bin",
         }
         return filetype_filename.get(filetype, filetype)
+
+    def _raise_bad_request(self, message: str) -> NoReturn:
+        raise BadRequestException(
+            details=[
+                BaseExceptionDetail(
+                    type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                    message=message,
+                )
+            ]
+        )
+
+    async def _stream_to_disk(
+        self,
+        stream: AsyncGenerator[bytes, None],
+        sha256: str,
+        total_size: int,
+        services: ServiceCollectionV3,
+    ) -> str:
+        """Stream bytes to the boot resource store, return filename_on_disk."""
+        filename_on_disk = (
+            await services.boot_resource_files.calculate_filename_on_disk(
+                sha256
+            )
+        )
+        lfile = AsyncLocalBootResourceFile(
+            sha256=sha256,
+            filename_on_disk=filename_on_disk,
+            total_size=total_size,
+        )
+        try:
+            async with lfile.store() as store:
+                chunk_buffer = ChunkBuffer(self.CHUNK_SIZE)
+                async for chunk in stream:
+                    if chunk_buffer.append_and_check(chunk):
+                        await store.write(chunk_buffer.get_and_reset())
+                if not chunk_buffer.is_empty():
+                    await store.write(chunk_buffer.get_and_reset())
+        except LocalStoreAllocationFail as e:
+            raise InsufficientStorageException() from e
+        except LocalStoreInvalidHash as e:
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                        message=f"SHA256 mismatch: expected {sha256}",
+                    )
+                ]
+            ) from e
+        return filename_on_disk
+
+    async def _trigger_sync_workflow(
+        self,
+        resource_file,
+        services: ServiceCollectionV3,
+    ) -> None:
+        """Create BootResourceFileSync record and trigger sync workflow."""
+        now = utcnow()
+        maas_system_id = await asyncio.to_thread(lambda: MAAS_ID.get())
+        assert maas_system_id is not None
+
+        region_info = await services.nodes.get_one(
+            query=QuerySpec(
+                where=NodeClauseFactory.with_system_id(maas_system_id),
+            )
+        )
+        assert region_info is not None
+
+        await services.boot_resource_file_sync.get_or_create(
+            query=QuerySpec(
+                where=BootResourceFileSyncClauseFactory.with_file_id(
+                    resource_file.id
+                ),
+            ),
+            builder=BootResourceFileSyncBuilder(
+                created=now,
+                updated=now,
+                file_id=resource_file.id,
+                size=resource_file.size,
+                region_id=region_info.id,
+            ),
+        )
+
+        sync_request_param = SyncRequestParam(
+            resource=ResourceDownloadParam(
+                rfile_ids=[resource_file.id],
+                source_list=[],
+                sha256=resource_file.sha256,
+                filename_on_disk=resource_file.filename_on_disk,
+                total_size=resource_file.size,
+            ),
+        )
+
+        services.temporal.register_or_update_workflow_call(
+            SYNC_BOOTRESOURCES_WORKFLOW_NAME,
+            sync_request_param,
+            workflow_id=f"sync-bootresources:{short_sha(resource_file.sha256)}",
+            wait=False,
+        )
+
+    async def _build_boot_asset_upload_response(
+        self,
+        boot_resource_id: int,
+        version: str,
+        services: ServiceCollectionV3,
+    ) -> list[dict[str, str | int]]:
+        resource_set = await services.boot_resource_sets.get_one(
+            query=QuerySpec(
+                where=BootResourceSetClauseFactory.and_clauses(
+                    [
+                        BootResourceSetClauseFactory.with_resource_id(
+                            boot_resource_id
+                        ),
+                        BootResourceSetClauseFactory.with_version(version),
+                    ]
+                )
+            )
+        )
+        assert resource_set is not None
+        files = await services.boot_resource_files.get_files_in_resource_set(
+            resource_set.id
+        )
+        return [
+            {
+                "filename": file.filename,
+                "filetype": str(file.filetype),
+                "sha256": file.sha256,
+                "size": file.size,
+            }
+            for file in files
+        ]
+
+    async def _trigger_sync_for_version(
+        self,
+        boot_resource_id: int,
+        version: str,
+        services: ServiceCollectionV3,
+    ) -> None:
+        resource_set = await services.boot_resource_sets.get_one(
+            query=QuerySpec(
+                where=BootResourceSetClauseFactory.and_clauses(
+                    [
+                        BootResourceSetClauseFactory.with_resource_id(
+                            boot_resource_id
+                        ),
+                        BootResourceSetClauseFactory.with_version(version),
+                    ]
+                )
+            )
+        )
+        if resource_set is not None:
+            for (
+                file_obj
+            ) in await services.boot_resource_files.get_files_in_resource_set(
+                resource_set.id
+            ):
+                await self._trigger_sync_workflow(file_obj, services)
 
     @handler(
         path="/custom_images",
@@ -159,137 +326,276 @@ class CustomImagesHandler(Handler):
         response: Response,
         services: Annotated[ServiceCollectionV3, Depends(services)],
     ) -> ImageResponse:
-        now = utcnow()
-
-        # The body is the file, so we can gather the file size from the Content-Length header.
-        # We don't need it as a parameter since the file is already validated through the SHA
         file_size = int(request.headers["content-length"])
-
-        boot_resource = await services.boot_resources.create(
-            await create_request.to_builder(services=services)
-        )
-
-        version = await services.boot_resources.get_next_version_name(
-            boot_resource.id
-        )
-        resource_set_builder = BootResourceSetBuilder(
-            label="uploaded",
-            version=version,
-            resource_id=boot_resource.id,
-            created=now,
-            updated=now,
-        )
-
-        resource_set = await services.boot_resource_sets.create(
-            resource_set_builder
-        )
-
-        filename_on_disk = (
-            await services.boot_resource_files.calculate_filename_on_disk(
-                create_request.sha256
-            )
-        )
-
-        lfile = AsyncLocalBootResourceFile(
-            sha256=create_request.sha256,
-            filename_on_disk=filename_on_disk,
-            total_size=file_size,
-        )
-
-        try:
-            async with lfile.store() as store:
-                # The size of chunks provided below is defined by several factors and can change.
-                # Instead we buffer the uploaded data to reduce the number of IO writes and expensive SHA256 updates.
-                chunk_buffer = ChunkBuffer(self.CHUNK_SIZE)
-                async for chunk in request.stream():
-                    needs_flushing = chunk_buffer.append_and_check(chunk)
-                    if needs_flushing:
-                        await store.write(chunk_buffer.get_and_reset())
-
-                if not chunk_buffer.is_empty():
-                    await store.write(chunk_buffer.get_and_reset())
-
-        except LocalStoreAllocationFail as e:
-            raise InsufficientStorageException() from e
-        except LocalStoreInvalidHash as e:
-            raise BadRequestException(
-                details=[
-                    BaseExceptionDetail(
-                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                        message=f"Provided SHA256 does not match calculated one. Make sure the file uploaded has the SHA256 equal to '{create_request.sha256}'",
-                    )
-                ]
-            ) from e
-
-        logger.info(f"Completed upload of file {create_request.name}.")
+        builder = await create_request.to_builder(services=services)
 
         resource_filetype = BootResourceFileTypeChoice.get_resource_filetype(
             create_request.file_type
         )
+        filename = self._get_uploaded_filename(resource_filetype)
+        filename_on_disk = await self._stream_to_disk(
+            request.stream(), create_request.sha256, file_size, services
+        )
 
-        resource_file_builder = BootResourceFileBuilder(
-            extra={},
-            filename=self._get_uploaded_filename(resource_filetype),
-            filename_on_disk=filename_on_disk,
-            filetype=resource_filetype,
+        logger.info(f"Completed upload of file {create_request.name}.")
+
+        (
+            boot_resource,
+            resource_file,
+        ) = await services.boot_resources.upload_custom_image(
+            name=builder.name,  # pyright: ignore[reportArgumentType]
+            architecture=builder.architecture,  # pyright: ignore[reportArgumentType]
             sha256=create_request.sha256,
+            filetype=resource_filetype,
+            filename=filename,
+            filename_on_disk=filename_on_disk,
             size=file_size,
-            largefile_id=None,
-            resource_set_id=resource_set.id,
-            created=now,
-            updated=now,
+            base_image=builder.base_image,  # pyright: ignore[reportArgumentType]
+            extra=builder.extra,  # pyright: ignore[reportArgumentType]
         )
 
-        resource_file = await services.boot_resource_files.create(
-            resource_file_builder
-        )
-
-        maas_system_id = await asyncio.to_thread(lambda: MAAS_ID.get())
-        assert maas_system_id is not None
-
-        region_info = await services.nodes.get_one(
-            query=QuerySpec(
-                where=NodeClauseFactory.with_system_id(maas_system_id),
-            )
-        )
-        assert region_info is not None
-
-        await services.boot_resource_file_sync.get_or_create(
-            query=QuerySpec(
-                where=BootResourceFileSyncClauseFactory.with_file_id(
-                    resource_file.id
-                ),
-            ),
-            builder=BootResourceFileSyncBuilder(
-                created=now,
-                updated=now,
-                file_id=resource_file.id,
-                size=file_size,
-                region_id=region_info.id,
-            ),
-        )
-
-        # Trigger a file sync between all regions
-        sync_request_param = SyncRequestParam(
-            resource=ResourceDownloadParam(
-                rfile_ids=[resource_file.id],
-                source_list=[],
-                sha256=resource_file.sha256,
-                filename_on_disk=resource_file.filename_on_disk,
-                total_size=resource_file.size,
-            ),
-        )
-
-        services.temporal.register_or_update_workflow_call(
-            SYNC_BOOTRESOURCES_WORKFLOW_NAME,
-            sync_request_param,
-            workflow_id=f"sync-bootresources:{short_sha(resource_file.sha256)}",
-            wait=False,
-        )
+        await self._trigger_sync_workflow(resource_file, services)
 
         response.headers["ETag"] = boot_resource.etag()
         return ImageResponse.from_boot_resource(
             boot_resource=boot_resource,
+            self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
+        )
+
+    @handler(
+        path="/boot_assets/bootloaders",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {"model": BootAssetUploadResponse},
+            400: {"model": BadRequestBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=201,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
+        ],
+        openapi_extra={
+            "requestBody": {
+                "description": "Bootloader file content as `application/octet-stream`.",
+                "required": True,
+                "content": {
+                    "application/octet-stream": {
+                        "schema": {
+                            "type": "string",
+                            "format": "binary",
+                        },
+                    },
+                },
+            }
+        },
+    )
+    async def upload_bootloader(
+        self,
+        request: Request,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootAssetUploadResponse:
+        name = request.headers.get("x-name")
+        architecture = request.headers.get("x-architecture")
+        sha256 = request.headers.get("x-sha256")
+        primary_file = request.headers.get("x-primary-file")
+
+        if not name:
+            self._raise_bad_request("x-name header is required")
+        if not architecture:
+            self._raise_bad_request("x-architecture header is required")
+        if not sha256:
+            self._raise_bad_request("x-sha256 header is required")
+        if not primary_file:
+            self._raise_bad_request("x-primary-file header is required")
+
+        name = await validate_boot_asset_name(name, services)
+        architecture = await validate_architecture(architecture, services)
+        file_size = int(request.headers["content-length"])
+        filename_on_disk = await self._stream_to_disk(
+            request.stream(), sha256, file_size, services
+        )
+
+        (
+            boot_resource,
+            version,
+        ) = await services.boot_resources.upload_bootloader(
+            name=name,
+            architecture=architecture,
+            sha256=sha256,
+            primary_file=primary_file,
+            filename_on_disk=filename_on_disk,
+            size=file_size,
+        )
+        files = await self._build_boot_asset_upload_response(
+            boot_resource.id, version, services
+        )
+        await self._trigger_sync_for_version(
+            boot_resource.id, version, services
+        )
+
+        return BootAssetUploadResponse.from_model(
+            boot_resource=boot_resource,
+            version=version,
+            files=files,
+            self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
+        )
+
+    @handler(
+        path="/boot_assets/kernels",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {"model": BootAssetUploadResponse},
+            400: {"model": BadRequestBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=201,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
+        ],
+        openapi_extra={
+            "requestBody": {
+                "description": "Kernel file content as `application/octet-stream`.",
+                "required": True,
+                "content": {
+                    "application/octet-stream": {
+                        "schema": {
+                            "type": "string",
+                            "format": "binary",
+                        },
+                    },
+                },
+            }
+        },
+    )
+    async def upload_kernel(
+        self,
+        request: Request,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootAssetUploadResponse:
+        name = request.headers.get("x-name")
+        architecture = request.headers.get("x-architecture")
+        kflavor = request.headers.get("x-kflavor")
+        sha256 = request.headers.get("x-sha256")
+
+        if not name:
+            self._raise_bad_request("x-name header is required")
+        if not architecture:
+            self._raise_bad_request("x-architecture header is required")
+        if not kflavor:
+            self._raise_bad_request("x-kflavor header is required")
+        if not sha256:
+            self._raise_bad_request("x-sha256 header is required")
+
+        name = await validate_boot_asset_name(name, services)
+        architecture = await validate_architecture(architecture, services)
+        file_size = int(request.headers["content-length"])
+        filename_on_disk = await self._stream_to_disk(
+            request.stream(), sha256, file_size, services
+        )
+
+        (
+            boot_resource,
+            version,
+        ) = await services.boot_resources.upload_kernel(
+            name=name,
+            architecture=architecture,
+            kflavor=kflavor,
+            sha256=sha256,
+            filename_on_disk=filename_on_disk,
+            size=file_size,
+        )
+        files = await self._build_boot_asset_upload_response(
+            boot_resource.id, version, services
+        )
+        await self._trigger_sync_for_version(
+            boot_resource.id, version, services
+        )
+
+        return BootAssetUploadResponse.from_model(
+            boot_resource=boot_resource,
+            version=version,
+            files=files,
+            self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
+        )
+
+    @handler(
+        path="/boot_assets/kernels/{resource_id}/initrd",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {"model": BootAssetUploadResponse},
+            400: {"model": BadRequestBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=201,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                )
+            )
+        ],
+        openapi_extra={
+            "requestBody": {
+                "description": "Initrd file content as `application/octet-stream`.",
+                "required": True,
+                "content": {
+                    "application/octet-stream": {
+                        "schema": {
+                            "type": "string",
+                            "format": "binary",
+                        },
+                    },
+                },
+            }
+        },
+    )
+    async def upload_kernel_initrd(
+        self,
+        resource_id: int,
+        request: Request,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> BootAssetUploadResponse:
+        sha256 = request.headers.get("x-sha256")
+
+        if not sha256:
+            self._raise_bad_request("x-sha256 header is required")
+
+        file_size = int(request.headers["content-length"])
+        filename_on_disk = await self._stream_to_disk(
+            request.stream(), sha256, file_size, services
+        )
+
+        (
+            boot_resource,
+            version,
+        ) = await services.boot_resources.upload_kernel_initrd(
+            resource_id=resource_id,
+            sha256=sha256,
+            filename_on_disk=filename_on_disk,
+            size=file_size,
+        )
+        files = await self._build_boot_asset_upload_response(
+            boot_resource.id, version, services
+        )
+        await self._trigger_sync_for_version(
+            boot_resource.id, version, services
+        )
+
+        return BootAssetUploadResponse.from_model(
+            boot_resource=boot_resource,
+            version=version,
+            files=files,
             self_base_hyperlink=f"{V3_API_PREFIX}/custom_images",
         )
 
@@ -314,21 +620,56 @@ class CustomImagesHandler(Handler):
     )
     async def list_custom_images(
         self,
-        filters: CustomImageFilterParams = Depends(),  # noqa: B008
+        asset_type: Annotated[
+            CustomImageTypeChoice | None,
+            Query(
+                alias="type",
+                description="Filter by asset type.",
+            ),
+        ] = None,
+        name: Annotated[
+            str | None,
+            Query(description="Filter by asset name."),
+        ] = None,
+        architecture: Annotated[
+            str | None,
+            Query(description="Filter by architecture."),
+        ] = None,
+        kflavor: Annotated[
+            str | None,
+            Query(description="Filter by kernel flavor."),
+        ] = None,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ImageListResponse:
+        # When no type filter is given, return all uploaded resources.
+        # When a type is specified, the per-type clause already embeds the
+        # rtype=UPLOADED constraint, so with_uploaded_type() is not applied
+        # separately to avoid redundancy.
         clauses = [
-            BootResourceClauseFactory.with_rtype(BootResourceType.UPLOADED)
+            asset_type.to_clause()
+            if asset_type is not None
+            else BootResourceClauseFactory.with_uploaded_type()
         ]
-        if filter_clause := filters.to_clause():
-            clauses.append(filter_clause)
-        where_clause = BootResourceClauseFactory.and_clauses(clauses)
+        if name is not None:
+            clauses.append(BootResourceClauseFactory.with_name(name))
+        if architecture is not None:
+            clauses.append(
+                BootResourceClauseFactory.with_architecture(architecture)
+            )
+        if kflavor is not None:
+            clauses.append(BootResourceClauseFactory.with_kflavor(kflavor))
+
+        query_clause = (
+            BootResourceClauseFactory.and_clauses(clauses)
+            if len(clauses) > 1
+            else clauses[0]
+        )
 
         boot_resources = await services.boot_resources.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=where_clause),
+            query=QuerySpec(where=query_clause),
         )
 
         next_link = None
@@ -339,8 +680,14 @@ class CustomImagesHandler(Handler):
                 f"{V3_API_PREFIX}/custom_images?"
                 f"{pagination_params.to_next_href_format()}"
             )
-            if query_filters := filters.to_href_format():
-                next_link += f"&{query_filters}"
+            if asset_type is not None:
+                next_link += f"&type={asset_type.value}"
+            if name is not None:
+                next_link += f"&name={name}"
+            if architecture is not None:
+                next_link += f"&architecture={architecture}"
+            if kflavor is not None:
+                next_link += f"&kflavor={kflavor}"
 
         return ImageListResponse(
             items=[
@@ -655,7 +1002,7 @@ class BootloadersHandler(Handler):
     TAGS = ["Bootloaders"]
 
     @handler(
-        path="/bootloaders",
+        path="/boot_assets/bootloaders",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -687,18 +1034,29 @@ class BootloadersHandler(Handler):
                 )
             ),
         )
+        resource_ids = [b.id for b in bootloaders.items]
+        versions_map = (
+            await services.boot_resources.get_versions_for_resources(
+                resource_ids
+            )
+        )
+        files_map = await services.boot_resources.get_files_for_latest_sets(
+            resource_ids
+        )
+        base = f"{V3_API_PREFIX}/boot_assets/bootloaders"
         return BootloaderListResponse(
             items=[
                 BootloaderResponse.from_model(
                     boot_resource=bootloader,
-                    self_base_hyperlink=f"{V3_API_PREFIX}/bootloaders",
+                    self_base_hyperlink=base,
+                    versions=versions_map.get(bootloader.id, []),
+                    resource_files=files_map.get(bootloader.id, []),
                 )
                 for bootloader in bootloaders.items
             ],
             total=bootloaders.total,
             next=(
-                f"{V3_API_PREFIX}/bootloaders?"
-                f"{pagination_params.to_next_href_format()}"
+                f"{base}?{pagination_params.to_next_href_format()}"
                 if bootloaders.has_next(
                     pagination_params.page, pagination_params.size
                 )
@@ -707,7 +1065,7 @@ class BootloadersHandler(Handler):
         )
 
     @handler(
-        path="/bootloaders/{bootloader_id}",
+        path="/boot_assets/bootloaders/{bootloader_id}",
         methods=["GET"],
         tags=TAGS,
         responses={
@@ -750,7 +1108,162 @@ class BootloadersHandler(Handler):
         if bootloader is None:
             raise NotFoundException()
         response.headers["ETag"] = bootloader.etag()
+        versions_map = (
+            await services.boot_resources.get_versions_for_resources(
+                [bootloader.id]
+            )
+        )
+        files_map = await services.boot_resources.get_files_for_latest_sets(
+            [bootloader.id]
+        )
+        base = f"{V3_API_PREFIX}/boot_assets/bootloaders"
         return BootloaderResponse.from_model(
             boot_resource=bootloader,
-            self_base_hyperlink=f"{V3_API_PREFIX}/bootloaders",
+            self_base_hyperlink=base,
+            versions=versions_map.get(bootloader.id, []),
+            resource_files=files_map.get(bootloader.id, []),
+        )
+
+
+class KernelsHandler(Handler):
+    """Kernels API handler."""
+
+    TAGS = ["Kernels"]
+
+    @handler(
+        path="/boot_assets/kernels",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": KernelListResponse,
+            }
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
+        ],
+    )
+    async def list_kernels(
+        self,
+        pagination_params: PaginationParams = Depends(),  # noqa: B008
+        name: str | None = Query(default=None),  # noqa: B008
+        architecture: str | None = Query(default=None),  # noqa: B008
+        kflavor: str | None = Query(default=None),  # noqa: B008
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> KernelListResponse:
+        clauses = [BootResourceClauseFactory.with_asset_type_kernel()]
+        if name is not None:
+            clauses.append(BootResourceClauseFactory.with_name(name))
+        if architecture is not None:
+            clauses.append(
+                BootResourceClauseFactory.with_architecture(architecture)
+            )
+        if kflavor is not None:
+            clauses.append(BootResourceClauseFactory.with_kflavor(kflavor))
+        where = (
+            BootResourceClauseFactory.and_clauses(clauses)
+            if len(clauses) > 1
+            else clauses[0]
+        )
+        kernels = await services.boot_resources.list(
+            page=pagination_params.page,
+            size=pagination_params.size,
+            query=QuerySpec(where=where),
+        )
+        resource_ids = [k.id for k in kernels.items]
+        versions_map = (
+            await services.boot_resources.get_versions_for_resources(
+                resource_ids
+            )
+        )
+        files_map = await services.boot_resources.get_files_for_latest_sets(
+            resource_ids
+        )
+        extra_params = ""
+        if name is not None:
+            extra_params += f"&name={name}"
+        if architecture is not None:
+            extra_params += f"&architecture={architecture}"
+        if kflavor is not None:
+            extra_params += f"&kflavor={kflavor}"
+        return KernelListResponse(
+            items=[
+                KernelResponse.from_model(
+                    boot_resource=kernel,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/boot_assets/kernels",
+                    versions=versions_map.get(kernel.id, []),
+                    resource_files=files_map.get(kernel.id, []),
+                )
+                for kernel in kernels.items
+            ],
+            total=kernels.total,
+            next=(
+                f"{V3_API_PREFIX}/boot_assets/kernels?"
+                f"{pagination_params.to_next_href_format()}{extra_params}"
+                if kernels.has_next(
+                    pagination_params.page, pagination_params.size
+                )
+                else None
+            ),
+        )
+
+    @handler(
+        path="/boot_assets/kernels/{kernel_id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": KernelResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES
+                )
+            )
+        ],
+    )
+    async def get_kernel(
+        self,
+        kernel_id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> KernelResponse:
+        kernel = await services.boot_resources.get_one(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.with_asset_type_kernel(),
+                        BootResourceClauseFactory.with_id(kernel_id),
+                    ]
+                )
+            )
+        )
+        if kernel is None:
+            raise NotFoundException()
+        response.headers["ETag"] = kernel.etag()
+        versions_map = (
+            await services.boot_resources.get_versions_for_resources(
+                [kernel.id]
+            )
+        )
+        files_map = await services.boot_resources.get_files_for_latest_sets(
+            [kernel.id]
+        )
+        return KernelResponse.from_model(
+            boot_resource=kernel,
+            self_base_hyperlink=f"{V3_API_PREFIX}/boot_assets/kernels",
+            versions=versions_map.get(kernel.id, []),
+            resource_files=files_map.get(kernel.id, []),
         )

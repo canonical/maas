@@ -968,9 +968,7 @@ class TestGetManuallyUploadedResourcesActivity:
 
         services_mock.boot_resources.get_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.with_rtype(
-                    BootResourceType.UPLOADED
-                )
+                where=BootResourceClauseFactory.with_uploaded_type()
             )
         )
 
@@ -980,6 +978,110 @@ class TestGetManuallyUploadedResourcesActivity:
         services_mock.boot_resource_files.get_files_in_resource_set.assert_awaited_once_with(
             boot_resource_set.id
         )
+
+    async def test_includes_custom_boot_assets(
+        self,
+        boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
+        activity_env: ActivityEnvironment,
+    ) -> None:
+        bootloader_resource = BootResource(
+            id=1,
+            rtype=BootResourceType.UPLOADED,
+            name="grub-efi/uefi",
+            architecture="amd64/generic",
+            extra={},
+            bootloader_type="uefi",
+            rolling=False,
+            base_image="",
+        )
+        kernel_resource = BootResource(
+            id=2,
+            rtype=BootResourceType.UPLOADED,
+            name="ubuntu/noble",
+            architecture="amd64/generic",
+            extra={},
+            kflavor="generic",
+            rolling=False,
+            base_image="ubuntu/noble",
+        )
+        bootloader_set = BootResourceSet(
+            id=1,
+            version="20251028",
+            label="uploaded",
+            resource_id=bootloader_resource.id,
+        )
+        kernel_set = BootResourceSet(
+            id=2,
+            version="20251028",
+            label="uploaded",
+            resource_id=kernel_resource.id,
+        )
+        bootloader_file = BootResourceFile(
+            id=10,
+            filename="grubx64.efi",
+            filetype=BootResourceFileType.ROOT_TGZ,
+            sha256="a" * 64,
+            size=100,
+            extra={},
+            filename_on_disk="a" * 7,
+        )
+        kernel_files = [
+            BootResourceFile(
+                id=11,
+                filename="vmlinuz",
+                filetype=BootResourceFileType.BOOT_KERNEL,
+                sha256="b" * 64,
+                size=200,
+                extra={},
+                filename_on_disk="b" * 7,
+            ),
+            BootResourceFile(
+                id=12,
+                filename="initrd",
+                filetype=BootResourceFileType.BOOT_INITRD,
+                sha256="c" * 64,
+                size=300,
+                extra={},
+                filename_on_disk="c" * 7,
+            ),
+        ]
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_many = AsyncMock(
+            return_value=[bootloader_resource, kernel_resource]
+        )
+        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
+        services_mock.boot_resource_sets.get_latest_for_boot_resource = (
+            AsyncMock(side_effect=[bootloader_set, kernel_set])
+        )
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+        services_mock.boot_resource_files.get_files_in_resource_set = (
+            AsyncMock(side_effect=[[bootloader_file], kernel_files])
+        )
+
+        resources_result = await activity_env.run(
+            boot_activities.get_manually_uploaded_resources
+        )
+
+        assert resources_result.resources == [
+            ResourceDownloadParam(
+                rfile_ids=[bootloader_file.id],
+                source_list=[],
+                sha256=bootloader_file.sha256,
+                filename_on_disk=bootloader_file.filename_on_disk,
+                total_size=bootloader_file.size,
+            ),
+            *[
+                ResourceDownloadParam(
+                    rfile_ids=[file.id],
+                    source_list=[],
+                    sha256=file.sha256,
+                    filename_on_disk=file.filename_on_disk,
+                    total_size=file.size,
+                )
+                for file in kernel_files
+            ],
+        ]
 
 
 class TestDeletePendingFilesForSelectionActivity:
@@ -2097,6 +2199,66 @@ class TestSyncAllBootResourcesWorkflow:
         temporal_calls.assert_child_workflow_called_times(
             DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME, times=2
         )
+
+    async def test_syncs_custom_boot_assets_in_scope(
+        self,
+        client: Client,
+        three_regions_workers,
+        temporal_calls: TemporalCalls,
+        region1_system_id: str,
+        mock_activities: MockActivities,
+    ) -> None:
+        bootloader_resource = ResourceDownloadParam(
+            rfile_ids=[10],
+            source_list=[],
+            sha256="a" * 64,
+            filename_on_disk="bootldr",
+            total_size=100,
+        )
+        kernel_resource = ResourceDownloadParam(
+            rfile_ids=[11],
+            source_list=[],
+            sha256="b" * 64,
+            filename_on_disk="kernel01",
+            total_size=200,
+        )
+        mock_activities.results[
+            GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME
+        ] = ActivityResult(
+            result=GetLocalBootResourcesParamReturnValue(
+                resources=[bootloader_resource, kernel_resource]
+            )
+        )
+        mock_activities.results[GET_SYNCED_REGIONS_ACTIVITY_NAME] = (
+            ActivityResult(result=[region1_system_id])
+        )
+
+        await client.execute_workflow(
+            SyncAllLocalBootResourcesWorkflow.run,
+            id="test-sync-custom-boot-assets",
+            task_queue=REGION_TASK_QUEUE,
+        )
+
+        temporal_calls.assert_activity_called_once(
+            GET_LOCAL_BOOT_RESOURCES_PARAMS_ACTIVITY_NAME
+        )
+        temporal_calls.assert_child_workflow_called_times(
+            SYNC_BOOTRESOURCES_WORKFLOW_NAME, times=2
+        )
+        temporal_calls.assert_child_workflow_called_times(
+            DOWNLOAD_BOOTRESOURCE_WORKFLOW_NAME, times=4
+        )
+
+        sync_calls = temporal_calls.child_workflows.get_by_name(
+            SYNC_BOOTRESOURCES_WORKFLOW_NAME
+        )
+        sync_scope = [call.args[0].resource for call in sync_calls]
+        assert sorted(
+            (resource.rfile_ids[0], resource.sha256) for resource in sync_scope
+        ) == [
+            (bootloader_resource.rfile_ids[0], bootloader_resource.sha256),
+            (kernel_resource.rfile_ids[0], kernel_resource.sha256),
+        ]
 
 
 class TestMasterImageSyncWorkflow:
