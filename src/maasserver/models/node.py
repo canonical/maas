@@ -6180,7 +6180,10 @@ class Node(CleanSave, TimestampedModel):
             self._start_deployment()
             claimed_ips = True
             needs_power_call = False
-            task_queue = str(get_temporal_task_queue_for_bmc(self))
+            if power_info.power_type == "manual":
+                task_queue = ""
+            else:
+                task_queue = str(get_temporal_task_queue_for_bmc(self))
 
             # Previously, the node timeout was defined as the period since the
             # node last sent notification. In the current implementation, the
@@ -6217,7 +6220,10 @@ class Node(CleanSave, TimestampedModel):
             self._start_deployment()
             needs_power_call = False
 
-            task_queue = str(get_temporal_task_queue_for_bmc(self))
+            if power_info.power_type == "manual":
+                task_queue = ""
+            else:
+                task_queue = str(get_temporal_task_queue_for_bmc(self))
 
             # Previously, the node timeout was defined as the period since the
             # node last sent notification. In the current workflow
