@@ -178,8 +178,7 @@ class AuthHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
     ) -> AuthInfoResponse:
-        """Decide whether the login should proceed via OIDC or local password.
-        """
+        """Decide whether the login should proceed via OIDC or local password."""
         provider = await services.external_oauth.get_provider()
         user_profile = await services.users.get_user_profile(email)
 
