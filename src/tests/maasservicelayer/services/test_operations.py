@@ -1,11 +1,11 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
-from maascommon.enums.operations import OperationStatus
+from maascommon.enums.operations import OperationStatus, OperationType
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.operations import (
@@ -14,8 +14,19 @@ from maasservicelayer.db.repositories.operations import (
 )
 from maasservicelayer.models.operations import Operation
 from maasservicelayer.services.operations import OperationsService
+from maasservicelayer.utils.date import utcnow
 
 ERROR_MESSAGE = "operation failed"
+
+TEST_OPERATION = Operation(
+    id=1,
+    uuid="op-uuid",
+    op_type=OperationType.MACHINE_DEPLOY,
+    status=OperationStatus.ACCEPTED,
+    is_bulk=False,
+    created=utcnow(),
+    updated=utcnow(),
+)
 
 
 @pytest.mark.asyncio
@@ -28,10 +39,10 @@ class TestOperationsService:
 
     async def test_update_status_running_sets_started(self) -> None:
         repository = Mock(OperationsRepository)
-        existing = Mock(Operation)
-        existing.id = 1
-        repository.get_one = AsyncMock(return_value=existing)
-        repository.update_by_id = AsyncMock(return_value=Mock(Operation))
+        repository.get_one.return_value = TEST_OPERATION
+        repository.update_by_id.return_value = TEST_OPERATION.model_copy(
+            update={"status": OperationStatus.RUNNING}
+        )
         service = self._service(repository)
 
         await service.update_status("op-uuid", OperationStatus.RUNNING)
@@ -49,10 +60,10 @@ class TestOperationsService:
 
     async def test_update_status_failed_stores_error(self) -> None:
         repository = Mock(OperationsRepository)
-        existing = Mock(Operation)
-        existing.id = 1
-        repository.get_one = AsyncMock(return_value=existing)
-        repository.update_by_id = AsyncMock(return_value=Mock(Operation))
+        repository.get_one.return_value = TEST_OPERATION
+        repository.update_by_id.return_value = TEST_OPERATION.model_copy(
+            update={"status": OperationStatus.FAILED}
+        )
         service = self._service(repository)
 
         await service.update_status(
