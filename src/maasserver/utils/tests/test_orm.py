@@ -1275,6 +1275,31 @@ class TestTransactionalRetries(SerializationFailureTestCase, NoSleepMixin):
         expected_reset_calls = [call()] * 10
         reset.assert_has_calls(expected_reset_calls)
 
+    def test_post_commit_hooks_from_failed_attempt_do_not_fire_on_retry(self):
+        stale_hook = Mock()
+        successful_hook = Mock()
+        call_count = [0]
+
+        serialization_error = self.assertRaises(
+            OperationalError, self.cause_serialization_failure
+        )
+
+        def foo():
+            call_count[0] += 1
+            if call_count[0] == 1:
+                # Register a hook that should be discarded and raise a retriable serialization error. This post
+                # commit hook should be discarded between retries.
+                post_commit_do(stale_hook)
+                raise serialization_error
+            else:
+                post_commit_do(successful_hook)
+
+        decorated_function = orm.transactional(foo)
+        decorated_function()
+
+        stale_hook.assert_not_called()
+        successful_hook.assert_called_once_with()
+
 
 class TestSavepoint(MAASTransactionServerTestCase):
     """Tests for `savepoint`."""

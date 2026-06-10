@@ -753,7 +753,11 @@ def transactional(func):
     # So if we reconnect and try to re-execute the transaction, we would
     # enter the critical block guarded by the lock, without actually holding it.
     # See https://bugs.launchpad.net/maas/+bug/2156012 .
-    func_outside_txn = retry_on_retryable_failure(func_within_txn)
+    #
+    # Some transactions might have added some post_commit hooks that must be cleaned between retries.
+    func_outside_txn = retry_on_retryable_failure(
+        func_within_txn, reset=post_commit_hooks.reset
+    )
 
     @wraps(func)
     def call_within_transaction(*args, **kwargs):
