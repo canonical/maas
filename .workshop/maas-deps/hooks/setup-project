@@ -1,0 +1,79 @@
+#!/bin/bash
+set -euo pipefail
+
+cd /project
+
+echo "######################################"
+echo "Installing MAAS build dependencies"
+sudo apt build-dep -y . 2>/dev/null || sudo apt-get build-dep -y maas 2>/dev/null || echo "Warning: Could not install build-deps, continuing with explicit package list"
+
+echo "Installing base packages..."
+base_packages=$(sort -u /project/required-packages/base | sed '/^\#/d')
+dev_packages=$(sort -u /project/required-packages/dev | sed '/^\#/d')
+
+# Install packages, skipping any that aren't available in the repos
+available_packages=""
+unavailable_packages=""
+for pkg in $base_packages $dev_packages; do
+    if apt-cache show "$pkg" >/dev/null 2>&1; then
+        available_packages="$available_packages $pkg"
+    else
+        unavailable_packages="$unavailable_packages $pkg"
+    fi
+done
+
+if [ -n "$unavailable_packages" ]; then
+    echo "Warning: Skipping unavailable packages (will be installed via pip during build):$unavailable_packages"
+fi
+
+if [ -n "$available_packages" ]; then
+    sudo apt-get install -y --no-install-recommends $available_packages
+else
+    echo "Warning: No packages available to install"
+fi
+
+echo "Purging forbidden packages..."
+forbidden_packages=$(sort -u /project/required-packages/forbidden | sed '/^\#/d')
+sudo apt-get purge -y $forbidden_packages 2>/dev/null || true
+
+echo "Installing snaps..."
+if command -v snap >/dev/null 2>&1; then
+    while IFS= read -r line; do
+        # Skip comments and empty lines
+        [[ "$line" =~ ^#.*$ ]] && continue
+        [[ -z "$line" ]] && continue
+        # Split package name from flags
+        pkg=$(echo "$line" | awk '{print $1}')
+        flags=$(echo "$line" | awk '{$1=""; print $0}' | sed 's/^ *//')
+        # Skip snapcraft — it cannot be used inside the workshop container
+        # (snapcraft pack needs LXD which conflicts with the host bridge).
+        # The snap tree is built on the host instead.
+        if [ "$pkg" = "snapcraft" ]; then
+            echo "Skipping snapcraft (only needed on host for 'make snap-tree')"
+            continue
+        fi
+        if [ -n "$flags" ]; then
+            sudo snap install "$pkg" $flags 2>/dev/null || echo "Warning: Failed to install snap: $pkg $flags"
+        else
+            sudo snap install "$pkg" 2>/dev/null || echo "Warning: Failed to install snap: $pkg"
+        fi
+    done < /project/required-packages/snaps
+else
+    echo "snap command not available, skipping snap installation"
+fi
+
+echo "######################################"
+echo "Configuring workshop user environment"
+
+cat >> ~/.bashrc <<'EOF'
+
+# MAAS dev aliases
+alias c='clear'
+alias format='make format-py && make lint-py && make lint-py-imports'
+alias start='make format-py && make lint-py && make snap-tree-sync && sudo snap restart maas'
+alias logs='journalctl -u snap.maas.pebble.service -f -t maas-apiserver'
+alias test='./bin/pytest'
+alias testr='./bin/test.region'
+EOF
+
+echo "..done"

@@ -1,0 +1,12 @@
+name: maas-build
+version: "0.1"
+summary: MAAS dev environment build and runtime
+description: |
+  Builds MAAS from source, sets up the snap tree, and provides
+  the runtime environment for MAAS development.
+platforms:
+  amd64:
+slots:
+  maas-ui:
+    interface: tunnel
+    endpoint: 5240

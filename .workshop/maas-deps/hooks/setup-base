@@ -1,0 +1,32 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "######################################"
+echo "Adding MAAS PPA"
+
+apt-get update
+apt-get install -y --no-install-recommends software-properties-common gpg-agent
+add-apt-repository -y ppa:maas-committers/latest-deps
+
+echo "############################################"
+echo "Disabling conflicting system services"
+if command -v systemctl >/dev/null 2>&1; then
+    for service in named postgresql isc-dhcp-server; do
+        if systemctl is-active "$service" >/dev/null 2>&1; then
+            systemctl stop "$service" || true
+        fi
+        if systemctl is-enabled "$service" 2>/dev/null; then
+            systemctl disable "$service" || true
+        fi
+    done
+
+    # nginx was removed between 3.6 and 3.7
+    if dpkg --list 2>/dev/null | grep -q nginx-core; then
+        systemctl stop nginx 2>/dev/null || true
+        systemctl disable nginx 2>/dev/null || true
+    fi
+else
+    echo "systemctl not available, skipping service management"
+fi
+
+echo "..done"

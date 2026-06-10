@@ -259,6 +259,7 @@ lint-shell:
 		utilities/run-performanced \
 		utilities/run-py-tests-ci \
 		utilities/schemaspy \
+		utilities/setup-dev-networks \
 		utilities/update-initial-sql \
 		utilities/version-bump.sh
 .PHONY: lint-shell
@@ -541,3 +542,44 @@ cli-docs-generate:
 cli-docs: cli-docs-introspect
 	@$(if $(CHECK_DOCSTRING_SYNC),,$(MAKE) cli-docs-generate)
 .PHONY: cli-docs
+
+#
+# Workshop dev environment
+#
+
+dev-env:
+	@# Clean root-owned build dirs that may remain from a previous snap try.
+	@# These cause "permission denied" when the workshop user tries to rebuild.
+	@for d in src/maasagent/build src/host-info/bin src/maasopenfga/build; do \
+		if [ -d "$$d" ] && [ ! -w "$$d" ]; then \
+			echo "Removing root-owned directory: $$d"; \
+			sudo rm -rf "$$d"; \
+		fi; \
+	done
+	@# Build the snap tree on the host first. snapcraft pack needs LXD,
+	@# which can't run inside the workshop container (lxdbr0 conflicts).
+	@if [ ! -f dev-snap/tree.marker ]; then \
+		echo "Building snap tree on host (requires LXD)..."; \
+		sudo make snap-tree; \
+	fi
+	workshop launch --verbose
+	@echo ""
+	@echo "MAAS dev environment is ready!"
+	@echo "Access MAAS at: http://localhost:5240"
+	@echo "  username: maas"
+	@echo "  password: maas"
+	@echo ""
+	@echo "Useful commands:"
+	@echo "  workshop shell        - Open a shell in the workshop"
+	@echo "  workshop run restart  - Restart MAAS"
+	@echo "  workshop run logs     - View MAAS logs"
+	@echo "  workshop run test     - Run Python tests"
+.PHONY: dev-env
+
+dev-networks:
+	@utilities/setup-dev-networks
+.PHONY: dev-networks
+
+dev-env-clean:
+	workshop remove
+.PHONY: dev-env-clean
