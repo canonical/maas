@@ -18,7 +18,6 @@ from typing import Any
 
 from bson import BSON
 from bson.errors import BSONError
-
 from ulid import ULID
 
 from provisioningserver.path import get_path

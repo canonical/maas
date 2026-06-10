@@ -526,40 +526,40 @@ class TestHashCanonical(MAASTestCase):
         hasher = _hash_canonical(factory.make_string())
         self.assertEqual(hasher.block_size, 64)
         self.assertTrue(callable(hasher.digest))
-        self.assertEqual(hasher.digest_size, 32)
+        self.assertEqual(hasher.digest_size, 20)
         self.assertTrue(callable(hasher.hexdigest))
-        self.assertEqual(hasher.name, "sha256")
+        self.assertEqual(hasher.name, "sha1")
         self.assertTrue(callable(hasher.update))
 
     def test_misc_digests(self):
         self.assertEqual(
             _hash_canonical(None).hexdigest(),
-            "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+            "2be88ca4242c76e8253ac62474851065032d6833",
         )
         self.assertEqual(
             _hash_canonical(False).hexdigest(),
-            "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa",
+            "7cb6efb98ba5972a9b5090dc2e517fe14d12cb04",
         )
         self.assertEqual(
             _hash_canonical(True).hexdigest(),
-            "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
+            "5ffe533b830f08a0326348a9160afafc8ada44db",
         )
 
         self.assertEqual(
             _hash_canonical((1, 2, 3)).hexdigest(),
-            "a36b1f2c3f84522dd1005145646617d7054c0851e97c72a039c0bdfac9fa07f3",
+            "a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85",
         )
         self.assertEqual(
             _hash_canonical([1, 2, 3]).hexdigest(),
-            "a36b1f2c3f84522dd1005145646617d7054c0851e97c72a039c0bdfac9fa07f3",
+            "a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85",
         )
         self.assertEqual(
             _hash_canonical(((1, 2), (3, 4))).hexdigest(),
-            "1e258794ed040eaaeb79d8bc21043c96b5aadaf3a4b51c76b2a76869f139f5f2",
+            "3bd746ab7fe760d0926546318cbf2b6f0a7a56f8",
         )
         self.assertEqual(
             _hash_canonical({1: 2, 3: 4}).hexdigest(),
-            "1e258794ed040eaaeb79d8bc21043c96b5aadaf3a4b51c76b2a76869f139f5f2",
+            "3bd746ab7fe760d0926546318cbf2b6f0a7a56f8",
         )
 
 

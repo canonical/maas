@@ -55,6 +55,20 @@ COMMENT ON EXTENSION btree_gin IS 'support for indexing common datatypes in GIN'
 
 
 --
+-- Name: maasserver_text_to_bytea(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.maasserver_text_to_bytea(t text) RETURNS bytea
+    LANGUAGE sql IMMUTABLE
+    AS $$
+    SELECT pg_catalog.decode(
+        pg_catalog.encode(pg_catalog.convert_to(t, 'UTF8'), 'hex'),
+        'hex'
+    );
+$$;
+
+
+--
 -- Name: bmc_machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -15517,7 +15531,7 @@ CREATE INDEX maasserver_bmc_power_type_93755dda_like ON public.maasserver_bmc US
 -- Name: maasserver_bmc_power_type_parameters_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX maasserver_bmc_power_type_parameters_idx ON public.maasserver_bmc USING btree (power_type, sha256(((power_parameters)::text)::bytea)) WHERE ((power_type)::text <> 'manual'::text);
+CREATE UNIQUE INDEX maasserver_bmc_power_type_parameters_idx ON public.maasserver_bmc USING btree (power_type, sha256(public.maasserver_text_to_bytea((power_parameters)::text))) WHERE ((power_type)::text <> 'manual'::text);
 
 
 --

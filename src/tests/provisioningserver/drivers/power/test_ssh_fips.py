@@ -231,14 +231,14 @@ class TestFIPSSSHConfigAllowLists:
 
 class TestGenerateSSHKeyFIPSSafe:
     def test_rejects_dsa_in_fips_mode(self) -> None:
-        from provisioningserver.security import (
+        from provisioningserver.testing.security import (
             FIPSCryptoError,
             generate_ssh_key,
         )
 
         with (
             patch(
-                "provisioningserver.security.is_fips_enabled",
+                "provisioningserver.testing.security.is_fips_enabled",
                 return_value=True,
             ),
             pytest.raises(FIPSCryptoError, match="DSA"),
@@ -246,14 +246,14 @@ class TestGenerateSSHKeyFIPSSafe:
             generate_ssh_key("dsa")
 
     def test_rejects_rsa_below_2048_in_fips_mode(self) -> None:
-        from provisioningserver.security import (
+        from provisioningserver.testing.security import (
             FIPSCryptoError,
             generate_ssh_key,
         )
 
         with (
             patch(
-                "provisioningserver.security.is_fips_enabled",
+                "provisioningserver.testing.security.is_fips_enabled",
                 return_value=True,
             ),
             pytest.raises(FIPSCryptoError, match="1024"),
@@ -261,14 +261,14 @@ class TestGenerateSSHKeyFIPSSafe:
             generate_ssh_key("rsa", bits=1024)
 
     def test_rejects_ed25519_in_fips_mode(self) -> None:
-        from provisioningserver.security import (
+        from provisioningserver.testing.security import (
             FIPSCryptoError,
             generate_ssh_key,
         )
 
         with (
             patch(
-                "provisioningserver.security.is_fips_enabled",
+                "provisioningserver.testing.security.is_fips_enabled",
                 return_value=True,
             ),
             pytest.raises(FIPSCryptoError, match="ED25519"),
@@ -278,10 +278,10 @@ class TestGenerateSSHKeyFIPSSafe:
     def test_accepts_rsa_2048_in_fips_mode(self) -> None:
         from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
-        from provisioningserver.security import generate_ssh_key
+        from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.security.is_fips_enabled", return_value=True
+            "provisioningserver.testing.security.is_fips_enabled", return_value=True
         ):
             key = generate_ssh_key("rsa", bits=2048)
 
@@ -293,10 +293,10 @@ class TestGenerateSSHKeyFIPSSafe:
             EllipticCurvePrivateKey,
         )
 
-        from provisioningserver.security import generate_ssh_key
+        from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.security.is_fips_enabled", return_value=True
+            "provisioningserver.testing.security.is_fips_enabled", return_value=True
         ):
             key = generate_ssh_key("ecdsa")
 
@@ -305,10 +305,10 @@ class TestGenerateSSHKeyFIPSSafe:
     def test_defaults_rsa_to_4096_bits_in_fips_mode(self) -> None:
         from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
-        from provisioningserver.security import generate_ssh_key
+        from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.security.is_fips_enabled", return_value=True
+            "provisioningserver.testing.security.is_fips_enabled", return_value=True
         ):
             key = generate_ssh_key("rsa")
 
@@ -318,10 +318,10 @@ class TestGenerateSSHKeyFIPSSafe:
     def test_allows_dsa_outside_fips_mode(self) -> None:
         from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey
 
-        from provisioningserver.security import generate_ssh_key
+        from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.security.is_fips_enabled", return_value=False
+            "provisioningserver.testing.security.is_fips_enabled", return_value=False
         ):
             key = generate_ssh_key("dsa")
 
@@ -330,10 +330,10 @@ class TestGenerateSSHKeyFIPSSafe:
     def test_allows_rsa_below_2048_outside_fips_mode(self) -> None:
         from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
-        from provisioningserver.security import generate_ssh_key
+        from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.security.is_fips_enabled", return_value=False
+            "provisioningserver.testing.security.is_fips_enabled", return_value=False
         ):
             key = generate_ssh_key("rsa", bits=1024)
 
@@ -345,21 +345,21 @@ class TestGenerateSSHKeyFIPSSafe:
             Ed25519PrivateKey,
         )
 
-        from provisioningserver.security import generate_ssh_key
+        from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.security.is_fips_enabled", return_value=False
+            "provisioningserver.testing.security.is_fips_enabled", return_value=False
         ):
             key = generate_ssh_key("ed25519")
 
         assert isinstance(key, Ed25519PrivateKey)
 
     def test_raises_for_unknown_key_type(self) -> None:
-        from provisioningserver.security import generate_ssh_key
+        from provisioningserver.testing.security import generate_ssh_key
 
         with (
             patch(
-                "provisioningserver.security.is_fips_enabled",
+                "provisioningserver.testing.security.is_fips_enabled",
                 return_value=False,
             ),
             pytest.raises(ValueError, match="Unsupported SSH key type"),

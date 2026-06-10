@@ -187,7 +187,7 @@ class TestRegionHTTPService(
         self.assertIn("location /MAAS/ws {", nginx_config)
         self.assertIn("proxy_http_version 1.1;", nginx_config)
         self.assertIn("proxy_set_header Upgrade $http_upgrade;", nginx_config)
-        self.assertIn('proxy_set_header Connection "upgrade";', nginx_config)
+        self.assertIn('proxy_set_header Connection "Upgrade";', nginx_config)
 
     def test_create_cert_files_writes_full_chain(self):
         cert = get_sample_cert_with_cacerts()

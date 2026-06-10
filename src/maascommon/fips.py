@@ -136,9 +136,7 @@ FIPS_SSH_ALLOWED_ALTERNATIVES: list[str] = [
     "RSA ≥ 2048 bits (rsa-sha2-256/512)",
 ]
 
-_RSA_KEY_TYPES: frozenset[str] = frozenset(
-    {"rsa-sha2-256", "rsa-sha2-512"}
-)
+_RSA_KEY_TYPES: frozenset[str] = frozenset({"rsa-sha2-256", "rsa-sha2-512"})
 
 
 def _parse_rsa_key_bits(blob_b64: str) -> int | None:
@@ -251,7 +249,11 @@ def validate_ssl_cert_fips_compliance(
 
         cert = _x509.load_pem_x509_certificate(cert_pem.strip().encode())
     except Exception:  # noqa: BLE001
-        return False, "Unable to parse PEM certificate for FIPS validation", FIPS_CERT_ALLOWED_ALTERNATIVES
+        return (
+            False,
+            "Unable to parse PEM certificate for FIPS validation",
+            FIPS_CERT_ALLOWED_ALTERNATIVES,
+        )
 
     sig_hash = cert.signature_hash_algorithm
     if sig_hash is not None:

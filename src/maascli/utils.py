@@ -8,7 +8,6 @@ from functools import partial
 from inspect import cleandoc, getdoc
 import io
 import re
-import socket
 import ssl
 import sys
 from urllib.parse import urlparse
@@ -214,21 +213,13 @@ def dump_certificate_info(url, file=None):
         return
 
     host = parsed_url.hostname
-    port = 443
-    if parsed_url.port:
-        port = parsed_url.port
+    port = parsed_url.port or 443
 
-    conn = socket.create_connection((host, port))
-    context = ssl.create_default_context()
-    context.minimum_version = ssl.TLSVersion.TLSv1_2
-    sock = context.wrap_socket(conn, server_hostname=host)
     try:
-        der_cert = sock.getpeercert(binary_form=True)
-        cert = ssl.DER_cert_to_PEM_cert(der_cert)
-    finally:
-        sock.close()
-    try:
-        cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert)
+        context = ssl.create_default_context()
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        pem_cert = ssl.get_server_certificate((host, port), context=context)
+        cert = crypto.load_certificate(crypto.FILETYPE_PEM, pem_cert)
         file = sys.stderr if file is None else file
         subject_cn = cert.get_subject().CN
         issuer_cn = cert.get_issuer().CN
