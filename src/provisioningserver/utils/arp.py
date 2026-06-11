@@ -51,6 +51,5 @@ def run(args, output=sys.stdout):
     cmd = sudo(cmd)
     network_monitor = subprocess.Popen(cmd, stdout=output)
     if network_monitor is not None:
-        return_code = network_monitor.poll()
-        if return_code is not None:
-            raise SystemExit(return_code)
+        return_code = network_monitor.wait()
+        raise SystemExit(return_code)

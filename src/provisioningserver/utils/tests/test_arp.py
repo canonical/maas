@@ -31,11 +31,12 @@ class TestObserveARPCommand(MAASTestCase):
         add_arguments(parser)
         args = parser.parse_args(["eth0"])
         popen = self.patch(arp_module.subprocess, "Popen")
-        popen.return_value.poll = Mock()
-        popen.return_value.poll.return_value = None
+        popen.return_value.wait = Mock()
+        popen.return_value.wait.return_value = 0
         popen.return_value.stdout = io.StringIO("{}")
         output = io.StringIO()
-        run(args, output=output)
+        with self.assertRaisesRegex(SystemExit, "0"):
+            run(args, output=output)
         popen.assert_called_once_with(
             ["sudo", "-n", "/usr/sbin/maas-netmon", "eth0"], stdout=output
         )
@@ -45,28 +46,25 @@ class TestObserveARPCommand(MAASTestCase):
         add_arguments(parser)
         args = parser.parse_args(["eth0"])
         popen = self.patch(arp_module.subprocess, "Popen")
-        popen.return_value.poll = Mock()
-        popen.return_value.poll.return_value = None
+        popen.return_value.wait = Mock()
+        popen.return_value.wait.return_value = 0
         popen.return_value.stdout = io.StringIO("{}")
         output = io.StringIO()
-        run(args, output=output)
+        with self.assertRaisesRegex(SystemExit, "0"):
+            run(args, output=output)
         popen.assert_called_once_with(
             ["sudo", "-n", "/usr/sbin/maas-netmon", "eth0"], stdout=output
         )
 
-    def test_raises_systemexit_poll_result(self):
+    def test_raises_systemexit_on_wait(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args(["eth0"])
         popen = self.patch(arp_module.subprocess, "Popen")
-        popen.return_value.poll = Mock()
-        popen.return_value.poll.return_value = None
+        popen.return_value.wait = Mock()
+        popen.return_value.wait.return_value = 42
         popen.return_value.stdout = io.StringIO("{}")
         output = io.StringIO()
-        observe_arp_packets = self.patch(arp_module, "observe_arp_packets")
-        observe_arp_packets.return_value = None
-        popen.return_value.poll = Mock()
-        popen.return_value.poll.return_value = 42
         with self.assertRaisesRegex(SystemExit, "42"):
             run(args, output=output)
 
