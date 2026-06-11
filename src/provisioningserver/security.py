@@ -245,4 +245,3 @@ class InstallSharedSecretScript:
             MAAS_SHARED_SECRET.set(secret_hex)
             print(f"Secret installed to {MAAS_SHARED_SECRET.path}.")
             raise SystemExit(0)
-

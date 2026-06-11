@@ -7,7 +7,10 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed25519, rsa
 
 from maascommon.fips import is_fips_enabled
-from provisioningserver.security import FIPSCryptoError, _raise_fips_crypto_error
+from provisioningserver.security import (
+    _raise_fips_crypto_error,
+    FIPSCryptoError,
+)
 
 
 def generate_ssh_key(key_type: str, bits: int = 4096):

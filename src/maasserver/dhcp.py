@@ -51,7 +51,7 @@ log = LegacyLogger()
 
 def generate_omapi_key() -> str:
     """Generate a base64-encoded key to use for OMAPI access."""
-    return base64.b64encode(secrets.token_bytes(32)).decode("ascii")
+    return base64.b64encode(secrets.token_bytes(64)).decode("ascii")
 
 
 def get_omapi_key():

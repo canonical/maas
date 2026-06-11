@@ -169,7 +169,9 @@ class TestProxmoxPowerDriver(MAASTestCase):
 
     @inlineCallbacks
     def test_login_rejects_unverified_tls_in_fips_mode(self):
-        self.patch(proxmox_module, "is_fips_enabled").return_value = True
+        import provisioningserver.drivers.power.fips as fips_module
+
+        self.patch(fips_module, "is_fips_enabled").return_value = True
         system_id = factory.make_name("system_id")
         context = {
             "power_address": factory.make_name("power_address"),

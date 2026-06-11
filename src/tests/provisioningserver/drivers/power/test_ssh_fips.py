@@ -281,7 +281,8 @@ class TestGenerateSSHKeyFIPSSafe:
         from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.testing.security.is_fips_enabled", return_value=True
+            "provisioningserver.testing.security.is_fips_enabled",
+            return_value=True,
         ):
             key = generate_ssh_key("rsa", bits=2048)
 
@@ -296,7 +297,8 @@ class TestGenerateSSHKeyFIPSSafe:
         from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.testing.security.is_fips_enabled", return_value=True
+            "provisioningserver.testing.security.is_fips_enabled",
+            return_value=True,
         ):
             key = generate_ssh_key("ecdsa")
 
@@ -308,7 +310,8 @@ class TestGenerateSSHKeyFIPSSafe:
         from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.testing.security.is_fips_enabled", return_value=True
+            "provisioningserver.testing.security.is_fips_enabled",
+            return_value=True,
         ):
             key = generate_ssh_key("rsa")
 
@@ -321,7 +324,8 @@ class TestGenerateSSHKeyFIPSSafe:
         from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.testing.security.is_fips_enabled", return_value=False
+            "provisioningserver.testing.security.is_fips_enabled",
+            return_value=False,
         ):
             key = generate_ssh_key("dsa")
 
@@ -333,7 +337,8 @@ class TestGenerateSSHKeyFIPSSafe:
         from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.testing.security.is_fips_enabled", return_value=False
+            "provisioningserver.testing.security.is_fips_enabled",
+            return_value=False,
         ):
             key = generate_ssh_key("rsa", bits=1024)
 
@@ -348,7 +353,8 @@ class TestGenerateSSHKeyFIPSSafe:
         from provisioningserver.testing.security import generate_ssh_key
 
         with patch(
-            "provisioningserver.testing.security.is_fips_enabled", return_value=False
+            "provisioningserver.testing.security.is_fips_enabled",
+            return_value=False,
         ):
             key = generate_ssh_key("ed25519")
 

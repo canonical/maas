@@ -308,6 +308,8 @@ RackControllerRule = Rule(
     Allow("cryptography.fernet.**"),
     Allow("cryptography.hazmat.backends.default_backend"),
     Allow("cryptography.hazmat.primitives.asymmetric.dsa"),
+    Allow("cryptography.hazmat.primitives.asymmetric.ec"),
+    Allow("cryptography.hazmat.primitives.asymmetric.ed25519"),
     Allow("cryptography.hazmat.primitives.asymmetric.padding"),
     Allow("cryptography.hazmat.primitives.asymmetric.rsa"),
     Allow("cryptography.hazmat.primitives.hashes"),

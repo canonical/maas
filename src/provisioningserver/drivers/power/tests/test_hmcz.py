@@ -117,7 +117,9 @@ class TestHMCZPowerDriver(MAASTestCase):
         )
 
     def test_get_partition_rejects_unverified_tls_in_fips_mode(self):
-        self.patch(hmcz_module, "is_fips_enabled").return_value = True
+        import provisioningserver.drivers.power.fips as fips_module
+
+        self.patch(fips_module, "is_fips_enabled").return_value = True
         context = self.make_context()
         context["power_verify_ssl"] = hmcz_module.VERIFY_SSL_NO
 
