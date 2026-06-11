@@ -409,13 +409,6 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
     async def count_by_provider(self, provider_id: int) -> int:
         return await self.repository.count_by_provider(provider_id=provider_id)
 
-    async def is_oidc_user(self, email: str) -> bool:
-        user_profile = await self.repository.get_user_profile(username=email)
-        # Allow external login if profile does not exist, or is linked to an OIDC provider
-        if not user_profile or user_profile.provider_id:
-            return True
-        return False
-
     async def has_users(self) -> bool:
         return await self.repository.has_users()
 

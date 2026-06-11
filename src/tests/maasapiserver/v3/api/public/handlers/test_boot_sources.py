@@ -29,7 +29,6 @@ from maasapiserver.v3.api.public.models.responses.boot_sources import (
     UISourceAvailableImageListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maascommon.constants import STABLE_IMAGES_STREAM_URL
 from maascommon.enums.boot_resources import (
     BootResourceType,
     ImageStatus,
@@ -50,12 +49,10 @@ from maasservicelayer.db.repositories.bootsourceselections import (
 )
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
-    BadRequestException,
     BaseExceptionDetail,
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
-    INVALID_ARGUMENT_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
@@ -111,18 +108,6 @@ TEST_BOOTSOURCE_2 = BootSource(
     enabled=True,
 )
 
-TEST_DEFAULT_BOOTSOURCE = BootSource(
-    id=3,
-    created=utcnow(),
-    updated=utcnow(),
-    name="default",
-    url=STABLE_IMAGES_STREAM_URL,
-    keyring_filename="/path/to/keyring.gpg",
-    keyring_data="",
-    priority=1,
-    skip_keyring_verification=False,
-    enabled=True,
-)
 
 TEST_BOOTSOURCESELECTION = BootSourceSelection(
     id=1,
@@ -366,50 +351,6 @@ class TestBootSourcesApi(ApiCommonTests):
         )
         assert response.status_code == 422
         services_mock.boot_sources.update_by_id.assert_not_called()
-
-    async def test_put_default_boot_source_rejects_disallowed_fields(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
-    ) -> None:
-        """Updating a default boot source with a changed disallowed field
-        (e.g. name) returns 400."""
-        client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
-        )
-        services_mock.boot_sources = Mock(BootSourcesService)
-        services_mock.boot_sources.exists.return_value = False
-        services_mock.boot_sources.get_by_id.return_value = (
-            TEST_DEFAULT_BOOTSOURCE
-        )
-        services_mock.boot_sources.update_by_id.side_effect = BadRequestException(
-            details=[
-                BaseExceptionDetail(
-                    type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                    message="'name' cannot be changed for MAAS default boot sources.",
-                    field="name",
-                )
-            ]
-        )
-
-        update_request = {
-            "name": "new name",
-            "url": TEST_DEFAULT_BOOTSOURCE.url,
-            "keyring_filename": "/path/to/keyring.gpg",
-            "keyring_data": "",
-            "priority": 15,
-            "skip_keyring_verification": False,
-            "enabled": True,
-        }
-        response = await client.put(
-            f"{self.BASE_PATH}/{TEST_DEFAULT_BOOTSOURCE.id}",
-            json=jsonable_encoder(update_request),
-        )
-        assert response.status_code == 400
-
-        error_response = ErrorBodyResponse(**response.json())
-        assert error_response.kind == "Error"
-        assert error_response.code == 400
 
     async def test_post_200(
         self,

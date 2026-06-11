@@ -37,6 +37,7 @@ from collections.abc import Iterable
 from contextlib import contextmanager, ExitStack
 from functools import wraps
 from itertools import chain, islice, repeat, takewhile
+import os
 import re
 import threading
 from time import sleep
@@ -904,11 +905,21 @@ def disable_all_database_connections():
     thread, using threading.local. Using the database from the reactor
     thread is a recipe for intermingled transactions.
     """
-    for alias in connections:
-        connection = connections[alias]
-        if type(connection) is not DisabledDatabaseConnection:
-            connections[alias] = DisabledDatabaseConnection()
-            connection.close()
+    # connection.close() is @async_unsafe in Django and raises
+    # SynchronousOnlyOperation when an asyncio event loop is running (e.g.
+    # the Twisted asyncio reactor thread). We intentionally run on that
+    # thread to tear the connections down, so use Django's documented
+    # escape hatch.
+    # See: https://docs.djangoproject.com/en/5.2/topics/async/#django-allow-async-unsafe
+    os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+    try:
+        for alias in connections:
+            connection = connections[alias]
+            if type(connection) is not DisabledDatabaseConnection:
+                connections[alias] = DisabledDatabaseConnection()
+                connection.close()
+    finally:
+        del os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"]
 
 
 def enable_all_database_connections():
