@@ -194,12 +194,7 @@ class LXDPodDriver(PodDriver):
     description = "LXD (virtual systems)"
     wait_time = LXD_WAITING_POLICY
     settings = [
-        make_setting_field(
-            "power_address",
-            "LXD address",
-            field_type="lxd_address",
-            required=True,
-        ),
+        make_setting_field("power_address", "LXD address", required=True),
         make_setting_field(
             "instance_name",
             "Instance name",

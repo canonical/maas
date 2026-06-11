@@ -43,12 +43,7 @@ class OpenBMCPowerDriver(PowerDriver):
     name = "openbmc"
     description = "OpenBMC Power Driver"
     settings = [
-        make_setting_field(
-            "power_address",
-            "OpenBMC address",
-            field_type="ip_address",
-            required=True,
-        ),
+        make_setting_field("power_address", "OpenBMC address", required=True),
         make_setting_field("power_user", "OpenBMC user", required=True),
         make_setting_field(
             "power_pass",
