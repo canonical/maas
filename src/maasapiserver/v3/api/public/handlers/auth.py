@@ -181,32 +181,16 @@ class AuthHandler(Handler):
         """Decide whether the login should proceed via OIDC or local password."""
         provider = await services.external_oauth.get_provider()
         user_profile = await services.users.get_user_profile(email)
+        profile_provider_id = (
+            user_profile.provider_id if user_profile else None
+        )
+        enabled_provider_id = provider.id if provider else None
 
-        if provider is None:
-            if (
-                user_profile is not None
-                and user_profile.provider_id is not None
-            ):
-                raise ConflictException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
-                            message=(
-                                "This account is linked to an OIDC provider "
-                                "that is currently disabled."
-                            ),
-                        )
-                    ]
-                )
-            return AuthInfoResponse(is_oidc=False)
-
-        if user_profile is not None and user_profile.provider_id is None:
-            return AuthInfoResponse(is_oidc=False)
-
+        # A profile bound to an OIDC provider can only authenticate through
+        # that exact provider.
         if (
-            user_profile is not None
-            and user_profile.provider_id is not None
-            and user_profile.provider_id != provider.id
+            profile_provider_id is not None
+            and profile_provider_id != enabled_provider_id
         ):
             raise ConflictException(
                 details=[
@@ -214,12 +198,22 @@ class AuthHandler(Handler):
                         type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
                         message=(
                             "This account is linked to an OIDC provider "
-                            "that is currently disabled."
+                            "that is not currently enabled."
                         ),
                     )
                 ]
             )
 
+        # No enabled provider, or this is an existing local-only profile:
+        # fall back to password auth.
+        if provider is None or (
+            user_profile is not None and profile_provider_id is None
+        ):
+            return AuthInfoResponse(is_oidc=False)
+
+        # OIDC is enabled and the account is either unknown (a new user will
+        # be provisioned at the OIDC callback) or already bound to the
+        # enabled provider.
         client = await services.external_oauth.get_client()
         data = client.generate_authorization_url(
             redirect_target=redirect_target or "/"

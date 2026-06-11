@@ -459,7 +459,7 @@ class TestAuthApi:
         assert error_response.code == 409
         assert (
             error_response.details[0].message
-            == "This account is linked to an OIDC provider that is currently disabled."
+            == "This account is linked to an OIDC provider that is not currently enabled."
         )
         services_mock.external_oauth.get_client.assert_not_called()
 
