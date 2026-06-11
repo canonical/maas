@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import connection, DatabaseError
 from psycopg2 import OperationalError
 
+import maasserver.fields as fields_module
 from maasserver.fields import (
     HostListFormField,
     IPListFormField,
@@ -868,6 +869,19 @@ class TestVirshAddressField(MAASTestCase):
         )
         self.assertEqual("Enter a valid virsh address.", error.message)
 
+    def test_rejects_tcp_transport_in_fips_mode(self):
+        self.patch(fields_module, "is_fips_enabled").return_value = True
+        uri = f"qemu+tcp://{factory.make_hostname()}/system"
+        error = self.assertRaises(
+            ValidationError, VirshAddressField().clean, uri
+        )
+        self.assertIn("FIPS", error.message)
+
+    def test_accepts_ssh_transport_in_fips_mode(self):
+        self.patch(fields_module, "is_fips_enabled").return_value = True
+        uri = f"qemu+ssh://{factory.make_hostname()}/system"
+        self.assertEqual(uri, VirshAddressField().clean(uri))
+
 
 class TestLXDAddressField(MAASTestCase):
     def test_accepts_ipv4(self):
@@ -911,6 +925,21 @@ class TestLXDAddressField(MAASTestCase):
         for scheme in schemes:
             uri = f"{scheme}://{hostname}:{port}"
             self.assertEqual(uri, LXDAddressField().clean(uri))
+
+    def test_rejects_http_uri_in_fips_mode(self):
+        self.patch(fields_module, "is_fips_enabled").return_value = True
+        hostname = factory.make_hostname()
+        uri = f"http://{hostname}:8443"
+        error = self.assertRaises(
+            ValidationError, LXDAddressField().clean, uri
+        )
+        self.assertIn("FIPS", error.message)
+
+    def test_accepts_https_uri_in_fips_mode(self):
+        self.patch(fields_module, "is_fips_enabled").return_value = True
+        hostname = factory.make_hostname()
+        uri = f"https://{hostname}:8443"
+        self.assertEqual(uri, LXDAddressField().clean(uri))
 
     def test_rejects_invalid_ipv4_address(self):
         ip = "12.34.56.999"

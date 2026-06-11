@@ -31,6 +31,7 @@ class AsyncVaultApiClient:
         base_url: str,
     ):
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         tcp_conn = TCPConnector(ssl=context)
         self._session = ClientSession(base_url=base_url, connector=tcp_conn)
 

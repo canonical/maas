@@ -882,7 +882,7 @@ class Factory(maastesting.factory.Factory):
                 algo = random.randint(1, 4)
                 fptype = random.randint(1, 2)
                 if fptype == 1:
-                    fp = hashlib.sha1()
+                    fp = hashlib.sha1(usedforsecurity=False)
                 elif fptype == 2:
                     fp = hashlib.sha256()
                 # Add other types as needed.

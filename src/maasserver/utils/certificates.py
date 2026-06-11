@@ -116,6 +116,7 @@ def get_ssl_certificate(url, timeout=10):
         port = parsed_url.port
     conn = socket.create_connection((host, port))
     context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     # in case the user has added a self signed certificate
     context.load_verify_locations(cafile=SYSTEM_CA_FILE)
     sock = context.wrap_socket(conn, server_hostname=host)
@@ -127,5 +128,5 @@ def get_ssl_certificate(url, timeout=10):
     pem_cert = ssl.DER_cert_to_PEM_cert(der_cert)
     return (
         crypto.load_certificate(crypto.FILETYPE_PEM, pem_cert),
-        hashlib.sha1(der_cert).hexdigest(),
+        hashlib.sha1(der_cert, usedforsecurity=False).hexdigest(),
     )

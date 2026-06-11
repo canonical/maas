@@ -201,6 +201,7 @@ class MSMConnectorActivity(ActivityBase):
     def _create_session(self) -> ClientSession:
         timeout = ClientTimeout(total=60 * 60, sock_read=120)
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         tcp_conn = TCPConnector(ssl=context)
         return ClientSession(
             trust_env=True, timeout=timeout, connector=tcp_conn

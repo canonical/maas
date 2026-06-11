@@ -18,7 +18,11 @@ from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import hmcz as hmcz_module
-from provisioningserver.drivers.power import PowerActionError, PowerError
+from provisioningserver.drivers.power import (
+    PowerActionError,
+    PowerError,
+    PowerFatalError,
+)
 from provisioningserver.rpc import clusterservice, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 
@@ -111,6 +115,16 @@ class TestHMCZPowerDriver(MAASTestCase):
         self.assertRaises(
             PowerActionError, self.hmcz._get_partition, self.make_context()
         )
+
+    def test_get_partition_rejects_unverified_tls_in_fips_mode(self):
+        import provisioningserver.drivers.power.fips as fips_module
+
+        self.patch(fips_module, "is_fips_enabled").return_value = True
+        context = self.make_context()
+        context["power_verify_ssl"] = hmcz_module.VERIFY_SSL_NO
+
+        with self.assertRaisesRegex(PowerFatalError, "hmcz driver"):
+            self.hmcz._get_partition(context)
 
     # zhmcclient_mock doesn't currently support async so MagicMock
     # must be used for power on/off

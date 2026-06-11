@@ -11,6 +11,7 @@ https://github.com/zhmcclient/python-zhmcclient/issues/494
 
 import contextlib
 
+import structlog
 from twisted.internet.defer import inlineCallbacks
 
 from provisioningserver.drivers import (
@@ -23,6 +24,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerError,
 )
+from provisioningserver.drivers.power.fips import enforce_tls_verification
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils.twisted import asynchronous, threadDeferred
@@ -40,6 +42,8 @@ VERIFY_SSL_YES = "y"
 VERIFY_SSL_NO = "n"
 
 VERIFY_SSL_CHOICES = [[VERIFY_SSL_NO, "No"], [VERIFY_SSL_YES, "Yes"]]
+
+logger = structlog.getLogger()
 
 
 class HMCZPowerDriver(PowerDriver):
@@ -87,11 +91,13 @@ class HMCZPowerDriver(PowerDriver):
             return []
 
     def _get_partition(self, context: dict):
+        verify_ssl = context.get("power_verify_ssl", "y") == VERIFY_SSL_YES
+        enforce_tls_verification(self.name, verify_ssl)
         session = Session(
             context["power_address"],
             context["power_user"],
             context["power_pass"],
-            verify_cert=context.get("power_verify_ssl", "y") == VERIFY_SSL_YES,
+            verify_cert=verify_ssl,
         )
         partition_name = context["power_partition_name"]
         client = Client(session)
@@ -270,6 +276,7 @@ def probe_hmcz_and_enlist(
     :param prefix_filter: only enlist nodes that have the prefix.
     :param verify_ssl: Whether SSL connections should be verified.
     """
+    enforce_tls_verification(HMCZPowerDriver.name, verify_ssl)
     session = Session(hostname, username, password, verify_cert=verify_ssl)
     client = Client(session)
     # Each HMC manages one or more CPCs(Central Processor Complex). Iterate

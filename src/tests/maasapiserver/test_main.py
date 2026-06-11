@@ -26,6 +26,7 @@ def _create_client_ssl_context(
     send client certificates to servers configured with CERT_OPTIONAL.
     """
     ctx = ssl.create_default_context(cafile=str(ca_cert))
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     if client_cert and client_key:
         ctx.load_cert_chain(str(client_cert), str(client_key))
     return ctx

@@ -16,41 +16,39 @@
 package omapi
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHMACMD5AuthenticatorSign(t *testing.T) {
+func TestHMACSHA256AuthenticatorSign(t *testing.T) {
 	secret := "a2V5" // "key" in base64
+	key, err := base64.StdEncoding.DecodeString(secret)
+	assert.NoError(t, err)
 
 	testcases := map[string]struct {
-		in  []byte
-		out []byte
+		in []byte
 	}{
 		"empty": {
 			in: []byte{},
-			out: []byte{
-				0x63, 0x53, 0x04, 0x68, 0xa0, 0x4e, 0x38, 0x64,
-				0x59, 0x85, 0x5d, 0xa0, 0x06, 0x3b, 0x65, 0x96,
-			},
 		},
-		"nil": {
-			out: []byte{
-				0x63, 0x53, 0x04, 0x68, 0xa0, 0x4e, 0x38, 0x64,
-				0x59, 0x85, 0x5d, 0xa0, 0x06, 0x3b, 0x65, 0x96,
-			},
-		},
+		"nil": {},
 		"message": {
 			in: []byte{
 				// hello world
 				0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64,
 			},
-			out: []byte{
-				0xae, 0x92, 0xcf, 0x51, 0xad, 0xf9, 0x11, 0x30,
-				0x13, 0x0a, 0xef, 0xc2, 0xb3, 0x9a, 0x75, 0x95,
-			},
 		},
+	}
+
+	expectedSignature := func(data []byte) []byte {
+		hasher := hmac.New(sha256.New, key)
+		hasher.Write(data)
+
+		return hasher.Sum(nil)
 	}
 
 	for name, tc := range testcases {
@@ -59,10 +57,16 @@ func TestHMACMD5AuthenticatorSign(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			auth := NewHMACMD5Authenticator("test", secret)
+			auth := NewHMACSHA256Authenticator("test", secret)
 
-			sig := auth.Sign(tc.in)
-			assert.Equal(t, sig, tc.out)
+			assert.Equal(t, expectedSignature(tc.in), auth.Sign(tc.in))
 		})
 	}
+}
+
+func TestHMACSHA256AuthenticatorAlgorithmTSIG(t *testing.T) {
+	auth := NewHMACSHA256Authenticator("test", "a2V5")
+
+	assert.Equal(t, uint32(sha256.Size), auth.AuthLen())
+	assert.Equal(t, []byte("hmac-sha256.SIG-ALG.REG.INT."), auth.Object()["algorithm"])
 }

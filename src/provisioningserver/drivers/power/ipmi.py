@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """IPMI Power Driver."""
@@ -6,7 +6,11 @@
 import re
 from tempfile import NamedTemporaryFile
 
+import structlog
+
 from maascommon.enums.ipmi import IPMIPrivilegeLevel
+from maascommon.fips import is_fips_enabled
+from maascommon.logging.security import FIPS_CRYPTO_ERROR
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,
@@ -165,6 +169,7 @@ IPMI_ERRORS = {
 
 
 maaslog = get_maas_logger("drivers.power.ipmi")
+logger = structlog.getLogger()
 
 
 class IPMI_DRIVER:
@@ -331,6 +336,28 @@ class IPMIPowerDriver(PowerDriver):
         return ["-W", ",".join(workaround_flags)]
 
     @staticmethod
+    def _get_cipher_suite_args(cipher_suite_id: str | None) -> list[str]:
+        if is_fips_enabled():
+            if not is_power_parameter_set(cipher_suite_id):
+                return ["-I", "17"]
+            if cipher_suite_id != "17":
+                logger.error(
+                    FIPS_CRYPTO_ERROR,
+                    operation="ipmi_cipher_suite_validation",
+                    algorithm=cipher_suite_id,
+                    reason="IPMI cipher suite is not permitted in FIPS mode",
+                )
+                raise PowerFatalError(
+                    f"IPMI cipher suite {cipher_suite_id} is not permitted "
+                    "in FIPS mode. Use cipher suite 17."
+                )
+        if is_power_parameter_set(cipher_suite_id):
+            if cipher_suite_id != "17":
+                maaslog.warning("using a non-secure cipher suite id")
+            return ["-I", cipher_suite_id]
+        return []
+
+    @staticmethod
     def _issue_ipmi_chassis_config_command(
         command, power_change, power_address, power_boot_type=None
     ):
@@ -432,10 +459,7 @@ class IPMIPowerDriver(PowerDriver):
         common_args.extend(("-p", power_pass))
         if is_power_parameter_set(k_g):
             common_args.extend(("-k", k_g))
-        if is_power_parameter_set(cipher_suite_id):
-            if cipher_suite_id != "17":
-                maaslog.warning("using a non-secure cipher suite id")
-            common_args.extend(("-I", cipher_suite_id))
+        common_args.extend(self._get_cipher_suite_args(cipher_suite_id))
         if is_power_parameter_set(privilege_level):
             common_args.extend(("-l", privilege_level))
         else:

@@ -8,4 +8,9 @@ export MAAS_ROOT="$SNAP_DATA"
 export MAAS_DATA="$SNAP_COMMON/maas"
 export MAAS_OPENFGA_HTTP_SOCKET_PATH="$SNAP_DATA/openfga-http.sock"
 
+# Activate Go FIPS mode when the host OS has FIPS enabled.
+if [ -r /proc/sys/crypto/fips_enabled ] && [ "$(cat /proc/sys/crypto/fips_enabled 2>/dev/null)" = "1" ]; then
+    export GODEBUG=fips140=on
+fi
+
 exec "$SNAP/usr/sbin/maas-openfga"

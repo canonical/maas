@@ -14,6 +14,7 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestResponse,
     ConflictResponse,
     DischargeRequiredErrorResponse,
+    FIPSViolationResponse,
     ForbiddenResponse,
     InsufficientStorageErrorResponse,
     InternalServerErrorResponse,
@@ -31,6 +32,7 @@ from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
     DischargeRequiredException,
+    FIPSViolationException,
     ForbiddenException,
     InsufficientStorageException,
     NotFoundException,
@@ -104,6 +106,11 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except AlreadyExistsException as e:
             logger.debug(e)
             return ConflictResponse(details=e.details)
+        except FIPSViolationException as e:
+            logger.error(e)
+            return FIPSViolationResponse(
+                message=str(e), allowed_values=e.allowed_values
+            )
         except BadGatewayException as e:
             logger.error(e)
             return BadGatewayErrorResponse(details=e.details)

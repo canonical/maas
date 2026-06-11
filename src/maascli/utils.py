@@ -213,13 +213,13 @@ def dump_certificate_info(url, file=None):
         return
 
     host = parsed_url.hostname
-    port = 443
-    if parsed_url.port:
-        port = parsed_url.port
+    port = parsed_url.port or 443
 
-    cert = ssl.get_server_certificate((host, port))
     try:
-        cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert)
+        context = ssl.create_default_context()
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        pem_cert = ssl.get_server_certificate((host, port), context=context)
+        cert = crypto.load_certificate(crypto.FILETYPE_PEM, pem_cert)
         file = sys.stderr if file is None else file
         subject_cn = cert.get_subject().CN
         issuer_cn = cert.get_issuer().CN

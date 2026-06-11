@@ -5,7 +5,8 @@
 
 from socket import error as SOCKETError
 
-from paramiko import AutoAddPolicy, SSHClient, SSHException
+from paramiko import SSHException
+import structlog
 
 from provisioningserver.drivers import make_ip_extractor, make_setting_field
 from provisioningserver.drivers.power import (
@@ -14,6 +15,9 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerFatalError,
 )
+from provisioningserver.drivers.power.utils import connect_ssh
+
+logger = structlog.getLogger()
 
 
 class WedgeState:
@@ -54,11 +58,10 @@ class WedgePowerDriver(PowerDriver):
         **extra,
     ):
         """Run a single command and return unparsed text from stdout."""
+        ssh_client = None
         try:
-            ssh_client = SSHClient()
-            ssh_client.set_missing_host_key_policy(AutoAddPolicy())
-            ssh_client.connect(
-                power_address, username=power_user, password=power_pass
+            ssh_client = connect_ssh(
+                self.name, power_address, power_user, power_pass
             )
             _, stdout, _ = ssh_client.exec_command(command)
             output = stdout.read().decode("utf-8").strip()
@@ -68,8 +71,8 @@ class WedgePowerDriver(PowerDriver):
                 "%s on %s - %s" % (power_user, power_address, e)
             )
         finally:
-            ssh_client.close()
-
+            if ssh_client is not None:
+                ssh_client.close()
         return output
 
     def power_on(self, system_id, context):

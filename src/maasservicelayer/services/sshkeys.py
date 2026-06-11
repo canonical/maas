@@ -10,12 +10,15 @@ import ssl
 import aiofiles
 from aiohttp import ClientSession
 from aiohttp.client import TCPConnector
+import structlog
 
 from maascommon.constants import SYSTEM_CA_FILE
 from maascommon.enums.sshkeys import (
     OPENSSH_PROTOCOL2_KEY_TYPES,
     SshKeysProtocolType,
 )
+from maascommon.fips import is_fips_enabled, validate_ssh_key_fips_compliance
+from maascommon.logging.security import FIPS_CRYPTO_ERROR
 from maasservicelayer.builders.sshkeys import SshKeyBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -33,6 +36,30 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
+
+
+def _filter_fips_compliant_keys(
+    keys: list[str],
+    protocol: SshKeysProtocolType,
+    auth_id: str,
+) -> list[str]:
+    """Drop non-FIPS-compliant keys, logging each rejection."""
+    logger = structlog.getLogger()
+    compliant = []
+    for key in keys:
+        valid, reason, _ = validate_ssh_key_fips_compliance(key)
+        if valid:
+            compliant.append(key)
+        else:
+            logger.error(
+                FIPS_CRYPTO_ERROR,
+                operation="ssh_key_import",
+                source=protocol.value,
+                auth_id=auth_id,
+                key_prefix=key[:40],
+                reason=reason,
+            )
+    return compliant
 
 
 @dataclass(slots=True)
@@ -104,6 +131,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
     @Service.from_cache_or_execute("session")
     def _get_session(self) -> ClientSession:
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         tcp_conn = TCPConnector(ssl=context)
         return ClientSession(trust_env=True, connector=tcp_conn)
 
@@ -125,6 +153,17 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
                 field="auth_id",
                 message=f"Unable to import SSH keys. There are no SSH keys for {protocol.value} user {auth_id}.",
             )
+
+        if is_fips_enabled():
+            keys = _filter_fips_compliant_keys(keys, protocol, auth_id)
+            if not keys:
+                raise ValidationException.build_for_field(
+                    field="auth_id",
+                    message=(
+                        f"No FIPS-compliant SSH keys found for {protocol.value} user {auth_id}. "
+                        "Accepted key types: ECDSA (P-256/384/521), RSA \u2265 2048 bits."
+                    ),
+                )
 
         existing_keys = await self.get_many(
             query=QuerySpec(

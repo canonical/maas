@@ -160,6 +160,7 @@ from maasservicelayer.services.external_auth import (
 )
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.filestorage import FileStorageService
+from maasservicelayer.services.fips import FIPSService
 from maasservicelayer.services.hooked_configurations import (
     HookedConfigurationsService,
 )
@@ -276,6 +277,7 @@ class ServiceCollectionV3:
     external_oauth: ExternalOAuthService
     fabrics: FabricsService
     filestorage: FileStorageService
+    fips: FIPSService
     hooked_configurations: HookedConfigurationsService
     image_manifests: ImageManifestsService
     image_sync: ImageSyncService
@@ -557,6 +559,7 @@ class ServiceCollectionV3:
         services.filestorage = FileStorageService(
             context=context, repository=FileStorageRepository(context)
         )
+        services.fips = FIPSService(context=context)
         services.tokens = TokensService(
             context=context, repository=TokensRepository(context)
         )

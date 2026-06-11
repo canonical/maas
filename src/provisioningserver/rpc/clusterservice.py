@@ -55,7 +55,7 @@ from provisioningserver.rpc.common import (
 from provisioningserver.rpc.connectionpool import ConnectionPool
 from provisioningserver.rpc.interfaces import IConnectionToRegion
 from provisioningserver.rpc.power import get_power_state
-from provisioningserver.security import calculate_digest, fernet_decrypt_psk
+from provisioningserver.security import calculate_digest, decrypt_psk
 from provisioningserver.utils import sudo
 from provisioningserver.utils.env import (
     MAAS_AGENT_UUID,
@@ -741,7 +741,7 @@ class ClusterClient(Cluster):
                 and encrypted_cluster_certificate
             ):
                 decoded_secret = json.loads(
-                    fernet_decrypt_psk(encrypted_cluster_certificate)
+                    decrypt_psk(encrypted_cluster_certificate)
                 )
                 certificate = Certificate.from_pem(
                     decoded_secret["key"],

@@ -1123,6 +1123,19 @@ class Redfish(IPMIBase):
             )
             return False
 
+    def _create_ssl_context(self):
+        """Create an SSL context for Redfish API requests.
+
+        Verification is intentionally disabled because BMC endpoints use
+        self-signed certificates with no CA trust chain available during
+        commissioning.
+        """
+        ctx = ssl.create_default_context()
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+
     def _get_session_token(self):
         if self._session_token is not None:
             return self._session_token
@@ -1138,9 +1151,8 @@ class Redfish(IPMIBase):
             json.dumps(credentials).encode(),
             headers={"Content-Type": "application/json"},
         )
-        response = urllib.request.urlopen(
-            req, context=ssl._create_unverified_context()
-        )
+        ctx = self._create_ssl_context()
+        response = urllib.request.urlopen(req, context=ctx)
         if response.status not in [200, 201]:
             print(
                 f"WARNING: Failed to get token. {response.status} {response.getheaders()} {response.read()}"
@@ -1165,9 +1177,8 @@ class Redfish(IPMIBase):
         url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/{collection_name}"
         req = urllib.request.Request(url)
         req.add_header("X-Auth-Token", token)
-        response = urllib.request.urlopen(
-            req, context=ssl._create_unverified_context()
-        )
+        ctx = self._create_ssl_context()
+        response = urllib.request.urlopen(req, context=ctx)
         if response.status != 200:
             print(
                 f"WARNING: Failed to read {collection_name} info. {response.status} {response.getheaders()} {response.read()}"
@@ -1216,9 +1227,8 @@ class Redfish(IPMIBase):
         url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/Managers/{self._manager_id}/EthernetInterfaces"
         req = urllib.request.Request(url)
         req.add_header("X-Auth-Token", token)
-        response = urllib.request.urlopen(
-            req, context=ssl._create_unverified_context()
-        )
+        ctx = self._create_ssl_context()
+        response = urllib.request.urlopen(req, context=ctx)
         if response.status != 200:
             print(
                 f"WARNING: Failed to read Interfaces info. {response.status} {response.getheaders()} {response.read()}"
@@ -1235,9 +1245,8 @@ class Redfish(IPMIBase):
             url = f"https://{self._redfish_ip}:{self._redfish_port}{interface['@odata.id']}"
             req = urllib.request.Request(url)
             req.add_header("X-Auth-Token", token)
-            response = urllib.request.urlopen(
-                req, context=ssl._create_unverified_context()
-            )
+            ctx = self._create_ssl_context()
+            response = urllib.request.urlopen(req, context=ctx)
             if response.status != 200:
                 print(
                     f"WARNING: Failed to read {interface['@odata.id']} info. {response.status} {response.getheaders()} {response.read()}"

@@ -10,8 +10,9 @@ User=maas
 Group=maas
 KillMode=mixed
 
+# Use FIPS wrapper to conditionally activate Go FIPS mode
 # --allow-no-auth flag to allow noopAuthorizer
-ExecStart=/usr/sbin/temporal-server \
+ExecStart=/usr/share/maas/maas-temporal-fips-wrapper.sh \
     -e production \
     -r "/var/lib/maas/temporal/" \
     -c "" \

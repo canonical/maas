@@ -15,7 +15,7 @@ from twisted.web.http_headers import Headers
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from provisioningserver.drivers.power import PowerActionError
+from provisioningserver.drivers.power import PowerActionError, PowerFatalError
 import provisioningserver.drivers.power.webhook as webhook_module
 from provisioningserver.utils.version import get_running_version
 
@@ -129,14 +129,14 @@ class TestWebhookPowerDriver(MAASTestCase):
 
         response = yield self.webhook._webhook_request(
             method,
-            headers,
             b"https://10.0.0.42/",
+            headers,
         )
         self.assertEqual(expected_response, response.decode())
         mock_agent.return_value.request.assert_called_once_with(
             method,
-            headers,
             b"https://10.0.0.42/",
+            headers,
             None,
         )
 
@@ -249,6 +249,14 @@ class TestWebhookPowerDriver(MAASTestCase):
 
     def test_missing_packages(self):
         self.assertEqual([], self.webhook.detect_missing_packages())
+
+    def test_webhook_request_rejects_unverified_tls_in_fips_mode(self):
+        import provisioningserver.drivers.power.fips as fips_module
+
+        self.patch(fips_module, "is_fips_enabled").return_value = True
+
+        with self.assertRaisesRegex(PowerFatalError, "webhook driver"):
+            self.webhook._webhook_request(b"GET", b"https://10.0.0.42", {})
 
     def test_power_on(self):
         mock_webhook_request = self.patch(self.webhook, "_webhook_request")

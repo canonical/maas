@@ -177,7 +177,7 @@ BMCTable = Table(
     Index(
         "maasserver_bmc_power_type_parameters_idx",
         "power_type",
-        func.md5(text("power_parameters::text")),
+        func.sha256(text("power_parameters::text::bytea")),
         unique=True,
         postgresql_where=text("(power_type)::text <> 'manual'::text"),
     ),

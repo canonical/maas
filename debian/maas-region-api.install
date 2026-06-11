@@ -30,3 +30,6 @@ debian/tmp/usr/lib/python3*/dist-packages/maasservicelayer
 usr/sbin/maas-openfga
 usr/sbin/maas-openfga-migrator
 usr/sbin/maas-openfga-app-migrator
+
+# Install FIPS wrapper for Temporal server
+debian/extras/maas-temporal-fips-wrapper.sh usr/share/maas/

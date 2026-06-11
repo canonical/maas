@@ -109,6 +109,16 @@ class DischargeRequiredException(BaseException):
         self.macaroon = macaroon
 
 
+class FIPSViolationException(BaseException):
+    def __init__(
+        self,
+        message: str,
+        allowed_values: list[str] | None = None,
+    ):
+        super().__init__(message)
+        self.allowed_values = allowed_values
+
+
 class BadGatewayException(BaseException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__("Bad gateway.", details)

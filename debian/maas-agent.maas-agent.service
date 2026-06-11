@@ -9,7 +9,8 @@ ConditionPathExists=/etc/maas/agent.yaml
 [Service]
 User=maas
 Group=maas
-ExecStart=/usr/sbin/maas-agent start --supervised
+# Use FIPS wrapper to conditionally activate Go FIPS mode
+ExecStart=/usr/share/maas/maas-agent-fips-wrapper.sh start --supervised
 
 [Install]
 WantedBy=multi-user.target

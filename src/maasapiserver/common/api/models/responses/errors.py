@@ -174,6 +174,25 @@ class BadGatewayErrorResponse(JSONResponse):
         )
 
 
+class FIPSViolationBodyResponse(ErrorBodyResponse):
+    code: int = status.HTTP_422_UNPROCESSABLE_CONTENT
+    message: str = "FIPS violation: algorithm not permitted in FIPS mode."
+    fips_violation: bool = True
+    allowed_values: list[str] | None = None
+
+
+class FIPSViolationResponse(JSONResponse):
+    def __init__(self, message: str, allowed_values: list[str] | None = None):
+        super().__init__(
+            content=jsonable_encoder(
+                FIPSViolationBodyResponse(
+                    message=message, allowed_values=allowed_values
+                )
+            ),
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
+
+
 class DischargeRequiredErrorResponse(JSONResponse):
     def __init__(self, macaroon: Macaroon):
         content, headers = httpbakery.discharge_required_response(

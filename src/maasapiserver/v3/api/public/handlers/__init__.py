@@ -31,6 +31,7 @@ from maasapiserver.v3.api.public.handlers.notifications import (
 from maasapiserver.v3.api.public.handlers.package_repositories import (
     PackageRepositoriesHandler,
 )
+from maasapiserver.v3.api.public.handlers.power_types import PowerTypesHandler
 from maasapiserver.v3.api.public.handlers.racks import RacksHandler
 from maasapiserver.v3.api.public.handlers.reservedips import ReservedIPsHandler
 from maasapiserver.v3.api.public.handlers.resource_pools import (
@@ -75,6 +76,7 @@ APIv3 = API(
         NOSInstallerHandler(),
         NotificationsHandler(),
         PackageRepositoriesHandler(),
+        PowerTypesHandler(),
         RacksHandler(),
         ReservedIPsHandler(),
         ResourcePoolHandler(),

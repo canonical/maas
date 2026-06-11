@@ -124,6 +124,7 @@ class HttpBakeryAsyncClient:
     def __init__(self, interaction_methods=None, key=None):
         # we need unsafe=True to save cookies from IPs
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         tcp_conn = TCPConnector(ssl=context)
         self._session = ClientSession(
             headers=self.BAKERY_HEADERS,

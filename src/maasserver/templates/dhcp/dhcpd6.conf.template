@@ -139,7 +139,7 @@ host {{host['host']}}-{{host['mac'].replace(":", "-")}} {
 
 omapi-port 7912;
 key omapi_key {
-    algorithm HMAC-MD5;
+    algorithm hmac-sha256.SIG-ALG.REG.INT.;
     secret "{{omapi_key}}";
 };
 omapi-key omapi_key;

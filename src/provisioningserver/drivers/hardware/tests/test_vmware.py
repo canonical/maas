@@ -249,6 +249,37 @@ class TestVMwarePyvmomi(MAASTestCase):
         self.assertTrue(mock_vmomi_api.SmartConnect.called)
         self.assertTrue(mock_vmomi_api.Disconnect.called)
 
+    def test_api_connection_uses_verified_tls_context(self):
+        mock_vmomi_api = self.configure_vmomi_api(servers=0)
+        mock_signature = self.patch(vmware, "signature")
+        mock_signature.return_value.parameters = {"sslContext": object()}
+        mock_context = self.patch(
+            vmware.ssl, "create_default_context"
+        ).return_value
+        host = factory.make_hostname()
+        username = factory.make_username()
+        password = factory.make_username()
+        api = vmware.VMwarePyvmomiAPI(
+            host,
+            username,
+            password,
+            protocol="https+unverified",
+        )
+
+        api.connect()
+
+        mock_vmomi_api.SmartConnect.assert_called_once_with(
+            host=host,
+            user=username,
+            pwd=password,
+            protocol="https",
+            sslContext=mock_context,
+        )
+        self.assertEqual(
+            vmware.ssl.TLSVersion.TLSv1_2,
+            mock_context.minimum_version,
+        )
+
     def test_api_failed_connection(self):
         mock_vmomi_api = self.patch(vmware, "vmomi_api")
         mock_vmomi_api.SmartConnect.return_value = None

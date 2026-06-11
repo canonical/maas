@@ -54,6 +54,7 @@ from maasapiserver.v3.middlewares.client_certificate import (
 from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maascommon.worker import set_max_workers_count
+from maasservicelayer.context import Context
 from maasservicelayer.db import Database
 from maasservicelayer.db.listeners import PostgresListenersTaskFactory
 from maasservicelayer.db.locks import wait_for_startup
@@ -62,6 +63,18 @@ from maasservicelayer.services import CacheForServices
 from provisioningserver.certificates import get_maas_cluster_cert_paths
 
 logger = structlog.getLogger()
+
+
+async def _emit_fips_startup_log() -> None:
+    """Emit the FIPS_MODE_DETECTED structured log event at process start.
+
+    FIPSService requires no database or repository access — it only reads
+    /proc/sys/crypto/fips_enabled — so a bare Context is sufficient here.
+    """
+    from maasservicelayer.services.fips import FIPSService
+
+    service = FIPSService(context=Context())
+    await service.emit_startup_log()
 
 
 async def request_validation_exception_handler(request, exc: Exception):
@@ -121,6 +134,10 @@ def craft_public_app(
                     db_engine=db.engine,
                     listeners=[VaultMigrationPostgresListener()],
                 ),
+            ),
+            EventListener(
+                "startup",
+                _emit_fips_startup_log,
             ),
             EventListener("shutdown", cache.close),
         ],

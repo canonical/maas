@@ -6,7 +6,6 @@
 from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
-import random
 import re
 import secrets
 from tempfile import mkstemp
@@ -16,7 +15,10 @@ from cryptography import exceptions as crypto_exceptions
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from OpenSSL import crypto
+import structlog
 
+from maascommon.fips import is_fips_enabled
+from maascommon.logging.security import FIPS_CRYPTO_ERROR
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.snap import running_in_snap, SnapPaths
@@ -29,9 +31,36 @@ CERTS_RE = re.compile(
     re.DOTALL,
 )
 
+logger = structlog.getLogger()
+
 
 class CertificateError(Exception):
     """Error handling certificates and keys."""
+
+
+def _validate_key_generation_fips_policy(key_type: int, key_bits: int) -> None:
+    if not is_fips_enabled():
+        return
+
+    if key_type == crypto.TYPE_DSA:
+        logger.error(
+            FIPS_CRYPTO_ERROR,
+            operation="key_generation",
+            algorithm="DSA",
+            reason="DSA is not FIPS-approved",
+        )
+        raise CertificateError("DSA keys are not permitted in FIPS mode")
+
+    if key_type == crypto.TYPE_RSA and key_bits < 2048:
+        logger.error(
+            FIPS_CRYPTO_ERROR,
+            operation="key_generation",
+            algorithm=f"RSA-{key_bits}",
+            reason=("RSA key size below FIPS minimum of 2048 bits"),
+        )
+        raise CertificateError(
+            f"RSA key size {key_bits} is below FIPS minimum of 2048 bits"
+        )
 
 
 class CertificateRequest(NamedTuple):
@@ -48,7 +77,9 @@ class CertificateRequest(NamedTuple):
         subject_alternative_name: bytes | None = None,
     ) -> Self:
         key = crypto.PKey()
-        key.generate_key(crypto.TYPE_RSA, key_bits)
+        key_type = crypto.TYPE_RSA
+        _validate_key_generation_fips_policy(key_type, key_bits)
+        key.generate_key(key_type, key_bits)
 
         csr = crypto.X509Req()
         csr.get_subject().CN = cn[:64]
@@ -115,7 +146,7 @@ class Certificate(NamedTuple):
     ) -> crypto.X509:
         cert = crypto.X509()
         cert.set_version(version.value)
-        cert.set_serial_number(random.randint(0, (1 << 128) - 1))
+        cert.set_serial_number(secrets.randbits(128))
         cert.gmtime_adj_notBefore(0)
         cert.gmtime_adj_notAfter(int(validity.total_seconds()))
         cert.set_pubkey(key)
@@ -140,7 +171,9 @@ class Certificate(NamedTuple):
         certificate, so that the parameters get set properly.
         """
         key = crypto.PKey()
-        key.generate_key(crypto.TYPE_RSA, key_bits)
+        key_type = crypto.TYPE_RSA
+        _validate_key_generation_fips_policy(key_type, key_bits)
+        key.generate_key(key_type, key_bits)
 
         cert = cls._build_base_certificate(
             key, crypto.x509.Version.v1, validity
@@ -171,7 +204,9 @@ class Certificate(NamedTuple):
         access to the database. Use maasserver.utils.certificate.generate_ca_certificate() instead.
         """
         key = crypto.PKey()
-        key.generate_key(crypto.TYPE_RSA, key_bits)
+        key_type = crypto.TYPE_RSA
+        _validate_key_generation_fips_policy(key_type, key_bits)
+        key.generate_key(key_type, key_bits)
 
         cert = cls._build_base_certificate(
             key, crypto.x509.Version.v3, validity

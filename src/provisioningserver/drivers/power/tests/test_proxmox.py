@@ -12,7 +12,7 @@ from twisted.internet.defer import inlineCallbacks, succeed
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from provisioningserver.drivers.power import PowerActionError
+from provisioningserver.drivers.power import PowerActionError, PowerFatalError
 import provisioningserver.drivers.power.proxmox as proxmox_module
 from provisioningserver.drivers.power.webhook import SSL_INSECURE_NO
 
@@ -165,6 +165,24 @@ class TestProxmoxPowerDriver(MAASTestCase):
             },
             extra_headers,
         )
+        self.mock_webhook_request.assert_not_called()
+
+    @inlineCallbacks
+    def test_login_rejects_unverified_tls_in_fips_mode(self):
+        import provisioningserver.drivers.power.fips as fips_module
+
+        self.patch(fips_module, "is_fips_enabled").return_value = True
+        system_id = factory.make_name("system_id")
+        context = {
+            "power_address": factory.make_name("power_address"),
+            "power_user": factory.make_name("power_user"),
+            "power_pass": factory.make_name("power_pass"),
+            "power_verify_ssl": SSL_INSECURE_NO,
+        }
+
+        with self.assertRaisesRegex(PowerFatalError, "proxmox driver"):
+            yield self.proxmox._login(system_id, context)
+
         self.mock_webhook_request.assert_not_called()
 
     @inlineCallbacks

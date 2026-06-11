@@ -1,7 +1,7 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -17,7 +17,10 @@ from maasservicelayer.exceptions.catalog import (
     ValidationException,
 )
 from maasservicelayer.models.sshkeys import SshKey
-from maasservicelayer.services.sshkeys import SshKeysService
+from maasservicelayer.services.sshkeys import (
+    _filter_fips_compliant_keys,
+    SshKeysService,
+)
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
@@ -316,6 +319,124 @@ class TestSshKeysService:
         assert sshkey in keys
         assert sshkey_created in keys
         repository.create.assert_called_once_with(builder=builder)
+
+    @pytest.mark.parametrize(
+        "protocol", [SshKeysProtocolType.LP, SshKeysProtocolType.GH]
+    )
+    async def test_import_keys_drops_non_fips_keys_in_fips_mode(
+        self, protocol: SshKeysProtocolType
+    ) -> None:
+        sshkey_compliant = SshKey(
+            id=1,
+            key=TEST_ECDSA256_KEY,
+            protocol=protocol,
+            auth_id="foo",
+            user_id=1,
+        )
+        repository = Mock(SshKeysRepository)
+        repository.get_many.return_value = []
+        repository.create.return_value = sshkey_compliant
+        sshkeys_service = SshKeysService(
+            context=Context(), sshkeys_repository=repository
+        )
+        sshkeys_service._get_ssh_key_from_github = AsyncMock(
+            return_value=[TEST_ED25519_KEY, TEST_ECDSA256_KEY]
+        )
+        sshkeys_service._get_ssh_key_from_launchpad = AsyncMock(
+            return_value=[TEST_ED25519_KEY, TEST_ECDSA256_KEY]
+        )
+
+        with patch(
+            "maasservicelayer.services.sshkeys.is_fips_enabled",
+            return_value=True,
+        ):
+            keys = await sshkeys_service.import_keys(protocol, "foo", 1)
+
+        assert len(keys) == 1
+        assert keys[0] == sshkey_compliant
+
+    @pytest.mark.parametrize(
+        "protocol", [SshKeysProtocolType.LP, SshKeysProtocolType.GH]
+    )
+    async def test_import_keys_raises_when_all_keys_non_fips(
+        self, protocol: SshKeysProtocolType
+    ) -> None:
+        repository = Mock(SshKeysRepository)
+        sshkeys_service = SshKeysService(
+            context=Context(), sshkeys_repository=repository
+        )
+        sshkeys_service._get_ssh_key_from_github = AsyncMock(
+            return_value=[TEST_ED25519_KEY]
+        )
+        sshkeys_service._get_ssh_key_from_launchpad = AsyncMock(
+            return_value=[TEST_ED25519_KEY]
+        )
+
+        with patch(
+            "maasservicelayer.services.sshkeys.is_fips_enabled",
+            return_value=True,
+        ):
+            with pytest.raises(ValidationException) as exc:
+                await sshkeys_service.import_keys(protocol, "foo", 1)
+
+        assert exc.value.details[0].field == "auth_id"
+        assert "FIPS-compliant" in exc.value.details[0].message
+
+    @pytest.mark.parametrize(
+        "protocol", [SshKeysProtocolType.LP, SshKeysProtocolType.GH]
+    )
+    async def test_import_keys_skips_fips_check_when_fips_disabled(
+        self, protocol: SshKeysProtocolType
+    ) -> None:
+        sshkey = SshKey(
+            id=1,
+            key=TEST_ED25519_KEY,
+            protocol=protocol,
+            auth_id="foo",
+            user_id=1,
+        )
+        repository = Mock(SshKeysRepository)
+        repository.get_many.return_value = [sshkey]
+        sshkeys_service = SshKeysService(
+            context=Context(), sshkeys_repository=repository
+        )
+        sshkeys_service._get_ssh_key_from_github = AsyncMock(
+            return_value=[TEST_ED25519_KEY]
+        )
+        sshkeys_service._get_ssh_key_from_launchpad = AsyncMock(
+            return_value=[TEST_ED25519_KEY]
+        )
+
+        with patch(
+            "maasservicelayer.services.sshkeys.is_fips_enabled",
+            return_value=False,
+        ):
+            keys = await sshkeys_service.import_keys(protocol, "foo", 1)
+
+        assert len(keys) == 1
+        assert keys[0] == sshkey
+
+    @pytest.mark.parametrize(
+        "protocol", [SshKeysProtocolType.LP, SshKeysProtocolType.GH]
+    )
+    async def test_filter_fips_compliant_keys_logs_rejections(
+        self, protocol: SshKeysProtocolType
+    ) -> None:
+        with patch(
+            "maasservicelayer.services.sshkeys.structlog.getLogger"
+        ) as mock_get_logger:
+            mock_logger = Mock()
+            mock_get_logger.return_value = mock_logger
+            result = _filter_fips_compliant_keys(
+                [TEST_ED25519_KEY, TEST_ECDSA256_KEY], protocol, "foo"
+            )
+
+        assert result == [TEST_ECDSA256_KEY]
+        mock_logger.error.assert_called_once()
+        call_kwargs = mock_logger.error.call_args
+        assert call_kwargs[0][0] == "FIPS_crypto_error"
+        assert call_kwargs[1]["operation"] == "ssh_key_import"
+        assert call_kwargs[1]["auth_id"] == "foo"
 
     @pytest.mark.parametrize(
         "keys", [[], [TEST_ED25519_KEY], [TEST_ED25519_KEY, TEST_RSA_KEY]]
