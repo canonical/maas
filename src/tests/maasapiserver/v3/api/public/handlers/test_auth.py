@@ -66,6 +66,7 @@ from maasservicelayer.models.external_auth import (
     OAuthProvider,
     ProviderMetadata,
 )
+from maasservicelayer.models.users import UserProfile
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.auth import AuthService, AuthTokens
 from maasservicelayer.services.django_session import DjangoSessionService
@@ -312,7 +313,7 @@ class TestAuthApi:
     @patch(
         "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.set_auth_cookie"
     )
-    async def test_get_oauth_initiate_success_oidc(
+    async def test_get_oauth_initiate_oidc_enabled_unknown_user(
         self,
         cookie_manager_set_auth_cookie: MagicMock,
         services_mock: ServiceCollectionV3,
@@ -321,7 +322,10 @@ class TestAuthApi:
         cookie_manager_set_auth_cookie.return_value = None
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.users = Mock(UsersService)
-        services_mock.users.is_oidc_user.return_value = True
+        services_mock.external_oauth.get_provider.return_value = (
+            TEST_PROVIDER_1
+        )
+        services_mock.users.get_user_profile.return_value = None
         client_mock = Mock(OAuth2Client(TEST_PROVIDER_1))
         returned_data = OAuthInitiateData(
             authorization_url="https://example.com/auth?state=abc123&nonce=def123",
@@ -343,6 +347,7 @@ class TestAuthApi:
             == "https://example.com/auth?state=abc123&nonce=def123"
         )
         assert data["provider_name"] == TEST_PROVIDER_1.name
+        assert data["is_oidc"] is True
         cookie_manager_set_auth_cookie.assert_any_call(
             value="abc123", key=MAASOAuth2Cookie.AUTH_STATE
         )
@@ -350,43 +355,191 @@ class TestAuthApi:
             value="def123", key=MAASOAuth2Cookie.AUTH_NONCE
         )
 
-    async def test_get_oauth_initiate_not_configured(
+    @patch(
+        "maasapiserver.v3.api.public.handlers.auth.EncryptedCookieManager.set_auth_cookie"
+    )
+    async def test_get_oauth_initiate_oidc_enabled_provider_bound_profile(
+        self,
+        cookie_manager_set_auth_cookie: MagicMock,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ) -> None:
+        cookie_manager_set_auth_cookie.return_value = None
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.users = Mock(UsersService)
+        services_mock.external_oauth.get_provider.return_value = (
+            TEST_PROVIDER_1
+        )
+        services_mock.users.get_user_profile.return_value = UserProfile(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            completed_intro=True,
+            is_local=False,
+            user_id=42,
+            provider_id=TEST_PROVIDER_1.id,
+        )
+        client_mock = Mock(OAuth2Client(TEST_PROVIDER_1))
+        returned_data = OAuthInitiateData(
+            authorization_url="https://example.com/auth?state=abc123&nonce=def123",
+            state="abc123",
+            nonce="def123",
+        )
+        client_mock.generate_authorization_url.return_value = returned_data
+        client_mock.get_provider_name.return_value = TEST_PROVIDER_1.name
+        services_mock.external_oauth.get_client.return_value = client_mock
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/login_info?email=oidc_user@example.com"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_oidc"] is True
+        assert data["provider_name"] == TEST_PROVIDER_1.name
+
+    async def test_get_oauth_initiate_oidc_enabled_local_profile_uses_password(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
-    ):
+    ) -> None:
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.users = Mock(UsersService)
-        services_mock.users.is_oidc_user.return_value = True
-        services_mock.external_oauth.get_client.side_effect = (
-            ConflictException()
+        services_mock.external_oauth.get_provider.return_value = (
+            TEST_PROVIDER_1
         )
+        services_mock.users.get_user_profile.return_value = UserProfile(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            completed_intro=True,
+            is_local=True,
+            user_id=42,
+            provider_id=None,
+        )
+
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/login_info?email=test@example.com"
+            f"{self.BASE_PATH}/login_info?email=local_user@example.com"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["auth_url"] is None
+        assert data["provider_name"] is None
+        assert data["is_oidc"] is False
+        services_mock.external_oauth.get_client.assert_not_called()
+
+    async def test_get_oauth_initiate_oidc_enabled_other_provider_profile_conflict(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ) -> None:
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.users = Mock(UsersService)
+        services_mock.external_oauth.get_provider.return_value = (
+            TEST_PROVIDER_1
+        )
+        services_mock.users.get_user_profile.return_value = UserProfile(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            completed_intro=True,
+            is_local=False,
+            user_id=42,
+            provider_id=TEST_PROVIDER_2.id,
+        )
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/login_info?email=other_provider_user@example.com"
         )
 
         assert response.status_code == 409
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 409
+        assert (
+            error_response.details[0].message
+            == "This account is linked to an OIDC provider that is not currently enabled."
+        )
+        services_mock.external_oauth.get_client.assert_not_called()
 
-    async def test_get_oauth_initiate_not_oidc_user(
+    async def test_get_oauth_initiate_oidc_disabled_oidc_bound_profile_conflict(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client: AsyncClient,
     ):
         services_mock.external_oauth = Mock(ExternalOAuthService)
         services_mock.users = Mock(UsersService)
-        services_mock.users.is_oidc_user.return_value = False
+        services_mock.external_oauth.get_provider.return_value = None
+        services_mock.users.get_user_profile.return_value = UserProfile(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            completed_intro=True,
+            is_local=False,
+            user_id=42,
+            provider_id=7,
+        )
 
         response = await mocked_api_client.get(
-            f"{self.BASE_PATH}/login_info?email=test@example.com"
+            f"{self.BASE_PATH}/login_info?email=oidc_user@example.com"
         )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 409
+        services_mock.external_oauth.get_client.assert_not_called()
+
+    async def test_get_oauth_initiate_oidc_disabled_local_user_allowed(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.users = Mock(UsersService)
+        services_mock.external_oauth.get_provider.return_value = None
+        services_mock.users.get_user_profile.return_value = UserProfile(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            completed_intro=True,
+            is_local=True,
+            user_id=42,
+            provider_id=None,
+        )
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/login_info?email=local_user@example.com"
+        )
+
         assert response.status_code == 200
         data = response.json()
         assert data["auth_url"] is None
         assert data["provider_name"] is None
         assert data["is_oidc"] is False
+        services_mock.external_oauth.get_client.assert_not_called()
+
+    async def test_get_oauth_initiate_oidc_disabled_unknown_user_allowed(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ):
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.users = Mock(UsersService)
+        services_mock.external_oauth.get_provider.return_value = None
+        services_mock.users.get_user_profile.return_value = None
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/login_info?email=missing@example.com"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["auth_url"] is None
+        assert data["provider_name"] is None
+        assert data["is_oidc"] is False
+        services_mock.external_oauth.get_client.assert_not_called()
 
     async def test_list_oauth_providers_200_no_other_page(
         self,

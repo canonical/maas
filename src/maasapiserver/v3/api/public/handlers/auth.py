@@ -46,6 +46,7 @@ from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
+    ConflictException,
     NotFoundException,
     UnauthorizedException,
 )
@@ -177,13 +178,42 @@ class AuthHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         cookie_manager: EncryptedCookieManager = Depends(cookie_manager),  # noqa: B008
     ) -> AuthInfoResponse:
-        """Initiate the OAuth flow by generating the authorization URL and setting the necessary security cookies,
-        if the user is an OIDC user."""
-        is_oidc_user = await services.users.is_oidc_user(email)
-        if not is_oidc_user:
-            return AuthInfoResponse(
-                is_oidc=False,
+        """Decide whether the login should proceed via OIDC or local password."""
+        provider = await services.external_oauth.get_provider()
+        user_profile = await services.users.get_user_profile(email)
+        profile_provider_id = (
+            user_profile.provider_id if user_profile else None
+        )
+        enabled_provider_id = provider.id if provider else None
+
+        # A profile bound to an OIDC provider can only authenticate through
+        # that exact provider.
+        if (
+            profile_provider_id is not None
+            and profile_provider_id != enabled_provider_id
+        ):
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                        message=(
+                            "This account is linked to an OIDC provider "
+                            "that is not currently enabled."
+                        ),
+                    )
+                ]
             )
+
+        # No enabled provider, or this is an existing local-only profile:
+        # fall back to password auth.
+        if provider is None or (
+            user_profile is not None and profile_provider_id is None
+        ):
+            return AuthInfoResponse(is_oidc=False)
+
+        # OIDC is enabled and the account is either unknown (a new user will
+        # be provisioned at the OIDC callback) or already bound to the
+        # enabled provider.
         client = await services.external_oauth.get_client()
         data = client.generate_authorization_url(
             redirect_target=redirect_target or "/"
