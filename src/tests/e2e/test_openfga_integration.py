@@ -72,6 +72,12 @@ class TestIntegrationConfigurationsService:
         await services.openfga_tuples.upsert(
             OpenFGATupleBuilder.build_group_can_view_ipaddresses(group_id=1000)
         )
+        await services.openfga_tuples.upsert(
+            OpenFGATupleBuilder.build_group_can_view_operations(group_id=1000)
+        )
+        await services.openfga_tuples.upsert(
+            OpenFGATupleBuilder.build_group_can_edit_operations(group_id=1000)
+        )
 
         # user 1000 belongs to group 1000
         await services.openfga_tuples.upsert(
@@ -163,6 +169,8 @@ class TestIntegrationConfigurationsService:
         assert (await client.can_view_devices(user_id=1000)) is True
         assert (await client.can_view_dnsrecords(user_id=1000)) is True
         assert (await client.can_view_ipaddresses(user_id=1000)) is True
+        assert (await client.can_view_operations(user_id=1000)) is True
+        assert (await client.can_edit_operations(user_id=1000)) is True
 
         # user 2000 should just have edit,view and deploy permissions on pool1 because of group 2000's rights
         assert (
@@ -218,6 +226,8 @@ class TestIntegrationConfigurationsService:
         assert (await client.can_view_devices(user_id=2000)) is False
         assert (await client.can_view_dnsrecords(user_id=2000)) is False
         assert (await client.can_view_ipaddresses(user_id=2000)) is False
+        assert (await client.can_view_operations(user_id=2000)) is False
+        assert (await client.can_edit_operations(user_id=2000)) is False
 
         # user 3000 should just have deploy permissions on pool0 because of group 3000's rights
         assert (

@@ -81,6 +81,8 @@ Permissions follow two inheritance rules:
 | `can_view_devices` | View all devices. |
 | `can_view_ipaddresses` | View all IP addresses. |
 | `can_view_dnsrecords` | View all DNS resource record sets. |
+| `can_view_operations` | View all Operations. |
+| `can_edit_operations` | Edit operations. |
 
 #### Per-pool (`pool`) entitlements
 
