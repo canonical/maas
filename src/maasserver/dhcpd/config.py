@@ -6,13 +6,15 @@
 from itertools import chain, repeat
 import logging
 import socket
-from typing import Sequence
+from typing import Any, Sequence
 
 from netaddr import IPAddress, IPRange
 import tempita
 
 from maasserver.utils import load_template
-from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.boot import BootMethod, BootMethodRegistry
+
+from provisioningserver.boot.pxe import PXEBootMethod  # noqa:E402 isort:skip
 from provisioningserver.path import get_maas_data_path, get_path
 from provisioningserver.utils.text import (
     normalise_to_comma_list,
@@ -400,6 +402,70 @@ def normalise_any_iterable_to_quoted_comma_list(iterable):
         return normalise_to_comma_list(iterable, quoted=True)
     else:
         return ", ".join(map(quote, iterable))
+
+
+def get_kea_shared_network_config_v4(
+    shared_networks: Sequence[dict],
+    rack_ip: str,
+) -> dict[str, Any]:
+    cfg = {}
+    pxe_method = PXEBootMethod()
+    for shared_network in shared_networks:
+        network = {"name": shared_network["name"]}
+        subnets = []
+        for subnet in shared_network["subnets"]:
+            option_data = [
+                {"name": "subnet-mask", "data": subnet["subnet_mask"]},
+                {"name": "broadcast-address", "data": subnet["broadcast_ip"]},
+                {"name": "domain-name", "data": subnet["domain_name"]},
+                {
+                    "name": "path-prefix",
+                    "data": f"http://{rack_ip}:5248/",
+                    "always-send": pxe_method.path_prefix_force,
+                },
+            ]
+            if subnet.get("dns_servers"):
+                option_data.append(
+                    {
+                        "name": "domain-name-servers",
+                        "data": ", ".join(subnet["dns_servers"]),
+                    }
+                )
+            if subnet.get("search_list"):
+                option_data.append(
+                    {
+                        "name": "domain-search",
+                        "data": ", ".join(subnet["search_list"]),
+                    }
+                )
+            if subnet.get("router_ip"):
+                option_data.append(
+                    {"name": "routers", "data": subnet["router_ip"]}
+                )
+            if subnet.get("ntp_servers_ipv4"):
+                option_data.append(
+                    {
+                        "name": "ntp-servers",
+                        "data": ", ".join(subnet["ntp_servers_ipv4"]),
+                    }
+                )
+            sn = {
+                "subnet": subnet["subnet_cidr"],
+                "match-client-id": False,
+                "pools": [
+                    {
+                        "pool": f"{pool['ip_range_low']} - {pool['ip_range_high']}"
+                    }
+                    for pool in subnet["pools"]
+                ],
+                "boot-file-name": pxe_method.bootloader_path,
+                "option-data": option_data,
+            }
+            if subnet.get("next_server"):
+                sn["next-server"] = subnet["next_server"]
+            subnets.append(sn)
+        network["subnet4"] = subnets
+    return cfg
 
 
 def get_config_v4(
