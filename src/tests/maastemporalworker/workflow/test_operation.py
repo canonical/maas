@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.client import Client
+from temporalio.exceptions import ApplicationError
 
 from maascommon.enums.operations import OperationStatus
 from maasservicelayer.db import Database
@@ -14,9 +15,12 @@ from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.services.temporal import TemporalService
 import maastemporalworker.workflow.activity as activity_module
+import maastemporalworker.workflow.operation as operation_module
 from maastemporalworker.workflow.operation import (
+    OPERATION_UUID_SEARCH_ATTRIBUTE,
     OperationActivity,
     UpdateOperationStatusParam,
+    track_operation_status,
 )
 
 ERROR_MESSAGE = "operation failed"
@@ -84,3 +88,75 @@ class TestOperationActivity:
                     status=OperationStatus.RUNNING,
                 )
             )
+
+
+@pytest.mark.asyncio
+class TestTrackOperationStatus:
+    @pytest.fixture
+    def local_activity_mock(self, monkeypatch) -> AsyncMock:
+        mock = AsyncMock()
+        monkeypatch.setattr(
+            operation_module.workflow, "execute_local_activity", mock
+        )
+        return mock
+
+    def _set_operation_uuid(self, monkeypatch, operation_uuid):
+        info = Mock()
+        info.workflow_type = "TestWorkflow"
+        info.search_attributes = (
+            {OPERATION_UUID_SEARCH_ATTRIBUTE: [operation_uuid]}
+            if operation_uuid is not None
+            else {}
+        )
+        monkeypatch.setattr(operation_module.workflow, "info", lambda: info)
+
+    async def test_tracks_running_then_completed(
+        self, monkeypatch, local_activity_mock
+    ):
+        self._set_operation_uuid(monkeypatch, "op-uuid")
+
+        @track_operation_status
+        async def run(self, param):
+            return "result"
+
+        result = await run(Mock(), "param")
+
+        assert result == "result"
+        params = [c.args[1] for c in local_activity_mock.call_args_list]
+        assert [p.status for p in params] == [
+            OperationStatus.RUNNING,
+            OperationStatus.COMPLETED,
+        ]
+        assert all(p.operation_uuid == "op-uuid" for p in params)
+
+    async def test_tracks_failed_and_reraises(
+        self, monkeypatch, local_activity_mock
+    ):
+        self._set_operation_uuid(monkeypatch, "op-uuid")
+
+        @track_operation_status
+        async def run(self, param):
+            raise ValueError(ERROR_MESSAGE)
+
+        with pytest.raises(ValueError):
+            await run(Mock(), "param")
+
+        params = [c.args[1] for c in local_activity_mock.call_args_list]
+        assert [p.status for p in params] == [
+            OperationStatus.RUNNING,
+            OperationStatus.FAILED,
+        ]
+        assert params[-1].error == ERROR_MESSAGE
+
+    async def test_missing_search_attribute_raises(
+        self, monkeypatch, local_activity_mock
+    ):
+        self._set_operation_uuid(monkeypatch, None)
+
+        @track_operation_status
+        async def run(self, param):
+            return "result"
+
+        with pytest.raises(ApplicationError):
+            await run(Mock(), "param")
+        local_activity_mock.assert_not_called()

@@ -18,5 +18,6 @@ the decorators @workflow_run_with_context and @activity_defn_with_context provid
 decorators are wrapping the temporal decorators with the contextual logger.
 
 For workflows that track a long-running operation in the database, use @workflow_run_with_tracked_operation instead of
-@workflow_run_with_context. It combines context setup and operation status tracking into a single decorator.
+@workflow_run_with_context. It combines context setup and operation status tracking into a single decorator. This decorator
+is provided in maastemporalworker.workflow.operation.
 """
