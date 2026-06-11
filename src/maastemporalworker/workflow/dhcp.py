@@ -925,7 +925,7 @@ class DHCPConfigActivity(ActivityBase):
                 sn = await svc.subnets.get_by_id(ip.subnet_id)
                 assert sn is not None
                 if ip.alloc_type in [IpAddressType.AUTO, IpAddressType.STICKY]:
-                    if _ip_version_on_vlan(ip, sn):
+                    if await _ip_version_on_vlan(ip, sn):
                         dynamic_ranges = await svc.ipranges.get_many(
                             query=QuerySpec(
                                 where=IPRangeClauseFactory.and_clauses(
@@ -945,7 +945,7 @@ class DHCPConfigActivity(ActivityBase):
                         )
                         break
                 else:
-                    if _ip_version_on_vlan(ip, sn):
+                    if await _ip_version_on_vlan(ip, sn):
                         dynamic_ranges = await svc.ipranges.get_many(
                             query=QuerySpec(
                                 where=IPRangeClauseFactory.and_clauses(
@@ -1194,8 +1194,10 @@ class DHCPConfigActivity(ActivityBase):
                 for i in ips:
                     if i.ip and i.ip in subnet.cidr:
                         next_server = str(i.ip)
+                        break
                 else:
-                    next_server = str(ips[0].ip)
+                    if ips:
+                        next_server = str(ips[0].ip)
 
                 if isinstance(ntp_servers, dict):
                     assert vlan.space_id is not None
@@ -1375,7 +1377,7 @@ class DHCPConfigActivity(ActivityBase):
                     {"name": "domain-name", "data": subnet.domain_name},
                     {
                         "name": "path-prefix",
-                        "data": f"http://{rack_ip}:5248/",
+                        "data": f"http://[{rack_ip}]:5248/",
                         "always-send": pxe_method.path_prefix_force,
                     },
                 ]
@@ -1402,7 +1404,7 @@ class DHCPConfigActivity(ActivityBase):
                     )
                 sn = {
                     "subnet": subnet.cidr,
-                    "match-client-id": False,  # does this work for v6?
+                    "match-client-id": False,
                     "pools": [
                         {"pool": f"{pool.start_ip} - {pool.end_ip}"}
                         for pool in subnet.pools
@@ -1413,7 +1415,7 @@ class DHCPConfigActivity(ActivityBase):
                 if subnet.next_server:
                     sn["next-server"] = subnet.next_server
                 subnets.append(sn)
-            network["subnet4"] = subnets
+            network["subnet6"] = subnets
             cfg["shared-networks"].append(network)
         return cfg
 

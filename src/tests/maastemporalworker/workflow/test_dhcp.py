@@ -508,3 +508,301 @@ class TestDHCPConfigActivity:
             default_dns_servers=[str(sip["ip"]) for sip in sips],
             ntp_servers=[str(sip["ip"]) for sip in sips],
         )
+
+    def _make_activity(self, db: Database) -> DHCPConfigActivity:
+        return DHCPConfigActivity(
+            db,
+            CacheForServices(),
+            temporal_client=Mock(Client),
+            connection=Mock(AsyncConnection),
+        )
+
+    async def test_get_kea_shared_networks_config_ipv4(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        data = DHCPDataForAgent(
+            vlans=[],
+            subnets=[
+                SubnetData(
+                    id=1,
+                    ip_version=4,
+                    cidr="10.0.0.0/24",
+                    gateway_ip="10.0.0.1",
+                    dns_servers=["10.0.0.2", "10.0.0.3"],
+                    allow_dns=True,
+                    vlan_id=10,
+                    vlan_mtu=1500,
+                    mask="255.255.255.0",
+                    broadcast_ip="10.0.0.255",
+                    domain_name="maas",
+                    search_list=["maas", "example.com"],
+                    ntp_servers=["10.0.0.5"],
+                    next_server="10.0.0.7",
+                    pools=[
+                        IPRangeData(
+                            id=1,
+                            subnet_id=1,
+                            dynamic=True,
+                            start_ip="10.0.0.10",
+                            end_ip="10.0.0.20",
+                        )
+                    ],
+                )
+            ],
+            ipranges=[],
+            interfaces=[],
+            host_reservations=[],
+            default_dns_servers=[],
+            ntp_servers=[],
+        )
+
+        result = await activities.get_kea_shared_networks_config_ipv4(
+            data, rack_ip="10.0.0.1"
+        )
+
+        assert result == {
+            "shared-networks": [
+                {
+                    "name": "vlan-10",
+                    "subnet4": [
+                        {
+                            "subnet": "10.0.0.0/24",
+                            "match-client-id": False,
+                            "pools": [{"pool": "10.0.0.10 - 10.0.0.20"}],
+                            "boot-file-name": "lpxelinux.0",
+                            "option-data": [
+                                {
+                                    "name": "subnet-mask",
+                                    "data": "255.255.255.0",
+                                },
+                                {
+                                    "name": "broadcast-address",
+                                    "data": "10.0.0.255",
+                                },
+                                {"name": "domain-name", "data": "maas"},
+                                {
+                                    "name": "path-prefix",
+                                    "data": "http://10.0.0.1:5248/",
+                                    "always-send": True,
+                                },
+                                {
+                                    "name": "domain-name-servers",
+                                    "data": "10.0.0.2, 10.0.0.3",
+                                },
+                                {
+                                    "name": "domain-search",
+                                    "data": "maas, example.com",
+                                },
+                                {"name": "routers", "data": "10.0.0.1"},
+                                {
+                                    "name": "ntp-servers",
+                                    "data": "10.0.0.5",
+                                },
+                            ],
+                            "next-server": "10.0.0.7",
+                        }
+                    ],
+                }
+            ]
+        }
+
+    async def test_get_kea_shared_networks_config_ipv4_minimal(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        data = DHCPDataForAgent(
+            vlans=[],
+            subnets=[
+                SubnetData(
+                    id=1,
+                    ip_version=4,
+                    cidr="10.0.0.0/24",
+                    gateway_ip="",
+                    dns_servers=None,
+                    allow_dns=True,
+                    vlan_id=10,
+                    vlan_mtu=1500,
+                    mask="255.255.255.0",
+                    broadcast_ip="10.0.0.255",
+                    domain_name="maas",
+                    search_list=None,
+                    ntp_servers=None,
+                    next_server="",
+                    pools=[],
+                )
+            ],
+            ipranges=[],
+            interfaces=[],
+            host_reservations=[],
+            default_dns_servers=[],
+            ntp_servers=[],
+        )
+
+        result = await activities.get_kea_shared_networks_config_ipv4(
+            data, rack_ip="10.0.0.1"
+        )
+
+        assert result == {
+            "shared-networks": [
+                {
+                    "name": "vlan-10",
+                    "subnet4": [
+                        {
+                            "subnet": "10.0.0.0/24",
+                            "match-client-id": False,
+                            "pools": [],
+                            "boot-file-name": "lpxelinux.0",
+                            "option-data": [
+                                {
+                                    "name": "subnet-mask",
+                                    "data": "255.255.255.0",
+                                },
+                                {
+                                    "name": "broadcast-address",
+                                    "data": "10.0.0.255",
+                                },
+                                {"name": "domain-name", "data": "maas"},
+                                {
+                                    "name": "path-prefix",
+                                    "data": "http://10.0.0.1:5248/",
+                                    "always-send": True,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+
+    async def test_get_kea_shared_networks_config_ipv4_groups_by_vlan(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+
+        def make_subnet(subnet_id: int, vlan_id: int, cidr: str) -> SubnetData:
+            return SubnetData(
+                id=subnet_id,
+                ip_version=4,
+                cidr=cidr,
+                gateway_ip="",
+                dns_servers=None,
+                allow_dns=True,
+                vlan_id=vlan_id,
+                vlan_mtu=1500,
+                mask="255.255.255.0",
+                broadcast_ip="",
+                domain_name="maas",
+                search_list=None,
+                ntp_servers=None,
+                next_server="",
+                pools=[],
+            )
+
+        data = DHCPDataForAgent(
+            vlans=[],
+            subnets=[
+                make_subnet(1, 10, "10.0.0.0/24"),
+                make_subnet(2, 10, "10.0.1.0/24"),
+                make_subnet(3, 20, "10.0.2.0/24"),
+            ],
+            ipranges=[],
+            interfaces=[],
+            host_reservations=[],
+            default_dns_servers=[],
+            ntp_servers=[],
+        )
+
+        result = await activities.get_kea_shared_networks_config_ipv4(
+            data, rack_ip="10.0.0.1"
+        )
+
+        networks = result["shared-networks"]
+        assert [n["name"] for n in networks] == ["vlan-10", "vlan-20"]
+        assert [s["subnet"] for s in networks[0]["subnet4"]] == [
+            "10.0.0.0/24",
+            "10.0.1.0/24",
+        ]
+        assert [s["subnet"] for s in networks[1]["subnet4"]] == [
+            "10.0.2.0/24"
+        ]
+
+    async def test_get_kea_shared_networks_config_ipv6(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        data = DHCPDataForAgent(
+            vlans=[],
+            subnets=[
+                SubnetData(
+                    id=1,
+                    ip_version=6,
+                    cidr="2001:db8::/64",
+                    gateway_ip="2001:db8::1",
+                    dns_servers=["2001:db8::2"],
+                    allow_dns=True,
+                    vlan_id=20,
+                    vlan_mtu=1500,
+                    mask="",
+                    broadcast_ip="",
+                    domain_name="maas",
+                    search_list=["maas"],
+                    ntp_servers=["2001:db8::5"],
+                    next_server="2001:db8::7",
+                    pools=[
+                        IPRangeData(
+                            id=1,
+                            subnet_id=1,
+                            dynamic=True,
+                            start_ip="2001:db8::10",
+                            end_ip="2001:db8::20",
+                        )
+                    ],
+                )
+            ],
+            ipranges=[],
+            interfaces=[],
+            host_reservations=[],
+            default_dns_servers=[],
+            ntp_servers=[],
+        )
+
+        result = await activities.get_kea_shared_networks_config_ipv6(
+            data, rack_ip="2001:db8::1"
+        )
+
+        assert result == {
+            "shared-networks": [
+                {
+                    "name": "vlan-20",
+                    "subnet6": [
+                        {
+                            "subnet": "2001:db8::/64",
+                            "match-client-id": False,
+                            "pools": [
+                                {"pool": "2001:db8::10 - 2001:db8::20"}
+                            ],
+                            "boot-file-name": "lpxelinux.0",
+                            "option-data": [
+                                {"name": "domain-name", "data": "maas"},
+                                {
+                                    "name": "path-prefix",
+                                    "data": "http://[2001:db8::1]:5248/",
+                                    "always-send": True,
+                                },
+                                {
+                                    "name": "dns-servers",
+                                    "data": "2001:db8::2",
+                                },
+                                {"name": "domain-search", "data": "maas"},
+                                {
+                                    "name": "ntp-servers",
+                                    "data": "2001:db8::5",
+                                },
+                            ],
+                            "next-server": "2001:db8::7",
+                        }
+                    ],
+                }
+            ]
+        }
