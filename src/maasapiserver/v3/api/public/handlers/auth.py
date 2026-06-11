@@ -203,6 +203,23 @@ class AuthHandler(Handler):
         if user_profile is not None and user_profile.provider_id is None:
             return AuthInfoResponse(is_oidc=False)
 
+        if (
+            user_profile is not None
+            and user_profile.provider_id is not None
+            and user_profile.provider_id != provider.id
+        ):
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
+                        message=(
+                            "This account is linked to an OIDC provider "
+                            "that is currently disabled."
+                        ),
+                    )
+                ]
+            )
+
         client = await services.external_oauth.get_client()
         data = client.generate_authorization_url(
             redirect_target=redirect_target or "/"

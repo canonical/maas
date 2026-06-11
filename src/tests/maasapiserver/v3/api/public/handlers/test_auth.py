@@ -429,6 +429,40 @@ class TestAuthApi:
         assert data["is_oidc"] is False
         services_mock.external_oauth.get_client.assert_not_called()
 
+    async def test_get_oauth_initiate_oidc_enabled_other_provider_profile_conflict(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client: AsyncClient,
+    ) -> None:
+        services_mock.external_oauth = Mock(ExternalOAuthService)
+        services_mock.users = Mock(UsersService)
+        services_mock.external_oauth.get_provider.return_value = (
+            TEST_PROVIDER_1
+        )
+        services_mock.users.get_user_profile.return_value = UserProfile(
+            id=1,
+            created=utcnow(),
+            updated=utcnow(),
+            completed_intro=True,
+            is_local=False,
+            user_id=42,
+            provider_id=TEST_PROVIDER_2.id,
+        )
+
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/login_info?email=other_provider_user@example.com"
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 409
+        assert (
+            error_response.details[0].message
+            == "This account is linked to an OIDC provider that is currently disabled."
+        )
+        services_mock.external_oauth.get_client.assert_not_called()
+
     async def test_get_oauth_initiate_oidc_disabled_oidc_bound_profile_conflict(
         self,
         services_mock: ServiceCollectionV3,
