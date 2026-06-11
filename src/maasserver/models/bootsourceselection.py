@@ -11,6 +11,7 @@ from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.workflow import stop_workflow
 
 
 class BootSourceSelectionManager(Manager):
@@ -50,16 +51,6 @@ class BootSourceSelection(CleanSave, TimestampedModel):
     subarches = ArrayField(TextField(), blank=True, null=True, default=list)
 
     labels = ArrayField(TextField(), blank=True, null=True, default=list)
-
-    def to_dict(self):
-        """Return the current `BootSourceSelectionLegacy` as a dict."""
-        return {
-            "os": self.os,
-            "release": self.release,
-            "arches": self.arches,
-            "subarches": self.subarches,
-            "labels": self.labels,
-        }
 
     def delete(self, *args, **kwargs):
         """Delete without checking if this selection is the one used for commissioning."""
@@ -148,16 +139,9 @@ class BootSourceSelectionNew(CleanSave, TimestampedModel):
         on_delete=CASCADE,
     )
 
-    def to_dict(self):
-        """Return the current `BootSourceSelection` as a dict."""
-        return {
-            "os": self.os,
-            "release": self.release,
-            "arch": self.arch,
-        }
-
     def delete(self, *args, **kwargs):
         """Delete without checking if this selection is the one used for commissioning."""
+        stop_workflow(f"sync-selection:{self.id}")
         boot_resources_to_delete = BootResource.objects.filter(
             boot_source_selection=self
         )

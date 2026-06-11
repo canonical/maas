@@ -10,7 +10,9 @@ from maasservicelayer.builders.tokens import (
     RefreshTokenBuilder,
 )
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.tokens import (
+    OIDCRevokedTokenClauseFactory,
     OIDCRevokedTokenRepository,
     RefreshTokenRepository,
     TokensRepository,
@@ -135,7 +137,7 @@ class TestRefreshTokenService(ServiceCommonTests):
 
 
 @pytest.mark.asyncio
-class TestRevokedTokensService(ServiceCommonTests):
+class TestCommonRevokedTokensService(ServiceCommonTests):
     @pytest.fixture
     def service_instance(self) -> OIDCRevokedTokenService:
         return OIDCRevokedTokenService(
@@ -153,6 +155,19 @@ class TestRevokedTokensService(ServiceCommonTests):
             await super().test_create(
                 service_instance, test_instance, builder_model
             )
+
+
+@pytest.mark.asyncio
+class TestRevokedTokensService:
+    @pytest.fixture
+    def mock_repository(self) -> Mock:
+        return Mock(OIDCRevokedTokenRepository)
+
+    @pytest.fixture
+    def service_instance(self, mock_repository) -> OIDCRevokedTokenService:
+        return OIDCRevokedTokenService(
+            context=Context(), repository=mock_repository
+        )
 
     @patch("maasservicelayer.services.tokens.hashlib.sha256")
     @patch(
@@ -185,3 +200,26 @@ class TestRevokedTokensService(ServiceCommonTests):
 
         mock_base_create.assert_awaited_once_with(builder)
         assert created.token_hash == "abc123"
+
+    @patch("maasservicelayer.services.tokens.hashlib.sha256")
+    async def test_is_revoked(
+        self,
+        mock_sha256: MagicMock,
+        mock_repository: Mock,
+        service_instance: OIDCRevokedTokenService,
+    ) -> None:
+        mock_hash = Mock()
+        mock_hash.hexdigest.return_value = "abc123"
+        mock_sha256.return_value = mock_hash
+
+        mock_repository.exists = AsyncMock(return_value=True)
+
+        is_revoked = await service_instance.is_revoked(token="raw_token")
+
+        assert is_revoked
+
+        mock_repository.exists.assert_awaited_once_with(
+            query=QuerySpec(
+                where=OIDCRevokedTokenClauseFactory.with_token_hash("abc123")
+            )
+        )

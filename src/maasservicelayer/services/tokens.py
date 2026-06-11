@@ -21,6 +21,7 @@ from maasservicelayer.builders.tokens import (
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.tokens import (
+    OIDCRevokedTokenClauseFactory,
     OIDCRevokedTokenRepository,
     RefreshTokenClauseFactory,
     RefreshTokenRepository,
@@ -116,10 +117,13 @@ class OIDCRevokedTokenService(
     ):
         super().__init__(context, repository)
 
+    def _hash_token(self, token: str) -> str:
+        return hashlib.sha256(token.encode()).hexdigest()
+
     async def create_revoked_token(
         self, token: str, provider_id: int, email: str
     ):
-        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        token_hash = self._hash_token(token)
         builder = OIDCRevokedTokenBuilder(
             provider_id=provider_id,
             user_email=email,
@@ -131,4 +135,12 @@ class OIDCRevokedTokenService(
     async def create(self, builder):
         raise NotImplementedError(
             "Create is not supported for OIDC revoked tokens. Use create_revoked_token instead."
+        )
+
+    async def is_revoked(self, token: str) -> bool:
+        token_hash = self._hash_token(token)
+        return await self.exists(
+            query=QuerySpec(
+                where=OIDCRevokedTokenClauseFactory.with_token_hash(token_hash)
+            )
         )

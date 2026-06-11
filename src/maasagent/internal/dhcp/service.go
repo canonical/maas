@@ -223,6 +223,9 @@ func queueFlush(c *apiclient.APIClient, interval time.Duration) func(context.Con
 				return err
 			}
 
+			//nolint:errcheck // we do not care about possible error here
+			defer resp.Body.Close()
+
 			if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 				return ErrFailedToPostNotifications
 			}
@@ -564,6 +567,15 @@ func (s *DHCPService) configureViaFile(ctx context.Context) error {
 		}
 
 		path := s.dataPathFactory(file)
+
+		if !hasData && (file == "dhcpd-interfaces" || file == "dhcpd6-interfaces") {
+			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+
+			continue
+		}
+
 		if err := writeConfigFile(path, data, mode); err != nil {
 			return err
 		}
