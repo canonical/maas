@@ -34,12 +34,7 @@ class UCSMPowerDriver(PowerDriver):
         make_setting_field(
             "uuid", "Server UUID", scope=SETTING_SCOPE.NODE, required=True
         ),
-        make_setting_field(
-            "power_address",
-            "URL for XML API",
-            field_type="ip_address",
-            required=True,
-        ),
+        make_setting_field("power_address", "URL for XML API", required=True),
         make_setting_field("power_user", "API user"),
         make_setting_field(
             "power_pass", "API password", field_type="password", secret=True
