@@ -19,8 +19,8 @@ import maastemporalworker.workflow.operation as operation_module
 from maastemporalworker.workflow.operation import (
     OPERATION_UUID_SEARCH_ATTRIBUTE,
     OperationActivity,
-    UpdateOperationStatusParam,
     track_operation_status,
+    UpdateOperationStatusParam,
 )
 
 ERROR_MESSAGE = "operation failed"
