@@ -61,18 +61,13 @@ class AMTPowerDriver(PowerDriver):
             "power_pass", "Power password", field_type="password", secret=True
         ),
         make_setting_field(
-            "power_address",
-            "Power address",
-            field_type="ip_address",
-            required=True,
-        ),
-        make_setting_field(
             "port",
             "HTTP or HTTPS",
             field_type="choice",
             choices=HTTP_OR_HTTPS,
             default=AMT_DEFAULT_PORT,
         ),
+        make_setting_field("power_address", "Power address", required=True),
     ]
     ip_extractor = make_ip_extractor("power_address")
 
