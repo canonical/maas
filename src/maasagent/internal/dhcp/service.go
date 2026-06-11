@@ -567,6 +567,15 @@ func (s *DHCPService) configureViaFile(ctx context.Context) error {
 		}
 
 		path := s.dataPathFactory(file)
+
+		if !hasData && (file == "dhcpd-interfaces" || file == "dhcpd6-interfaces") {
+			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+
+			continue
+		}
+
 		if err := writeConfigFile(path, data, mode); err != nil {
 			return err
 		}
