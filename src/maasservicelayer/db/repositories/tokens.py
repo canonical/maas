@@ -98,6 +98,14 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
         return RefreshToken
 
 
+class OIDCRevokedTokenClauseFactory(ClauseFactory):
+    @classmethod
+    def with_token_hash(cls, token_hash: str) -> Clause:
+        return Clause(
+            condition=eq(OIDCRevokedTokenTable.c.token_hash, token_hash)
+        )
+
+
 class OIDCRevokedTokenRepository(BaseRepository[OIDCRevokedToken]):
     def get_repository_table(self) -> Table:
         return OIDCRevokedTokenTable

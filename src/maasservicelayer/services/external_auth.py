@@ -577,6 +577,15 @@ class ExternalOAuthService(
     async def refresh_access_token(
         self, refresh_token: str
     ) -> OAuthRefreshData:
+        if await self.revoked_tokens_service.is_revoked(refresh_token):
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="The provided refresh token is invalid.",
+                    )
+                ]
+            )
         client = await self.get_client()
         try:
             tokens = await client.refresh_access_token(

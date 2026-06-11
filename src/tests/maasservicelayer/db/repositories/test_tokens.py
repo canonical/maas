@@ -20,6 +20,7 @@ from maasservicelayer.db.repositories.base import (
     MultipleResultsException,
 )
 from maasservicelayer.db.repositories.tokens import (
+    OIDCRevokedTokenClauseFactory,
     OIDCRevokedTokenRepository,
     RefreshTokenClauseFactory,
     RefreshTokenRepository,
@@ -246,6 +247,14 @@ class TestRefreshTokenRepository(RepositoryCommonTests[RefreshToken]):
     @pytest.fixture
     async def created_instance(self, fixture: Fixture) -> RefreshToken:
         return await create_test_refresh_token(fixture)
+
+
+class TestOIDCRevokedTokenClauseFactory:
+    def test_with_token_hash(self):
+        clause = OIDCRevokedTokenClauseFactory.with_token_hash("xxx")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_oidcrevokedtoken.token_hash = 'xxx'")
 
 
 @pytest.mark.usefixtures("ensuremaasdb")

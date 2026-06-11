@@ -1565,6 +1565,9 @@ class TestExternalOAuthService(ServiceCommonTests):
                 refresh_token="new_refresh_token",
             )
         )
+        service_instance.revoked_tokens_service.is_revoked = AsyncMock(
+            return_value=False
+        )
         service_instance.get_client = AsyncMock(return_value=mock_client)
 
         tokens = await service_instance.refresh_access_token(
@@ -1588,6 +1591,9 @@ class TestExternalOAuthService(ServiceCommonTests):
         mock_client.refresh_access_token = AsyncMock(
             side_effect=UnauthorizedException()
         )
+        service_instance.revoked_tokens_service.is_revoked = AsyncMock(
+            return_value=False
+        )
         service_instance.get_client = AsyncMock(return_value=mock_client)
 
         with pytest.raises(UnauthorizedException) as exc_info:
@@ -1597,6 +1603,28 @@ class TestExternalOAuthService(ServiceCommonTests):
             mock_client.refresh_access_token.assert_awaited_once_with(
                 refresh_token="invalid_refresh_token"
             )
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].message == "The provided refresh token is invalid."
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+
+    async def test_refresh_access_token_revoked(
+        self,
+        service_instance: ExternalOAuthService,
+    ) -> None:
+        service_instance.cache = service_instance.build_cache_object()
+        service_instance.revoked_tokens_service.is_revoked = AsyncMock(
+            return_value=True
+        )
+
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await service_instance.refresh_access_token(
+                refresh_token="invalid_refresh_token"
+            )
+
+        service_instance.revoked_tokens_service.is_revoked.assert_awaited_once_with(
+            "invalid_refresh_token"
+        )
         details = exc_info.value.details
         assert details is not None
         assert details[0].message == "The provided refresh token is invalid."
