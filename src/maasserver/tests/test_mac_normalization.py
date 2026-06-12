@@ -1,10 +1,15 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+import contextlib
+import io
+
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.mac_normalization import (
+    DUPLICATE_MAC_DOC_URL,
     DUPLICATE_MAC_NOTIFICATION_IDENT,
     find_duplicate_mac_addresses,
+    print_duplicate_mac_report,
     sync_duplicate_mac_address_notification,
 )
 from maasserver.models import Interface, Notification
@@ -61,6 +66,39 @@ class TestFindDuplicateMacAddresses(MAASServerTestCase):
         self.assertEqual([], find_duplicate_mac_addresses())
 
 
+class TestPrintDuplicateMacReport(MAASServerTestCase):
+    def _run_report(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            print_duplicate_mac_report()
+        return out.getvalue()
+
+    def test_reports_no_duplicates(self):
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac_address="aa:bb:cc:dd:ee:ff"
+        )
+        self.assertIn("No duplicate MAC addresses found.", self._run_report())
+
+    def test_reports_affected_interfaces(self):
+        node = factory.make_Node(hostname="webserver-01")
+        if1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth1"
+        )
+        if2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth2"
+        )
+        _set_raw_mac(if1, "AA:BB:CC:DD:EE:FF")
+        _set_raw_mac(if2, "aa:bb:cc:dd:ee:ff")
+
+        output = self._run_report()
+
+        self.assertIn(node.system_id, output)
+        self.assertIn("aa:bb:cc:dd:ee:ff", output)
+        self.assertIn(f"id={if1.id}", output)
+        self.assertIn("stored=AA:BB:CC:DD:EE:FF", output)
+        self.assertIn(f"id={if2.id}", output)
+
+
 class TestSyncDuplicateMacAddressNotification(MAASServerTestCase):
     def test_creates_notification_when_duplicates_exist(self):
         node = factory.make_Node()
@@ -77,6 +115,7 @@ class TestSyncDuplicateMacAddressNotification(MAASServerTestCase):
         self.assertEqual("warning", notification.category)
         self.assertTrue(notification.admins)
         self.assertFalse(notification.dismissable)
+        self.assertIn(DUPLICATE_MAC_DOC_URL, notification.message)
 
     def test_clears_notification_when_no_duplicates(self):
         Notification.objects.create_warning_for_admins(

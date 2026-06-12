@@ -88,6 +88,7 @@ This section helps you observe and debug your MAAS deployment using tools like P
 * [Auditing with logs](/how-to-guides/use-logging.md#auditing-maas)
 * [Troubleshooting machine behaviors](/how-to-guides/manage-machines.md#rescue-and-recovery)
 * [Troubleshooting network issues](/reference/configuration-guides/troubleshooting.md)
+* [Resolving duplicate MAC addresses](/how-to-guides/resolve-duplicate-mac-addresses.md)
 
 <!-- * Troubleshooting performance -->
 
@@ -131,6 +132,7 @@ build-custom-images
 manage-high-availability
 use-logging
 monitor-maas
+resolve-duplicate-mac-addresses
 enhance-maas-security
 deploy-a-real-time-kernel
 deploy-a-fips-kernel
