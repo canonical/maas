@@ -3033,7 +3033,7 @@ def upgrade() -> None:
         'ports_archive',
         'http://ports.ubuntu.com/ubuntu-ports',
         '{{}}',
-        '{{armhf,arm64,ppc64el,s390x}}',
+        '{{armhf,arm64,ppc64el,riscv64,s390x}}',
         '',
         true,
         true,

@@ -10,7 +10,7 @@ def move_package_repositories(apps, schema_editor):
 
     # Copied from PackageRepository model.
     MAIN_ARCHES = ["amd64", "i386"]
-    PORTS_ARCHES = ["armhf", "arm64", "powerpc", "ppc64el"]
+    PORTS_ARCHES = ["armhf", "arm64", "powerpc", "ppc64el", "riscv64"]
 
     now = timestampedmodel.now()
 
