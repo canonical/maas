@@ -98,6 +98,9 @@ type maas
 
     define can_view_dnsrecords: [group#member]
 
+	define can_view_operations: [group#member]
+	define can_edit_operations: [group#member]
+
 type pool
   relations
     define parent: [maas]
