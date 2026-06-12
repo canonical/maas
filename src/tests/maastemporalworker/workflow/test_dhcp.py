@@ -723,9 +723,7 @@ class TestDHCPConfigActivity:
             "10.0.0.0/24",
             "10.0.1.0/24",
         ]
-        assert [s["subnet"] for s in networks[1]["subnet4"]] == [
-            "10.0.2.0/24"
-        ]
+        assert [s["subnet"] for s in networks[1]["subnet4"]] == ["10.0.2.0/24"]
 
     async def test_get_kea_shared_networks_config_ipv6(
         self, db: Database
@@ -779,9 +777,7 @@ class TestDHCPConfigActivity:
                         {
                             "subnet": "2001:db8::/64",
                             "match-client-id": False,
-                            "pools": [
-                                {"pool": "2001:db8::10 - 2001:db8::20"}
-                            ],
+                            "pools": [{"pool": "2001:db8::10 - 2001:db8::20"}],
                             "boot-file-name": "lpxelinux.0",
                             "option-data": [
                                 {"name": "domain-name", "data": "maas"},

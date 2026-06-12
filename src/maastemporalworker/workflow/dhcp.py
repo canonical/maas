@@ -70,6 +70,7 @@ from maastemporalworker.workflow.utils import (
 )
 
 from provisioningserver.boot.pxe import PXEBootMethod  # noqa:E402 isort:skip
+from provisioningserver.boot.grub import UEFIAMD64BootMethod
 from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.network import (
     get_source_address,
@@ -89,6 +90,7 @@ FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME = "find-agents-for-update"
 FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME = "fetch-hosts-for-update"
 GET_OMAPI_KEY_ACTIVITY_NAME = "get-omapi-key"
 GET_ACTIVE_INTERFACES_FOR_AGENT_NAME = "get-active-interfaces-for-agent"
+GET_KEA_DHCP_DATA_FOR_AGENT_ACTIVITY_NAME = "get-kea-dhcp-data-for-agent"
 
 # Executed on maasagent
 APPLY_DHCP_CONFIG_VIA_FILE_ACTIVITY_NAME = "apply-dhcp-config-via-file"
@@ -1058,7 +1060,7 @@ class DHCPConfigActivity(ActivityBase):
         }
         return {key: str(value[3]) for key, value in best_ntp_servers.items()}
 
-    @activity_defn_with_context(name="get_dhcp_data_for_agent")
+    @activity_defn_with_context(name=GET_KEA_DHCP_DATA_FOR_AGENT_ACTIVITY_NAME)
     async def get_dhcp_data_for_agent(
         self, param: GetDHCPDataForAgentParam
     ) -> DHCPDataForAgent:
@@ -1293,7 +1295,7 @@ class DHCPConfigActivity(ActivityBase):
 
     async def get_kea_shared_networks_config_ipv4(
         self, data: DHCPDataForAgent, rack_ip: str
-    ):
+    ) -> dict[str, Any]:
         cfg = {"shared-networks": []}
         pxe_method = PXEBootMethod()
 
@@ -1362,7 +1364,7 @@ class DHCPConfigActivity(ActivityBase):
         self, data: DHCPDataForAgent, rack_ip: str
     ):
         cfg = {"shared-networks": []}
-        pxe_method = PXEBootMethod()
+        uefi_amd64_method = UEFIAMD64BootMethod()
 
         def group_by_vlan(subnet: SubnetData):
             return subnet.vlan_id
@@ -1376,9 +1378,8 @@ class DHCPConfigActivity(ActivityBase):
                 option_data = [
                     {"name": "domain-name", "data": subnet.domain_name},
                     {
-                        "name": "path-prefix",
-                        "data": f"http://[{rack_ip}]:5248/",
-                        "always-send": pxe_method.path_prefix_force,
+                        "name": "bootfile-url",
+                        "data": f"tftp://[{rack_ip}]/{uefi_amd64_method.bootloader_path}",
                     },
                 ]
                 if subnet.dns_servers:
@@ -1409,7 +1410,6 @@ class DHCPConfigActivity(ActivityBase):
                         {"pool": f"{pool.start_ip} - {pool.end_ip}"}
                         for pool in subnet.pools
                     ],
-                    "boot-file-name": pxe_method.bootloader_path,
                     "option-data": option_data,
                 }
                 if subnet.next_server:
@@ -1422,29 +1422,19 @@ class DHCPConfigActivity(ActivityBase):
 
 @workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
 class ConfigureDHCPForAgentWorkflow:
-    async def _run_internal(self, param: ConfigureDHCPForAgentParam) -> None:
+    async def _configure_kea_dhcp(
+        self, param: ConfigureDHCPForAgentParam
+    ) -> None:
         data = await workflow.execute_activity(
-            "get_dhcp_data_for_agent",
+            GET_KEA_DHCP_DATA_FOR_AGENT_ACTIVITY_NAME,
             GetDHCPDataForAgentParam(
                 system_id=param.system_id,
             ),
             start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
         )
 
-        await workflow.execute_activity(
-            "set-active-interfaces",
-            SetActiveInterfacesParam(
-                ifaces=[iface["name"] for iface in data["interfaces"]]
-            ),
-            task_queue=f"{param.system_id}@agent:main",
-            start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
-        )
-
     @workflow_run_with_context
     async def run(self, param: ConfigureDHCPForAgentParam) -> None:
-        if os.environ.get("MAAS_INTERNAL_DHCP") == "1":
-            await self._run_internal(param)
-            return
         # When dhcpd restarts the static leases are lost unless they are present in the dhcpd config. This is why in every
         # scenario we want to update the dhcpd config.
         await workflow.execute_activity(

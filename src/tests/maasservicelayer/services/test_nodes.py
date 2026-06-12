@@ -119,9 +119,7 @@ class TestNodesService:
         await nodes_service.move_to_zone(0, 0)
         nodes_repository_mock.move_to_zone.assert_called_once_with(0, 0)
 
-    async def test_get_url(
-        self, nodes_service, nodes_repository_mock
-    ) -> None:
+    async def test_get_url(self, nodes_service, nodes_repository_mock) -> None:
         nodes_repository_mock.get_url.return_value = "http://10.0.0.1/MAAS"
         result = await nodes_service.get_url("xyzio")
         assert result == "http://10.0.0.1/MAAS"
