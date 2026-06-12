@@ -5,8 +5,11 @@
 """Discover MAAS CLI commands by constructing argparse tree from source."""
 
 from importlib.abc import Loader
+from importlib.machinery import ModuleSpec
 import os
+import sys
 from typing import Any
+from unittest.mock import MagicMock
 
 from utils import add_repo_src_to_path
 
@@ -36,9 +39,6 @@ def _patch_maas_metadata():
 
 def _patch_distro_info():
     """Patch distro_info module so imports succeed without the package installed."""
-    import sys
-    from unittest.mock import MagicMock
-
     distro_info = MagicMock()
 
     class FakeDistroInfo:
@@ -59,9 +59,6 @@ def _patch_distro_info():
 
 def _patch_seamicroclient():
     """Patch seamicroclient module so imports succeed without the package installed."""
-    import sys
-    from unittest.mock import MagicMock
-
     seamicroclient = MagicMock()
     seamicroclient.exceptions = MagicMock()
     seamicroclient.v2 = MagicMock()
@@ -74,9 +71,6 @@ def _patch_seamicroclient():
 
 def _patch_curtin():
     """Patch curtin module so imports succeed without the package installed."""
-    import sys
-    from unittest.mock import MagicMock
-
     curtin = MagicMock()
     curtin.config = MagicMock()
     curtin.config.merge_config = MagicMock()
@@ -90,9 +84,6 @@ def _patch_curtin():
 
 def _patch_tftp():
     """Patch tftp module so imports succeed without the package installed."""
-    import sys
-    from unittest.mock import MagicMock
-
     tftp = MagicMock()
     tftp.backend = MagicMock()
     tftp.backend.IReader = MagicMock()
@@ -103,9 +94,6 @@ def _patch_tftp():
 
 def _patch_temporalio():
     """Patch temporalio module so imports succeed without the package installed."""
-    from importlib.machinery import ModuleSpec
-    import sys
-    from unittest.mock import MagicMock
 
     class MockClientInterceptor:
         pass
