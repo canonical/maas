@@ -1729,6 +1729,39 @@ class TestPhysicalInterface(MAASServerTestCase):
             error.message_dict,
         )
 
+    def test_mac_address_is_normalised_on_save(self):
+        node_config = factory.make_NodeConfig()
+        interface = PhysicalInterface(
+            node_config=node_config,
+            mac_address="AA:BB:CC:DD:EE:FF",
+            name=factory.make_name("eth"),
+        )
+        interface.save()
+        self.assertEqual(interface.mac_address, "aa:bb:cc:dd:ee:ff")
+
+    def test_mac_address_uniqueness_ignores_case(self):
+        node_config = factory.make_NodeConfig()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node_config=node_config,
+            mac_address="aa:bb:cc:dd:ee:ff",
+        )
+        bad_interface = PhysicalInterface(
+            node_config=node_config,
+            mac_address="AA:BB:CC:DD:EE:FF",
+            name=factory.make_name("eth"),
+        )
+        error = self.assertRaises(ValidationError, bad_interface.save)
+        self.assertEqual(
+            {
+                "mac_address": [
+                    "This MAC address is already in use by %s."
+                    % (interface.get_log_string())
+                ]
+            },
+            error.message_dict,
+        )
+
     def test_mac_address_can_be_duplicated_for_other_nodeconfig(self):
         node = factory.make_Node()
         if1 = factory.make_Interface(

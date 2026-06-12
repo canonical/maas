@@ -17,6 +17,9 @@ from maasserver.deprecations import (
     sync_deprecation_notifications,
 )
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
+from maasserver.mac_normalization import (
+    sync_duplicate_mac_address_notification,
+)
 from maasserver.models import (
     Config,
     ControllerInfo,
@@ -330,6 +333,10 @@ def inner_start_up(master=False):
         # Log deprecations and Update related notifications if needed
         log_deprecations(logger=log)
         sync_deprecation_notifications()
+
+        # Warn admins about pre-existing interfaces whose MAC addresses bypass
+        # uniqueness because they were stored in an inconsistent format.
+        sync_duplicate_mac_address_notification()
 
         # initialize the image storage
         initialize_image_storage(node)

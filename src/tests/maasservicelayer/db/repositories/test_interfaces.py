@@ -484,19 +484,37 @@ class TestInterfaceRepository:
         )
         unknown_interface = (
             await interfaces_repository.create_unknwown_interface(
-                "00:00:00:00:00", vlan["id"]
+                "00:00:00:00:00:00", vlan["id"]
             )
         )
 
         assert unknown_interface.type == InterfaceType.UNKNOWN
         assert unknown_interface.links == []
         assert unknown_interface.name == "eth0"
-        assert unknown_interface.mac_address == "00:00:00:00:00"
+        assert unknown_interface.mac_address == "00:00:00:00:00:00"
         assert unknown_interface.enabled is True
         assert unknown_interface.link_connected is True
         assert unknown_interface.interface_speed == 0
         assert unknown_interface.link_speed == 0
         assert unknown_interface.sriov_max_vf == 0
+
+    async def test_create_unkwnown_interface_normalises_mac(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        vlan = await create_test_vlan_entry(
+            fixture=fixture,
+            fabric_id=0,
+        )
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+        unknown_interface = (
+            await interfaces_repository.create_unknwown_interface(
+                "AA:BB:CC:DD:EE:FF", vlan["id"]
+            )
+        )
+
+        assert unknown_interface.mac_address == "aa:bb:cc:dd:ee:ff"
 
     async def test_get_for_ip(
         self, db_connection: AsyncConnection, fixture: Fixture
