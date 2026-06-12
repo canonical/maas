@@ -17,11 +17,6 @@ from maasservicelayer.models.operations import Operation
 
 
 class OperationResponse(HalResponse[BaseHal]):
-    """Response model for a single operation.
-
-    Represents an operation with its status and metadata.
-    """
-
     kind: str = Field(default="Operation")
     uuid: str
     op_type: OperationType
@@ -70,6 +65,4 @@ class OperationResponse(HalResponse[BaseHal]):
 
 
 class OperationsListResponse(PaginatedResponse[OperationResponse]):
-    """Response model for a paginated list of operations."""
-
     kind: str = Field(default="OperationsList")
