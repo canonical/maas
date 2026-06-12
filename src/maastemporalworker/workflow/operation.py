@@ -31,6 +31,7 @@ UPDATE_OPERATION_STATUS_ACTIVITY_NAME = "update-operation-status"
 class UpdateOperationStatusParam:
     operation_uuid: str
     status: OperationStatus
+    result: dict | None = None
     error: str | None = None
 
 
@@ -43,6 +44,7 @@ class OperationActivity(ActivityBase):
             await services.operations.update_status(
                 operation_uuid=param.operation_uuid,
                 status=param.status,
+                result=param.result,
                 error=param.error,
             )
 
@@ -82,6 +84,7 @@ def track_operation_status(func):
                 UpdateOperationStatusParam(
                     operation_uuid=operation_uuid,
                     status=OperationStatus.COMPLETED,
+                    result=result,
                 ),
                 start_to_close_timeout=UPDATE_OPERATION_STATUS_TIMEOUT,
             )

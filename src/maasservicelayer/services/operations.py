@@ -28,6 +28,7 @@ class OperationsService(
         self,
         operation_uuid: str,
         status: OperationStatus,
+        result: dict | None = None,
         error: str | None = None,
     ) -> Operation:
         builder = OperationBuilder(status=status)
@@ -38,7 +39,9 @@ class OperationsService(
             OperationStatus.FAILED,
         ):
             builder.finished = utcnow()
-        if error is not None:
+        if result is not None:
+            builder.result_errors = result
+        elif error is not None:
             builder.result_errors = {"error": error}
 
         return await self.update_one(

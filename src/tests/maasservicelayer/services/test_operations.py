@@ -80,6 +80,27 @@ class TestOperationsService:
         assert "finished" not in populated
         assert "result_errors" not in populated
 
+    async def test_update_status_completed_stores_result(self) -> None:
+        repository = Mock(OperationsRepository)
+        repository.get_one.return_value = TEST_OPERATION
+        repository.update_by_id.return_value = TEST_OPERATION.model_copy(
+            update={"status": OperationStatus.COMPLETED}
+        )
+        service = self._service(repository)
+
+        await service.update_status(
+            "op-uuid",
+            OperationStatus.COMPLETED,
+            result={"deployed": True},
+        )
+
+        builder = repository.update_by_id.call_args.kwargs["builder"]
+        populated = builder.populated_fields()
+        assert populated["status"] == OperationStatus.COMPLETED
+        assert "finished" in populated
+        assert populated["result_errors"] == {"deployed": True}
+        assert "started" not in populated
+
     async def test_update_status_failed_stores_error(self) -> None:
         repository = Mock(OperationsRepository)
         repository.get_one.return_value = TEST_OPERATION

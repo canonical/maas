@@ -57,7 +57,41 @@ class TestOperationActivity:
         services_mock.operations.update_status.assert_called_once_with(
             operation_uuid="op-uuid",
             status=OperationStatus.FAILED,
+            result=None,
             error=ERROR_MESSAGE,
+        )
+
+    async def test_update_operation_status_passes_result(
+        self, services_mock: ServiceCollectionV3, monkeypatch
+    ) -> None:
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.produce.return_value = services_mock
+        monkeypatch.setattr(
+            activity_module, "ServiceCollectionV3", services_mock
+        )
+
+        services_cache = CacheForServices()
+        activity = OperationActivity(
+            Mock(Database),
+            services_cache,
+            connection=Mock(AsyncConnection),
+            temporal_client=Mock(Client),
+        )
+
+        await activity.update_operation_status(
+            UpdateOperationStatusParam(
+                operation_uuid="op-uuid",
+                status=OperationStatus.COMPLETED,
+                result={"deployed": True},
+            )
+        )
+
+        services_mock.operations.update_status.assert_called_once_with(
+            operation_uuid="op-uuid",
+            status=OperationStatus.COMPLETED,
+            result={"deployed": True},
+            error=None,
         )
 
     async def test_update_operation_status_not_found_raises(
@@ -117,17 +151,18 @@ class TestTrackOperationStatus:
 
         @track_operation_status
         async def run(self, param):
-            return "result"
+            return {"deployed": True}
 
         result = await run(Mock(), "param")
 
-        assert result == "result"
+        assert result == {"deployed": True}
         params = [c.args[1] for c in local_activity_mock.call_args_list]
         assert [p.status for p in params] == [
             OperationStatus.RUNNING,
             OperationStatus.COMPLETED,
         ]
         assert all(p.operation_uuid == "op-uuid" for p in params)
+        assert params[-1].result == {"deployed": True}
 
     async def test_tracks_failed_and_reraises(
         self, monkeypatch, local_activity_mock
