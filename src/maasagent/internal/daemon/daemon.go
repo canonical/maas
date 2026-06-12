@@ -555,7 +555,7 @@ func restartRackd(ctx context.Context) error {
 		return runAll(
 			exec.CommandContext(ctx, "snapctl", "stop", "maas.pebble"),
 			//nolint:gosec // G204 previous .Clean and .Join should be enough
-			exec.CommandContext(ctx, filepath.Join(snap, "bin/reconfigure-pebble")),
+			exec.CommandContext(ctx, filepath.Join(snap, "usr/bin/reconfigure-pebble")),
 			exec.CommandContext(ctx, "snapctl", "start", "maas.pebble"),
 		)
 	}
