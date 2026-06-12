@@ -11,6 +11,7 @@ from authlib.jose.errors import (
     ExpiredTokenError,
     InvalidClaimError,
     InvalidTokenError,
+    MissingClaimError,
 )
 
 from maasservicelayer.models.external_auth import OAuthProvider
@@ -79,7 +80,12 @@ class BaseOAuthToken:
 
         try:
             self.claims.validate()
-        except (ExpiredTokenError, InvalidClaimError, InvalidTokenError) as e:
+        except (
+            ExpiredTokenError,
+            InvalidClaimError,
+            InvalidTokenError,
+            MissingClaimError,
+        ) as e:
             raise JWTValidationException() from e
 
 

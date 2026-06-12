@@ -9,6 +9,7 @@ from authlib.jose.errors import (
     ExpiredTokenError,
     InvalidClaimError,
     InvalidTokenError,
+    MissingClaimError,
 )
 import pytest
 
@@ -144,6 +145,7 @@ class TestBaseOAuthToken:
             InvalidClaimError("Invalid claim"),
             ExpiredTokenError("Token expired"),
             InvalidTokenError("Invalid token"),
+            MissingClaimError("Missing essential claim"),
         ],
     )
     @patch("maasservicelayer.auth.oidc_jwt.JWTClaims.validate")
