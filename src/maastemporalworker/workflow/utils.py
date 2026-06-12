@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
-import functools
 from functools import wraps
 import random
 
@@ -65,7 +64,7 @@ def workflow_run_with_context(func):
 
 def async_retry(retries=5, backoff_ms=1000):
     def wrapper(fn):
-        @functools.wraps(fn)
+        @wraps(fn)
         async def wrapped(*args, **kwargs):
             tries = 0
             while True:
