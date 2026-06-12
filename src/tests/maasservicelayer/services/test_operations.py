@@ -16,6 +16,7 @@ from maasservicelayer.db.repositories.operations import (
 from maasservicelayer.exceptions.catalog import (
     NotFoundException,
     PreconditionFailedException,
+    UnauthorizedException,
 )
 from maasservicelayer.models.base import (
     ListResult,
@@ -387,7 +388,7 @@ class TestOperationsService:
     ) -> None:
         operations_repo_mock.get_by_uuid.return_value = OTHER_USER_OPERATION
 
-        with pytest.raises(NotFoundException):
+        with pytest.raises(UnauthorizedException):
             await operations_service.get_by_uuid_for_user(
                 "other-uuid", user_id=1, can_view_all=False
             )
@@ -399,8 +400,7 @@ class TestOperationsService:
     ) -> None:
         operations_repo_mock.get_by_uuid.return_value = None
 
-        result = await operations_service.get_by_uuid_for_user(
-            "nonexistent-uuid", user_id=1, can_view_all=True
-        )
-
-        assert result is None
+        with pytest.raises(NotFoundException):
+            await operations_service.get_by_uuid_for_user(
+                "nonexistent-uuid", user_id=1, can_view_all=True
+            )

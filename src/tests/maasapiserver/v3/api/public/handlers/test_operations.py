@@ -186,7 +186,9 @@ class TestOperationsApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
         services_mock.operations = Mock(OperationsService)
-        services_mock.operations.get_by_uuid_for_user.return_value = None
+        services_mock.operations.get_by_uuid_for_user.side_effect = (
+            NotFoundException()
+        )
 
         response = await client.get(f"{self.BASE_PATH}/non-existent-uuid")
         assert response.status_code == 404
@@ -206,3 +208,36 @@ class TestOperationsApi(ApiCommonTests):
 
         response = await client.get(f"{self.BASE_PATH}/{TEST_OPERATION.uuid}")
         assert response.status_code == 404
+
+    async def test_list_operations_non_admin_with_status_filter(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        openfga_client = _setup_openfga_mock(services_mock)
+        openfga_client.can_view_operations.return_value = False
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.list_for_user.return_value = ListResult(
+            items=[TEST_OPERATION], total=1
+        )
+
+        response = await client.get(
+            f"{self.BASE_PATH}?status={OperationStatus.RUNNING.value}"
+        )
+        operations_response = OperationsListResponse(**response.json())
+        assert response.status_code == 200
+        assert len(operations_response.items) == 1
+        assert operations_response.items[0].status == OperationStatus.RUNNING
+        openfga_client.can_view_operations.assert_awaited_once()
+        services_mock.operations.list_for_user.assert_called_once_with(
+            1,
+            20,
+            user_id=0,
+            can_view_all=False,
+            query=QuerySpec(
+                where=OperationsClauseFactory.with_status(
+                    OperationStatus.RUNNING
+                )
+            ),
+        )

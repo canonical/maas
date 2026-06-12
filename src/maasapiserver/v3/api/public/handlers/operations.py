@@ -22,10 +22,6 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.exceptions.catalog import (
-    BaseExceptionDetail,
-    NotFoundException,
-)
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -131,15 +127,6 @@ class OperationsHandler(Handler):
             user_id=authenticated_user.id,
             can_view_all=can_view_all,
         )
-        if not operation:
-            raise NotFoundException(
-                details=[
-                    BaseExceptionDetail(
-                        type="OperationNotFound",
-                        message=f"Operation with uuid '{operation_uuid}' was not found.",
-                    )
-                ]
-            )
 
         return OperationResponse.from_model(
             operation=operation,
