@@ -9,6 +9,16 @@ from maasservicelayer.db.repositories.operations import (
     OperationsClauseFactory,
     OperationsRepository,
 )
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    NotFoundException,
+    UnauthorizedException,
+)
+from maasservicelayer.exceptions.constants import (
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
+from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.operations import Operation
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.utils.date import utcnow
@@ -50,3 +60,56 @@ class OperationsService(
             ),
             builder=builder,
         )
+
+    async def list_for_user(
+        self,
+        page: int,
+        size: int,
+        user_id: int,
+        can_view_all: bool,
+        query: QuerySpec | None = None,
+    ) -> ListResult[Operation]:
+        if can_view_all:
+            return await self.repository.list(
+                page=page, size=size, query=query
+            )
+        user_clause = OperationsClauseFactory.with_user_id(user_id)
+        if query and query.where:
+            combined = OperationsClauseFactory.and_clauses(
+                [query.where, user_clause]
+            )
+            filtered_query = QuerySpec(where=combined)
+        else:
+            filtered_query = QuerySpec(where=user_clause)
+        return await self.repository.list(
+            page=page, size=size, query=filtered_query
+        )
+
+    async def get_by_uuid_for_user(
+        self,
+        uuid: str,
+        user_id: int,
+        can_view_all: bool,
+    ) -> Operation:
+        operation = await self.repository.get_by_uuid(uuid)
+        if operation is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"Operation with uuid '{uuid}' was not found.",
+                    )
+                ]
+            )
+        if can_view_all:
+            return operation
+        if operation.user_id != user_id:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                        message=f"User not permitted to view resource '{uuid}..",
+                    )
+                ]
+            )
+        return operation

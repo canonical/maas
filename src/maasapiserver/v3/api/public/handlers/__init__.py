@@ -28,6 +28,7 @@ from maasapiserver.v3.api.public.handlers.nos import NOSInstallerHandler
 from maasapiserver.v3.api.public.handlers.notifications import (
     NotificationsHandler,
 )
+from maasapiserver.v3.api.public.handlers.operations import OperationsHandler
 from maasapiserver.v3.api.public.handlers.package_repositories import (
     PackageRepositoriesHandler,
 )
@@ -74,6 +75,7 @@ APIv3 = API(
         MachinesHandler(),
         NOSInstallerHandler(),
         NotificationsHandler(),
+        OperationsHandler(),
         PackageRepositoriesHandler(),
         RacksHandler(),
         ReservedIPsHandler(),
