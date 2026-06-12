@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from temporalio import workflow
+from temporalio.api.enums.v1 import IndexedValueType
+from temporalio.api.operatorservice.v1 import ListSearchAttributesResponse
 from temporalio.api.workflowservice.v1 import (
     DescribeNamespaceResponse,
     RegisterNamespaceResponse,
@@ -159,3 +161,83 @@ class TestWorker:
             ), (
                 "ContextPropagationInterceptor must be included in Worker interceptors"
             )
+
+
+class TestSetupSearchAttributes:
+    @pytest.mark.asyncio
+    async def test_registers_missing_search_attributes(self):
+        client = Mock()
+        operator_service = client.service_client.operator_service
+        operator_service.list_search_attributes = AsyncMock(
+            return_value=ListSearchAttributesResponse()
+        )
+        operator_service.add_search_attributes = AsyncMock()
+
+        wrkr = Worker(
+            client=client,
+            search_attributes={
+                "OperationUUID": IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD
+            },
+        )
+        await wrkr._setup_search_attributes()
+
+        operator_service.add_search_attributes.assert_awaited_once()
+        request = operator_service.add_search_attributes.call_args.args[0]
+        assert (
+            request.search_attributes["OperationUUID"]
+            == IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD
+        )
+
+    @pytest.mark.asyncio
+    async def test_skips_already_registered_search_attributes(self):
+        client = Mock()
+        operator_service = client.service_client.operator_service
+        operator_service.list_search_attributes = AsyncMock(
+            return_value=ListSearchAttributesResponse(
+                custom_attributes={
+                    "OperationUUID": IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD
+                }
+            )
+        )
+        operator_service.add_search_attributes = AsyncMock()
+
+        wrkr = Worker(
+            client=client,
+            search_attributes={
+                "OperationUUID": IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD
+            },
+        )
+        await wrkr._setup_search_attributes()
+
+        operator_service.add_search_attributes.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_noop_when_no_search_attributes(self):
+        client = Mock()
+        operator_service = client.service_client.operator_service
+        operator_service.list_search_attributes = AsyncMock()
+
+        wrkr = Worker(client=client)
+        await wrkr._setup_search_attributes()
+
+        operator_service.list_search_attributes.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_setup_namespace_registers_search_attributes(
+        self, mock_temporal_client
+    ):
+        operator_service = mock_temporal_client.service_client.operator_service
+        operator_service.list_search_attributes = AsyncMock(
+            return_value=ListSearchAttributesResponse()
+        )
+        operator_service.add_search_attributes = AsyncMock()
+
+        wrkr = Worker(
+            client=mock_temporal_client,
+            search_attributes={
+                "OperationUUID": IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD
+            },
+        )
+        await wrkr._setup_namespace()
+
+        operator_service.add_search_attributes.assert_awaited_once()

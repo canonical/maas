@@ -10,6 +10,7 @@ from temporalio import workflow
 from temporalio.exceptions import ApplicationError
 
 from maascommon.enums.operations import OperationStatus
+from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
@@ -17,8 +18,6 @@ from maastemporalworker.workflow.utils import (
 )
 
 logger = structlog.getLogger()
-
-OPERATION_UUID_SEARCH_ATTRIBUTE = "OperationUUID"
 
 UPDATE_OPERATION_STATUS_TIMEOUT = timedelta(seconds=30)
 

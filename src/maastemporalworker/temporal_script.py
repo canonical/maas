@@ -6,9 +6,11 @@ import logging
 import signal
 
 import structlog
+from temporalio.api.enums.v1 import IndexedValueType
 
 from maasapiserver.settings import read_config
 from maascommon.worker import set_max_workers_count
+from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
 from maasservicelayer.db.locks import wait_for_startup
@@ -174,6 +176,9 @@ async def main() -> None:
         TemporalWorker(
             client=temporal_client,
             task_queue=REGION_TASK_QUEUE,
+            search_attributes={
+                OPERATION_UUID_SEARCH_ATTRIBUTE: IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD,
+            },
             workflows=[
                 # Boot resources workflows
                 DeleteBootResourceWorkflow,
