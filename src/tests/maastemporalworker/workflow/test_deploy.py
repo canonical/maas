@@ -1414,3 +1414,110 @@ class TestDeployWorkflow:
                 assert len(calls["power_on"]) == 1
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 1
+
+    async def test_deploy_workflow_manual_power_skips_power_actions(
+        self,
+        fixture: Fixture,
+    ) -> None:
+        bmc = await create_test_bmc_entry(fixture, power_type="manual")
+        machine = await create_test_machine_entry(fixture, bmc_id=bmc["id"])
+
+        calls = defaultdict(list)
+
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
+        async def set_node_status(params: SetNodeStatusParam) -> None:
+            calls["set_node_status"].append(True)
+
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
+        async def get_boot_order(
+            params: GetBootOrderParam,
+        ) -> GetBootOrderResult:
+            calls["get_boot_order"].append(True)
+            return GetBootOrderResult(
+                system_id=machine["system_id"],
+                order=[],
+            )
+
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
+        async def power_query(params: PowerQueryParam) -> PowerQueryResult:
+            calls["power_query"].append(True)
+            return PowerQueryResult(state="off")
+
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
+        async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
+            calls["power_cycle"].append(True)
+            return PowerCycleResult(state="on")
+
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
+        async def power_on(params: PowerOnParam) -> PowerOnResult:
+            calls["power_on"].append(True)
+            return PowerOnResult(state="on")
+
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
+        async def power_off(params: PowerOffParam) -> PowerOffResult:
+            calls["power_off"].append(True)
+            return PowerOffResult(state="off")
+
+        @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
+        async def set_boot_order(params: SetBootOrderParam) -> None:
+            calls["set_boot_order"].append(True)
+            return
+
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="region",
+                workflows=[DeployWorkflow],
+                activities=[
+                    set_node_status,
+                    set_boot_order,
+                    get_boot_order,
+                    set_power_state,
+                    power_query,
+                    power_cycle,
+                    power_on,
+                    power_off,
+                ],
+            ) as worker:
+                wf = await env.client.start_workflow(
+                    DEPLOY_WORKFLOW_NAME,
+                    DeployParam(
+                        system_id=machine["system_id"],
+                        ephemeral_deploy=False,
+                        can_set_boot_order=False,
+                        task_queue=worker.task_queue,
+                        power_params=PowerParam(
+                            system_id=machine["system_id"],
+                            driver_type="manual",
+                            driver_opts={},
+                            task_queue="",
+                        ),
+                    ),
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+                assert (
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
+
+                await env.sleep(duration=timedelta(seconds=5))
+                await wf.signal("netboot-finished")
+                await env.sleep(duration=timedelta(seconds=5))
+                await wf.signal("deployed-os-ready")
+                await env.sleep(duration=timedelta(seconds=5))
+
+                await wf.result()
+
+                assert len(calls["set_node_status"]) == 0
+                assert len(calls["get_boot_order"]) == 0
+                assert len(calls["set_boot_order"]) == 0
+                assert len(calls["power_query"]) == 0
+                assert len(calls["power_on"]) == 0
+                assert len(calls["power_cycle"]) == 0
+                assert len(calls["set_power_state"]) == 0
