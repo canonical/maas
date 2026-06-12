@@ -892,6 +892,12 @@ class DHCPConfigActivity(ActivityBase):
         vlan: Vlan,
         ifaces: list[Interface],
     ) -> tuple[Interface | None, list[StaticIPAddress] | None]:
+        """Retrieve the best interface IPs that has an IP on the given VLAN.
+        Return it and its IPs.
+
+        Bond interfaces are prefered over physical interfaces, which are prefered over
+        VLAN interfaces.
+        """
         ip_version = subnet.cidr.version
 
         async def _ip_version_on_vlan(
@@ -1001,6 +1007,10 @@ class DHCPConfigActivity(ActivityBase):
     async def _get_ntp_servers_for_rack(
         self, svc: ServiceCollectionV3, rack: Node
     ) -> dict[tuple[int | None, int], str]:
+        """Return a map of the rack's IPs for NTP.
+
+        The returned map is keyed on (space_id, ip_addr_family).
+        """
         rack_addresses = await svc.staticipaddress.get_for_nodes_join_vlan(
             query=QuerySpec(
                 where=StaticIPAddressClauseFactory.and_clauses(
