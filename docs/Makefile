@@ -101,7 +101,7 @@ clean: clean-doc
 clean-doc:
 # Check if we are in a git directory before executing the `git clean` command otherwise it will fail.
 # (Known to fail when building the deb package)
-	if git status > /dev/null; then \
+	if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
 		git clean -fx "$(BUILDDIR)"; \
 	fi
 	rm -rf $(SPHINXDIR)/.doctrees
