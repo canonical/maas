@@ -107,6 +107,7 @@ from maasserver.api.support import (
     OperationsResource,
     RestrictedResource,
 )
+from maasserver.api.switches import SwitchesHandler, SwitchHandler
 from maasserver.api.tags import TagHandler, TagsHandler
 from maasserver.api.usergroups import UserGroupHandler, UserGroupsHandler
 from maasserver.api.users import UserHandler, UsersHandler
@@ -292,6 +293,8 @@ space_handler = RestrictedResource(SpaceHandler, authentication=api_auth)
 spaces_handler = RestrictedResource(SpacesHandler, authentication=api_auth)
 subnet_handler = RestrictedResource(SubnetHandler, authentication=api_auth)
 subnets_handler = RestrictedResource(SubnetsHandler, authentication=api_auth)
+switch_handler = RestrictedResource(SwitchHandler, authentication=api_auth)
+switches_handler = RestrictedResource(SwitchesHandler, authentication=api_auth)
 iprange_handler = RestrictedResource(IPRangeHandler, authentication=api_auth)
 ipranges_handler = RestrictedResource(IPRangesHandler, authentication=api_auth)
 reservedip_handler = RestrictedResource(
@@ -652,6 +655,10 @@ patterns += [
         r"^subnets/(?P<id>[.: \w-]+(?:/\d\d\d?)?)/$",
         subnet_handler,
         name="subnet_handler",
+    ),
+    re_path(r"^switches/$", switches_handler, name="switches_handler"),
+    re_path(
+        r"^switches/(?P<id>[^/]+)/$", switch_handler, name="switch_handler"
     ),
     re_path(
         r"^ipaddresses/$", ipaddresses_handler, name="ipaddresses_handler"
