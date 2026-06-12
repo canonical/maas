@@ -59,48 +59,6 @@ class OperationsService(
             builder=builder,
         )
 
-    async def create(self, builder: OperationBuilder) -> Operation:
-        raise NotImplementedError
-
-    async def create_many(
-        self, builders: list[OperationBuilder]
-    ) -> list[Operation]:
-        raise NotImplementedError
-
-    async def get_or_create(
-        self, query: QuerySpec, builder: OperationBuilder
-    ) -> tuple[Operation, bool]:
-        raise NotImplementedError
-
-    async def update_many(
-        self, query: QuerySpec, builder: OperationBuilder
-    ) -> list[Operation]:
-        raise NotImplementedError
-
-    async def update_by_id(
-        self,
-        id: int,
-        builder: OperationBuilder,
-        etag_if_match: str | None = None,
-    ) -> Operation:
-        raise NotImplementedError
-
-    async def delete_one(
-        self,
-        query: QuerySpec,
-        etag_if_match: str | None = None,
-        force: bool = False,
-    ) -> Operation | None:
-        raise NotImplementedError
-
-    async def delete_many(self, query: QuerySpec) -> list[Operation]:
-        raise NotImplementedError
-
-    async def delete_by_id(
-        self, id: int, etag_if_match: str | None = None, force: bool = False
-    ) -> Operation | None:
-        raise NotImplementedError
-
     async def list_for_user(
         self,
         page: int,

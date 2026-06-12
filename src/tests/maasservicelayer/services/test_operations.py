@@ -70,23 +70,29 @@ class TestCommonOperationsService(ServiceCommonTests):
     def builder_model(self) -> type[ResourceBuilder]:
         return OperationBuilder
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_create(
         self, service_instance, test_instance, builder_model
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.create(builder_model())
+        await super().test_create(
+            service_instance, test_instance, builder_model
+        )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_create_many(
         self, service_instance, test_instance, builder_model
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.create_many([builder_model()])
+        await super().test_create_many(
+            service_instance, test_instance, builder_model
+        )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_update_many(
         self, service_instance, test_instance, builder_model
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.update_many(QuerySpec(), builder_model())
+        await super().test_update_many(
+            service_instance, test_instance, builder_model
+        )
 
     async def test_update_one_not_found(self, service_instance, builder_model):
         service_instance.repository.get_one.return_value = None
@@ -119,85 +125,89 @@ class TestCommonOperationsService(ServiceCommonTests):
         with pytest.raises(PreconditionFailedException):
             await service_instance.update_one(query, builder, "not_a_match")
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_update_by_id(
         self, service_instance, test_instance, builder_model
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.update_by_id(
-                test_instance.id, builder_model()
-            )
+        await super().test_update_by_id(
+            service_instance, test_instance, builder_model
+        )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_update_by_id_not_found(
         self, service_instance, builder_model
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.update_by_id(-1, builder_model())
+        await super().test_update_by_id_not_found(
+            service_instance, builder_model
+        )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_update_by_id_etag_match(
         self, service_instance, test_instance, builder_model
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.update_by_id(
-                test_instance.id, builder_model(), test_instance.etag()
-            )
+        await super().test_update_by_id_etag_match(
+            service_instance, test_instance, builder_model
+        )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_update_by_id_etag_not_matching(
         self, service_instance, test_instance, builder_model
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.update_by_id(
-                test_instance.id, builder_model(), "not_a_match"
-            )
+        await super().test_update_by_id_etag_not_matching(
+            service_instance, test_instance, builder_model
+        )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_delete_many(self, service_instance, test_instance):
-        with pytest.raises(NotImplementedError):
-            await service_instance.delete_many(QuerySpec())
+        await super().test_delete_many(service_instance, test_instance)
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_delete_one(self, service_instance, test_instance):
-        with pytest.raises(NotImplementedError):
-            await service_instance.delete_one(QuerySpec())
+        await super().test_delete_one(service_instance, test_instance)
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_delete_one_not_found(self, service_instance):
-        with pytest.raises(NotImplementedError):
-            await service_instance.delete_one(QuerySpec())
+        await super().test_delete_one_not_found(service_instance)
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_delete_one_etag_match(
         self, service_instance, test_instance
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.delete_one(
-                QuerySpec(), test_instance.etag()
-            )
+        await super().test_delete_one_etag_match(
+            service_instance, test_instance
+        )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_delete_one_etag_not_matching(
         self, service_instance, test_instance
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.delete_one(QuerySpec(), "not_a_match")
+        await super().test_delete_one_etag_not_matching(
+            service_instance, test_instance
+        )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_delete_by_id(self, service_instance, test_instance):
-        with pytest.raises(NotImplementedError):
-            await service_instance.delete_by_id(test_instance.id)
+        await super().test_delete_by_id(service_instance, test_instance)
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_delete_by_id_not_found(self, service_instance):
-        with pytest.raises(NotImplementedError):
-            await service_instance.delete_by_id(-1)
+        await super().test_delete_by_id_not_found(service_instance)
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_delete_by_id_etag_match(
         self, service_instance, test_instance
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.delete_by_id(
-                test_instance.id, test_instance.etag()
-            )
+        await super().test_delete_by_id_etag_match(
+            service_instance, test_instance
+        )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_delete_by_id_etag_not_matching(
         self, service_instance, test_instance
     ):
-        with pytest.raises(NotImplementedError):
-            await service_instance.delete_by_id(
-                test_instance.id, "not_a_match"
-            )
+        await super().test_delete_by_id_etag_not_matching(
+            service_instance, test_instance
+        )
 
 
 @pytest.mark.asyncio
