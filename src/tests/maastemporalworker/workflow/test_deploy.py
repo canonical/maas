@@ -72,6 +72,7 @@ from tests.fixtures.factories.staticipaddress import (
 )
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
+from tests.maastemporalworker.workflow import TemporalCalls
 
 
 def _stringify_datetime_fields(obj: dict[str, Any]) -> dict[str, Any]:
@@ -1496,3 +1497,99 @@ class TestDeployWorkflow:
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 1
                 assert len(calls["power_reset"]) == 0
+
+    async def test_deploy_workflow_manual_power_skips_power_actions(
+        self,
+        fixture: Fixture,
+        temporal_calls: TemporalCalls,
+        worker_test_interceptor,
+    ) -> None:
+        bmc = await create_test_bmc_entry(fixture, power_type="manual")
+        machine = await create_test_machine_entry(fixture, bmc_id=bmc["id"])
+
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
+        async def set_node_status(params: SetNodeStatusParam) -> None:
+            return
+
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
+        async def get_boot_order(
+            params: GetBootOrderParam,
+        ) -> GetBootOrderResult:
+            return GetBootOrderResult(
+                system_id=machine["system_id"],
+                order=[],
+            )
+
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
+        async def power_query(params: PowerQueryParam) -> PowerQueryResult:
+            return PowerQueryResult(state="unknown")
+
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
+        async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
+            return PowerCycleResult(state="unknown")
+
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
+        async def power_on(params: PowerOnParam) -> PowerOnResult:
+            return PowerOnResult(state="unknown")
+
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
+        async def power_off(params: PowerOffParam) -> PowerOffResult:
+            return PowerOffResult(state="unknown")
+
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            return PowerResetResult(state="unknown")
+
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            return
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="region",
+                workflows=[DeployWorkflow],
+                activities=[
+                    set_node_status,
+                    get_boot_order,
+                    set_power_state,
+                    power_query,
+                    power_cycle,
+                    power_on,
+                    power_off,
+                    power_reset,
+                ],
+                interceptors=[worker_test_interceptor],
+            ) as worker:
+                wf = await env.client.start_workflow(
+                    DEPLOY_WORKFLOW_NAME,
+                    DeployParam(
+                        system_id=machine["system_id"],
+                        ephemeral_deploy=False,
+                        can_set_boot_order=False,
+                        task_queue=worker.task_queue,
+                        power_params=PowerParam(
+                            system_id=machine["system_id"],
+                            driver_type="manual",
+                            driver_opts={},
+                            task_queue="",
+                            is_dpu=False,
+                        ),
+                    ),
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+                assert (
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
+
+                await env.sleep(duration=timedelta(seconds=5))
+                await wf.signal("netboot-finished")
+                await env.sleep(duration=timedelta(seconds=5))
+                await wf.signal("deployed-os-ready")
+                await env.sleep(duration=timedelta(seconds=5))
+
+                await wf.result()
+
+                temporal_calls.assert_activity_calls([])
