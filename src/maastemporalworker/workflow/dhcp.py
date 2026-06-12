@@ -1000,7 +1000,7 @@ class DHCPConfigActivity(ActivityBase):
 
     async def _get_ntp_servers_for_rack(
         self, svc: ServiceCollectionV3, rack: Node
-    ) -> dict[tuple[int, int], str]:
+    ) -> dict[tuple[int | None, int], str]:
         rack_addresses = await svc.staticipaddress.get_for_nodes_join_vlan(
             query=QuerySpec(
                 where=StaticIPAddressClauseFactory.and_clauses(
@@ -1028,14 +1028,13 @@ class DHCPConfigActivity(ActivityBase):
             )
         )
 
-        addr_info: list[tuple[bool, int, int, IPvAnyAddress]] = []
+        addr_info = []
         for ip in rack_addresses:
             assert ip.subnet_id is not None
             subnet = await svc.subnets.get_by_id(ip.subnet_id)
             assert subnet is not None
             vlan = await svc.vlans.get_by_id(subnet.vlan_id)
             assert vlan is not None
-            assert vlan.space_id is not None
             assert ip.ip is not None
             addr_info.append(
                 (vlan.dhcp_on, vlan.space_id, subnet.cidr.version, ip.ip)
@@ -1202,7 +1201,6 @@ class DHCPConfigActivity(ActivityBase):
                         next_server = str(ips[0].ip)
 
                 if isinstance(ntp_servers, dict):
-                    assert vlan.space_id is not None
                     ntp_server = ntp_servers.get(
                         (vlan.space_id, subnet.cidr.version)
                     )

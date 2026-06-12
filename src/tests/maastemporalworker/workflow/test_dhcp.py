@@ -418,7 +418,12 @@ class TestDHCPConfigActivity:
         rack_controller = await create_test_rack_controller_entry(fixture)
         vlan1 = await create_test_vlan_entry(fixture, dhcp_on=True)
         vlan2 = await create_test_vlan_entry(fixture, dhcp_on=False)
-        subnet1 = await create_test_subnet_entry(fixture, vlan_id=vlan1["id"])
+        subnet1 = await create_test_subnet_entry(
+            fixture,
+            vlan_id=vlan1["id"],
+            gateway_ip="10.2.3.4",
+            dns_servers=["10.6.7.8"],
+        )
         await create_test_subnet_entry(fixture, vlan_id=vlan2["id"])
         iprange = await create_test_ip_range_entry(
             fixture, subnet=subnet1, offset=1, size=5, type=IPRangeType.DYNAMIC
@@ -475,11 +480,28 @@ class TestDHCPConfigActivity:
             subnets=[
                 SubnetData(
                     id=subnet1["id"],
+                    ip_version=4,
                     cidr=str(subnet1["cidr"]),
                     gateway_ip=str(subnet1["gateway_ip"]),
-                    dns_servers=subnet1["dns_servers"],
+                    dns_servers=["127.0.0.1"] + subnet1["dns_servers"],
                     allow_dns=subnet1["allow_dns"],
                     vlan_id=subnet1["vlan_id"],
+                    vlan_mtu=vlan1["mtu"],
+                    mask=str(subnet1["cidr"].netmask),
+                    broadcast_ip=str(subnet1["cidr"].broadcast_address),
+                    domain_name="maas",
+                    search_list=["maas"],
+                    ntp_servers=[str(sips[0]["ip"])],
+                    next_server=str(sips[0]["ip"]),
+                    pools=[
+                        IPRangeData(
+                            id=iprange["id"],
+                            start_ip=str(iprange["start_ip"]),
+                            end_ip=str(iprange["end_ip"]),
+                            dynamic=iprange["type"] == IPRangeType.DYNAMIC,
+                            subnet_id=iprange["subnet_id"],
+                        )
+                    ],
                 )
             ],
             ipranges=[
@@ -778,13 +800,11 @@ class TestDHCPConfigActivity:
                             "subnet": "2001:db8::/64",
                             "match-client-id": False,
                             "pools": [{"pool": "2001:db8::10 - 2001:db8::20"}],
-                            "boot-file-name": "lpxelinux.0",
                             "option-data": [
                                 {"name": "domain-name", "data": "maas"},
                                 {
-                                    "name": "path-prefix",
-                                    "data": "http://[2001:db8::1]:5248/",
-                                    "always-send": True,
+                                    "name": "bootfile-url",
+                                    "data": "tftp://[2001:db8::1]/bootx64.efi",
                                 },
                                 {
                                     "name": "dns-servers",
