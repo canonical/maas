@@ -216,7 +216,8 @@ class AuthHandler(Handler):
         # enabled provider.
         client = await services.external_oauth.get_client()
         data = client.generate_authorization_url(
-            redirect_target=redirect_target or "/"
+            redirect_target=redirect_target or "/",
+            login_hint=email,
         )
         cookie_manager.set_auth_cookie(
             value=data.state, key=MAASOAuth2Cookie.AUTH_STATE

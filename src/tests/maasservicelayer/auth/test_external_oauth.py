@@ -5,6 +5,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import urllib.parse
 
+from authlib.integrations.base_client.errors import OAuthError
 from authlib.jose import JWTClaims, KeySet
 from authlib.jose.errors import BadSignatureError
 from httpx import HTTPStatusError, Request, Response
@@ -26,6 +27,7 @@ from maasservicelayer.exceptions.constants import (
     INVALID_TOKEN_VIOLATION_TYPE,
     MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
+    USER_EXTERNAL_VALIDATION_FAILED,
 )
 from maasservicelayer.models.external_auth import (
     AccessTokenType,
@@ -58,7 +60,9 @@ class TestOauth2Client:
     def test_generate_authorization_url(self) -> None:
         client = OAuth2Client(TEST_PROVIDER)
         client._generate_state = Mock(return_value="abc.def")
-        data = client.generate_authorization_url(redirect_target="/machines")
+        data = client.generate_authorization_url(
+            redirect_target="/machines", login_hint="user@example.com"
+        )
         expected_scope = "+".join(TEST_PROVIDER.scopes.split(" "))
         expected_url = (
             TEST_PROVIDER.issuer_url
@@ -73,6 +77,9 @@ class TestOauth2Client:
             + "abc.def"
             + "&nonce="
             + data.nonce
+            + "&login_hint="
+            + urllib.parse.quote_plus("user@example.com")
+            + "&prompt=login"
         )
         assert data.authorization_url == expected_url
 
@@ -459,6 +466,28 @@ class TestOauth2Client:
         assert (
             exc_info.value.details[0].message  # type: ignore
             == "Invalid token response from OIDC server. Please ensure the provider is configured correctly."
+        )
+
+    async def test__fetch_and_validate_tokens_oauth_error(self) -> None:
+        client = OAuth2Client(TEST_PROVIDER)
+        client.client.fetch_token = AsyncMock(
+            side_effect=OAuthError(
+                error="invalid_grant",
+                description="Invalid authorization code",
+            )
+        )
+
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await client._fetch_and_validate_tokens(
+                code="invalid_code", nonce="testnonce"
+            )
+        assert (
+            exc_info.value.details[0].type  # type: ignore
+            == USER_EXTERNAL_VALIDATION_FAILED
+        )
+        assert (
+            exc_info.value.details[0].message  # type: ignore
+            == "Invalid authorization code"
         )
 
     async def test__get_provider_jwks_no_cache(self) -> None:

@@ -6,7 +6,12 @@ from functools import cached_property
 from typing import Self
 
 from authlib.jose import jwt, JWTClaims, KeySet
-from authlib.jose.errors import DecodeError, InvalidClaimError
+from authlib.jose.errors import (
+    DecodeError,
+    ExpiredTokenError,
+    InvalidClaimError,
+    InvalidTokenError,
+)
 
 from maasservicelayer.models.external_auth import OAuthProvider
 
@@ -74,7 +79,7 @@ class BaseOAuthToken:
 
         try:
             self.claims.validate()
-        except InvalidClaimError as e:
+        except (ExpiredTokenError, InvalidClaimError, InvalidTokenError) as e:
             raise JWTValidationException() from e
 
 

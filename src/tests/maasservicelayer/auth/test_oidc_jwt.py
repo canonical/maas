@@ -4,7 +4,12 @@
 from unittest.mock import MagicMock, patch
 
 from authlib.jose import JWTClaims, KeySet
-from authlib.jose.errors import DecodeError, InvalidClaimError
+from authlib.jose.errors import (
+    DecodeError,
+    ExpiredTokenError,
+    InvalidClaimError,
+    InvalidTokenError,
+)
 import pytest
 
 from maasservicelayer.auth.oidc_jwt import (
@@ -133,9 +138,19 @@ class TestBaseOAuthToken:
 
         mock_validate.assert_called_once()
 
+    @pytest.mark.parametrize(
+        "exception",
+        [
+            InvalidClaimError("Invalid claim"),
+            ExpiredTokenError("Token expired"),
+            InvalidTokenError("Invalid token"),
+        ],
+    )
     @patch("maasservicelayer.auth.oidc_jwt.JWTClaims.validate")
-    async def test_validate_failure(self, mock_validate: MagicMock) -> None:
-        mock_validate.side_effect = InvalidClaimError("Invalid claim")
+    async def test_validate_failure(
+        self, mock_validate: MagicMock, exception
+    ) -> None:
+        mock_validate.side_effect = exception
         mock_claims = JWTClaims(
             header={},
             payload={

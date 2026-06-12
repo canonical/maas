@@ -348,6 +348,9 @@ class TestAuthApi:
         )
         assert data["provider_name"] == TEST_PROVIDER_1.name
         assert data["is_oidc"] is True
+        client_mock.generate_authorization_url.assert_called_once_with(
+            redirect_target="/machines", login_hint="test@example.com"
+        )
         cookie_manager_set_auth_cookie.assert_any_call(
             value="abc123", key=MAASOAuth2Cookie.AUTH_STATE
         )
@@ -397,6 +400,9 @@ class TestAuthApi:
         data = response.json()
         assert data["is_oidc"] is True
         assert data["provider_name"] == TEST_PROVIDER_1.name
+        client_mock.generate_authorization_url.assert_called_once_with(
+            redirect_target="/", login_hint="oidc_user@example.com"
+        )
 
     async def test_get_oauth_initiate_oidc_enabled_local_profile_uses_password(
         self,
