@@ -20,6 +20,7 @@ from maasservicelayer.db.tables import (
     NodeTable,
     StaticIPAddressTable,
     SubnetTable,
+    VlanTable,
 )
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
@@ -51,6 +52,10 @@ class StaticIPAddressClauseFactory(ClauseFactory):
         return Clause(
             condition=StaticIPAddressTable.c.subnet_id.in_(subnet_ids)
         )
+
+    @classmethod
+    def with_subnet_id_not_null(cls) -> Clause:
+        return Clause(condition=StaticIPAddressTable.c.subnet_id.isnot(None))
 
     @classmethod
     def with_ip(cls, ip: IPv4Address | IPv6Address | None) -> Clause:
@@ -91,6 +96,12 @@ class StaticIPAddressClauseFactory(ClauseFactory):
         )
 
     @classmethod
+    def with_alloc_type_in(cls, alloc_types: List[IpAddressType]) -> Clause:
+        return Clause(
+            condition=StaticIPAddressTable.c.alloc_type.in_(alloc_types)
+        )
+
+    @classmethod
     def with_ip_not_null(cls) -> Clause:
         return Clause(condition=StaticIPAddressTable.c.ip.isnot(None))
 
@@ -117,6 +128,10 @@ class StaticIPAddressClauseFactory(ClauseFactory):
                 ),
             ],
         )
+
+    @classmethod
+    def with_interface_enabled(cls, enabled: bool) -> Clause:
+        return Clause(condition=InterfaceTable.c.enabled == enabled)
 
 
 class StaticIPAddressRepository(BaseRepository):
@@ -233,6 +248,41 @@ class StaticIPAddressRepository(BaseRepository):
                 SubnetTable,
                 SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
             )
+        )
+        stmt = query.enrich_stmt(stmt)
+        results = (await self.execute_stmt(stmt)).all()
+        return [StaticIPAddress(**row._asdict()) for row in results]
+
+    async def get_for_nodes_join_vlan(
+        self, query: QuerySpec
+    ) -> list[StaticIPAddress]:
+        stmt = (
+            select(
+                StaticIPAddressTable,
+            )
+            .select_from(NodeTable)
+            .join(
+                NodeConfigTable,
+                NodeTable.c.current_config_id == NodeConfigTable.c.id,
+            )
+            .join(
+                InterfaceTable,
+                NodeConfigTable.c.id == InterfaceTable.c.node_config_id,
+            )
+            .join(
+                InterfaceIPAddressTable,
+                InterfaceTable.c.id == InterfaceIPAddressTable.c.interface_id,
+            )
+            .join(
+                StaticIPAddressTable,
+                InterfaceIPAddressTable.c.staticipaddress_id
+                == StaticIPAddressTable.c.id,
+            )
+            .join(
+                SubnetTable,
+                SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
+            )
+            .join(VlanTable, VlanTable.c.id == SubnetTable.c.vlan_id)
         )
         stmt = query.enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()

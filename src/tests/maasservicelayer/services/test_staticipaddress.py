@@ -214,6 +214,28 @@ class TestStaticIPAddressService:
             [interface], family=IpAddressFamily.IPV4
         )
 
+    async def test_get_for_nodes_join_vlan(self) -> None:
+        repository_mock = Mock(StaticIPAddressRepository)
+        expected = [Mock(StaticIPAddress)]
+        repository_mock.get_for_nodes_join_vlan.return_value = expected
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=Mock(TemporalService),
+            dnsresources_service=Mock(DNSResourcesService),
+            staticipaddress_repository=repository_mock,
+        )
+
+        query = QuerySpec()
+        result = await staticipaddress_service.get_for_nodes_join_vlan(
+            query=query
+        )
+
+        assert result == expected
+        repository_mock.get_for_nodes_join_vlan.assert_called_once_with(
+            query=query
+        )
+
     async def test_create(self) -> None:
         now = utcnow()
         subnet = Subnet(

@@ -46,6 +46,12 @@ class NodeClauseFactory(ClauseFactory):
             condition=eq(NodeTable.c.current_config_id, node_config_id)
         )
 
+    @classmethod
+    def with_node_config_id_in(cls, node_config_ids: list[int]) -> Clause:
+        return Clause(
+            condition=NodeTable.c.current_config_id.in_(node_config_ids)
+        )
+
 
 T = TypeVar("T", bound=Node)
 
@@ -90,6 +96,16 @@ class AbstractNodesRepository(BaseRepository[T], ABC):
             .select_from(BMCTable)
             .join(NodeTable, eq(NodeTable.c.bmc_id, BMCTable.c.id))
         )
+
+    async def get_url(self, system_id: str) -> str | None:
+        stmt = (
+            select(NodeTable.c.url)
+            .select_from(NodeTable)
+            .where(NodeTable.c.system_id == system_id)
+        )
+        result = await self.execute_stmt(stmt)
+        if row := result.one_or_none():
+            return row.tuple()[0]
 
 
 class NodesRepository(AbstractNodesRepository[Node]):

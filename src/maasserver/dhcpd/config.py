@@ -6,13 +6,15 @@
 from itertools import chain, repeat
 import logging
 import socket
-from typing import Sequence
+from typing import Any, Sequence
 
 from netaddr import IPAddress, IPRange
 import tempita
 
 from maasserver.utils import load_template
-from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.boot import BootMethod, BootMethodRegistry
+
+from provisioningserver.boot.pxe import PXEBootMethod  # noqa:E402 isort:skip
 from provisioningserver.path import get_maas_data_path, get_path
 from provisioningserver.utils.text import (
     normalise_to_comma_list,
