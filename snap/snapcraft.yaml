@@ -65,6 +65,8 @@ apps:
   maas:
     command: usr/bin/maas
     plugs:
+      - block-devices  # allow blkid (machine-resources) to read disk devices
+      - hardware-observe  # allow machine-resources to read hardware info from /sys
       - home
       - mount-observe  # to read /proc/*/mounts
       - network # for external authentication
