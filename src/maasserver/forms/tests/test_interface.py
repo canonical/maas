@@ -334,6 +334,42 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         self.assertEqual(interface.numa_node, node.default_numanode)
         self.assertCountEqual([], interface.parents.all())
 
+    def test_creates_physical_interface_normalises_mac_address(self):
+        node = factory.make_Node()
+        form = PhysicalInterfaceForm(
+            node=node,
+            data={
+                "name": "eth0",
+                "mac_address": "AA:BB:CC:DD:EE:FF",
+            },
+        )
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        with post_commit_hooks:
+            interface = form.save()
+        self.assertEqual(interface.mac_address, "aa:bb:cc:dd:ee:ff")
+
+    def test_rejects_duplicate_mac_address_with_different_case(self):
+        node = factory.make_Node()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=node,
+            name="eth0",
+            mac_address="aa:bb:cc:dd:ee:ff",
+        )
+        form = PhysicalInterfaceForm(
+            node=node,
+            data={
+                "name": "eth1",
+                "mac_address": "AA:BB:CC:DD:EE:FF",
+            },
+        )
+        self.assertFalse(form.is_valid(), dict(form.errors))
+        self.assertIn("mac_address", form.errors)
+        self.assertIn(
+            "This MAC address is already in use",
+            form.errors["mac_address"][0],
+        )
+
     def test_create_ensures_link_up(self):
         node = factory.make_Node()
         mac_address = factory.make_mac_address()

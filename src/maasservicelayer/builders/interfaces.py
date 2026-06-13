@@ -7,6 +7,7 @@ from pydantic import Field
 
 from maascommon.enums.interface import InterfaceType
 from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
+from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Link
 
 
@@ -23,7 +24,7 @@ class InterfaceBuilder(ResourceBuilder):
     link_connected: bool | Unset = Field(default=UNSET)
     link_speed: int | Unset = Field(default=UNSET)
     links: list[Link] | Unset = Field(default=UNSET)
-    mac_address: str | None | Unset = Field(default=UNSET)
+    mac_address: MacAddress | None | Unset = Field(default=UNSET)
     name: str | Unset = Field(default=UNSET)
     node_config_id: int | None | Unset = Field(default=UNSET)
     sriov_max_vf: int | Unset = Field(default=UNSET)

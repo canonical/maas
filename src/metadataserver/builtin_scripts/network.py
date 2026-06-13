@@ -1,6 +1,7 @@
 from django.db.models.expressions import RawSQL
 from netaddr import IPAddress, IPNetwork
 
+from maascommon.fields import normalise_macaddress
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models.config import Config
 from maasserver.models.fabric import Fabric
@@ -224,6 +225,8 @@ def update_physical_interface(
     # like physical NICs, but they don't have an actual NIC
     # associated with them. We still model them as physical NICs.
     mac_address = port["address"] if port else network["hwaddr"]
+    if mac_address:
+        mac_address = normalise_macaddress(mac_address)
     update_fields = set()
     is_connected = network["state"] == "up"
     if port is not None:
@@ -474,6 +477,8 @@ def update_child_interface(node, name, network, links):
         return None
 
     mac_address = network["hwaddr"]
+    if mac_address:
+        mac_address = normalise_macaddress(mac_address)
     interface = child_type.objects.get_or_create_on_node(
         node,
         name,

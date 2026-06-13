@@ -54,7 +54,7 @@ from maasserver.exceptions import (
     StaticIPAddressReservedIPConflict,
     StaticIPAddressUnavailable,
 )
-from maasserver.fields import MAC_VALIDATOR
+from maasserver.fields import MAC_VALIDATOR, normalise_macaddress
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.reservedip import ReservedIP
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -1749,6 +1749,16 @@ class Interface(CleanSave, TimestampedModel):
             "neighbour": self.neighbour_discovery_state,
             "mdns": self.mdns_discovery_state,
         }
+
+    def clean(self):
+        super().clean()
+        # Normalise the MAC address so that it is always stored in a single
+        # canonical form (lowercase, colon-separated, zero-padded octets).
+        # Without this, the same MAC stored with a different case or format
+        # would be treated as a distinct address, bypassing the uniqueness
+        # checks performed by the subclasses.
+        if self.mac_address:
+            self.mac_address = normalise_macaddress(self.mac_address)
 
     def save(self, *args, **kwargs):
         if not self.link_connected:
