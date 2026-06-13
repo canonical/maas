@@ -542,15 +542,19 @@ def _describe_canonical(description):
 
 
 def _hash_canonical(description):
-    """Return an SHA-1 HASH object seeded with `description`.
+    """Return a SHA-1 HASH object seeded with `description`.
 
-    Specifically, `description` is converted to a canonical representation by
-    `_describe_canonical`, dumped as JSON, encoded as a byte string, then fed
-    into a new `hashlib.sha1` object.
+    Specifically, `description` is converted to a canonical
+    representation by `_describe_canonical`, dumped as JSON, encoded
+    as a byte string, then fed into a new `hashlib.sha1` object.
+
+    This is a display/caching use (API documentation ETag), not a
+    security-critical operation. Flagged with usedforsecurity=False
+    for FIPS 140-3 compliance.
     """
     description = _describe_canonical(description)
     description_as_json = json.dumps(description).encode("ascii")
-    return hashlib.sha1(description_as_json)
+    return hashlib.sha1(description_as_json, usedforsecurity=False)
 
 
 def _get_api_description_hash(description):

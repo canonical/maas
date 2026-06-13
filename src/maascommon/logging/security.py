@@ -67,3 +67,10 @@ AUTHN_TOKEN_REUSED = "AUTHN_token_reused"
 ACCESS_TOKEN = "access_token"
 REFRESH_TOKEN = "refresh_token"
 BOOTSTRAP_TOKEN = "bootstrap_token"
+
+# FIPS structured-log event names
+FIPS_MODE_DETECTED = "FIPS_mode_detected"
+FIPS_TLS_HANDSHAKE = "FIPS_tls_handshake"
+FIPS_SSH_AUTH = "FIPS_ssh_auth"
+FIPS_CRYPTO_ERROR = "FIPS_crypto_error"
+FIPS_DRIVER_REJECTED = "FIPS_driver_rejected"
