@@ -1,11 +1,15 @@
 from unittest.mock import Mock
 
+from cryptography.exceptions import InvalidTag
+import pytest
+
 from maasapiserver.v3.auth.cookie_manager import (
     EncryptedCookieManager,
     MAAS_NONCE_COOKIE_NAME,
     MAAS_STATE_COOKIE_NAME,
     MAASOAuth2Cookie,
 )
+from maascommon.logging.security import SECURITY
 
 
 class TestCookieManager:
@@ -89,6 +93,29 @@ class TestCookieManager:
 
         request.cookies.get.assert_called_once_with("missing_key")
         assert result is None
+
+    @pytest.mark.parametrize("exception", [ValueError(), InvalidTag()])
+    def test_cookie_returns_none_when_cookie_not_valid_and_logs_warning(
+        self, exception, mocker
+    ) -> None:
+        request = Mock()
+        request.cookies.get.return_value = "a"
+        response = Mock()
+        encryptor = Mock()
+        encryptor.decrypt.side_effect = exception
+        mock_logger = mocker.patch("maasapiserver.v3.auth.cookie_manager")
+
+        manager = EncryptedCookieManager(
+            request, encryptor=encryptor, response=response, ttl_seconds=1200
+        )
+
+        result = manager.get_cookie("invalid")
+
+        request.cookies.get.assert_called_once_with("invalid")
+        assert result is None
+        mock_logger.warning.assert_called_once_with(
+            "Invalid encrypted cookie 'invalid' received.", type=SECURITY
+        )
 
     def test_clear_cookie(self) -> None:
         request = Mock()
