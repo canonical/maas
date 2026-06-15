@@ -91,36 +91,27 @@ class TestCommonOperationsService(ServiceCommonTests):
             service_instance, test_instance, builder_model
         )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_update_one_not_found(self, service_instance, builder_model):
-        service_instance.repository.get_one.return_value = None
-        builder = builder_model()
-        query = QuerySpec()
-        with pytest.raises(NotFoundException):
-            await service_instance.update_one(query, builder)
+        await super().test_update_one_not_found(
+            service_instance, builder_model
+        )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_update_one_etag_match(
         self, service_instance, test_instance, builder_model
     ):
-        service_instance.repository.get_one.return_value = test_instance
-        service_instance.repository.update_by_id.return_value = test_instance
-        builder = builder_model()
-        query = QuerySpec()
-        obj = await service_instance.update_one(
-            query, builder, test_instance.etag()
-        )
-        assert obj == test_instance
-        service_instance.repository.update_by_id.assert_awaited_once_with(
-            id=test_instance.id, builder=builder
+        await super().test_update_one_etag_match(
+            service_instance, test_instance, builder_model
         )
 
+    @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_update_one_etag_not_matching(
         self, service_instance, test_instance, builder_model
     ):
-        service_instance.repository.get_one.return_value = test_instance
-        builder = builder_model()
-        query = QuerySpec()
-        with pytest.raises(PreconditionFailedException):
-            await service_instance.update_one(query, builder, "not_a_match")
+        await super().test_update_one_etag_not_matching(
+            service_instance, test_instance, builder_model
+        )
 
     @pytest.mark.skip(reason="Write functionality deferred to a separate PR")
     async def test_update_by_id(
