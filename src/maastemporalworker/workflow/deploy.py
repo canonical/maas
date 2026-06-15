@@ -386,6 +386,10 @@ class DeployWorkflow:
         self._deployed_os_ready = True
 
     async def _start_deployment(self, params: DeployParam) -> None:
+        if params.power_params.driver_type == "manual":
+            # Don't perform power activities for manual machines
+            return
+
         result = await workflow.execute_activity(
             POWER_QUERY_ACTIVITY_NAME,
             PowerQueryParam(
