@@ -1,12 +1,16 @@
 name: maas
 adopt-info: maas
+title: MAAS
 summary: Metal as a Service
 description: |
   Total automation of your physical servers for amazing data center operational efficiency.
-grade: devel
+license: AGPL-3.0
+website: https://maas.io
+contact: https://discourse.maas.io
+issues: https://bugs.launchpad.net/maas
+source-code: https://github.com/canonical/maas
 confinement: strict
 base: core26
-build-base: devel
 assumes:
   - snapd2.75
 system-usernames:
@@ -61,6 +65,8 @@ apps:
   maas:
     command: usr/bin/maas
     plugs:
+      - block-devices  # allow blkid (machine-resources) to read disk devices
+      - hardware-observe  # allow machine-resources to read hardware info from /sys
       - home
       - mount-observe  # to read /proc/*/mounts
       - network # for external authentication
@@ -74,6 +80,15 @@ apps:
       - network
 
 parts:
+  python-runtime:
+    plugin: nil
+    stage-packages:
+      - libpython3.14-minimal
+      - libpython3.14-stdlib
+      - python3-minimal
+      - python3.14-minimal
+      - python3.14-venv
+
   maas-slices:
     plugin: nil
     stage-packages:
@@ -116,6 +131,7 @@ parts:
       bin: usr/sbin
 
   maas:
+    after: [python-runtime]
     plugin: python
     source: .
     build-packages:
@@ -145,7 +161,6 @@ parts:
       - lshw
       - nginx-core
       - nmap
-      - python3
       - python3-aiodns # optional async DNS resolver for aiohttp
       - python3-aiofiles
       - python3-aiohttp
@@ -236,15 +251,18 @@ parts:
       - etc/maas
       - etc/nginx
       - etc/openwsman
-      - -lib/python3.*/site-packages/etc
-      - -lib/python3.*/site-packages/usr
-      - -lib/python3/dist-packages/maastesting
+      - -usr/lib/python3.*/site-packages/etc
+      - -usr/lib/python3.*/site-packages/usr
+      - -usr/lib/python3/dist-packages/maastesting
       - usr/bin
       - usr/bin/python3*
       - -usr/bin/xdg-*
       - -usr/bin/maas-sampledata
+      - -usr/bin/pydoc3.14
+      - -usr/bin/pygettext3.14
       - usr/lib
       - -usr/lib/python3.14/test
+      - -usr/lib/python3.14/encodings/rot_13.py
       - -usr/lib/systemd
       - -usr/lib/udev
       - -usr/lib/tmpfiles.d

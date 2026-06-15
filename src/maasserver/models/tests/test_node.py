@@ -9611,7 +9611,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
         owner = factory.make_User()
         node = self.make_acquired_node_with_interface(
             owner,
-            power_type="manual",
         )
         factory.make_usable_boot_resource(
             name="ubuntu/noble", architecture=node.architecture
@@ -9621,6 +9620,26 @@ class TestNode_Start(MAASTransactionServerTestCase):
         )
         node.start(owner)
         get_task_queue.assert_called_once_with(node)
+
+    def test_start_manual_power_skips_task_queue_lookup(self):
+        owner = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            owner,
+            power_type="manual",
+        )
+        factory.make_usable_boot_resource(
+            name="ubuntu/noble", architecture=node.architecture
+        )
+        get_task_queue = self.patch(
+            node_module, "get_temporal_task_queue_for_bmc"
+        )
+        temporal_deploy = self.patch(node_module.Node, "_temporal_deploy")
+        node.start(owner)
+        get_task_queue.assert_not_called()
+        temporal_deploy.assert_called_once()
+        args, kwargs = temporal_deploy.call_args
+        assert args[2].power_type == "manual"
+        assert args[3] == ""
 
     def test_treats_ipv4_mapped_address_as_ipv4(self):
         admin = factory.make_admin()

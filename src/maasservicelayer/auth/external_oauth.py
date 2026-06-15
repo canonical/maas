@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from authlib.common.security import generate_token
+from authlib.integrations.base_client.errors import OAuthError
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from authlib.jose import JsonWebKey, JWTClaims, KeySet
 from authlib.jose.errors import BadSignatureError
@@ -24,6 +25,7 @@ from maasservicelayer.exceptions.constants import (
     INVALID_TOKEN_VIOLATION_TYPE,
     MISSING_PROVIDER_CONFIG_VIOLATION_TYPE,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
+    USER_EXTERNAL_VALIDATION_FAILED,
 )
 from maasservicelayer.models.external_auth import (
     AccessTokenType,
@@ -89,7 +91,7 @@ class OAuth2Client:
         self._access_token_cache = AccessTokenValidationCache()
 
     def generate_authorization_url(
-        self, redirect_target: str
+        self, redirect_target: str, login_hint: str
     ) -> OAuthInitiateData:
         nonce = generate_token()
         state = self._generate_state(redirect_target=redirect_target)
@@ -98,6 +100,11 @@ class OAuth2Client:
             url=self.provider.metadata.authorization_endpoint,
             state=state,
             nonce=nonce,
+            # Pre-fill the email/username field
+            login_hint=login_hint,
+            # This will force the user to re-login at the OIDC screen even if
+            # they had a session already.
+            prompt="login",
         )
         return OAuthInitiateData(
             authorization_url=auth_url,
@@ -278,6 +285,15 @@ class OAuth2Client:
                     BaseExceptionDetail(
                         type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
                         message="Failed to fetch tokens from OIDC server.",
+                    )
+                ]
+            ) from e
+        except OAuthError as e:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=USER_EXTERNAL_VALIDATION_FAILED,
+                        message="Invalid authorization code",
                     )
                 ]
             ) from e

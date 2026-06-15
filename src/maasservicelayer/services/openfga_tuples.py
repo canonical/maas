@@ -74,6 +74,8 @@ class MAASTupleBuilderFactory(BaseEntitlementResourceBuilderFactory):
         "can_view_devices": OpenFGATupleBuilder.build_group_can_view_devices,
         "can_view_ipaddresses": OpenFGATupleBuilder.build_group_can_view_ipaddresses,
         "can_view_dnsrecords": OpenFGATupleBuilder.build_group_can_view_dnsrecords,
+        "can_edit_operations": OpenFGATupleBuilder.build_group_can_edit_operations,
+        "can_view_operations": OpenFGATupleBuilder.build_group_can_view_operations,
     }
 
     def build_tuple(
