@@ -58,6 +58,7 @@ bin/test.region.legacy
 endef
 
 UI_BUILD := src/maasui/build
+DOCS_BUILD := docs/_build
 
 swagger-dist := src/maasserver/templates/dist/
 swagger-js: file := src/maasserver/templates/dist/swagger-ui-bundle.js
@@ -273,8 +274,11 @@ openapi.yaml: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 openapi-doc: openapi.yaml swagger-css swagger-js
 .PHONY: openapi-doc
 
-doc: api-docs.rst openapi-doc
+doc: $(DOCS_BUILD)
 .PHONY: doc
+
+$(DOCS_BUILD):
+	$(MAKE) --no-print-directory -C docs html
 
 clean-ui:
 	$(MAKE) --no-print-directory -C src/maasui clean
@@ -378,6 +382,8 @@ endif
 -packaging-tarball:
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(DOCS_BUILD) \
+		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) --no-print-directory -C src/host-info vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/host-info/vendor \
 		--transform 's,^,$(packaging-dir)/,'
@@ -388,7 +394,7 @@ endif
 .PHONY: -packaging-tarball
 
 -package-tree: changelog := $(packaging-build-area)/$(packaging-dir)/debian/changelog
--package-tree: $(UI_BUILD) $(OFFLINE_DOCS) $(packaging-build-area) -packaging-export-tree -packaging-tarball
+-package-tree: $(UI_BUILD) $(DOCS_BUILD) $(packaging-build-area) -packaging-export-tree -packaging-tarball
 	(cd $(packaging-build-area) && tar xfz $(packaging-orig-targz))
 	cp -r debian $(packaging-build-area)/$(packaging-dir)
 	echo "maas (1:$(packaging-version)-0ubuntu1) UNRELEASED; urgency=medium" \
