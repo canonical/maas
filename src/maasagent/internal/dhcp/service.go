@@ -64,7 +64,7 @@ var writeConfigFileSnap = atomicfile.WriteFile
 var writeConfigFileDeb = func(path string, data []byte, mode os.FileMode) error {
 	scriptPath := "/usr/lib/maas/maas-write-file"
 	fileName := path
-	modeStr := fmt.Sprintf("%d", mode)
+	modeStr := fmt.Sprintf("%o", mode)
 
 	// create the command that runs maas-write-file
 	// #nosec G204: the inputs are sanitized and validated by `maas-write-file`
