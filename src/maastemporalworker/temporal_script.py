@@ -273,6 +273,7 @@ async def main() -> None:
                 power_activity.set_power_state,
                 # Operation status tracking activities
                 operation_activity.update_operation_status,
+                operation_activity.update_current_task,
             ],
         ),
         # Individual region controller worker
