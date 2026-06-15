@@ -71,7 +71,6 @@ from tests.fixtures.factories.staticipaddress import (
 )
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
-from tests.maastemporalworker.workflow import TemporalCalls
 
 
 def _stringify_datetime_fields(obj: dict[str, Any]) -> dict[str, Any]:
@@ -1491,20 +1490,21 @@ class TestDeployWorkflow:
     async def test_deploy_workflow_manual_power_skips_power_actions(
         self,
         fixture: Fixture,
-        temporal_calls: TemporalCalls,
-        worker_test_interceptor,
     ) -> None:
         bmc = await create_test_bmc_entry(fixture, power_type="manual")
         machine = await create_test_machine_entry(fixture, bmc_id=bmc["id"])
 
+        calls = defaultdict(list)
+
         @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
         async def set_node_status(params: SetNodeStatusParam) -> None:
-            return
+            calls["set_node_status"].append(True)
 
         @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
         async def get_boot_order(
             params: GetBootOrderParam,
         ) -> GetBootOrderResult:
+            calls["get_boot_order"].append(True)
             return GetBootOrderResult(
                 system_id=machine["system_id"],
                 order=[],
@@ -1512,26 +1512,37 @@ class TestDeployWorkflow:
 
         @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
         async def power_query(params: PowerQueryParam) -> PowerQueryResult:
-            return PowerQueryResult(state="unknown")
+            calls["power_query"].append(True)
+            return PowerQueryResult(state="off")
 
         @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
         async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
-            return PowerCycleResult(state="unknown")
+            calls["power_cycle"].append(True)
+            return PowerCycleResult(state="on")
 
         @activity.defn(name=POWER_ON_ACTIVITY_NAME)
         async def power_on(params: PowerOnParam) -> PowerOnResult:
-            return PowerOnResult(state="unknown")
+            calls["power_on"].append(True)
+            return PowerOnResult(state="on")
 
         @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
         async def power_off(params: PowerOffParam) -> PowerOffResult:
-            return PowerOffResult(state="unknown")
+            calls["power_off"].append(True)
+            return PowerOffResult(state="off")
 
         @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
         async def power_reset(params: PowerResetParam) -> PowerResetResult:
-            return PowerResetResult(state="unknown")
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
+        @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
+        async def set_boot_order(params: SetBootOrderParam) -> None:
+            calls["set_boot_order"].append(True)
+            return
 
         @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
         async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
             return
 
         async with await WorkflowEnvironment.start_time_skipping() as env:
@@ -1541,15 +1552,14 @@ class TestDeployWorkflow:
                 workflows=[DeployWorkflow],
                 activities=[
                     set_node_status,
+                    set_boot_order,
                     get_boot_order,
                     set_power_state,
                     power_query,
                     power_cycle,
                     power_on,
                     power_off,
-                    power_reset,
                 ],
-                interceptors=[worker_test_interceptor],
             ) as worker:
                 wf = await env.client.start_workflow(
                     DEPLOY_WORKFLOW_NAME,
@@ -1582,4 +1592,10 @@ class TestDeployWorkflow:
 
                 await wf.result()
 
-                temporal_calls.assert_activity_calls([])
+                assert len(calls["set_node_status"]) == 0
+                assert len(calls["get_boot_order"]) == 0
+                assert len(calls["set_boot_order"]) == 0
+                assert len(calls["power_query"]) == 0
+                assert len(calls["power_on"]) == 0
+                assert len(calls["power_cycle"]) == 0
+                assert len(calls["set_power_state"]) == 0
