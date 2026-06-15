@@ -12,10 +12,8 @@ from maasservicelayer.db.repositories.operations import (
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
-    UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
-    MISSING_PERMISSIONS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -104,11 +102,11 @@ class OperationsService(
         if can_view_all:
             return operation
         if operation.user_id != user_id:
-            raise UnauthorizedException(
+            raise NotFoundException(
                 details=[
                     BaseExceptionDetail(
-                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
-                        message=f"User not permitted to view resource '{uuid}..",
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"Operation with uuid '{uuid}' was not found.",
                     )
                 ]
             )
