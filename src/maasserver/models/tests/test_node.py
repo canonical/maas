@@ -3239,14 +3239,21 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.assertIsNone(reload_object(hugepages))
 
-    def test_releases_clears_current_installation_script_set(self):
+    def test_release_preserves_current_installation_script_set(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User()
         )
+        script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.INSTALLATION
+        )
+        node.current_installation_script_set = script_set
+        node.save()
         self.patch(node, "_stop")
         with post_commit_hooks:
             node.release()
-        self.assertIsNone(node.current_installation_script_set)
+        self.assertEqual(
+            script_set, reload_object(node).current_installation_script_set
+        )
 
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in New state, accept_enlistment()

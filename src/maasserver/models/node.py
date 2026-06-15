@@ -3915,7 +3915,6 @@ class Node(CleanSave, TimestampedModel):
         self.distro_series = ""
         self.license_key = ""
         self.hwe_kernel = None
-        self.current_installation_script_set = None
         self.install_rackd = False
         self.install_kvm = False
         self.register_vmhost = False
