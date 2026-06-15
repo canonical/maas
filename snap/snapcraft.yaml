@@ -317,11 +317,19 @@ parts:
     plugin: make
     source: .
     build-packages:
-      - python3-venv
+      - build-essential
+      - cargo
+      - git # for git+https://git.launchpad.net/django-piston3 in requirements.txt
+      - libssl-dev
+      - pkg-config
+      - python3-dev # netifaces requirement
       - python3-pip
+      - python3-venv
+
+      # These ones are specifically for the docs dependencies
       - libcairo2
-      - python3-dev    # netifaces requirement
-      - git            # for git+https://git.launchpad.net/django-piston3 in requirements.txt
+      - libjpeg-dev
+      - zlib1g-dev
     override-build: |
       cd $CRAFT_PART_SRC/docs
       MAAS_OFFLINE_DOCS=true make html
