@@ -3,9 +3,14 @@
 
 from datetime import datetime
 
-from maascommon.enums.operations import OperationStatus, OperationType
+from maascommon.enums.operations import (
+    OperationStatus,
+    OperationTaskStatus,
+    OperationType,
+)
 from maasservicelayer.models.base import (
     generate_builder,
+    MaasBaseModel,
     MaasTimestampedBaseModel,
 )
 
@@ -25,3 +30,14 @@ class Operation(MaasTimestampedBaseModel):
     is_bulk: bool
     parent_id: str | None = None
     user_id: int | None = None
+
+
+@generate_builder()
+class OperationTask(MaasBaseModel):
+    operation_uuid: str
+    name: str
+    task_number: int
+    status: OperationTaskStatus
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    result: dict | None = None
