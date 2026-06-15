@@ -87,6 +87,8 @@ class TestOpenFGATupleBuilder:
             ("build_group_can_view_devices", "can_view_devices"),
             ("build_group_can_view_ipaddresses", "can_view_ipaddresses"),
             ("build_group_can_view_dnsrecords", "can_view_dnsrecords"),
+            ("build_group_can_view_operations", "can_view_operations"),
+            ("build_group_can_edit_operations", "can_edit_operations"),
         ],
     )
     def test_group_global_scoped_builders(self, method_name, relation):

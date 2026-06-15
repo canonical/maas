@@ -337,6 +337,30 @@ class OpenFGATupleBuilder(ResourceBuilder):
         )
 
     @classmethod
+    def build_group_can_edit_operations(
+        cls, group_id: int
+    ) -> "OpenFGATupleBuilder":
+        return OpenFGATupleBuilder(
+            user=f"group:{group_id}#member",
+            user_type="userset",
+            relation=MAASResourceEntitlement.CAN_EDIT_OPERATIONS,
+            object_id="0",
+            object_type=OpenFGAEntitlementResourceType.MAAS,
+        )
+
+    @classmethod
+    def build_group_can_view_operations(
+        cls, group_id: int
+    ) -> "OpenFGATupleBuilder":
+        return OpenFGATupleBuilder(
+            user=f"group:{group_id}#member",
+            user_type="userset",
+            relation=MAASResourceEntitlement.CAN_VIEW_OPERATIONS,
+            object_id="0",
+            object_type=OpenFGAEntitlementResourceType.MAAS,
+        )
+
+    @classmethod
     def build_pool(cls, pool_id: str) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user="maas:0",

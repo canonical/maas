@@ -37,6 +37,7 @@ from collections.abc import Iterable
 from contextlib import contextmanager, ExitStack
 from functools import wraps
 from itertools import chain, islice, repeat, takewhile
+import os
 import re
 import threading
 from time import sleep
@@ -61,7 +62,7 @@ from psycopg2.errorcodes import (
 from twisted.internet.defer import Deferred
 
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIForbidden
-from maasserver.sqlalchemy import InvalidConnection, service_layer
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils.asynchronous import DeferredHooks
 from provisioningserver.utils import flatten
 from provisioningserver.utils.backoff import exponential_growth, full_jitter
@@ -576,10 +577,8 @@ def retry_on_retryable_failure(func, reset=noop):
                 except RetryTransaction:
                     reset()  # Which may do nothing.
                     sleep(next(intervals))
-                except (DatabaseError, InvalidConnection) as error:
-                    if is_retryable_failure(error) or isinstance(
-                        error, InvalidConnection
-                    ):
+                except DatabaseError as error:
+                    if is_retryable_failure(error):
                         reset()  # Which may do nothing.
                         sleep(next(intervals))
                     else:
@@ -747,24 +746,18 @@ def transactional(func):
     In addition, if `func` is being invoked from outside of a transaction,
     this will retry if it fails with a retryable failure.
     """
-
-    def _reset():
-        post_commit_hooks.reset()
-        # If we were using only Django, we would not need to call `_ensure_connection()`
-        # when retrying a transaction because Django ensures that a connection is fully
-        # functional every time a cursor is used.
-        #
-        # However, in the service layer, we use the current Django connection directly.
-        # This means that if the very first call in the transaction is made on the
-        # service layer, we might end up using a broken connection.
-        #
-        # To prevent this, we explicitly call `_ensure_connection()` during the reset
-        # process to ensure the connection is valid before proceeding with the transaction.
-        _ensure_connection()
-
     func_within_txn = transaction.atomic(func)  # For savepoints.
+
+    # If the database connection gets broken between retries, we MUST NOT
+    # try to reconnect. In some cases, we acquire a non-transactional
+    # advisory lock, and such lock is released if the session is closed.
+    # So if we reconnect and try to re-execute the transaction, we would
+    # enter the critical block guarded by the lock, without actually holding it.
+    # See https://bugs.launchpad.net/maas/+bug/2156012 .
+    #
+    # Some transactions might have added some post_commit hooks that must be cleaned between retries.
     func_outside_txn = retry_on_retryable_failure(
-        func_within_txn, reset=_reset
+        func_within_txn, reset=post_commit_hooks.reset
     )
 
     @wraps(func)
@@ -784,10 +777,10 @@ def transactional(func):
             # block.
             #
             # Previously, close_old_connections() was used here, which would
-            # close connections without realising that they were still in use
+            # close connections without realizing that they were still in use
             # for non-transactional advisory locking. This had the effect of
             # releasing all locks prematurely: not good.
-            #
+
             with connected(), post_commit_hooks:
                 return func_outside_txn(*args, **kwargs)
 
@@ -912,11 +905,21 @@ def disable_all_database_connections():
     thread, using threading.local. Using the database from the reactor
     thread is a recipe for intermingled transactions.
     """
-    for alias in connections:
-        connection = connections[alias]
-        if type(connection) is not DisabledDatabaseConnection:
-            connections[alias] = DisabledDatabaseConnection()
-            connection.close()
+    # connection.close() is @async_unsafe in Django and raises
+    # SynchronousOnlyOperation when an asyncio event loop is running (e.g.
+    # the Twisted asyncio reactor thread). We intentionally run on that
+    # thread to tear the connections down, so use Django's documented
+    # escape hatch.
+    # See: https://docs.djangoproject.com/en/5.2/topics/async/#django-allow-async-unsafe
+    os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+    try:
+        for alias in connections:
+            connection = connections[alias]
+            if type(connection) is not DisabledDatabaseConnection:
+                connections[alias] = DisabledDatabaseConnection()
+                connection.close()
+    finally:
+        del os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"]
 
 
 def enable_all_database_connections():

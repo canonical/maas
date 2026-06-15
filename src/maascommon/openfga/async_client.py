@@ -232,6 +232,20 @@ class OpenFGAClient(BaseOpenFGAClient):
             self.MAAS_GLOBAL_OBJ,
         )
 
+    async def can_edit_operations(self, user_id: int) -> bool:
+        return await self._check(
+            user_id,
+            MAASResourceEntitlement.CAN_EDIT_OPERATIONS,
+            self.MAAS_GLOBAL_OBJ,
+        )
+
+    async def can_view_operations(self, user_id: int) -> bool:
+        return await self._check(
+            user_id,
+            MAASResourceEntitlement.CAN_VIEW_OPERATIONS,
+            self.MAAS_GLOBAL_OBJ,
+        )
+
     # List Methods
     async def list_pools_with_view_machines_access(
         self, user_id: int

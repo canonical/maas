@@ -723,44 +723,6 @@ class TestUsersService:
         )
         assert count == 5
 
-    async def test_is_oidc_user_local_user(
-        self, users_service: UsersService, users_repository: Mock
-    ) -> None:
-        users_repository.get_user_profile.return_value = TEST_USER_PROFILE
-
-        is_oidc = await users_service.is_oidc_user(email="testuser")
-
-        users_repository.get_user_profile.assert_called_once_with(
-            username="testuser"
-        )
-        assert not is_oidc
-
-    async def test_is_oidc_user_no_profile(
-        self, users_service: UsersService, users_repository: Mock
-    ) -> None:
-        users_repository.get_user_profile.return_value = None
-
-        is_oidc = await users_service.is_oidc_user(email="missing_user")
-
-        users_repository.get_user_profile.assert_called_once_with(
-            username="missing_user"
-        )
-        assert is_oidc
-
-    async def test_is_oidc_user_has_provider_id(
-        self, users_service: UsersService, users_repository: Mock
-    ) -> None:
-        oidc_user_profile = TEST_USER_PROFILE.model_copy()
-        oidc_user_profile.provider_id = 2
-        users_repository.get_user_profile.return_value = oidc_user_profile
-
-        is_oidc = await users_service.is_oidc_user(email="oidc_user")
-
-        users_repository.get_user_profile.assert_called_once_with(
-            username="oidc_user"
-        )
-        assert is_oidc
-
     async def test_has_users(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:

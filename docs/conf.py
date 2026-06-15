@@ -159,7 +159,7 @@ html_context = {
     # Product tag image; the orange part of your logo, shown in the page header
     #
     # TODO: To add a tag image, uncomment and update as needed.
-    "product_tag": "_static/740dd401-MAAS logomark only.svg",
+    "product_tag": "_static/740dd401-MAAS_logomark_only.svg",
     # Your Discourse instance URL
     #
     # TODO: Change to your Discourse instance URL or leave empty.

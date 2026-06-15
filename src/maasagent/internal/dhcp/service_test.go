@@ -430,6 +430,58 @@ func (s *DHCPServiceTestSuite) TestConfigureViaFile() {
 	}
 }
 
+// TestConfigureViaFileNoV4Interfaces ensures that when no IPv4 interfaces are
+// configured, the dhcpd-interfaces file is removed.
+func (s *DHCPServiceTestSuite) TestConfigureViaFileNoV4Interfaces() {
+	v4InterfacesPath := s.svc.dataPathFactory("dhcpd-interfaces")
+	err := os.WriteFile(v4InterfacesPath, []byte("eth0"), 0o640)
+	s.Require().NoError(err)
+
+	config := `{
+    "dhcpd": "",
+    "dhcpd_interfaces": "",
+    "dhcpd6": "Y29uZmlndXJhdGlvbl92Ng==",
+    "dhcpd6_interfaces": "aW50ZXJmYWNlc192Ng=="
+  }`
+
+	s.configAPIResponse = []byte(config)
+	_, err = s.activityEnv.ExecuteActivity(
+		"configure-dhcp-via-file",
+	)
+	assert.NoError(s.T(), err)
+
+	_, err = os.Stat(v4InterfacesPath)
+	assert.True(s.T(), os.IsNotExist(err), "dhcpd-interfaces should not exist when no IPv4 interfaces are configured")
+
+	assert.False(s.T(), s.svc.runningV4.Load())
+}
+
+// TestConfigureViaFileNoV6Interfaces ensures that when no IPv6 interfaces are
+// configured, the dhcpd6-interfaces file is removed.
+func (s *DHCPServiceTestSuite) TestConfigureViaFileNoV6Interfaces() {
+	v6InterfacesPath := s.svc.dataPathFactory("dhcpd6-interfaces")
+	err := os.WriteFile(v6InterfacesPath, []byte("eth0"), 0o640)
+	s.Require().NoError(err)
+
+	config := `{
+    "dhcpd": "Y29uZmlndXJhdGlvbl92NA==",
+    "dhcpd_interfaces": "aW50ZXJmYWNlc192NA==",
+    "dhcpd6": "Y29uZmlndXJhdGlvbl92Ng==",
+    "dhcpd6_interfaces": ""
+  }`
+
+	s.configAPIResponse = []byte(config)
+	_, err = s.activityEnv.ExecuteActivity(
+		"configure-dhcp-via-file",
+	)
+	assert.NoError(s.T(), err)
+
+	_, err = os.Stat(v6InterfacesPath)
+	assert.True(s.T(), os.IsNotExist(err), "dhcpd6-interfaces should not exist when no IPv6 interfaces are configured")
+
+	assert.False(s.T(), s.svc.runningV6.Load())
+}
+
 func TestHostMarshalJSON(t *testing.T) {
 	h := Host{
 		Hostname: "localhost",

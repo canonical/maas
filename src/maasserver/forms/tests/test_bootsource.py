@@ -7,12 +7,7 @@ from io import BytesIO
 
 from django.core.files.uploadedfile import InMemoryUploadedFile
 
-from maascommon.constants import (
-    CANDIDATE_IMAGES_STREAM_URL,
-    STABLE_IMAGES_STREAM_URL,
-)
 from maasserver.forms import BootSourceForm
-from maasserver.models import BootSource
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -115,67 +110,7 @@ class TestBootSourceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         boot_source = form.save()
         self.assertEqual(boot_source.name, "http://example.com")
-        # Candidate and stable boot sources are created with priority 1 and 2 respectively, so the next priority is 3
-        self.assertEqual(boot_source.priority, 3)
+        # Stable boot source is created with priority 1 by the migrations.
+        self.assertEqual(boot_source.priority, 2)
         self.assertTrue(boot_source.enabled)
         self.assertFalse(boot_source.skip_keyring_verification)
-
-    def test_update_default_boot_source_allows_priority(self):
-        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
-        form = BootSourceForm(instance=boot_source, data={"priority": 42})
-        self.assertTrue(form.is_valid(), form._errors)
-
-    def test_update_default_boot_source_allows_enabled(self):
-        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
-        form = BootSourceForm(instance=boot_source, data={"enabled": False})
-        self.assertTrue(form.is_valid(), form._errors)
-
-    def test_update_default_boot_source_rejects_url(self):
-        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
-        form = BootSourceForm(
-            instance=boot_source,
-            data={"url": "http://other.example.com"},
-        )
-        self.assertFalse(form.is_valid())
-        self.assertIn("url", form.errors)
-
-    def test_update_default_boot_source_rejects_name(self):
-        boot_source = BootSource.objects.get(url=CANDIDATE_IMAGES_STREAM_URL)
-        form = BootSourceForm(
-            instance=boot_source,
-            data={"name": "new-name"},
-        )
-        self.assertFalse(form.is_valid())
-        self.assertIn("name", form.errors)
-
-    def test_update_default_boot_source_rejects_keyring_filename(self):
-        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
-        form = BootSourceForm(
-            instance=boot_source,
-            data={"keyring_filename": "/new/path"},
-        )
-        self.assertFalse(form.is_valid())
-        self.assertIn("keyring_filename", form.errors)
-
-    def test_update_default_boot_source_rejects_skip_keyring_verification(
-        self,
-    ):
-        boot_source = BootSource.objects.get(url=STABLE_IMAGES_STREAM_URL)
-        form = BootSourceForm(
-            instance=boot_source,
-            data={"skip_keyring_verification": True},
-        )
-        self.assertFalse(form.is_valid())
-        self.assertIn("skip_keyring_verification", form.errors)
-
-    def test_update_non_default_boot_source_allows_any_field(self):
-        boot_source = factory.make_BootSource()
-        form = BootSourceForm(
-            instance=boot_source,
-            data={
-                "url": "http://other.example.com",
-                "name": "new-name",
-                "keyring_filename": "/new/path",
-            },
-        )
-        self.assertTrue(form.is_valid(), form._errors)
