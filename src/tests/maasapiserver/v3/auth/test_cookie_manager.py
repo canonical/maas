@@ -103,7 +103,7 @@ class TestCookieManager:
         response = Mock()
         encryptor = Mock()
         encryptor.decrypt.side_effect = exception
-        mock_logger = mocker.patch("maasapiserver.v3.auth.cookie_manager")
+        mock_logger = mocker.patch("maasapiserver.v3.auth.cookie_manager.logger")
 
         manager = EncryptedCookieManager(
             request, encryptor=encryptor, response=response, ttl_seconds=1200
