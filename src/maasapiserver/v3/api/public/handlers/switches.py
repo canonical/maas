@@ -36,7 +36,12 @@ from maasservicelayer.services import ServiceCollectionV3
 
 
 class SwitchesHandler(Handler):
-    """API handler for managing network switches."""
+    """API handler for managing network switches.
+
+    **WARNING:** This is an experimental, preview feature. The API and behaviour may
+    change in future releases without backward compatibility guarantees.
+    Not intended for production use.
+    """
 
     TAGS = ["Switches"]
 
@@ -63,7 +68,11 @@ class SwitchesHandler(Handler):
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SwitchesListResponse:
-        """List all switches with pagination."""
+        """List all switches with pagination.
+
+        **Experimental**: this endpoint is part of an experimental feature set
+        and may change in future releases.
+        """
         switches = await services.switches.list_with_target_image(
             pagination_params.page,
             pagination_params.size,
@@ -111,7 +120,11 @@ class SwitchesHandler(Handler):
         switch_id: int,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SwitchResponse:
-        """Get a specific switch by ID."""
+        """Get a specific switch by ID.
+
+        **Experimental**: this endpoint is part of an experimental feature set
+        and may change in future releases.
+        """
         switch = await services.switches.get_one_with_target_image(switch_id)
         if not switch:
             raise NotFoundException(
@@ -153,7 +166,11 @@ class SwitchesHandler(Handler):
         switch_request: SwitchRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SwitchResponse:
-        """Create a new switch with its management interface."""
+        """Create a new switch with its management interface.
+
+        **Experimental**: this endpoint is part of an experimental feature set
+        and may change in future releases.
+        """
         existing_interface = await services.interfaces.get_one(
             query=QuerySpec(
                 where=InterfaceClauseFactory.with_mac_address(
@@ -222,7 +239,11 @@ class SwitchesHandler(Handler):
         switch_request: SwitchUpdateRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SwitchResponse:
-        """Update a switch's target image."""
+        """Update a switch's target image.
+
+        **Experimental**: this endpoint is part of an experimental feature set
+        and may change in future releases.
+        """
         existing_switch = await services.switches.get_one_with_target_image(
             switch_id
         )
@@ -274,7 +295,11 @@ class SwitchesHandler(Handler):
         switch_id: int,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
-        """Delete a switch and all related entries."""
+        """Delete a switch and all related entries.
+
+        **Experimental**: this endpoint is part of an experimental feature set
+        and may change in future releases.
+        """
         try:
             await services.switches.delete_by_id(switch_id)
         except NotFoundException as exc:

@@ -62,7 +62,12 @@ async def get_onie_headers(
 
 
 class NOSInstallerHandler(Handler):
-    """NOS Installer API handler."""
+    """NOS Installer API handler.
+
+    Experimental: this handler is part of an experimental feature set
+    and may change in future releases without backward compatibility
+    guarantees. Not intended for production use.
+    """
 
     TAGS = ["Onie"]
 
@@ -94,6 +99,9 @@ class NOSInstallerHandler(Handler):
         services_collection: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ):
         """Serve NOS installer binary.
+
+        Experimental: this endpoint is part of an experimental feature set
+        and may change in future releases.
 
         This endpoint:
         - Receives ONIE headers from the switch
