@@ -451,6 +451,17 @@ class ExternalOAuthService(
 
         builder.metadata = await self.get_provider_metadata(builder)
 
+    async def _update_connected_users_active_status(
+        self, provider_id: int, is_active: bool
+    ):
+        """Update all the users connected to `provider_id` to be non active."""
+        await self.users_service.update_many(
+            query=QuerySpec(
+                where=UserClauseFactory.with_provider_id(provider_id)
+            ),
+            builder=UserBuilder(is_active=is_active),
+        )
+
     async def pre_delete_hook(
         self, resource_to_be_deleted: OAuthProvider
     ) -> None:
@@ -470,6 +481,19 @@ class ExternalOAuthService(
         if old_resource.enabled or updated_resource.enabled:
             # FIXME: clears only local cache; HA setups will need multi-region invalidation.
             await self.cache.clear_oauth_client()  # type: ignore
+
+        if old_resource.enabled and not updated_resource.enabled:
+            # Provider has been disabled, mark users inactive.
+            # There's no need to re-do this in the `post_delete_hook` since a
+            # provider can only be deleted if it's disabled first.
+            await self._update_connected_users_active_status(
+                updated_resource.id, False
+            )
+        elif not old_resource.enabled and updated_resource.enabled:
+            # Provider has been enabled, mark users active
+            await self._update_connected_users_active_status(
+                updated_resource.id, True
+            )
 
     async def get_provider(self) -> OAuthProvider | None:
         return await self.repository.get_provider()

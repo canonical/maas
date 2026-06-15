@@ -1263,3 +1263,21 @@ class TestOIDCAuthenticationProvider:
             type=SECURITY,
             token_hash=hash_token_for_logging("invalidrefreshtoken"),
         )
+
+    async def test_dispatch_inactive_user_raises_forbidden(self) -> None:
+        user = _make_oidc_user()
+        user.is_active = False
+        request = self.mock_request()
+        request.state.services.external_oauth.get_user_from_id_token.return_value = user
+
+        provider = OIDCAuthenticationProvider()
+        provider._is_token_valid = AsyncMock(return_value=True)
+        provider._clear_oauth_cookies = Mock()
+
+        with pytest.raises(ForbiddenException) as exc_info:
+            await provider.authenticate(request, "accesstoken")
+        details = exc_info.value.details
+        assert details is not None
+        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+        assert details[0].message == "Please sign in again to continue."
+        provider._clear_oauth_cookies.assert_called_once_with(request)

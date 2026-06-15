@@ -478,6 +478,17 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
             )
         )
 
+        if user.is_active is False:
+            self._clear_oauth_cookies(request)
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="Please sign in again to continue.",
+                    )
+                ]
+            )
+
         return AuthenticatedUser(
             id=user.id,
             username=user.username,
