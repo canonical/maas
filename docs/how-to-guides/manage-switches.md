@@ -1,5 +1,9 @@
 # Manage switches
 
+:::{warning}
+Switch management is an **experimental, preview feature** in MAAS 3.8. It is not yet fully supported for production environments. The API, behaviour, and user interface may change in future releases without backward compatibility guarantees. This feature is not covered by standard production support. Use it in test and evaluation environments only.
+:::
+
 MAAS can automatically provision network operating systems (NOS) onto network switches using the ONIE (Open Network Install Environment) protocol. This enables zero-touch deployment of switches alongside your compute infrastructure.
 
 This page is your reference for managing switches in MAAS.
