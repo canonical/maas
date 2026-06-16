@@ -13,7 +13,10 @@ from maasservicelayer.db.repositories.operations import (
     OperationsClauseFactory,
     OperationsRepository,
 )
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.exceptions.catalog import (
+    ConflictException,
+    NotFoundException,
+)
 from maasservicelayer.models.base import (
     ListResult,
     MaasBaseModel,
@@ -390,4 +393,79 @@ class TestOperationsService:
         with pytest.raises(NotFoundException):
             await operations_service.get_by_uuid_for_user(
                 "nonexistent-uuid", user_id=1, can_view_all=True
+            )
+
+    async def test_cancel_for_user_accepted(
+        self,
+        operations_service: OperationsService,
+        operations_repo_mock: Mock,
+    ) -> None:
+        operation = TEST_OPERATION.model_copy(
+            update={"status": OperationStatus.ACCEPTED}
+        )
+        operations_repo_mock.get_by_uuid.return_value = operation
+        operations_repo_mock.get_one.return_value = operation
+        operations_repo_mock.update_by_id.return_value = operation.model_copy(
+            update={"status": OperationStatus.CANCELLING}
+        )
+
+        result = await operations_service.cancel_for_user(
+            uuid="op-uuid", user_id=1, can_view_all=True
+        )
+
+        assert result.status == OperationStatus.CANCELLING
+
+    async def test_cancel_for_user_running(
+        self,
+        operations_service: OperationsService,
+        operations_repo_mock: Mock,
+    ) -> None:
+        operation = TEST_OPERATION.model_copy(
+            update={"status": OperationStatus.RUNNING}
+        )
+        operations_repo_mock.get_by_uuid.return_value = operation
+        operations_repo_mock.get_one.return_value = operation
+        operations_repo_mock.update_by_id.return_value = operation.model_copy(
+            update={"status": OperationStatus.CANCELLING}
+        )
+
+        result = await operations_service.cancel_for_user(
+            uuid="op-uuid", user_id=1, can_view_all=True
+        )
+
+        assert result.status == OperationStatus.CANCELLING
+
+    @pytest.mark.parametrize(
+        "status",
+        [
+            OperationStatus.CANCELLING,
+            OperationStatus.CANCELLED,
+            OperationStatus.COMPLETED,
+            OperationStatus.FAILED,
+        ],
+    )
+    async def test_cancel_for_user_raises_conflict_for_terminal_status(
+        self,
+        operations_service: OperationsService,
+        operations_repo_mock: Mock,
+        status: OperationStatus,
+    ) -> None:
+        operation = TEST_OPERATION.model_copy(update={"status": status})
+        operations_repo_mock.get_by_uuid.return_value = operation
+
+        with pytest.raises(ConflictException):
+            await operations_service.cancel_for_user(
+                uuid="op-uuid", user_id=1, can_view_all=True
+            )
+
+    async def test_cancel_for_user_not_found(
+        self,
+        operations_service: OperationsService,
+        operations_repo_mock: Mock,
+    ) -> None:
+        operations_repo_mock.get_by_uuid.return_value = None
+
+        with pytest.raises(NotFoundException):
+            await operations_service.cancel_for_user(
+                uuid="nonexistent-uuid", user_id=1, can_view_all=True
             )

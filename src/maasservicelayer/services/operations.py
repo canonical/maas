@@ -11,9 +11,11 @@ from maasservicelayer.db.repositories.operations import (
 )
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
+    ConflictException,
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
+    CONFLICT_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -111,3 +113,31 @@ class OperationsService(
                 ]
             )
         return operation
+
+    async def cancel_for_user(
+        self,
+        uuid: str,
+        user_id: int,
+        can_view_all: bool,
+    ) -> Operation:
+        operation = await self.get_by_uuid_for_user(
+            uuid, user_id=user_id, can_view_all=can_view_all
+        )
+        if operation.status in (
+            OperationStatus.CANCELLING,
+            OperationStatus.CANCELLED,
+            OperationStatus.COMPLETED,
+            OperationStatus.FAILED,
+        ):
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=CONFLICT_VIOLATION_TYPE,
+                        message=f"Operation '{uuid}' cannot be cancelled because it is in the {operation.status} status.",
+                    )
+                ]
+            )
+        return await self.update_status(
+            operation_uuid=uuid,
+            status=OperationStatus.CANCELLING,
+        )

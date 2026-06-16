@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -12,11 +12,14 @@ from temporalio.client import (
     WorkflowExecutionStatus,
     WorkflowHandle,
 )
+from temporalio.service import RPCError
 
+from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maasservicelayer.context import Context
 from maasservicelayer.services.temporal import (
     TemporalService,
     TemporalServiceCache,
+    TemporalServiceException,
 )
 
 
@@ -206,3 +209,70 @@ class TestTemporalService:
             "wf-id"
         )
         workflow_handle_mock.describe.assert_awaited_once()
+
+    async def test_cancel_workflow_by_operation_uuid(
+        self,
+        service: TemporalService,
+        temporal_client_mock,
+    ) -> None:
+        wf = Mock()
+        wf.id = "wf-id"
+
+        async def _list_workflows(query):
+            yield wf
+
+        temporal_client_mock.list_workflows.return_value = _list_workflows(
+            "query"
+        )
+        handle = Mock(WorkflowHandle)
+        temporal_client_mock.get_workflow_handle.return_value = handle
+
+        await service.cancel_workflow_by_operation_uuid("op-uuid")
+
+        temporal_client_mock.list_workflows.assert_called_once_with(
+            query=f"{OPERATION_UUID_SEARCH_ATTRIBUTE}='op-uuid'"
+            " AND ExecutionStatus='Running'"
+        )
+        temporal_client_mock.get_workflow_handle.assert_called_once_with(
+            workflow_id="wf-id"
+        )
+        handle.cancel.assert_awaited_once()
+
+    async def test_cancel_workflow_by_operation_uuid_no_running_workflows(
+        self,
+        service: TemporalService,
+        temporal_client_mock,
+    ) -> None:
+        async def _list_workflows(query):
+            return
+            yield  # noqa: unreachable - makes this an async generator
+
+        temporal_client_mock.list_workflows.return_value = _list_workflows(
+            "query"
+        )
+
+        await service.cancel_workflow_by_operation_uuid("op-uuid")
+
+        temporal_client_mock.list_workflows.assert_called_once()
+        temporal_client_mock.get_workflow_handle.assert_not_called()
+
+    async def test_cancel_workflow_by_operation_uuid_rpc_error_raises(
+        self,
+        service: TemporalService,
+        temporal_client_mock,
+    ) -> None:
+        wf = Mock()
+        wf.id = "wf-id"
+
+        async def _list_workflows(query):
+            yield wf
+
+        temporal_client_mock.list_workflows.return_value = _list_workflows(
+            "query"
+        )
+        handle = Mock(WorkflowHandle)
+        handle.cancel = AsyncMock(side_effect=RPCError("rpc error"))
+        temporal_client_mock.get_workflow_handle.return_value = handle
+
+        with pytest.raises(TemporalServiceException):
+            await service.cancel_workflow_by_operation_uuid("op-uuid")
