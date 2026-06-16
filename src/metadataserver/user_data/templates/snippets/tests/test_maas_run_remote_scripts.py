@@ -398,7 +398,21 @@ class TestInstallDependencies(MAASTestCase):
         )
 
         mock_popen.assert_called_once_with(
-            ["sudo", "-En", cmd], stdin=DEVNULL, stdout=PIPE, stderr=PIPE
+            [
+                "sudo",
+                "-n",
+                "--preserve-env=DEBIAN_FRONTEND",
+                "--preserve-env=http_proxy",
+                "--preserve-env=https_proxy",
+                "--preserve-env=no_proxy",
+                "--preserve-env=HTTP_PROXY",
+                "--preserve-env=HTTPS_PROXY",
+                "--preserve-env=NO_PROXY",
+                cmd,
+            ],
+            stdin=DEVNULL,
+            stdout=PIPE,
+            stderr=PIPE,
         )
 
     def test_run_and_check_calls_hook_on_failure(self):
