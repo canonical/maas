@@ -1,5 +1,6 @@
 from unittest.mock import Mock
 
+from netaddr import IPNetwork
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.client import Client
@@ -423,6 +424,7 @@ class TestDHCPConfigActivity:
             vlan_id=vlan1["id"],
             gateway_ip="10.2.3.4",
             dns_servers=["10.6.7.8"],
+            cidr=IPNetwork("10.2.3.0/24"),
         )
         await create_test_subnet_entry(fixture, vlan_id=vlan2["id"])
         iprange = await create_test_ip_range_entry(
