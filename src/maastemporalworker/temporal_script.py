@@ -7,6 +7,11 @@ import signal
 
 import structlog
 from temporalio.api.enums.v1 import IndexedValueType
+from temporalio.api.operatorservice.v1 import (
+    AddSearchAttributesRequest,
+    ListSearchAttributesRequest,
+)
+from temporalio.client import Client
 
 from maasapiserver.settings import read_config
 from maascommon.worker import set_max_workers_count
@@ -99,6 +104,28 @@ async def _setup_temporal_namespace(workers: list[TemporalWorker]) -> None:
     await asyncio.wait(tasks)
 
 
+async def setup_search_attributes(client: Client) -> None:
+    search_attributes = {
+        OPERATION_UUID_SEARCH_ATTRIBUTE: IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD,
+    }
+    operator_service = client.service_client.operator_service
+    registered = await operator_service.list_search_attributes(
+        ListSearchAttributesRequest(namespace=TemporalWorker.namespace_name),
+    )
+    missing = {
+        name: value_type
+        for name, value_type in search_attributes.items()
+        if name not in registered.custom_attributes
+    }
+    if missing:
+        await operator_service.add_search_attributes(
+            AddSearchAttributesRequest(
+                namespace=TemporalWorker.namespace_name,
+                search_attributes=missing,
+            ),
+        )
+
+
 async def _start_temporal_workers(workers: list[TemporalWorker]) -> None:
     tasks = []
     for w in workers:
@@ -176,9 +203,6 @@ async def main() -> None:
         TemporalWorker(
             client=temporal_client,
             task_queue=REGION_TASK_QUEUE,
-            search_attributes={
-                OPERATION_UUID_SEARCH_ATTRIBUTE: IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD,
-            },
             workflows=[
                 # Boot resources workflows
                 DeleteBootResourceWorkflow,
@@ -300,8 +324,10 @@ async def main() -> None:
             ),
         )
 
-    # The temporal namespace must exist to be able to register schedules.
+    # The temporal namespace must exist to be able to register schedules
+    # and search attributes.
     await _setup_temporal_namespace(temporal_workers)
+    await setup_search_attributes(temporal_client)
 
     log.info("Setting up schedules")
     await setup_schedules(temporal_client)

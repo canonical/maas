@@ -9,11 +9,6 @@ from typing import Any
 
 from google.protobuf.duration_pb2 import Duration
 from temporalio import workflow
-from temporalio.api.enums.v1 import IndexedValueType
-from temporalio.api.operatorservice.v1 import (
-    AddSearchAttributesRequest,
-    ListSearchAttributesRequest,
-)
 from temporalio.api.workflowservice.v1 import (
     DescribeNamespaceRequest,
     RegisterNamespaceRequest,
@@ -109,15 +104,12 @@ class Worker:
         task_queue: str = REGION_TASK_QUEUE,
         workflows: list[Any] | None = None,
         activities: list[Any] | None = None,
-        search_attributes: dict[str, "IndexedValueType.ValueType"]
-        | None = None,
     ):
         self._worker = None
         self._client: Client = client
         self._task_queue = task_queue
         self._workflows = workflows or []
         self._activities = activities or []
-        self._search_attributes = search_attributes or {}
         self._workflow_retention = Duration()
         self._workflow_retention.FromJsonString(TEMPORAL_WORKFLOW_RETENTION)
 
@@ -139,27 +131,6 @@ class Worker:
                 )
             else:
                 raise e
-        await self._setup_search_attributes()
-
-    async def _setup_search_attributes(self) -> None:
-        if not self._search_attributes:
-            return
-        operator_service = self._client.service_client.operator_service
-        registered = await operator_service.list_search_attributes(
-            ListSearchAttributesRequest(namespace=self.namespace_name),
-        )
-        missing = {
-            name: value_type
-            for name, value_type in self._search_attributes.items()
-            if name not in registered.custom_attributes
-        }
-        if missing:
-            await operator_service.add_search_attributes(
-                AddSearchAttributesRequest(
-                    namespace=self.namespace_name,
-                    search_attributes=missing,
-                ),
-            )
 
     async def run(self) -> None:
         await self._setup_namespace()
