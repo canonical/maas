@@ -12,7 +12,7 @@ from temporalio.client import (
     WorkflowExecutionStatus,
     WorkflowHandle,
 )
-from temporalio.service import RPCError
+from temporalio.service import RPCError, RPCStatusCode
 
 from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maasservicelayer.context import Context
@@ -271,7 +271,11 @@ class TestTemporalService:
             "query"
         )
         handle = Mock(WorkflowHandle)
-        handle.cancel = AsyncMock(side_effect=RPCError("rpc error"))
+        handle.cancel = AsyncMock(
+            side_effect=RPCError(
+                "rpc error", RPCStatusCode.INTERNAL, b""
+            )
+        )
         temporal_client_mock.get_workflow_handle.return_value = handle
 
         with pytest.raises(TemporalServiceException):
