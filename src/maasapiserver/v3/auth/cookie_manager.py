@@ -3,10 +3,15 @@
 
 from enum import StrEnum
 
+from cryptography.exceptions import InvalidTag
 from starlette.requests import Request
 from starlette.responses import Response
+import structlog
 
+from maascommon.logging.security import SECURITY
 from maasservicelayer.utils.encryptor import Encryptor
+
+logger = structlog.getLogger(__name__)
 
 MAAS_STATE_COOKIE_NAME = "maas.auth_state_cookie"
 MAAS_NONCE_COOKIE_NAME = "maas.auth_nonce_cookie"
@@ -86,7 +91,16 @@ class EncryptedCookieManager:
         encrypted_value = self.request.cookies.get(key)
         if encrypted_value is None:
             return None
-        return self.encryptor.decrypt(encrypted_value)
+
+        try:
+            return self.encryptor.decrypt(encrypted_value)
+        except (ValueError, InvalidTag):
+            # Catch the exceptions raised by the decrypt method, which usually
+            # mean that the token was manually altered.
+            logger.warning(
+                f"Invalid encrypted cookie '{key}' received.", type=SECURITY
+            )
+            return None
 
     def clear_cookie(self, key: str) -> None:
         self._apply_cookie(key, "", max_age=0, expires=0)
