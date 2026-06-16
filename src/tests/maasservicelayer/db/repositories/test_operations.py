@@ -19,6 +19,7 @@ from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.operations import Operation
 from maasservicelayer.utils.date import utcnow
+from tests.fixtures.factories.operations import create_test_operation_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
@@ -167,28 +168,3 @@ class TestOperationsRepository(RepositoryCommonTests[Operation]):
     async def test_get_by_uuid_not_found(self, repository_instance) -> None:
         instance = await repository_instance.get_by_uuid("non-existent-uuid")
         assert instance is None
-
-
-async def create_test_operation_entry(
-    fixture: Fixture,
-    *,
-    uuid: str = "test-uuid",
-    op_type: OperationType = OperationType.MACHINE_DEPLOY,
-    status: OperationStatus = OperationStatus.ACCEPTED,
-    is_bulk: bool = False,
-) -> Operation:
-    now = utcnow()
-    [row] = await fixture.create(
-        "maasserver_operation",
-        [
-            {
-                "uuid": uuid,
-                "op_type": op_type.value,
-                "status": status.value,
-                "is_bulk": is_bulk,
-                "created": now,
-                "updated": now,
-            }
-        ],
-    )
-    return Operation(**row)
