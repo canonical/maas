@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Self
+from typing import Annotated, Self
 
 from pydantic import Field
 
@@ -12,8 +12,22 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maascommon.enums.operations import OperationStatus, OperationType
-from maasservicelayer.models.operations import Operation
+from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.operations import (
+    OperationStatus,
+    OperationTaskStatus,
+    OperationType,
+)
+from maasservicelayer.models.operations import (
+    MachineOperationData,
+    Operation,
+    OperationTask,
+)
+
+TypeSpecificData = Annotated[
+    MachineOperationData,
+    Field(discriminator="op_type"),
+]
 
 
 class OperationResponse(HalResponse[BaseHal]):
@@ -33,12 +47,14 @@ class OperationResponse(HalResponse[BaseHal]):
     is_bulk: bool
     parent_id: str | None = None
     user_id: int | None = None
+    type_specific_data: TypeSpecificData | None = None
 
     @classmethod
     def from_model(
         cls,
         operation: Operation,
         self_base_hyperlink: str,
+        type_specific_data: MachineOperationData | None = None,
     ) -> Self:
         return cls(
             uuid=operation.uuid,
@@ -56,6 +72,7 @@ class OperationResponse(HalResponse[BaseHal]):
             is_bulk=operation.is_bulk,
             parent_id=operation.parent_id,
             user_id=operation.user_id,
+            type_specific_data=type_specific_data,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{operation.uuid}"
@@ -64,5 +81,45 @@ class OperationResponse(HalResponse[BaseHal]):
         )
 
 
+class OperationTaskResponse(HalResponse[BaseHal]):
+    kind: str = Field(default="OperationTask")
+    id: int
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    name: str
+    status: OperationTaskStatus
+    result_errors: dict | None = None
+    task_number: int
+    operation_uuid: str
+
+    @classmethod
+    def from_model(
+        cls,
+        task: OperationTask,
+    ) -> Self:
+        return cls(
+            id=task.id,
+            started_at=task.started_at,
+            finished_at=task.finished_at,
+            name=task.name,
+            status=task.status,
+            result_errors=task.result_errors,
+            task_number=task.task_number,
+            operation_uuid=task.operation_uuid,
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+                self=BaseHref(
+                    href=(
+                        f"{V3_API_PREFIX}/operations/"
+                        f"{task.operation_uuid}/tasks"
+                    )
+                )
+            ),
+        )
+
+
 class OperationsListResponse(PaginatedResponse[OperationResponse]):
     kind: str = Field(default="OperationsList")
+
+
+class OperationTasksListResponse(PaginatedResponse[OperationTaskResponse]):
+    kind: str = Field(default="OperationTasksList")
