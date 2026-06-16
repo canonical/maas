@@ -132,6 +132,8 @@ class OperationsHandler(Handler):
             user_id=authenticated_user.id,
             can_view_all=can_view_all,
         )
+        if operation is None:
+            raise NotFoundException()
 
         type_specific_data = await services.operations.get_type_specific_data(
             operation
@@ -174,11 +176,13 @@ class OperationsHandler(Handler):
                 authenticated_user.id
             )
         )
-        await services.operations.get_by_uuid_for_user(
+        operation = await services.operations.get_by_uuid_for_user(
             operation_uuid,
             user_id=authenticated_user.id,
             can_view_all=can_view_all,
         )
+        if operation is None:
+            raise NotFoundException()
 
         tasks = await services.operations.list_tasks_for_operation(
             operation_uuid=operation_uuid,

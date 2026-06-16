@@ -428,3 +428,29 @@ class TestOperationsApi(ApiCommonTests):
 
         response = await client.get(f"{self.BASE_PATH}/nonexistent-uuid/tasks")
         assert response.status_code == 404
+
+    async def test_get_operation_returns_none(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.get_by_uuid_for_user.return_value = None
+
+        response = await client.get(f"{self.BASE_PATH}/non-existent-uuid")
+        assert response.status_code == 404
+
+    async def test_get_operation_tasks_returns_none(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.get_by_uuid_for_user.return_value = None
+
+        response = await client.get(f"{self.BASE_PATH}/nonexistent-uuid/tasks")
+        assert response.status_code == 404
