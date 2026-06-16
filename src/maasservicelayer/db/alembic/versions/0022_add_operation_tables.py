@@ -40,7 +40,7 @@ def upgrade() -> None:
         sa.Column("finished", sa.DateTime(timezone=True), nullable=True),
         sa.Column("current_task", sa.String(255), nullable=True),
         sa.Column("parameters", postgresql.JSONB(), nullable=True),
-        sa.Column("result_errors", postgresql.JSONB(), nullable=True),
+        sa.Column("result", postgresql.JSONB(), nullable=True),
         sa.Column("is_bulk", sa.Boolean(), nullable=False),
         sa.Column(
             "parent_id",
@@ -74,7 +74,7 @@ def upgrade() -> None:
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("status", sa.String(64), nullable=False),
-        sa.Column("result_errors", postgresql.JSONB(), nullable=True),
+        sa.Column("result", postgresql.JSONB(), nullable=True),
         sa.Column("task_number", sa.Integer(), nullable=False),
         sa.Column(
             "operation_uuid",

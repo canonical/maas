@@ -1747,7 +1747,7 @@ OperationTaskTable = Table(
     Column("finished_at", DateTime(timezone=True), nullable=True),
     Column("name", String(255), nullable=False),
     Column("status", String(64), nullable=False),
-    Column("result_errors", JSONB, nullable=True),
+    Column("result", JSONB, nullable=True),
     Column("task_number", Integer, nullable=False),
     Column(
         "operation_uuid",
@@ -1772,7 +1772,7 @@ OperationTable = Table(
     Column("finished", DateTime(timezone=True), nullable=True),
     Column("current_task", String(255), nullable=True),
     Column("parameters", JSONB, nullable=True),
-    Column("result_errors", JSONB, nullable=True),
+    Column("result", JSONB, nullable=True),
     Column("is_bulk", Boolean, nullable=False),
     Column(
         "parent_id",

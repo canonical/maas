@@ -26,7 +26,7 @@ class TestOperationResponse:
             finished=None,
             current_task="deploy-task",
             parameters={"key": "value"},
-            result_errors=None,
+            result=None,
             is_bulk=False,
             parent_id=None,
             user_id=1,
@@ -46,7 +46,7 @@ class TestOperationResponse:
         assert response.finished == operation.finished
         assert response.current_task == operation.current_task
         assert response.parameters == operation.parameters
-        assert response.result_errors == operation.result_errors
+        assert response.result == operation.result
         assert response.is_bulk == operation.is_bulk
         assert response.parent_id == operation.parent_id
         assert response.user_id == operation.user_id
@@ -114,11 +114,11 @@ class TestOperationResponse:
         assert response.finished is None
         assert response.current_task is None
         assert response.parameters is None
-        assert response.result_errors is None
+        assert response.result is None
         assert response.parent_id is None
         assert response.user_id is None
 
-    def test_from_model_with_result_errors(self) -> None:
+    def test_from_model_with_result(self) -> None:
         now = utcnow()
         operation = Operation(
             id=1,
@@ -128,11 +128,11 @@ class TestOperationResponse:
             created=now,
             updated=now,
             is_bulk=False,
-            result_errors={"error": "something went wrong"},
+            result={"error": "something went wrong"},
             user_id=1,
         )
         response = OperationResponse.from_model(
             operation=operation,
             self_base_hyperlink=f"{V3_API_PREFIX}/operations",
         )
-        assert response.result_errors == {"error": "something went wrong"}
+        assert response.result == {"error": "something went wrong"}

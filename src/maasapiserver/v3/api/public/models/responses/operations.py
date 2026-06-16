@@ -29,7 +29,7 @@ class OperationResponse(HalResponse[BaseHal]):
     finished: datetime | None = None
     current_task: str | None = None
     parameters: dict | None = None
-    result_errors: dict | None = None
+    result: dict | None = None
     is_bulk: bool
     parent_id: str | None = None
     user_id: int | None = None
@@ -52,7 +52,7 @@ class OperationResponse(HalResponse[BaseHal]):
             finished=operation.finished,
             current_task=operation.current_task,
             parameters=operation.parameters,
-            result_errors=operation.result_errors,
+            result=operation.result,
             is_bulk=operation.is_bulk,
             parent_id=operation.parent_id,
             user_id=operation.user_id,

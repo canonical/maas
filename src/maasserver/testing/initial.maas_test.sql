@@ -7023,7 +7023,7 @@ CREATE TABLE public.maasserver_operation (
     finished timestamp with time zone,
     current_task character varying(255),
     parameters jsonb,
-    result_errors jsonb,
+    result jsonb,
     is_bulk boolean NOT NULL,
     parent_id character varying(36),
     user_id integer
@@ -7054,7 +7054,7 @@ CREATE TABLE public.maasserver_operation_task (
     finished_at timestamp with time zone,
     name character varying(255) NOT NULL,
     status character varying(64) NOT NULL,
-    result_errors jsonb,
+    result jsonb,
     task_number integer NOT NULL,
     operation_uuid character varying(36) NOT NULL
 );
@@ -11697,7 +11697,7 @@ COPY public.maasserver_oidcrevokedtoken (id, token_hash, revoked_at, user_email,
 -- Data for Name: maasserver_operation; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_operation (id, uuid, op_type, resource_id, resource_type, status, created, updated, started, finished, current_task, parameters, result_errors, is_bulk, parent_id, user_id) FROM stdin;
+COPY public.maasserver_operation (id, uuid, op_type, resource_id, resource_type, status, created, updated, started, finished, current_task, parameters, result, is_bulk, parent_id, user_id) FROM stdin;
 \.
 
 
@@ -11705,7 +11705,7 @@ COPY public.maasserver_operation (id, uuid, op_type, resource_id, resource_type,
 -- Data for Name: maasserver_operation_task; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_operation_task (id, started_at, finished_at, name, status, result_errors, task_number, operation_uuid) FROM stdin;
+COPY public.maasserver_operation_task (id, started_at, finished_at, name, status, result, task_number, operation_uuid) FROM stdin;
 \.
 
 
