@@ -179,6 +179,10 @@ SUDO_PRESERVE_ENV_VARS = [
     "HTTP_PROXY",
     "HTTPS_PROXY",
     "NO_PROXY",
+    # from snap/snapcraft.yaml
+    "PYTHONPATH",
+    "LD_PRELOAD",
+    "PEBBLE",
 ]
 
 
