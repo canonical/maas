@@ -35,6 +35,63 @@ class TestOperationsClauseFactory:
             == "maasserver_operation.uuid = 'op-uuid'"
         )
 
+    def test_with_uuids(self) -> None:
+        clause = OperationsClauseFactory.with_uuids(["uuid-1", "uuid-2"])
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.uuid IN ('uuid-1', 'uuid-2')"
+        )
+
+    def test_with_status(self) -> None:
+        clause = OperationsClauseFactory.with_status(OperationStatus.RUNNING)
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.status = 'RUNNING'"
+        )
+
+    def test_with_op_type(self) -> None:
+        clause = OperationsClauseFactory.with_op_type(
+            OperationType.MACHINE_DEPLOY
+        )
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.op_type = 'machine.deploy'"
+        )
+
+    def test_with_is_bulk(self) -> None:
+        clause = OperationsClauseFactory.with_is_bulk(True)
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.is_bulk = true"
+        )
+
+    def test_with_user_id(self) -> None:
+        clause = OperationsClauseFactory.with_user_id(1)
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.user_id = 1"
+        )
+
 
 class TestOperationsRepository(RepositoryCommonTests[Operation]):
     @pytest.fixture
@@ -100,6 +157,16 @@ class TestOperationsRepository(RepositoryCommonTests[Operation]):
                 ),
                 builder=OperationBuilder(status=OperationStatus.RUNNING),
             )
+
+    async def test_get_by_uuid(
+        self, repository_instance, created_instance
+    ) -> None:
+        instance = await repository_instance.get_by_uuid(created_instance.uuid)
+        assert instance == created_instance
+
+    async def test_get_by_uuid_not_found(self, repository_instance) -> None:
+        instance = await repository_instance.get_by_uuid("non-existent-uuid")
+        assert instance is None
 
 
 async def create_test_operation_entry(
