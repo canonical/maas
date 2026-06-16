@@ -70,6 +70,7 @@ from maastemporalworker.workflow.utils import (
 
 from provisioningserver.boot.pxe import PXEBootMethod  # noqa:E402 isort:skip
 from provisioningserver.boot.grub import UEFIAMD64BootMethod
+from provisioningserver.path import get_path
 from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.network import (
     get_source_address,
@@ -1317,6 +1318,20 @@ class DHCPConfigActivity(ActivityBase):
                 ntp_servers=global_ntp_servers,
                 default_dns_servers=default_dns_servers,
             )
+
+    def get_hooks_libraries(self) -> dict[str, Any]:
+        return {
+            "hooks-libraries": [self._get_kea_run_scripts_hook_config()]
+        }
+
+    def _get_kea_run_scripts_hook_config(
+        self,
+    ) -> dict[str, Any]:
+        helper_path = get_path("/usr/sbin/maas-kea-dhcp-helper")
+        return {
+            "library": "libdhcp_run_script.so",
+            "parameters": {"name": helper_path, "sync": False},
+        }
 
     async def get_kea_shared_networks_config_ipv4(
         self, data: DHCPDataForAgent, rack_ip: str

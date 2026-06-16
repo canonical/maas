@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+# -*- mode: python -*-
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Utility script used by MAAS's Kea DHCP servers."""
+
+import sys
+import os
+import time
+import json
+import socket
+from contextlib import closing
+
+DHCP_SOCK = os.getenv("MAAS_DHCP_SOCK", "/var/snap/maas/common/maas/dhcpd.sock")
+
+def leases4_committed():
+    num_leases = os.environ["LEASES4_SIZE"]
+    for ln in range(int(num_leases)):
+        mac = os.environ[f"LEASES4_AT{ln}_HWADDR"]
+        ip = os.environ[f"LEASES4_AT{ln}_ADDRESS"]
+        notify("commit", mac, "ipv4", ip, 
+               hostname=os.getenv(f"LEASES4_AT{ln}_HOSTNAME"),
+               lease_time=os.getenv(f"LEASES4_AT{ln}_VALID_LIFETIME")
+        )
+    return
+
+def lease4_expire():
+    notify(
+        "expire",
+        os.environ["LEASE4_HWADDR"],
+        "ipv4",
+        os.environ["LEASE4_ADDRESS"],
+    )
+
+def lease4_release():
+    notify(
+        "release",
+        os.environ["LEASE4_HWADDR"],
+        "ipv4",
+        os.environ["LEASE4_ADDRESS"],
+    )
+
+def notify(
+    action: str,
+    mac: str,
+    ip_family: str,
+    ip: str,
+    hostname: str | None = None,
+    lease_time: str | None = None,
+    ) -> None:
+    notify_packet = {
+        "action": action,
+        "mac": mac,
+        "ip_family": ip_family,
+        "ip": ip,
+        "timestamp": int(time.time()),
+    }
+    # Lease time is required by the commit action and hostname is optional.
+    if action == "commit":
+        notify_packet["lease_time"] = int(lease_time) if lease_time else None
+        if (
+            hostname is not None
+            and len(hostname) > 0
+            and not hostname.isspace()
+        ):
+            notify_packet["hostname"] = hostname
+
+    payload = json.dumps(notify_packet)
+    conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    conn.connect(DHCP_SOCK)
+    with closing(conn):
+        conn.send(payload.encode("utf-8"))
+
+
+def main(hook):
+    hooks = {
+        "leases4_committed": leases4_committed,
+        "lease4_expire": lease4_expire,
+        "lease4_release": lease4_release,
+    }
+    try:
+        hooks[hook]()
+    except KeyError:
+        # several other hooks may be called, but we don't care about them.
+        return
+
+if __name__ == "__main__":
+    main(sys.argv[1])
