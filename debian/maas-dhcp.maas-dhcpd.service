@@ -24,6 +24,7 @@ ExecStart=/bin/sh -ec '\
 # Require dhcpd stop in 8 seconds, if not kill it with 'mixed' mode.
 TimeoutStopSec=8
 KillMode=mixed
+Environment="MAAS_DHCP_SOCK=/var/lib/maas/dhcpd.sock"
 
 [Install]
 WantedBy=multi-user.target
