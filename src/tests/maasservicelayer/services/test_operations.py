@@ -9,6 +9,12 @@ from maascommon.enums.operations import OperationStatus, OperationType
 from maasservicelayer.builders.operations import OperationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.machine_operations import (
+    MachineOperationsRepository,
+)
+from maasservicelayer.db.repositories.operation_tasks import (
+    OperationTasksRepository,
+)
 from maasservicelayer.db.repositories.operations import (
     OperationsClauseFactory,
     OperationsRepository,
@@ -23,7 +29,7 @@ from maasservicelayer.models.base import (
     MaasBaseModel,
     ResourceBuilder,
 )
-from maasservicelayer.models.operations import Operation
+from maasservicelayer.models.operations import MachineOperationData, Operation
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.utils.date import utcnow
@@ -61,6 +67,8 @@ class TestCommonOperationsService(ServiceCommonTests):
         return OperationsService(
             context=Context(),
             operations_repository=Mock(OperationsRepository),
+            operation_tasks_repository=Mock(OperationTasksRepository),
+            machine_operations_repository=Mock(MachineOperationsRepository),
         )
 
     @pytest.fixture
@@ -208,6 +216,8 @@ class TestOperationsService:
         return OperationsService(
             context=Context(),
             operations_repository=repository,
+            operation_tasks_repository=Mock(OperationTasksRepository),
+            machine_operations_repository=Mock(MachineOperationsRepository),
         )
 
     @pytest.fixture
@@ -221,6 +231,8 @@ class TestOperationsService:
         return OperationsService(
             context=Context(),
             operations_repository=operations_repo_mock,
+            operation_tasks_repository=Mock(OperationTasksRepository),
+            machine_operations_repository=Mock(MachineOperationsRepository),
         )
 
     async def test_update_status_running_sets_started(self) -> None:
@@ -476,3 +488,125 @@ class TestOperationsService:
                 can_edit_all=True,
                 can_view_all=True,
             )
+    async def test_list_tasks_for_operation(self) -> None:
+        operation_tasks_repo = Mock(OperationTasksRepository)
+        operation_tasks_repo.list_by_operation_uuid.return_value = ListResult(
+            items=[], total=0
+        )
+        service = OperationsService(
+            context=Context(),
+            operations_repository=Mock(OperationsRepository),
+            operation_tasks_repository=operation_tasks_repo,
+            machine_operations_repository=Mock(MachineOperationsRepository),
+        )
+
+        await service.list_tasks_for_operation("op-uuid", page=1, size=10)
+
+        operation_tasks_repo.list_by_operation_uuid.assert_awaited_once_with(
+            operation_uuid="op-uuid", page=1, size=10
+        )
+
+    async def test_get_type_specific_data_machine_commission(
+        self,
+    ) -> None:
+        machine_ops_repo = Mock(MachineOperationsRepository)
+        machine_ops_repo.get_node_id.return_value = 5
+        service = OperationsService(
+            context=Context(),
+            operations_repository=Mock(OperationsRepository),
+            operation_tasks_repository=Mock(OperationTasksRepository),
+            machine_operations_repository=machine_ops_repo,
+        )
+        operation = Operation(
+            id=1,
+            uuid="op-uuid",
+            op_type=OperationType.MACHINE_COMMISSION,
+            status=OperationStatus.RUNNING,
+            is_bulk=False,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+
+        result = await service.get_type_specific_data(operation)
+
+        assert result == MachineOperationData(
+            op_type=OperationType.MACHINE_COMMISSION, node_id=5
+        )
+        machine_ops_repo.get_node_id.assert_awaited_once_with("op-uuid")
+
+    async def test_get_type_specific_data_machine_deploy(
+        self,
+    ) -> None:
+        machine_ops_repo = Mock(MachineOperationsRepository)
+        machine_ops_repo.get_node_id.return_value = 10
+        service = OperationsService(
+            context=Context(),
+            operations_repository=Mock(OperationsRepository),
+            operation_tasks_repository=Mock(OperationTasksRepository),
+            machine_operations_repository=machine_ops_repo,
+        )
+        operation = Operation(
+            id=1,
+            uuid="op-uuid",
+            op_type=OperationType.MACHINE_DEPLOY,
+            status=OperationStatus.RUNNING,
+            is_bulk=False,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+
+        result = await service.get_type_specific_data(operation)
+
+        assert result == MachineOperationData(
+            op_type=OperationType.MACHINE_DEPLOY, node_id=10
+        )
+
+    async def test_get_type_specific_data_machine_deploy_no_node(
+        self,
+    ) -> None:
+        machine_ops_repo = Mock(MachineOperationsRepository)
+        machine_ops_repo.get_node_id.return_value = None
+        service = OperationsService(
+            context=Context(),
+            operations_repository=Mock(OperationsRepository),
+            operation_tasks_repository=Mock(OperationTasksRepository),
+            machine_operations_repository=machine_ops_repo,
+        )
+        operation = Operation(
+            id=1,
+            uuid="op-uuid",
+            op_type=OperationType.MACHINE_DEPLOY,
+            status=OperationStatus.RUNNING,
+            is_bulk=False,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+
+        result = await service.get_type_specific_data(operation)
+
+        assert result is None
+
+    async def test_get_type_specific_data_other_type_returns_none(
+        self,
+    ) -> None:
+        machine_ops_repo = Mock(MachineOperationsRepository)
+        service = OperationsService(
+            context=Context(),
+            operations_repository=Mock(OperationsRepository),
+            operation_tasks_repository=Mock(OperationTasksRepository),
+            machine_operations_repository=machine_ops_repo,
+        )
+        operation = Operation(
+            id=1,
+            uuid="op-uuid",
+            op_type=OperationType.SELECTION_SYNC,
+            status=OperationStatus.RUNNING,
+            is_bulk=False,
+            created=utcnow(),
+            updated=utcnow(),
+        )
+
+        result = await service.get_type_specific_data(operation)
+
+        assert result is None
+        machine_ops_repo.get_node_id.assert_not_awaited()

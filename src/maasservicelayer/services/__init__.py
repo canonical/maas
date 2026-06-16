@@ -63,6 +63,9 @@ from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.db.repositories.legacybootsourceselections import (
     LegacyBootSourceSelectionRepository,
 )
+from maasservicelayer.db.repositories.machine_operations import (
+    MachineOperationsRepository,
+)
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.db.repositories.mdns import MDNSRepository
 from maasservicelayer.db.repositories.neighbours import NeighboursRepository
@@ -75,6 +78,9 @@ from maasservicelayer.db.repositories.notifications import (
 )
 from maasservicelayer.db.repositories.openfga_tuples import (
     OpenFGATuplesRepository,
+)
+from maasservicelayer.db.repositories.operation_tasks import (
+    OperationTasksRepository,
 )
 from maasservicelayer.db.repositories.operations import OperationsRepository
 from maasservicelayer.db.repositories.package_repositories import (
@@ -768,5 +774,7 @@ class ServiceCollectionV3:
         services.operations = OperationsService(
             context=context,
             operations_repository=OperationsRepository(context),
+            operation_tasks_repository=OperationTasksRepository(context),
+            machine_operations_repository=MachineOperationsRepository(context),
         )
         return services
