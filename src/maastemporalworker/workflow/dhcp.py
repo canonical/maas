@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from datetime import timedelta
 from ipaddress import IPv4Address, IPv6Address
 from itertools import groupby
-import os
 from typing import Any, Optional
 from urllib.parse import urlparse
 
@@ -1433,7 +1432,7 @@ class ConfigureDHCPForAgentWorkflow:
     async def _configure_kea_dhcp(
         self, param: ConfigureDHCPForAgentParam
     ) -> None:
-        data = await workflow.execute_activity(
+        await workflow.execute_activity(
             GET_KEA_DHCP_DATA_FOR_AGENT_ACTIVITY_NAME,
             GetDHCPDataForAgentParam(
                 system_id=param.system_id,
