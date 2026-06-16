@@ -238,7 +238,7 @@ class TestOperationsService:
         assert populated["status"] == OperationStatus.RUNNING
         assert "started" in populated
         assert "finished" not in populated
-        assert "result_errors" not in populated
+        assert "result" not in populated
 
     async def test_update_status_completed_stores_result(self) -> None:
         repository = Mock(OperationsRepository)
@@ -258,7 +258,7 @@ class TestOperationsService:
         populated = builder.populated_fields()
         assert populated["status"] == OperationStatus.COMPLETED
         assert "finished" in populated
-        assert populated["result_errors"] == {"deployed": True}
+        assert populated["result"] == {"deployed": True}
         assert "started" not in populated
 
     async def test_update_status_failed_stores_error(self) -> None:
@@ -278,7 +278,7 @@ class TestOperationsService:
         assert populated["status"] == OperationStatus.FAILED
         assert "finished" in populated
         assert "started" not in populated
-        assert populated["result_errors"] == {"error": ERROR_MESSAGE}
+        assert populated["result"] == {"error": ERROR_MESSAGE}
 
     async def test_list_for_user_can_view_all(
         self,

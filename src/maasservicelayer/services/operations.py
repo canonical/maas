@@ -48,9 +48,9 @@ class OperationsService(
         ):
             builder.finished = utcnow()
         if result is not None:
-            builder.result_errors = result
+            builder.result = result
         elif error is not None:
-            builder.result_errors = {"error": error}
+            builder.result = {"error": error}
 
         return await self.update_one(
             query=QuerySpec(

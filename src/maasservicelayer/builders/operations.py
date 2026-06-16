@@ -25,7 +25,7 @@ class OperationBuilder(ResourceBuilder):
     parent_id: str | None | Unset = Field(default=UNSET)
     resource_id: int | None | Unset = Field(default=UNSET)
     resource_type: str | None | Unset = Field(default=UNSET)
-    result_errors: dict | None | Unset = Field(default=UNSET)
+    result: dict | None | Unset = Field(default=UNSET)
     started: datetime | None | Unset = Field(default=UNSET)
     status: OperationStatus | Unset = Field(default=UNSET)
     updated: datetime | Unset = Field(default=UNSET)
