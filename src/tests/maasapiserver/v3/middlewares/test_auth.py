@@ -79,7 +79,10 @@ from maasservicelayer.exceptions.catalog import (
     ForbiddenException,
     UnauthorizedException,
 )
-from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
+from maasservicelayer.exceptions.constants import (
+    INVALID_TOKEN_VIOLATION_TYPE,
+    NOT_AUTHENTICATED_VIOLATION_TYPE,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
@@ -1278,6 +1281,6 @@ class TestOIDCAuthenticationProvider:
             await provider.authenticate(request, "accesstoken")
         details = exc_info.value.details
         assert details is not None
-        assert details[0].type == INVALID_TOKEN_VIOLATION_TYPE
+        assert details[0].type == NOT_AUTHENTICATED_VIOLATION_TYPE
         assert details[0].message == "Please sign in again to continue."
         provider._clear_oauth_cookies.assert_called_once_with(request)

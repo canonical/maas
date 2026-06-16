@@ -454,7 +454,7 @@ class ExternalOAuthService(
     async def _update_connected_users_active_status(
         self, provider_id: int, is_active: bool
     ):
-        """Update all the users connected to `provider_id` to be non active."""
+        """Update the is_active status of all the users connected to `provider_id`."""
         await self.users_service.update_many(
             query=QuerySpec(
                 where=UserClauseFactory.with_provider_id(provider_id)
