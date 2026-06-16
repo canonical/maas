@@ -7,10 +7,10 @@ from functools import wraps
 
 import structlog
 from temporalio import workflow
+from temporalio.common import SearchAttributeKey
 from temporalio.exceptions import ApplicationError, is_cancelled_exception
 
 from maascommon.enums.operations import OperationStatus
-from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
@@ -25,6 +25,10 @@ UPDATE_CURRENT_TASK_TIMEOUT = timedelta(seconds=30)
 # Activities names
 UPDATE_OPERATION_STATUS_ACTIVITY_NAME = "update-operation-status"
 UPDATE_CURRENT_TASK_ACTIVITY_NAME = "update-current-task"
+
+OPERATION_UUID_SEARCH_ATTRIBUTE = SearchAttributeKey.for_keyword(
+    "OperationUUID"
+)
 
 
 # Activities parameters
@@ -73,7 +77,7 @@ def _get_operation_uuid() -> str:
     workflow is started. Raises if the attribute is missing.
     """
     info = workflow.info()
-    operation_uuid = info.search_attributes.get(
+    operation_uuid = info.typed_search_attributes.get(
         OPERATION_UUID_SEARCH_ATTRIBUTE
     )
     if not operation_uuid:
@@ -82,8 +86,7 @@ def _get_operation_uuid() -> str:
             f" but the search attribute {OPERATION_UUID_SEARCH_ATTRIBUTE}"
             " has not been set."
         )
-    # Search attributes are always returned as a list.
-    return str(operation_uuid[0])
+    return operation_uuid
 
 
 async def update_current_task(name: str, task_number: int) -> None:

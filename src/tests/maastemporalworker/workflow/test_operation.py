@@ -9,7 +9,6 @@ from temporalio.client import Client
 from temporalio.exceptions import ApplicationError, CancelledError
 
 from maascommon.enums.operations import OperationStatus
-from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maasservicelayer.db import Database
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
@@ -174,11 +173,7 @@ class TestTrackOperationStatus:
     def _set_operation_uuid(self, monkeypatch, operation_uuid):
         info = Mock()
         info.workflow_type = "TestWorkflow"
-        info.search_attributes = (
-            {OPERATION_UUID_SEARCH_ATTRIBUTE: [operation_uuid]}
-            if operation_uuid is not None
-            else {}
-        )
+        info.typed_search_attributes.get.return_value = operation_uuid
         monkeypatch.setattr(operation_module.workflow, "info", lambda: info)
 
     async def test_tracks_running_then_completed(
@@ -266,11 +261,7 @@ class TestUpdateCurrentTask:
     def _set_operation_uuid(self, monkeypatch, operation_uuid):
         info = Mock()
         info.workflow_type = "TestWorkflow"
-        info.search_attributes = (
-            {OPERATION_UUID_SEARCH_ATTRIBUTE: [operation_uuid]}
-            if operation_uuid is not None
-            else {}
-        )
+        info.typed_search_attributes.get.return_value = operation_uuid
         monkeypatch.setattr(operation_module.workflow, "info", lambda: info)
 
     async def test_executes_activity_with_task(
