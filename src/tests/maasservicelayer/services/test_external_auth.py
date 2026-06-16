@@ -1055,6 +1055,58 @@ class TestExternalOAuthService(ServiceCommonTests):
         )
         assert details[0].type == CONFLICT_VIOLATION_TYPE
 
+    async def test_update_connected_users_active_status(
+        self,
+        service_instance: ExternalOAuthService,
+    ) -> None:
+        await service_instance._update_connected_users_active_status(1, True)
+        service_instance.users_service.update_many.assert_awaited_once_with(
+            query=QuerySpec(where=UserClauseFactory.with_provider_id(1)),
+            builder=UserBuilder(is_active=True),
+        )
+
+    @pytest.mark.parametrize(
+        "enabled_pre,enabled_post,must_update,is_active",
+        [
+            pytest.param(
+                True, False, True, False, id="disabling an enabled provider"
+            ),
+            pytest.param(
+                False, True, True, True, id="enabling a disabled provider"
+            ),
+            pytest.param(
+                True, True, False, None, id="no changes in enabled provider"
+            ),
+            pytest.param(
+                False, False, False, None, id="no changes in disabled provider"
+            ),
+        ],
+    )
+    async def test_post_update_hook_update_users(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+        enabled_pre: bool,
+        enabled_post: bool,
+        must_update: bool,
+        is_active: bool | None,
+    ) -> None:
+        old_resource = test_instance.model_copy()
+        old_resource.enabled = enabled_pre
+        updated_resource = test_instance.model_copy()
+        updated_resource.enabled = enabled_post
+
+        service_instance._update_connected_users_active_status = AsyncMock()
+
+        await service_instance.post_update_hook(old_resource, updated_resource)
+
+        if must_update:
+            service_instance._update_connected_users_active_status.assert_awaited_once_with(
+                test_instance.id, is_active
+            )
+        else:
+            service_instance._update_connected_users_active_status.assert_not_awaited()
+
     async def test_delete_by_id(
         self,
         service_instance: ExternalOAuthService,

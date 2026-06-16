@@ -30,7 +30,40 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 class TestUserClauseFactory:
-    def test_builder(self) -> None:
+    def test_with_id(self) -> None:
+        clause = UserClauseFactory.with_id(42)
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "auth_user.id = 42"
+        )
+
+    def test_with_ids(self) -> None:
+        clause = UserClauseFactory.with_ids([1, 2])
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "auth_user.id IN (1, 2)"
+        )
+
+    def test_with_username(self) -> None:
+        clause = UserClauseFactory.with_username("testuser")
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "auth_user.username = 'testuser'"
+        )
+
+    def test_with_username_or_email_like(self) -> None:
         clause = UserClauseFactory.with_username_or_email_like(
             username_or_email_like="foo"
         )
@@ -40,15 +73,21 @@ class TestUserClauseFactory:
             "lower(auth_user.username) LIKE lower('%foo%') OR lower(auth_user.email) LIKE lower('%foo%')"
         )
 
-    def test_with_ids(self):
-        clause = UserClauseFactory.with_ids([1, 2])
+    def test_with_provider_id(self) -> None:
+        clause = UserClauseFactory.with_provider_id(1)
         assert (
             str(
                 clause.condition.compile(
                     compile_kwargs={"literal_binds": True}
                 )
             )
-            == "auth_user.id IN (1, 2)"
+            == "maasserver_userprofile.provider_id = 1"
+        )
+        assert len(clause.joins) == 1
+        join_onclause = clause.joins[0].onclause
+        assert (
+            str(join_onclause.compile(compile_kwargs={"literal_binds": True}))
+            == "auth_user.id = maasserver_userprofile.user_id"
         )
 
 
