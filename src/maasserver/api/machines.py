@@ -821,7 +821,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         if not request.user.has_perm(NodePermission.edit, machine):
             raise PermissionDenied()
         # Disable the deploy as rackd feature. TODO: remove all the code related to
-        # the `install_rackd` feature before 4.0 is released. 
+        # the `install_rackd` feature before 4.0 is released.
         if options.install_rackd:
             raise MAASAPIBadRequest(
                 "Deploying a machine as a rackd has been disabled and it's not supported anymore."
