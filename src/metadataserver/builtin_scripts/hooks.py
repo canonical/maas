@@ -20,6 +20,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from temporalio.common import WorkflowIDReusePolicy
 
+from maascommon.fields import normalise_macaddress
 from maascommon.workflows.configure import CONFIGURE_AGENT_WORKFLOW_NAME
 from maasserver.enum import (
     NODE_DEVICE_BUS,
@@ -115,6 +116,8 @@ def parse_interfaces(node, data):
         # See LP:1939456
         if is_ipoib_mac(mac):
             return
+        if mac:
+            mac = normalise_macaddress(mac)
         interface = {
             "name": port.get("id"),
             "link_connected": port.get("link_detected"),
@@ -586,10 +589,11 @@ def update_node_devices(
             for port in card.get("ports", []):
                 if "address" not in port:
                     continue
+                mac = normalise_macaddress(port["address"])
                 if "pci_address" in card:
-                    mac_to_dev_ids[port["address"]] = card["pci_address"]
+                    mac_to_dev_ids[mac] = card["pci_address"]
                 elif "usb_address" in card:
-                    mac_to_dev_ids[port["address"]] = card["usb_address"]
+                    mac_to_dev_ids[mac] = card["usb_address"]
         for iface in node.current_config.interface_set.filter(
             mac_address__in=mac_to_dev_ids.keys()
         ):

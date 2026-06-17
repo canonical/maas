@@ -1513,16 +1513,16 @@ class WithMACAddressesMixin:
         for mac in data:
             if self.instance.id is not None:
                 query = (
-                    Interface.objects.filter(mac_address=mac.lower())
+                    Interface.objects.filter(mac_address=mac)
                     .exclude(node_config__node=self.instance)
                     .exclude(type=INTERFACE_TYPE.UNKNOWN)
                 )
             else:
                 # This node does not exist yet, we should only check if this
                 # MAC address is already attached to another node.
-                query = Interface.objects.filter(
-                    mac_address=mac.lower()
-                ).exclude(type=INTERFACE_TYPE.UNKNOWN)
+                query = Interface.objects.filter(mac_address=mac).exclude(
+                    type=INTERFACE_TYPE.UNKNOWN
+                )
             for iface in query:
                 node = iface.node_config.node
                 errors.append(self._mac_in_use_on_node_error(mac, node))

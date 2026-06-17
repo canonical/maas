@@ -54,7 +54,7 @@ from maasserver.exceptions import (
     StaticIPAddressReservedIPConflict,
     StaticIPAddressUnavailable,
 )
-from maasserver.fields import MAC_VALIDATOR
+from maasserver.fields import MAC_VALIDATOR, MACAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.reservedip import ReservedIP
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -587,7 +587,9 @@ class Interface(CleanSave, TimestampedModel):
         "StaticIPAddress", editable=True, blank=True
     )
 
-    mac_address = TextField(null=True, blank=True, validators=[MAC_VALIDATOR])
+    mac_address = MACAddressField(
+        null=True, blank=True, validators=[MAC_VALIDATOR]
+    )
 
     params = JSONField(blank=True, default=dict)
 

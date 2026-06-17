@@ -91,11 +91,16 @@ class MacAddress(str):
         # their own validation via __get_pydantic_core_schema__.
         return core_schema.no_info_after_validator_function(
             cls.validate,
-            core_schema.str_schema(pattern=MAC_FIELD_RE.pattern),
+            core_schema.str_schema(pattern=rf"^$|{MAC_FIELD_RE.pattern}"),
         )
 
     @classmethod
     def validate(cls, value: str) -> str:
+        # An empty string is a legitimate "no MAC" marker for unknown
+        # interfaces and is stored verbatim in the database, so it must
+        # pass through unchanged rather than being rejected.
+        if value == "":
+            return value
         match = re.fullmatch(MAC_FIELD_RE, value)
         if match is None:
             raise ValueError("Value is not a valid MAC address.")

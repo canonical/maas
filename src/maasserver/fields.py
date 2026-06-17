@@ -16,6 +16,7 @@ from django.db.models import (
     GenericIPAddressField,
     IntegerField,
     Q,
+    TextField,
     URLField,
 )
 from django.utils.deconstruct import deconstructible
@@ -55,6 +56,36 @@ class MACAddressFormField(forms.CharField):
     def clean(self, value):
         value = super().clean(value)
         return normalise_macaddress(value)
+
+
+class MACAddressField(TextField):
+    """Model field that stores MAC addresses in a single canonical form.
+
+    Normalizes both values written to the database and values used in exact
+    lookups, so the same MAC supplied in a different case or separator style
+    (``AA-BB-CC-DD-EE-FF`` vs ``aa:bb:cc:dd:ee:ff``) always resolves to the
+    same stored value. This prevents inconsistently formatted MACs from
+    bypassing the uniqueness checks.
+    """
+
+    def _normalize(self, value):
+        # Only normalize complete MACs. Partial fragments (e.g. the value
+        # behind a ``__contains``/``__startswith`` lookup) are passed through
+        # untouched so pattern queries keep working.
+        if value and MAC_FIELD_RE.match(value):
+            return normalise_macaddress(value)
+        return value
+
+    def pre_save(self, model_instance, add):
+        # Normalize on save and write the canonical value back onto the
+        # instance, so the in-memory attribute matches what is persisted
+        # without requiring a reload.
+        value = self._normalize(getattr(model_instance, self.attname))
+        setattr(model_instance, self.attname, value)
+        return value
+
+    def get_prep_value(self, value):
+        return self._normalize(super().get_prep_value(value))
 
 
 class XMLField(Field):

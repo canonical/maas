@@ -14,7 +14,6 @@ from maascommon.utils.url import splithost
 from maasserver.compose_preseed import RSYSLOG_PORT
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, INTERFACE_TYPE
-from maasserver.fields import normalise_macaddress
 from maasserver.models import (
     BootResource,
     Config,
@@ -68,9 +67,6 @@ def get_node_from_mac_or_hardware_uuid(mac=None, hardware_uuid=None):
     hardware UUID exists.
     """
     if mac:
-        if "-" in mac:
-            mac = normalise_macaddress(mac)
-
         q = Q(
             current_config__interface__type=INTERFACE_TYPE.PHYSICAL,
             current_config__interface__mac_address=mac,
@@ -570,7 +566,7 @@ def get_config(
                 machine.boot_interface = (
                     machine.current_config.interface_set.get(
                         type=INTERFACE_TYPE.PHYSICAL,
-                        mac_address=normalise_macaddress(mac),
+                        mac_address=mac,
                     )
                 )
             except ObjectDoesNotExist:
