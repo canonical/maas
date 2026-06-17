@@ -48,6 +48,11 @@ class TestNodeClauseFactory:
             clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_node.node_type = 2")
 
+        clause = NodeClauseFactory.with_node_config_id_in([0, 1])
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_node.current_config_id IN (0, 1)")
+
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
@@ -184,3 +189,19 @@ class TestNodesRepository:
 
         with pytest.raises(NotFoundException):
             await nodes_repository.update_by_id(id=-1, builder=builder)
+
+    async def test_get_url(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        machine = await create_test_machine_entry(
+            fixture, url="http://10.0.0.1:5240/MAAS"
+        )
+        nodes_repository = NodesRepository(Context(connection=db_connection))
+        url = await nodes_repository.get_url(machine["system_id"])
+        assert url == "http://10.0.0.1:5240/MAAS"
+
+    async def test_get_url_not_found(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        nodes_repository = NodesRepository(Context(connection=db_connection))
+        assert await nodes_repository.get_url("unknown") is None

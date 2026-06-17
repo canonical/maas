@@ -162,6 +162,11 @@ class StaticIPAddressService(
     async def get_for_nodes(self, query: QuerySpec) -> list[StaticIPAddress]:
         return await self.repository.get_for_nodes(query=query)
 
+    async def get_for_nodes_join_vlan(
+        self, query: QuerySpec
+    ) -> list[StaticIPAddress]:
+        return await self.repository.get_for_nodes_join_vlan(query=query)
+
     async def get_mac_addresses(self, query: QuerySpec) -> list[MacAddress]:
         return await self.repository.get_mac_addresses(query=query)
 

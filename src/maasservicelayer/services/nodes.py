@@ -121,6 +121,12 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
 
         return node
 
+    async def get_url(
+        self,
+        system_id: str,
+    ) -> str | None:
+        return await self.repository.get_url(system_id)
+
     async def post_update_hook(
         self, old_resource: Node, updated_resource: Node
     ) -> None:

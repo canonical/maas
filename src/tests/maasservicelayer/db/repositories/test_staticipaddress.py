@@ -83,6 +83,26 @@ class TestStaticIPAddressClauseFactory:
             "maasserver_interface_ip_addresses JOIN maasserver_interface ON maasserver_interface_ip_addresses.interface_id = maasserver_interface.id"
         )
 
+    def test_with_subnet_id_not_null(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_subnet_id_not_null()
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_staticipaddress.subnet_id IS NOT NULL")
+
+    def test_with_alloc_type_in(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_alloc_type_in(
+            [IpAddressType.STICKY, IpAddressType.USER_RESERVED]
+        )
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_staticipaddress.alloc_type IN (1, 4)")
+
+    def test_with_interface_enabled(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_interface_enabled(True)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_interface.enabled = true")
+
 
 @pytest.mark.asyncio
 class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
@@ -294,6 +314,59 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         )
 
         result = await repository_instance.get_for_nodes(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory().with_node_type(
+                    NodeTypeEnum.REGION_CONTROLLER
+                )
+            )
+        )
+        assert len(result) == 2
+        assert any(ip1["ip"] == ip.ip for ip in result)
+        assert any(ip2["ip"] == ip.ip for ip in result)
+
+    async def test_get_for_nodes_join_vlan_not_found(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture)
+        region_controller = await create_test_region_controller_entry(fixture)
+        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        await create_test_interface_entry(
+            fixture, node=region_controller, ips=[ip]
+        )
+
+        result = await repository_instance.get_for_nodes_join_vlan(
+            query=QuerySpec(
+                where=StaticIPAddressClauseFactory().with_node_type(
+                    NodeTypeEnum.RACK_CONTROLLER
+                )
+            )
+        )
+        assert len(result) == 0
+
+    async def test_get_for_nodes_join_vlan_found(
+        self, repository_instance: StaticIPAddressRepository, fixture: Fixture
+    ):
+        subnet1 = await create_test_subnet_entry(fixture)
+        subnet2 = await create_test_subnet_entry(fixture)
+        region_controller = await create_test_region_controller_entry(fixture)
+        current_node_config = await create_test_node_config_entry(
+            fixture, node=region_controller
+        )
+        region_controller["current_config_id"] = current_node_config["id"]
+        [ip1] = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet1
+        )
+        [ip2] = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet2
+        )
+        await create_test_interface_entry(
+            fixture, node=region_controller, ips=[ip1]
+        )
+        await create_test_interface_entry(
+            fixture, node=region_controller, ips=[ip2]
+        )
+
+        result = await repository_instance.get_for_nodes_join_vlan(
             query=QuerySpec(
                 where=StaticIPAddressClauseFactory().with_node_type(
                     NodeTypeEnum.REGION_CONTROLLER
