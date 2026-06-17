@@ -765,8 +765,8 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @param (string) "comment" [required=false] Optional comment for the
         event log.
 
-        @param (boolean) "install_rackd" [required=false] If true, the rack
-        controller will be installed on this machine.
+        @param (boolean) "install_rackd" [required=false] Deprecated. If true, the rack
+        controller will be installed on this machine. This feature has been removed and can't be used anymore.
 
         @param (boolean) "install_kvm" [required=false] If true, KVM will be
         installed on this machine and added to MAAS.
@@ -820,10 +820,12 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         # Deploying a node requires re-checking for EDIT permissions.
         if not request.user.has_perm(NodePermission.edit, machine):
             raise PermissionDenied()
-        if options.install_rackd and not request.user.has_perm(
-            NodePermission.admin, machine
-        ):
-            raise PermissionDenied("Only administrators can deploy MAAS racks")
+        # Disable the deploy as rackd feature. TODO: remove all the code related to
+        # the `install_rackd` feature before 4.0 is released.
+        if options.install_rackd:
+            raise MAASAPIBadRequest(
+                "Deploying a machine as a rackd has been disabled and it's not supported anymore."
+            )
         if (
             options.install_kvm or options.register_vmhost
         ) and not request.user.has_perm(NodePermission.admin, machine):
