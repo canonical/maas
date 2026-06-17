@@ -45,6 +45,7 @@ from snippets.maas_run_remote_scripts import (
     run_scripts,
     run_scripts_from_metadata,
     run_serial_scripts,
+    SUDO_PRESERVE_ENV_VARS,
     udev_decode,
 )
 
@@ -398,21 +399,9 @@ class TestInstallDependencies(MAASTestCase):
         )
 
         mock_popen.assert_called_once_with(
-            [
-                "sudo",
-                "-n",
-                "--preserve-env=DEBIAN_FRONTEND",
-                "--preserve-env=http_proxy",
-                "--preserve-env=https_proxy",
-                "--preserve-env=no_proxy",
-                "--preserve-env=HTTP_PROXY",
-                "--preserve-env=HTTPS_PROXY",
-                "--preserve-env=NO_PROXY",
-                "--preserve-env=PYTHONPATH",
-                "--preserve-env=LD_PRELOAD",
-                "--preserve-env=PEBBLE",
-                cmd,
-            ],
+            ["sudo", "-n"]
+            + [f"--preserve-env={var}" for var in SUDO_PRESERVE_ENV_VARS]
+            + [cmd],
             stdin=DEVNULL,
             stdout=PIPE,
             stderr=PIPE,
@@ -2319,8 +2308,8 @@ class TestRunScript(MAASTestCase):
         self.mock_capture_script_output = self.patch(
             maas_run_remote_scripts, "capture_script_output"
         )
-        self.mock_capture_script_output.side_effect = (
-            lambda proc, *args: proc.wait()
+        self.mock_capture_script_output.side_effect = lambda proc, *args: (
+            proc.wait()
         )
         self.mock_check_link_connected = self.patch(
             maas_run_remote_scripts, "_check_link_connected"

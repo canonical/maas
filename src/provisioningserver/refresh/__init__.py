@@ -122,8 +122,6 @@ def runscripts(
             "TMPDIR": tmpdir,
         }
 
-        env = os.environ | env_vars
-        timeout = 60
         # sudo-rs doesn't implement the -E flag, so we pass the --preserve-env
         # flag for each environment variable that we might need.
         vars_to_keep = list(env_vars.keys()) + [
@@ -137,6 +135,8 @@ def runscripts(
         )
         command = [script_path] if in_snap else deb_cmd
         try:
+            env = os.environ | env_vars
+            timeout = 60
             proc = Popen(
                 command, stdin=DEVNULL, stdout=PIPE, stderr=PIPE, env=env
             )
