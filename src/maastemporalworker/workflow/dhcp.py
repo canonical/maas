@@ -840,27 +840,38 @@ class DHCPConfigActivity(ActivityBase):
             dhcp_vlan = vlan
         else:
             dhcp_vlan = await svc.vlans.get_by_id(vlan.relay_vlan_id)
-            assert dhcp_vlan is not None
+            if dhcp_vlan is None:
+                return []
         if not dhcp_vlan.dhcp_on or dhcp_vlan.primary_rack_id is None:
             dhcp_vlan = None
             return []
         primary_rack = await svc.nodes.get_by_id(dhcp_vlan.primary_rack_id)
-        assert primary_rack is not None
-        assert primary_rack.current_config_id is not None
-        node_cfgs = [primary_rack.current_config_id]
+        assert primary_rack is not None, (
+            f"VLAN {dhcp_vlan.id} has primary_rack_id={dhcp_vlan.primary_rack_id}, but the rack does not exist."
+        )
+        node_cfgs = (
+            [primary_rack.current_config_id]
+            if primary_rack.current_config_id is not None
+            else []
+        )
         if dhcp_vlan.secondary_rack_id:
             secondary_rack = await svc.nodes.get_by_id(
                 dhcp_vlan.secondary_rack_id
             )
-            assert secondary_rack is not None
-            assert secondary_rack.current_config_id is not None
-            node_cfgs.append(secondary_rack.current_config_id)
+            assert secondary_rack is not None, (
+                f"VLAN {dhcp_vlan.id} has secondary_rack_id={dhcp_vlan.secondary_rack_id}, but the rack does not exist."
+            )
+            if secondary_rack.current_config_id is not None:
+                node_cfgs.append(secondary_rack.current_config_id)
+        if not node_cfgs:
+            return []
         dhcp_vlan_subnet = await svc.subnets.get_one(
             query=QuerySpec(
                 where=SubnetClauseFactory.with_vlan_id(dhcp_vlan.id)
             )
         )
-        assert dhcp_vlan_subnet is not None
+        if dhcp_vlan_subnet is None:
+            return []
         ips = await svc.staticipaddress.get_for_nodes(
             query=QuerySpec(
                 where=StaticIPAddressClauseFactory.and_clauses(
