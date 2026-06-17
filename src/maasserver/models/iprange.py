@@ -306,6 +306,9 @@ class IPRange(CleanSave, TimestampedModel):
         if not loaded_values:
             return False
 
+        if loaded_values.get("type") != IPRANGE_TYPE.DYNAMIC:
+            return False
+
         if loaded_values.get("subnet_id") != self.subnet_id:
             return False
 
@@ -349,6 +352,7 @@ class IPRange(CleanSave, TimestampedModel):
 
     def _cache_loaded_values(self):
         self._loaded_values = {
+            "type": self.type,
             "subnet_id": self.subnet_id,
             "start_ip": self.start_ip,
             "end_ip": self.end_ip,
