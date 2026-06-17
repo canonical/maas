@@ -1320,9 +1320,7 @@ class DHCPConfigActivity(ActivityBase):
             )
 
     def get_hooks_libraries(self) -> dict[str, Any]:
-        return {
-            "hooks-libraries": [self._get_kea_run_scripts_hook_config()]
-        }
+        return {"hooks-libraries": [self._get_kea_run_scripts_hook_config()]}
 
     def _get_kea_run_scripts_hook_config(
         self,
