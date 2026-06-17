@@ -282,7 +282,7 @@ class TestOperationsService:
         assert populated["status"] == OperationStatus.COMPLETED
         assert "finished" in populated
         assert populated["result"] == {"deployed": True}
-        assert populated["current_task"] == ""
+        assert populated["current_task"] is None
         assert "started" not in populated
 
     async def test_update_status_failed_stores_error(self) -> None:

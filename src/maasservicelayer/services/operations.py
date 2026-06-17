@@ -58,7 +58,7 @@ class OperationsService(
         # On success the operation is no longer running any task; on failure we
         # leave current_task untouched so the user can see where it stopped.
         if status == OperationStatus.COMPLETED:
-            builder.current_task = ""
+            builder.current_task = None
         if result is not None:
             builder.result = result
         elif error is not None:
