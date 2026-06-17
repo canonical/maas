@@ -2313,23 +2313,23 @@ class TestMain(MAASTestCase):
         mock_run.assert_has_calls(
             [
                 call(
-                    ["sudo", "-E", "modprobe", "ipmi_msghandler"],
+                    ["sudo", "modprobe", "ipmi_msghandler"],
                     timeout=bmc_config.COMMAND_TIMEOUT,
                 ),
                 call(
-                    ["sudo", "-E", "modprobe", "ipmi_devintf"],
+                    ["sudo", "modprobe", "ipmi_devintf"],
                     timeout=bmc_config.COMMAND_TIMEOUT,
                 ),
                 call(
-                    ["sudo", "-E", "modprobe", "ipmi_si"],
+                    ["sudo", "modprobe", "ipmi_si"],
                     timeout=bmc_config.COMMAND_TIMEOUT,
                 ),
                 call(
-                    ["sudo", "-E", "modprobe", "ipmi_ssif"],
+                    ["sudo", "modprobe", "ipmi_ssif"],
                     timeout=bmc_config.COMMAND_TIMEOUT,
                 ),
                 call(
-                    ["sudo", "-E", "udevadm", "settle"],
+                    ["sudo", "udevadm", "settle"],
                     timeout=bmc_config.COMMAND_TIMEOUT,
                 ),
             ]
