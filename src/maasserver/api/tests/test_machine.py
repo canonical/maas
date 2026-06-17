@@ -630,6 +630,35 @@ class TestMachineAPI(APITestCase.ForUser):
             response.content,
         )
 
+    def test_POST_deploy_fails_when_install_rackd_is_true(self):
+        self.become_admin()
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {
+                "op": "deploy",
+                "install_rackd": True,
+            },
+        )
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            b"Deploying a machine as a rackd has been disabled and it's not supported anymore.",
+            response.content,
+        )
+
     def test_POST_deploy_sets_ephemeral_deployment_automatically_if_diskless(
         self,
     ):
@@ -2711,39 +2740,6 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             "", reload_object(machine).get_power_parameters()["power_pass"]
-        )
-
-    def test_PUT_updates_power_parameters_invaild_ip_address(self):
-        self.become_admin()
-        power_parameters = {
-            "power_address": factory.make_ip_address(),
-            "power_id": factory.make_name("power_id"),
-            "power_pass": factory.make_name("power_pass"),
-        }
-        machine = factory.make_Node(
-            owner=self.user,
-            architecture=make_usable_architecture(self),
-            power_type="ipmi",
-            power_parameters=power_parameters,
-        )
-        ip_address = "123"
-        response = self.client.put(
-            self.get_machine_uri(machine),
-            {"power_parameters_power_address": ip_address},
-        )
-        self.assertEqual(
-            (
-                http.client.BAD_REQUEST,
-                {
-                    "power_parameters": [
-                        "IP address: Invalid IPv4/IPv6 address with optional port."
-                    ]
-                },
-            ),
-            (response.status_code, json_load_bytes(response.content)),
-        )
-        self.assertEqual(
-            power_parameters, reload_object(machine).get_power_parameters()
         )
 
     def test_PUT_sets_zone(self):

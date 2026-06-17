@@ -3239,14 +3239,21 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.assertIsNone(reload_object(hugepages))
 
-    def test_releases_clears_current_installation_script_set(self):
+    def test_release_preserves_current_installation_script_set(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User()
         )
+        script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.INSTALLATION
+        )
+        node.current_installation_script_set = script_set
+        node.save()
         self.patch(node, "_stop")
         with post_commit_hooks:
             node.release()
-        self.assertIsNone(node.current_installation_script_set)
+        self.assertEqual(
+            script_set, reload_object(node).current_installation_script_set
+        )
 
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in New state, accept_enlistment()
@@ -9401,7 +9408,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
         owner = factory.make_User()
         node = self.make_acquired_node_with_interface(
             owner,
-            power_type="manual",
         )
         factory.make_usable_boot_resource(
             name="ubuntu/noble", architecture=node.architecture
@@ -9411,6 +9417,26 @@ class TestNode_Start(MAASTransactionServerTestCase):
         )
         node.start(owner)
         get_task_queue.assert_called_once_with(node)
+
+    def test_start_manual_power_skips_task_queue_lookup(self):
+        owner = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            owner,
+            power_type="manual",
+        )
+        factory.make_usable_boot_resource(
+            name="ubuntu/noble", architecture=node.architecture
+        )
+        get_task_queue = self.patch(
+            node_module, "get_temporal_task_queue_for_bmc"
+        )
+        temporal_deploy = self.patch(node_module.Node, "_temporal_deploy")
+        node.start(owner)
+        get_task_queue.assert_not_called()
+        temporal_deploy.assert_called_once()
+        args, kwargs = temporal_deploy.call_args
+        assert args[2].power_type == "manual"
+        assert args[3] == ""
 
     def test_treats_ipv4_mapped_address_as_ipv4(self):
         admin = factory.make_admin()
