@@ -298,7 +298,16 @@ class IPRange(CleanSave, TimestampedModel):
     def _is_existing_dynamic_range_resize_allowed(
         self, start_ip: IPAddress, end_ip: IPAddress, unused
     ) -> bool:
-        """Allow resizing a dynamic range despite existing in-range allocations."""
+        """Allow resizing an existing dynamic range without re-querying the DB.
+
+        Uses cached original state (loaded_values) to compare the current
+        range against the persisted range, identifying only the newly added
+        segments (left/right expansion). Returns True if the range is merely
+        shrinking (no added segments) or if all newly added segments fit
+        within available unused ranges. Returns False if the original range
+        was not dynamic, the range moved to a different subnet, or any added
+        segment would overlap allocated IPs or other ranges.
+        """
         if self.id is None or self.type != IPRANGE_TYPE.DYNAMIC:
             return False
 
