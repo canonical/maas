@@ -45,6 +45,7 @@ from snippets.maas_run_remote_scripts import (
     run_scripts,
     run_scripts_from_metadata,
     run_serial_scripts,
+    SUDO_PRESERVE_ENV_VARS,
     udev_decode,
 )
 
@@ -398,7 +399,12 @@ class TestInstallDependencies(MAASTestCase):
         )
 
         mock_popen.assert_called_once_with(
-            ["sudo", "-En", cmd], stdin=DEVNULL, stdout=PIPE, stderr=PIPE
+            ["sudo", "-n"]
+            + [f"--preserve-env={var}" for var in SUDO_PRESERVE_ENV_VARS]
+            + [cmd],
+            stdin=DEVNULL,
+            stdout=PIPE,
+            stderr=PIPE,
         )
 
     def test_run_and_check_calls_hook_on_failure(self):
@@ -2302,8 +2308,8 @@ class TestRunScript(MAASTestCase):
         self.mock_capture_script_output = self.patch(
             maas_run_remote_scripts, "capture_script_output"
         )
-        self.mock_capture_script_output.side_effect = (
-            lambda proc, *args: proc.wait()
+        self.mock_capture_script_output.side_effect = lambda proc, *args: (
+            proc.wait()
         )
         self.mock_check_link_connected = self.patch(
             maas_run_remote_scripts, "_check_link_connected"

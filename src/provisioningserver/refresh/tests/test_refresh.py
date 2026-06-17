@@ -466,7 +466,19 @@ class TestRefresh(MAASTestCase):
             )
         script_path = Path(self.tmpdir) / script_name
         mock_popen.assert_called_once_with(
-            ["sudo", "-E", str(script_path)],
+            [
+                "sudo",
+                "--preserve-env=MAAS_BASE_URL",
+                "--preserve-env=MAAS_RESOURCES_FILE",
+                "--preserve-env=OUTPUT_COMBINED_PATH",
+                "--preserve-env=OUTPUT_STDOUT_PATH",
+                "--preserve-env=OUTPUT_STDERR_PATH",
+                "--preserve-env=RESULT_PATH",
+                "--preserve-env=TMPDIR",
+                "--preserve-env=MAAS_MACHINE_EXTRA_FILE",
+                "--preserve-env=MAAS_STORAGE_CONFIG_FILE",
+                str(script_path),
+            ],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
