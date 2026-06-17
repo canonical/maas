@@ -83,7 +83,7 @@ def _get_operation_uuid() -> str:
     if not operation_uuid:
         raise ApplicationError(
             f"Operation tracking is enabled for workflow {info.workflow_type}"
-            f" but the search attribute {OPERATION_UUID_SEARCH_ATTRIBUTE}"
+            f" but the search attribute {OPERATION_UUID_SEARCH_ATTRIBUTE.name}"
             " has not been set."
         )
     return operation_uuid
