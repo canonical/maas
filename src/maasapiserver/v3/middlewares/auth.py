@@ -64,6 +64,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     INVALID_TOKEN_VIOLATION_TYPE,
     MISSING_PERMISSIONS_VIOLATION_TYPE,
+    NOT_AUTHENTICATED_VIOLATION_TYPE,
     USER_EXTERNAL_VALIDATION_FAILED,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
@@ -477,6 +478,17 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
                 id_token=id_token
             )
         )
+
+        if not user.is_active:
+            self._clear_oauth_cookies(request)
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=NOT_AUTHENTICATED_VIOLATION_TYPE,
+                        message="Please sign in again to continue.",
+                    )
+                ]
+            )
 
         return AuthenticatedUser(
             id=user.id,

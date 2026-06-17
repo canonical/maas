@@ -10,6 +10,7 @@ from sqlalchemy import (
     distinct,
     func,
     insert,
+    join,
     not_,
     select,
     Table,
@@ -75,6 +76,19 @@ class UserClauseFactory(ClauseFactory):
                     )
                 ),
             ]
+        )
+
+    @classmethod
+    def with_provider_id(cls, provider_id: int) -> Clause:
+        return Clause(
+            condition=eq(UserProfileTable.c.provider_id, provider_id),
+            joins=[
+                join(
+                    UserTable,
+                    UserProfileTable,
+                    eq(UserTable.c.id, UserProfileTable.c.user_id),
+                )
+            ],
         )
 
 

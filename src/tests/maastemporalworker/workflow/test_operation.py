@@ -9,6 +9,7 @@ from temporalio.client import Client
 from temporalio.exceptions import ApplicationError
 
 from maascommon.enums.operations import OperationStatus
+from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maasservicelayer.db import Database
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
@@ -17,7 +18,6 @@ from maasservicelayer.services.temporal import TemporalService
 import maastemporalworker.workflow.activity as activity_module
 import maastemporalworker.workflow.operation as operation_module
 from maastemporalworker.workflow.operation import (
-    OPERATION_UUID_SEARCH_ATTRIBUTE,
     OperationActivity,
     track_operation_status,
     UpdateOperationStatusParam,

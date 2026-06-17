@@ -21,7 +21,7 @@ class Operation(MaasTimestampedBaseModel):
     finished: datetime | None = None
     current_task: str | None = None
     parameters: dict | None = None
-    result_errors: dict | None = None
+    result: dict | None = None
     is_bulk: bool
     parent_id: str | None = None
     user_id: int | None = None
