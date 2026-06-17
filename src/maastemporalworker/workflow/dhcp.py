@@ -689,20 +689,77 @@ class DHCPConfigActivity(ActivityBase):
 
         return hosts
 
+    async def _get_alt_region_ips_for_dns(
+        self, svc: ServiceCollectionV3, dns_servers: list[IPvAnyAddress]
+    ) -> list[IPvAnyAddress]:
+        alternate_ips: list[IPvAnyAddress] = []
+        regions = set()
+        for ip in dns_servers:
+            best_subnet = await svc.subnets.find_best_subnet_for_ip(ip)
+            if best_subnet and not best_subnet.allow_dns:
+                continue
+            region_ips = await svc.staticipaddress.get_many(
+                query=QuerySpec(
+                    where=StaticIPAddressClauseFactory.and_clauses(
+                        [
+                            StaticIPAddressClauseFactory.with_ip_not_null(),
+                            StaticIPAddressClauseFactory.or_clauses(
+                                [
+                                    StaticIPAddressClauseFactory.with_node_type(
+                                        NodeTypeEnum.REGION_AND_RACK_CONTROLLER
+                                    ),
+                                    StaticIPAddressClauseFactory.with_node_type(
+                                        NodeTypeEnum.REGION_CONTROLLER
+                                    ),
+                                ]
+                            ),
+                        ]
+                    ),
+                    order_by=[OrderByClause(column=StaticIPAddressTable.c.ip)],
+                )
+            )
+            for region_ip in region_ips:
+                if not region_ip.ip:
+                    continue
+                interfaces = await svc.interfaces.get_for_ip(region_ip) or []
+                region_nodes = await svc.nodes.get_many(
+                    query=QuerySpec(
+                        where=NodeClauseFactory.with_node_config_id_in(
+                            [
+                                i.node_config_id
+                                for i in interfaces
+                                if i.node_config_id
+                            ]
+                        )
+                    )
+                )
+                for region_node in region_nodes:
+                    id_plus_family = (
+                        region_node.system_id,
+                        region_ip.ip.version,
+                    )
+                    if id_plus_family not in regions:
+                        regions.add(id_plus_family)
+                        alternate_ips.append(region_ip.ip)
+        return alternate_ips
+
     async def _get_default_dns_servers_for_subnet(
         self,
         subnet: Subnet,
         maas_server_host: str | None,
         svc: ServiceCollectionV3,
     ) -> list[str]:
+        """Return the DNS servers for the given subnet, prioritizing IPs that
+        belong to the rack. Region IPs are given the least priority.
+        """
         if not subnet.allow_dns:
             return []
 
         def get_IPvAnyAddress_from_IPAddress(ip: IPAddress) -> IPvAnyAddress:
             return (
-                IPv4Address(str(ip))
+                IPv4Address(ip.value)
                 if ip.version == 4
-                else IPv6Address(str(ip))
+                else IPv6Address(ip.value)
             )
 
         use_rack_proxy = await svc.configurations.get("use_rack_proxy")
@@ -730,56 +787,9 @@ class DHCPConfigActivity(ActivityBase):
         ]
 
         if MAAS_ID.get():
-            regions = set()
-            alternate_ips: list[IPvAnyAddress] = []
-            for ip in dns_servers:
-                best_subnet = await svc.subnets.find_best_subnet_for_ip(ip)
-                if best_subnet and not best_subnet.allow_dns:
-                    continue
-                region_ips = await svc.staticipaddress.get_many(
-                    query=QuerySpec(
-                        where=StaticIPAddressClauseFactory.and_clauses(
-                            [
-                                StaticIPAddressClauseFactory.with_ip_not_null(),
-                                StaticIPAddressClauseFactory.or_clauses(
-                                    [
-                                        StaticIPAddressClauseFactory.with_node_type(
-                                            NodeTypeEnum.REGION_AND_RACK_CONTROLLER
-                                        ),
-                                        StaticIPAddressClauseFactory.with_node_type(
-                                            NodeTypeEnum.REGION_CONTROLLER
-                                        ),
-                                    ]
-                                ),
-                            ]
-                        ),
-                        order_by=[
-                            OrderByClause(column=StaticIPAddressTable.c.ip)
-                        ],
-                    )
-                )
-                for region_ip in region_ips:
-                    if region_ip.ip:
-                        interfaces = await svc.interfaces.get_for_ip(region_ip)
-                        if interfaces:
-                            for iface in interfaces:
-                                if iface.node_config_id:
-                                    region_node = await svc.nodes.get_one(
-                                        query=QuerySpec(
-                                            where=NodeClauseFactory.with_node_config_id(
-                                                iface.node_config_id
-                                            )
-                                        )
-                                    )
-                                    if region_node:
-                                        id_plus_family = (
-                                            region_node.system_id,
-                                            region_ip.ip.version,
-                                        )
-                                        if id_plus_family not in regions:
-                                            regions.add(id_plus_family)
-                                            alternate_ips.append(region_ip.ip)
-
+            alternate_ips = await self._get_alt_region_ips_for_dns(
+                svc, dns_servers
+            )
             for address in alternate_ips:
                 if address not in dns_servers and not address.is_loopback:
                     dns_servers.append(address)
@@ -869,6 +879,7 @@ class DHCPConfigActivity(ActivityBase):
         )
 
         def rank_ip(ip: IPvAnyAddress):
+            """Key for sorting IPs. Prefer IPs from the same subnet."""
             val = 2
             unaware_ip = IPAddress(str(ip))
             if unaware_ip in network:
@@ -890,12 +901,14 @@ class DHCPConfigActivity(ActivityBase):
         subnet: Subnet,
         vlan: Vlan,
         ifaces: list[Interface],
-    ) -> tuple[Interface | None, list[StaticIPAddress] | None]:
-        """Retrieve the best interface IPs that has an IP on the given VLAN.
-        Return it and its IPs.
+    ) -> list[StaticIPAddress] | None:
+        """Retrieve the best interface that has an IP on the given VLAN.
+        Return the only the interface's IPs. Only STICKY or AUTO addresses
+        will be returned, or DISCOVERED if none exist.
 
-        Bond interfaces are prefered over physical interfaces, which are prefered over
-        VLAN interfaces.
+        Bond interfaces are preferred over physical interfaces, which are preferred over
+        VLAN interfaces. As a secondary preference, interfaces with an IP address
+        on subnets with the most dynamic ranges are preferred.
         """
         ip_version = subnet.cidr.version
 
@@ -951,7 +964,7 @@ class DHCPConfigActivity(ActivityBase):
                             (iface, ips, len(dynamic_ranges))
                         )
                         break
-                else:
+                elif ip.alloc_type == IpAddressType.DISCOVERED:
                     if await _ip_version_on_vlan(ip, sn):
                         dynamic_ranges = await svc.ipranges.get_many(
                             query=QuerySpec(
@@ -971,6 +984,7 @@ class DHCPConfigActivity(ActivityBase):
                             (iface, ips, len(dynamic_ranges))
                         )
                         break
+        # prefer static interfaces, keying by the most dynamic ranges
         if len(ifaces_with_static) == 1:
             interfaces = ifaces_with_static
         elif len(ifaces_with_static) > 1:
@@ -985,23 +999,18 @@ class DHCPConfigActivity(ActivityBase):
             )
         else:
             interfaces = []
-        best_interface: Interface | None = None
-        best_interface_ips: list[StaticIPAddress] | None = None
-        for interface, interface_ips, _ in interfaces:
-            if (
-                best_interface is None
-                or (
-                    best_interface.type == InterfaceType.PHYSICAL
-                    and interface.type == InterfaceType.BOND
-                )
-                or (
-                    best_interface.type == InterfaceType.VLAN
-                    and interface.type == InterfaceType.PHYSICAL
-                )
-            ):
-                best_interface = interface
-                best_interface_ips = interface_ips
-        return best_interface, best_interface_ips
+
+        scores = {
+            InterfaceType.VLAN: 0,
+            InterfaceType.PHYSICAL: 1,
+            InterfaceType.BOND: 2,
+        }
+        _, best_interface_ips, _ = max(
+            interfaces,
+            key=lambda i: scores[i[0].type],
+            default=(None, None, None),
+        )
+        return best_interface_ips
 
     async def _get_ntp_servers_for_rack(
         self, svc: ServiceCollectionV3, rack: Node
@@ -1024,6 +1033,7 @@ class DHCPConfigActivity(ActivityBase):
                             [IpAddressType.STICKY, IpAddressType.USER_RESERVED]
                         ),
                         StaticIPAddressClauseFactory.with_subnet_id_not_null(),
+                        StaticIPAddressClauseFactory.with_ip_not_null(),
                     ]
                 ),
                 order_by=[
@@ -1039,11 +1049,15 @@ class DHCPConfigActivity(ActivityBase):
 
         addr_info = []
         for ip in rack_addresses:
+            # we include the with_subnet_id_not_null clause above
             assert ip.subnet_id is not None
             subnet = await svc.subnets.get_by_id(ip.subnet_id)
+            # because ip.subnet_id is not None, we subnet must exist
             assert subnet is not None
             vlan = await svc.vlans.get_by_id(subnet.vlan_id)
+            # subnet.vlan_id can never be None, so VLAN must exist
             assert vlan is not None
+            # we include the with_ip_not_null clause above
             assert ip.ip is not None
             addr_info.append(
                 (vlan.dhcp_on, vlan.space_id, subnet.cidr.version, ip.ip)
@@ -1184,11 +1198,7 @@ class DHCPConfigActivity(ActivityBase):
 
                 # guaranteed for one vlan to exist here because of subnets query above
                 vlan = [v for v in vlans if v.id == subnet.vlan_id][0]
-
-                (
-                    best_iface,
-                    iface_ips,
-                ) = await self._get_best_interface_with_ip_on_vlan(
+                iface_ips = await self._get_best_interface_with_ip_on_vlan(
                     svc, subnet, vlan, ifaces
                 )
                 ips = (
@@ -1200,14 +1210,11 @@ class DHCPConfigActivity(ActivityBase):
                     if iface_ips
                     else []
                 )
-                next_server = ""
-                for i in ips:
-                    if i.ip and i.ip in subnet.cidr:
-                        next_server = str(i.ip)
-                        break
-                else:
-                    if ips:
-                        next_server = str(ips[0].ip)
+
+                next_server = next(
+                    (str(i.ip) for i in ips if i.ip and i.ip in subnet.cidr),
+                    str(ips[0].ip) if (ips and ips[0].ip) else "",
+                )
 
                 if isinstance(ntp_servers, dict):
                     ntp_server = ntp_servers.get(
@@ -1303,6 +1310,11 @@ class DHCPConfigActivity(ActivityBase):
     async def get_kea_shared_networks_config_ipv4(
         self, data: DHCPDataForAgent, rack_ip: str
     ) -> dict[str, Any]:
+        """Generate the shared-networks configuration for ipv4 Kea.
+
+        For more information on the configuration format, see
+        https://kea.readthedocs.io/en/stable/arm/dhcp4-srv.html#shared-networks-in-dhcpv4
+        """
         cfg = {"shared-networks": []}
         pxe_method = PXEBootMethod()
 
@@ -1369,7 +1381,12 @@ class DHCPConfigActivity(ActivityBase):
 
     async def get_kea_shared_networks_config_ipv6(
         self, data: DHCPDataForAgent, rack_ip: str
-    ):
+    ) -> dict[str, Any]:
+        """Generate the shared-networks configuration for ipv4 Kea.
+
+        For more information on the configuration format, see
+        https://kea.readthedocs.io/en/stable/arm/dhcp6-srv.html#shared-networks-in-dhcpv6
+        """
         cfg = {"shared-networks": []}
         uefi_amd64_method = UEFIAMD64BootMethod()
 
