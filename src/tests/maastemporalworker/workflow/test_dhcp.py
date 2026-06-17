@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest.mock import Mock
 
 from netaddr import IPNetwork
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.client import Client
 from temporalio.testing import ActivityEnvironment
 
+from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.db import Database
@@ -504,6 +506,22 @@ class TestDHCPConfigActivity:
                             subnet_id=iprange["subnet_id"],
                         )
                     ],
+                    host_reservations=[
+                        HostReservationData(
+                            ip=str(sips[0]["ip"]),
+                            mac_address=iface1.mac_address,  # type: ignore
+                            hostname=rack_controller["hostname"]
+                            + "-"
+                            + iface1.name,
+                        ),
+                        HostReservationData(
+                            ip=str(host_sips[0]["ip"]),
+                            mac_address=str(host_interface.mac_address),
+                            hostname=host["hostname"]
+                            + "-"
+                            + host_interface.name,
+                        ),
+                    ],
                 )
             ],
             ipranges=[
@@ -517,21 +535,141 @@ class TestDHCPConfigActivity:
             ],
             interfaces=[
                 InterfaceData(
-                    id=iface1.id, name=iface1.name, vlan_id=iface1.vlan_id
-                )
-            ],
-            host_reservations=[
-                HostReservationData(
-                    ip=str(host_sips[0]["ip"]),
-                    mac_address=str(host_interface.mac_address),
-                    hostname=host["hostname"],
-                    domain_search=["maas"],
-                    subnet_id=subnet1["id"],
+                    id=iface1.id,
+                    name=iface1.name,
+                    vlan_id=iface1.vlan_id,  # type: ignore
                 )
             ],
             default_dns_servers=[str(sip["ip"]) for sip in sips],
             ntp_servers=[str(sip["ip"]) for sip in sips],
         )
+
+    async def test_get_dhcp_host_reservations(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        vlan = await create_test_vlan_entry(fixture, dhcp_on=True)
+        subnet = await create_test_subnet_entry(
+            fixture, vlan_id=vlan["id"], cidr=IPNetwork("10.2.3.0/24")
+        )
+        machine = await create_test_machine_entry(fixture)
+        host_sips = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
+        )
+        host_interface = await create_test_interface_entry(
+            fixture, vlan=vlan, node=machine, ips=host_sips
+        )
+        # Shares a MAC with host_interface, so it must be deduplicated.
+        await create_test_reserved_ip_entry(
+            fixture,
+            subnet=subnet,
+            mac_address=str(host_interface.mac_address),
+        )
+        reserved_ip = await create_test_reserved_ip_entry(
+            fixture, subnet=subnet, mac_address="02:03:04:05:06:07"
+        )
+
+        activities = DHCPConfigActivity(
+            db,
+            CacheForServices(),
+            temporal_client=Mock(Client),
+            connection=db_connection,
+        )
+
+        async with activities.start_transaction() as svc:
+            result = await activities.get_dhcp_host_reservations(
+                svc, subnet["id"]
+            )
+
+        assert result == [
+            HostReservationData(
+                ip=str(host_sips[0]["ip"]),
+                mac_address=str(host_interface.mac_address),
+                hostname=f"{machine['hostname']}-{host_interface.name}",
+            ),
+            HostReservationData(
+                ip=str(reserved_ip["ip"]),
+                mac_address=reserved_ip["mac_address"],
+                hostname=f"rsvd-{reserved_ip['id']}",
+            ),
+        ]
+
+    async def test_get_dhcp_host_reservations_bond_uses_parents(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        vlan = await create_test_vlan_entry(fixture, dhcp_on=True)
+        subnet = await create_test_subnet_entry(
+            fixture, vlan_id=vlan["id"], cidr=IPNetwork("10.2.3.0/24")
+        )
+        machine = await create_test_machine_entry(fixture)
+        bond_sips = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
+        )
+        bond = await create_test_interface_entry(
+            fixture,
+            vlan=vlan,
+            node=machine,
+            ips=bond_sips,
+            name="bond0",
+            type=InterfaceType.BOND,
+            mac_address="02:00:00:00:00:00",
+        )
+        parent1 = await create_test_interface_entry(
+            fixture,
+            vlan=vlan,
+            node=machine,
+            name="eth0",
+            mac_address="02:00:00:00:00:01",
+        )
+        parent2 = await create_test_interface_entry(
+            fixture,
+            vlan=vlan,
+            node=machine,
+            name="eth1",
+            mac_address="02:00:00:00:00:02",
+        )
+        now = datetime.now(timezone.utc).astimezone()
+        await fixture.create(
+            "maasserver_interfacerelationship",
+            [
+                {
+                    "created": now,
+                    "updated": now,
+                    "child_id": bond.id,
+                    "parent_id": parent1.id,
+                },
+                {
+                    "created": now,
+                    "updated": now,
+                    "child_id": bond.id,
+                    "parent_id": parent2.id,
+                },
+            ],
+        )
+
+        activities = DHCPConfigActivity(
+            db,
+            CacheForServices(),
+            temporal_client=Mock(Client),
+            connection=db_connection,
+        )
+
+        async with activities.start_transaction() as svc:
+            result = await activities.get_dhcp_host_reservations(
+                svc, subnet["id"]
+            )
+
+        assert result == [
+            HostReservationData(
+                ip=str(bond_sips[0]["ip"]),
+                mac_address=str(parent1.mac_address),
+                hostname=f"{machine['hostname']}-{parent1.name}",
+            ),
+            HostReservationData(
+                ip=str(bond_sips[0]["ip"]),
+                mac_address=str(parent2.mac_address),
+                hostname=f"{machine['hostname']}-{parent2.name}",
+            ),
+        ]
 
     def _make_activity(self, db: Database) -> DHCPConfigActivity:
         return DHCPConfigActivity(
@@ -572,11 +710,17 @@ class TestDHCPConfigActivity:
                             end_ip="10.0.0.20",
                         )
                     ],
+                    host_reservations=[
+                        HostReservationData(
+                            ip="10.0.0.30",
+                            mac_address="00:55:44:11:22:33",
+                            hostname="host-name",
+                        )
+                    ],
                 )
             ],
             ipranges=[],
             interfaces=[],
-            host_reservations=[],
             default_dns_servers=[],
             ntp_servers=[],
         )
@@ -595,6 +739,19 @@ class TestDHCPConfigActivity:
                             "match-client-id": False,
                             "pools": [{"pool": "10.0.0.10 - 10.0.0.20"}],
                             "boot-file-name": "lpxelinux.0",
+                            "reservations": [
+                                {
+                                    "hw-address": data.subnets[0]
+                                    .host_reservations[0]
+                                    .mac_address,
+                                    "ip-address": data.subnets[0]
+                                    .host_reservations[0]
+                                    .ip,
+                                    "hostname": data.subnets[0]
+                                    .host_reservations[0]
+                                    .hostname,
+                                }
+                            ],
                             "option-data": [
                                 {
                                     "name": "subnet-mask",
@@ -654,11 +811,11 @@ class TestDHCPConfigActivity:
                     ntp_servers=None,
                     next_server="",
                     pools=[],
+                    host_reservations=[],
                 )
             ],
             ipranges=[],
             interfaces=[],
-            host_reservations=[],
             default_dns_servers=[],
             ntp_servers=[],
         )
@@ -677,6 +834,7 @@ class TestDHCPConfigActivity:
                             "match-client-id": False,
                             "pools": [],
                             "boot-file-name": "lpxelinux.0",
+                            "reservations": [],
                             "option-data": [
                                 {
                                     "name": "subnet-mask",
@@ -721,6 +879,7 @@ class TestDHCPConfigActivity:
                 ntp_servers=None,
                 next_server="",
                 pools=[],
+                host_reservations=[],
             )
 
         data = DHCPDataForAgent(
@@ -732,7 +891,6 @@ class TestDHCPConfigActivity:
             ],
             ipranges=[],
             interfaces=[],
-            host_reservations=[],
             default_dns_servers=[],
             ntp_servers=[],
         )
@@ -780,11 +938,17 @@ class TestDHCPConfigActivity:
                             end_ip="2001:db8::20",
                         )
                     ],
+                    host_reservations=[
+                        HostReservationData(
+                            ip="2001:db8::30",
+                            mac_address="00:55:44:11:22:33",
+                            hostname="host-name",
+                        )
+                    ],
                 )
             ],
             ipranges=[],
             interfaces=[],
-            host_reservations=[],
             default_dns_servers=[],
             ntp_servers=[],
         )
@@ -817,6 +981,19 @@ class TestDHCPConfigActivity:
                                     "name": "ntp-servers",
                                     "data": "2001:db8::5",
                                 },
+                            ],
+                            "reservations": [
+                                {
+                                    "hw-address": data.subnets[0]
+                                    .host_reservations[0]
+                                    .mac_address,
+                                    "ip-address": data.subnets[0]
+                                    .host_reservations[0]
+                                    .ip,
+                                    "hostname": data.subnets[0]
+                                    .host_reservations[0]
+                                    .hostname,
+                                }
                             ],
                             "next-server": "2001:db8::7",
                         }

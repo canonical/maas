@@ -2,6 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import copy
+from datetime import datetime, timezone
 from math import ceil
 
 import pytest
@@ -678,3 +679,61 @@ class TestInterfaceRepository:
 
         links_after = await fixture.get("maasserver_interface_ip_addresses")
         assert len(links_before) == len(links_after)
+
+    async def test_get_parents(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        vlan = await create_test_vlan_entry(fixture, fabric_id=0)
+        child = await create_test_interface_entry(
+            fixture, vlan=vlan, name="bond0"
+        )
+        parent1 = await create_test_interface_entry(
+            fixture, vlan=vlan, name="eth0"
+        )
+        parent2 = await create_test_interface_entry(
+            fixture, vlan=vlan, name="eth1"
+        )
+
+        now = datetime.now(timezone.utc).astimezone()
+        await fixture.create(
+            "maasserver_interfacerelationship",
+            [
+                {
+                    "created": now,
+                    "updated": now,
+                    "child_id": child.id,
+                    "parent_id": parent1.id,
+                },
+                {
+                    "created": now,
+                    "updated": now,
+                    "child_id": child.id,
+                    "parent_id": parent2.id,
+                },
+            ],
+        )
+
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+
+        parents = await interfaces_repository.get_parents(child.id)
+
+        retrieved_ids = {parent.id for parent in parents}
+        assert retrieved_ids == {parent1.id, parent2.id}
+
+    async def test_get_parents_no_parents(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        vlan = await create_test_vlan_entry(fixture, fabric_id=0)
+        interface = await create_test_interface_entry(
+            fixture, vlan=vlan, name="eth0"
+        )
+
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+
+        parents = await interfaces_repository.get_parents(interface.id)
+
+        assert parents == []

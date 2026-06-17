@@ -1053,6 +1053,32 @@ InterfaceTable = Table(
     Index("maasserver_interface_switch_id_idx", "switch_id"),
 )
 
+InterfaceRelationshipTable = Table(
+    "maasserver_interfacerelationship",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column(
+        "child_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    Column(
+        "parent_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    Index("maasserver_interfacerelationship_child_id_7be5401e", "child_id"),
+    Index("maasserver_interfacerelationship_parent_id_d3c77c37", "parent_id"),
+)
+
 IPRangeTable = Table(
     "maasserver_iprange",
     METADATA,
