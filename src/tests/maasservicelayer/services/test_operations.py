@@ -396,33 +396,18 @@ class TestOperationsService:
                 "nonexistent-uuid", user_id=1, can_view_all=True
             )
 
-    async def test_cancel_for_user_accepted(
+    @pytest.mark.parametrize(
+        "initial_status",
+        [OperationStatus.ACCEPTED, OperationStatus.RUNNING],
+    )
+    async def test_cancel_for_user_cancellable_status(
         self,
         operations_service: OperationsService,
         operations_repo_mock: Mock,
+        initial_status: OperationStatus,
     ) -> None:
         operation = TEST_OPERATION.model_copy(
-            update={"status": OperationStatus.ACCEPTED}
-        )
-        operations_repo_mock.get_by_uuid.return_value = operation
-        operations_repo_mock.get_one.return_value = operation
-        operations_repo_mock.update_by_id.return_value = operation.model_copy(
-            update={"status": OperationStatus.CANCELLING}
-        )
-
-        result = await operations_service.cancel_for_user(
-            uuid="op-uuid", user_id=1, can_edit_all=True, can_view_all=True
-        )
-
-        assert result.status == OperationStatus.CANCELLING
-
-    async def test_cancel_for_user_running(
-        self,
-        operations_service: OperationsService,
-        operations_repo_mock: Mock,
-    ) -> None:
-        operation = TEST_OPERATION.model_copy(
-            update={"status": OperationStatus.RUNNING}
+            update={"status": initial_status}
         )
         operations_repo_mock.get_by_uuid.return_value = operation
         operations_repo_mock.get_one.return_value = operation
