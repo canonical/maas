@@ -46,6 +46,22 @@ class TestGetDeprecations(MAASServerTestCase):
             DEPRECATIONS["WRONG_MAAS_DATABASE_OWNER"], get_deprecations()
         )
 
+    def test_duplicate_mac_addresses_not_included(self):
+        self.patch(
+            deprecations, "find_duplicate_mac_addresses"
+        ).return_value = []
+        self.assertNotIn(
+            DEPRECATIONS["DUPLICATE_MAC_ADDRESSES"], get_deprecations()
+        )
+
+    def test_duplicate_mac_addresses_included(self):
+        self.patch(
+            deprecations, "find_duplicate_mac_addresses"
+        ).return_value = ["aa:bb:cc:dd:ee:ff"]
+        self.assertIn(
+            DEPRECATIONS["DUPLICATE_MAC_ADDRESSES"], get_deprecations()
+        )
+
 
 class TestLogDeprecations(MAASTestCase):
     def test_log_deprecations(self):
