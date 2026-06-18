@@ -3221,9 +3221,7 @@ class Node(CleanSave, TimestampedModel):
                 name=pod.name,
             )
             d.addBoth(
-                lambda result: (
-                    deferToDatabase(_save, self.id, pod.id, result)
-                )
+                lambda result: deferToDatabase(_save, self.id, pod.id, result)
             )
         else:
             maaslog.info("%s: Deleting node", self.hostname)
@@ -3620,6 +3618,15 @@ class Node(CleanSave, TimestampedModel):
         old_status = self.update_status(NODE_STATUS.DISK_ERASING)
         self.save()
 
+        # Re-arm status_expires against NODE_STATUS.DISK_ERASING so the
+        # configurable node_timeout governs the disk-erase phase.
+        post_commit().addCallback(
+            callOutToDatabase,
+            Node._set_status_expires,
+            self.system_id,
+            NODE_STATUS.DISK_ERASING,
+        )
+
         try:
             # Node.start() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
@@ -3891,8 +3898,17 @@ class Node(CleanSave, TimestampedModel):
             )
 
             old_status = self.update_status(NODE_STATUS.RELEASING)
-
         self.save()
+
+        # Re-arm status_expires for the DISK_ERASING phase so that the
+        # configurable node_timeout governs the disk-erase duration rather
+        # than any value left over from a prior lifecycle event.
+        if failed_status == NODE_STATUS.FAILED_DISK_ERASING:
+            post_commit().addCallback(
+                callOutToDatabase,
+                Node._set_status_expires,
+                self.system_id,
+            )
 
         try:
             # Node.start() has synchronous and asynchronous parts, so catch
@@ -3928,6 +3944,7 @@ class Node(CleanSave, TimestampedModel):
                 starting = post_commit()
                 # MAAS cannot start the node itself.
                 is_starting = False
+
             else:
                 # MAAS can direct the node to start.
                 is_starting = True

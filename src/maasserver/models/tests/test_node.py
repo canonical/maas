@@ -2305,6 +2305,66 @@ class TestNode(MAASServerTestCase):
             config=config,
         )
 
+    def test_start_disk_erasing_sets_status_expires(self):
+        owner = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        self.patch(node, "_start").side_effect = lambda *args, **kwargs: (
+            post_commit()
+        )
+        # Make callOutToDatabase run synchronously so the DB
+        # update completes during fire().
+        mock_callout = self.patch(node_module, "callOutToDatabase")
+        mock_callout.side_effect = lambda thing, func, *args, **kwargs: func(
+            *args, **kwargs
+        )
+        with post_commit_hooks:
+            node.start_disk_erasing(owner)
+        node = reload_object(node)
+        self.assertIsNotNone(node.status_expires)
+
+    def test_start_disk_erasing_replaces_stale_status_expires(self):
+        # Simulate a slow-boot scenario: a short stale status_expires from a
+        # prior lifecycle (e.g. RELEASING's 5-minute hardcoded timeout) leaks
+        # into DISK_ERASING. Without the fix the stale value persists and the
+        # node prematurely transitions to FAILED_DISK_ERASING. With the fix,
+        # _set_status_expires re-arms status_expires to the configurable
+        # node_timeout.
+        owner = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        stale_expires = now() + timedelta(minutes=1)
+        Node.objects.filter(system_id=node.system_id).update(
+            status_expires=stale_expires
+        )
+        node = reload_object(node)
+        self.patch(node, "_start").side_effect = lambda *args, **kwargs: (
+            post_commit()
+        )
+        # Make callOutToDatabase run synchronously so the DB
+        # update completes during fire() rather than in a thread pool.
+        mock_callout = self.patch(node_module, "callOutToDatabase")
+        mock_callout.side_effect = lambda thing, func, *args, **kwargs: func(
+            *args, **kwargs
+        )
+        with post_commit_hooks:
+            node.start_disk_erasing(owner)
+        node = reload_object(node)
+        self.assertIsNotNone(
+            node.status_expires,
+            "status_expires was not set; _set_status_expires was never called",
+        )
+        expected_minutes = get_node_timeout(NODE_STATUS.DISK_ERASING)
+        self.assertIsNotNone(expected_minutes)
+        expected_delta = timedelta(minutes=expected_minutes)
+        expires_delta = node.status_expires - now()
+        self.assertGreater(
+            expires_delta,
+            expected_delta - timedelta(seconds=10),
+        )
+        self.assertLess(
+            expires_delta,
+            expected_delta + timedelta(seconds=10),
+        )
+
     def test_start_disk_erasing_logs_user_request(self):
         owner = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
@@ -2403,7 +2463,8 @@ class TestNode(MAASServerTestCase):
 
         try:
             with transaction.atomic():
-                node.start_disk_erasing(admin)
+                with post_commit_hooks:
+                    node.start_disk_erasing(admin)
         except node_start.side_effect.__class__:
             # We don't care about the error here, so suppress it. It
             # exists only to cause the transaction to abort.
@@ -2458,7 +2519,8 @@ class TestNode(MAASServerTestCase):
         exception_type = factory.make_exception_type()
         exception = exception_type(factory.make_name())
         self.patch(node, "_start").side_effect = exception
-        self.assertRaises(exception_type, node.start_disk_erasing, admin)
+        with post_commit_hooks:
+            self.assertRaises(exception_type, node.start_disk_erasing, admin)
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
         maaslog.error.assert_called_once_with(
             "%s: Could not start node for disk erasure: %s",
@@ -3944,8 +4006,8 @@ class TestNode(MAASServerTestCase):
         factory.make_default_ubuntu_release_bootable(arch=arch)
         node_start = self.patch(node, "start")
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit()
+        node_start.side_effect = lambda user, user_data, old_status: (
+            post_commit()
         )
         admin = factory.make_admin()
         node.start_commissioning(admin)
@@ -3960,8 +4022,8 @@ class TestNode(MAASServerTestCase):
         )
         node_start = self.patch(node, "start")
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit()
+        node_start.side_effect = lambda user, user_data, old_status: (
+            post_commit()
         )
         admin = factory.make_admin()
         self.assertRaises(ValidationError, node.start_commissioning, admin)
@@ -7822,8 +7884,67 @@ class TestNodeErase(MAASServerTestCase):
         Config.objects.set_config("enable_disk_erasing_on_release", True)
         release_mock = self.patch_autospec(node, "release")
         self.patch(node, "_start").return_value = succeed(None)
-        node.start_releasing(owner)
+        with post_commit_hooks:
+            node.start_releasing(owner)
         release_mock.assert_not_called()
+
+    def test_start_releasing_erases_sets_status_expires(self):
+        owner = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        Config.objects.set_config("enable_disk_erasing_on_release", True)
+        self.patch(node, "_start").return_value = succeed(None)
+        # Make callOutToDatabase run synchronously so the DB
+        # update completes during fire().
+        mock_callout = self.patch(node_module, "callOutToDatabase")
+        mock_callout.side_effect = lambda thing, func, *args, **kwargs: func(
+            *args, **kwargs
+        )
+        with post_commit_hooks:
+            node.start_releasing(owner)
+        node = reload_object(node)
+        self.assertIsNotNone(node.status_expires)
+
+    def test_start_releasing_replaces_stale_status_expires(self):
+        # Simulate a slow-boot scenario: a short stale status_expires from a
+        # prior lifecycle (e.g. RELEASING's 5-minute hardcoded timeout) leaks
+        # into DISK_ERASING. Without the fix the stale value persists and the
+        # node prematurely transitions to FAILED_DISK_ERASING. With the fix,
+        # _set_status_expires re-arms status_expires to the configurable
+        # node_timeout.
+        owner = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        stale_expires = now() + timedelta(minutes=1)
+        Node.objects.filter(system_id=node.system_id).update(
+            status_expires=stale_expires
+        )
+        node = reload_object(node)
+        Config.objects.set_config("enable_disk_erasing_on_release", True)
+        self.patch(node, "_start").return_value = succeed(None)
+        # Make callOutToDatabase run synchronously so the DB
+        # update completes during fire() rather than in a thread pool.
+        mock_callout = self.patch(node_module, "callOutToDatabase")
+        mock_callout.side_effect = lambda thing, func, *args, **kwargs: func(
+            *args, **kwargs
+        )
+        with post_commit_hooks:
+            node.start_releasing(owner)
+        node = reload_object(node)
+        self.assertIsNotNone(
+            node.status_expires,
+            "status_expires was not set; _set_status_expires was never called",
+        )
+        expected_minutes = get_node_timeout(NODE_STATUS.DISK_ERASING)
+        self.assertIsNotNone(expected_minutes)
+        expected_delta = timedelta(minutes=expected_minutes)
+        expires_delta = node.status_expires - now()
+        self.assertGreater(
+            expires_delta,
+            expected_delta - timedelta(seconds=10),
+        )
+        self.assertLess(
+            expires_delta,
+            expected_delta + timedelta(seconds=10),
+        )
 
     def test_start_releasing_erases_when_enabled_with_global_parameters(self):
         owner = factory.make_User()
@@ -7841,7 +7962,8 @@ class TestNodeErase(MAASServerTestCase):
         Config.objects.set_config("disk_erase_with_secure_erase", True)
         Config.objects.set_config("disk_erase_with_quick_erase", True)
         self.patch(node, "_start").return_value = succeed(None)
-        node.start_releasing(owner)
+        with post_commit_hooks:
+            node.start_releasing(owner)
         self.assertIsNotNone(node.current_release_script_set)
         script_results = node.current_release_script_set.scriptresult_set.all()
         self.assertEqual(1, len(script_results))
@@ -7862,14 +7984,15 @@ class TestNodeErase(MAASServerTestCase):
         self.patch(node, "_start").return_value = succeed(None)
         secure_erase = factory.pick_bool()
         quick_erase = factory.pick_bool()
-        node.start_releasing(
-            user=owner,
-            scripts=["wipe-disks"],
-            script_input={
-                "secure_erase": secure_erase,
-                "quick_erase": quick_erase,
-            },
-        )
+        with post_commit_hooks:
+            node.start_releasing(
+                user=owner,
+                scripts=["wipe-disks"],
+                script_input={
+                    "secure_erase": secure_erase,
+                    "quick_erase": quick_erase,
+                },
+            )
         release_mock.assert_not_called()
 
     def test_start_releasing_releases_when_disabled(self):
