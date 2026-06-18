@@ -1,5 +1,6 @@
 # Install maas-dhcp-helper
 package-files/usr/sbin/maas-dhcp-helper usr/sbin
+package-files/usr/sbin/maas-kea-dhcp-helper usr/sbin
 
 # Install all other stuff
 debian/extras/99-maas-sudoers etc/sudoers.d
