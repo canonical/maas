@@ -213,4 +213,4 @@ class TestTrackOperationStatus:
             OperationStatus.RUNNING,
             OperationStatus.CANCELLED,
         ]
-        assert params[-1].error == "workflow cancelled"
+        assert params[-1].error == "Operation op-uuid was cancelled."

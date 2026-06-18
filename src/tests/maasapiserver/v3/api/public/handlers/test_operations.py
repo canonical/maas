@@ -54,6 +54,7 @@ TEST_OPERATION_2 = Operation(
 def _setup_openfga_mock(services_mock: ServiceCollectionV3) -> AsyncMock:
     openfga_client = Mock()
     openfga_client.can_view_operations = AsyncMock(return_value=True)
+    openfga_client.can_edit_operations = AsyncMock(return_value=True)
     services_mock.openfga_tuples.get_client.return_value = openfga_client
     return openfga_client
 
@@ -225,7 +226,7 @@ class TestOperationsApi(ApiCommonTests):
         assert response.status_code == 202
         assert operation_response.status == OperationStatus.CANCELLING
         services_mock.operations.cancel_for_user.assert_called_once_with(
-            uuid=TEST_OPERATION.uuid, user_id=0, can_view_all=True
+            uuid=TEST_OPERATION.uuid, user_id=0, can_edit_all=True
         )
         services_mock.temporal.cancel_workflow_by_operation_uuid.assert_awaited_once_with(
             TEST_OPERATION.uuid

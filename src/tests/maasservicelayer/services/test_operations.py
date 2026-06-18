@@ -410,7 +410,7 @@ class TestOperationsService:
         )
 
         result = await operations_service.cancel_for_user(
-            uuid="op-uuid", user_id=1, can_view_all=True
+            uuid="op-uuid", user_id=1, can_edit_all=True
         )
 
         assert result.status == OperationStatus.CANCELLING
@@ -430,7 +430,7 @@ class TestOperationsService:
         )
 
         result = await operations_service.cancel_for_user(
-            uuid="op-uuid", user_id=1, can_view_all=True
+            uuid="op-uuid", user_id=1, can_edit_all=True
         )
 
         assert result.status == OperationStatus.CANCELLING
@@ -455,7 +455,7 @@ class TestOperationsService:
 
         with pytest.raises(ConflictException):
             await operations_service.cancel_for_user(
-                uuid="op-uuid", user_id=1, can_view_all=True
+                uuid="op-uuid", user_id=1, can_edit_all=True
             )
 
     async def test_cancel_for_user_not_found(
@@ -467,5 +467,5 @@ class TestOperationsService:
 
         with pytest.raises(NotFoundException):
             await operations_service.cancel_for_user(
-                uuid="nonexistent-uuid", user_id=1, can_view_all=True
+                uuid="nonexistent-uuid", user_id=1, can_edit_all=True
             )
