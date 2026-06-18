@@ -59,6 +59,7 @@ TEST_TASK = OperationTask(
     id=1,
     name="deploy",
     status=OperationTaskStatus.RUNNING,
+    result={"errors": [{"message": "failed to deploy"}]},
     task_number=1,
     operation_uuid=TEST_OPERATION.uuid,
 )
@@ -357,6 +358,7 @@ class TestOperationsApi(ApiCommonTests):
         assert tasks_response.total == 1
         assert tasks_response.items[0].name == TEST_TASK.name
         assert tasks_response.items[0].status == TEST_TASK.status
+        assert tasks_response.items[0].result == TEST_TASK.result
         assert tasks_response.next is None
         services_mock.operations.list_tasks_for_operation.assert_called_once_with(
             operation_uuid=TEST_OPERATION.uuid, page=1, size=20

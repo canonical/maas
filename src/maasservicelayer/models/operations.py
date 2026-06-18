@@ -37,6 +37,6 @@ class OperationTask(MaasBaseModel):
     finished_at: datetime | None = None
     name: str
     status: OperationTaskStatus
-    result_errors: dict | None = None
+    result: dict | None = None
     task_number: int
     operation_uuid: str

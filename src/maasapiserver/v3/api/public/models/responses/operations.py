@@ -76,7 +76,7 @@ class OperationTaskResponse(HalResponse[BaseHal]):
     finished_at: datetime | None = None
     name: str
     status: OperationTaskStatus
-    result_errors: dict | None = None
+    result: dict | None = None
     task_number: int
     operation_uuid: str
 
@@ -91,7 +91,7 @@ class OperationTaskResponse(HalResponse[BaseHal]):
             finished_at=task.finished_at,
             name=task.name,
             status=task.status,
-            result_errors=task.result_errors,
+            result=task.result,
             task_number=task.task_number,
             operation_uuid=task.operation_uuid,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
