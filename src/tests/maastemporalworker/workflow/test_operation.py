@@ -12,10 +12,7 @@ from maascommon.enums.operations import OperationStatus
 from maasservicelayer.db import Database
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
-from maasservicelayer.services.operations import (
-    OperationsService,
-    OperationTasksService,
-)
+from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.services.temporal import TemporalService
 import maastemporalworker.workflow.activity as activity_module
 import maastemporalworker.workflow.operation as operation_module
@@ -102,7 +99,7 @@ class TestOperationActivity:
         self, services_mock: ServiceCollectionV3, monkeypatch
     ) -> None:
         services_mock.temporal = Mock(TemporalService)
-        services_mock.operation_tasks = Mock(OperationTasksService)
+        services_mock.operations = Mock(OperationsService)
         services_mock.produce.return_value = services_mock
         monkeypatch.setattr(
             activity_module, "ServiceCollectionV3", services_mock
@@ -124,7 +121,7 @@ class TestOperationActivity:
             )
         )
 
-        services_mock.operation_tasks.start_task.assert_called_once_with(
+        services_mock.operations.start_task.assert_called_once_with(
             operation_uuid="op-uuid",
             name="task1",
             task_number=1,

@@ -10,10 +10,7 @@ from maascommon.enums.operations import (
     OperationTaskStatus,
     OperationType,
 )
-from maasservicelayer.builders.operations import (
-    OperationBuilder,
-    OperationTaskBuilder,
-)
+from maasservicelayer.builders.operations import OperationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.operations import (
@@ -33,10 +30,7 @@ from maasservicelayer.models.base import (
 )
 from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.services.base import BaseService
-from maasservicelayer.services.operations import (
-    OperationsService,
-    OperationTasksService,
-)
+from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
@@ -80,6 +74,7 @@ class TestCommonOperationsService(ServiceCommonTests):
         return OperationsService(
             context=Context(),
             operations_repository=Mock(OperationsRepository),
+            operation_tasks_repository=Mock(OperationTasksRepository),
         )
 
     @pytest.fixture
@@ -223,10 +218,16 @@ class TestCommonOperationsService(ServiceCommonTests):
 
 @pytest.mark.asyncio
 class TestOperationsService:
-    def _service(self, repository: Mock) -> OperationsService:
+    def _service(
+        self,
+        repository: Mock,
+        operation_tasks_repository: Mock | None = None,
+    ) -> OperationsService:
         return OperationsService(
             context=Context(),
             operations_repository=repository,
+            operation_tasks_repository=operation_tasks_repository
+            or Mock(OperationTasksRepository),
         )
 
     @pytest.fixture
@@ -234,12 +235,46 @@ class TestOperationsService:
         return Mock(OperationsRepository)
 
     @pytest.fixture
+    def operation_tasks_repo_mock(self) -> Mock:
+        return Mock(OperationTasksRepository)
+
+    @pytest.fixture
     def operations_service(
-        self, operations_repo_mock: Mock
+        self,
+        operations_repo_mock: Mock,
+        operation_tasks_repo_mock: Mock,
     ) -> OperationsService:
         return OperationsService(
             context=Context(),
             operations_repository=operations_repo_mock,
+            operation_tasks_repository=operation_tasks_repo_mock,
+        )
+
+    async def test_start_task(self) -> None:
+        operations_repository = Mock(OperationsRepository)
+        operations_repository.get_one.return_value = TEST_OPERATION
+        operations_repository.update_by_id.return_value = TEST_OPERATION
+        operation_tasks_repository = Mock(OperationTasksRepository)
+        operation_tasks_repository.create.return_value = TEST_OPERATION_TASK
+        service = self._service(
+            operations_repository, operation_tasks_repository
+        )
+
+        await service.start_task("op-uuid", "task1", 1)
+
+        builder = operation_tasks_repository.create.call_args.kwargs["builder"]
+        populated = builder.populated_fields()
+        assert populated["operation_uuid"] == "op-uuid"
+        assert populated["name"] == "task1"
+        assert populated["task_number"] == 1
+        assert populated["status"] == OperationTaskStatus.RUNNING
+        assert "started_at" in populated
+        operations_repository.update_by_id.assert_awaited_once()
+        current_task_builder = (
+            operations_repository.update_by_id.call_args.kwargs["builder"]
+        )
+        assert current_task_builder.populated_fields()["current_task"] == (
+            "task1"
         )
 
     async def test_update_status_running_sets_started(self) -> None:
@@ -514,47 +549,3 @@ class TestOperationsService:
                 can_edit_all=True,
                 can_view_all=True,
             )
-
-@pytest.mark.asyncio
-class TestCommonOperationTasksService(ServiceCommonTests):
-    @pytest.fixture
-    def service_instance(self) -> BaseService:
-        return OperationTasksService(
-            context=Context(),
-            operation_tasks_repository=Mock(OperationTasksRepository),
-            operations_service=Mock(OperationsService),
-        )
-
-    @pytest.fixture
-    def test_instance(self) -> MaasBaseModel:
-        return TEST_OPERATION_TASK
-
-    @pytest.fixture
-    def builder_model(self) -> type[ResourceBuilder]:
-        return OperationTaskBuilder
-
-
-@pytest.mark.asyncio
-class TestOperationTasksService:
-    async def test_start_task(self) -> None:
-        repository = Mock(OperationTasksRepository)
-        repository.create.return_value = TEST_OPERATION_TASK
-        operations_service = Mock(OperationsService)
-        service = OperationTasksService(
-            context=Context(),
-            operation_tasks_repository=repository,
-            operations_service=operations_service,
-        )
-
-        await service.start_task("op-uuid", "task1", 1)
-
-        builder = repository.create.call_args.kwargs["builder"]
-        populated = builder.populated_fields()
-        assert populated["operation_uuid"] == "op-uuid"
-        assert populated["name"] == "task1"
-        assert populated["task_number"] == 1
-        assert populated["status"] == OperationTaskStatus.RUNNING
-        assert "started_at" in populated
-        operations_service.set_current_task.assert_awaited_once_with(
-            "op-uuid", "task1"
-        )

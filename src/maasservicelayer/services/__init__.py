@@ -186,10 +186,7 @@ from maasservicelayer.services.nodegrouptorackcontrollers import (
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
-from maasservicelayer.services.operations import (
-    OperationsService,
-    OperationTasksService,
-)
+from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.services.package_repositories import (
     PackageRepositoriesService,
 )
@@ -302,7 +299,6 @@ class ServiceCollectionV3:
     oidc_revoked_tokens: OIDCRevokedTokenService
     openfga_tuples: OpenFGATupleService
     operations: OperationsService
-    operation_tasks: OperationTasksService
     package_repositories: PackageRepositoriesService
     racks: RacksService
     rdns: RDNSService
@@ -775,10 +771,6 @@ class ServiceCollectionV3:
         services.operations = OperationsService(
             context=context,
             operations_repository=OperationsRepository(context),
-        )
-        services.operation_tasks = OperationTasksService(
-            context=context,
             operation_tasks_repository=OperationTasksRepository(context),
-            operations_service=services.operations,
         )
         return services

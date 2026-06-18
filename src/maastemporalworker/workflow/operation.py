@@ -63,7 +63,7 @@ class OperationActivity(ActivityBase):
     @activity_defn_with_context(name=UPDATE_CURRENT_TASK_ACTIVITY_NAME)
     async def update_current_task(self, param: UpdateCurrentTaskParam) -> None:
         async with self.start_transaction() as services:
-            await services.operation_tasks.start_task(
+            await services.operations.start_task(
                 operation_uuid=param.operation_uuid,
                 name=param.name,
                 task_number=param.task_number,

@@ -37,8 +37,25 @@ class OperationsService(
         self,
         context: Context,
         operations_repository: OperationsRepository,
+        operation_tasks_repository: OperationTasksRepository,
     ):
         super().__init__(context, operations_repository)
+        self.operation_tasks_repository = operation_tasks_repository
+
+    async def start_task(
+        self, operation_uuid: str, name: str, task_number: int
+    ) -> OperationTask:
+        task = await self.operation_tasks_repository.create(
+            builder=OperationTaskBuilder(
+                operation_uuid=operation_uuid,
+                name=name,
+                task_number=task_number,
+                status=OperationTaskStatus.RUNNING,
+                started_at=utcnow(),
+            )
+        )
+        await self.set_current_task(operation_uuid, name)
+        return task
 
     async def update_status(
         self,
@@ -171,31 +188,3 @@ class OperationsService(
             operation_uuid=uuid,
             status=OperationStatus.CANCELLING,
         )
-
-
-class OperationTasksService(
-    BaseService[OperationTask, OperationTasksRepository, OperationTaskBuilder]
-):
-    def __init__(
-        self,
-        context: Context,
-        operation_tasks_repository: OperationTasksRepository,
-        operations_service: OperationsService,
-    ):
-        super().__init__(context, operation_tasks_repository)
-        self.operations_service = operations_service
-
-    async def start_task(
-        self, operation_uuid: str, name: str, task_number: int
-    ) -> OperationTask:
-        task = await self.create(
-            builder=OperationTaskBuilder(
-                operation_uuid=operation_uuid,
-                name=name,
-                task_number=task_number,
-                status=OperationTaskStatus.RUNNING,
-                started_at=utcnow(),
-            )
-        )
-        await self.operations_service.set_current_task(operation_uuid, name)
-        return task
