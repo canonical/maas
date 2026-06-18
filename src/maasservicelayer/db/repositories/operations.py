@@ -9,8 +9,8 @@ from sqlalchemy import Table
 from maascommon.enums.operations import OperationStatus, OperationType
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
-from maasservicelayer.db.tables import OperationTable
-from maasservicelayer.models.operations import Operation
+from maasservicelayer.db.tables import OperationTable, OperationTaskTable
+from maasservicelayer.models.operations import Operation, OperationTask
 
 
 class OperationsClauseFactory(ClauseFactory):
@@ -50,3 +50,11 @@ class OperationsRepository(BaseRepository[Operation]):
         return await self.get_one(
             QuerySpec(where=Clause(eq(OperationTable.c.uuid, uuid)))
         )
+
+
+class OperationTasksRepository(BaseRepository[OperationTask]):
+    def get_repository_table(self) -> Table:
+        return OperationTaskTable
+
+    def get_model_factory(self) -> Type[OperationTask]:
+        return OperationTask
