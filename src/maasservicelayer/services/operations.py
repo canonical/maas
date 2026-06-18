@@ -123,15 +123,6 @@ class OperationsService(
         operation = await self.get_by_uuid_for_user(
             uuid, user_id=user_id, can_view_all=can_edit_all
         )
-        if operation is None:
-            raise NotFoundException(
-                details=[
-                    BaseExceptionDetail(
-                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                        message=f"Operation with uuid '{uuid}' was not found.",
-                    )
-                ]
-            )
         if operation.status in (
             OperationStatus.CANCELLING,
             OperationStatus.CANCELLED,
