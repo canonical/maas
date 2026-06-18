@@ -155,6 +155,15 @@ In rack-only mode, we no longer run a BIND instance to forward queries to the re
 
 ## Version 3.6 release notes
 
+### MAAS 3.6.4 has been released
+
+We are happy to announce that MAAS 3.6.4 has been released, with the following bug fixes:
+
+- [2142793](https://bugs.launchpad.net/maas/+bug/2142793): maasagent memory leak on DHCP expiry failure due to constraint violation
+- [2143730](https://bugs.launchpad.net/maas/+bug/2143730): Lease processing returns 404 and causes the agent to memory leak
+- [2141598](https://bugs.launchpad.net/maas/+bug/2141598): Custom images stuck in “Loading Queued for download” after upgrade to 3.5
+- [2143919](https://bugs.launchpad.net/maas/+bug/2143919): 30-maas-01-bmc-config configures wrong power_address on Lenovo XCC BMC
+
 ### MAAS 3.6.3 has been released
 
 We are happy to announce that MAAS 3.6.3 has been released, with the following bug fixes:
