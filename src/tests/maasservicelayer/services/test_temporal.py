@@ -12,6 +12,11 @@ from temporalio.client import (
     WorkflowExecutionStatus,
     WorkflowHandle,
 )
+from temporalio.common import (
+    SearchAttributeKey,
+    SearchAttributePair,
+    TypedSearchAttributes,
+)
 from temporalio.service import RPCError, RPCStatusCode
 
 from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
@@ -72,6 +77,36 @@ class TestTemporalService:
 
         temporal_client_mock.execute_workflow.assert_called_once_with(
             "test_workflow", id="abc", task_queue="region"
+        )
+
+    async def test_post_commit_forwards_search_attributes(
+        self, service: TemporalService, temporal_client_mock
+    ):
+        search_attributes = TypedSearchAttributes(
+            [
+                SearchAttributePair(
+                    SearchAttributeKey.for_keyword("OperationUUID"),
+                    "op-uuid",
+                )
+            ]
+        )
+
+        service.register_workflow_call(
+            "test_workflow",
+            parameter={"a": 1},
+            workflow_id="abc",
+            wait=False,
+            search_attributes=search_attributes,
+        )
+
+        await service.post_commit()
+
+        temporal_client_mock.start_workflow.assert_called_once_with(
+            "test_workflow",
+            {"a": 1},
+            id="abc",
+            task_queue="region",
+            search_attributes=search_attributes,
         )
 
     async def test_workflow_is_registered(self, service: TemporalService):

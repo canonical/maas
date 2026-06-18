@@ -4,12 +4,18 @@
 from unittest.mock import Mock
 
 import pytest
+from temporalio.common import (
+    SearchAttributeKey,
+    SearchAttributePair,
+    TypedSearchAttributes,
+)
 
 from maascommon.enums.operations import (
     OperationStatus,
     OperationTaskStatus,
     OperationType,
 )
+from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maasservicelayer.builders.operations import OperationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -33,6 +39,7 @@ from maasservicelayer.models.base import (
 from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.operations import OperationsService
+from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
@@ -77,6 +84,7 @@ class TestCommonOperationsService(ServiceCommonTests):
             context=Context(),
             operations_repository=Mock(OperationsRepository),
             operation_tasks_repository=Mock(OperationTasksRepository),
+            temporal_service=Mock(TemporalService),
         )
 
     @pytest.fixture
@@ -224,12 +232,14 @@ class TestOperationsService:
         self,
         repository: Mock,
         operation_tasks_repository: Mock | None = None,
+        temporal_service: Mock | None = None,
     ) -> OperationsService:
         return OperationsService(
             context=Context(),
             operations_repository=repository,
             operation_tasks_repository=operation_tasks_repository
             or Mock(OperationTasksRepository),
+            temporal_service=temporal_service or Mock(TemporalService),
         )
 
     @pytest.fixture
@@ -250,6 +260,7 @@ class TestOperationsService:
             context=Context(),
             operations_repository=operations_repo_mock,
             operation_tasks_repository=operation_tasks_repo_mock,
+            temporal_service=Mock(TemporalService),
         )
 
     async def test_start_task(self) -> None:
@@ -277,6 +288,58 @@ class TestOperationsService:
         )
         assert current_task_builder.populated_fields()["current_task"] == (
             "task1"
+        )
+
+    async def test_start_operation_creates_accepted_and_registers_workflow(
+        self,
+    ) -> None:
+        repository = Mock(OperationsRepository)
+        repository.create.return_value = TEST_OPERATION
+        temporal_service = Mock(TemporalService)
+        service = OperationsService(
+            context=Context(),
+            operations_repository=repository,
+            operation_tasks_repository=Mock(OperationTasksRepository),
+            temporal_service=temporal_service,
+        )
+
+        operation = await service.start_operation(
+            op_type=OperationType.MACHINE_DEPLOY,
+            workflow_name="deploy",
+            workflow_parameter={"system_id": "abc123"},
+            resource_id=1,
+            resource_type="machine",
+            parameters={"timeout": 60},
+            user_id=1,
+        )
+
+        assert operation == TEST_OPERATION
+        builder = repository.create.call_args.kwargs["builder"]
+        populated = builder.populated_fields()
+        assert populated["op_type"] == OperationType.MACHINE_DEPLOY
+        assert populated["status"] == OperationStatus.ACCEPTED
+        assert populated["resource_id"] == 1
+        assert populated["resource_type"] == "machine"
+        assert populated["parameters"] == {"timeout": 60}
+        assert populated["user_id"] == 1
+        assert populated["is_bulk"] is False
+        assert "uuid" in populated
+
+        temporal_service.register_workflow_call.assert_called_once_with(
+            workflow_name="deploy",
+            parameter={"system_id": "abc123"},
+            workflow_id=TEST_OPERATION.uuid,
+            wait=False,
+            search_attributes=TypedSearchAttributes(
+                [
+                    SearchAttributePair(
+                        SearchAttributeKey.for_keyword(
+                            OPERATION_UUID_SEARCH_ATTRIBUTE
+                        ),
+                        TEST_OPERATION.uuid,
+                    )
+                ]
+            ),
         )
 
     async def test_update_status_running_sets_started(self) -> None:
