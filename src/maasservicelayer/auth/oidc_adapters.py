@@ -3,6 +3,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Any
+from urllib.parse import urlparse
 
 from httpx import AsyncClient
 
@@ -129,3 +130,34 @@ class Auth0Adapter(BaseProviderAdapter):
         )
         users = result or []
         return bool(users) and not users[0].get("blocked", False)
+
+
+class KeycloakAdapter(BaseProviderAdapter):
+    """Keycloak, via the admin REST API."""
+
+    DEFAULT_SCOPE = "profile email"
+
+    def _realm(self) -> str:
+        # issuer_url looks like "{root}/realms/{realm}".
+        path = urlparse(self.provider.issuer_url).path.rstrip("/")
+        return path.rsplit("/", 1)[-1]
+
+    def _root_url(self) -> str:
+        parsed = urlparse(self.provider.issuer_url)
+        return f"{parsed.scheme}://{parsed.netloc}"
+
+    def _token_request_body(self) -> dict[str, str]:
+        return {
+            "grant_type": "client_credentials",
+            "client_id": self.provider.client_id,
+            "client_secret": self.provider.client_secret,
+            "scope": self.DEFAULT_SCOPE,
+        }
+
+    async def user_is_active(self, email: str) -> bool:
+        result = await self._get(
+            f"{self._root_url()}/admin/realms/{self._realm()}/users",
+            params={"email": email, "exact": "true"},
+        )
+        users = result or []
+        return bool(users) and bool(users[0].get("enabled"))
