@@ -272,9 +272,7 @@ class TestTemporalService:
         )
         handle = Mock(WorkflowHandle)
         handle.cancel = AsyncMock(
-            side_effect=RPCError(
-                "rpc error", RPCStatusCode.INTERNAL, b""
-            )
+            side_effect=RPCError("rpc error", RPCStatusCode.INTERNAL, b"")
         )
         temporal_client_mock.get_workflow_handle.return_value = handle
 
