@@ -76,10 +76,10 @@ from maasservicelayer.db.repositories.notifications import (
 from maasservicelayer.db.repositories.openfga_tuples import (
     OpenFGATuplesRepository,
 )
-from maasservicelayer.db.repositories.operation_tasks import (
+from maasservicelayer.db.repositories.operations import (
+    OperationsRepository,
     OperationTasksRepository,
 )
-from maasservicelayer.db.repositories.operations import OperationsRepository
 from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
 )

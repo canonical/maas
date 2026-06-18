@@ -9,7 +9,6 @@ from temporalio.client import Client
 from temporalio.exceptions import ApplicationError, CancelledError
 
 from maascommon.enums.operations import OperationStatus
-from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maasservicelayer.db import Database
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
@@ -20,6 +19,8 @@ import maastemporalworker.workflow.operation as operation_module
 from maastemporalworker.workflow.operation import (
     OperationActivity,
     track_operation_status,
+    update_current_task,
+    UpdateCurrentTaskParam,
     UpdateOperationStatusParam,
 )
 
@@ -94,6 +95,38 @@ class TestOperationActivity:
             error=None,
         )
 
+    async def test_update_current_task(
+        self, services_mock: ServiceCollectionV3, monkeypatch
+    ) -> None:
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.produce.return_value = services_mock
+        monkeypatch.setattr(
+            activity_module, "ServiceCollectionV3", services_mock
+        )
+
+        services_cache = CacheForServices()
+        activity = OperationActivity(
+            Mock(Database),
+            services_cache,
+            connection=Mock(AsyncConnection),
+            temporal_client=Mock(Client),
+        )
+
+        await activity.update_current_task(
+            UpdateCurrentTaskParam(
+                operation_uuid="op-uuid",
+                name="task1",
+                task_number=1,
+            )
+        )
+
+        services_mock.operations.start_task.assert_called_once_with(
+            operation_uuid="op-uuid",
+            name="task1",
+            task_number=1,
+        )
+
     async def test_update_operation_status_not_found_raises(
         self, services_mock: ServiceCollectionV3, monkeypatch
     ) -> None:
@@ -137,11 +170,7 @@ class TestTrackOperationStatus:
     def _set_operation_uuid(self, monkeypatch, operation_uuid):
         info = Mock()
         info.workflow_type = "TestWorkflow"
-        info.search_attributes = (
-            {OPERATION_UUID_SEARCH_ATTRIBUTE: [operation_uuid]}
-            if operation_uuid is not None
-            else {}
-        )
+        info.typed_search_attributes.get.return_value = operation_uuid
         monkeypatch.setattr(operation_module.workflow, "info", lambda: info)
 
     async def test_tracks_running_then_completed(
@@ -214,3 +243,42 @@ class TestTrackOperationStatus:
             OperationStatus.CANCELLED,
         ]
         assert params[-1].error == "Operation op-uuid was cancelled."
+
+
+@pytest.mark.asyncio
+class TestUpdateCurrentTask:
+    @pytest.fixture
+    def local_activity_mock(self, monkeypatch) -> AsyncMock:
+        mock = AsyncMock()
+        monkeypatch.setattr(
+            operation_module.workflow, "execute_local_activity", mock
+        )
+        return mock
+
+    def _set_operation_uuid(self, monkeypatch, operation_uuid):
+        info = Mock()
+        info.workflow_type = "TestWorkflow"
+        info.typed_search_attributes.get.return_value = operation_uuid
+        monkeypatch.setattr(operation_module.workflow, "info", lambda: info)
+
+    async def test_executes_activity_with_task(
+        self, monkeypatch, local_activity_mock
+    ):
+        self._set_operation_uuid(monkeypatch, "op-uuid")
+
+        await update_current_task("task1", 1)
+
+        local_activity_mock.assert_awaited_once()
+        param = local_activity_mock.call_args.args[1]
+        assert param.operation_uuid == "op-uuid"
+        assert param.name == "task1"
+        assert param.task_number == 1
+
+    async def test_missing_search_attribute_raises(
+        self, monkeypatch, local_activity_mock
+    ):
+        self._set_operation_uuid(monkeypatch, None)
+
+        with pytest.raises(ApplicationError):
+            await update_current_task("task1", 1)
+        local_activity_mock.assert_not_called()

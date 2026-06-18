@@ -1,8 +1,11 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maascommon.enums.operations import OperationStatus
-from maasservicelayer.builders.operations import OperationBuilder
+from maascommon.enums.operations import OperationStatus, OperationTaskStatus
+from maasservicelayer.builders.operations import (
+    OperationBuilder,
+    OperationTaskBuilder,
+)
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.operation_tasks import (
@@ -11,6 +14,7 @@ from maasservicelayer.db.repositories.operation_tasks import (
 from maasservicelayer.db.repositories.operations import (
     OperationsClauseFactory,
     OperationsRepository,
+    OperationTasksRepository,
 )
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -41,6 +45,21 @@ class OperationsService(
         super().__init__(context, operations_repository)
         self.operation_tasks_repository = operation_tasks_repository
 
+    async def start_task(
+        self, operation_uuid: str, name: str, task_number: int
+    ) -> OperationTask:
+        task = await self.operation_tasks_repository.create(
+            builder=OperationTaskBuilder(
+                operation_uuid=operation_uuid,
+                name=name,
+                task_number=task_number,
+                status=OperationTaskStatus.RUNNING,
+                started_at=utcnow(),
+            )
+        )
+        await self.set_current_task(operation_uuid, name)
+        return task
+
     async def update_status(
         self,
         operation_uuid: str,
@@ -56,6 +75,10 @@ class OperationsService(
             OperationStatus.FAILED,
         ):
             builder.finished = utcnow()
+        # On success the operation is no longer running any task; on failure we
+        # leave current_task untouched so the user can see where it stopped.
+        if status == OperationStatus.COMPLETED:
+            builder.current_task = None
         if result is not None:
             builder.result = result
         elif error is not None:
@@ -66,6 +89,16 @@ class OperationsService(
                 where=OperationsClauseFactory.with_uuid(operation_uuid)
             ),
             builder=builder,
+        )
+
+    async def set_current_task(
+        self, operation_uuid: str, name: str
+    ) -> Operation:
+        return await self.update_one(
+            query=QuerySpec(
+                where=OperationsClauseFactory.with_uuid(operation_uuid)
+            ),
+            builder=OperationBuilder(current_task=name),
         )
 
     async def list_for_user(

@@ -32,11 +32,12 @@ class Operation(MaasTimestampedBaseModel):
     user_id: int | None = None
 
 
+@generate_builder()
 class OperationTask(MaasBaseModel):
+    operation_uuid: str
+    name: str
+    task_number: int
+    status: OperationTaskStatus
     started_at: datetime | None = None
     finished_at: datetime | None = None
-    name: str
-    status: OperationTaskStatus
     result: dict | None = None
-    task_number: int
-    operation_uuid: str

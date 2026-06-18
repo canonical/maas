@@ -6,18 +6,28 @@ import uuid as uuid_module
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.sql.operators import eq
 
-from maascommon.enums.operations import OperationStatus, OperationType
-from maasservicelayer.builders.operations import OperationBuilder
+from maascommon.enums.operations import (
+    OperationStatus,
+    OperationTaskStatus,
+    OperationType,
+)
+from maasservicelayer.builders.operations import (
+    OperationBuilder,
+    OperationTaskBuilder,
+)
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import Clause, QuerySpec
+from maasservicelayer.db.repositories.base import MultipleResultsException
 from maasservicelayer.db.repositories.operations import (
     OperationsClauseFactory,
     OperationsRepository,
+    OperationTasksRepository,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ResourceBuilder
-from maasservicelayer.models.operations import Operation
+from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.operations import create_test_operation_entry
 from tests.maasapiserver.fixtures.db import Fixture
@@ -168,3 +178,169 @@ class TestOperationsRepository(RepositoryCommonTests[Operation]):
     async def test_get_by_uuid_not_found(self, repository_instance) -> None:
         instance = await repository_instance.get_by_uuid("non-existent-uuid")
         assert instance is None
+
+
+class TestOperationTasksRepository(RepositoryCommonTests[OperationTask]):
+    @pytest.fixture
+    def repository_instance(
+        self, db_connection: AsyncConnection
+    ) -> OperationTasksRepository:
+        return OperationTasksRepository(Context(connection=db_connection))
+
+    @pytest.fixture
+    async def _setup_test_list(
+        self, fixture: Fixture, num_objects: int
+    ) -> Sequence[OperationTask]:
+        operation = await create_test_operation_entry(
+            fixture, uuid="task-list-op"
+        )
+        return [
+            await create_test_operation_task_entry(
+                fixture, operation_uuid=operation.uuid, task_number=i
+            )
+            for i in range(num_objects)
+        ]
+
+    @pytest.fixture
+    async def instance_builder(self, fixture: Fixture) -> OperationTaskBuilder:
+        operation = await create_test_operation_entry(
+            fixture, uuid="task-builder-op"
+        )
+        return OperationTaskBuilder(
+            operation_uuid=operation.uuid,
+            name="task1",
+            task_number=1,
+            status=OperationTaskStatus.RUNNING,
+        )
+
+    @pytest.fixture
+    async def instance_builder_model(self) -> type[ResourceBuilder]:
+        return OperationTaskBuilder
+
+    @pytest.fixture
+    async def created_instance(self, fixture: Fixture) -> OperationTask:
+        operation = await create_test_operation_entry(
+            fixture, uuid="task-created-op"
+        )
+        return await create_test_operation_task_entry(
+            fixture, operation_uuid=operation.uuid
+        )
+
+    @pytest.mark.skip(reason="Operation tasks have no uniqueness constraint")
+    async def test_create_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        raise NotImplementedError()
+
+    @pytest.mark.skip(reason="Operation tasks have no uniqueness constraint")
+    async def test_create_many_duplicated(
+        self, repository_instance, instance_builder
+    ):
+        raise NotImplementedError()
+
+    async def test_update_by_id(
+        self,
+        repository_instance: OperationTasksRepository,
+        instance_builder: OperationTaskBuilder,
+    ) -> None:
+        created = await repository_instance.create(instance_builder)
+        updated = await repository_instance.update_by_id(
+            created.id,
+            OperationTaskBuilder(status=OperationTaskStatus.COMPLETED),
+        )
+        assert updated.status == OperationTaskStatus.COMPLETED
+
+    async def test_update_one(
+        self,
+        repository_instance: OperationTasksRepository,
+        instance_builder: OperationTaskBuilder,
+    ) -> None:
+        created = await repository_instance.create(instance_builder)
+        updated = await repository_instance.update_one(
+            QuerySpec(
+                where=Clause(
+                    eq(
+                        repository_instance.get_repository_table().c.id,
+                        created.id,
+                    )
+                )
+            ),
+            OperationTaskBuilder(status=OperationTaskStatus.COMPLETED),
+        )
+        assert updated.status == OperationTaskStatus.COMPLETED
+
+    @pytest.mark.parametrize("num_objects", [2])
+    async def test_update_one_multiple_results(
+        self,
+        repository_instance: OperationTasksRepository,
+        _setup_test_list: Sequence[OperationTask],
+        num_objects: int,
+    ) -> None:
+        with pytest.raises(MultipleResultsException):
+            await repository_instance.update_one(
+                QuerySpec(),
+                OperationTaskBuilder(status=OperationTaskStatus.COMPLETED),
+            )
+
+    @pytest.mark.parametrize("num_objects", [2])
+    async def test_update_many(
+        self,
+        repository_instance: OperationTasksRepository,
+        _setup_test_list: Sequence[OperationTask],
+        num_objects: int,
+    ) -> None:
+        updated = await repository_instance.update_many(
+            QuerySpec(),
+            OperationTaskBuilder(status=OperationTaskStatus.COMPLETED),
+        )
+        assert len(updated) == 2
+        assert all(
+            task.status == OperationTaskStatus.COMPLETED for task in updated
+        )
+
+
+async def create_test_operation_entry(
+    fixture: Fixture,
+    *,
+    uuid: str = "test-uuid",
+    op_type: OperationType = OperationType.MACHINE_DEPLOY,
+    status: OperationStatus = OperationStatus.ACCEPTED,
+    is_bulk: bool = False,
+) -> Operation:
+    now = utcnow()
+    [row] = await fixture.create(
+        "maasserver_operation",
+        [
+            {
+                "uuid": uuid,
+                "op_type": op_type.value,
+                "status": status.value,
+                "is_bulk": is_bulk,
+                "created": now,
+                "updated": now,
+            }
+        ],
+    )
+    return Operation(**row)
+
+
+async def create_test_operation_task_entry(
+    fixture: Fixture,
+    *,
+    operation_uuid: str,
+    name: str = "task1",
+    task_number: int = 1,
+    status: OperationTaskStatus = OperationTaskStatus.RUNNING,
+) -> OperationTask:
+    [row] = await fixture.create(
+        "maasserver_operation_task",
+        [
+            {
+                "operation_uuid": operation_uuid,
+                "name": name,
+                "task_number": task_number,
+                "status": status.value,
+            }
+        ],
+    )
+    return OperationTask(**row)
