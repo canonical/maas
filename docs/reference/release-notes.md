@@ -31,6 +31,19 @@ We support two releases of MAAS plus one Beta release (when available).  The two
 
 ## Version 3.7 release notes
 
+### MAAS 3.7.2 has been released
+
+We are happy to announce that MAAS 3.7.2 has been released, with the following bug fixes:
+
+- [2136694](https://launchpad.net/maas/+bug/2136694): Ephemeral deployments lack control over the amount of RAM allocated for the rootfs
+- [2138910](https://launchpad.net/maas/+bug/2138910): Alias interfaces duplicate the gateway4/6 config in netplan
+- [2141388](https://launchpad.net/maas/+bug/2141388): Introductory warning for non available images contains an absolute URL with internal IP when MAAS is accessed via a Load Balancer
+- [2141598](https://launchpad.net/maas/+bug/2141598): Custom images stuck in "Loading Queued for download" after upgrade to 3.5
+- [2142793](https://launchpad.net/maas/+bug/2142793): maasagent memory leak on DHCP expiry failure due to constraint violation
+- [2142861](https://launchpad.net/maas/+bug/2142861): Rapid requests to MAAS get_config API reaches database race condition
+- [2143730](https://launchpad.net/maas/+bug/2143730): Lease processing returns 404 and causes the agent to memory leak
+- [2143919](https://launchpad.net/maas/+bug/2143919): 30-maas-01-bmc-config configures wrong power_address on Lenovo XCC BMC
+
 ### MAAS 3.7.1 has been released
 
 We are happy to announce that MAAS 3.7.1 has been released, with the following bug fixes:
