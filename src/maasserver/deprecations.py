@@ -1,6 +1,7 @@
 # Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from maasserver.mac_duplicates import find_duplicate_mac_addresses
 from maasserver.models.controllerinfo import get_maas_version
 from maasserver.utils.orm import get_database_owner, postgresql_major_version
 from provisioningserver.logger import LegacyLogger
@@ -33,6 +34,18 @@ class Deprecation:
 
 # all known deprecation notices
 DEPRECATIONS = {
+    "DUPLICATE_MAC_ADDRESSES": Deprecation(
+        id="MD8",
+        since="3.6",
+        description=(
+            "Some interfaces share a MAC address that is stored in more than "
+            "one format, which MAAS currently treats as distinct interfaces. "
+            "MAAS 3.8 normalizes MAC addresses and enforces their uniqueness, "
+            "and upgrading will fail until these duplicates are resolved."
+        ),
+        link_text="How to resolve duplicate MAC addresses",
+        dismissable=False,
+    ),
     "DHCP_SNIPPETS": Deprecation(
         id="MD6",
         since="3.6",
@@ -72,6 +85,8 @@ def get_deprecations():
         deprecations.append(DEPRECATIONS["POSTGRES_OLDER_THAN_16"])
     if get_database_owner() == "postgres":
         deprecations.append(DEPRECATIONS["WRONG_MAAS_DATABASE_OWNER"])
+    if find_duplicate_mac_addresses():
+        deprecations.append(DEPRECATIONS["DUPLICATE_MAC_ADDRESSES"])
     return deprecations
 
 
