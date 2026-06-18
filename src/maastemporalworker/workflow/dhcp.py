@@ -67,7 +67,6 @@ from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
     workflow_run_with_context,
 )
-from provisioningserver.path import get_path
 
 from provisioningserver.boot.pxe import PXEBootMethod  # noqa:E402 isort:skip
 from provisioningserver.boot.grub import UEFIAMD64BootMethod
