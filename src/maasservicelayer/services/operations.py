@@ -14,7 +14,6 @@ from maasservicelayer.db.repositories.operation_tasks import (
 from maasservicelayer.db.repositories.operations import (
     OperationsClauseFactory,
     OperationsRepository,
-    OperationTasksRepository,
 )
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,

@@ -299,31 +299,6 @@ class TestOperationTasksRepository(RepositoryCommonTests[OperationTask]):
         )
 
 
-async def create_test_operation_entry(
-    fixture: Fixture,
-    *,
-    uuid: str = "test-uuid",
-    op_type: OperationType = OperationType.MACHINE_DEPLOY,
-    status: OperationStatus = OperationStatus.ACCEPTED,
-    is_bulk: bool = False,
-) -> Operation:
-    now = utcnow()
-    [row] = await fixture.create(
-        "maasserver_operation",
-        [
-            {
-                "uuid": uuid,
-                "op_type": op_type.value,
-                "status": status.value,
-                "is_bulk": is_bulk,
-                "created": now,
-                "updated": now,
-            }
-        ],
-    )
-    return Operation(**row)
-
-
 async def create_test_operation_task_entry(
     fixture: Fixture,
     *,
