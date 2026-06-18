@@ -162,15 +162,15 @@ class OperationsHandler(Handler):
         """Cancel a specific operation by UUID."""
 
         assert authenticated_user is not None
-        can_view_all = (
-            await services.openfga_tuples.get_client().can_view_operations(
+        can_edit_all = (
+            await services.openfga_tuples.get_client().can_edit_operations(
                 authenticated_user.id
             )
         )
         operation = await services.operations.cancel_for_user(
             uuid=operation_uuid,
             user_id=authenticated_user.id,
-            can_view_all=can_view_all,
+            can_edit_all=can_edit_all,
         )
 
         await services.temporal.cancel_workflow_by_operation_uuid(
