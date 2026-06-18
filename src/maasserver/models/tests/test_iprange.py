@@ -934,6 +934,26 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             },
         )
 
+    def test_modify_existing_dynamic_range_can_expand_start_with_allocated_ip(
+        self,
+    ):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.20",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.30",
+        )
+        iprange.start_ip = "192.168.0.10"
+        iprange.clean()
+        iprange.save()
+
     def test_dynamic_range_cant_overlap_gateway_ip(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
