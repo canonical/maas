@@ -7,7 +7,7 @@ from functools import wraps
 
 import structlog
 from temporalio import workflow
-from temporalio.exceptions import ApplicationError
+from temporalio.exceptions import ApplicationError, is_cancelled_exception
 
 from maascommon.enums.operations import OperationStatus
 from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
@@ -94,12 +94,18 @@ def track_operation_status(func):
                 operation_uuid=operation_uuid,
                 error=str(e),
             )
+            if is_cancelled_exception(e):
+                status = OperationStatus.CANCELLED
+                error = f"Operation {operation_uuid} was cancelled."
+            else:
+                status = OperationStatus.FAILED
+                error = str(e)
             await workflow.execute_local_activity(
                 UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
                 UpdateOperationStatusParam(
                     operation_uuid=operation_uuid,
-                    status=OperationStatus.FAILED,
-                    error=str(e),
+                    status=status,
+                    error=error,
                 ),
                 start_to_close_timeout=UPDATE_OPERATION_STATUS_TIMEOUT,
             )

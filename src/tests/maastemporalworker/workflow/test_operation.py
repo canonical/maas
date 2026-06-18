@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.client import Client
-from temporalio.exceptions import ApplicationError
+from temporalio.exceptions import ApplicationError, CancelledError
 
 from maascommon.enums.operations import OperationStatus
 from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
@@ -195,3 +195,22 @@ class TestTrackOperationStatus:
         with pytest.raises(ApplicationError):
             await run(Mock(), "param")
         local_activity_mock.assert_not_called()
+
+    async def test_tracks_cancelled_and_reraises(
+        self, monkeypatch, local_activity_mock
+    ):
+        self._set_operation_uuid(monkeypatch, "op-uuid")
+
+        @track_operation_status
+        async def run(self, param):
+            raise CancelledError("workflow cancelled")
+
+        with pytest.raises(CancelledError):
+            await run(Mock(), "param")
+
+        params = [c.args[1] for c in local_activity_mock.call_args_list]
+        assert [p.status for p in params] == [
+            OperationStatus.RUNNING,
+            OperationStatus.CANCELLED,
+        ]
+        assert params[-1].error == "Operation op-uuid was cancelled."

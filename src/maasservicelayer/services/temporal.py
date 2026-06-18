@@ -13,6 +13,7 @@ from temporalio.client import (
 )
 from temporalio.service import RPCError
 
+from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maasservicelayer.context import Context
 from maasservicelayer.services.base import Service, ServiceCache
 from maastemporalworker.worker import (
@@ -68,6 +69,23 @@ class TemporalService(Service):
             raise TemporalServiceException(
                 f"Failed to cancel workflow {workflow_id}"
             ) from None
+
+    async def cancel_workflow_by_operation_uuid(
+        self, operation_uuid: str
+    ) -> None:
+        client = await self.get_temporal_client()
+        query = (
+            f"{OPERATION_UUID_SEARCH_ATTRIBUTE}='{operation_uuid}'"
+            " AND ExecutionStatus='Running'"
+        )
+        async for wf in client.list_workflows(query=query):
+            handle = client.get_workflow_handle(workflow_id=wf.id)
+            try:
+                await handle.cancel()
+            except RPCError:
+                raise TemporalServiceException(
+                    f"Failed to cancel workflow {wf.id} for operation {operation_uuid}"
+                ) from None
 
     async def terminate_workflow(self, workflow_id: str) -> None:
         client = await self.get_temporal_client()

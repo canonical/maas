@@ -1,10 +1,13 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Annotated
+
 from fastapi import Depends
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
     NotFoundBodyResponse,
 )
 from maasapiserver.v3.api import services
@@ -126,6 +129,58 @@ class OperationsHandler(Handler):
             operation_uuid,
             user_id=authenticated_user.id,
             can_view_all=can_view_all,
+        )
+
+        return OperationResponse.from_model(
+            operation=operation,
+            self_base_hyperlink=f"{V3_API_PREFIX}/operations",
+        )
+
+    @handler(
+        path="/operations/{operation_uuid}",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            202: {
+                "model": OperationResponse,
+            },
+            404: {"model": NotFoundBodyResponse},
+            409: {"model": ConflictBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=202,
+        dependencies=[Depends(check_authentication())],
+    )
+    async def cancel_operation(
+        self,
+        operation_uuid: str,
+        authenticated_user: Annotated[
+            AuthenticatedUser | None, Depends(get_authenticated_user)
+        ],
+        services: Annotated[ServiceCollectionV3, Depends(services)],
+    ) -> OperationResponse:
+        """Cancel a specific operation by UUID."""
+
+        assert authenticated_user is not None
+        can_edit_all = (
+            await services.openfga_tuples.get_client().can_edit_operations(
+                authenticated_user.id
+            )
+        )
+        can_view_all = (
+            await services.openfga_tuples.get_client().can_view_operations(
+                authenticated_user.id
+            )
+        )
+        operation = await services.operations.cancel_for_user(
+            uuid=operation_uuid,
+            user_id=authenticated_user.id,
+            can_edit_all=can_edit_all,
+            can_view_all=can_view_all,
+        )
+
+        await services.temporal.cancel_workflow_by_operation_uuid(
+            operation_uuid
         )
 
         return OperationResponse.from_model(
