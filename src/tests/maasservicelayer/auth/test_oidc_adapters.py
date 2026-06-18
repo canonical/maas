@@ -5,7 +5,11 @@ from unittest.mock import AsyncMock
 
 from httpx import AsyncClient, Request, Response
 
-from maasservicelayer.auth.oidc_adapters import Auth0Adapter, EntraIDAdapter
+from maasservicelayer.auth.oidc_adapters import (
+    Auth0Adapter,
+    EntraIDAdapter,
+    KeycloakAdapter,
+)
 from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
@@ -111,6 +115,50 @@ class TestAuth0Adapter:
 
     async def test_user_is_active_false_when_blocked(self):
         adapter = self._adapter(Response(200, json=[{"blocked": True}]))
+
+        assert await adapter.user_is_active("user@example.com") is False
+
+    async def test_user_is_active_false_when_not_found(self):
+        adapter = self._adapter(Response(200, json=[]))
+
+        assert await adapter.user_is_active("user@example.com") is False
+
+
+class TestKeycloakAdapter:
+    def _adapter(self, get_response: Response) -> KeycloakAdapter:
+        provider = _provider("http://keycloak.example:8080/realms/master")
+        return KeycloakAdapter(provider, _http_client(get_response))
+
+    async def test_token_request_uses_default_scope(self):
+        adapter = self._adapter(Response(200, json=[]))
+
+        await adapter.get_token()
+
+        _, kwargs = adapter._http.post.call_args
+        assert kwargs["data"] == {
+            "grant_type": "client_credentials",
+            "client_id": "client123",
+            "client_secret": "secret456",
+            "scope": KeycloakAdapter.DEFAULT_SCOPE,
+        }
+
+    async def test_user_is_active_queries_realm_admin_endpoint(self):
+        adapter = self._adapter(Response(200, json=[{"enabled": True}]))
+
+        await adapter.user_is_active("user@example.com")
+
+        args, _ = adapter._http.get.call_args
+        assert args[0] == (
+            "http://keycloak.example:8080/admin/realms/master/users"
+        )
+
+    async def test_user_is_active_true_when_enabled(self):
+        adapter = self._adapter(Response(200, json=[{"enabled": True}]))
+
+        assert await adapter.user_is_active("user@example.com") is True
+
+    async def test_user_is_active_false_when_disabled(self):
+        adapter = self._adapter(Response(200, json=[{"enabled": False}]))
 
         assert await adapter.user_is_active("user@example.com") is False
 
