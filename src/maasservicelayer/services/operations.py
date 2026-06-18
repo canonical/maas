@@ -1,13 +1,10 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maascommon.enums.operations import OperationStatus, OperationType
+from maascommon.enums.operations import OperationStatus
 from maasservicelayer.builders.operations import OperationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.machine_operations import (
-    MachineOperationsRepository,
-)
 from maasservicelayer.db.repositories.operation_tasks import (
     OperationTasksRepository,
 )
@@ -27,11 +24,7 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.operations import (
-    MachineOperationData,
-    Operation,
-    OperationTask,
-)
+from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.utils.date import utcnow
 
@@ -44,11 +37,9 @@ class OperationsService(
         context: Context,
         operations_repository: OperationsRepository,
         operation_tasks_repository: OperationTasksRepository,
-        machine_operations_repository: MachineOperationsRepository,
     ):
         super().__init__(context, operations_repository)
         self.operation_tasks_repository = operation_tasks_repository
-        self.machine_operations_repository = machine_operations_repository
 
     async def update_status(
         self,
@@ -179,22 +170,3 @@ class OperationsService(
             page=page,
             size=size,
         )
-
-    async def get_type_specific_data(
-        self, operation: Operation
-    ) -> MachineOperationData | None:
-        match operation.op_type:
-            case (
-                OperationType.MACHINE_COMMISSION | OperationType.MACHINE_DEPLOY
-            ):
-                node_id = await self.machine_operations_repository.get_node_id(
-                    operation.uuid
-                )
-                if node_id is not None:
-                    return MachineOperationData(
-                        op_type=operation.op_type,
-                        node_id=node_id,
-                    )
-                return None
-            case _:
-                return None

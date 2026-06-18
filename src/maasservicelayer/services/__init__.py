@@ -63,9 +63,6 @@ from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.db.repositories.legacybootsourceselections import (
     LegacyBootSourceSelectionRepository,
 )
-from maasservicelayer.db.repositories.machine_operations import (
-    MachineOperationsRepository,
-)
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.db.repositories.mdns import MDNSRepository
 from maasservicelayer.db.repositories.neighbours import NeighboursRepository
@@ -775,6 +772,5 @@ class ServiceCollectionV3:
             context=context,
             operations_repository=OperationsRepository(context),
             operation_tasks_repository=OperationTasksRepository(context),
-            machine_operations_repository=MachineOperationsRepository(context),
         )
         return services

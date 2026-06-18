@@ -25,11 +25,7 @@ from maasservicelayer.exceptions.catalog import (
     NotFoundException,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.operations import (
-    MachineOperationData,
-    Operation,
-    OperationTask,
-)
+from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.services.temporal import TemporalService
@@ -198,7 +194,6 @@ class TestOperationsApi(ApiCommonTests):
         services_mock.operations.get_by_uuid_for_user.return_value = (
             TEST_OPERATION
         )
-        services_mock.operations.get_type_specific_data.return_value = None
 
         response = await client.get(f"{self.BASE_PATH}/{TEST_OPERATION.uuid}")
         operation_response = OperationResponse(**response.json())
@@ -337,29 +332,6 @@ class TestOperationsApi(ApiCommonTests):
                 )
             ),
         )
-
-    async def test_get_operation_with_type_specific_data(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
-    ) -> None:
-        client = mocked_api_client_user_with_permissions()
-        _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
-        services_mock.operations.get_by_uuid_for_user.return_value = (
-            TEST_OPERATION
-        )
-        services_mock.operations.get_type_specific_data.return_value = (
-            MachineOperationData(
-                op_type=OperationType.MACHINE_DEPLOY, node_id=42
-            )
-        )
-
-        response = await client.get(f"{self.BASE_PATH}/{TEST_OPERATION.uuid}")
-        operation_response = OperationResponse(**response.json())
-        assert response.status_code == 200
-        assert operation_response.type_specific_data is not None
-        assert operation_response.type_specific_data.node_id == 42
 
     async def test_get_operation_tasks(
         self,

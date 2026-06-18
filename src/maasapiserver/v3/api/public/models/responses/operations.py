@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Annotated, Self
+from typing import Self
 
 from pydantic import Field
 
@@ -18,16 +18,7 @@ from maascommon.enums.operations import (
     OperationTaskStatus,
     OperationType,
 )
-from maasservicelayer.models.operations import (
-    MachineOperationData,
-    Operation,
-    OperationTask,
-)
-
-TypeSpecificData = Annotated[
-    MachineOperationData,
-    Field(discriminator="op_type"),
-]
+from maasservicelayer.models.operations import Operation, OperationTask
 
 
 class OperationResponse(HalResponse[BaseHal]):
@@ -47,14 +38,12 @@ class OperationResponse(HalResponse[BaseHal]):
     is_bulk: bool
     parent_id: str | None = None
     user_id: int | None = None
-    type_specific_data: TypeSpecificData | None = None
 
     @classmethod
     def from_model(
         cls,
         operation: Operation,
         self_base_hyperlink: str,
-        type_specific_data: MachineOperationData | None = None,
     ) -> Self:
         return cls(
             uuid=operation.uuid,
@@ -72,7 +61,6 @@ class OperationResponse(HalResponse[BaseHal]):
             is_bulk=operation.is_bulk,
             parent_id=operation.parent_id,
             user_id=operation.user_id,
-            type_specific_data=type_specific_data,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{operation.uuid}"

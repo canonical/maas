@@ -2,9 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from typing import Literal
-
-from pydantic import BaseModel
 
 from maascommon.enums.operations import (
     OperationStatus,
@@ -43,10 +40,3 @@ class OperationTask(MaasBaseModel):
     result_errors: dict | None = None
     task_number: int
     operation_uuid: str
-
-
-class MachineOperationData(BaseModel):
-    op_type: Literal[
-        OperationType.MACHINE_COMMISSION, OperationType.MACHINE_DEPLOY
-    ]
-    node_id: int

@@ -27,6 +27,7 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -135,14 +136,9 @@ class OperationsHandler(Handler):
         if operation is None:
             raise NotFoundException()
 
-        type_specific_data = await services.operations.get_type_specific_data(
-            operation
-        )
-
         return OperationResponse.from_model(
             operation=operation,
             self_base_hyperlink=f"{V3_API_PREFIX}/operations",
-            type_specific_data=type_specific_data,
         )
 
     @handler(
