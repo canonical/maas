@@ -476,6 +476,47 @@ snap:
 	$(snapcraft) pack
 .PHONY: snap
 
+snap-work-tree:
+	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		git submodule update --init --recursive src/maasui/src; \
+	else \
+		echo "Skipping submodule update: git worktree metadata unavailable"; \
+	fi
+	$(MAKE) --no-print-directory snap-tree
+.PHONY: snap-work-tree
+
+snap-work-tree-sync:
+	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		git submodule update --init --recursive src/maasui/src; \
+	else \
+		echo "Skipping submodule update: git worktree metadata unavailable"; \
+	fi
+	$(MAKE) --no-print-directory -C src/maasui build
+	$(MAKE) --no-print-directory go-bins
+	$(MAKE) --no-print-directory snap-tree
+	rsync -v -r -u -l -t -W -L --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
+		--exclude 'maasui' --exclude 'maasagent' --exclude 'maasopenfga' --exclude 'machine-resources' \
+		--exclude 'host-info' --exclude 'maas-offline-docs' \
+		--exclude '*.pyc' --exclude '__pycache__' \
+		src/ \
+		$(SNAP_UNPACKED_DIR)/usr/lib/python3.*/dist-packages/
+	rsync -v -r -u -l -t -W -L \
+		$(UI_BUILD)/ \
+		$(SNAP_UNPACKED_DIR)/usr/share/maas/web/static/
+	rsync -v -r -u -l -t -W -L \
+		snap/local/tree/ \
+		$(SNAP_UNPACKED_DIR)/
+	rsync -v -r -u -l -t -W -L \
+		src/host-info/bin/ \
+		$(SNAP_UNPACKED_DIR)/usr/share/maas/machine-resources/
+	rsync -v -r -u -l -t -W -L \
+		src/maasagent/build/ \
+		$(SNAP_UNPACKED_DIR)/usr/sbin/
+	rsync -v -r -u -l -t -W -L \
+		src/maasopenfga/build/ \
+		$(SNAP_UNPACKED_DIR)/usr/sbin/
+.PHONY: snap-work-tree-sync
+
 SNAP_DEV_DIR = dev-snap
 SNAP_UNPACKED_DIR = $(SNAP_DEV_DIR)/tree
 SNAP_UNPACKED_DIR_MARKER = $(SNAP_DEV_DIR)/tree.marker

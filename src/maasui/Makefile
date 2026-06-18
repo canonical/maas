@@ -18,7 +18,8 @@ NODEJS_ARCH := $(shell \
 	else echo "unknown"; \
 	fi)
 
-UI_REVISION := $(shell git -C $(SRC_DIR) rev-parse HEAD)
+ABS_SRC_DIR := $(abspath $(SRC_DIR))
+UI_REVISION := $(shell git --git-dir=$(ABS_SRC_DIR)/.git --work-tree=$(ABS_SRC_DIR) rev-parse HEAD 2>/dev/null || echo local)
 TARBALL_NAME := maas_ui_$(UI_REVISION).tgz
 
 .DEFAULT_GOAL := build
@@ -38,6 +39,10 @@ clean: clean-build
 # fetch prebuilt UI
 
 fetch-build:
+	@if [ "$(UI_REVISION)" = "local" ]; then \
+		echo "UI revision unavailable; skipping prebuilt UI fetch" 1>&2; \
+		exit 1; \
+	fi
 	curl -sfL https://assets.ubuntu.com/v1/$(TARBALL_NAME) | tar --recursive-unlink --one-top-level=build --extract -z
 .PHONY: fetch-build
 
