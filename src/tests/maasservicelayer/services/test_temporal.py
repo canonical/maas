@@ -244,8 +244,8 @@ class TestTemporalService:
         temporal_client_mock,
     ) -> None:
         async def _list_workflows(query):
-            return
-            yield  # noqa: unreachable - makes this an async generator
+            for _ in ():
+                yield
 
         temporal_client_mock.list_workflows.return_value = _list_workflows(
             "query"
