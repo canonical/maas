@@ -1319,7 +1319,7 @@ class DHCPConfigActivity(ActivityBase):
                 default_dns_servers=default_dns_servers,
             )
 
-    def get_hooks_libraries(self) -> dict[str, Any]:
+    def get_kea_hooks_libraries(self) -> dict[str, Any]:
         return {"hooks-libraries": [self._get_kea_run_scripts_hook_config()]}
 
     def _get_kea_run_scripts_hook_config(

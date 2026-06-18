@@ -857,13 +857,13 @@ class TestDHCPConfigActivity:
             },
         }
 
-    async def test_get_hooks_libraries_deb(
+    async def test_get_kea_hooks_libraries_deb(
         self, db: Database, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("MAAS_PATH", raising=False)
         activities = self._make_activity(db)
 
-        result = activities.get_hooks_libraries()
+        result = activities.get_kea_hooks_libraries()
 
         assert result == {
             "hooks-libraries": [
@@ -877,13 +877,13 @@ class TestDHCPConfigActivity:
             ]
         }
 
-    async def test_get_hooks_libraries_snap(
+    async def test_get_kea_hooks_libraries_snap(
         self, db: Database, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("MAAS_PATH", "/snap/maas/current")
         activities = self._make_activity(db)
 
-        result = activities.get_hooks_libraries()
+        result = activities.get_kea_hooks_libraries()
 
         assert result == {
             "hooks-libraries": [

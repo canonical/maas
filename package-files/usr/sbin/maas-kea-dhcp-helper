@@ -23,11 +23,10 @@ def leases4_committed():
                hostname=os.getenv(f"LEASES4_AT{ln}_HOSTNAME"),
                lease_time=os.getenv(f"LEASES4_AT{ln}_VALID_LIFETIME")
         )
-    return
 
 def lease4_expire():
     notify(
-        "expire",
+        "expiry",
         os.environ["LEASE4_HWADDR"],
         "ipv4",
         os.environ["LEASE4_ADDRESS"],
