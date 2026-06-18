@@ -15,6 +15,7 @@ from maasservicelayer.db.repositories.operations import (
 )
 from maasservicelayer.exceptions.catalog import (
     ConflictException,
+    ForbiddenException,
     NotFoundException,
 )
 from maasservicelayer.models.base import (
@@ -410,7 +411,7 @@ class TestOperationsService:
         )
 
         result = await operations_service.cancel_for_user(
-            uuid="op-uuid", user_id=1, can_edit_all=True
+            uuid="op-uuid", user_id=1, can_edit_all=True, can_view_all=True
         )
 
         assert result.status == OperationStatus.CANCELLING
@@ -430,7 +431,7 @@ class TestOperationsService:
         )
 
         result = await operations_service.cancel_for_user(
-            uuid="op-uuid", user_id=1, can_edit_all=True
+            uuid="op-uuid", user_id=1, can_edit_all=True, can_view_all=True
         )
 
         assert result.status == OperationStatus.CANCELLING
@@ -455,7 +456,25 @@ class TestOperationsService:
 
         with pytest.raises(ConflictException):
             await operations_service.cancel_for_user(
-                uuid="op-uuid", user_id=1, can_edit_all=True
+                uuid="op-uuid", user_id=1, can_edit_all=True, can_view_all=True
+            )
+
+    async def test_cancel_for_user_forbidden_without_edit_permission(
+        self,
+        operations_service: OperationsService,
+        operations_repo_mock: Mock,
+    ) -> None:
+        operation = OTHER_USER_OPERATION.model_copy(
+            update={"status": OperationStatus.ACCEPTED}
+        )
+        operations_repo_mock.get_by_uuid.return_value = operation
+
+        with pytest.raises(ForbiddenException):
+            await operations_service.cancel_for_user(
+                uuid="other-uuid",
+                user_id=1,
+                can_edit_all=False,
+                can_view_all=True,
             )
 
     async def test_cancel_for_user_not_found(
@@ -467,5 +486,8 @@ class TestOperationsService:
 
         with pytest.raises(NotFoundException):
             await operations_service.cancel_for_user(
-                uuid="nonexistent-uuid", user_id=1, can_edit_all=True
+                uuid="nonexistent-uuid",
+                user_id=1,
+                can_edit_all=True,
+                can_view_all=True,
             )

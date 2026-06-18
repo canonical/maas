@@ -12,10 +12,12 @@ from maasservicelayer.db.repositories.operations import (
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
+    ForbiddenException,
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -119,10 +121,20 @@ class OperationsService(
         uuid: str,
         user_id: int,
         can_edit_all: bool,
+        can_view_all: bool,
     ) -> Operation:
         operation = await self.get_by_uuid_for_user(
-            uuid, user_id=user_id, can_view_all=can_edit_all
+            uuid, user_id=user_id, can_view_all=can_view_all
         )
+        if not can_edit_all and operation.user_id != user_id:
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                        message=f"User is not permitted to cancel operation with uuid '{uuid}'.",
+                    )
+                ]
+            )
         if operation.status in (
             OperationStatus.CANCELLING,
             OperationStatus.CANCELLED,

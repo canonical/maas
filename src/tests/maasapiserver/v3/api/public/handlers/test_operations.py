@@ -226,7 +226,10 @@ class TestOperationsApi(ApiCommonTests):
         assert response.status_code == 202
         assert operation_response.status == OperationStatus.CANCELLING
         services_mock.operations.cancel_for_user.assert_called_once_with(
-            uuid=TEST_OPERATION.uuid, user_id=0, can_edit_all=True
+            uuid=TEST_OPERATION.uuid,
+            user_id=0,
+            can_edit_all=True,
+            can_view_all=True,
         )
         services_mock.temporal.cancel_workflow_by_operation_uuid.assert_awaited_once_with(
             TEST_OPERATION.uuid
