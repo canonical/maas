@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
@@ -12,6 +12,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
+from maasservicelayer.models.usergroups import UserGroup
 from maasservicelayer.models.users import User, UserStatistics
 
 
@@ -21,11 +22,16 @@ class UserInfoResponse(BaseModel):
     is_superuser: bool
 
 
+class UserGroupSummaryResponse(BaseModel):
+    id: int
+    name: str
+
+
 class UserResponse(HalResponse[BaseHal]):
     kind: str = Field(default="User")
     id: int
     username: str
-    is_superuser: bool
+    groups: list[UserGroupSummaryResponse]
     first_name: str
     last_name: str | None = None
     date_joined: datetime
@@ -33,11 +39,19 @@ class UserResponse(HalResponse[BaseHal]):
     last_login: datetime | None = None
 
     @classmethod
-    def from_model(cls, user: User, self_base_hyperlink: str) -> Self:
+    def from_model(
+        cls,
+        user: User,
+        groups: list[UserGroup],
+        self_base_hyperlink: str,
+    ) -> Self:
         return cls(
             id=user.id,
             username=user.username,
-            is_superuser=user.is_superuser,
+            groups=[
+                UserGroupSummaryResponse(id=group.id, name=group.name)
+                for group in groups
+            ],
             first_name=user.first_name,
             last_name=user.last_name,
             date_joined=user.date_joined,

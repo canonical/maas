@@ -625,6 +625,12 @@ class TestUsersService:
             page=1, size=1000, query=QuerySpec(where=None)
         )
 
+    async def test_get_groups_for_users(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        await users_service.get_groups_for_users([1, 2])
+        users_repository.get_groups_for_users.assert_called_once_with([1, 2])
+
     async def test_get_by_id_statistics(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:

@@ -4,7 +4,7 @@
 import json
 from json import dumps as _dumps
 from typing import Callable
-from unittest.mock import Mock, patch
+from unittest.mock import call, Mock, patch
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -43,9 +43,14 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.usergroups import UserGroup
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services.usergroups import (
+    UserGroupNotFound,
+    UserGroupsService,
+)
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -79,6 +84,22 @@ USER_2 = User(
     date_joined=utcnow(),
     email="bob@company.com",
     last_login=None,
+)
+
+GROUP_1 = UserGroup(
+    id=10,
+    name="admins",
+    description="Admins",
+    created=utcnow(),
+    updated=utcnow(),
+)
+
+GROUP_2 = UserGroup(
+    id=20,
+    name="viewers",
+    description="Viewers",
+    created=utcnow(),
+    updated=utcnow(),
 )
 
 
@@ -218,6 +239,9 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1], total=2
         )
+        services_mock.users.get_groups_for_users.return_value = {
+            USER_1.id: [GROUP_1, GROUP_2]
+        }
         response = await client.get(
             f"{self.BASE_PATH}?size=1",
         )
@@ -227,6 +251,13 @@ class TestUsersApi(ApiCommonTests):
         assert len(users_response.items) == 1
         assert users_response.total == 2
         assert users_response.next == f"{self.BASE_PATH}?page=2&size=1"
+        assert [(g.id, g.name) for g in users_response.items[0].groups] == [
+            (GROUP_1.id, GROUP_1.name),
+            (GROUP_2.id, GROUP_2.name),
+        ]
+        services_mock.users.get_groups_for_users.assert_called_once_with(
+            [USER_1.id]
+        )
 
     async def test_list_users_no_other_page(
         self,
@@ -240,6 +271,10 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1, USER_2], total=2
         )
+        services_mock.users.get_groups_for_users.return_value = {
+            USER_1.id: [GROUP_1],
+            USER_2.id: [],
+        }
         response = await client.get(
             f"{self.BASE_PATH}?size=2",
         )
@@ -249,6 +284,10 @@ class TestUsersApi(ApiCommonTests):
         assert len(users_response.items) == 2
         assert users_response.total == 2
         assert users_response.next is None
+        assert [(g.id, g.name) for g in users_response.items[0].groups] == [
+            (GROUP_1.id, GROUP_1.name)
+        ]
+        assert users_response.items[1].groups == []
 
     async def test_list_users_with_username_or_email_filter(
         self,
@@ -262,6 +301,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1], total=2
         )
+        services_mock.users.get_groups_for_users.return_value = {USER_1.id: []}
 
         response = await client.get(
             f"{self.BASE_PATH}?size=1&username_or_email=example",
@@ -293,6 +333,9 @@ class TestUsersApi(ApiCommonTests):
         )
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.get_groups_for_users.return_value = {
+            USER_1.id: [GROUP_1]
+        }
         response = await client.get(
             f"{self.BASE_PATH}/1",
         )
@@ -301,6 +344,12 @@ class TestUsersApi(ApiCommonTests):
         user_response = UserResponse(**response.json())
         assert user_response.id == 1
         assert user_response.username == "username"
+        assert [(g.id, g.name) for g in user_response.groups] == [
+            (GROUP_1.id, GROUP_1.name)
+        ]
+        services_mock.users.get_groups_for_users.assert_called_once_with(
+            [USER_1.id]
+        )
 
     async def test_get_user_404(
         self,
@@ -356,7 +405,6 @@ class TestUsersApi(ApiCommonTests):
         create_user_request = UserCreateRequest(
             username="new_username",
             password="new_password",
-            is_superuser=False,
             first_name="new_first_name",
             last_name="new_last_name",
             email="new_user@example.com",
@@ -376,6 +424,10 @@ class TestUsersApi(ApiCommonTests):
 
         services_mock.users = Mock(UsersService)
         services_mock.users.create.return_value = new_user
+        services_mock.users.get_groups_for_users.return_value = {
+            new_user.id: []
+        }
+        services_mock.usergroups = Mock(UserGroupsService)
 
         response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_user_request)
@@ -387,12 +439,113 @@ class TestUsersApi(ApiCommonTests):
         user_response = UserResponse(**response.json())
 
         assert user_response.id == new_user.id
-        assert user_response.is_superuser == new_user.is_superuser
+        assert user_response.groups == []
         assert user_response.username == new_user.username
         assert user_response.first_name == new_user.first_name
         assert user_response.last_name == new_user.last_name
         assert user_response.email == new_user.email
         assert user_response.date_joined == new_user.date_joined
+        services_mock.usergroups.add_user_to_group_by_id.assert_not_called()
+
+    async def test_post_user_with_groups(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        create_user_request = UserCreateRequest(
+            username="new_username",
+            password="new_password",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_user@example.com",
+            groups=[GROUP_1.id, GROUP_2.id, GROUP_1.id],
+        )
+        new_user = User(
+            id=3,
+            username="new_username",
+            password="new_password",
+            is_superuser=False,
+            is_staff=False,
+            is_active=False,
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_user@example.com",
+            date_joined=utcnow(),
+        )
+
+        services_mock.users = Mock(UsersService)
+        services_mock.users.create.return_value = new_user
+        services_mock.users.get_groups_for_users.return_value = {
+            new_user.id: [GROUP_1, GROUP_2]
+        }
+        services_mock.usergroups = Mock(UserGroupsService)
+
+        response = await client.post(
+            self.BASE_PATH, json=jsonable_encoder(create_user_request)
+        )
+
+        assert response.status_code == 201
+        user_response = UserResponse(**response.json())
+        assert [(g.id, g.name) for g in user_response.groups] == [
+            (GROUP_1.id, GROUP_1.name),
+            (GROUP_2.id, GROUP_2.name),
+        ]
+        # Duplicate group ids are de-duplicated.
+        assert (
+            services_mock.usergroups.add_user_to_group_by_id.await_args_list
+            == [
+                call(new_user.id, GROUP_1.id),
+                call(new_user.id, GROUP_2.id),
+            ]
+        )
+
+    async def test_post_user_with_unknown_group(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        create_user_request = UserCreateRequest(
+            username="new_username",
+            password="new_password",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_user@example.com",
+            groups=[GROUP_1.id],
+        )
+        new_user = User(
+            id=3,
+            username="new_username",
+            password="new_password",
+            is_superuser=False,
+            is_staff=False,
+            is_active=False,
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_user@example.com",
+            date_joined=utcnow(),
+        )
+
+        services_mock.users = Mock(UsersService)
+        services_mock.users.create.return_value = new_user
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.add_user_to_group_by_id.side_effect = (
+            UserGroupNotFound()
+        )
+
+        response = await client.post(
+            self.BASE_PATH, json=jsonable_encoder(create_user_request)
+        )
+
+        assert response.status_code == 404
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
 
     async def test_post_user_409(
         self,
@@ -405,7 +558,6 @@ class TestUsersApi(ApiCommonTests):
         create_user_request = UserCreateRequest(
             username="new_username",
             password="new_password",
-            is_superuser=False,
             first_name="new_first_name",
             last_name="new_last_name",
             email="new_user@example.com",
@@ -424,6 +576,10 @@ class TestUsersApi(ApiCommonTests):
         )
 
         services_mock.users = Mock(UsersService)
+        services_mock.users.get_groups_for_users.return_value = {
+            new_user.id: []
+        }
+        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.users.create.side_effect = [
             new_user,
             AlreadyExistsException(
@@ -500,9 +656,12 @@ class TestUsersApi(ApiCommonTests):
         )
         services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = updated_user
+        services_mock.users.get_groups_for_users.return_value = {
+            updated_user.id: []
+        }
+        services_mock.usergroups = Mock(UserGroupsService)
 
         user_request = UserUpdateRequest(
-            is_superuser=True,
             username="new_user",
             password="new_pass",
             first_name="new_first_name",
@@ -520,11 +679,113 @@ class TestUsersApi(ApiCommonTests):
         user_response = UserResponse(**response.json())
 
         assert user_response.id == updated_user.id
-        assert user_response.is_superuser == updated_user.is_superuser
+        assert user_response.groups == []
         assert user_response.username == updated_user.username
         assert user_response.first_name == updated_user.first_name
         assert user_response.last_name == updated_user.last_name
         assert user_response.email == updated_user.email
+
+    async def test_put_user_reconciles_groups(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        updated_user = User(
+            id=1,
+            is_active=False,
+            is_superuser=False,
+            is_staff=False,
+            username="new_user",
+            password="new_pass",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_email@example.com",
+        )
+        services_mock.users = Mock(UsersService)
+        services_mock.users.update_by_id.return_value = updated_user
+        # The user currently belongs to GROUP_1, and we request GROUP_2.
+        services_mock.users.get_groups_for_users.side_effect = [
+            {updated_user.id: [GROUP_1]},
+            {updated_user.id: [GROUP_2]},
+        ]
+        services_mock.usergroups = Mock(UserGroupsService)
+
+        user_request = UserUpdateRequest(
+            username="new_user",
+            password="new_pass",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_email@example.com",
+            groups=[GROUP_2.id],
+        )
+
+        response = await client.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(user_request),
+        )
+
+        assert response.status_code == 200
+        user_response = UserResponse(**response.json())
+        assert [(g.id, g.name) for g in user_response.groups] == [
+            (GROUP_2.id, GROUP_2.name)
+        ]
+        services_mock.usergroups.add_user_to_group_by_id.assert_awaited_once_with(
+            updated_user.id, GROUP_2.id
+        )
+        services_mock.usergroups.remove_user_from_group.assert_awaited_once_with(
+            GROUP_1.id, updated_user.id
+        )
+
+    async def test_put_user_with_unknown_group(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+        )
+        updated_user = User(
+            id=1,
+            is_active=False,
+            is_superuser=False,
+            is_staff=False,
+            username="new_user",
+            password="new_pass",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_email@example.com",
+        )
+        services_mock.users = Mock(UsersService)
+        services_mock.users.update_by_id.return_value = updated_user
+        services_mock.users.get_groups_for_users.return_value = {
+            updated_user.id: []
+        }
+        services_mock.usergroups = Mock(UserGroupsService)
+        services_mock.usergroups.add_user_to_group_by_id.side_effect = (
+            UserGroupNotFound()
+        )
+
+        user_request = UserUpdateRequest(
+            username="new_user",
+            password="new_pass",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_email@example.com",
+            groups=[GROUP_1.id],
+        )
+
+        response = await client.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(user_request),
+        )
+
+        assert response.status_code == 404
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
 
     async def test_put_user_404(
         self,
@@ -538,7 +799,6 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.update_by_id.side_effect = NotFoundException()
 
         user_request = UserUpdateRequest(
-            is_superuser=True,
             username="new_user",
             password="new_pass",
             first_name="new_first_name",
@@ -571,7 +831,6 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.update_by_id.return_value = None
 
         user_request = UserUpdateRequest(
-            is_superuser=True,
             username="new_user",
             password="new_pass",
             first_name="new_first_name",
