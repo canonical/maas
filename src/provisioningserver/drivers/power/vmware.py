@@ -52,12 +52,7 @@ class VMwarePowerDriver(PowerDriver):
             required=False,
             scope=SETTING_SCOPE.NODE,
         ),
-        make_setting_field(
-            "power_address",
-            "VMware IP",
-            field_type="ip_address",
-            required=True,
-        ),
+        make_setting_field("power_address", "VMware IP", required=True),
         make_setting_field("power_user", "VMware username", required=True),
         make_setting_field(
             "power_pass",

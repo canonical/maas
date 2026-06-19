@@ -3915,7 +3915,6 @@ class Node(CleanSave, TimestampedModel):
         self.distro_series = ""
         self.license_key = ""
         self.hwe_kernel = None
-        self.current_installation_script_set = None
         self.install_rackd = False
         self.install_kvm = False
         self.register_vmhost = False
@@ -5928,7 +5927,7 @@ class Node(CleanSave, TimestampedModel):
         _,
         d: Deferred,
         power_info: PowerInfo,
-        task_queue: str,
+        power_wf_task_queue: str,
         timeout: int = 2 * NODE_TIMEOUT,
     ) -> Deferred:
         dd = start_workflow(
@@ -5941,7 +5940,7 @@ class Node(CleanSave, TimestampedModel):
                             system_id=str(self.system_id),
                             driver_type=str(power_info.power_type),
                             driver_opts=dict(power_info.power_parameters),
-                            task_queue=task_queue,
+                            task_queue=power_wf_task_queue,
                         ),
                         ephemeral_deploy=bool(self.ephemeral_deploy),
                         can_set_boot_order=bool(power_info.can_set_boot_order),
@@ -6016,7 +6015,15 @@ class Node(CleanSave, TimestampedModel):
             self._start_deployment()
             claimed_ips = True
             needs_power_call = False
-            task_queue = str(get_temporal_task_queue_for_bmc(self))
+            if power_info.power_type == "manual":
+                # We don't have to perform any power driver calls for 'manual' power
+                # drivers. The task_queue "" is invalid, but it is relative to the
+                # power workflow, which doesn't get executed. (LP: #2153152)
+                power_wf_task_queue = ""
+            else:
+                power_wf_task_queue = str(
+                    get_temporal_task_queue_for_bmc(self)
+                )
 
             # Previously, the node timeout was defined as the period since the
             # node last sent notification. In the current implementation, the
@@ -6026,7 +6033,11 @@ class Node(CleanSave, TimestampedModel):
             # reasonable compromise.
             timeout = 2 * Config.objects.get_config("node_timeout")
             d.addCallback(
-                self._temporal_deploy, d, power_info, task_queue, timeout
+                self._temporal_deploy,
+                d,
+                power_info,
+                power_wf_task_queue,
+                timeout,
             )
 
         elif self.status in COMMISSIONING_LIKE_STATUSES:
@@ -6053,7 +6064,15 @@ class Node(CleanSave, TimestampedModel):
             self._start_deployment()
             needs_power_call = False
 
-            task_queue = str(get_temporal_task_queue_for_bmc(self))
+            if power_info.power_type == "manual":
+                # We don't have to perform any power driver calls for 'manual' power
+                # drivers. The task_queue "" is invalid, but it is relative to the
+                # power workflow, which doesn't get executed. (LP: #2153152)
+                power_wf_task_queue = ""
+            else:
+                power_wf_task_queue = str(
+                    get_temporal_task_queue_for_bmc(self)
+                )
 
             # Previously, the node timeout was defined as the period since the
             # node last sent notification. In the current workflow
@@ -6064,7 +6083,11 @@ class Node(CleanSave, TimestampedModel):
             # reasonable compromise.
             timeout = 2 * Config.objects.get_config("node_timeout")
             d.addCallback(
-                self._temporal_deploy, d, power_info, task_queue, timeout
+                self._temporal_deploy,
+                d,
+                power_info,
+                power_wf_task_queue,
+                timeout,
             )
         else:
             set_deployment_timeout = False
