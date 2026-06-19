@@ -19,6 +19,9 @@ extensions = []
 if (
     len(Path(__file__).parents) >= 2
     and not (Path(__file__).parents[1] / ".git").exists()
+    # A shallow clone has a .git/shallow file; sphinx_last_updated_by_git
+    # produces warnings when git log cannot traverse full history.
+    or (Path(__file__).parents[1] / ".git" / "shallow" ).exists()
 ):
     # Some surgery in order to accomodate the fact that
     # canonical_sphinx and sphinx_sitemap both require
