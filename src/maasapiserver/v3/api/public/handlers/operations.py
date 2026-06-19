@@ -133,8 +133,6 @@ class OperationsHandler(Handler):
             user_id=authenticated_user.id,
             can_view_all=can_view_all,
         )
-        if operation is None:
-            raise NotFoundException()
 
         return OperationResponse.from_model(
             operation=operation,
