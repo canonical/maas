@@ -214,7 +214,7 @@ class UsersHandler(Handler):
             items=[
                 UserResponse.from_model(
                     user=user,
-                    groups=groups_by_user[user.id],
+                    groups=groups_by_user.for_user(user.id),
                     self_base_hyperlink=f"{V3_API_PREFIX}/users",
                 )
                 for user in users.items
@@ -258,7 +258,7 @@ class UsersHandler(Handler):
         response.headers["ETag"] = user.etag()
         return UserResponse.from_model(
             user=user,
-            groups=groups_by_user[user.id],
+            groups=groups_by_user.for_user(user.id),
             self_base_hyperlink=f"{V3_API_PREFIX}/users",
         )
 
@@ -316,7 +316,7 @@ class UsersHandler(Handler):
         response.headers["ETag"] = new_user.etag()
         return UserResponse.from_model(
             user=new_user,
-            groups=groups_by_user[new_user.id],
+            groups=groups_by_user.for_user(new_user.id),
             self_base_hyperlink=f"{V3_API_PREFIX}/users",
         )
 
@@ -354,7 +354,7 @@ class UsersHandler(Handler):
 
         current_groups = (
             await services.users.get_groups_for_users([user.id])
-        )[user.id]
+        ).for_user(user.id)
         current_group_ids = {group.id for group in current_groups}
         desired_group_ids = dict.fromkeys(user_request.groups)
 
@@ -382,7 +382,7 @@ class UsersHandler(Handler):
         response.headers["ETag"] = user.etag()
         return UserResponse.from_model(
             user=user,
-            groups=groups_by_user[user.id],
+            groups=groups_by_user.for_user(user.id),
             self_base_hyperlink=f"{V3_API_PREFIX}/users",
         )
 

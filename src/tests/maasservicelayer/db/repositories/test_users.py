@@ -259,7 +259,8 @@ class TestUsersRepository:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         users_repository = UsersRepository(Context(connection=db_connection))
-        assert await users_repository.get_groups_for_users([]) == {}
+        result = await users_repository.get_groups_for_users([])
+        assert result.groups_by_user == {}
 
     async def test_get_groups_for_users(
         self, db_connection: AsyncConnection, fixture: Fixture
@@ -302,16 +303,20 @@ class TestUsersRepository:
             [user1.id, user2.id, user3.id]
         )
 
-        assert set(groups_by_user.keys()) == {user1.id, user2.id, user3.id}
+        assert set(groups_by_user.groups_by_user.keys()) == {
+            user1.id,
+            user2.id,
+            user3.id,
+        }
         # Groups are ordered by name.
-        assert [group.name for group in groups_by_user[user1.id]] == [
+        assert [group.name for group in groups_by_user.for_user(user1.id)] == [
             "alpha",
             "beta",
         ]
-        assert [group.id for group in groups_by_user[user2.id]] == [
+        assert [group.id for group in groups_by_user.for_user(user2.id)] == [
             group_alpha.id
         ]
-        assert groups_by_user[user3.id] == []
+        assert groups_by_user.for_user(user3.id) == []
 
     async def test_list_statistics(
         self, db_connection: AsyncConnection, fixture: Fixture

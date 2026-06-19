@@ -63,7 +63,7 @@ from maasservicelayer.exceptions.constants import (
     PRECONDITION_FAILED,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.usergroups import UserGroup
+from maasservicelayer.models.usergroups import UserGroupsByUser
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.consumers import ConsumersService
@@ -356,7 +356,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
 
     async def get_groups_for_users(
         self, user_ids: list[int]
-    ) -> dict[int, list[UserGroup]]:
+    ) -> UserGroupsByUser:
         return await self.repository.get_groups_for_users(user_ids)
 
     async def complete_intro(self, user_id: int) -> UserProfile:

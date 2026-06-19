@@ -43,7 +43,7 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.usergroups import UserGroup
+from maasservicelayer.models.usergroups import UserGroup, UserGroupsByUser
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
@@ -239,9 +239,9 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1], total=2
         )
-        services_mock.users.get_groups_for_users.return_value = {
-            USER_1.id: [GROUP_1, GROUP_2]
-        }
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={USER_1.id: [GROUP_1, GROUP_2]})
+        )
         response = await client.get(
             f"{self.BASE_PATH}?size=1",
         )
@@ -271,10 +271,11 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1, USER_2], total=2
         )
-        services_mock.users.get_groups_for_users.return_value = {
-            USER_1.id: [GROUP_1],
-            USER_2.id: [],
-        }
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(
+                groups_by_user={USER_1.id: [GROUP_1], USER_2.id: []}
+            )
+        )
         response = await client.get(
             f"{self.BASE_PATH}?size=2",
         )
@@ -301,7 +302,9 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1], total=2
         )
-        services_mock.users.get_groups_for_users.return_value = {USER_1.id: []}
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={USER_1.id: []})
+        )
 
         response = await client.get(
             f"{self.BASE_PATH}?size=1&username_or_email=example",
@@ -333,9 +336,9 @@ class TestUsersApi(ApiCommonTests):
         )
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
-        services_mock.users.get_groups_for_users.return_value = {
-            USER_1.id: [GROUP_1]
-        }
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={USER_1.id: [GROUP_1]})
+        )
         response = await client.get(
             f"{self.BASE_PATH}/1",
         )
@@ -424,9 +427,9 @@ class TestUsersApi(ApiCommonTests):
 
         services_mock.users = Mock(UsersService)
         services_mock.users.create.return_value = new_user
-        services_mock.users.get_groups_for_users.return_value = {
-            new_user.id: []
-        }
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={new_user.id: []})
+        )
         services_mock.usergroups = Mock(UserGroupsService)
 
         response = await client.post(
@@ -478,9 +481,9 @@ class TestUsersApi(ApiCommonTests):
 
         services_mock.users = Mock(UsersService)
         services_mock.users.create.return_value = new_user
-        services_mock.users.get_groups_for_users.return_value = {
-            new_user.id: [GROUP_1, GROUP_2]
-        }
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={new_user.id: [GROUP_1, GROUP_2]})
+        )
         services_mock.usergroups = Mock(UserGroupsService)
 
         response = await client.post(
@@ -576,9 +579,9 @@ class TestUsersApi(ApiCommonTests):
         )
 
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_groups_for_users.return_value = {
-            new_user.id: []
-        }
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={new_user.id: []})
+        )
         services_mock.usergroups = Mock(UserGroupsService)
         services_mock.users.create.side_effect = [
             new_user,
@@ -656,9 +659,9 @@ class TestUsersApi(ApiCommonTests):
         )
         services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = updated_user
-        services_mock.users.get_groups_for_users.return_value = {
-            updated_user.id: []
-        }
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={updated_user.id: []})
+        )
         services_mock.usergroups = Mock(UserGroupsService)
 
         user_request = UserUpdateRequest(
@@ -708,8 +711,8 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.update_by_id.return_value = updated_user
         # The user currently belongs to GROUP_1, and we request GROUP_2.
         services_mock.users.get_groups_for_users.side_effect = [
-            {updated_user.id: [GROUP_1]},
-            {updated_user.id: [GROUP_2]},
+            UserGroupsByUser(groups_by_user={updated_user.id: [GROUP_1]}),
+            UserGroupsByUser(groups_by_user={updated_user.id: [GROUP_2]}),
         ]
         services_mock.usergroups = Mock(UserGroupsService)
 
@@ -760,9 +763,9 @@ class TestUsersApi(ApiCommonTests):
         )
         services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = updated_user
-        services_mock.users.get_groups_for_users.return_value = {
-            updated_user.id: []
-        }
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={updated_user.id: []})
+        )
         services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.add_user_to_group_by_id.side_effect = (
             UserGroupNotFound()
