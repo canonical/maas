@@ -50,7 +50,6 @@ apps:
     command: usr/bin/run-pebble-daemon
     plugs:
       - avahi-observe
-      - block-devices  # allow blkid (machine-resources) to read disk devices
       - hardware-observe
       - kernel-module-observe
       - mount-observe
