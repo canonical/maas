@@ -5,7 +5,7 @@
 # Author: Andres Rodriguez <andres.rodriguez@canonical.com>
 #         Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2013-2025 Canonical
+# Copyright (C) 2013-2026 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -1409,11 +1409,15 @@ def main():
         # The IPMI modules will fail to load if loaded on unsupported
         # hardware.
         try:
-            run(["sudo", "-E", "modprobe", module], timeout=COMMAND_TIMEOUT)
+            # XXX: Used to be "sudo -E", dropped the "-E" since sudo-rs doesn't
+            # support it, but didn't explicitly add any env var.
+            run(["sudo", "modprobe", module], timeout=COMMAND_TIMEOUT)
         except TimeoutExpired:
             pass
     try:
-        run(["sudo", "-E", "udevadm", "settle"], timeout=COMMAND_TIMEOUT)
+        # XXX: Used to be "sudo -E", dropped the "-E" since sudo-rs doesn't
+        # support it, but didn't explicitly add any env var.
+        run(["sudo", "udevadm", "settle"], timeout=COMMAND_TIMEOUT)
     except TimeoutExpired:
         pass
     detect_and_configure(args, bmc_config_path)

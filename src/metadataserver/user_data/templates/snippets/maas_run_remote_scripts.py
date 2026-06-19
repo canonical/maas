@@ -5,7 +5,7 @@
 #
 # Author: Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2017-2020 Canonical
+# Copyright (C) 2017-2026 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -161,11 +161,33 @@ def download_and_extract_tar(url, creds, scripts_dir):
     return True
 
 
+# sudo-rs doesn't implement the -E flag, so we pass --preserve-env for each
+# environment variable we need to keep. These cover the proxy configuration
+# and the apt non-interactive frontend.
+# XXX: Some env vars previously passed might not be included in this list.
+SUDO_PRESERVE_ENV_VARS = [
+    "DEBIAN_FRONTEND",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+    # from snap/snapcraft.yaml
+    "PYTHONPATH",
+    "LD_PRELOAD",
+    "PEBBLE",
+]
+
+
 def run_and_check(
     cmd, scripts, status, send_result=True, sudo=False, failure_hook=None
 ):
     if sudo:
-        cmd = ["sudo", "-En"] + cmd
+        preserve_env = [
+            f"--preserve-env={var}" for var in SUDO_PRESERVE_ENV_VARS
+        ]
+        cmd = ["sudo", "-n"] + preserve_env + cmd
     proc = Popen(cmd, stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
     capture_script_output(
         proc,

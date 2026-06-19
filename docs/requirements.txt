@@ -56,7 +56,6 @@ python-jose==3.5.0
 SQLAlchemy==2.0.49
 structlog==25.5.0
 Tempita==0.6.0
-temporalio==1.24.0
 twisted==25.5.0
 
 # Other dependencies, possibly dependencies of the above
