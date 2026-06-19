@@ -1,8 +1,8 @@
 module host-info
 
-go 1.26.2
+go 1.26.4
 
-require github.com/canonical/lxd v0.0.0-20260423072857-84705553d17a
+require github.com/canonical/lxd v0.0.0-20260619131343-14db131f6598
 
 require (
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e // indirect
@@ -18,7 +18,7 @@ require (
 	github.com/vishvananda/netlink v1.3.1 // indirect
 	github.com/vishvananda/netns v0.0.5 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
-	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/term v0.42.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/term v0.44.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 )
