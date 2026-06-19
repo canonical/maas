@@ -278,3 +278,72 @@ class TestTemporalService:
 
         with pytest.raises(TemporalServiceException):
             await service.cancel_workflow_by_operation_uuid("op-uuid")
+
+    async def test_terminate_workflow_by_operation_uuid(
+        self,
+        service: TemporalService,
+        temporal_client_mock,
+    ) -> None:
+        wf = Mock()
+        wf.id = "wf-id"
+
+        async def _list_workflows(query):
+            yield wf
+
+        temporal_client_mock.list_workflows.return_value = _list_workflows(
+            "query"
+        )
+        handle = Mock(WorkflowHandle)
+        temporal_client_mock.get_workflow_handle.return_value = handle
+
+        await service.terminate_workflow_by_operation_uuid("op-uuid")
+
+        temporal_client_mock.list_workflows.assert_called_once_with(
+            query=f"{OPERATION_UUID_SEARCH_ATTRIBUTE}='op-uuid'"
+            " AND ExecutionStatus='Running'"
+        )
+        temporal_client_mock.get_workflow_handle.assert_called_once_with(
+            workflow_id="wf-id"
+        )
+        handle.terminate.assert_awaited_once()
+
+    async def test_terminate_workflow_by_operation_uuid_no_running_workflows(
+        self,
+        service: TemporalService,
+        temporal_client_mock,
+    ) -> None:
+        async def _list_workflows(query):
+            for _ in ():
+                yield
+
+        temporal_client_mock.list_workflows.return_value = _list_workflows(
+            "query"
+        )
+
+        await service.terminate_workflow_by_operation_uuid("op-uuid")
+
+        temporal_client_mock.list_workflows.assert_called_once()
+        temporal_client_mock.get_workflow_handle.assert_not_called()
+
+    async def test_terminate_workflow_by_operation_uuid_rpc_error_raises(
+        self,
+        service: TemporalService,
+        temporal_client_mock,
+    ) -> None:
+        wf = Mock()
+        wf.id = "wf-id"
+
+        async def _list_workflows(query):
+            yield wf
+
+        temporal_client_mock.list_workflows.return_value = _list_workflows(
+            "query"
+        )
+        handle = Mock(WorkflowHandle)
+        handle.terminate = AsyncMock(
+            side_effect=RPCError("rpc error", RPCStatusCode.INTERNAL, b"")
+        )
+        temporal_client_mock.get_workflow_handle.return_value = handle
+
+        with pytest.raises(TemporalServiceException):
+            await service.terminate_workflow_by_operation_uuid("op-uuid")

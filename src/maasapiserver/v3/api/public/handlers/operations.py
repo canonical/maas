@@ -3,7 +3,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Query
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -219,6 +219,10 @@ class OperationsHandler(Handler):
             AuthenticatedUser | None, Depends(get_authenticated_user)
         ],
         services: Annotated[ServiceCollectionV3, Depends(services)],
+        force: bool = Query(
+            default=False,
+            description="If true, force termination of the related workflow instead of requesting cancellation.",
+        ),
     ) -> OperationResponse:
         """Cancel a specific operation by UUID."""
 
@@ -240,9 +244,14 @@ class OperationsHandler(Handler):
             can_view_all=can_view_all,
         )
 
-        await services.temporal.cancel_workflow_by_operation_uuid(
-            operation_uuid
-        )
+        if force:
+            await services.temporal.terminate_workflow_by_operation_uuid(
+                operation_uuid
+            )
+        else:
+            await services.temporal.cancel_workflow_by_operation_uuid(
+                operation_uuid
+            )
 
         return OperationResponse.from_model(
             operation=operation,
