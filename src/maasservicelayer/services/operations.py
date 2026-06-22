@@ -76,7 +76,7 @@ class OperationsService(
         await self.set_current_task(operation_uuid, name)
         return task
 
-    async def start_operation(
+    async def create_accepted_operation(
         self,
         *,
         op_type: OperationType,

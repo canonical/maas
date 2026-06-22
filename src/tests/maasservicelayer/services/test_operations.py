@@ -290,7 +290,7 @@ class TestOperationsService:
             "task1"
         )
 
-    async def test_start_operation_creates_accepted_and_registers_workflow(
+    async def test_create_accepted_operation_creates_row_and_registers_workflow(
         self,
     ) -> None:
         repository = Mock(OperationsRepository)
@@ -303,7 +303,7 @@ class TestOperationsService:
             temporal_service=temporal_service,
         )
 
-        operation = await service.start_operation(
+        operation = await service.create_accepted_operation(
             op_type=OperationType.MACHINE_DEPLOY,
             workflow_name="deploy",
             workflow_parameter={"system_id": "abc123"},
