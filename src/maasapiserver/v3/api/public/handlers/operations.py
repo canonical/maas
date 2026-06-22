@@ -170,13 +170,11 @@ class OperationsHandler(Handler):
                 authenticated_user.id
             )
         )
-        operation = await services.operations.get_by_uuid_for_user(
+        await services.operations.get_by_uuid_for_user(
             operation_uuid,
             user_id=authenticated_user.id,
             can_view_all=can_view_all,
         )
-        if operation is None:
-            raise NotFoundException()
 
         tasks = await services.operations.list_tasks_for_operation(
             operation_uuid=operation_uuid,
