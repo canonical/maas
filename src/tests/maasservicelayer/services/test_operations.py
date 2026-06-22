@@ -13,10 +13,12 @@ from maascommon.enums.operations import (
 from maasservicelayer.builders.operations import OperationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.operation_tasks import (
+    OperationTasksRepository,
+)
 from maasservicelayer.db.repositories.operations import (
     OperationsClauseFactory,
     OperationsRepository,
-    OperationTasksRepository,
 )
 from maasservicelayer.exceptions.catalog import (
     ConflictException,
@@ -549,3 +551,20 @@ class TestOperationsService:
                 can_edit_all=True,
                 can_view_all=True,
             )
+
+    async def test_list_tasks_for_operation(self) -> None:
+        operation_tasks_repo = Mock(OperationTasksRepository)
+        operation_tasks_repo.list_by_operation_uuid.return_value = ListResult(
+            items=[], total=0
+        )
+        service = OperationsService(
+            context=Context(),
+            operations_repository=Mock(OperationsRepository),
+            operation_tasks_repository=operation_tasks_repo,
+        )
+
+        await service.list_tasks_for_operation("op-uuid", page=1, size=10)
+
+        operation_tasks_repo.list_by_operation_uuid.assert_awaited_once_with(
+            operation_uuid="op-uuid", page=1, size=10
+        )

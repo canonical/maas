@@ -12,8 +12,13 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
-from maascommon.enums.operations import OperationStatus, OperationType
-from maasservicelayer.models.operations import Operation
+from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.operations import (
+    OperationStatus,
+    OperationTaskStatus,
+    OperationType,
+)
+from maasservicelayer.models.operations import Operation, OperationTask
 
 
 class OperationResponse(HalResponse[BaseHal]):
@@ -64,5 +69,45 @@ class OperationResponse(HalResponse[BaseHal]):
         )
 
 
+class OperationTaskResponse(HalResponse[BaseHal]):
+    kind: str = Field(default="OperationTask")
+    id: int
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    name: str
+    status: OperationTaskStatus
+    result: dict | None = None
+    task_number: int
+    operation_uuid: str
+
+    @classmethod
+    def from_model(
+        cls,
+        task: OperationTask,
+    ) -> Self:
+        return cls(
+            id=task.id,
+            started_at=task.started_at,
+            finished_at=task.finished_at,
+            name=task.name,
+            status=task.status,
+            result=task.result,
+            task_number=task.task_number,
+            operation_uuid=task.operation_uuid,
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+                self=BaseHref(
+                    href=(
+                        f"{V3_API_PREFIX}/operations/"
+                        f"{task.operation_uuid}/tasks"
+                    )
+                )
+            ),
+        )
+
+
 class OperationsListResponse(PaginatedResponse[OperationResponse]):
     kind: str = Field(default="OperationsList")
+
+
+class OperationTasksListResponse(PaginatedResponse[OperationTaskResponse]):
+    kind: str = Field(default="OperationTasksList")

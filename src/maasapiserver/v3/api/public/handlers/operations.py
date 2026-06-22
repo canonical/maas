@@ -18,6 +18,8 @@ from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.operations import (
     OperationResponse,
     OperationsListResponse,
+    OperationTaskResponse,
+    OperationTasksListResponse,
 )
 from maasapiserver.v3.auth.base import (
     check_authentication,
@@ -49,12 +51,12 @@ class OperationsHandler(Handler):
     )
     async def list_operations(
         self,
-        filters: OperationFilterParams = Depends(),  # noqa: B008
-        pagination_params: PaginationParams = Depends(),  # noqa: B008
-        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
-            get_authenticated_user
-        ),
-        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        filters: Annotated[OperationFilterParams, Depends()],
+        pagination_params: Annotated[PaginationParams, Depends()],
+        authenticated_user: Annotated[
+            AuthenticatedUser | None, Depends(get_authenticated_user)
+        ],
+        services: Annotated[ServiceCollectionV3, Depends(services)],
     ) -> OperationsListResponse:
         """List all operations with pagination and filtering."""
 
@@ -112,10 +114,10 @@ class OperationsHandler(Handler):
     async def get_operation(
         self,
         operation_uuid: str,
-        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
-            get_authenticated_user
-        ),
-        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: Annotated[
+            AuthenticatedUser | None, Depends(get_authenticated_user)
+        ],
+        services: Annotated[ServiceCollectionV3, Depends(services)],
     ) -> OperationResponse:
         """Get a specific operation by UUID."""
 
@@ -134,6 +136,65 @@ class OperationsHandler(Handler):
         return OperationResponse.from_model(
             operation=operation,
             self_base_hyperlink=f"{V3_API_PREFIX}/operations",
+        )
+
+    @handler(
+        path="/operations/{operation_uuid}/tasks",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": OperationTasksListResponse,
+            },
+            404: {"model": NotFoundBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[Depends(check_authentication())],
+    )
+    async def get_operation_tasks(
+        self,
+        operation_uuid: str,
+        pagination_params: Annotated[PaginationParams, Depends()],
+        authenticated_user: Annotated[
+            AuthenticatedUser | None, Depends(get_authenticated_user)
+        ],
+        services: Annotated[ServiceCollectionV3, Depends(services)],
+    ) -> OperationTasksListResponse:
+        """Get a paginated list of tasks for a specific operation."""
+
+        assert authenticated_user is not None
+        can_view_all = (
+            await services.openfga_tuples.get_client().can_view_operations(
+                authenticated_user.id
+            )
+        )
+        await services.operations.get_by_uuid_for_user(
+            operation_uuid,
+            user_id=authenticated_user.id,
+            can_view_all=can_view_all,
+        )
+
+        tasks = await services.operations.list_tasks_for_operation(
+            operation_uuid=operation_uuid,
+            page=pagination_params.page,
+            size=pagination_params.size,
+        )
+
+        next_link = None
+        if tasks.has_next(pagination_params.page, pagination_params.size):
+            next_link = (
+                f"{V3_API_PREFIX}/operations/{operation_uuid}/tasks?"
+                f"{pagination_params.to_next_href_format()}"
+            )
+
+        return OperationTasksListResponse(
+            items=[
+                OperationTaskResponse.from_model(task=task)
+                for task in tasks.items
+            ],
+            total=tasks.total,
+            next=next_link,
         )
 
     @handler(

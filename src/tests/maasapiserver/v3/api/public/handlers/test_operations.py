@@ -10,9 +10,14 @@ import pytest
 from maasapiserver.v3.api.public.models.responses.operations import (
     OperationResponse,
     OperationsListResponse,
+    OperationTasksListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maascommon.enums.operations import OperationStatus, OperationType
+from maascommon.enums.operations import (
+    OperationStatus,
+    OperationTaskStatus,
+    OperationType,
+)
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.operations import OperationsClauseFactory
 from maasservicelayer.exceptions.catalog import (
@@ -20,7 +25,7 @@ from maasservicelayer.exceptions.catalog import (
     NotFoundException,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.operations import Operation
+from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.services.temporal import TemporalService
@@ -48,6 +53,15 @@ TEST_OPERATION_2 = Operation(
     is_bulk=True,
     created=utcnow(),
     updated=utcnow(),
+)
+
+TEST_TASK = OperationTask(
+    id=1,
+    name="deploy",
+    status=OperationTaskStatus.RUNNING,
+    result={"errors": [{"message": "failed to deploy"}]},
+    task_number=1,
+    operation_uuid=TEST_OPERATION.uuid,
 )
 
 
@@ -80,6 +94,10 @@ class TestOperationsApi(ApiCommonTests):
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/{TEST_OPERATION.uuid}",
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/{TEST_OPERATION.uuid}/tasks",
             ),
         ]
 
@@ -315,3 +333,72 @@ class TestOperationsApi(ApiCommonTests):
                 )
             ),
         )
+
+    async def test_get_operation_tasks(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.get_by_uuid_for_user.return_value = (
+            TEST_OPERATION
+        )
+        services_mock.operations.list_tasks_for_operation.return_value = (
+            ListResult(items=[TEST_TASK], total=1)
+        )
+
+        response = await client.get(
+            f"{self.BASE_PATH}/{TEST_OPERATION.uuid}/tasks"
+        )
+        tasks_response = OperationTasksListResponse(**response.json())
+        assert response.status_code == 200
+        assert len(tasks_response.items) == 1
+        assert tasks_response.total == 1
+        assert tasks_response.items[0].name == TEST_TASK.name
+        assert tasks_response.items[0].status == TEST_TASK.status
+        assert tasks_response.items[0].result == TEST_TASK.result
+        assert tasks_response.next is None
+        services_mock.operations.list_tasks_for_operation.assert_called_once_with(
+            operation_uuid=TEST_OPERATION.uuid, page=1, size=20
+        )
+
+    async def test_get_operation_tasks_with_next_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.get_by_uuid_for_user.return_value = (
+            TEST_OPERATION
+        )
+        services_mock.operations.list_tasks_for_operation.return_value = (
+            ListResult(items=[TEST_TASK], total=2)
+        )
+
+        response = await client.get(
+            f"{self.BASE_PATH}/{TEST_OPERATION.uuid}/tasks?size=1"
+        )
+        tasks_response = OperationTasksListResponse(**response.json())
+        assert response.status_code == 200
+        assert tasks_response.next == (
+            f"{self.BASE_PATH}/{TEST_OPERATION.uuid}/tasks?page=2&size=1"
+        )
+
+    async def test_get_operation_tasks_operation_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.get_by_uuid_for_user.side_effect = (
+            NotFoundException()
+        )
+
+        response = await client.get(f"{self.BASE_PATH}/nonexistent-uuid/tasks")
+        assert response.status_code == 404
