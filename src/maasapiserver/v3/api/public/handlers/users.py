@@ -356,11 +356,9 @@ class UsersHandler(Handler):
             await services.users.get_groups_for_users([user.id])
         ).for_user(user.id)
         current_group_ids = {group.id for group in current_groups}
-        desired_group_ids = dict.fromkeys(user_request.groups)
+        desired_group_ids = set(user_request.groups)
 
-        for group_id in desired_group_ids:
-            if group_id in current_group_ids:
-                continue
+        for group_id in desired_group_ids - current_group_ids:
             try:
                 await services.usergroups.add_user_to_group_by_id(
                     user.id, group_id
@@ -375,7 +373,7 @@ class UsersHandler(Handler):
                     ]
                 ) from err
 
-        for group_id in current_group_ids - desired_group_ids.keys():
+        for group_id in current_group_ids - desired_group_ids:
             await services.usergroups.remove_user_from_group(group_id, user.id)
 
         groups_by_user = await services.users.get_groups_for_users([user.id])
