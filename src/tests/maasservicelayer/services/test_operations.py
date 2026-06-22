@@ -624,6 +624,7 @@ class TestOperationsService:
             context=Context(),
             operations_repository=Mock(OperationsRepository),
             operation_tasks_repository=operation_tasks_repo,
+            temporal_service=Mock(TemporalService),
         )
 
         await service.list_tasks_for_operation("op-uuid", page=1, size=10)
