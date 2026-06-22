@@ -2311,12 +2311,6 @@ class TestNode(MAASServerTestCase):
         self.patch(node, "_start").side_effect = lambda *args, **kwargs: (
             post_commit()
         )
-        # Make callOutToDatabase run synchronously so the DB
-        # update completes during fire().
-        mock_callout = self.patch(node_module, "callOutToDatabase")
-        mock_callout.side_effect = lambda thing, func, *args, **kwargs: func(
-            *args, **kwargs
-        )
         with post_commit_hooks:
             node.start_disk_erasing(owner)
         node = reload_object(node)
@@ -2338,12 +2332,6 @@ class TestNode(MAASServerTestCase):
         node = reload_object(node)
         self.patch(node, "_start").side_effect = lambda *args, **kwargs: (
             post_commit()
-        )
-        # Make callOutToDatabase run synchronously so the DB
-        # update completes during fire() rather than in a thread pool.
-        mock_callout = self.patch(node_module, "callOutToDatabase")
-        mock_callout.side_effect = lambda thing, func, *args, **kwargs: func(
-            *args, **kwargs
         )
         with post_commit_hooks:
             node.start_disk_erasing(owner)
@@ -2463,8 +2451,7 @@ class TestNode(MAASServerTestCase):
 
         try:
             with transaction.atomic():
-                with post_commit_hooks:
-                    node.start_disk_erasing(admin)
+                node.start_disk_erasing(admin)
         except node_start.side_effect.__class__:
             # We don't care about the error here, so suppress it. It
             # exists only to cause the transaction to abort.
@@ -7893,14 +7880,7 @@ class TestNodeErase(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
         Config.objects.set_config("enable_disk_erasing_on_release", True)
         self.patch(node, "_start").return_value = succeed(None)
-        # Make callOutToDatabase run synchronously so the DB
-        # update completes during fire().
-        mock_callout = self.patch(node_module, "callOutToDatabase")
-        mock_callout.side_effect = lambda thing, func, *args, **kwargs: func(
-            *args, **kwargs
-        )
-        with post_commit_hooks:
-            node.start_releasing(owner)
+        node.start_releasing(owner)
         node = reload_object(node)
         self.assertIsNotNone(node.status_expires)
 
@@ -7920,14 +7900,7 @@ class TestNodeErase(MAASServerTestCase):
         node = reload_object(node)
         Config.objects.set_config("enable_disk_erasing_on_release", True)
         self.patch(node, "_start").return_value = succeed(None)
-        # Make callOutToDatabase run synchronously so the DB
-        # update completes during fire() rather than in a thread pool.
-        mock_callout = self.patch(node_module, "callOutToDatabase")
-        mock_callout.side_effect = lambda thing, func, *args, **kwargs: func(
-            *args, **kwargs
-        )
-        with post_commit_hooks:
-            node.start_releasing(owner)
+        node.start_releasing(owner)
         node = reload_object(node)
         self.assertIsNotNone(
             node.status_expires,

@@ -3620,12 +3620,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Re-arm status_expires against NODE_STATUS.DISK_ERASING so the
         # configurable node_timeout governs the disk-erase phase.
-        post_commit().addCallback(
-            callOutToDatabase,
-            Node._set_status_expires,
-            self.system_id,
-            NODE_STATUS.DISK_ERASING,
-        )
+        Node._set_status_expires(self.system_id, NODE_STATUS.DISK_ERASING)
 
         try:
             # Node.start() has synchronous and asynchronous parts, so catch
@@ -3904,11 +3899,7 @@ class Node(CleanSave, TimestampedModel):
         # configurable node_timeout governs the disk-erase duration rather
         # than any value left over from a prior lifecycle event.
         if failed_status == NODE_STATUS.FAILED_DISK_ERASING:
-            post_commit().addCallback(
-                callOutToDatabase,
-                Node._set_status_expires,
-                self.system_id,
-            )
+            Node._set_status_expires(self.system_id)
 
         try:
             # Node.start() has synchronous and asynchronous parts, so catch
