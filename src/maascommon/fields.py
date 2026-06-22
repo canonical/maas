@@ -37,3 +37,14 @@ def normalise_macaddress(mac: str) -> str:
         case _:  # single-byte tokens
             tokens = (token.zfill(2) for token in tokens)
     return ":".join(tokens)
+
+
+def normalise_mac_query(value: str) -> str:
+    """Return a separator-less, lowercase form of a full or partial MAC.
+
+    Unlike ``normalise_macaddress``, this accepts partial fragments and does
+    not pad or group, so it can be used to build format-agnostic
+    ``startswith``/``contains`` queries against the separator-less form of the
+    stored MAC address.
+    """
+    return MAC_SPLIT_RE.sub("", value.lower())

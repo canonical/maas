@@ -15,6 +15,7 @@ from django.db.models import (
     Field,
     GenericIPAddressField,
     IntegerField,
+    lookups,
     Q,
     TextField,
     URLField,
@@ -23,7 +24,12 @@ from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_str
 from netaddr import AddrFormatError, IPNetwork
 
-from maascommon.fields import MAC_FIELD_RE, MAC_RE, normalise_macaddress
+from maascommon.fields import (
+    MAC_FIELD_RE,
+    MAC_RE,
+    normalise_mac_query,
+    normalise_macaddress,
+)
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.utils.dns import validate_domain_name
 from maasserver.utils.orm import get_one, validate_in_transaction
@@ -72,7 +78,7 @@ class MACAddressField(TextField):
         # Only normalize complete MACs. Partial fragments (e.g. the value
         # behind a ``__contains``/``__startswith`` lookup) are passed through
         # untouched so pattern queries keep working.
-        if value and MAC_FIELD_RE.match(value):
+        if value and MAC_FIELD_RE.fullmatch(value):
             return normalise_macaddress(value)
         return value
 
@@ -86,6 +92,45 @@ class MACAddressField(TextField):
 
     def get_prep_value(self, value):
         return self._normalize(super().get_prep_value(value))
+
+
+class _MACPatternLookup(lookups.PatternLookup):
+    """Match a full or partial MAC ignoring separators and case.
+
+    The search term is reduced to its separator-less, lowercase form and
+    compared against the separator-less form of the stored MAC, so
+    ``00-16-3E``, ``00:16:3e`` and ``00163e`` all match the canonical
+    ``aa:bb:cc:dd:ee:ff`` storage.
+    """
+
+    def get_prep_lookup(self):
+        if isinstance(self.rhs, str):
+            self.rhs = normalise_mac_query(self.rhs)
+        return super().get_prep_lookup()
+
+    def process_lhs(self, compiler, connection, lhs=None):
+        lhs_sql, params = super().process_lhs(compiler, connection, lhs)
+        return f"REPLACE({lhs_sql}, ':', '')", params
+
+
+@MACAddressField.register_lookup
+class MACContains(_MACPatternLookup, lookups.Contains):
+    pass
+
+
+@MACAddressField.register_lookup
+class MACIContains(_MACPatternLookup, lookups.Contains):
+    lookup_name = "icontains"
+
+
+@MACAddressField.register_lookup
+class MACStartsWith(_MACPatternLookup, lookups.StartsWith):
+    pass
+
+
+@MACAddressField.register_lookup
+class MACIStartsWith(_MACPatternLookup, lookups.StartsWith):
+    lookup_name = "istartswith"
 
 
 class XMLField(Field):

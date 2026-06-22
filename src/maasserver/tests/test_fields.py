@@ -24,6 +24,7 @@ from maasserver.fields import (
     VersionedTextFileField,
 )
 from maasserver.models import Node, VersionedTextFile
+from maasserver.models.interface import Interface
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASLegacyServerTestCase,
@@ -856,3 +857,49 @@ class TestIPWithOptionalPort(MAASTestCase):
             self.assertEqual(
                 "Invalid IPv4/IPv6 address with optional port.", error.message
             )
+
+
+class TestMACAddressFieldLookups(MAASServerTestCase):
+    """Format-agnostic ``startswith``/``contains`` lookups on mac_address."""
+
+    def make_interface(self, mac_address):
+        return factory.make_Interface(mac_address=mac_address)
+
+    def test_startswith_ignores_separator_and_case(self):
+        interface = self.make_interface("00:16:3e:55:60:96")
+        for term in ("00:16:3E", "00-16-3e", "00163E", "0016.3e55"):
+            self.assertEqual(
+                [interface],
+                list(Interface.objects.filter(mac_address__startswith=term)),
+                term,
+            )
+
+    def test_startswith_does_not_match_other_prefix(self):
+        self.make_interface("00:16:3e:55:60:96")
+        self.assertEqual(
+            [],
+            list(Interface.objects.filter(mac_address__startswith="aa:bb")),
+        )
+
+    def test_contains_ignores_separator_and_case(self):
+        interface = self.make_interface("00:16:3e:55:60:96")
+        for term in ("3E:55", "3e-55", "3e55"):
+            self.assertEqual(
+                [interface],
+                list(Interface.objects.filter(mac_address__contains=term)),
+                term,
+            )
+
+    def test_contains_does_not_match_absent_fragment(self):
+        self.make_interface("00:16:3e:55:60:96")
+        self.assertEqual(
+            [],
+            list(Interface.objects.filter(mac_address__contains="ffff")),
+        )
+
+    def test_icontains_behaves_like_contains(self):
+        interface = self.make_interface("00:16:3e:55:60:96")
+        self.assertEqual(
+            [interface],
+            list(Interface.objects.filter(mac_address__icontains="3E-55")),
+        )
