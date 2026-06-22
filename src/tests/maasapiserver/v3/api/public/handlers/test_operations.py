@@ -253,6 +253,43 @@ class TestOperationsApi(ApiCommonTests):
             TEST_OPERATION.uuid
         )
 
+    async def test_cancel_operation_force_terminates_workflow(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
+        cancelling_operation = TEST_OPERATION.model_copy(
+            update={"status": OperationStatus.CANCELLING}
+        )
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.cancel_for_user.return_value = (
+            cancelling_operation
+        )
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.cancel_workflow_by_operation_uuid = AsyncMock()
+        services_mock.temporal.terminate_workflow_by_operation_uuid = (
+            AsyncMock()
+        )
+
+        response = await client.delete(
+            f"{self.BASE_PATH}/{TEST_OPERATION.uuid}?force=true"
+        )
+        operation_response = OperationResponse(**response.json())
+        assert response.status_code == 202
+        assert operation_response.status == OperationStatus.CANCELLING
+        services_mock.operations.cancel_for_user.assert_called_once_with(
+            uuid=TEST_OPERATION.uuid,
+            user_id=0,
+            can_edit_all=True,
+            can_view_all=True,
+        )
+        services_mock.temporal.terminate_workflow_by_operation_uuid.assert_awaited_once_with(
+            TEST_OPERATION.uuid
+        )
+        services_mock.temporal.cancel_workflow_by_operation_uuid.assert_not_called()
+
     async def test_cancel_operation_not_found(
         self,
         services_mock: ServiceCollectionV3,
@@ -284,6 +321,28 @@ class TestOperationsApi(ApiCommonTests):
             f"{self.BASE_PATH}/{TEST_OPERATION.uuid}"
         )
         assert response.status_code == 409
+
+    async def test_cancel_operation_force_conflict(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.cancel_for_user.side_effect = (
+            ConflictException()
+        )
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.terminate_workflow_by_operation_uuid = (
+            AsyncMock()
+        )
+
+        response = await client.delete(
+            f"{self.BASE_PATH}/{TEST_OPERATION.uuid}?force=true"
+        )
+        assert response.status_code == 409
+        services_mock.temporal.terminate_workflow_by_operation_uuid.assert_not_called()
 
     async def test_get_operation_forbidden_for_other_user(
         self,
