@@ -294,7 +294,10 @@ class TestOperationsService:
         self,
     ) -> None:
         repository = Mock(OperationsRepository)
-        repository.create.return_value = TEST_OPERATION
+        commission_operation = TEST_OPERATION.model_copy(
+            update={"op_type": OperationType.MACHINE_COMMISSION}
+        )
+        repository.create.return_value = commission_operation
         temporal_service = Mock(TemporalService)
         service = OperationsService(
             context=Context(),
@@ -302,32 +305,31 @@ class TestOperationsService:
             operation_tasks_repository=Mock(OperationTasksRepository),
             temporal_service=temporal_service,
         )
+        parameters = {"system_id": "abc123", "queue": "region"}
 
         operation = await service.create_accepted_operation(
-            op_type=OperationType.MACHINE_DEPLOY,
-            workflow_name="deploy",
-            workflow_parameter={"system_id": "abc123"},
+            op_type=OperationType.MACHINE_COMMISSION,
             resource_id=1,
             resource_type="machine",
-            parameters={"timeout": 60},
+            parameters=parameters,
             user_id=1,
         )
 
-        assert operation == TEST_OPERATION
+        assert operation == commission_operation
         builder = repository.create.call_args.kwargs["builder"]
         populated = builder.populated_fields()
-        assert populated["op_type"] == OperationType.MACHINE_DEPLOY
+        assert populated["op_type"] == OperationType.MACHINE_COMMISSION
         assert populated["status"] == OperationStatus.ACCEPTED
         assert populated["resource_id"] == 1
         assert populated["resource_type"] == "machine"
-        assert populated["parameters"] == {"timeout": 60}
+        assert populated["parameters"] == parameters
         assert populated["user_id"] == 1
         assert populated["is_bulk"] is False
         assert "uuid" in populated
 
         temporal_service.register_workflow_call.assert_called_once_with(
-            workflow_name="deploy",
-            parameter={"system_id": "abc123"},
+            workflow_name="commission",
+            parameter=parameters,
             workflow_id=TEST_OPERATION.uuid,
             wait=False,
             search_attributes=TypedSearchAttributes(
@@ -341,6 +343,21 @@ class TestOperationsService:
                 ]
             ),
         )
+
+    async def test_create_accepted_operation_unmapped_op_type_raises(
+        self,
+    ) -> None:
+        service = OperationsService(
+            context=Context(),
+            operations_repository=Mock(OperationsRepository),
+            operation_tasks_repository=Mock(OperationTasksRepository),
+            temporal_service=Mock(TemporalService),
+        )
+
+        with pytest.raises(ValueError):
+            await service.create_accepted_operation(
+                op_type=OperationType.SELECTION_SYNC,
+            )
 
     async def test_update_status_running_sets_started(self) -> None:
         repository = Mock(OperationsRepository)

@@ -1,7 +1,6 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any
 from uuid import uuid4
 
 from temporalio.common import (
@@ -15,7 +14,10 @@ from maascommon.enums.operations import (
     OperationTaskStatus,
     OperationType,
 )
-from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
+from maascommon.workflows.operation import (
+    OPERATION_TYPE_WORKFLOW_NAME,
+    OPERATION_UUID_SEARCH_ATTRIBUTE,
+)
 from maasservicelayer.builders.operations import (
     OperationBuilder,
     OperationTaskBuilder,
@@ -78,16 +80,18 @@ class OperationsService(
 
     async def create_accepted_operation(
         self,
-        *,
         op_type: OperationType,
-        workflow_name: str,
-        workflow_parameter: Any | None = None,
         resource_id: int | None = None,
         resource_type: str | None = None,
         parameters: dict | None = None,
         user_id: int | None = None,
     ) -> Operation:
-        """Create an operation and schedule its workflow after commit."""
+        """Create an ACCEPTED operation and schedule its workflow after commit."""
+        workflow_name = OPERATION_TYPE_WORKFLOW_NAME.get(op_type)
+        if workflow_name is None:
+            raise ValueError(
+                f"No workflow is mapped to operation type '{op_type}'."
+            )
         operation = await self.create(
             builder=OperationBuilder(
                 uuid=str(uuid4()),
@@ -102,7 +106,7 @@ class OperationsService(
         )
         self.temporal_service.register_workflow_call(
             workflow_name=workflow_name,
-            parameter=workflow_parameter,
+            parameter=parameters,
             workflow_id=operation.uuid,
             wait=False,
             search_attributes=TypedSearchAttributes(
