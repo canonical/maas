@@ -67,7 +67,7 @@ from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
     workflow_run_with_context,
 )
-from provisioningserver.boot import BootMethod, builtin_boot_methods
+from provisioningserver.boot import BootMethod
 
 from provisioningserver.boot.pxe import PXEBootMethod  # noqa:E402 isort:skip
 from provisioningserver.boot.grub import UEFIAMD64BootMethod
@@ -1457,6 +1457,70 @@ class DHCPConfigActivity(ActivityBase):
             cfg["shared-networks"].append(network)
         return cfg
 
+    def _get_bootloader_url_and_path_prefix(
+        self, rack_ip: str, boot_method: BootMethod, ipv6: bool
+    ) -> tuple[str, str, str | None]:
+        use_http = boot_method.path_prefix_http or boot_method.http_url
+        schema = "http" if use_http else "tftp"
+        port = ":5248" if use_http else ""
+        url = (
+            f"{schema}://[{rack_ip}]{port}/"
+            if ipv6
+            else f"{schema}://{rack_ip}{port}/"
+        )
+
+        # Set the URL to pull from '/images/' so nginx handles the request.
+        # Requests to '/' are forwarded to the rack's http service to
+        # handle which should only be done for configuration files.
+        if boot_method.http_url:
+            url = f"{url}images/"
+
+        path_prefix = boot_method.path_prefix
+        if path_prefix:
+            url += path_prefix
+        if boot_method.path_prefix_http:
+            # Force an absolute URL as the path prefix.
+            path_prefix = url
+        url += boot_method.bootloader_path
+        bootloader = boot_method.bootloader_path
+        if boot_method.absolute_url_as_filename:
+            bootloader = url
+            # path_prefix gets removed with this setting, because a
+            # absolute url is provided as the bootloader.
+            path_prefix = None
+        return bootloader, url, path_prefix
+
+    def _get_bootloader_option_data(
+        self,
+        path_prefix: str | None,
+        boot_method: BootMethod,
+        ipv6: bool,
+        url: str = "",
+    ) -> list[dict[str, Any]]:
+        option_data = []
+        if not ipv6 and path_prefix:
+            prefix_data: dict[str, Any] = {
+                "name": "path-prefix",
+                "data": path_prefix,
+            }
+
+            if boot_method.path_prefix_force:
+                prefix_data["always-send"] = True
+            option_data = [prefix_data]
+        # http boot is not supported over ipv6
+        if not ipv6 and boot_method.http_url:
+            option_data.append(
+                {"name": "vendor-class-identifier", "data": "HTTPClient"}
+            )
+        if ipv6:
+            option_data.append(
+                {
+                    "name": "bootfile-url",
+                    "data": url,
+                }
+            )
+        return option_data
+
     async def get_kea_bootloaders_client_classes(
         self,
         boot_methods: list[BootMethod],
@@ -1469,98 +1533,92 @@ class DHCPConfigActivity(ActivityBase):
                 boot_method.arch_octet is None
                 and boot_method.user_class is None
             ):
+                # these are the two ways we identify which bootloader to serve a machine
                 continue
-            use_http = boot_method.path_prefix_http or boot_method.http_url
-            schema = "http" if use_http else "tftp"
-            port = ":5248" if use_http else ""
-            url = (
-                f"{schema}://[{rack_ip}]{port}/"
-                if ipv6
-                else f"{schema}://{rack_ip}{port}/"
+            if ipv6 and (boot_method.http_url or boot_method.name == "onie"):
+                # HTTP Boot over ipv6 networks is not supported by Kea
+                # ONIE is not supported over ipv6
+                continue
+            bootloader, url, path_prefix = (
+                self._get_bootloader_url_and_path_prefix(
+                    rack_ip, boot_method, ipv6
+                )
             )
-
-            # Set the URL to pull from '/images/' so nginx handles the request.
-            # Requests to '/' are forwarded to the rack's http service to
-            # handle which should only be done for configuration files.
-            if boot_method.http_url:
-                url = f"{url}images/"
-
-            path_prefix = boot_method.path_prefix
-            if path_prefix:
-                url += path_prefix
-            if boot_method.path_prefix_http:
-                # Force an absolute URL as the path prefix.
-                path_prefix = url
-            url += boot_method.bootloader_path
-            bootloader = boot_method.bootloader_path
-            if boot_method.absolute_url_as_filename:
-                bootloader = url
-                # path_prefix gets removed with this setting, because a
-                # absolute url is provided as the bootloader.
-                path_prefix = None
 
             client_class: dict[str, Any] = {"name": f"boot-{boot_method.name}"}
             bootloader_option = "boot-file-name"
             if boot_method.user_class is not None:
+                user_class_option = 15 if ipv6 else 77
                 client_class["test"] = (
-                    f"option[77].text == '{boot_method.user_class}'"
+                    (
+                        f"option[{user_class_option}].exists and "
+                        if ipv6
+                        else ""
+                    )
+                    + f"option[{user_class_option}].text == '{boot_method.user_class}'"
                 )
                 if boot_method.user_class == "onie_dhcp_user_class":
                     bootloader_option = "default-url"
                 else:
                     if boot_method.user_class == "iPXE":
-                        client_class["test"] += " or exists(option[175])"
+                        client_class["test"] += (
+                            " or (option[175].option[19].exists and (option[175].option[24].exists or option[175].option[36].exists))"
+                        )
             else:
+                arch_option = 61 if ipv6 else 93
                 if isinstance(boot_method.arch_octet, str):
                     # TODO: Just change the arch_octet values for each BootMethod object instead of replacing here
                     arch_octet = boot_method.arch_octet.replace("00:", "0x")
-                    client_class["test"] = f"option[93].hex == '{arch_octet}'"
+                    client_class["test"] = (
+                        f"option[{arch_option}].hex == '{arch_octet}'"
+                    )
                 else:
                     # arch_octet is guaranteed to either be str or list because of first if statement in this loop
                     # and the fact that user_class is None
                     octets = [
-                        o.replace("00:", "0x") for o in boot_method.arch_octet
-                    ]  # type: ignore
+                        o.replace("00:", "0x")
+                        for o in boot_method.arch_octet  # type: ignore
+                    ]
                     client_class["test"] = " or ".join(
-                        [f"option[93].hex == '{octet}'" for octet in octets]
+                        [
+                            f"option[{arch_option}].hex == '{octet}'"
+                            for octet in octets
+                        ]
                     )
-            client_class[bootloader_option] = bootloader
-            option_data = []
-            if path_prefix:
-                prefix_data: dict[str, Any] = {
-                    "name": "path-prefix",
-                    "data": path_prefix,
-                }
-
-                if boot_method.path_prefix_force:
-                    prefix_data["always-send"] = (True,)
-                option_data = [prefix_data]
-            if boot_method.http_url:
-                option_data.append(
-                    {"name": "vendor-class-identifier", "data": "HTTPClient"}
-                )
+            if not ipv6:
+                # bootfile-url gets set in option-data instead for ipv6
+                client_class[bootloader_option] = bootloader
+            option_data = self._get_bootloader_option_data(
+                path_prefix, boot_method, ipv6, url
+            )
             client_class["option-data"] = option_data
             client_classes.append(client_class)
 
         # handle default bootloader
-        default_bootloader = PXEBootMethod()
-        url = f"http://{rack_ip}:5248/"
-
+        default_bootloader = UEFIAMD64BootMethod() if ipv6 else PXEBootMethod()
+        bootloader, url, path_prefix = (
+            self._get_bootloader_url_and_path_prefix(
+                rack_ip, default_bootloader, ipv6
+            )
+        )
+        option_data = self._get_bootloader_option_data(
+            path_prefix, default_bootloader, ipv6, url
+        )
         # we need to have this long default test because we do not want to send 'path-prefix' by default,
         # and not all bootloader client classes above will override it.
         default_test = (
-            "not (" + " or ".join([cc["test"] for cc in client_classes]) + ")"
+            "not ("
+            + " or ".join(["(" + cc["test"] + ")" for cc in client_classes])
+            + ")"
         )
-        client_classes.append(
-            {
-                "name": f"fallback-{default_bootloader.name}",
-                "test": default_test,
-                "boot-file-name": default_bootloader.bootloader_path,
-                "option-data": [
-                    {"name": "path-prefix", "data": url, "always-send": True}
-                ],
-            }
-        )
+        cc = {
+            "name": f"fallback-{default_bootloader.name}",
+            "test": default_test,
+            "option-data": option_data,
+        }
+        if not ipv6:
+            cc["boot-file-name"] = bootloader
+        client_classes.append(cc)
 
         return client_classes
 
