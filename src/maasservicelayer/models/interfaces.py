@@ -9,6 +9,7 @@ from maasservicelayer.models.base import (
     generate_builder,
     MaasTimestampedBaseModel,
 )
+from maasservicelayer.models.fields import MacAddress
 
 
 class Link(BaseModel):
@@ -42,7 +43,7 @@ class Link(BaseModel):
 class Interface(MaasTimestampedBaseModel):
     name: str
     type: InterfaceType
-    mac_address: str | None = None
+    mac_address: MacAddress | None = None
     vlan_id: int | None = None
     # TODO
     # effective_mtu: int = 0

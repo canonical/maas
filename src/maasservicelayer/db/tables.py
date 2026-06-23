@@ -4,6 +4,7 @@
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -1040,6 +1041,11 @@ InterfaceTable = Table(
         nullable=True,
     ),
     UniqueConstraint("node_config_id", "name"),
+    CheckConstraint(
+        "mac_address IS NULL OR mac_address = '' OR "
+        "mac_address ~ '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'",
+        name="maasserver_interface_mac_address_canonical",
+    ),
     Index("maasserver_interface_vlan_id_5f39995d", "vlan_id"),
     Index("maasserver_interface_numa_node_id_6e790407", "numa_node_id"),
     Index("maasserver_interface_node_config_id_a52b0f8a", "node_config_id"),

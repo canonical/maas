@@ -11,6 +11,7 @@ from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
+from maascommon.fields import normalise_macaddress
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -39,7 +40,12 @@ class InterfaceClauseFactory(ClauseFactory):
 
     @classmethod
     def with_mac_address(cls, mac_address: str) -> Clause:
-        return Clause(condition=eq(InterfaceTable.c.mac_address, mac_address))
+        return Clause(
+            condition=eq(
+                InterfaceTable.c.mac_address,
+                normalise_macaddress(mac_address),
+            )
+        )
 
     @classmethod
     def with_vlan_id_in(cls, vlan_ids: list[int]) -> Clause:
@@ -115,7 +121,7 @@ class InterfaceRepository(BaseRepository):
 
     async def get_interfaces_for_mac(self, mac: str) -> List[Interface]:
         stmt = self._select_all_statement().filter(
-            InterfaceTable.c.mac_address == mac
+            InterfaceTable.c.mac_address == normalise_macaddress(mac)
         )
 
         result = (await self.execute_stmt(stmt)).all()
@@ -180,7 +186,7 @@ class InterfaceRepository(BaseRepository):
             .returning(InterfaceTable.c.id)
             .values(
                 name=name,
-                mac_address=mac,
+                mac_address=normalise_macaddress(mac),
                 switch_id=switch_id,
                 type=InterfaceType.PHYSICAL,
                 params={},
@@ -211,7 +217,7 @@ class InterfaceRepository(BaseRepository):
             .returning(InterfaceTable.c.id)
             .values(
                 name=UNKNOWN_INTERFACE_NAME,
-                mac_address=mac,
+                mac_address=normalise_macaddress(mac),
                 vlan_id=vlan_id,
                 type=InterfaceType.UNKNOWN,
                 params={},
