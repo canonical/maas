@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any, cast
 from unittest.mock import Mock
 
 from netaddr import IPNetwork
@@ -26,6 +27,7 @@ from maastemporalworker.workflow.dhcp import (
     SubnetData,
     VlanData,
 )
+from provisioningserver.boot import BootMethod
 from tests.fixtures.factories.configuration import create_test_configuration
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
@@ -41,6 +43,35 @@ from tests.fixtures.factories.staticipaddress import (
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.fixtures.factories.vlan import create_test_vlan_entry
 from tests.maasapiserver.fixtures.db import Fixture
+
+
+class _FakeBootMethod:
+    def __init__(
+        self,
+        name: str,
+        *,
+        arch_octet: str | list[str] | None = None,
+        user_class: str | None = None,
+        bootloader_path: str = "bootloader",
+        path_prefix: str | None = None,
+        path_prefix_http: bool = False,
+        path_prefix_force: bool = False,
+        http_url: bool = False,
+        absolute_url_as_filename: bool = False,
+    ) -> None:
+        self.name = name
+        self.arch_octet = arch_octet
+        self.user_class = user_class
+        self.bootloader_path = bootloader_path
+        self.path_prefix = path_prefix
+        self.path_prefix_http = path_prefix_http
+        self.path_prefix_force = path_prefix_force
+        self.http_url = http_url
+        self.absolute_url_as_filename = absolute_url_as_filename
+
+
+def FakeBootMethod(name: str, **kwargs: Any) -> BootMethod:
+    return cast(BootMethod, _FakeBootMethod(name, **kwargs))
 
 
 @pytest.mark.asyncio
@@ -738,7 +769,6 @@ class TestDHCPConfigActivity:
                             "subnet": "10.0.0.0/24",
                             "match-client-id": False,
                             "pools": [{"pool": "10.0.0.10 - 10.0.0.20"}],
-                            "boot-file-name": "lpxelinux.0",
                             "reservations": [
                                 {
                                     "hw-address": data.subnets[0]
@@ -762,11 +792,6 @@ class TestDHCPConfigActivity:
                                     "data": "10.0.0.255",
                                 },
                                 {"name": "domain-name", "data": "maas"},
-                                {
-                                    "name": "path-prefix",
-                                    "data": "http://10.0.0.1:5248/",
-                                    "always-send": True,
-                                },
                                 {
                                     "name": "domain-name-servers",
                                     "data": "10.0.0.2, 10.0.0.3",
@@ -833,7 +858,6 @@ class TestDHCPConfigActivity:
                             "subnet": "10.0.0.0/24",
                             "match-client-id": False,
                             "pools": [],
-                            "boot-file-name": "lpxelinux.0",
                             "reservations": [],
                             "option-data": [
                                 {
@@ -845,11 +869,6 @@ class TestDHCPConfigActivity:
                                     "data": "10.0.0.255",
                                 },
                                 {"name": "domain-name", "data": "maas"},
-                                {
-                                    "name": "path-prefix",
-                                    "data": "http://10.0.0.1:5248/",
-                                    "always-send": True,
-                                },
                             ],
                         }
                     ],
@@ -969,10 +988,6 @@ class TestDHCPConfigActivity:
                             "option-data": [
                                 {"name": "domain-name", "data": "maas"},
                                 {
-                                    "name": "bootfile-url",
-                                    "data": "tftp://[2001:db8::1]/bootx64.efi",
-                                },
-                                {
                                     "name": "dns-servers",
                                     "data": "2001:db8::2",
                                 },
@@ -1072,4 +1087,277 @@ class TestDHCPConfigActivity:
                     },
                 }
             ]
+        }
+
+    async def test_get_kea_bootloaders_only_default_fallback_ipv4(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [], "10.0.0.1", ipv6=False
+        )
+
+        assert result == [
+            {
+                "name": "fallback-pxe",
+                "test": "not ()",
+                "option-data": [
+                    {
+                        "name": "path-prefix",
+                        "data": "http://10.0.0.1:5248/",
+                        "always-send": True,
+                    }
+                ],
+                "boot-file-name": "lpxelinux.0",
+            }
+        ]
+
+    async def test_get_kea_bootloaders_only_default_fallback_ipv6(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [], "fe80::1", ipv6=True
+        )
+
+        assert result == [
+            {
+                "name": "fallback-uefi_amd64_tftp",
+                "test": "not ()",
+                "option-data": [
+                    {
+                        "name": "bootfile-url",
+                        "data": "tftp://[fe80::1]/bootx64.efi",
+                    }
+                ],
+            }
+        ]
+
+    async def test_get_kea_bootloaders_arch_octet_string_ipv4(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        boot_method = FakeBootMethod(
+            "uefi_amd64", arch_octet="00:07", bootloader_path="bootx64.efi"
+        )
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [boot_method], "10.0.0.1", ipv6=False
+        )
+
+        assert result[0] == {
+            "name": "boot-uefi_amd64",
+            "test": "option[93].hex == '0x07'",
+            "boot-file-name": "bootx64.efi",
+            "option-data": [],
+        }
+        assert result[1]["test"] == "not ((option[93].hex == '0x07'))"
+
+    async def test_get_kea_bootloaders_arch_octet_list_ipv4(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        boot_method = FakeBootMethod(
+            "multi",
+            arch_octet=["00:07", "00:09"],
+            bootloader_path="bootx64.efi",
+        )
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [boot_method], "10.0.0.1", ipv6=False
+        )
+
+        assert result[0]["test"] == (
+            "option[93].hex == '0x07' or option[93].hex == '0x09'"
+        )
+
+    async def test_get_kea_bootloaders_arch_octet_uses_option_61_for_ipv6(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        boot_method = FakeBootMethod(
+            "uefi_amd64", arch_octet="00:07", bootloader_path="bootx64.efi"
+        )
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [boot_method], "fe80::1", ipv6=True
+        )
+
+        assert result[0] == {
+            "name": "boot-uefi_amd64",
+            "test": "option[61].hex == '0x07'",
+            "option-data": [
+                {
+                    "name": "bootfile-url",
+                    "data": "tftp://[fe80::1]/bootx64.efi",
+                }
+            ],
+        }
+
+    async def test_get_kea_bootloaders_user_class_ipxe_ipv4(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        boot_method = FakeBootMethod(
+            "ipxe",
+            user_class="iPXE",
+            bootloader_path="ipxe.cfg",
+            path_prefix_http=True,
+            absolute_url_as_filename=True,
+        )
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [boot_method], "10.0.0.1", ipv6=False
+        )
+
+        assert result[0] == {
+            "name": "boot-ipxe",
+            "test": (
+                "option[77].text == 'iPXE' or (option[175].option[19].exists "
+                "and (option[175].option[24].exists or "
+                "option[175].option[36].exists))"
+            ),
+            "boot-file-name": "http://10.0.0.1:5248/ipxe.cfg",
+            "option-data": [],
+        }
+
+    async def test_get_kea_bootloaders_user_class_ipxe_ipv6(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        boot_method = FakeBootMethod(
+            "ipxe",
+            user_class="iPXE",
+            bootloader_path="ipxe.cfg",
+            path_prefix_http=True,
+            absolute_url_as_filename=True,
+        )
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [boot_method], "fe80::1", ipv6=True
+        )
+
+        assert result[0] == {
+            "name": "boot-ipxe",
+            "test": (
+                "option[15].exists and option[15].text == 'iPXE' or "
+                "(option[175].option[19].exists and "
+                "(option[175].option[24].exists or "
+                "option[175].option[36].exists))"
+            ),
+            "option-data": [
+                {
+                    "name": "bootfile-url",
+                    "data": "http://[fe80::1]:5248/ipxe.cfg",
+                }
+            ],
+        }
+
+    async def test_get_kea_bootloaders_user_class_onie_uses_default_url(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        boot_method = FakeBootMethod(
+            "onie",
+            user_class="onie_dhcp_user_class",
+            bootloader_path="onie.cfg",
+            path_prefix_http=True,
+            absolute_url_as_filename=True,
+        )
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [boot_method], "10.0.0.1", ipv6=False
+        )
+
+        assert result[0] == {
+            "name": "boot-onie",
+            "test": "option[77].text == 'onie_dhcp_user_class'",
+            "default-url": "http://10.0.0.1:5248/onie.cfg",
+            "option-data": [],
+        }
+
+    async def test_get_kea_bootloaders_skips_method_without_identifiers(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        boot_method = FakeBootMethod("local", bootloader_path="local")
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [boot_method], "10.0.0.1", ipv6=False
+        )
+
+        assert [cc["name"] for cc in result] == ["fallback-pxe"]
+
+    async def test_get_kea_bootloaders_skips_onie_and_http_over_ipv6(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        onie = FakeBootMethod(
+            "onie", user_class="onie_dhcp_user_class", bootloader_path="onie"
+        )
+        http = FakeBootMethod(
+            "uefi_http",
+            arch_octet="00:10",
+            bootloader_path="bootx64.efi",
+            http_url=True,
+        )
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [onie, http], "fe80::1", ipv6=True
+        )
+
+        assert [cc["name"] for cc in result] == ["fallback-uefi_amd64_tftp"]
+
+    async def test_get_kea_bootloaders_path_prefix_force_adds_always_send(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        boot_method = FakeBootMethod(
+            "grub",
+            arch_octet="00:0b",
+            bootloader_path="grubaa64.efi",
+            path_prefix="grub/",
+            path_prefix_force=True,
+        )
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [boot_method], "10.0.0.1", ipv6=False
+        )
+
+        assert result[0]["option-data"] == [
+            {
+                "name": "path-prefix",
+                "data": "grub/",
+                "always-send": True,
+            }
+        ]
+
+    async def test_get_kea_bootloaders_http_url_adds_vendor_class(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        boot_method = FakeBootMethod(
+            "uefi_http",
+            arch_octet="00:10",
+            bootloader_path="bootx64.efi",
+            http_url=True,
+            absolute_url_as_filename=True,
+        )
+
+        result = await activities.get_kea_bootloaders_client_classes(
+            [boot_method], "10.0.0.1", ipv6=False
+        )
+
+        assert result[0] == {
+            "name": "boot-uefi_http",
+            "test": "option[93].hex == '0x10'",
+            "boot-file-name": "http://10.0.0.1:5248/images/bootx64.efi",
+            "option-data": [
+                {
+                    "name": "vendor-class-identifier",
+                    "data": "HTTPClient",
+                }
+            ],
         }
