@@ -25,6 +25,9 @@ from maasapiserver.v3.api.public.models.requests.users import (
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
+from maasapiserver.v3.api.public.models.responses.entitlements import (
+    EntitlementResponse,
+)
 from maasapiserver.v3.api.public.models.responses.users import (
     UserInfoResponse,
     UserResponse,
@@ -118,8 +121,25 @@ class UsersHandler(Handler):
                     )
                 ]
             )
+        groups_by_user = await services.users.get_groups_for_users([user.id])
+        groups = groups_by_user.for_user(user.id)
+        entitlement_tuples = (
+            await services.openfga_tuples.list_entitlements_for_groups(
+                [group.id for group in groups]
+            )
+        )
+        # perform a union: multiple groups may contain the same entitlement
+        unique = {
+            (t.object_type, t.object_id, t.relation): t
+            for t in entitlement_tuples
+        }
+        entitlements = [
+            EntitlementResponse.from_model(t) for t in unique.values()
+        ]
         return UserInfoResponse(
-            id=user.id, username=user.username, is_superuser=user.is_superuser
+            id=user.id,
+            username=user.username,
+            entitlements=entitlements,
         )
 
     @handler(

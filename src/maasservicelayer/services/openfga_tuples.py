@@ -275,6 +275,19 @@ class OpenFGATupleService(Service):
         )
         return await self.get_many(query)
 
+    async def list_entitlements_for_groups(
+        self,
+        group_ids: list[int],
+    ) -> list[OpenFGATuple]:
+        if not group_ids:
+            return []
+        query = QuerySpec(
+            where=OpenFGATuplesClauseFactory.with_users(
+                [f"group:{group_id}#member" for group_id in group_ids]
+            )
+        )
+        return await self.get_many(query)
+
     async def list_entitlements_page(
         self,
         group_id: int,

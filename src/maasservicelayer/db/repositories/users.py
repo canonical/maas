@@ -1,7 +1,7 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Type
+from typing import List, Type
 
 from django.core import signing
 from sqlalchemy import (
@@ -262,7 +262,7 @@ class UsersRepository(BaseRepository[User]):
         )
 
     async def get_groups_for_users(
-        self, user_ids: list[int]
+        self, user_ids: List[int]
     ) -> UserGroupsByUser:
         groups_by_user: dict[int, list[UserGroup]] = {
             user_id: [] for user_id in user_ids

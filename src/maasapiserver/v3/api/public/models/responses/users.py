@@ -12,6 +12,9 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     PaginatedResponse,
 )
+from maasapiserver.v3.api.public.models.responses.entitlements import (
+    EntitlementResponse,
+)
 from maasservicelayer.models.usergroups import UserGroup
 from maasservicelayer.models.users import User, UserStatistics
 
@@ -19,7 +22,7 @@ from maasservicelayer.models.users import User, UserStatistics
 class UserInfoResponse(BaseModel):
     id: int
     username: str
-    is_superuser: bool
+    entitlements: list[EntitlementResponse]
 
 
 class UserGroupSummaryResponse(BaseModel):

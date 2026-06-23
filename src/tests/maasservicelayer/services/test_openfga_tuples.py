@@ -57,6 +57,44 @@ class TestIntegrationOpenFGAService:
         assert tuples[0].object_id == "0"
         assert tuples[0].user == "group:999#member"
 
+    async def test_list_entitlements_for_groups(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ):
+        await create_openfga_tuple(
+            fixture,
+            "group:771#member",
+            "userset",
+            "can_edit_identities",
+            "maas",
+            "0",
+        )
+        await create_openfga_tuple(
+            fixture,
+            "group:772#member",
+            "userset",
+            "can_view_machines",
+            "pool",
+            "0",
+        )
+        # unrelated group that should not appear
+        await create_openfga_tuple(
+            fixture,
+            "group:773#member",
+            "userset",
+            "can_view_machines",
+            "pool",
+            "0",
+        )
+
+        tuples = await services.openfga_tuples.list_entitlements_for_groups(
+            [771, 772]
+        )
+
+        assert {(t.user, t.relation) for t in tuples} == {
+            ("group:771#member", "can_edit_identities"),
+            ("group:772#member", "can_view_machines"),
+        }
+
     async def test_list_entitlements_page(
         self, fixture: Fixture, services: ServiceCollectionV3
     ):
@@ -528,6 +566,38 @@ class TestOpenFGAService:
             compile_kwargs={"literal_binds": True}
         )
         assert "group:3#member" in str(compiled)
+
+    async def test_list_entitlements_for_groups(self) -> None:
+        mock_repository = Mock(OpenFGATuplesRepository)
+        mock_repository.get_many = AsyncMock(return_value=[])
+        service = OpenFGATupleService(
+            context=Context(),
+            openfga_tuple_repository=mock_repository,
+            cache=OpenFGAServiceCache(),
+        )
+
+        await service.list_entitlements_for_groups([1, 2])
+
+        mock_repository.get_many.assert_called_once()
+        query = mock_repository.get_many.call_args[0][0]
+        compiled = query.where.condition.compile(
+            compile_kwargs={"literal_binds": True}
+        )
+        sql_str = str(compiled)
+        assert "group:1#member" in sql_str
+        assert "group:2#member" in sql_str
+
+    async def test_list_entitlements_for_groups_empty(self) -> None:
+        mock_repository = Mock(OpenFGATuplesRepository)
+        mock_repository.get_many = AsyncMock(return_value=[])
+        service = OpenFGATupleService(
+            context=Context(),
+            openfga_tuple_repository=mock_repository,
+            cache=OpenFGAServiceCache(),
+        )
+
+        assert await service.list_entitlements_for_groups([]) == []
+        mock_repository.get_many.assert_not_called()
 
 
 class TestMAASTupleBuilderFactory:

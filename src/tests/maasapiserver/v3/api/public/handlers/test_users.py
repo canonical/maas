@@ -43,10 +43,12 @@ from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroups import UserGroup, UserGroupsByUser
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 from maasservicelayer.services.usergroups import (
     UserGroupNotFound,
     UserGroupsService,
@@ -182,6 +184,34 @@ class TestUsersApi(ApiCommonTests):
             email=None,
             last_login=None,
         )
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={1: [GROUP_1, GROUP_2]})
+        )
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.list_entitlements_for_groups.return_value = [
+            OpenFGATuple(
+                object_type="maas",
+                object_id="0",
+                relation="can_view_machines",
+                user="group:10#member",
+                user_type="userset",
+            ),
+            # duplicate from another group, must be deduplicated
+            OpenFGATuple(
+                object_type="maas",
+                object_id="0",
+                relation="can_view_machines",
+                user="group:20#member",
+                user_type="userset",
+            ),
+            OpenFGATuple(
+                object_type="pool",
+                object_id="1",
+                relation="can_edit_machines",
+                user="group:20#member",
+                user_type="userset",
+            ),
+        ]
         response = await mocked_api_client_user.get(
             f"{self.BASE_PATH}/me",
         )
@@ -190,7 +220,37 @@ class TestUsersApi(ApiCommonTests):
         user_info = UserInfoResponse(**response.json())
         assert user_info.id == 1
         assert user_info.username == "username"
-        assert user_info.is_superuser is False
+        assert {
+            (e.resource_type, e.resource_id, e.entitlement)
+            for e in user_info.entitlements
+        } == {
+            ("maas", 0, "can_view_machines"),
+            ("pool", 1, "can_edit_machines"),
+        }
+        services_mock.openfga_tuples.list_entitlements_for_groups.assert_called_once_with(
+            [GROUP_1.id, GROUP_2.id]
+        )
+
+    async def test_get_user_info_no_groups(
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_one.return_value = USER_1
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={})
+        )
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.list_entitlements_for_groups.return_value = []
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/me",
+        )
+        assert response.status_code == 200
+
+        user_info = UserInfoResponse(**response.json())
+        assert user_info.entitlements == []
+        services_mock.openfga_tuples.list_entitlements_for_groups.assert_called_once_with(
+            []
+        )
 
     async def test_get_user_info_unauthorized(
         self, mocked_api_client: AsyncClient
