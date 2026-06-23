@@ -19,6 +19,7 @@ from django.db.models import (
 )
 
 from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
     PostUpdateBootSourceUrlParam,
 )
@@ -161,4 +162,10 @@ class BootSource(CleanSave, TimestampedModel):
         start_workflow(
             workflow_name=POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
             param=PostUpdateBootSourceUrlParam(self.id),
+        )
+
+    def refetch_manifest(self):
+        start_workflow(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            param=self.id,
         )

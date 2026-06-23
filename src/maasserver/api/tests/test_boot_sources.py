@@ -4,8 +4,10 @@
 """Tests for the `Boot Sources` API."""
 
 import http.client
+from unittest.mock import ANY, call
 
 from django.urls import reverse
+from twisted.internet import reactor
 
 import maasserver.api.boot_sources as boot_source_module
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
@@ -142,7 +144,23 @@ class TestBootSourceAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         boot_source = reload_object(boot_source)
         self.assertEqual(boot_source.url, new_values["url"])
-        mock_post_commit_do.assert_called_once()
+
+        calls = mock_post_commit_do.call_args_list
+        # Ugly, but since the method is bound to the boot source object returned
+        # by the form it's the only way to do it.
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0], call(reactor.callLater, 0, ANY))
+        self.assertEqual(calls[1], call(reactor.callLater, 0, ANY))
+        verify_method = calls[0][0][2]
+        refetch_method = calls[1][0][2]
+        self.assertEqual(
+            verify_method.__func__,
+            BootSource.verify_selections_after_url_update,
+        )
+        self.assertEqual(
+            refetch_method.__func__,
+            BootSource.refetch_manifest,
+        )
 
     def test_PUT_doesnt_call_workflow_if_url_unchanged(self):
         self.become_admin()
