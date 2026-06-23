@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
@@ -17,10 +17,9 @@ class TestUserRequest:
     def test_mandatory_params(self) -> None:
         with pytest.raises(ValidationError) as e:
             BaseUserRequest()
-        assert len(e.value.errors()) == 4
+        assert len(e.value.errors()) == 3
         assert {
             "username",
-            "is_superuser",
             "first_name",
             "last_name",
         } == set([f["loc"][0] for f in e.value.errors()])
@@ -43,7 +42,6 @@ class TestUserRequest:
             with pytest.raises(ValidationError):
                 BaseUserRequest(
                     username="test",
-                    is_superuser=False,
                     first_name="test",
                     last_name="test",
                     email=email,
@@ -51,7 +49,6 @@ class TestUserRequest:
         else:
             BaseUserRequest(
                 username="test",
-                is_superuser=False,
                 first_name="test",
                 last_name="test",
                 email=email,
@@ -64,7 +61,6 @@ class TestUserCreateRequest:
             UserCreateRequest(
                 username="test",
                 password="",
-                is_superuser=False,
                 first_name="test",
                 last_name="test",
                 email="test@example.com",
@@ -76,20 +72,40 @@ class TestUserCreateRequest:
         u = UserCreateRequest(
             username="test",
             password="test",
-            is_superuser=False,
             first_name="test",
             last_name="test",
             email="email@example.com",
         )
         b = u.to_builder()
         assert u.username == b.username
-        assert u.is_superuser == b.is_superuser
         assert u.first_name == b.first_name
         assert u.last_name == b.last_name
+        assert b.is_superuser is False
         assert b.is_staff is False
         assert b.is_active is True
 
         assert PBKDF2PasswordHasher().verify("test", b.password)
+
+    def test_groups_default_empty(self) -> None:
+        u = UserCreateRequest(
+            username="test",
+            password="test",
+            first_name="test",
+            last_name="test",
+            email="email@example.com",
+        )
+        assert u.groups == []
+
+    def test_groups(self) -> None:
+        u = UserCreateRequest(
+            username="test",
+            password="test",
+            first_name="test",
+            last_name="test",
+            email="email@example.com",
+            groups=[1, 2],
+        )
+        assert u.groups == [1, 2]
 
 
 class TestUserUpdateRequest:
@@ -97,16 +113,36 @@ class TestUserUpdateRequest:
         u = UserUpdateRequest(
             username="test",
             password=None,
-            is_superuser=False,
             first_name="test",
             last_name="test",
             email="email@example.com",
         )
         b = u.to_builder()
         assert u.username == b.username
-        assert u.is_superuser == b.is_superuser
         assert u.first_name == b.first_name
         assert u.last_name == b.last_name
+        assert b.is_superuser == UNSET
         assert b.is_staff is False
         assert b.is_active is True
-        assert b.password is UNSET
+        assert b.password == UNSET
+
+    def test_groups_default_empty(self) -> None:
+        u = UserUpdateRequest(
+            username="test",
+            password=None,
+            first_name="test",
+            last_name="test",
+            email="email@example.com",
+        )
+        assert u.groups == []
+
+    def test_groups(self) -> None:
+        u = UserUpdateRequest(
+            username="test",
+            password=None,
+            first_name="test",
+            last_name="test",
+            email="email@example.com",
+            groups=[1, 2],
+        )
+        assert u.groups == [1, 2]

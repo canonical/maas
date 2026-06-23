@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import datetime
@@ -19,6 +19,7 @@ from tests.fixtures.factories.node import (
     create_test_machine_entry,
     create_test_rack_and_region_controller_entry,
 )
+from tests.fixtures.factories.openfga_tuples import create_openfga_tuple
 from tests.fixtures.factories.token import create_test_refresh_token
 from tests.fixtures.factories.user import (
     create_test_session,
@@ -26,6 +27,7 @@ from tests.fixtures.factories.user import (
     create_test_user_profile,
     create_test_user_sshkey,
 )
+from tests.fixtures.factories.usergroups import create_test_usergroup
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -252,6 +254,69 @@ class TestUsersRepository:
         users_list = await users_repository.list(page=1, size=1000)
         assert users_list.total == 0
         assert users_list.items == []
+
+    async def test_get_groups_for_users_empty(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        users_repository = UsersRepository(Context(connection=db_connection))
+        result = await users_repository.get_groups_for_users([])
+        assert result.groups_by_user == {}
+
+    async def test_get_groups_for_users(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user1 = await create_test_user(fixture, username="user1")
+        user2 = await create_test_user(fixture, username="user2")
+        user3 = await create_test_user(fixture, username="user3")
+
+        group_alpha = await create_test_usergroup(fixture, name="alpha")
+        group_beta = await create_test_usergroup(fixture, name="beta")
+
+        # user1 belongs to both groups, user2 to one, user3 to none.
+        await create_openfga_tuple(
+            fixture,
+            f"user:{user1.id}",
+            "user",
+            "member",
+            "group",
+            str(group_beta.id),
+        )
+        await create_openfga_tuple(
+            fixture,
+            f"user:{user1.id}",
+            "user",
+            "member",
+            "group",
+            str(group_alpha.id),
+        )
+        await create_openfga_tuple(
+            fixture,
+            f"user:{user2.id}",
+            "user",
+            "member",
+            "group",
+            str(group_alpha.id),
+        )
+
+        users_repository = UsersRepository(Context(connection=db_connection))
+        groups_by_user = await users_repository.get_groups_for_users(
+            [user1.id, user2.id, user3.id]
+        )
+
+        assert set(groups_by_user.groups_by_user.keys()) == {
+            user1.id,
+            user2.id,
+            user3.id,
+        }
+        # Groups are ordered by name.
+        assert [group.name for group in groups_by_user.for_user(user1.id)] == [
+            "alpha",
+            "beta",
+        ]
+        assert [group.id for group in groups_by_user.for_user(user2.id)] == [
+            group_alpha.id
+        ]
+        assert groups_by_user.for_user(user3.id) == []
 
     async def test_list_statistics(
         self, db_connection: AsyncConnection, fixture: Fixture

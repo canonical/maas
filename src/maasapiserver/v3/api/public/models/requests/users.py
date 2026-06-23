@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import re
@@ -45,7 +45,6 @@ class UsersFiltersParams(BaseModel):
 
 class BaseUserRequest(BaseModel):
     username: str
-    is_superuser: bool
     first_name: str
     last_name: str
     email: str | None = None
@@ -63,13 +62,17 @@ class BaseUserRequest(BaseModel):
 
 class UserCreateRequest(BaseUserRequest):
     password: str = Field(..., min_length=1)
+    groups: list[int] = Field(
+        default_factory=list,
+        description="The IDs of the groups the user will be a member of.",
+    )
 
     def to_builder(self) -> UserBuilder:
         hashed_password = UserBuilder.hash_password(self.password)
         return UserBuilder(
             username=self.username,
             password=hashed_password,
-            is_superuser=self.is_superuser,
+            is_superuser=False,
             is_staff=False,
             is_active=True,
             first_name=self.first_name,
@@ -80,6 +83,10 @@ class UserCreateRequest(BaseUserRequest):
 
 class UserUpdateRequest(BaseUserRequest):
     password: str | None = Field(min_length=1, default=None)
+    groups: list[int] = Field(
+        default_factory=list,
+        description="The IDs of the groups the user will be a member of.",
+    )
 
     def to_builder(self) -> UserBuilder:
         password = (
@@ -90,7 +97,6 @@ class UserUpdateRequest(BaseUserRequest):
         return UserBuilder(
             username=self.username,
             password=password,
-            is_superuser=self.is_superuser,
             is_staff=False,
             is_active=True,
             first_name=self.first_name,

@@ -53,6 +53,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.usergroups import UserGroupNotFound
 from maasservicelayer.utils.date import utcnow
 
 
@@ -117,9 +118,14 @@ class UsersHandler(Handler):
                     )
                 ]
             )
-        return UserInfoResponse(
-            id=user.id, username=user.username, is_superuser=user.is_superuser
+        groups_by_user = await services.users.get_groups_for_users([user.id])
+        groups = groups_by_user.for_user(user.id)
+        entitlement_tuples = (
+            await services.openfga_tuples.list_entitlements_for_groups(
+                [group.id for group in groups]
+            )
         )
+        return UserInfoResponse.from_model(user, entitlement_tuples)
 
     @handler(
         path="/users/me:complete_intro",
@@ -201,6 +207,9 @@ class UsersHandler(Handler):
             size=pagination_params.size,
             query=QuerySpec(where=filters.to_clause()),
         )
+        groups_by_user = await services.users.get_groups_for_users(
+            [user.id for user in users.items]
+        )
         next_link = None
         if users.has_next(pagination_params.page, pagination_params.size):
             next_link = f"{V3_API_PREFIX}/users?{pagination_params.to_next_href_format()}"
@@ -210,6 +219,7 @@ class UsersHandler(Handler):
             items=[
                 UserResponse.from_model(
                     user=user,
+                    groups=groups_by_user.for_user(user.id),
                     self_base_hyperlink=f"{V3_API_PREFIX}/users",
                 )
                 for user in users.items
@@ -249,9 +259,11 @@ class UsersHandler(Handler):
         if not user:
             raise NotFoundException()
 
+        groups_by_user = await services.users.get_groups_for_users([user.id])
         response.headers["ETag"] = user.etag()
         return UserResponse.from_model(
             user=user,
+            groups=groups_by_user.for_user(user.id),
             self_base_hyperlink=f"{V3_API_PREFIX}/users",
         )
 
@@ -264,6 +276,7 @@ class UsersHandler(Handler):
                 "model": UserResponse,
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
+            404: {"model": NotFoundBodyResponse},
             409: {"model": ConflictBodyResponse},
         },
         status_code=201,
@@ -287,9 +300,29 @@ class UsersHandler(Handler):
 
         new_user = await services.users.create(builder)
 
+        for group_id in dict.fromkeys(user_request.groups):
+            try:
+                await services.usergroups.add_user_to_group_by_id(
+                    new_user.id, group_id
+                )
+            except UserGroupNotFound as err:
+                raise NotFoundException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                            message=f"Group with id '{group_id}' does not exist.",
+                        )
+                    ]
+                ) from err
+
+        groups_by_user = await services.users.get_groups_for_users(
+            [new_user.id]
+        )
         response.headers["ETag"] = new_user.etag()
         return UserResponse.from_model(
-            user=new_user, self_base_hyperlink=f"{V3_API_PREFIX}/users"
+            user=new_user,
+            groups=groups_by_user.for_user(new_user.id),
+            self_base_hyperlink=f"{V3_API_PREFIX}/users",
         )
 
     @handler(
@@ -324,9 +357,35 @@ class UsersHandler(Handler):
             user_id, user_request.to_builder()
         )
 
+        current_groups = (
+            await services.users.get_groups_for_users([user.id])
+        ).for_user(user.id)
+        current_group_ids = {group.id for group in current_groups}
+        desired_group_ids = set(user_request.groups)
+
+        for group_id in desired_group_ids - current_group_ids:
+            try:
+                await services.usergroups.add_user_to_group_by_id(
+                    user.id, group_id
+                )
+            except UserGroupNotFound as err:
+                raise NotFoundException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                            message=f"Group with id '{group_id}' does not exist.",
+                        )
+                    ]
+                ) from err
+
+        for group_id in current_group_ids - desired_group_ids:
+            await services.usergroups.remove_user_from_group(group_id, user.id)
+
+        groups_by_user = await services.users.get_groups_for_users([user.id])
         response.headers["ETag"] = user.etag()
         return UserResponse.from_model(
             user=user,
+            groups=groups_by_user.for_user(user.id),
             self_base_hyperlink=f"{V3_API_PREFIX}/users",
         )
 

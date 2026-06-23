@@ -1,7 +1,7 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Type
+from typing import List, Type
 
 from django.core import signing
 from sqlalchemy import (
@@ -31,6 +31,8 @@ from maasservicelayer.db.tables import (
     RefreshTokenTable,
     SessionTable,
     SshKeyTable,
+    UserGroupMembersView,
+    UserGroupTable,
     UserProfileTable,
     UserTable,
 )
@@ -42,6 +44,7 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.usergroups import UserGroup, UserGroupsByUser
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
 from maasservicelayer.utils.date import utcnow
 
@@ -257,6 +260,36 @@ class UsersRepository(BaseRepository[User]):
             items=[User(**row._asdict()) for row in result],
             total=total,
         )
+
+    async def get_groups_for_users(
+        self, user_ids: List[int]
+    ) -> UserGroupsByUser:
+        groups_by_user: dict[int, list[UserGroup]] = {
+            user_id: [] for user_id in user_ids
+        }
+        if not user_ids:
+            return UserGroupsByUser(groups_by_user=groups_by_user)
+
+        stmt = (
+            select(
+                UserGroupMembersView.c.id.label("user_id"),
+                UserGroupTable,
+            )
+            .select_from(
+                join(
+                    UserGroupMembersView,
+                    UserGroupTable,
+                    eq(UserGroupMembersView.c.group_id, UserGroupTable.c.id),
+                )
+            )
+            .where(UserGroupMembersView.c.id.in_(user_ids))
+            .order_by(UserGroupTable.c.name)
+        )
+        for row in (await self.execute_stmt(stmt)).all():
+            row_data = row._asdict()
+            user_id = row_data.pop("user_id")
+            groups_by_user[user_id].append(UserGroup(**row_data))
+        return UserGroupsByUser(groups_by_user=groups_by_user)
 
     async def count_by_provider(self, provider_id: int) -> int:
         stmt = (
