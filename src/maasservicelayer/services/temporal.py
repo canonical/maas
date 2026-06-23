@@ -11,7 +11,6 @@ from temporalio.client import (
     WorkflowExecutionDescription,
     WorkflowExecutionStatus,
 )
-from temporalio.common import TypedSearchAttributes
 from temporalio.service import RPCError
 
 from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
@@ -110,19 +109,11 @@ class TemporalService(Service):
 
     async def post_commit(self) -> None:
         for key, arguments in self._post_commit_workflows.items():  # noqa: B007
-            (
-                workflow_name,
-                parameter,
-                workflow_id,
-                wait,
-                search_attributes,
-                args,
-                kwargs,
-            ) = arguments
+            workflow_name, parameter, workflow_id, wait, args, kwargs = (
+                arguments
+            )
             if not workflow_id:
                 workflow_id = str(uuid.uuid4())
-            if search_attributes is not None:
-                kwargs = {**kwargs, "search_attributes": search_attributes}
 
             client = await self.get_temporal_client()
             # TODO: make the task_queue a workflow parameter instead of hardcoding it here.
@@ -188,7 +179,6 @@ class TemporalService(Service):
         workflow_id: str | None = None,
         wait: bool | None = True,
         *args: list[Any],
-        search_attributes: TypedSearchAttributes | None = None,
         **kwargs: dict[str, Any],
     ) -> None:
         key = self._make_key(workflow_name, workflow_id)
@@ -197,7 +187,6 @@ class TemporalService(Service):
             parameter,
             workflow_id,
             wait,
-            search_attributes,
             args,
             kwargs,
         )
