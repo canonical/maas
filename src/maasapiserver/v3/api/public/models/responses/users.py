@@ -15,6 +15,7 @@ from maasapiserver.v3.api.public.models.responses.base import (
 from maasapiserver.v3.api.public.models.responses.entitlements import (
     EntitlementResponse,
 )
+from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroups import UserGroup
 from maasservicelayer.models.users import User, UserStatistics
 
@@ -23,6 +24,26 @@ class UserInfoResponse(BaseModel):
     id: int
     username: str
     entitlements: list[EntitlementResponse]
+
+    @classmethod
+    def from_model(
+        cls,
+        user: User,
+        entitlement_tuples: list[OpenFGATuple],
+    ):
+        # perform a union: multiple groups may contain the same entitlement
+        unique = {
+            (t.object_type, t.object_id, t.relation): t
+            for t in entitlement_tuples
+        }
+        entitlements = [
+            EntitlementResponse.from_model(t) for t in unique.values()
+        ]
+        return cls(
+            id=user.id,
+            username=user.username,
+            entitlements=entitlements,
+        )
 
 
 class UserGroupSummaryResponse(BaseModel):

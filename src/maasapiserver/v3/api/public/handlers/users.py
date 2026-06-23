@@ -25,9 +25,6 @@ from maasapiserver.v3.api.public.models.requests.users import (
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
-from maasapiserver.v3.api.public.models.responses.entitlements import (
-    EntitlementResponse,
-)
 from maasapiserver.v3.api.public.models.responses.users import (
     UserInfoResponse,
     UserResponse,
@@ -128,19 +125,7 @@ class UsersHandler(Handler):
                 [group.id for group in groups]
             )
         )
-        # perform a union: multiple groups may contain the same entitlement
-        unique = {
-            (t.object_type, t.object_id, t.relation): t
-            for t in entitlement_tuples
-        }
-        entitlements = [
-            EntitlementResponse.from_model(t) for t in unique.values()
-        ]
-        return UserInfoResponse(
-            id=user.id,
-            username=user.username,
-            entitlements=entitlements,
-        )
+        return UserInfoResponse.from_model(user, entitlement_tuples)
 
     @handler(
         path="/users/me:complete_intro",
