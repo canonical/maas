@@ -117,6 +117,11 @@ class BootSourceHandler(OperationsHandler):
                     0,
                     updated_boot_source.verify_selections_after_url_update,
                 )
+                post_commit_do(
+                    reactor.callLater,
+                    0,
+                    updated_boot_source.refetch_manifest,
+                )
                 description = f"Updated boot source url from {old_url} to {updated_boot_source.url}"
             else:
                 description = f"Updated boot source {updated_boot_source.url}"

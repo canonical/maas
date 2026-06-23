@@ -6,6 +6,7 @@
 from django.core.exceptions import ValidationError
 
 from maascommon.workflows.bootresource import (
+    FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
     PostUpdateBootSourceUrlParam,
 )
@@ -141,4 +142,13 @@ class TestBootSource(MAASServerTestCase):
         mock_start_workflow.assert_called_once_with(
             workflow_name=POST_UPDATE_BOOT_SOURCE_URL_WORKFLOW_NAME,
             param=PostUpdateBootSourceUrlParam(boot_source.id),
+        )
+
+    def test_refetch_manifest(self):
+        mock_start_workflow = self.patch(boot_source_module, "start_workflow")
+        boot_source = make_BootSource()
+        boot_source.refetch_manifest()
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            param=boot_source.id,
         )
