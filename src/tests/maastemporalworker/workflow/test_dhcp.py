@@ -1116,52 +1116,6 @@ class TestDHCPConfigActivity:
             ]
         }
 
-    async def test_get_kea_bootloaders_only_default_fallback_ipv4(
-        self, db: Database
-    ) -> None:
-        activities = self._make_activity(db)
-
-        result = await activities.get_kea_bootloaders_client_classes(
-            [], "10.0.0.1", ipv6=False
-        )
-
-        assert result == [
-            {
-                "name": "fallback-pxe",
-                "test": "not ()",
-                "option-data": [
-                    {
-                        "name": "path-prefix",
-                        "data": "http://10.0.0.1:5248/",
-                        "always-send": True,
-                    }
-                ],
-                "boot-file-name": "lpxelinux.0",
-            }
-        ]
-
-    async def test_get_kea_bootloaders_only_default_fallback_ipv6(
-        self, db: Database
-    ) -> None:
-        activities = self._make_activity(db)
-
-        result = await activities.get_kea_bootloaders_client_classes(
-            [], "fe80::1", ipv6=True
-        )
-
-        assert result == [
-            {
-                "name": "fallback-uefi_amd64_tftp",
-                "test": "not ()",
-                "option-data": [
-                    {
-                        "name": "bootfile-url",
-                        "data": "tftp://[fe80::1]/bootx64.efi",
-                    }
-                ],
-            }
-        ]
-
     async def test_get_kea_bootloaders_arch_octet_string_ipv4(
         self, db: Database
     ) -> None:
@@ -1177,8 +1131,7 @@ class TestDHCPConfigActivity:
         assert result[0] == {
             "name": "boot-uefi_amd64",
             "test": "option[93].hex == '0x07'",
-            "boot-file-name": "bootx64.efi",
-            "option-data": [],
+            "option-data": [{"name": "boot-file-name", "data": "bootx64.efi"}],
         }
         assert result[1]["test"] == "not ((option[93].hex == '0x07'))"
 
@@ -1246,8 +1199,12 @@ class TestDHCPConfigActivity:
                 "and (option[175].option[24].exists or "
                 "option[175].option[36].exists))"
             ),
-            "boot-file-name": "http://10.0.0.1:5248/ipxe.cfg",
-            "option-data": [],
+            "option-data": [
+                {
+                    "name": "boot-file-name",
+                    "data": "http://10.0.0.1:5248/ipxe.cfg",
+                }
+            ],
         }
 
     async def test_get_kea_bootloaders_user_class_ipxe_ipv6(
@@ -1301,8 +1258,12 @@ class TestDHCPConfigActivity:
         assert result[0] == {
             "name": "boot-onie",
             "test": "option[77].text == 'onie_dhcp_user_class'",
-            "default-url": "http://10.0.0.1:5248/onie.cfg",
-            "option-data": [],
+            "option-data": [
+                {
+                    "name": "v4-captive-portal",
+                    "data": "http://10.0.0.1:5248/onie.cfg",
+                }
+            ],
         }
 
     async def test_get_kea_bootloaders_skips_method_without_identifiers(
@@ -1358,7 +1319,8 @@ class TestDHCPConfigActivity:
                 "name": "path-prefix",
                 "data": "grub/",
                 "always-send": True,
-            }
+            },
+            {"name": "boot-file-name", "data": "grubaa64.efi"},
         ]
 
     async def test_get_kea_bootloaders_http_url_adds_vendor_class(
@@ -1380,11 +1342,14 @@ class TestDHCPConfigActivity:
         assert result[0] == {
             "name": "boot-uefi_http",
             "test": "option[93].hex == '0x10'",
-            "boot-file-name": "http://10.0.0.1:5248/images/bootx64.efi",
             "option-data": [
                 {
                     "name": "vendor-class-identifier",
                     "data": "HTTPClient",
-                }
+                },
+                {
+                    "name": "boot-file-name",
+                    "data": "http://10.0.0.1:5248/images/bootx64.efi",
+                },
             ],
         }

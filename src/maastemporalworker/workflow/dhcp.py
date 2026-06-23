@@ -1495,6 +1495,7 @@ class DHCPConfigActivity(ActivityBase):
         path_prefix: str | None,
         boot_method: BootMethod,
         ipv6: bool,
+        bootloader: str,
         url: str = "",
     ) -> list[dict[str, Any]]:
         option_data = []
@@ -1517,6 +1518,21 @@ class DHCPConfigActivity(ActivityBase):
                 {
                     "name": "bootfile-url",
                     "data": url,
+                }
+            )
+        elif boot_method.name == "onie":
+            option_data.append(
+                {
+                    # default-url has been renamed to v4-captive-portal since Kea 2.1.2
+                    "name": "v4-captive-portal",
+                    "data": bootloader,
+                }
+            )
+        else:
+            option_data.append(
+                {
+                    "name": "boot-file-name",
+                    "data": bootloader,
                 }
             )
         return option_data
@@ -1546,7 +1562,6 @@ class DHCPConfigActivity(ActivityBase):
             )
 
             client_class: dict[str, Any] = {"name": f"boot-{boot_method.name}"}
-            bootloader_option = "boot-file-name"
             if boot_method.user_class is not None:
                 user_class_option = 15 if ipv6 else 77
                 client_class["test"] = (
@@ -1557,17 +1572,16 @@ class DHCPConfigActivity(ActivityBase):
                     )
                     + f"option[{user_class_option}].text == '{boot_method.user_class}'"
                 )
-                if boot_method.user_class == "onie_dhcp_user_class":
-                    bootloader_option = "default-url"
-                else:
-                    if boot_method.user_class == "iPXE":
-                        client_class["test"] += (
-                            " or (option[175].option[19].exists and (option[175].option[24].exists or option[175].option[36].exists))"
-                        )
+                if boot_method.user_class == "iPXE":
+                    client_class["test"] += (
+                        # exists ipxe.http and ( exists ipxe.bzimage or exists ipxe.efi )
+                        " or (option[175].option[19].exists and (option[175].option[24].exists or option[175].option[36].exists))"
+                    )
             else:
                 arch_option = 61 if ipv6 else 93
                 if isinstance(boot_method.arch_octet, str):
                     # TODO: Just change the arch_octet values for each BootMethod object instead of replacing here
+                    # can only do this once ISC dhcp server is fully replaced with Kea
                     arch_octet = boot_method.arch_octet.replace("00:", "0x")
                     client_class["test"] = (
                         f"option[{arch_option}].hex == '{arch_octet}'"
@@ -1576,7 +1590,7 @@ class DHCPConfigActivity(ActivityBase):
                     # arch_octet is guaranteed to either be str or list because of first if statement in this loop
                     # and the fact that user_class is None
                     octets = [
-                        o.replace("00:", "0x")
+                        o.replace("00:", "0x")  # TODO: see above TODO
                         for o in boot_method.arch_octet  # type: ignore
                     ]
                     client_class["test"] = " or ".join(
@@ -1585,11 +1599,8 @@ class DHCPConfigActivity(ActivityBase):
                             for octet in octets
                         ]
                     )
-            if not ipv6:
-                # bootfile-url gets set in option-data instead for ipv6
-                client_class[bootloader_option] = bootloader
             option_data = self._get_bootloader_option_data(
-                path_prefix, boot_method, ipv6, url
+                path_prefix, boot_method, ipv6, bootloader, url
             )
             client_class["option-data"] = option_data
             client_classes.append(client_class)
@@ -1602,7 +1613,7 @@ class DHCPConfigActivity(ActivityBase):
             )
         )
         option_data = self._get_bootloader_option_data(
-            path_prefix, default_bootloader, ipv6, url
+            path_prefix, default_bootloader, ipv6, bootloader, url
         )
         # we need to have this long default test because we do not want to send 'path-prefix' by default,
         # and not all bootloader client classes above will override it.
@@ -1616,8 +1627,6 @@ class DHCPConfigActivity(ActivityBase):
             "test": default_test,
             "option-data": option_data,
         }
-        if not ipv6:
-            cc["boot-file-name"] = bootloader
         client_classes.append(cc)
 
         return client_classes
