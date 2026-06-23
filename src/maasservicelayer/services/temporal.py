@@ -87,6 +87,23 @@ class TemporalService(Service):
                     f"Failed to cancel workflow {wf.id} for operation {operation_uuid}"
                 ) from None
 
+    async def terminate_workflow_by_operation_uuid(
+        self, operation_uuid: str
+    ) -> None:
+        client = await self.get_temporal_client()
+        query = (
+            f"{OPERATION_UUID_SEARCH_ATTRIBUTE}='{operation_uuid}'"
+            " AND ExecutionStatus='Running'"
+        )
+        async for wf in client.list_workflows(query=query):
+            handle = client.get_workflow_handle(workflow_id=wf.id)
+            try:
+                await handle.terminate()
+            except RPCError:
+                raise TemporalServiceException(
+                    f"Failed to terminate workflow {wf.id} for operation {operation_uuid}"
+                ) from None
+
     async def terminate_workflow(self, workflow_id: str) -> None:
         client = await self.get_temporal_client()
         handle = client.get_workflow_handle(workflow_id)

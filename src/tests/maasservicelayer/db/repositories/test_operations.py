@@ -29,6 +29,10 @@ from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.utils.date import utcnow
+from tests.fixtures.factories.operations import (
+    create_test_operation_entry,
+    create_test_operation_task_entry,
+)
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
@@ -296,50 +300,3 @@ class TestOperationTasksRepository(RepositoryCommonTests[OperationTask]):
         assert all(
             task.status == OperationTaskStatus.COMPLETED for task in updated
         )
-
-
-async def create_test_operation_entry(
-    fixture: Fixture,
-    *,
-    uuid: str = "test-uuid",
-    op_type: OperationType = OperationType.MACHINE_DEPLOY,
-    status: OperationStatus = OperationStatus.ACCEPTED,
-    is_bulk: bool = False,
-) -> Operation:
-    now = utcnow()
-    [row] = await fixture.create(
-        "maasserver_operation",
-        [
-            {
-                "uuid": uuid,
-                "op_type": op_type.value,
-                "status": status.value,
-                "is_bulk": is_bulk,
-                "created": now,
-                "updated": now,
-            }
-        ],
-    )
-    return Operation(**row)
-
-
-async def create_test_operation_task_entry(
-    fixture: Fixture,
-    *,
-    operation_uuid: str,
-    name: str = "task1",
-    task_number: int = 1,
-    status: OperationTaskStatus = OperationTaskStatus.RUNNING,
-) -> OperationTask:
-    [row] = await fixture.create(
-        "maasserver_operation_task",
-        [
-            {
-                "operation_uuid": operation_uuid,
-                "name": name,
-                "task_number": task_number,
-                "status": status.value,
-            }
-        ],
-    )
-    return OperationTask(**row)

@@ -8,10 +8,12 @@ from maasservicelayer.builders.operations import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.operation_tasks import (
+    OperationTasksRepository,
+)
 from maasservicelayer.db.repositories.operations import (
     OperationsClauseFactory,
     OperationsRepository,
-    OperationTasksRepository,
 )
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -187,4 +189,16 @@ class OperationsService(
         return await self.update_status(
             operation_uuid=uuid,
             status=OperationStatus.CANCELLING,
+        )
+
+    async def list_tasks_for_operation(
+        self,
+        operation_uuid: str,
+        page: int,
+        size: int,
+    ) -> ListResult[OperationTask]:
+        return await self.operation_tasks_repository.list_by_operation_uuid(
+            operation_uuid=operation_uuid,
+            page=page,
+            size=size,
         )
