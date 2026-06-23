@@ -327,9 +327,16 @@ class BootResourcesActivity(ActivityBase):
                 ex.strerror if ex.strerror else str(ex),
                 type=ex.__class__.__name__,
             ) from ex
+
         except httpx.HTTPError as ex:
             await lfile.unlink()
             await self.report_progress(param.rfile_ids, 0)
+            if isinstance(ex, httpx.HTTPStatusError):
+                # 4xx and 5xx errors: most probably a misconfiguration of the images stream.
+                # Raise a non-retryable error and let the user fix it.
+                raise ApplicationError(
+                    str(ex), type=ex.__class__.__name__, non_retryable=True
+                ) from ex
             raise ApplicationError(str(ex), type=ex.__class__.__name__) from ex
         except (asyncio.CancelledError, CancelledError) as ex:
             await lfile.unlink()
