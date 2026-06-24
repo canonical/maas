@@ -112,7 +112,7 @@ def runscripts(
         result_name = f"{script_name}.yaml"
         result_path = os.path.join(out_dir, result_name)
 
-        env = os.environ | {
+        env_vars = {
             "MAAS_BASE_URL": base_url,
             "MAAS_RESOURCES_FILE": resources_file,
             "OUTPUT_COMBINED_PATH": combined_path,
@@ -121,9 +121,22 @@ def runscripts(
             "RESULT_PATH": result_path,
             "TMPDIR": tmpdir,
         }
-        timeout = 60
-        command = [script_path] if in_snap else ["sudo", "-E", script_path]
+
+        # sudo-rs doesn't implement the -E flag, so we pass the --preserve-env
+        # flag for each environment variable that we might need.
+        vars_to_keep = list(env_vars.keys()) + [
+            "MAAS_MACHINE_EXTRA_FILE",
+            "MAAS_STORAGE_CONFIG_FILE",
+        ]
+        deb_cmd = (
+            ["sudo"]
+            + [f"--preserve-env={var}" for var in vars_to_keep]
+            + [script_path]
+        )
+        command = [script_path] if in_snap else deb_cmd
         try:
+            env = os.environ | env_vars
+            timeout = 60
             proc = Popen(
                 command, stdin=DEVNULL, stdout=PIPE, stderr=PIPE, env=env
             )
