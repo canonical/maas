@@ -1029,6 +1029,18 @@ class AutoVlanCreationConfig(Config[bool | None]):
     value: bool | None = Field(default=default, description=description)
 
 
+class ExperimentalSwitchProvisioningConfig(Config[bool | None]):
+    name: ClassVar[str] = "experimental_switch_provisioning"
+    default: ClassVar[bool | None] = False
+    description: ClassVar[str] = (
+        "Enable the experimental switch provisioning feature"
+    )
+    help_text: ClassVar[str | None] = (
+        "Enables the experimental switch provisioning feature. This feature may have limited functionality."
+    )
+    value: bool | None = Field(default=default, description=description)
+
+
 # Private configs
 class ActiveDiscoveryLastScanConfig(Config[int | None]):
     is_public: ClassVar[bool] = False
@@ -1232,6 +1244,7 @@ class ConfigFactory:
         TlsCertExpirationNotificationEnabledConfig.name: TlsCertExpirationNotificationEnabledConfig,
         TLSCertExpirationNotificationIntervalConfig.name: TLSCertExpirationNotificationIntervalConfig,
         AutoVlanCreationConfig.name: AutoVlanCreationConfig,
+        ExperimentalSwitchProvisioningConfig.name: ExperimentalSwitchProvisioningConfig,
         # Private configs.
         ActiveDiscoveryLastScanConfig.name: ActiveDiscoveryLastScanConfig,
         CommissioningOSystemConfig.name: CommissioningOSystemConfig,
