@@ -40,6 +40,8 @@ from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connections, DEFAULT_DB_ALIAS
 
+from maascommon.password_policy import enforce_password_complexity
+
 
 class Command(BaseCommand):
     help = "Change a MAAS user's password."
@@ -101,8 +103,16 @@ class Command(BaseCommand):
                 continue
             try:
                 validate_password(p2, u)
+                # Enforce the hardening complexity policy (no-op when hardening
+                # is inactive). This guarantees the password is >= 14 bytes so
+                # PBKDF2/HMAC hashing does not fail under FIPS with
+                # "[Provider routines] invalid key length".
+                enforce_password_complexity(p2)
             except ValidationError as err:
                 self.stderr.write("\n".join(err.messages))
+                count += 1
+            except ValueError as err:
+                self.stderr.write(str(err))
                 count += 1
             else:
                 password_validated = True

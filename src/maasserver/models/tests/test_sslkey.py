@@ -3,8 +3,9 @@
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from OpenSSL import crypto as ossl_crypto
 
-from maasserver.models import SSLKey
+from maasserver.models import SSLKey, sslkey
 from maasserver.models.sslkey import validate_ssl_key
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
@@ -20,6 +21,66 @@ class TestSSLKeyValidator(MAASServerTestCase):
     def test_does_not_validate_random_data(self):
         key_string = factory.make_string()
         self.assertRaises(ValidationError, validate_ssl_key, key_string)
+
+
+def _make_ssl_cert(key_type="rsa", key_size=2048, hash_alg="sha256"):
+    """Generate a self-signed PEM certificate for testing.
+
+    :param key_type: "rsa" or "dsa"
+    :param key_size: key size in bits
+    :param hash_alg: signature hash algorithm name (e.g. "sha1", "sha256")
+    :return: PEM-encoded certificate string
+    """
+    k = ossl_crypto.PKey()
+    if key_type == "dsa":
+        k.generate_key(ossl_crypto.TYPE_DSA, key_size)
+    else:
+        k.generate_key(ossl_crypto.TYPE_RSA, key_size)
+    cert = ossl_crypto.X509()
+    cert.get_subject().CN = "test"
+    cert.set_serial_number(1)
+    cert.gmtime_adj_notBefore(0)
+    cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)
+    cert.set_issuer(cert.get_subject())
+    cert.set_pubkey(k)
+    cert.sign(k, hash_alg)
+    return ossl_crypto.dump_certificate(
+        ossl_crypto.FILETYPE_PEM, cert
+    ).decode()
+
+
+class TestSSLKeyValidatorFIPS(MAASServerTestCase):
+    """Tests for FIPS-conditional validation in validate_ssl_key."""
+
+    def test_fips_rejects_sha1_cert(self):
+        pem = _make_ssl_cert(key_type="rsa", key_size=2048, hash_alg="sha1")
+        self.patch(sslkey, "is_fips_enabled").return_value = True
+        error = self.assertRaises(ValidationError, validate_ssl_key, pem)
+        self.assertEqual("fips_violation", error.code)
+
+    def test_fips_rejects_dsa_cert(self):
+        pem = _make_ssl_cert(key_type="dsa", key_size=2048, hash_alg="sha256")
+        self.patch(sslkey, "is_fips_enabled").return_value = True
+        error = self.assertRaises(ValidationError, validate_ssl_key, pem)
+        self.assertEqual("fips_violation", error.code)
+
+    def test_fips_rejects_small_rsa_cert(self):
+        pem = _make_ssl_cert(key_type="rsa", key_size=1024, hash_alg="sha256")
+        self.patch(sslkey, "is_fips_enabled").return_value = True
+        error = self.assertRaises(ValidationError, validate_ssl_key, pem)
+        self.assertEqual("fips_violation", error.code)
+
+    def test_fips_accepts_sha256_rsa2048_cert(self):
+        pem = _make_ssl_cert(key_type="rsa", key_size=2048, hash_alg="sha256")
+        self.patch(sslkey, "is_fips_enabled").return_value = True
+        # No exception should be raised.
+        validate_ssl_key(pem)
+
+    def test_no_fips_check_when_disabled(self):
+        pem = _make_ssl_cert(key_type="rsa", key_size=2048, hash_alg="sha1")
+        self.patch(sslkey, "is_fips_enabled").return_value = False
+        # SHA-1 cert accepted when FIPS is disabled.
+        validate_ssl_key(pem)
 
 
 class TestSSLKey(MAASServerTestCase):

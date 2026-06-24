@@ -42,6 +42,7 @@ from maasservicelayer.db.repositories.notifications import (
 from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
 )
+from maasservicelayer.db.repositories.power_types import PowerTypeRepository
 from maasservicelayer.db.repositories.rdns import RDNSRepository
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
 from maasservicelayer.db.repositories.resource_pools import (
@@ -54,6 +55,9 @@ from maasservicelayer.db.repositories.service_status import (
     ServiceStatusRepository,
 )
 from maasservicelayer.db.repositories.spaces import SpacesRepository
+from maasservicelayer.db.repositories.ssh_host_keys import (
+    TrustedSshHostKeyRepository,
+)
 from maasservicelayer.db.repositories.sshkeys import SshKeysRepository
 from maasservicelayer.db.repositories.sslkeys import SSLKeysRepository
 from maasservicelayer.db.repositories.staticipaddress import (
@@ -108,6 +112,7 @@ from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.package_repositories import (
     PackageRepositoriesService,
 )
+from maasservicelayer.services.power_types import PowerTypesService
 from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
@@ -118,6 +123,7 @@ from maasservicelayer.services.secrets import (
 )
 from maasservicelayer.services.service_status import ServiceStatusService
 from maasservicelayer.services.spaces import SpacesService
+from maasservicelayer.services.ssh_host_keys import TrustedSshHostKeysService
 from maasservicelayer.services.sshkeys import SshKeysService
 from maasservicelayer.services.sslkey import SSLKeysService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
@@ -188,6 +194,7 @@ class ServiceCollectionV3:
     nodes: NodesService
     notifications: NotificationsService
     package_repositories: PackageRepositoriesService
+    power_types: PowerTypesService
     rdns: RDNSService
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
@@ -201,6 +208,7 @@ class ServiceCollectionV3:
     staticroutes: StaticRoutesService
     subnets: SubnetsService
     tags: TagsService
+    trusted_ssh_host_keys: TrustedSshHostKeysService
     temporal: TemporalService
     tokens: TokensService
     users: UsersService
@@ -256,6 +264,10 @@ class ServiceCollectionV3:
             repository=TagsRepository(context),
             events_service=services.events,
             temporal_service=services.temporal,
+        )
+        services.trusted_ssh_host_keys = TrustedSshHostKeysService(
+            context=context,
+            repository=TrustedSshHostKeyRepository(context),
         )
         services.scriptresults = ScriptResultsService(
             context=context,
@@ -500,5 +512,9 @@ class ServiceCollectionV3:
             context=context,
             repository=PackageRepositoriesRepository(context),
             events_service=services.events,
+        )
+        services.power_types = PowerTypesService(
+            context=context,
+            repository=PowerTypeRepository(),
         )
         return services

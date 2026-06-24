@@ -1281,8 +1281,35 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
             self.fields["deployed"] = forms.BooleanField(required=False)
 
     def clean(self):
+        from maasserver.forms.fips_power import (
+            validate_power_params_fips,
+            validate_power_pass_complexity,
+        )
+
         cleaned_data = super().clean()
         cleaned_data = WithPowerTypeMixin.check_driver(self, cleaned_data)
+
+        power_type = cleaned_data.get("power_type") or cleaned_data.get(
+            "type", ""
+        )
+        power_parameters = cleaned_data.get("power_parameters") or {}
+        if isinstance(power_parameters, str):
+            try:
+                power_parameters = json.loads(power_parameters)
+            except (ValueError, TypeError):
+                power_parameters = {}
+
+        if power_type and power_parameters:
+            try:
+                validate_power_params_fips(power_type, power_parameters)
+            except ValidationError as exc:
+                self.add_error(None, exc)
+
+            try:
+                validate_power_pass_complexity(power_parameters)
+            except ValidationError as exc:
+                self.add_error(None, exc)
+
         return cleaned_data
 
     def _setup_deployed_machine(self, machine):

@@ -7,6 +7,7 @@ import re
 from tempfile import NamedTemporaryFile
 
 from maascommon.enums.ipmi import IPMIPrivilegeLevel
+from maascommon.fips import is_fips_enabled
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,
@@ -21,6 +22,7 @@ from provisioningserver.drivers.power import (
     PowerFatalError,
     PowerSettingError,
 )
+from provisioningserver.drivers.power.fips import FIPS_ALLOWED_IPMI_CIPHERS
 from provisioningserver.events import EVENT_TYPES, send_node_event
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell
@@ -427,9 +429,24 @@ class IPMIPowerDriver(PowerDriver):
         common_args.extend(("-p", power_pass))
         if is_power_parameter_set(k_g):
             common_args.extend(("-k", k_g))
+        if is_fips_enabled():
+            if is_power_parameter_set(cipher_suite_id):
+                if cipher_suite_id not in FIPS_ALLOWED_IPMI_CIPHERS:
+                    allowed = ", ".join(sorted(FIPS_ALLOWED_IPMI_CIPHERS))
+                    raise PowerSettingError(
+                        f"IPMI cipher suite {cipher_suite_id!r} is not "
+                        f"FIPS-compliant. Allowed: {allowed}."
+                    )
+            else:
+                cipher_suite_id = "17"
         if is_power_parameter_set(cipher_suite_id):
             if cipher_suite_id != "17":
-                maaslog.warning("using a non-secure cipher suite id")
+                maaslog.warning(
+                    "IPMI cipher suite %s on %s is not recommended; "
+                    "consider suite 17",
+                    cipher_suite_id,
+                    power_address,
+                )
             common_args.extend(("-I", cipher_suite_id))
         if is_power_parameter_set(privilege_level):
             common_args.extend(("-l", privilege_level))
