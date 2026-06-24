@@ -18,6 +18,7 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns import config
 from provisioningserver.dns.config import (
+    _rndc_conf_uses_approved_algorithm,
     clean_old_zone_files,
     compose_config_path,
     DEFAULT_CONTROLS,
@@ -185,6 +186,101 @@ class TestRNDCUtilities(MAASTestCase):
                 conf_content = stream.read()
                 self.assertIn(content, conf_content)
 
+    def test_set_up_rndc_generates_sha256_key(self):
+        # Keys are created with hmac-sha256 on a fresh install.
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_rndc()
+        rndc_file = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
+        with open(rndc_file, encoding="ascii") as stream:
+            content = stream.read()
+        self.assertIn("algorithm hmac-sha256", content)
+
+    def test_set_up_rndc_idempotent_when_already_sha256(self):
+        # A rndc.conf already using hmac-sha256 is left unchanged; the helper
+        # must not regenerate the key (idempotency requirement).
+        dns_conf_dir = patch_dns_config_path(self)
+        # Write an initial rndc.conf with a known secret and hmac-sha256.
+        initial_secret = "aGFyZGVuaW5nLXRlc3Qtc2VjcmV0LWtleQ=="
+        rndc_file = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
+        named_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
+        rndc_content = (
+            "# Start of rndc.conf\n"
+            'key "rndc-maas-key" {\n'
+            "    algorithm hmac-sha256;\n"
+            f'    secret "{initial_secret}";\n'
+            "};\n"
+        )
+        with open(rndc_file, "w", encoding="ascii") as fh:
+            fh.write(rndc_content)
+        with open(named_file, "w", encoding="ascii") as fh:
+            fh.write("# placeholder named conf\n")
+        # Capture mtime before calling set_up_rndc.
+        mtime_before = os.path.getmtime(rndc_file)
+        set_up_rndc()
+        # File must not have been rewritten.
+        mtime_after = os.path.getmtime(rndc_file)
+        self.assertEqual(mtime_before, mtime_after)
+        with open(rndc_file, encoding="ascii") as fh:
+            self.assertIn(initial_secret, fh.read())
+
+    def test_set_up_rndc_rotates_non_approved_algorithm(self):
+        # A rndc.conf using a non-approved algorithm (e.g. hmac-md5 from a
+        # pre-3.7 installation) must be regenerated with hmac-sha256 on the
+        # next service restart (key rotation).
+        dns_conf_dir = patch_dns_config_path(self)
+        old_secret = "b2xkLW1kNS1zZWNyZXQ="
+        rndc_file = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
+        # Write a stale rndc.conf with hmac-md5.
+        old_content = (
+            "# Start of rndc.conf\n"
+            'key "rndc-maas-key" {\n'
+            "    algorithm hmac-md5;\n"
+            f'    secret "{old_secret}";\n'
+            "};\n"
+        )
+        with open(rndc_file, "w", encoding="ascii") as fh:
+            fh.write(old_content)
+        set_up_rndc()
+        with open(rndc_file, encoding="ascii") as fh:
+            new_content = fh.read()
+        self.assertIn("algorithm hmac-sha256", new_content)
+        self.assertNotIn(old_secret, new_content)
+
+    def test_rndc_conf_uses_approved_algorithm_returns_true_for_sha256(self):
+        # Helper returns True for an existing rndc.conf with hmac-sha256.
+        dns_conf_dir = patch_dns_config_path(self)
+        rndc_file = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
+        with open(rndc_file, "w", encoding="ascii") as fh:
+            fh.write(
+                "# Start of rndc.conf\n"
+                'key "rndc-maas-key" {\n'
+                "    algorithm hmac-sha256;\n"
+                '    secret "dGVzdA==";\n'
+                "};\n"
+            )
+        self.assertTrue(_rndc_conf_uses_approved_algorithm(rndc_file))
+
+    def test_rndc_conf_uses_approved_algorithm_returns_false_for_md5(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        rndc_file = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
+        with open(rndc_file, "w", encoding="ascii") as fh:
+            fh.write(
+                "# Start of rndc.conf\n"
+                'key "rndc-maas-key" {\n'
+                "    algorithm hmac-md5;\n"
+                '    secret "dGVzdA==";\n'
+                "};\n"
+            )
+        self.assertFalse(_rndc_conf_uses_approved_algorithm(rndc_file))
+
+    def test_rndc_conf_uses_approved_algorithm_returns_false_when_missing(
+        self,
+    ):
+        # Missing file → False (triggers regeneration).
+        self.assertFalse(
+            _rndc_conf_uses_approved_algorithm("/nonexistent/rndc.conf")
+        )
+
     def test_set_up_options_conf_writes_configuration(self):
         dns_conf_dir = patch_dns_config_path(self)
         fake_dns = [factory.make_ipv4_address(), factory.make_ipv4_address()]
@@ -262,6 +358,74 @@ class TestRNDCUtilities(MAASTestCase):
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
         self.assertTrue(os.path.exists(target_file))
+
+    def test_set_up_options_conf_without_hardening(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=False)
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertNotIn('version "not disclosed"', contents)
+        self.assertNotIn("allow-transfer", contents)
+        self.assertNotIn("fetches-per-zone", contents)
+        self.assertNotIn("fetches-per-server", contents)
+
+    def test_set_up_options_conf_with_hardening(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True)
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn('version "not disclosed"', contents)
+        self.assertIn("allow-transfer { none; }", contents)
+        self.assertIn("fetches-per-zone 100", contents)
+        self.assertIn("fetches-per-server 100", contents)
+
+    def test_set_up_options_conf_with_hardening_and_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True, dns_bind="10.0.0.1")
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("listen-on { 10.0.0.1; 127.0.0.1; }", contents)
+        self.assertIn("listen-on-v6 { ::1; }", contents)
+
+    def test_set_up_options_conf_with_hardening_no_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True, dns_bind="")
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertNotIn("listen-on", contents)
+
+    def test_set_up_options_conf_without_hardening_with_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=False, dns_bind="10.0.0.1")
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("listen-on { 10.0.0.1; 127.0.0.1; }", contents)
+        self.assertIn("listen-on-v6 { ::1; }", contents)
+
+    def test_set_up_options_conf_without_hardening_no_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=False, dns_bind="")
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertNotIn("listen-on", contents)
 
     def test_clean_old_zone_files(self):
         zone_file_dir = patch_zone_file_config_path(self)
@@ -372,7 +536,7 @@ class TestRNDCUtilities(MAASTestCase):
             dedent(
                 """\
             # key "rndc-key" {
-            # \talgorithm hmac-md5;
+            # \talgorithm hmac-sha256;
             # \tsecret "FuvtYZbYYLLJQKtn3zembg==";
             # };
             # %s
@@ -386,7 +550,7 @@ class TestRNDCUtilities(MAASTestCase):
         )
 
         self.assertIn(
-            'key "rndc-key" {\n\talgorithm hmac-md5;\n',
+            'key "rndc-key" {\n\talgorithm hmac-sha256;\n',
             uncomment_named_conf(named_comment),
         )
 

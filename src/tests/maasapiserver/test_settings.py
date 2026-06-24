@@ -1,5 +1,6 @@
 from asyncio import Future
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -58,6 +59,9 @@ class TestDatabaseConfig:
 class TestGetDefaultDBConfig:
     @pytest.mark.asyncio
     async def test_local(self):
+        from maascommon.hardening import get_hardening_config
+
+        get_hardening_config.cache_clear()
         region_config = RegionConfiguration(
             {
                 "database_name": "maasdb",
@@ -76,6 +80,9 @@ class TestGetDefaultDBConfig:
 
     @pytest.mark.asyncio
     async def test_vault(self, mocker):
+        from maascommon.hardening import get_hardening_config
+
+        get_hardening_config.cache_clear()
         MAAS_ID.set("asdf")
         region_config = RegionConfiguration(
             {
@@ -102,3 +109,53 @@ class TestGetDefaultDBConfig:
         assert config.username == "user"
         assert config.password == "pass"
         assert config.port == 12345
+
+    @pytest.mark.asyncio
+    async def test_hardening_rejects_insecure_sslmode(self):
+        """Hardening-active + insecure sslmode raises InsecureDBSSLModeError."""
+        from maascommon.hardening import get_hardening_config
+        from maasservicelayer.db import InsecureDBSSLModeError
+
+        region_config = RegionConfiguration(
+            {
+                "database_name": "maasdb",
+                "database_user": "user",
+                "database_pass": "pass",
+                "database_host": "host",
+                "database_port": 12345,
+                "database_sslmode": "prefer",
+            }
+        )
+        get_hardening_config.cache_clear()
+        with patch("maascommon.hardening.is_fips_enabled", return_value=True):
+            with pytest.raises(InsecureDBSSLModeError):
+                await _get_default_db_config(region_config)
+
+    @pytest.mark.asyncio
+    async def test_hardening_allows_secure_sslmode(self):
+        """Hardening-active + verify-full sslmode is accepted; SSL fields forwarded."""
+        from maascommon.hardening import get_hardening_config
+
+        region_config = RegionConfiguration(
+            {
+                "database_name": "maasdb",
+                "database_user": "user",
+                "database_pass": "pass",
+                "database_host": "host",
+                "database_port": 12345,
+                "database_sslmode": "verify-full",
+                "database_sslcert": "/etc/maas/db.crt",
+                "database_sslkey": "/etc/maas/db.key",
+                "database_sslrootcert": "/etc/maas/ca.crt",
+            }
+        )
+        get_hardening_config.cache_clear()
+        with patch("maascommon.hardening.is_fips_enabled", return_value=True):
+            config = await _get_default_db_config(region_config)
+
+        assert config.sslmode == "verify-full"
+        assert config.sslcert == "/etc/maas/db.crt"
+        assert config.sslkey == "/etc/maas/db.key"
+        assert config.sslrootcert == "/etc/maas/ca.crt"
+        assert config.dsn.query.get("sslmode") == "verify-full"
+        assert config.dsn.query.get("sslcert") == "/etc/maas/db.crt"

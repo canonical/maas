@@ -92,4 +92,24 @@ def runService(service):
 
 def run():
     """Run the maas-rackd service."""
+    from maascommon.hardening import configure_hardening, get_hardening_config
+    from maasservicelayer.services.hardening import (
+        run_hardening_startup_validation,
+    )
+    from provisioningserver.config import ClusterConfiguration
+
+    try:
+        with ClusterConfiguration.open() as config:
+            configure_hardening(config.hardening_enabled)
+            run_hardening_startup_validation(
+                api_tls_cert=config.api_tls_cert,
+                api_tls_key=config.api_tls_key,
+                api_tls_dhparam=config.api_tls_dhparam,
+                api_bind=config.api_bind,
+            )
+    except SystemExit:
+        raise
+    except Exception:
+        get_hardening_config()
+        run_hardening_startup_validation()
     runService("maas-rackd")

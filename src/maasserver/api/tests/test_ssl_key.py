@@ -179,3 +179,33 @@ class TestSSLKeyHandlers(APITestCase.ForUser):
             dict(key=["This field is required."]),
             json.loads(response.content.decode(settings.DEFAULT_CHARSET)),
         )
+
+    def test_adding_rejects_non_fips_cert_when_fips_enabled(self):
+        from OpenSSL import crypto as ossl_crypto
+
+        from maasserver.models import sslkey
+
+        k = ossl_crypto.PKey()
+        k.generate_key(ossl_crypto.TYPE_RSA, 2048)
+        cert = ossl_crypto.X509()
+        cert.get_subject().CN = "test"
+        cert.set_serial_number(1)
+        cert.gmtime_adj_notBefore(0)
+        cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)
+        cert.set_issuer(cert.get_subject())
+        cert.set_pubkey(k)
+        cert.sign(k, "sha1")  # SHA-1 signature: FIPS violation
+        pem = ossl_crypto.dump_certificate(
+            ossl_crypto.FILETYPE_PEM, cert
+        ).decode()
+
+        self.patch(sslkey, "is_fips_enabled").return_value = True
+        response = self.client.post(
+            reverse("sslkeys_handler"), data=dict(key=pem)
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response
+        )
+        self.assertIn(
+            "FIPS", response.content.decode(settings.DEFAULT_CHARSET)
+        )

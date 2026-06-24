@@ -11,8 +11,16 @@ from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import BMCTable, NodeTable
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
+from maasservicelayer.utils.date import utcnow
 
 
 class NodeClauseFactory(ClauseFactory):
@@ -90,6 +98,46 @@ class AbstractNodesRepository(BaseRepository[T], ABC):
             .select_from(BMCTable)
             .join(NodeTable, eq(NodeTable.c.bmc_id, BMCTable.c.id))
         )
+
+    async def update_node_bmc(
+        self, system_id: str, power_type: str, power_parameters: dict
+    ) -> Bmc:
+        """Update power_type and power_parameters for the BMC of `system_id`.
+
+        Raises :class:`NotFoundException` if the node has no linked BMC.
+        """
+        bmc_id_subquery = (
+            select(NodeTable.c.bmc_id)
+            .where(eq(NodeTable.c.system_id, system_id))
+            .scalar_subquery()
+        )
+        stmt = (
+            update(BMCTable)
+            .where(BMCTable.c.id == bmc_id_subquery)
+            .values(
+                power_type=power_type,
+                power_parameters=power_parameters,
+                updated=utcnow(),
+            )
+            .returning(
+                BMCTable.c.id,
+                BMCTable.c.created,
+                BMCTable.c.updated,
+                BMCTable.c.power_type,
+                BMCTable.c.power_parameters,
+            )
+        )
+        result = (await self.execute_stmt(stmt)).one_or_none()
+        if result is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"No BMC found for machine {system_id!r}.",
+                    )
+                ]
+            )
+        return Bmc(**result._asdict())
 
 
 class NodesRepository(AbstractNodesRepository[Node]):

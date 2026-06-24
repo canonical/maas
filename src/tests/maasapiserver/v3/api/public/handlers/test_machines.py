@@ -25,6 +25,11 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.enums.rbac import RbacPermission
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    FIPSViolationException,
+)
+from maasservicelayer.exceptions.constants import FIPS_VIOLATION_TYPE
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
@@ -167,6 +172,9 @@ class TestMachinesApi(ApiCommonTests):
         return [
             Endpoint(
                 method="GET", path=f"{self.BASE_PATH}/abcdef/power_parameters"
+            ),
+            Endpoint(
+                method="PUT", path=f"{self.BASE_PATH}/abcdef/power_parameters"
             ),
         ]
 
@@ -356,6 +364,51 @@ class TestMachinesApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 404
+
+    async def test_set_machine_power_parameters(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.machines = Mock(MachinesService)
+        services_mock.machines.set_bmc.return_value = TEST_BMC
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/abcdef/power_parameters",
+            json={
+                "power_type": "ipmi",
+                "power_parameters": {"cipher_suite_id": "17"},
+            },
+        )
+        assert response.status_code == 200
+        power_driver_response = PowerDriverResponse(**response.json())
+        assert power_driver_response.power_type == TEST_BMC.power_type
+        services_mock.machines.set_bmc.assert_called_once_with(
+            "abcdef", "ipmi", {"cipher_suite_id": "17"}
+        )
+
+    async def test_set_machine_power_parameters_fips_violation(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.machines = Mock(MachinesService)
+        services_mock.machines.set_bmc.side_effect = FIPSViolationException(
+            details=[
+                BaseExceptionDetail(
+                    type=FIPS_VIOLATION_TYPE,
+                    message="IPMI cipher suite '3' is not FIPS-compliant.",
+                )
+            ]
+        )
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/abcdef/power_parameters",
+            json={
+                "power_type": "ipmi",
+                "power_parameters": {"cipher_suite_id": "3"},
+            },
+        )
+        assert response.status_code == 422
+        assert response.json()["fips_violation"] is True
 
 
 class TestUsbDevicesApi(ApiCommonTests):

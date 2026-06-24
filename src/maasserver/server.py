@@ -72,6 +72,28 @@ def run():
     # the twistd argument parser.
     sys.argv = sys.argv[:1]
 
+    # Determine security-hardening mode and run fail-fast startup validation.
+    from maascommon.hardening import configure_hardening, get_hardening_config
+    from maasserver.config import RegionConfiguration
+    from maasservicelayer.services.hardening import (
+        run_hardening_startup_validation,
+    )
+
+    try:
+        with RegionConfiguration.open() as region_config:
+            configure_hardening(region_config.hardening_enabled)
+            run_hardening_startup_validation(
+                api_tls_cert=str(region_config.api_tls_cert),
+                api_tls_key=str(region_config.api_tls_key),
+                api_tls_dhparam=str(region_config.api_tls_dhparam),
+                api_bind=str(region_config.api_bind),
+            )
+    except SystemExit:
+        raise
+    except Exception:
+        get_hardening_config()
+        run_hardening_startup_validation()
+
     # Workers are spawned with environment so it knows that it would only
     # be a worker.
     if os.environ.get("MAAS_REGIOND_PROCESS_MODE") == "worker":

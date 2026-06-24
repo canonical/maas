@@ -1456,6 +1456,21 @@ TokenTable = Table(
     Index("piston3_token_consumer_id_b178993d", "consumer_id"),
 )
 
+TrustedSshHostKeyTable = Table(
+    "maasserver_trustedsshhostkey",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("host", String(255), nullable=False),
+    Column("key_type", String(64), nullable=False),
+    Column("public_key", Text, nullable=False),
+    Column("label", String(255), nullable=True),
+    UniqueConstraint(
+        "host", "key_type", "public_key", name="uq_trusted_host_key"
+    ),
+)
+
 UserProfileTable = Table(
     "maasserver_userprofile",
     METADATA,

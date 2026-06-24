@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils.http import urlencode
 
 from maasserver.api import rackcontrollers
+from maasserver.clusterrpc.driver_parameters import get_all_power_types
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.models.bmc import Pod
 from maasserver.models.signals import vlan as vlan_signals_module
@@ -17,6 +18,7 @@ from maasserver.testing.api import (
     explain_unexpected_response,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 
@@ -361,3 +363,37 @@ class TestRackControllersAPI(APITestCase.ForUser):
             explain_unexpected_response(http.client.FORBIDDEN, response),
         )
         get_all_power_types.assert_not_called()
+
+
+class TestGetAllPowerTypesFIPSFields(MAASServerTestCase):
+    """Tests that get_all_power_types() annotates each entry with FIPS fields."""
+
+    def test_all_power_types_have_fips_fields(self):
+        power_types = get_all_power_types()
+        for pt in power_types:
+            self.assertIn(
+                "fips_supported",
+                pt,
+                f"{pt['name']} missing fips_supported",
+            )
+            self.assertIn(
+                "fips_unsupported_reason",
+                pt,
+                f"{pt['name']} missing fips_unsupported_reason",
+            )
+            self.assertIsInstance(pt["fips_supported"], bool)
+            self.assertIsInstance(
+                pt["fips_unsupported_reason"], (str, type(None))
+            )
+
+    def test_ipmi_is_fips_supported(self):
+        power_types = get_all_power_types()
+        ipmi = next(pt for pt in power_types if pt["name"] == "ipmi")
+        self.assertTrue(ipmi["fips_supported"])
+        self.assertIsNone(ipmi["fips_unsupported_reason"])
+
+    def test_apc_is_not_fips_supported(self):
+        power_types = get_all_power_types()
+        apc = next(pt for pt in power_types if pt["name"] == "apc")
+        self.assertFalse(apc["fips_supported"])
+        self.assertIsNotNone(apc["fips_unsupported_reason"])

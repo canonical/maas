@@ -197,6 +197,28 @@ def run(app_config: Config | None = None):
         logging.DEBUG if app_config.debug_http else logging.INFO
     )
 
+    # Determine security-hardening mode and run fail-fast startup validation.
+    from maascommon.hardening import configure_hardening, get_hardening_config
+    from maasserver.config import RegionConfiguration
+    from maasservicelayer.services.hardening import (
+        run_hardening_startup_validation,
+    )
+
+    try:
+        with RegionConfiguration.open() as region_config:
+            configure_hardening(str(region_config.hardening_enabled))
+            run_hardening_startup_validation(
+                api_tls_cert=str(region_config.api_tls_cert),
+                api_tls_key=str(region_config.api_tls_key),
+                api_tls_dhparam=str(region_config.api_tls_dhparam),
+                api_bind=str(region_config.api_bind),
+            )
+    except SystemExit:
+        raise
+    except Exception:
+        get_hardening_config()
+        run_hardening_startup_validation()
+
     # User app
     user_app = loop.run_until_complete(create_app(config=app_config))
     user_server_config = uvicorn.Config(

@@ -822,6 +822,63 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         Number(min=1, if_missing=20 * 1000**3),
     )
 
+    # Security hardening options.
+    hardening_enabled = ConfigurationOption(
+        "hardening_enabled",
+        "Security hardening activation: 'auto' (on when the host is in FIPS "
+        "mode), 'on' (force on), or 'off'.",
+        UnicodeString(if_missing="auto"),
+    )
+
+    # Service binding options (used when hardening_enabled activates).
+    api_bind = ConfigurationOption(
+        "api_bind",
+        "Address the rack HTTP server binds to when hardening is active.",
+        UnicodeString(if_missing="0.0.0.0"),
+    )
+    dns_bind = ConfigurationOption(
+        "dns_bind",
+        "Address the DNS (Bind9) service binds to.",
+        UnicodeString(if_missing=""),
+    )
+    tftp_bind = ConfigurationOption(
+        "tftp_bind",
+        "Address the TFTP service binds to.",
+        UnicodeString(if_missing=""),
+    )
+
+    # NGINX TLS options (used when hardening is active).
+    api_tls_cert = ConfigurationOption(
+        "api_tls_cert",
+        "Path to the TLS certificate for the rack HTTP endpoint.",
+        UnicodeString(if_missing=""),
+    )
+    api_tls_key = ConfigurationOption(
+        "api_tls_key",
+        "Path to the TLS private key for the rack HTTP endpoint.",
+        UnicodeString(if_missing=""),
+    )
+    api_tls_dhparam = ConfigurationOption(
+        "api_tls_dhparam",
+        "Path to the DH parameters file for NGINX TLS (optional).",
+        UnicodeString(if_missing=""),
+    )
+    api_rate_limit_rate = ConfigurationOption(
+        "api_rate_limit_rate",
+        "NGINX rate limit (e.g. '10r/s') applied per client IP.",
+        UnicodeString(if_missing="10r/s"),
+    )
+    api_rate_limit_burst = ConfigurationOption(
+        "api_rate_limit_burst",
+        "NGINX rate limit burst size.",
+        Number(min=1, if_missing=20),
+    )
+    api_conn_limit = ConfigurationOption(
+        "api_conn_limit",
+        "NGINX concurrent connection limit per client IP.",
+        Number(min=1, if_missing=100),
+    )
+
 
 def is_dev_environment():
     """Is this the development environment, or production?"""
