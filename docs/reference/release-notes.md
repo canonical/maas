@@ -4,10 +4,10 @@ These release notes for MAAS summarize new features, bug fixes and backwards-inc
 
 ## Releases
 
-- [Version 3.7](https://canonical.com/maas/docs/release-notes-and-upgrade-instructions#p-9229-version-37-release-notes)
-- [Version 3.6](https://canonical.com/maas/docs/release-notes-and-upgrade-instructions#p-9229-version-36-release-notes)
-- [Version 3.5](https://canonical.com/maas/docs/release-notes-and-upgrade-instructions#p-9229-version-35-release-notes)
-- [Version 3.4](https://canonical.com/maas/docs/release-notes-and-upgrade-instructions#p-9229-version-34-release-notes)
+- [Version 3.7](#version-37-release-notes)
+- [Version 3.6](#version-36-release-notes)
+- [Version 3.5](#version-35-release-notes)
+- [Version 3.4](#version-34-release-notes)
 
 ### Older releases
 
