@@ -66,6 +66,7 @@ from maasservicelayer.models.configurations import (
     EnableKernelCrashDumpConfig,
     EnableThirdPartyDriversConfig,
     EnlistCommissioningConfig,
+    ExperimentalSwitchProvisioningConfig,
     ForceV1NetworkYamlConfig,
     HardwareSyncIntervalConfig,
     HttpProxyConfig,
@@ -669,6 +670,15 @@ CONFIG_ITEMS = {
         "form_kwargs": {
             "required": False,
             "label": EnableAnalyticsConfig.description,
+        },
+    },
+    ExperimentalSwitchProvisioningConfig.name: {
+        "default": ExperimentalSwitchProvisioningConfig.default,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": ExperimentalSwitchProvisioningConfig.description,
+            "help_text": ExperimentalSwitchProvisioningConfig.help_text,
         },
     },
     CompletedIntroConfig.name: {
