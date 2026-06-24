@@ -376,6 +376,15 @@ class BootResourcesActivity(ActivityBase):
                 where_clauses.append(
                     BootSourcesClauseFactory.with_id(boot_source_id)
                 )
+            else:
+                # If we are fetching manifests for all the boot sources,
+                # cancel all the other running fetch manifest workflows
+                # to avoid serialization errors.
+                await services.temporal.cancel_workflows(
+                    query=f"WorkflowType='{FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME}' "
+                    "AND ExecutionStatus='Running' "
+                    f"AND WorkflowId!='{activity.info().workflow_id}'"
+                )
 
             boot_sources = await services.boot_sources.get_many(
                 query=QuerySpec(where=ClauseFactory.and_clauses(where_clauses))

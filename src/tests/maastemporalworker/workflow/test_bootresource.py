@@ -711,6 +711,8 @@ class TestFetchManifestAndUpdateCacheActivity:
         )
         services_mock.notifications = Mock(NotificationsService)
         services_mock.notifications.delete_one.return_value = None
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.temporal.cancel_workflows.return_value = None
 
         heartbeats = []
         activity_env.on_heartbeat = lambda *args: heartbeats.append(args[0])
@@ -730,6 +732,7 @@ class TestFetchManifestAndUpdateCacheActivity:
                 )
             ),
         )
+        services_mock.temporal.cancel_workflows.assert_awaited_once()
 
     async def test_creates_notification_if_exception_is_raised(
         self,
