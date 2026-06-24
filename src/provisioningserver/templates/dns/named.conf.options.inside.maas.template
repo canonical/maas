@@ -18,3 +18,19 @@ allow-recursion { trusted; };
 {{if not upstream_allow_query_cache}}
 allow-query-cache { trusted; };
 {{endif}}
+{{if hardening}}
+version "not disclosed";
+{{endif}}
+{{if dns_allow_transfer}}
+allow-transfer { {{dns_allow_transfer}}; };
+{{endif}}
+{{if dns_fetches_per_zone}}
+fetches-per-zone {{dns_fetches_per_zone}};
+{{endif}}
+{{if dns_fetches_per_server}}
+fetches-per-server {{dns_fetches_per_server}};
+{{endif}}
+{{if dns_bind}}
+listen-on { {{dns_bind}}; 127.0.0.1; };
+listen-on-v6 { ::1; };
+{{endif}}

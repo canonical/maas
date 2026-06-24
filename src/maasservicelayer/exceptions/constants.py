@@ -57,3 +57,9 @@ CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE = "CannotDeleteDefaultZoneViolation"
 CANNOT_DELETE_DEFAULT_PACKAGE_REPO_VIOLATION_TYPE = (
     "CannotDeleteDefaultPackageRepositoryViolation"
 )
+
+# FIPS
+FIPS_VIOLATION_TYPE = "FipsViolation"
+
+# Service
+SERVICE_UNAVAILABLE_VIOLATION_TYPE = "ServiceUnavailableViolation"

@@ -1093,6 +1093,27 @@ class WindowsKmsHostConfig(Config[Optional[str]]):
     value: Optional[str] = Field(default=default, description=description)
 
 
+class HardeningEnabledConfig(Config[Optional[str]]):
+    is_public: ClassVar[bool] = False
+    name: ClassVar[str] = "hardening_enabled"
+    default: ClassVar[Optional[str]] = "auto"
+    description: ClassVar[str] = "Hardening mode: auto, on, or off"
+    value: Optional[str] = Field(default=default, description=description)
+
+
+class FipsEnabledConfig(Config[Optional[bool]]):
+    is_public: ClassVar[bool] = False
+    name: ClassVar[str] = "fips_enabled"
+    default: ClassVar[Optional[bool]] = None
+    description: ClassVar[str] = (
+        "Declared FIPS posture: True if the deployment is intended to "
+        "run on a FIPS-enabled host, False if explicitly not, None if "
+        "undeclared.  Advisory only — does not gate any FIPS-conditional "
+        "behaviour; runtime FIPS state is always read from the host."
+    )
+    value: Optional[bool] = Field(default=default, description=description)
+
+
 class ConfigFactory:
     ALL_CONFIGS: dict[str, Type[Config]] = {
         MAASNameConfig.name: MAASNameConfig,
@@ -1172,6 +1193,8 @@ class ConfigFactory:
         SessionLengthConfig.name: SessionLengthConfig,
         VaultEnabledConfig.name: VaultEnabledConfig,
         WindowsKmsHostConfig.name: WindowsKmsHostConfig,
+        HardeningEnabledConfig.name: HardeningEnabledConfig,
+        FipsEnabledConfig.name: FipsEnabledConfig,
     }
 
     PUBLIC_CONFIGS = {

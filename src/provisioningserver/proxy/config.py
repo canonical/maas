@@ -46,6 +46,7 @@ def write_config(
     peer_proxies=None,
     prefer_v4_proxy=False,
     maas_proxy_port=8000,
+    squid_bind="",
 ):
     """Write the proxy configuration."""
     if peer_proxies is None:
@@ -62,6 +63,7 @@ def write_config(
         "snap_common_path": snap_paths.common,
         "dns_v4_first": prefer_v4_proxy,
         "maas_proxy_port": maas_proxy_port,
+        "squid_bind": squid_bind,
     }
 
     formatted_peers = []
