@@ -12,8 +12,10 @@ from typing import Optional
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
+from maascommon.hardening import is_hardening_enabled
 from maascommon.worker import worker_socket_paths
 from maasserver.certificates import get_maas_certificate
+from maasserver.config import RegionConfiguration
 from maasserver.listener import (
     PostgresListenerService,
     PostgresListenerUnregistrationError,
@@ -29,6 +31,7 @@ from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.rackdservices.http import (
     compose_http_config_path,
+    compose_listen_addresses,
     get_http_config_dir,
 )
 from provisioningserver.utils.fs import atomic_write, get_root_path
@@ -60,9 +63,31 @@ class RegionHTTPService(Service):
         return super().stopService()
 
     def _getConfiguration(self):
-        cert = get_maas_certificate()
-        port = Config.objects.get_config("tls_port")
-        return _Configuration(cert=cert, port=port)
+        configuration = _Configuration(
+            cert=get_maas_certificate(),
+            port=Config.objects.get_config("tls_port"),
+            hardening_active=is_hardening_enabled(),
+        )
+        try:
+            with RegionConfiguration.open() as region_config:
+                configuration.api_rate_limit_rate = (
+                    region_config.api_rate_limit_rate
+                )
+                configuration.api_rate_limit_burst = (
+                    region_config.api_rate_limit_burst
+                )
+                configuration.api_conn_limit = region_config.api_conn_limit
+                configuration.api_bind = region_config.api_bind
+                configuration.api_bind6 = region_config.api_bind6
+                configuration.api_int_bind = region_config.api_int_bind
+                configuration.api_int_bind6 = region_config.api_int_bind6
+                configuration.api_tls_dhparam = region_config.api_tls_dhparam
+        except Exception:
+            log.err(
+                _why="Could not read RegionConfiguration; using defaults for "
+                "rate-limit, bind, and DH-param settings."
+            )
+        return configuration
 
     def _configure(self, configuration):
         """Update the HTTP configuration for the region proxy service."""
@@ -76,8 +101,20 @@ class RegionHTTPService(Service):
             key_path, cert_path = self._create_cert_files(configuration.cert)
         else:
             key_path, cert_path = "", ""
+        if configuration.tls_enabled:
+            main_listen = compose_listen_addresses(
+                configuration.port,
+                configuration.api_bind,
+                configuration.api_bind6,
+            )
+        else:
+            main_listen = compose_listen_addresses(
+                5240, configuration.api_bind, configuration.api_bind6
+            )
+        internal_listen = compose_listen_addresses(
+            5240, configuration.api_int_bind, configuration.api_int_bind6
+        )
         environ = {
-            "http_port": 5240,
             "tls_enabled": configuration.tls_enabled,
             "tls_port": configuration.port,
             "tls_key_path": key_path,
@@ -86,6 +123,13 @@ class RegionHTTPService(Service):
             "apiserver_socket_path": apiserver_socket_path,
             "static_dir": str(get_root_path() / "usr/share/maas"),
             "boot_resources_dir": str(get_bootresource_store_path()),
+            "hardening": configuration.hardening_active,
+            "api_rate_limit_rate": configuration.api_rate_limit_rate,
+            "api_rate_limit_burst": configuration.api_rate_limit_burst,
+            "api_conn_limit": configuration.api_conn_limit,
+            "main_listen": main_listen,
+            "internal_listen": internal_listen,
+            "tls_dhparam": configuration.api_tls_dhparam,
         }
         rendered = template.substitute(environ).encode()
         target_path = Path(compose_http_config_path("regiond.nginx.conf"))
@@ -148,6 +192,15 @@ class _Configuration:
 
     cert: Optional[Certificate] = None
     port: Optional[int] = None
+    hardening_active: bool = False
+    api_rate_limit_rate: str = "10r/s"
+    api_rate_limit_burst: int = 20
+    api_conn_limit: int = 100
+    api_bind: str = ""
+    api_bind6: str = ""
+    api_int_bind: str = ""
+    api_int_bind6: str = ""
+    api_tls_dhparam: str = ""
 
     @property
     def tls_enabled(self) -> bool:

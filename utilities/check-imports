@@ -287,9 +287,11 @@ RackControllerRule = Rule(
     # cipher with a password as a pre-shared key. See:
     #     https://cryptography.io/en/latest/fernet/#using-passwords-with-fernet
     Allow("cryptography.fernet.**"),
+    Allow("cryptography.hazmat.primitives.ciphers.aead.AESGCM"),
     Allow("cryptography.hazmat.backends.default_backend"),
     Allow("cryptography.hazmat.primitives.hashes"),
     Allow("cryptography.hazmat.primitives.kdf.pbkdf2.PBKDF2HMAC"),
+    Allow("cryptography.exceptions.InvalidTag"),
     Allow("curtin|curtin.**"),
     Allow("distro_info|distro_info.*"),
     Allow("formencode|formencode.**"),
@@ -480,6 +482,8 @@ ServiceLayerRule = Rule(
     Allow("provisioningserver.security.**"),
     Allow("provisioningserver.utils.network.**"),
     Allow("provisioningserver.utils.version.**"),
+    Allow("cryptography.hazmat.primitives.**"),
+    Allow("cryptography.x509|cryptography.x509.**"),
     Allow("psycopg2|psycopg2.**"),
     Allow("pydantic|pydantic.**"),
     Allow("pymacaroons|pymacaroons.**"),

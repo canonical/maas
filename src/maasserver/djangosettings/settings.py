@@ -98,6 +98,22 @@ def _get_default_db_config(config: RegionConfiguration) -> dict:
             "keepalives_interval": config.database_keepalive_interval,
             "keepalives_count": config.database_keepalive_count,
             "application_name": application_name,
+            "sslmode": config.database_sslmode,
+            **(
+                {"sslcert": config.database_sslcert}
+                if config.database_sslcert
+                else {}
+            ),
+            **(
+                {"sslkey": config.database_sslkey}
+                if config.database_sslkey
+                else {}
+            ),
+            **(
+                {"sslrootcert": config.database_sslrootcert}
+                if config.database_sslrootcert
+                else {}
+            ),
         },
     }
 

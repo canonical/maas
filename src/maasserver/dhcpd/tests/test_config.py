@@ -296,6 +296,14 @@ class TestGetConfig(MAASTestCase):
         self.assertNotIn("dhcp6.domain-search", rendered)  # IPv6
         self.assertNotIn("domain-search", rendered)  # IPv4
 
+    def test_omapi_key_uses_hmac_sha256_algorithm(self):
+        # The rendered DHCP config must specify algorithm HMAC-SHA256 in the
+        # OMAPI key stanza regardless of template variant.
+        params = make_sample_params(self, ipv6=self.ipv6)
+        rendered = config.get_config(self.template, **params)
+        self.assertIn("algorithm HMAC-SHA256", rendered)
+        self.assertNotIn("algorithm HMAC-MD5", rendered)
+
     def test_renders_ntp_servers_as_comma_separated_list(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         rendered = config.get_config(self.template, **params)

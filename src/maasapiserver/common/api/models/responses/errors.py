@@ -1,3 +1,6 @@
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import json
 from typing import Optional
 
@@ -103,14 +106,25 @@ class PreconditionFailedResponse(JSONResponse):
 class ValidationErrorBodyResponse(ErrorBodyResponse):
     code: int = status.HTTP_422_UNPROCESSABLE_ENTITY
     message: str = "Failed to validate the request."
+    fips_violation: Optional[bool] = None
 
 
 class ValidationErrorResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(
+        self,
+        details: Optional[list[BaseExceptionDetail]],
+        fips_violation: Optional[bool] = None,
+    ):
+        body_response = ValidationErrorBodyResponse(
+            details=details,
+            fips_violation=fips_violation,
+        )
+        encoded = jsonable_encoder(body_response)
+        # Strip null fips_violation so normal 422s stay clean.
+        if fips_violation is None and "fips_violation" in encoded:
+            del encoded["fips_violation"]
         super().__init__(
-            content=jsonable_encoder(
-                ValidationErrorBodyResponse(details=details)
-            ),
+            content=encoded,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 

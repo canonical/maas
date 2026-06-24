@@ -208,7 +208,7 @@ on release {
 
 omapi-port 7911;
 key omapi_key {
-    algorithm HMAC-MD5;
+    algorithm HMAC-SHA256;
     secret "{{omapi_key}}";
 };
 omapi-key omapi_key;

@@ -35,6 +35,10 @@ class SSHKeysError(CommandError):
     """Error during SSH keys import."""
 
 
+class WeakPassword(CommandError):
+    """Password does not meet the hardening complexity policy."""
+
+
 def read_password(prompt: str):
     while True:
         try:
@@ -140,6 +144,7 @@ class Command(BaseCommandWithConnection):
     def handle(self, *args, **options):
         from django.contrib.auth.models import User
 
+        from maascommon.password_policy import enforce_password_complexity
         from maasserver.macaroon_auth import external_auth_enabled
         from maasserver.models import SSHKey
         from maasserver.models.sshkey import ImportSSHKeysError
@@ -161,6 +166,17 @@ class Command(BaseCommandWithConnection):
             email = prompt_for_email()
         if prompt_ssh_import:
             ssh_import = prompt_for_ssh_import()
+
+        # Reject weak passwords before hashing. When hardening is active the
+        # password is fed to PBKDF2 as the HMAC key, and OpenSSL's FIPS provider
+        # rejects keys shorter than 14 bytes with "[Provider routines] invalid
+        # key length"; enforce the policy here so the operator gets a clear
+        # message instead of a raw crypto traceback.
+        if password is not None:
+            try:
+                enforce_password_complexity(password)
+            except ValueError as error:
+                raise WeakPassword(str(error))  # noqa: B904
 
         with transaction.atomic():
             try:

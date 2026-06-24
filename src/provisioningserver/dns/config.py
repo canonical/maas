@@ -222,6 +222,8 @@ def generate_rndc(
     rndc_content = call_and_check(
         [
             "rndc-confgen",
+            "-A",
+            "hmac-sha256",
             "-b",
             "256",
             "-k",
@@ -283,10 +285,41 @@ def set_up_zone_file_dir():
         clean_old_zone_files()
 
 
-def set_up_rndc():
-    """Writes out the two files needed to enable MAAS to use rndc commands:
-    MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME.
+def _rndc_conf_uses_approved_algorithm(rndc_conf_path: str) -> bool:
+    """Return True if the rndc.conf at *rndc_conf_path* already uses an
+    approved algorithm (hmac-sha256).
+
+    Returns False when the file does not exist, cannot be read, or specifies
+    any other algorithm.  Used to implement idempotent key rotation: a key
+    already on hmac-sha256 is left unchanged; any other state triggers
+    regeneration.
     """
+    try:
+        with open(rndc_conf_path, encoding="ascii") as fh:
+            content = fh.read()
+    except OSError:
+        return False
+    match = re.search(r"\balgorithm\s+([^;]+);", content)
+    if not match:
+        return False
+    return match.group(1).strip().lower() == "hmac-sha256"
+
+
+def set_up_rndc():
+    """Write the two files needed to enable MAAS to use rndc commands:
+    MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME.
+
+    Idempotent with respect to algorithm upgrades: if the existing
+    rndc.conf.maas already specifies ``algorithm hmac-sha256``, neither file
+    is regenerated so the current key material is preserved across restarts.
+    If the file is missing or uses any other algorithm (e.g. hmac-md5 from a
+    pre-3.7 installation) a new hmac-sha256 key is generated and both files
+    are rewritten.  This provides automatic OMAPI/rndc key rotation on the
+    service restart that follows a snap upgrade.
+    """
+    if _rndc_conf_uses_approved_algorithm(get_rndc_conf_path()):
+        return
+
     rndc_content, named_content = generate_rndc(
         port=get_dns_rndc_port(),
         include_default_controls=get_dns_default_controls(),
@@ -325,6 +358,15 @@ def set_up_options_conf(overwrite=True, **kwargs):
     # template that uses this value.
     kwargs.setdefault("upstream_dns")
     kwargs.setdefault("dnssec_validation", "auto")
+    kwargs.setdefault("hardening", False)
+    kwargs.setdefault("dns_bind", "")
+    # When hardening is active and no explicit value was provided, fall back to
+    # the safe hardening defaults.  An explicit falsy value (empty string / 0)
+    # keeps the directive out of the config entirely.
+    _hardening = kwargs["hardening"]
+    kwargs.setdefault("dns_allow_transfer", "none" if _hardening else "")
+    kwargs.setdefault("dns_fetches_per_zone", 100 if _hardening else 0)
+    kwargs.setdefault("dns_fetches_per_server", 100 if _hardening else 0)
 
     # Parse the options file and make sure MAAS doesn't define any options
     # that the user has already customized.
