@@ -359,6 +359,29 @@ class TestOperationsService:
                 op_type=OperationType.SELECTION_SYNC,
             )
 
+    async def test_list_stuck_accepted_operations(self) -> None:
+        repository = Mock(OperationsRepository)
+        repository.get_many.return_value = [TEST_OPERATION]
+        service = self._service(repository)
+        cutoff = utcnow()
+
+        operations = await service.list_stuck_accepted_operations(
+            created_before=cutoff
+        )
+
+        assert operations == [TEST_OPERATION]
+        query = repository.get_many.call_args.kwargs["query"]
+        assert query == QuerySpec(
+            where=OperationsClauseFactory.and_clauses(
+                [
+                    OperationsClauseFactory.with_status(
+                        OperationStatus.ACCEPTED
+                    ),
+                    OperationsClauseFactory.created_before(cutoff),
+                ]
+            )
+        )
+
     async def test_update_status_running_sets_started(self) -> None:
         repository = Mock(OperationsRepository)
         repository.get_one.return_value = TEST_OPERATION

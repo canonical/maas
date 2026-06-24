@@ -1,6 +1,7 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import datetime
 from uuid import uuid4
 
 from temporalio.common import (
@@ -15,8 +16,8 @@ from maascommon.enums.operations import (
     OperationType,
 )
 from maascommon.workflows.operation import (
-    OPERATION_TYPE_WORKFLOW_NAME,
     OPERATION_UUID_SEARCH_ATTRIBUTE,
+    workflow_name_for_operation_type,
 )
 from maasservicelayer.builders.operations import (
     OperationBuilder,
@@ -87,7 +88,7 @@ class OperationsService(
         user_id: int | None = None,
     ) -> Operation:
         """Create an ACCEPTED operation and schedule its workflow after commit."""
-        workflow_name = OPERATION_TYPE_WORKFLOW_NAME.get(op_type)
+        workflow_name = workflow_name_for_operation_type(op_type)
         if workflow_name is None:
             raise ValueError(
                 f"No workflow is mapped to operation type '{op_type}'."
@@ -121,6 +122,23 @@ class OperationsService(
             ),
         )
         return operation
+
+    async def list_stuck_accepted_operations(
+        self, created_before: datetime
+    ) -> list[Operation]:
+        """Return ACCEPTED operations created before ``created_before``."""
+        return await self.repository.get_many(
+            query=QuerySpec(
+                where=OperationsClauseFactory.and_clauses(
+                    [
+                        OperationsClauseFactory.with_status(
+                            OperationStatus.ACCEPTED
+                        ),
+                        OperationsClauseFactory.created_before(created_before),
+                    ]
+                )
+            )
+        )
 
     async def update_status(
         self,
