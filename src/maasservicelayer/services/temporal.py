@@ -195,8 +195,8 @@ class TemporalService(Service):
         parameter: Any | None = None,
         workflow_id: str | None = None,
         wait: bool | None = True,
-        *args: list[Any],
-        **kwargs: dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         key = self._make_key(workflow_name, workflow_id)
         self._post_commit_workflows[key] = (
