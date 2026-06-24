@@ -55,7 +55,7 @@ from provisioningserver.rpc.common import (
     SecuredRPCProtocol,
 )
 from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.security import calculate_digest, fernet_encrypt_psk
+from provisioningserver.security import calculate_digest, encrypt_psk
 from provisioningserver.utils.events import EventGroup
 from provisioningserver.utils.network import resolves_to_loopback_address
 from provisioningserver.utils.twisted import (
@@ -640,9 +640,7 @@ class RegionServer(Region):
                             "cluster-certificate"
                         )
                     )
-                    return fernet_encrypt_psk(
-                        json.dumps(raw_certificate_secret)
-                    )
+                    return encrypt_psk(json.dumps(raw_certificate_secret))
                 # This should happen only in some tests. We don't want to encrypt the certificate in every test that uses RPC:
                 # this computation would be very expensive and would be pleonastic outside the dedicated unit tests for
                 # this functionality.

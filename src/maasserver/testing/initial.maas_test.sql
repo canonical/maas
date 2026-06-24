@@ -15494,7 +15494,7 @@ CREATE INDEX maasserver_bmc_power_type_93755dda_like ON public.maasserver_bmc US
 -- Name: maasserver_bmc_power_type_parameters_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX maasserver_bmc_power_type_parameters_idx ON public.maasserver_bmc USING btree (power_type, md5((power_parameters)::text)) WHERE ((power_type)::text <> 'manual'::text);
+CREATE UNIQUE INDEX maasserver_bmc_power_type_parameters_idx ON public.maasserver_bmc USING btree (power_type, sha256(((power_parameters)::text)::bytea)) WHERE ((power_type)::text <> 'manual'::text);
 
 
 --
