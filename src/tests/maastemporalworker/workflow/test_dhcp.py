@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 from netaddr import IPNetwork
 import pytest
@@ -678,6 +678,33 @@ class TestDHCPConfigActivity:
             temporal_client=Mock(Client),
             connection=Mock(AsyncConnection),
         )
+
+    async def test_make_interface_hostname_without_node_config(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        interface = Mock(id=42, node_config_id=None)
+        interface.name = "eth0.10"
+        svc = Mock()
+
+        hostname = await activities._make_interface_hostname(interface, svc)
+
+        assert hostname == "unknown-42-eth0-10"
+
+    async def test_make_interface_hostname_with_node_config(
+        self, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        interface = Mock(id=42, node_config_id=5)
+        interface.name = "eth0.10"
+        svc = Mock()
+        node = Mock()
+        node.hostname = "my-host"
+        svc.nodes.get_one = AsyncMock(return_value=node)
+
+        hostname = await activities._make_interface_hostname(interface, svc)
+
+        assert hostname == "my-host-eth0-10"
 
     async def test_get_kea_shared_networks_config_ipv4(
         self, db: Database
