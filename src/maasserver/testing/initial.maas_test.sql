@@ -5679,6 +5679,7 @@ CREATE TABLE public.maasserver_interface (
     switch_id bigint,
     CONSTRAINT maasserver_interface_interface_speed_check CHECK ((interface_speed >= 0)),
     CONSTRAINT maasserver_interface_link_speed_check CHECK ((link_speed >= 0)),
+    CONSTRAINT maasserver_interface_mac_address_canonical CHECK (((mac_address IS NULL) OR (mac_address = ''::text) OR (mac_address ~ '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'::text))),
     CONSTRAINT maasserver_interface_sriov_max_vf_check CHECK ((sriov_max_vf >= 0))
 );
 
@@ -10141,7 +10142,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0022
+0023
 \.
 
 
