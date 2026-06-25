@@ -21,6 +21,7 @@ from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
 )
+from maascommon.workflows.operation import RECONCILE_OPERATIONS_WORKFLOW_NAME
 from maastemporalworker.worker import REGION_TASK_QUEUE
 
 SCHEDULES: Final[dict[str, Schedule]] = {
@@ -47,6 +48,17 @@ SCHEDULES: Final[dict[str, Schedule]] = {
         # Will be updated at startup with the value from the db
         state=ScheduleState(paused=True),
         policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.CANCEL_OTHER),
+    ),
+    RECONCILE_OPERATIONS_WORKFLOW_NAME: Schedule(
+        action=ScheduleActionStartWorkflow(
+            RECONCILE_OPERATIONS_WORKFLOW_NAME,
+            id=RECONCILE_OPERATIONS_WORKFLOW_NAME,
+            task_queue=REGION_TASK_QUEUE,
+        ),
+        spec=ScheduleSpec(
+            intervals=[ScheduleIntervalSpec(every=timedelta(minutes=5))]
+        ),
+        policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.SKIP),
     ),
 }
 

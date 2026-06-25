@@ -1,7 +1,8 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from operator import eq
+from datetime import datetime
+from operator import eq, le
 from typing import Iterable, Type
 
 from sqlalchemy import Table
@@ -37,6 +38,10 @@ class OperationsClauseFactory(ClauseFactory):
     @classmethod
     def with_user_id(cls, user_id: int) -> Clause:
         return Clause(condition=eq(OperationTable.c.user_id, user_id))
+
+    @classmethod
+    def created_before(cls, moment: datetime) -> Clause:
+        return Clause(condition=le(OperationTable.c.created, moment))
 
 
 class OperationsRepository(BaseRepository[Operation]):
