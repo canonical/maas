@@ -8,6 +8,7 @@ from importlib.abc import Loader
 from importlib.machinery import ModuleSpec
 import os
 import sys
+from types import ModuleType
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -17,6 +18,41 @@ try:
     import importlib.metadata as _ilm
 except ImportError:
     _ilm = None
+
+
+def _patch_recursively(root_mock: MagicMock, name_of_package: str):
+    # The trickery that follows is intended to prevent two things:
+    # 1 - A bunch of assignments to sys.modules
+    # 2 - Maintenance here in case we simply import a different submodule
+    #     of temporalio. Differently from the other cases, temporal
+    #     is something that is pervasive in the code and also has several
+    #     imports, so this is much more likely here.
+    class TemporalioFinder:
+        def find_spec(self, fullname, path, target=None):
+            if fullname == name_of_package or fullname.startswith(
+                f"{name_of_package}."
+            ):
+                return ModuleSpec(fullname, TemporalioLoader())
+            return None
+
+    class TemporalioLoader(Loader):
+        def create_module(self, spec):
+            module = ModuleType(spec.name)
+
+            parts = spec.name.split(".")[1:]
+            mock_obj = root_mock
+            for part in parts:
+                mock_obj = getattr(mock_obj, part)
+
+            module.__path__ = []  # Triggers Python to treat it as a package
+            module.__getattr__ = lambda name: getattr(mock_obj, name)
+
+            return module
+
+        def exec_module(self, module):
+            pass
+
+    sys.meta_path.insert(0, TemporalioFinder())
 
 
 def _patch_maas_metadata():
@@ -79,44 +115,19 @@ def _patch_temporalio():
     class MockWorkerInterceptor:
         pass
 
-    from types import ModuleType
-
     temporalio_root_mock = MagicMock()
     temporalio_root_mock.client.ClientInterceptor = MockClientInterceptor
     temporalio_root_mock.worker.WorkerInterceptor = MockWorkerInterceptor
 
     sys.modules["maascommon.workflows.interceptors"] = MagicMock()
 
-    # The trickery that follows is intended to prevent two things:
-    # 1 - A bunch of assignments to sys.modules
-    # 2 - Maintenance here in case we simply import a different submodule
-    #     of temporalio. Differently from the other cases, temporal
-    #     is something that is pervasive in the code and also has several
-    #     imports, so this is much more likely here.
-    class TemporalioFinder:
-        def find_spec(self, fullname, path, target=None):
-            if fullname == "temporalio" or fullname.startswith("temporalio."):
-                return ModuleSpec(fullname, TemporalioLoader())
-            return None
+    _patch_recursively(temporalio_root_mock, "temporalio")
 
-    class TemporalioLoader(Loader):
-        def create_module(self, spec):
-            module = ModuleType(spec.name)
 
-            parts = spec.name.split(".")[1:]
-            mock_obj = temporalio_root_mock
-            for part in parts:
-                mock_obj = getattr(mock_obj, part)
-
-            module.__path__ = []  # Triggers Python to treat it as a package
-            module.__getattr__ = lambda name: getattr(mock_obj, name)
-
-            return module
-
-        def exec_module(self, module):
-            pass
-
-    sys.meta_path.insert(0, TemporalioFinder())
+def _patch_joserfc():
+    """Patch cryptography so imports succeed."""
+    joserfc = MagicMock()
+    _patch_recursively(joserfc, "joserfc")
 
 
 def _patch_paramiko():
@@ -154,6 +165,7 @@ def get_openapi_spec() -> dict[str, str | Any]:
     _patch_curtin()
     _patch_temporalio()
     _patch_paramiko()
+    _patch_joserfc()
     return generate_api_description_from_source()
 
 
