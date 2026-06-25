@@ -80,9 +80,10 @@ class NotificationsHandler(OperationsHandler):
         @param (string) "ident" [required=false] Unique identifier for this
         notification.
 
-        @param (string) "user" [required=false] User ID this notification is
-        intended for. By default it will not be targeted to any individual
-        user.
+        @param (string) "user" [required=false] User ID or username this
+        notification is intended for. Numeric values are treated as user IDs;
+        non-numeric values are treated as usernames. By default, it will not be
+        targeted to any individual user.
 
         @param (boolean) "users" [required=false] True to notify all users,
         defaults to false, i.e. not targeted to all users.
@@ -163,9 +164,10 @@ class NotificationHandler(OperationsHandler):
         @param (string) "ident" [required=false] Unique identifier for this
         notification.
 
-        @param (string) "user" [required=false] User ID this notification is
-        intended for. By default it will not be targeted to any individual
-        user.
+        @param (string) "user" [required=false] User ID or username this
+        notification is intended for. Numeric values are treated as user IDs;
+        non-numeric values are treated as usernames. By default, it will not be
+        targeted to any individual user.
 
         @param (boolean) "users" [required=false] True to notify all users,
         defaults to false, i.e. not targeted to all users.

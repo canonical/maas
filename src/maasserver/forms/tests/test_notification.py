@@ -86,6 +86,26 @@ class TestNotificationForm(MAASServerTestCase):
             self.assertFalse(notification.dismissable)
         self.assertEqual(notification.category, data["category"])
 
+    def test_notification_can_be_created_with_username(self):
+        user = factory.make_User()
+        data = {
+            "message": factory.make_name("message"),
+            "user": user.username,
+        }
+        form = NotificationForm(data)
+        self.assertTrue(form.is_valid(), form.errors)
+        notification = form.save()
+        self.assertEqual(notification.user, user)
+
+    def test_notification_rejects_unknown_username(self):
+        form = NotificationForm(
+            {"message": factory.make_name("message"), "user": "no-such-user"}
+        )
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            ["Enter a valid user id or username."], form.errors["user"]
+        )
+
     def test_notification_can_be_updated(self):
         notification = factory.make_Notification()
         user = factory.make_User()
