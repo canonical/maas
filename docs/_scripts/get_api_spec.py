@@ -57,18 +57,6 @@ def _patch_distro_info():
     sys.modules["distro_info"] = distro_info
 
 
-def _patch_seamicroclient():
-    """Patch seamicroclient module so imports succeed without the package installed."""
-    seamicroclient = MagicMock()
-    seamicroclient.exceptions = MagicMock()
-    seamicroclient.v2 = MagicMock()
-    seamicroclient.v2.client = MagicMock()
-
-    sys.modules["seamicroclient"] = seamicroclient
-    sys.modules["seamicroclient.v2"] = seamicroclient.v2
-    sys.modules["seamicroclient.v2.client"] = seamicroclient.v2.client
-
-
 def _patch_curtin():
     """Patch curtin module so imports succeed without the package installed."""
     curtin = MagicMock()
@@ -80,16 +68,6 @@ def _patch_curtin():
     sys.modules["curtin"] = curtin
     sys.modules["curtin.config"] = curtin.config
     sys.modules["curtin.pack"] = curtin.pack
-
-
-def _patch_tftp():
-    """Patch tftp module so imports succeed without the package installed."""
-    tftp = MagicMock()
-    tftp.backend = MagicMock()
-    tftp.backend.IReader = MagicMock()
-
-    sys.modules["tftp"] = tftp
-    sys.modules["tftp.backend"] = tftp.backend
 
 
 def _patch_temporalio():
@@ -173,10 +151,8 @@ def get_openapi_spec() -> dict[str, str | Any]:
     add_repo_src_to_path()
     _patch_maas_metadata()
     _patch_distro_info()
-    _patch_seamicroclient()
     _patch_curtin()
     _patch_temporalio()
-    _patch_tftp()
     _patch_paramiko()
     return generate_api_description_from_source()
 
