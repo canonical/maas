@@ -17,8 +17,11 @@ from typing import AsyncGenerator, Generator
 import aiofiles
 import aiofiles.os
 from aiofiles.threadpool.binary import AsyncBufferedIOBase
+import structlog
 
 from maascommon.utils.images import get_bootresource_store_path
+
+logger = structlog.get_logger()
 
 CHUNK_SIZE = 4 * (2**20)
 
@@ -139,7 +142,8 @@ class SyncLocalBootResourceFile:
         target_dir.mkdir(exist_ok=True, parents=True)
         with tarfile.open(self.path, mode="r") as tar:
             tar.extractall(
-                path=target_dir.absolute(), filter=tarfile.tar_filter
+                path=target_dir.absolute(),
+                filter=tarfile.tar_filter,
             )
 
     def unlink(self):
@@ -238,10 +242,11 @@ class AsyncLocalBootResourceFile:
             target_dir.mkdir(exist_ok=True, parents=True)
             with tarfile.open(self.path, mode="r") as tar:
                 tar.extractall(
-                    path=target_dir.absolute(), filter=tarfile.tar_filter
+                    path=target_dir.absolute(),
+                    filter=tarfile.tar_filter,
                 )
 
-        return asyncio.get_running_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, sync_extract_file
         )
 
