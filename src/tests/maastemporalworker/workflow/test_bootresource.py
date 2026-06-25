@@ -763,6 +763,7 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.boot_source_selections = Mock(
             BootSourceSelectionsService
         )
+        services_mock.temporal = Mock(TemporalService)
 
         await activity_env.run(boot_activities.fetch_manifest_and_update_cache)
 
