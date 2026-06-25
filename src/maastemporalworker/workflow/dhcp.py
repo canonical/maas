@@ -67,6 +67,7 @@ from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
     workflow_run_with_context,
 )
+from provisioningserver.boot import BootMethod
 
 from provisioningserver.boot.pxe import PXEBootMethod  # noqa:E402 isort:skip
 from provisioningserver.boot.grub import UEFIAMD64BootMethod
@@ -1325,7 +1326,6 @@ class DHCPConfigActivity(ActivityBase):
         https://kea.readthedocs.io/en/stable/arm/dhcp4-srv.html#shared-networks-in-dhcpv4
         """
         cfg = {"shared-networks": []}
-        pxe_method = PXEBootMethod()
 
         def group_by_vlan(subnet: SubnetData):
             return subnet.vlan_id
@@ -1340,11 +1340,6 @@ class DHCPConfigActivity(ActivityBase):
                     {"name": "subnet-mask", "data": subnet.mask},
                     {"name": "broadcast-address", "data": subnet.broadcast_ip},
                     {"name": "domain-name", "data": subnet.domain_name},
-                    {
-                        "name": "path-prefix",
-                        "data": f"http://{rack_ip}:5248/",
-                        "always-send": pxe_method.path_prefix_force,
-                    },
                 ]
                 if subnet.dns_servers:
                     option_data.append(
@@ -1378,7 +1373,6 @@ class DHCPConfigActivity(ActivityBase):
                         {"pool": f"{pool.start_ip} - {pool.end_ip}"}
                         for pool in subnet.pools
                     ],
-                    "boot-file-name": pxe_method.bootloader_path,
                     "option-data": option_data,
                     "reservations": [
                         {
@@ -1399,13 +1393,12 @@ class DHCPConfigActivity(ActivityBase):
     async def get_kea_shared_networks_config_ipv6(
         self, data: DHCPDataForAgent, rack_ip: str
     ) -> dict[str, Any]:
-        """Generate the shared-networks configuration for ipv4 Kea.
+        """Generate the shared-networks configuration for ipv6 Kea.
 
         For more information on the configuration format, see
         https://kea.readthedocs.io/en/stable/arm/dhcp6-srv.html#shared-networks-in-dhcpv6
         """
         cfg = {"shared-networks": []}
-        uefi_amd64_method = UEFIAMD64BootMethod()
 
         def group_by_vlan(subnet: SubnetData):
             return subnet.vlan_id
@@ -1418,10 +1411,6 @@ class DHCPConfigActivity(ActivityBase):
             for subnet in sns:
                 option_data = [
                     {"name": "domain-name", "data": subnet.domain_name},
-                    {
-                        "name": "bootfile-url",
-                        "data": f"tftp://[{rack_ip}]/{uefi_amd64_method.bootloader_path}",
-                    },
                 ]
                 if subnet.dns_servers:
                     option_data.append(
@@ -1467,6 +1456,180 @@ class DHCPConfigActivity(ActivityBase):
             network["subnet6"] = subnets
             cfg["shared-networks"].append(network)
         return cfg
+
+    def _get_bootloader_url_and_path_prefix(
+        self, rack_ip: str, boot_method: BootMethod, ipv6: bool
+    ) -> tuple[str, str, str | None]:
+        use_http = boot_method.path_prefix_http or boot_method.http_url
+        schema = "http" if use_http else "tftp"
+        port = ":5248" if use_http else ""
+        url = (
+            f"{schema}://[{rack_ip}]{port}/"
+            if ipv6
+            else f"{schema}://{rack_ip}{port}/"
+        )
+
+        # Set the URL to pull from '/images/' so nginx handles the request.
+        # Requests to '/' are forwarded to the rack's http service to
+        # handle which should only be done for configuration files.
+        if boot_method.http_url:
+            url = f"{url}images/"
+
+        path_prefix = boot_method.path_prefix
+        if path_prefix:
+            url += path_prefix
+        if boot_method.path_prefix_http:
+            # Force an absolute URL as the path prefix.
+            path_prefix = url
+        url += boot_method.bootloader_path
+        bootloader = boot_method.bootloader_path
+        if boot_method.absolute_url_as_filename:
+            bootloader = url
+            # path_prefix gets removed with this setting, because a
+            # absolute url is provided as the bootloader.
+            path_prefix = None
+        return bootloader, url, path_prefix
+
+    def _get_bootloader_option_data(
+        self,
+        path_prefix: str | None,
+        boot_method: BootMethod,
+        ipv6: bool,
+        bootloader: str,
+        url: str = "",
+    ) -> list[dict[str, Any]]:
+        option_data = []
+        if not ipv6 and path_prefix:
+            prefix_data: dict[str, Any] = {
+                "name": "path-prefix",
+                "data": path_prefix,
+            }
+
+            if boot_method.path_prefix_force:
+                prefix_data["always-send"] = True
+            option_data = [prefix_data]
+        # http boot is not supported over ipv6
+        if not ipv6 and boot_method.http_url:
+            option_data.append(
+                {"name": "vendor-class-identifier", "data": "HTTPClient"}
+            )
+        if ipv6:
+            option_data.append(
+                {
+                    "name": "bootfile-url",
+                    "data": url,
+                }
+            )
+        elif boot_method.name == "onie":
+            option_data.append(
+                {
+                    # default-url has been renamed to v4-captive-portal since Kea 2.1.2
+                    "name": "v4-captive-portal",
+                    "data": bootloader,
+                }
+            )
+        else:
+            option_data.append(
+                {
+                    "name": "boot-file-name",
+                    "data": bootloader,
+                }
+            )
+        return option_data
+
+    async def get_kea_bootloaders_client_classes(
+        self,
+        boot_methods: list[BootMethod],
+        rack_ip: str,
+        ipv6: bool,
+    ) -> list[dict[str, Any]]:
+        client_classes = []
+        for boot_method in boot_methods:
+            if (
+                boot_method.arch_octet is None
+                and boot_method.user_class is None
+            ):
+                # these are the two ways we identify which bootloader to serve a machine
+                continue
+            if ipv6 and (boot_method.http_url or boot_method.name == "onie"):
+                # HTTP Boot over ipv6 networks is not supported by Kea
+                # ONIE is not supported over ipv6
+                continue
+            bootloader, url, path_prefix = (
+                self._get_bootloader_url_and_path_prefix(
+                    rack_ip, boot_method, ipv6
+                )
+            )
+
+            client_class: dict[str, Any] = {"name": f"boot-{boot_method.name}"}
+            if boot_method.user_class is not None:
+                user_class_option = 15 if ipv6 else 77
+                client_class["test"] = (
+                    (
+                        f"option[{user_class_option}].exists and "
+                        if ipv6
+                        else ""
+                    )
+                    + f"option[{user_class_option}].text == '{boot_method.user_class}'"
+                )
+                if boot_method.user_class == "iPXE":
+                    client_class["test"] += (
+                        # exists ipxe.http and ( exists ipxe.bzimage or exists ipxe.efi )
+                        " or (option[175].option[19].exists and (option[175].option[24].exists or option[175].option[36].exists))"
+                    )
+            else:
+                arch_option = 61 if ipv6 else 93
+                if isinstance(boot_method.arch_octet, str):
+                    # TODO: Just change the arch_octet values for each BootMethod object instead of replacing here
+                    # can only do this once ISC dhcp server is fully replaced with Kea
+                    arch_octet = boot_method.arch_octet.replace("00:", "0x")
+                    client_class["test"] = (
+                        f"option[{arch_option}].hex == '{arch_octet}'"
+                    )
+                else:
+                    # arch_octet is guaranteed to either be str or list because of first if statement in this loop
+                    # and the fact that user_class is None
+                    octets = [
+                        o.replace("00:", "0x")  # TODO: see above TODO
+                        for o in boot_method.arch_octet  # type: ignore
+                    ]
+                    client_class["test"] = " or ".join(
+                        [
+                            f"option[{arch_option}].hex == '{octet}'"
+                            for octet in octets
+                        ]
+                    )
+            option_data = self._get_bootloader_option_data(
+                path_prefix, boot_method, ipv6, bootloader, url
+            )
+            client_class["option-data"] = option_data
+            client_classes.append(client_class)
+
+        # handle default bootloader
+        default_bootloader = UEFIAMD64BootMethod() if ipv6 else PXEBootMethod()
+        bootloader, url, path_prefix = (
+            self._get_bootloader_url_and_path_prefix(
+                rack_ip, default_bootloader, ipv6
+            )
+        )
+        option_data = self._get_bootloader_option_data(
+            path_prefix, default_bootloader, ipv6, bootloader, url
+        )
+        # we need to have this long default test because we do not want to send 'path-prefix' by default,
+        # and not all bootloader client classes above will override it.
+        default_test = (
+            "not ("
+            + " or ".join(["(" + cc["test"] + ")" for cc in client_classes])
+            + ")"
+        )
+        cc = {
+            "name": f"fallback-{default_bootloader.name}",
+            "test": default_test,
+            "option-data": option_data,
+        }
+        client_classes.append(cc)
+
+        return client_classes
 
 
 @workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
