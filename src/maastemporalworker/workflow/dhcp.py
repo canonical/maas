@@ -176,6 +176,13 @@ class IPRangeData:
 
 
 @dataclass
+class HostReservationData:
+    ip: str
+    mac_address: str
+    hostname: str
+
+
+@dataclass
 class SubnetData:
     id: int
     ip_version: int
@@ -192,6 +199,7 @@ class SubnetData:
     ntp_servers: list[str] | None
     next_server: str
     pools: list[IPRangeData]
+    host_reservations: list[HostReservationData]
 
 
 @dataclass
@@ -202,23 +210,11 @@ class InterfaceData:
 
 
 @dataclass
-class HostReservationData:
-    ip: str
-    subnet_id: int
-    mac_address: Optional[str] = None
-    duid: Optional[str] = None
-    domain: Optional[str] = None
-    hostname: Optional[str] = None
-    domain_search: Optional[list[str]] = None
-
-
-@dataclass
 class DHCPDataForAgent:
     vlans: list[VlanData]
     subnets: list[SubnetData]
     ipranges: list[IPRangeData]
     interfaces: list[InterfaceData]
-    host_reservations: list[HostReservationData]
     default_dns_servers: list[str]
     ntp_servers: list[str]
 
@@ -579,116 +575,85 @@ class DHCPConfigActivity(ActivityBase):
                 ]
             )
 
-    async def _get_dhcp_host_reservations(
-        self, svc: ServiceCollectionV3, subnets: list[Subnet]
+    async def get_dhcp_host_reservations(
+        self, svc: ServiceCollectionV3, subnet_id: int
     ) -> list[HostReservationData]:
-        sips = []
-        reserved_ips = []
-
-        for subnet in subnets:
-            sips += await svc.staticipaddress.get_many(
-                query=QuerySpec(
-                    where=StaticIPAddressClauseFactory.and_clauses(
-                        [
-                            StaticIPAddressClauseFactory.with_subnet_id(
-                                subnet.id
-                            ),
-                            StaticIPAddressClauseFactory.or_clauses(
-                                [
-                                    StaticIPAddressClauseFactory.with_alloc_type(
-                                        IpAddressType.AUTO
-                                    ),
-                                    StaticIPAddressClauseFactory.with_alloc_type(
-                                        IpAddressType.USER_RESERVED
-                                    ),
-                                    StaticIPAddressClauseFactory.with_alloc_type(
-                                        IpAddressType.STICKY
-                                    ),
-                                ]
-                            ),
-                        ]
-                    )
-                )
-            )
-            reserved_ips += await svc.reservedips.get_many(
-                query=QuerySpec(
-                    where=ReservedIPsClauseFactory.with_subnet_id(subnet.id)
-                )
-            )
-
-        domains = await svc.domains.get_many(
+        host_reservations: list[HostReservationData] = []
+        interface_ids = set()
+        host_ips = await svc.staticipaddress.get_many(
             query=QuerySpec(
-                where=DomainsClauseFactory.with_authoritative(True)
+                where=StaticIPAddressClauseFactory.and_clauses(
+                    [
+                        StaticIPAddressClauseFactory.with_alloc_type_in(
+                            [
+                                IpAddressType.AUTO,
+                                IpAddressType.STICKY,
+                                IpAddressType.USER_RESERVED,
+                            ]
+                        ),
+                        StaticIPAddressClauseFactory.with_subnet_id(subnet_id),
+                        StaticIPAddressClauseFactory.with_ip_not_null(),
+                        StaticIPAddressClauseFactory.with_temp_expires_on_is_null(),
+                    ]
+                ),
             )
         )
-        domain_search_list = [domain.name for domain in domains]
-
-        hosts = []
-        seen_domains = {}
-        seen_nodes = {}
-
-        for sip in sips:
+        for sip in host_ips:
+            if not sip.ip:
+                continue
             interfaces = await svc.interfaces.get_for_ip(sip)
             if not interfaces:
                 continue
-
             for interface in interfaces:
-                if not interface.node_config_id:
+                if interface.id in interface_ids:
                     continue
-
-                node = None
-
-                if interface.node_config_id in seen_nodes:
-                    node = seen_nodes[interface.node_config_id]
+                interface_ids.add(interface.id)
+                if interface.type == InterfaceType.BOND:
+                    parents = await svc.interfaces.get_parents(interface.id)
+                    parents = sorted(parents, key=lambda p: p.id)
+                    for parent in parents:
+                        if parent.mac_address != interface.mac_address:
+                            interface_ids.add(parent.id)
+                            hostname = await self._make_interface_hostname(
+                                parent, svc
+                            )
+                            if parent.mac_address:
+                                host_reservations.append(
+                                    HostReservationData(
+                                        ip=str(sip.ip),
+                                        mac_address=parent.mac_address,
+                                        hostname=hostname,
+                                    )
+                                )
                 else:
-                    node = await svc.nodes.get_one(
-                        query=QuerySpec(
-                            where=NodeClauseFactory.with_node_config_id(
-                                interface.node_config_id
+                    hostname = await self._make_interface_hostname(
+                        interface, svc
+                    )
+                    if interface.mac_address:
+                        host_reservations.append(
+                            HostReservationData(
+                                ip=str(sip.ip),
+                                mac_address=interface.mac_address,
+                                hostname=hostname,
                             )
                         )
-                    )
-                    assert node is not None
-                    if node.node_type in (
-                        NodeTypeEnum.RACK_CONTROLLER,
-                        NodeTypeEnum.REGION_CONTROLLER,
-                        NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
-                    ):
-                        continue
-
-                    seen_nodes[interface.node_config_id] = node
-
-                domain = None
-
-                if node.domain_id is not None:
-                    if node.domain_id in seen_domains:
-                        domain = seen_domains[node.domain_id]
-                    else:
-                        domain = await svc.domains.get_by_id(node.domain_id)
-                        seen_domains[node.domain_id] = domain
-
-                assert node.hostname is not None
-                hosts.append(
+        known_macs = [h.mac_address for h in host_reservations]
+        reserved_ips = await svc.reservedips.get_many(
+            query=QuerySpec(
+                where=ReservedIPsClauseFactory.with_subnet_id(subnet_id)
+            )
+        )
+        for rip in reserved_ips:
+            # LP: #2110021: don't make a duplicated host entry if it already exists
+            if rip.mac_address not in known_macs:
+                host_reservations.append(
                     HostReservationData(
-                        mac_address=interface.mac_address,
-                        ip=str(sip.ip),
-                        hostname=node.hostname,
-                        domain=domain.name if domain else None,
-                        domain_search=domain_search_list,
-                        subnet_id=sip.subnet_id,
+                        ip=str(rip.ip),
+                        mac_address=rip.mac_address,
+                        hostname=f"rsvd-{rip.id}",
                     )
                 )
-
-        hosts += [
-            HostReservationData(
-                ip=reserved_ip.ip,
-                mac_address=reserved_ip.mac_address,
-                subnet_id=reserved_ip.subnet_id,
-            )
-            for reserved_ip in reserved_ips
-        ]
-
-        return hosts
+        return host_reservations
 
     async def _get_alt_region_ips_for_dns(
         self, svc: ServiceCollectionV3, dns_servers: list[IPvAnyAddress]
@@ -1094,6 +1059,26 @@ class DHCPConfigActivity(ActivityBase):
         }
         return {key: str(value[3]) for key, value in best_ntp_servers.items()}
 
+    async def _make_interface_hostname(
+        self, interface: Interface, svc: ServiceCollectionV3
+    ) -> str:
+        """Return the host declaration name for DHCPD for this `interface`."""
+        interface_name = interface.name.replace(".", "-")
+        if interface.node_config_id is None:
+            return f"unknown-{interface.id}-{interface_name}"
+        else:
+            node = await svc.nodes.get_one(
+                query=QuerySpec(
+                    where=NodeClauseFactory.with_node_config_id(
+                        interface.node_config_id
+                    )
+                )
+            )
+            assert node is not None, (
+                f"Interface has node_config_id={interface.node_config_id}, but the node does not exist."
+            )
+            return f"{node.hostname}-{interface_name}"
+
     @activity_defn_with_context(name=GET_KEA_DHCP_DATA_FOR_AGENT_ACTIVITY_NAME)
     async def get_dhcp_data_for_agent(
         self, param: GetDHCPDataForAgentParam
@@ -1239,6 +1224,8 @@ class DHCPConfigActivity(ActivityBase):
                 else:
                     ntp = ntp_servers
 
+                hosts = await self.get_dhcp_host_reservations(svc, subnet.id)
+
                 subnet_data.append(
                     SubnetData(
                         id=subnet.id,
@@ -1269,6 +1256,7 @@ class DHCPConfigActivity(ActivityBase):
                             for iprange in ipranges
                             if iprange.subnet_id == subnet.id
                         ],
+                        host_reservations=hosts,
                     )
                 )
 
@@ -1283,8 +1271,6 @@ class DHCPConfigActivity(ActivityBase):
                     for ntp_ip in rack_ips
                     if ntp_ip.subnet_id in configured_subnet_ids
                 ]
-
-            hosts = await self._get_dhcp_host_reservations(svc, subnets)
 
             return DHCPDataForAgent(
                 interfaces=[
@@ -1314,7 +1300,6 @@ class DHCPConfigActivity(ActivityBase):
                     )
                     for iprange in ipranges
                 ],
-                host_reservations=hosts,
                 ntp_servers=global_ntp_servers,
                 default_dns_servers=default_dns_servers,
             )
@@ -1395,6 +1380,14 @@ class DHCPConfigActivity(ActivityBase):
                     ],
                     "boot-file-name": pxe_method.bootloader_path,
                     "option-data": option_data,
+                    "reservations": [
+                        {
+                            "hw-address": reservation.mac_address,
+                            "ip-address": reservation.ip,
+                            "hostname": reservation.hostname,
+                        }
+                        for reservation in subnet.host_reservations
+                    ],
                 }
                 if subnet.next_server:
                     sn["next-server"] = subnet.next_server
@@ -1459,6 +1452,14 @@ class DHCPConfigActivity(ActivityBase):
                         for pool in subnet.pools
                     ],
                     "option-data": option_data,
+                    "reservations": [
+                        {
+                            "hw-address": reservation.mac_address,
+                            "ip-address": reservation.ip,
+                            "hostname": reservation.hostname,
+                        }
+                        for reservation in subnet.host_reservations
+                    ],
                 }
                 if subnet.next_server:
                     sn["next-server"] = subnet.next_server

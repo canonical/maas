@@ -57,6 +57,29 @@ class TestInterfacesService:
             fabric_id=0
         )
 
+    async def test_get_parents(self):
+        temporal_service_mock = Mock(TemporalService)
+        node_service_mock = Mock(NodesService)
+        dnsresource_service_mock = Mock(DNSResourcesService)
+        dnspublications_service_mock = Mock(DNSPublicationsService)
+        domain_service_mock = Mock(DomainsService)
+
+        interface_repository_mock = Mock(InterfaceRepository)
+
+        interfaces_service = InterfacesService(
+            context=Context(),
+            temporal_service=temporal_service_mock,
+            dnsresource_service=dnsresource_service_mock,
+            dnspublication_service=dnspublications_service_mock,
+            domain_service=domain_service_mock,
+            node_service=node_service_mock,
+            interface_repository=interface_repository_mock,
+        )
+
+        await interfaces_service.get_parents(interface_id=1)
+
+        interface_repository_mock.get_parents.assert_called_once_with(1)
+
     async def test_add_ip_creates_dnspublication(self):
         fabric = Fabric(id=7)
         vlan = Vlan(

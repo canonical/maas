@@ -79,6 +79,9 @@ class InterfacesService(
     async def get_interfaces_for_mac(self, mac: str) -> List[Interface]:
         return await self.interface_repository.get_interfaces_for_mac(mac)
 
+    async def get_parents(self, interface_id: int) -> List[Interface]:
+        return await self.interface_repository.get_parents(interface_id)
+
     async def get_interfaces_in_fabric(
         self, fabric_id: int
     ) -> List[Interface]:

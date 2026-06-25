@@ -133,6 +133,12 @@ class StaticIPAddressClauseFactory(ClauseFactory):
     def with_interface_enabled(cls, enabled: bool) -> Clause:
         return Clause(condition=InterfaceTable.c.enabled == enabled)
 
+    @classmethod
+    def with_temp_expires_on_is_null(cls) -> Clause:
+        return Clause(
+            condition=StaticIPAddressTable.c.temp_expires_on.is_(None)
+        )
+
 
 class StaticIPAddressRepository(BaseRepository):
     def get_repository_table(self) -> Table:
