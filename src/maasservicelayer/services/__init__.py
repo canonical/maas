@@ -772,5 +772,6 @@ class ServiceCollectionV3:
             context=context,
             operations_repository=OperationsRepository(context),
             operation_tasks_repository=OperationTasksRepository(context),
+            temporal_service=services.temporal,
         )
         return services
