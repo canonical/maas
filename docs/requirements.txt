@@ -37,9 +37,10 @@ sphinxcontrib-svg2pdfconverter==2.1.0
 rst2html==2020.7.4
 vale==3.13.0.0
 
+django==5.2.9
+git+https://github.com/canonical/django-piston3.git
 cairosvg==2.9.0
-
 matplotlib==3.11.0
-
 pandas-stubs==3.0.3.260530
 pyproj==3.7.2
+httplib2==0.31.2
