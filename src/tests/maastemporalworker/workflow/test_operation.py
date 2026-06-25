@@ -20,7 +20,6 @@ from maasservicelayer.models.operations import Operation
 from maasservicelayer.services import CacheForServices, ServiceCollectionV3
 from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.services.temporal import TemporalService
-from maasservicelayer.utils.date import utcnow
 from maastemporalworker.worker import REGION_TASK_QUEUE
 import maastemporalworker.workflow.activity as activity_module
 import maastemporalworker.workflow.operation as operation_module
@@ -304,9 +303,6 @@ def _make_operation(uuid: str, parameters: dict | None = None) -> Operation:
         status=OperationStatus.ACCEPTED,
         is_bulk=False,
         parameters=parameters,
-        created=utcnow(),
-        updated=utcnow(),
-        user_id=1,
     )
 
 
