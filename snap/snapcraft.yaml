@@ -274,7 +274,11 @@ parts:
       - build-essential
       - cargo
       - git # for git+https://git.launchpad.net/django-piston3 in requirements.txt
+      - libffi-dev
+      - libpq-dev
       - libssl-dev
+      - libxml2-dev
+      - libxslt1-dev
       - pkg-config
       - python3-dev # netifaces requirement
       - python3-pip

@@ -8,6 +8,7 @@ from importlib.abc import Loader
 from importlib.machinery import ModuleSpec
 import os
 import sys
+from types import ModuleType
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -25,6 +26,39 @@ def add_repo_src_to_path():
     src_dir = os.path.join(repo_root, "src")
     if os.path.isdir(src_dir) and src_dir not in sys.path:
         sys.path.insert(0, src_dir)
+
+
+def _patch_recursively(root_mock: MagicMock, module_name: str):
+    # The trickery that follows is intended to prevent two things:
+    # 1 - A bunch of assignments to sys.modules
+    # 2 - Maintenance here in case we simply import a different submodule
+    #     of the patched module.
+    class PatchedFinder:
+        def find_spec(self, fullname, path, target=None):
+            if fullname == module_name or fullname.startswith(
+                f"{module_name}."
+            ):
+                return ModuleSpec(fullname, PatchedLoader())
+            return None
+
+    class PatchedLoader(Loader):
+        def create_module(self, spec):
+            module = ModuleType(spec.name)
+
+            parts = spec.name.split(".")[1:]
+            mock_obj = root_mock
+            for part in parts:
+                mock_obj = getattr(mock_obj, part)
+
+            module.__path__ = []  # Triggers Python to treat it as a package
+            module.__getattr__ = lambda name: getattr(mock_obj, name)
+
+            return module
+
+        def exec_module(self, module):
+            pass
+
+    sys.meta_path.insert(0, PatchedFinder())
 
 
 def _patch_maas_metadata():
@@ -114,60 +148,46 @@ def _patch_simplestreams():
     sys.modules["simplestreams.log"] = simplestreams.log
     sys.modules["simplestreams.objectstores"] = simplestreams.objectstores
 
-def _patch_temporalio():
-    """Patch temporalio module so imports succeed without the package installed."""
-
-    class MockClientInterceptor:
-        pass
-
-    class MockWorkerInterceptor:
-        pass
-
-    from types import ModuleType
-
-    temporalio_root_mock = MagicMock()
-    temporalio_root_mock.client.ClientInterceptor = MockClientInterceptor
-    temporalio_root_mock.worker.WorkerInterceptor = MockWorkerInterceptor
-
-    sys.modules["maascommon.workflows.interceptors"] = MagicMock()
-
-    # The trickery that follows is intended to prevent two things:
-    # 1 - A bunch of assignments to sys.modules
-    # 2 - Maintenance here in case we simply import a different submodule
-    #     of temporalio. Differently from the other cases, temporal
-    #     is something that is pervasive in the code and also has several
-    #     imports, so this is much more likely here.
-    class TemporalioFinder:
-        def find_spec(self, fullname, path, target=None):
-            if fullname == "temporalio" or fullname.startswith("temporalio."):
-                return ModuleSpec(fullname, TemporalioLoader())
-            return None
-
-    class TemporalioLoader(Loader):
-        def create_module(self, spec):
-            module = ModuleType(spec.name)
-
-            parts = spec.name.split(".")[1:]
-            mock_obj = temporalio_root_mock
-            for part in parts:
-                mock_obj = getattr(mock_obj, part)
-
-            module.__path__ = []  # Triggers Python to treat it as a package
-            module.__getattr__ = lambda name: getattr(mock_obj, name)
-
-            return module
-
-        def exec_module(self, module):
-            pass
-
-    sys.meta_path.insert(0, TemporalioFinder())
+def _patch_authlib():
+    """Patch authlib so imports succeed."""
+    authlib = MagicMock()
+    _patch_recursively(authlib, "authlib")
 
 
-def _patch_paramiko():
-    """Patch paramiko module so imports succeed without the package installed."""
-    paramiko = MagicMock()
+def _patch_cryptography():
+    """Patch cryptography so imports succeed."""
+    cryptography = MagicMock()
+    _patch_recursively(cryptography, "cryptography")
 
-    sys.modules["paramiko"] = paramiko
+
+def _patch_joserfc():
+    """Patch cryptography so imports succeed."""
+    joserfc = MagicMock()
+    _patch_recursively(joserfc, "joserfc")
+
+
+def _patch_pylxd():
+    """Patch cryptography so imports succeed."""
+    pylxd = MagicMock()
+    pylxd.client = MagicMock()
+    pylxd.exceptions = MagicMock()
+    sys.modules["pylxd"] = pylxd
+    sys.modules["pylxd.client"] = pylxd.client
+    sys.modules["pylxd.exceptions"] = pylxd.exceptions
+
+
+def _patch_openssl():
+    """Patch OpenSSL so imports succeed.
+
+    In this case, we do not avoid openssl altogether. Rather,
+    only some paths that interact with cryptography through twisted.
+    """
+    openssl = MagicMock()
+    openssl._util = MagicMock()
+    openssl.SSL = MagicMock()
+    sys.modules["OpenSSL"] = openssl
+    sys.modules["OpenSSL.SSL"] = openssl.SSL
+    sys.modules["OpenSSL._util"] = openssl._util
 
 
 def _patch_temporalio():
@@ -179,44 +199,13 @@ def _patch_temporalio():
     class MockWorkerInterceptor:
         pass
 
-    from types import ModuleType
-
     temporalio_root_mock = MagicMock()
     temporalio_root_mock.client.ClientInterceptor = MockClientInterceptor
     temporalio_root_mock.worker.WorkerInterceptor = MockWorkerInterceptor
 
     sys.modules["maascommon.workflows.interceptors"] = MagicMock()
 
-    # The trickery that follows is intended to prevent two things:
-    # 1 - A bunch of assignments to sys.modules
-    # 2 - Maintenance here in case we simply import a different submodule
-    #     of temporalio. Differently from the other cases, temporal
-    #     is something that is pervasive in the code and also has several
-    #     imports, so this is much more likely here.
-    class TemporalioFinder:
-        def find_spec(self, fullname, path, target=None):
-            if fullname == "temporalio" or fullname.startswith("temporalio."):
-                return ModuleSpec(fullname, TemporalioLoader())
-            return None
-
-    class TemporalioLoader(Loader):
-        def create_module(self, spec):
-            module = ModuleType(spec.name)
-
-            parts = spec.name.split(".")[1:]
-            mock_obj = temporalio_root_mock
-            for part in parts:
-                mock_obj = getattr(mock_obj, part)
-
-            module.__path__ = []  # Triggers Python to treat it as a package
-            module.__getattr__ = lambda name: getattr(mock_obj, name)
-
-            return module
-
-        def exec_module(self, module):
-            pass
-
-    sys.meta_path.insert(0, TemporalioFinder())
+    _patch_recursively(temporalio_root_mock, "temporalio")
 
 
 def _patch_paramiko():
@@ -257,6 +246,11 @@ def get_openapi_spec() -> dict[str, str | Any]:
     _patch_tftp()
     _patch_simplestreams()
     _patch_paramiko()
+    _patch_authlib()
+    _patch_openssl()
+    _patch_cryptography()
+    _patch_joserfc()
+    _patch_pylxd()
     return generate_api_description_from_source()
 
 
