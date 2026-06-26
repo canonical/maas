@@ -18,6 +18,7 @@ from django.db.models import F
 from temporalio.client import WorkflowExecutionStatus
 from temporalio.common import WorkflowIDReusePolicy
 from twisted.application.internet import TimerService
+from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
 from maascommon.constants import BOOTLOADERS_DIR
@@ -56,19 +57,24 @@ log = LegacyLogger()
 
 def import_resources():
     """Starts the master image sync workflow."""
-    d = execute_workflow(
-        workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
-        workflow_id="fetch-manifest",
-        id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-    )
-    d.addCallback(
-        lambda _: start_workflow(
-            MASTER_IMAGE_SYNC_WORKFLOW_NAME,
-            "master-image-sync",
+
+    def _start():
+        d = execute_workflow(
+            workflow_name=FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
+            workflow_id="fetch-manifest",
             id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
         )
-    )
-    return d
+        d.addCallback(
+            lambda _: start_workflow(
+                MASTER_IMAGE_SYNC_WORKFLOW_NAME,
+                "master-image-sync",
+                id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+            )
+        )
+        d.addErrback(log.err, "Failure importing boot resources.")
+        return d
+
+    reactor.callFromThread(_start)
 
 
 def is_import_resources_running():
