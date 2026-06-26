@@ -151,6 +151,43 @@ class TestNotificationsAPI(
         else:
             self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
+    def test_create_with_username_user_field(self):
+        recipient = factory.make_User()
+        uri = get_notifications_uri()
+        response = self.client.post(
+            uri,
+            {
+                "message": factory.make_name("message"),
+                "user": recipient.username,
+            },
+        )
+        if self.user.is_superuser:
+            self.assertEqual(response.status_code, http.client.OK)
+            notification = response.json()
+            self.assertEqual(
+                notification.get("user").get("username"), recipient.username
+            )
+        else:
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
+
+    def test_create_rejects_unknown_username_user_field(self):
+        uri = get_notifications_uri()
+        response = self.client.post(
+            uri,
+            {
+                "message": factory.make_name("message"),
+                "user": "no-such-user",
+            },
+        )
+        if self.user.is_superuser:
+            self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+            self.assertEqual(
+                response.json().get("user"),
+                ["Enter a valid user id or username."],
+            )
+        else:
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
+
 
 class TestNotificationsAPI_Anonymous(APITestCase.ForAnonymous):
     def test_read(self):
