@@ -118,3 +118,4 @@ websockets==16.0
 
 # Other dependencies for CLI documentation generation
 httplib2==0.31.2
+matplotlib==3.11.0
