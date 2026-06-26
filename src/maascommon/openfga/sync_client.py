@@ -34,30 +34,32 @@ class SyncOpenFGAClient(BaseOpenFGAClient):
         self.client.close()
 
     def _check(self, user, relation: str, obj: str) -> bool:
-        response = self.client.post(
-            f"/stores/{OPENFGA_STORE_ID}/check",
-            json={
-                "tuple_key": {
-                    "user": f"user:{user.id}",  # type: ignore[reportAttributeAccessIssue]
-                    "relation": relation,
-                    "object": obj,
+        with self._suppress_httpx_logging():
+            response = self.client.post(
+                f"/stores/{OPENFGA_STORE_ID}/check",
+                json={
+                    "tuple_key": {
+                        "user": f"user:{user.id}",  # type: ignore[reportAttributeAccessIssue]
+                        "relation": relation,
+                        "object": obj,
+                    },
+                    "authorization_model_id": OPENFGA_AUTHORIZATION_MODEL_ID,
                 },
-                "authorization_model_id": OPENFGA_AUTHORIZATION_MODEL_ID,
-            },
-        )
+            )
         response.raise_for_status()
         return response.json().get("allowed", False)
 
     def _list_objects(self, user, relation: str, obj_type: str) -> list[int]:
-        response = self.client.post(
-            f"/stores/{OPENFGA_STORE_ID}/list-objects",
-            json={
-                "authorization_model_id": OPENFGA_AUTHORIZATION_MODEL_ID,
-                "user": f"user:{user.id}",  # type: ignore[reportAttributeAccessIssue]
-                "relation": relation,
-                "type": obj_type,
-            },
-        )
+        with self._suppress_httpx_logging():
+            response = self.client.post(
+                f"/stores/{OPENFGA_STORE_ID}/list-objects",
+                json={
+                    "authorization_model_id": OPENFGA_AUTHORIZATION_MODEL_ID,
+                    "user": f"user:{user.id}",  # type: ignore[reportAttributeAccessIssue]
+                    "relation": relation,
+                    "type": obj_type,
+                },
+            )
         response.raise_for_status()
         return self._parse_list_objects(response.json())
 

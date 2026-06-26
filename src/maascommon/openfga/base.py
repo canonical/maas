@@ -1,10 +1,12 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from contextlib import contextmanager
 from enum import StrEnum
+import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from maascommon.path import get_maas_data_path
 
@@ -59,8 +61,26 @@ class BaseOpenFGAClient:
     HEADERS = {"User-Agent": "maas-openfga-client/1.0"}
     MAAS_GLOBAL_OBJ = f"{OpenFGAEntitlementResourceType.MAAS}:0"
 
+    _httpx_logger = logging.getLogger("httpx")
+    _httpcore_logger = logging.getLogger("httpcore")
+
     def __init__(self, unix_socket: str | None = None):
         self.socket_path = unix_socket or self._get_default_socket_path()
+
+    @classmethod
+    @contextmanager
+    def _suppress_httpx_logging(cls) -> Iterator[None]:
+        levels = (
+            cls._httpx_logger.level,
+            cls._httpcore_logger.level,
+        )
+        cls._httpx_logger.setLevel(logging.WARNING)
+        cls._httpcore_logger.setLevel(logging.WARNING)
+        try:
+            yield
+        finally:
+            cls._httpx_logger.setLevel(levels[0])
+            cls._httpcore_logger.setLevel(levels[1])
 
     def _get_default_socket_path(self) -> str:
         return str(

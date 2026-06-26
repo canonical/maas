@@ -34,32 +34,34 @@ class OpenFGAClient(BaseOpenFGAClient):
         await self.client.aclose()
 
     async def _check(self, user_id: int, relation: str, obj: str) -> bool:
-        response = await self.client.post(
-            f"/stores/{OPENFGA_STORE_ID}/check",
-            json={
-                "tuple_key": {
-                    "user": f"user:{user_id}",
-                    "relation": relation,
-                    "object": obj,
+        with self._suppress_httpx_logging():
+            response = await self.client.post(
+                f"/stores/{OPENFGA_STORE_ID}/check",
+                json={
+                    "tuple_key": {
+                        "user": f"user:{user_id}",
+                        "relation": relation,
+                        "object": obj,
+                    },
+                    "authorization_model_id": OPENFGA_AUTHORIZATION_MODEL_ID,
                 },
-                "authorization_model_id": OPENFGA_AUTHORIZATION_MODEL_ID,
-            },
-        )
+            )
         response.raise_for_status()
         return response.json().get("allowed", False)
 
     async def _list_objects(
         self, user_id: int, relation: str, obj_type: str
     ) -> list[int]:
-        response = await self.client.post(
-            f"/stores/{OPENFGA_STORE_ID}/list-objects",
-            json={
-                "authorization_model_id": OPENFGA_AUTHORIZATION_MODEL_ID,
-                "user": f"user:{user_id}",
-                "relation": relation,
-                "type": obj_type,
-            },
-        )
+        with self._suppress_httpx_logging():
+            response = await self.client.post(
+                f"/stores/{OPENFGA_STORE_ID}/list-objects",
+                json={
+                    "authorization_model_id": OPENFGA_AUTHORIZATION_MODEL_ID,
+                    "user": f"user:{user_id}",
+                    "relation": relation,
+                    "type": obj_type,
+                },
+            )
         response.raise_for_status()
         return self._parse_list_objects(response.json())
 
