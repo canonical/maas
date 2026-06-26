@@ -1172,6 +1172,7 @@ class VirshSSH(pexpect.spawn):
         domain_params["memory"] = str(request.memory)
 
         # Set the template.
+        # TODO: Add riscv64 support
         if domain_params["arch"] == "aarch64":
             # LP: #1775728 - Changes in the template are required due to
             # libvirt validation issues on the XML template. However, this

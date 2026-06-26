@@ -11706,7 +11706,7 @@ COPY public.maasserver_ownerdata (id, key, value, node_id) FROM stdin;
 
 COPY public.maasserver_packagerepository (id, created, updated, name, url, components, arches, key, "default", enabled, disabled_pockets, distributions, disabled_components, disable_sources) FROM stdin;
 1	2021-11-19 12:40:50.636477+00	2021-11-19 12:40:50.636477+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
-2	2021-11-19 12:40:50.636477+00	2021-11-19 12:40:50.636477+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
+2	2021-11-19 12:40:50.636477+00	2021-11-19 12:40:50.636477+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,riscv64,s390x}		t	t	{}	{}	{}	t
 \.
 
 

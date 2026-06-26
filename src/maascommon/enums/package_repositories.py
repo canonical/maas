@@ -11,6 +11,7 @@ class KnownArchesEnum(StrEnum):
     ARM64 = "arm64"
     PPC64EL = "ppc64el"
     S390X = "s390x"
+    RISCV64 = "riscv64"
 
 
 class KnownComponentsEnum(StrEnum):
@@ -38,4 +39,5 @@ PACKAGE_REPO_PORTS_ARCHES = {
     KnownArchesEnum.ARM64,
     KnownArchesEnum.PPC64EL,
     KnownArchesEnum.S390X,
+    KnownArchesEnum.RISCV64,
 }
