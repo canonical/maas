@@ -7,6 +7,7 @@ import shutil
 from django.db import connection
 import pytest
 
+from maasserver import bootresources
 from maasserver.bootresources import (
     export_images_from_db,
     initialize_image_storage,
@@ -404,3 +405,15 @@ class TestInitialiseImageStorage:
             "grubx64.efi",
             "bootx64.efi",
         }
+
+
+class TestImportResources:
+    def test_schedules_start_on_reactor_and_returns_immediately(self, mocker):
+        mock_reactor = mocker.patch("maasserver.bootresources.reactor")
+
+        result = bootresources.import_resources()
+
+        assert result is None
+        mock_reactor.callFromThread.assert_called_once()
+        [scheduled], _ = mock_reactor.callFromThread.call_args
+        assert callable(scheduled)
