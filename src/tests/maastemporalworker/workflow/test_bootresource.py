@@ -842,7 +842,7 @@ class TestGetFilesToDownloadForSelectionActivity:
         services_mock.boot_source_selections.get_by_id.return_value = (
             boot_source_selection
         )
-        services_mock.boot_source_selections.get_one.return_value = (
+        services_mock.boot_source_selections.get_many.return_value = [
             BootSourceSelection(
                 id=2,
                 os="ubuntu",
@@ -851,7 +851,7 @@ class TestGetFilesToDownloadForSelectionActivity:
                 boot_source_id=2,
                 legacyselection_id=1,
             )
-        )
+        ]
 
         services_mock.boot_resources = Mock(BootResourceService)
 
@@ -885,7 +885,7 @@ class TestGetFilesToDownloadForSelectionActivity:
         services_mock.boot_source_selections.get_by_id.assert_awaited_once_with(
             1
         )
-        services_mock.boot_source_selections.get_one.assert_awaited_once_with(
+        services_mock.boot_source_selections.get_many.assert_awaited_once_with(
             query=QuerySpec(
                 where=BootSourceSelectionClauseFactory.and_clauses(
                     [

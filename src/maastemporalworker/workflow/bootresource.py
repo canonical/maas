@@ -524,7 +524,7 @@ class BootResourcesActivity(ActivityBase):
             )
             assert selection is not None
 
-            # Remove any existing boot resources related to a selection with
+            # Remove any existing boot resources related to any selection with
             # the same os/arch/release. This can happen when there is a clash
             # between selections. (e.g. two selections for ubuntu/20.04/amd64
             # from different boot sources).
@@ -532,28 +532,27 @@ class BootResourcesActivity(ActivityBase):
             # the only one to be downloaded, i.e. we don't allow the user to
             # start a sync selection workflow for a lower priority selection.
             # This is enforced at the API level and in the master-image-sync wf.
-            if (
+            for (
                 existing_selection
-                := await services.boot_source_selections.get_one(
-                    query=QuerySpec(
-                        where=BootSourceSelectionClauseFactory.and_clauses(
-                            [
-                                BootSourceSelectionClauseFactory.with_os(
-                                    selection.os
-                                ),
-                                BootSourceSelectionClauseFactory.with_arch(
-                                    selection.arch
-                                ),
-                                BootSourceSelectionClauseFactory.with_release(
-                                    selection.release
-                                ),
-                                BootSourceSelectionClauseFactory.not_clause(
-                                    BootSourceSelectionClauseFactory.with_id(
-                                        selection.id
-                                    )
-                                ),
-                            ]
-                        )
+            ) in await services.boot_source_selections.get_many(
+                query=QuerySpec(
+                    where=BootSourceSelectionClauseFactory.and_clauses(
+                        [
+                            BootSourceSelectionClauseFactory.with_os(
+                                selection.os
+                            ),
+                            BootSourceSelectionClauseFactory.with_arch(
+                                selection.arch
+                            ),
+                            BootSourceSelectionClauseFactory.with_release(
+                                selection.release
+                            ),
+                            BootSourceSelectionClauseFactory.not_clause(
+                                BootSourceSelectionClauseFactory.with_id(
+                                    selection.id
+                                )
+                            ),
+                        ]
                     )
                 )
             ):
