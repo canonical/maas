@@ -28,6 +28,9 @@ limit_req_zone $binary_remote_addr zone=regiond_rate:10m rate={{api_rate_limit_r
 limit_conn_zone $binary_remote_addr zone=regiond_conn:10m;
 {{endif}}
 
+# Disable content-type sniffing on some browsers.
+add_header X-Content-Type-Options 'nosniff';
+
 server {
     {{for addr in main_listen}}
     listen {{addr}}{{if tls_enabled}} ssl http2{{endif}};
