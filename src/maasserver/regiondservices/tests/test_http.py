@@ -184,6 +184,28 @@ class TestRegionHTTPService(
         self.assertIn("listen 5240;", nginx_config)
         self.assertIn("location /MAAS/api/2.0/machines {", nginx_config)
 
+    def test_configure_sets_security_headers(self):
+        cert = get_sample_cert_with_cacerts()
+        tempdir = self.make_dir()
+        nginx_conf = Path(tempdir) / "regiond.nginx.conf"
+        nginx_stream_conf = Path(tempdir) / "regiond.nginx.stream.conf"
+        service = http.RegionHTTPService()
+        self.patch(http, "compose_http_config_path").side_effect = [
+            str(nginx_conf),
+            str(nginx_stream_conf),
+        ]
+
+        mock_create_cert_files = self.patch(service, "_create_cert_files")
+        mock_create_cert_files.return_value = ("key_path", "cert_path")
+
+        service._configure(http._Configuration(cert=cert, port=5443))
+
+        nginx_config = nginx_conf.read_text()
+        self.assertIn(
+            "add_header X-Content-Type-Options 'nosniff';",
+            nginx_config,
+        )
+
     def test_create_cert_files_writes_full_chain(self):
         cert = get_sample_cert_with_cacerts()
         tempdir = Path(self.make_dir())
