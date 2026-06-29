@@ -252,7 +252,6 @@ class TestNotificationAPI(
         else:
             self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
-
     def test_update_with_username_user_field(self):
         notification = factory.make_Notification()
         recipient = factory.make_User()
