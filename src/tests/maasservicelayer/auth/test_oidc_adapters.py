@@ -14,6 +14,7 @@ from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
+    ProviderVendorType,
 )
 
 TOKEN_RESPONSE = {"access_token": "m2m-token", "expires_in": 3600}
@@ -32,6 +33,7 @@ def _provider(issuer_url: str) -> OAuthProvider:
         token_type=AccessTokenType.JWT,
         scopes="openid email",
         enabled=True,
+        vendor=ProviderVendorType.GENERIC,
         metadata=ProviderMetadata(
             authorization_endpoint=f"{issuer_url}/authorize",
             token_endpoint=f"{issuer_url}/token",

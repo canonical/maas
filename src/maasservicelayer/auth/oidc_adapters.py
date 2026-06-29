@@ -7,7 +7,10 @@ from urllib.parse import urlparse
 
 from httpx import AsyncClient
 
-from maasservicelayer.models.external_auth import OAuthProvider
+from maasservicelayer.models.external_auth import (
+    OAuthProvider,
+    ProviderVendorType,
+)
 from maasservicelayer.utils.date import utcnow
 
 # Refresh the cached token slightly before it expires to avoid races.
@@ -161,3 +164,19 @@ class KeycloakAdapter(BaseProviderAdapter):
         )
         users = result or []
         return bool(users) and bool(users[0].get("enabled"))
+
+
+ADAPTER_BY_VENDOR: dict[ProviderVendorType, type[BaseProviderAdapter]] = {
+    ProviderVendorType.ENTRAID: EntraIDAdapter,
+    ProviderVendorType.AUTH0: Auth0Adapter,
+    ProviderVendorType.KEYCLOAK: KeycloakAdapter,
+}
+
+
+def get_provider_adapter(
+    provider: OAuthProvider, http_client: AsyncClient
+) -> BaseProviderAdapter | None:
+    adapter_cls = ADAPTER_BY_VENDOR.get(provider.vendor)
+    if adapter_cls is None:
+        return None
+    return adapter_cls(provider, http_client)

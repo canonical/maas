@@ -20,6 +20,7 @@ from maasserver.macaroon_auth import (
     validate_user_external_auth,
 )
 from maasserver.models.user import SYSTEM_USERS
+from maasserver.sqlalchemy import service_layer
 
 _NECESSARY_OAUTH_PARAMS = [
     "oauth_" + s
@@ -207,7 +208,12 @@ class MAASAPIAuthentication(OAuthAuthentication):
                         ):
                             return False
                     elif not is_local_user:
-                        return False
+                        # Verify this is an OIDC user and is still
+                        # active at the OIDC provider before granting access.
+                        if not service_layer.services.external_oauth.is_active_oidc_user(
+                            user.username
+                        ):
+                            return False
 
                 request.user = user
                 request.consumer = consumer

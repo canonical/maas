@@ -65,6 +65,7 @@ from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
+    ProviderVendorType,
 )
 from maasservicelayer.models.users import UserProfile
 from maasservicelayer.services import ServiceCollectionV3
@@ -90,6 +91,7 @@ TEST_PROVIDER_1 = OAuthProvider(
     scopes="openid email profile",
     enabled=True,
     token_type=AccessTokenType.JWT,
+    vendor=ProviderVendorType.GENERIC,
     metadata=ProviderMetadata(
         authorization_endpoint="",
         token_endpoint="",
@@ -109,6 +111,7 @@ TEST_PROVIDER_2 = OAuthProvider(
     scopes="openid email profile",
     enabled=True,
     token_type=AccessTokenType.OPAQUE,
+    vendor=ProviderVendorType.GENERIC,
     metadata=ProviderMetadata(
         authorization_endpoint="https://example2.com/authorize",
         token_endpoint="https://example2.com/token",
@@ -633,6 +636,7 @@ class TestAuthApi:
             scopes="openid email profile",
             token_type=AccessTokenType.JWT,
             enabled=True,
+            vendor=ProviderVendorType.GENERIC,
             metadata=ProviderMetadata(
                 authorization_endpoint="",
                 token_endpoint="",
@@ -944,6 +948,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=AccessTokenType.JWT,
+            vendor=ProviderVendorType.GENERIC,
             metadata=ProviderMetadata(
                 authorization_endpoint="",
                 token_endpoint="",
