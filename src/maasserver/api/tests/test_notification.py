@@ -252,6 +252,45 @@ class TestNotificationAPI(
         else:
             self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
+
+    def test_update_with_username_user_field(self):
+        notification = factory.make_Notification()
+        recipient = factory.make_User()
+        uri = get_notification_uri(notification)
+        response = self.client.put(
+            uri,
+            {
+                "message": factory.make_name("message"),
+                "user": recipient.username,
+            },
+        )
+        if self.user.is_superuser:
+            self.assertEqual(response.status_code, http.client.OK)
+            self.assertEqual(
+                response.json().get("user").get("username"), recipient.username
+            )
+        else:
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
+
+    def test_update_rejects_unknown_username_user_field(self):
+        notification = factory.make_Notification()
+        uri = get_notification_uri(notification)
+        response = self.client.put(
+            uri,
+            {
+                "message": factory.make_name("message"),
+                "user": "no-such-user",
+            },
+        )
+        if self.user.is_superuser:
+            self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+            self.assertEqual(
+                response.json().get("user"),
+                ["Enter a valid user id or username."],
+            )
+        else:
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
+
     def test_delete_is_for_admins_only(self):
         notification = factory.make_Notification()
         uri = get_notification_uri(notification)
