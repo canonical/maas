@@ -327,9 +327,16 @@ class BootResourcesActivity(ActivityBase):
                 ex.strerror if ex.strerror else str(ex),
                 type=ex.__class__.__name__,
             ) from ex
+
         except httpx.HTTPError as ex:
             await lfile.unlink()
             await self.report_progress(param.rfile_ids, 0)
+            if isinstance(ex, httpx.HTTPStatusError):
+                # 4xx and 5xx errors: most probably a misconfiguration of the images stream.
+                # Raise a non-retryable error and let the user fix it.
+                raise ApplicationError(
+                    str(ex), type=ex.__class__.__name__, non_retryable=True
+                ) from ex
             raise ApplicationError(str(ex), type=ex.__class__.__name__) from ex
         except (asyncio.CancelledError, CancelledError) as ex:
             await lfile.unlink()
@@ -375,6 +382,15 @@ class BootResourcesActivity(ActivityBase):
             if boot_source_id:
                 where_clauses.append(
                     BootSourcesClauseFactory.with_id(boot_source_id)
+                )
+            else:
+                # If we are fetching manifests for all the boot sources,
+                # cancel all the other running fetch manifest workflows
+                # to avoid serialization errors.
+                await services.temporal.cancel_workflows(
+                    query=f"WorkflowType='{FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME}' "
+                    "AND ExecutionStatus='Running' "
+                    f"AND WorkflowId!='{activity.info().workflow_id}'"
                 )
 
             boot_sources = await services.boot_sources.get_many(
@@ -517,7 +533,7 @@ class BootResourcesActivity(ActivityBase):
             )
             assert selection is not None
 
-            # Remove any existing boot resources related to a selection with
+            # Remove any existing boot resources related to any selection with
             # the same os/arch/release. This can happen when there is a clash
             # between selections. (e.g. two selections for ubuntu/20.04/amd64
             # from different boot sources).
@@ -525,28 +541,27 @@ class BootResourcesActivity(ActivityBase):
             # the only one to be downloaded, i.e. we don't allow the user to
             # start a sync selection workflow for a lower priority selection.
             # This is enforced at the API level and in the master-image-sync wf.
-            if (
+            for (
                 existing_selection
-                := await services.boot_source_selections.get_one(
-                    query=QuerySpec(
-                        where=BootSourceSelectionClauseFactory.and_clauses(
-                            [
-                                BootSourceSelectionClauseFactory.with_os(
-                                    selection.os
-                                ),
-                                BootSourceSelectionClauseFactory.with_arch(
-                                    selection.arch
-                                ),
-                                BootSourceSelectionClauseFactory.with_release(
-                                    selection.release
-                                ),
-                                BootSourceSelectionClauseFactory.not_clause(
-                                    BootSourceSelectionClauseFactory.with_id(
-                                        selection.id
-                                    )
-                                ),
-                            ]
-                        )
+            ) in await services.boot_source_selections.get_many(
+                query=QuerySpec(
+                    where=BootSourceSelectionClauseFactory.and_clauses(
+                        [
+                            BootSourceSelectionClauseFactory.with_os(
+                                selection.os
+                            ),
+                            BootSourceSelectionClauseFactory.with_arch(
+                                selection.arch
+                            ),
+                            BootSourceSelectionClauseFactory.with_release(
+                                selection.release
+                            ),
+                            BootSourceSelectionClauseFactory.not_clause(
+                                BootSourceSelectionClauseFactory.with_id(
+                                    selection.id
+                                )
+                            ),
+                        ]
                     )
                 )
             ):

@@ -1,7 +1,24 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maascommon.enums.operations import OperationStatus, OperationTaskStatus
+from datetime import datetime
+from uuid import uuid4
+
+from temporalio.common import (
+    SearchAttributeKey,
+    SearchAttributePair,
+    TypedSearchAttributes,
+)
+
+from maascommon.enums.operations import (
+    OperationStatus,
+    OperationTaskStatus,
+    OperationType,
+)
+from maascommon.workflows.operation import (
+    OPERATION_UUID_SEARCH_ATTRIBUTE,
+    workflow_name_for_operation_type,
+)
 from maasservicelayer.builders.operations import (
     OperationBuilder,
     OperationTaskBuilder,
@@ -29,6 +46,7 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 
 
@@ -40,9 +58,11 @@ class OperationsService(
         context: Context,
         operations_repository: OperationsRepository,
         operation_tasks_repository: OperationTasksRepository,
+        temporal_service: TemporalService,
     ):
         super().__init__(context, operations_repository)
         self.operation_tasks_repository = operation_tasks_repository
+        self.temporal_service = temporal_service
 
     async def start_task(
         self, operation_uuid: str, name: str, task_number: int
@@ -58,6 +78,67 @@ class OperationsService(
         )
         await self.set_current_task(operation_uuid, name)
         return task
+
+    async def create_accepted_operation(
+        self,
+        op_type: OperationType,
+        resource_id: int | None = None,
+        resource_type: str | None = None,
+        parameters: dict | None = None,
+        user_id: int | None = None,
+    ) -> Operation:
+        """Create an ACCEPTED operation and schedule its workflow after commit."""
+        workflow_name = workflow_name_for_operation_type(op_type)
+        if workflow_name is None:
+            raise ValueError(
+                f"No workflow is mapped to operation type '{op_type}'."
+            )
+        operation = await self.create(
+            builder=OperationBuilder(
+                uuid=str(uuid4()),
+                op_type=op_type,
+                status=OperationStatus.ACCEPTED,
+                resource_id=resource_id,
+                resource_type=resource_type,
+                parameters=parameters,
+                user_id=user_id,
+                is_bulk=False,
+            )
+        )
+        self.temporal_service.register_workflow_call(
+            workflow_name=workflow_name,
+            parameter=parameters,
+            workflow_id=operation.uuid,
+            wait=False,
+            search_attributes=TypedSearchAttributes(
+                [
+                    SearchAttributePair(
+                        SearchAttributeKey.for_keyword(
+                            OPERATION_UUID_SEARCH_ATTRIBUTE
+                        ),
+                        operation.uuid,
+                    )
+                ]
+            ),
+        )
+        return operation
+
+    async def list_stuck_accepted_operations(
+        self, created_before: datetime
+    ) -> list[Operation]:
+        """Return ACCEPTED operations created before ``created_before``."""
+        return await self.repository.get_many(
+            query=QuerySpec(
+                where=OperationsClauseFactory.and_clauses(
+                    [
+                        OperationsClauseFactory.with_status(
+                            OperationStatus.ACCEPTED
+                        ),
+                        OperationsClauseFactory.created_before(created_before),
+                    ]
+                )
+            )
+        )
 
     async def update_status(
         self,

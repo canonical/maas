@@ -182,6 +182,28 @@ class TestTemporalService:
         )
         workflow_handle_mock.cancel.assert_awaited_once()
 
+    async def test_cancel_workflows(
+        self,
+        service: TemporalService,
+        temporal_client_mock,
+        workflow_handle_mock,
+    ) -> None:
+        wf = Mock()
+        wf.id = "wf-id"
+
+        async def _list_workflows():
+            yield wf
+
+        temporal_client_mock.list_workflows.return_value = _list_workflows()
+        await service.cancel_workflows("WorkflowId='wf-id'")
+        temporal_client_mock.list_workflows.assert_called_once_with(
+            query="WorkflowId='wf-id'"
+        )
+        temporal_client_mock.get_workflow_handle.assert_called_once_with(
+            "wf-id"
+        )
+        workflow_handle_mock.cancel.assert_awaited_once()
+
     async def test_terminate_workflow(
         self,
         service: TemporalService,

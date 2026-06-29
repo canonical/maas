@@ -70,6 +70,12 @@ class TemporalService(Service):
                 f"Failed to cancel workflow {workflow_id}"
             ) from None
 
+    async def cancel_workflows(self, query: str):
+        temporal_client = await self.get_temporal_client()
+        async for wf in temporal_client.list_workflows(query=query):
+            hdl = temporal_client.get_workflow_handle(wf.id)
+            await hdl.cancel()
+
     async def cancel_workflow_by_operation_uuid(
         self, operation_uuid: str
     ) -> None:
@@ -195,8 +201,8 @@ class TemporalService(Service):
         parameter: Any | None = None,
         workflow_id: str | None = None,
         wait: bool | None = True,
-        *args: list[Any],
-        **kwargs: dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         key = self._make_key(workflow_name, workflow_id)
         self._post_commit_workflows[key] = (

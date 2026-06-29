@@ -70,7 +70,10 @@ from maastemporalworker.workflow.msm import (
     MSMRestoreDefaultBootSourceWorkflow,
     MSMTokenRefreshWorkflow,
 )
-from maastemporalworker.workflow.operation import OperationActivity
+from maastemporalworker.workflow.operation import (
+    OperationActivity,
+    ReconcileOperationsWorkflow,
+)
 from maastemporalworker.workflow.power import (
     PowerActivity,
     PowerCycleWorkflow,
@@ -241,6 +244,8 @@ async def main() -> None:
                 PowerResetWorkflow,
                 # Tag Evaluation workflows
                 TagEvaluationWorkflow,
+                # Operation reconciliation workflows
+                ReconcileOperationsWorkflow,
             ],
             activities=[
                 # Boot resources activities
@@ -298,6 +303,9 @@ async def main() -> None:
                 # Operation status tracking activities
                 operation_activity.update_operation_status,
                 operation_activity.update_current_task,
+                # Operation reconciliation activities
+                operation_activity.get_stuck_operations,
+                operation_activity.start_operation_workflow,
             ],
         ),
         # Individual region controller worker
