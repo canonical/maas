@@ -28,6 +28,10 @@ class OperationsClauseFactory(ClauseFactory):
         return Clause(condition=eq(OperationTable.c.status, status))
 
     @classmethod
+    def with_statuses(cls, statuses: Iterable[OperationStatus]) -> Clause:
+        return Clause(condition=OperationTable.c.status.in_(statuses))
+
+    @classmethod
     def with_op_type(cls, op_type: OperationType) -> Clause:
         return Clause(condition=eq(OperationTable.c.op_type, op_type))
 
