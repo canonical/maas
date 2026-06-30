@@ -43,6 +43,11 @@ class AgentLogConfig:
 
 
 @dataclass(frozen=True)
+class AgentMetricsConfig:
+    enabled: bool
+
+
+@dataclass(frozen=True)
 class AgentServicesConfig:
     http_proxy: AgentHTTPProxyConfig
 
@@ -50,6 +55,7 @@ class AgentServicesConfig:
 @dataclass(frozen=True)
 class AgentObservabilityConfig:
     logging: AgentLogConfig
+    metrics: AgentMetricsConfig
 
 
 @dataclass(frozen=True)
