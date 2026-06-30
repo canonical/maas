@@ -148,14 +148,23 @@ class OperationActivity(ActivityBase):
                 description = await handle.describe()
             except RPCError as e:
                 if e.status == RPCStatusCode.NOT_FOUND:
+                    if operation.status == OperationStatus.CANCELLING:
+                        status = OperationStatus.CANCELLED
+                        error = None
+                    else:
+                        status = OperationStatus.FAILED
+                        error = "Workflow execution not found in Temporal."
+                    async with self.start_transaction() as services:
+                        await services.operations.update_status(
+                            operation_uuid=operation.uuid,
+                            status=status,
+                            error=error,
+                        )
                     continue
                 raise
-            temporal_status = description.status
-            if temporal_status is None:
-                raise ValueError(
-                    f"Workflow {operation.uuid} has no execution status."
-                )
-            status = TEMPORAL_STATUS_TO_OPERATION_STATUS.get(temporal_status)
+            status = TEMPORAL_STATUS_TO_OPERATION_STATUS.get(
+                description.status
+            )
             if status is None:
                 continue
             async with self.start_transaction() as services:

@@ -443,14 +443,30 @@ class TestReconcileOperationsActivities:
 
         services_mock.operations.update_status.assert_not_awaited()
 
-    async def test_reconcile_in_progress_skips_missing_workflow(
-        self, services_mock: ServiceCollectionV3, monkeypatch
+    @pytest.mark.parametrize(
+        "operation_status, expected_status, expected_error",
+        [
+            (
+                OperationStatus.RUNNING,
+                OperationStatus.FAILED,
+                "Workflow execution not found in Temporal.",
+            ),
+            (OperationStatus.CANCELLING, OperationStatus.CANCELLED, None),
+        ],
+    )
+    async def test_reconcile_in_progress_when_workflow_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        monkeypatch,
+        operation_status,
+        expected_status,
+        expected_error,
     ) -> None:
         services_mock.temporal = Mock(TemporalService)
         services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_in_progress_operations = AsyncMock(
             return_value=[
-                _make_operation("op-uuid", status=OperationStatus.RUNNING)
+                _make_operation("op-uuid", status=operation_status)
             ]
         )
         services_mock.operations.update_status = AsyncMock()
@@ -469,7 +485,11 @@ class TestReconcileOperationsActivities:
 
         await activity.reconcile_in_progress_operations()
 
-        services_mock.operations.update_status.assert_not_awaited()
+        services_mock.operations.update_status.assert_awaited_once_with(
+            operation_uuid="op-uuid",
+            status=expected_status,
+            error=expected_error,
+        )
 
 
 @pytest.mark.asyncio
