@@ -7,6 +7,7 @@
         "client_secret": "example-client-secret",
         "enabled": true,
         "token_type": "JWT",
+        "vendor": "Generic",
         "redirect_uri": "https://maas.example.com/MAAS/r/login/oidc/callback",
         "scopes": "openid profile email offline_access"
     },
@@ -18,6 +19,7 @@
         "client_secret": "example-client-secret",
         "enabled": true,
         "token_type": "JWT",
+        "vendor": "Generic",
         "redirect_uri": "https://maas.example.com/MAAS/r/login/oidc/callback",
         "scopes": "openid profile email offline_access"
     },
@@ -29,6 +31,7 @@
         "client_secret": "some-client-secret",
         "enabled": false,
         "token_type": "Opaque",
+        "vendor": "EntraID",
         "redirect_uri": "https://maas.example.com/MAAS/r/login/oidc/callback",
         "scopes": "openid profile email offline_access"
     },
@@ -41,6 +44,7 @@
             "client_secret": "example-client-secret",
             "enabled": true,
             "token_type": "JWT",
+            "vendor": "Generic",
             "redirect_uri": "https://maas.example.com/MAAS/r/login/oidc/callback",
             "scopes": "openid profile email offline_access"
         },
@@ -52,6 +56,7 @@
             "client_secret": "second-client-secret",
             "enabled": false,
             "token_type": "Opaque",
+            "vendor": "Keycloak",
             "redirect_uri": "https://maas.example.com/MAAS/r/login/oidc/callback",
             "scopes": "openid profile email"
         }
