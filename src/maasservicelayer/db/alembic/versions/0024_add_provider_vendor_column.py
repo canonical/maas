@@ -20,7 +20,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     # Add the column with a temporary server_default so existing providers are
-    # backfilled with the GENERIC vendor (ProviderVendorType.GENERIC = 0)
+    # backfilled with the GENERIC vendor
     op.add_column(
         "maasserver_oidc_provider",
         sa.Column(
