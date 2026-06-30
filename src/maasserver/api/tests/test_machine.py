@@ -607,6 +607,35 @@ class TestMachineAPI(APITestCase.ForUser):
             response.content,
         )
 
+    def test_POST_deploy_fails_when_install_rackd_is_true(self):
+        self.become_admin()
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {
+                "op": "deploy",
+                "install_rackd": True,
+            },
+        )
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            b"Deploying a machine as a rackd has been disabled and it's not supported anymore.",
+            response.content,
+        )
+
     def test_POST_deploy_fails_when_install_kvm_set_for_ephemeral_deploy(self):
         self.become_admin()
         osystem = Config.objects.get_config("default_osystem")
