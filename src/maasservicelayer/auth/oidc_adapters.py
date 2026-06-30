@@ -97,6 +97,7 @@ class EntraIDAdapter(BaseProviderAdapter):
             f"(startswith(mail,'{email}') or "
             f"startswith(userPrincipalName,'{email}'))"
         )
+        # See https://learn.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0&tabs=http
         result = await self._get(
             f"{self.GRAPH_URL}/users",
             params={
@@ -124,6 +125,7 @@ class Auth0Adapter(BaseProviderAdapter):
         }
 
     async def user_is_active(self, email: str) -> bool:
+        # See https://auth0.com/docs/api/management/v2#!/Users/get_users
         result = await self._get(
             f"{self.provider.issuer_url}/api/v2/users",
             params={
@@ -158,6 +160,7 @@ class KeycloakAdapter(BaseProviderAdapter):
         }
 
     async def user_is_active(self, email: str) -> bool:
+        # See https://www.keycloak.org/docs-api/latest/rest-api/index.html#_get_adminrealmsrealmusers
         result = await self._get(
             f"{self._root_url()}/admin/realms/{self._realm()}/users",
             params={"email": email, "exact": "true"},
