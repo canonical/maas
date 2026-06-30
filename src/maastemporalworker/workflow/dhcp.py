@@ -24,6 +24,7 @@ from maascommon.constants import SYSTEM_CA_FILE
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.node import NodeTypeEnum
+from maascommon.path import get_maas_data_path
 from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
     CONFIGURE_DHCP_WORKFLOW_NAME,
@@ -70,7 +71,7 @@ from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
     workflow_run_with_context,
 )
-from provisioningserver.boot import BootMethod
+from provisioningserver.boot import BootMethod, builtin_boot_methods
 
 from provisioningserver.boot.pxe import PXEBootMethod  # noqa:E402 isort:skip
 from provisioningserver.boot.grub import UEFIAMD64BootMethod
@@ -88,6 +89,8 @@ FETCH_HOSTS_FOR_UPDATE_TIMEOUT = timedelta(minutes=5)
 GET_OMAPI_KEY_TIMEOUT = timedelta(minutes=5)
 APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT = timedelta(minutes=5)
 RESTART_DHCP_SERVICE_TIMEOUT = timedelta(minutes=5)
+GET_KEA_CONFIG_TIMEOUT = timedelta(minutes=5)
+APPLY_KEA_CONFIG_TIMEOUT = timedelta(minutes=5)
 
 # Activities names
 FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME = "find-agents-for-update"
@@ -96,8 +99,10 @@ GET_OMAPI_KEY_ACTIVITY_NAME = "get-omapi-key"
 GET_ACTIVE_INTERFACES_FOR_AGENT_NAME = "get-active-interfaces-for-agent"
 GET_KEA_DHCP_DATA_FOR_AGENT_ACTIVITY_NAME = "get-kea-dhcp-data-for-agent"
 SET_KEA_DHCP_CONFIG_FOR_AGENT_ACTIVITY_NAME = "set-kea-dhcp-config-for-agent"
+GET_KEA_CONFIG_FOR_AGENT_ACTIVITY_NAME = "get-kea-dhcp-config-for-agent"
 
 # Executed on maasagent
+APPLY_KEA_CONFIG_ACTIVITY_NAME = "apply-kea-configuration"
 APPLY_DHCP_CONFIG_VIA_FILE_ACTIVITY_NAME = "apply-dhcp-config-via-file"
 RESTART_DHCP_SERVICE_ACTIVITY_NAME = "restart-dhcp-service"
 APPLY_DHCP_CONFIG_VIA_OMAPI_ACTIVITY_NAME = "apply-dhcp-config-via-omapi"
@@ -230,12 +235,17 @@ class GetDHCPDataForAgentParam:
 
 
 @dataclass
+class GetKeaConfigForAgentParam:
+    system_id: str
+    dhcp_data: DHCPDataForAgent
+    ip_version: int
+
+
+@dataclass
 class ApplyKeaConfigParam:
     config: dict[str, Any]
-    rack_ip: str
-    use_tls: bool
-    kea_api_port: str
-    ip_version: int
+    address: str
+    port: int
 
 
 class DHCPConfigActivity(ActivityBase):
@@ -880,8 +890,7 @@ class DHCPConfigActivity(ActivityBase):
         def rank_ip(ip: IPvAnyAddress):
             """Key for sorting IPs. Prefer IPs from the same subnet."""
             val = 2
-            unaware_ip = IPAddress(str(ip))
-            if unaware_ip in network:
+            if ip in network:
                 val = 1
             return val
 
@@ -900,7 +909,7 @@ class DHCPConfigActivity(ActivityBase):
         subnet: Subnet,
         vlan: Vlan,
         ifaces: list[Interface],
-    ) -> list[StaticIPAddress] | None:
+    ) -> tuple[Interface | None, list[StaticIPAddress] | None]:
         """Retrieve the best interface that has an IP on the given VLAN.
         Return the only the interface's IPs. Only STICKY or AUTO addresses
         will be returned, or DISCOVERED if none exist.
@@ -1004,12 +1013,12 @@ class DHCPConfigActivity(ActivityBase):
             InterfaceType.PHYSICAL: 1,
             InterfaceType.BOND: 2,
         }
-        _, best_interface_ips, _ = max(
+        iface, best_interface_ips, _ = max(
             interfaces,
             key=lambda i: scores[i[0].type],
             default=(None, None, None),
         )
-        return best_interface_ips
+        return iface, best_interface_ips
 
     async def _get_ntp_servers_for_rack(
         self, svc: ServiceCollectionV3, rack: Node
@@ -1209,6 +1218,7 @@ class DHCPConfigActivity(ActivityBase):
                 if dns_ip.subnet_id in configured_subnet_ids
             ]
 
+            dhcp_interfaces: list[Interface] = []
             subnet_data = []
             for subnet in subnets:
                 dns_servers = await self._get_default_dns_servers_for_subnet(
@@ -1217,9 +1227,14 @@ class DHCPConfigActivity(ActivityBase):
 
                 # guaranteed for one vlan to exist here because of subnets query above
                 vlan = [v for v in vlans if v.id == subnet.vlan_id][0]
-                iface_ips = await self._get_best_interface_with_ip_on_vlan(
+                (
+                    iface,
+                    iface_ips,
+                ) = await self._get_best_interface_with_ip_on_vlan(
                     svc, subnet, vlan, ifaces
                 )
+                if iface is not None:
+                    dhcp_interfaces.append(iface)
                 ips = (
                     [
                         ip
@@ -1299,7 +1314,7 @@ class DHCPConfigActivity(ActivityBase):
                     InterfaceData(
                         id=iface.id, name=iface.name, vlan_id=iface.vlan_id
                     )
-                    for iface in ifaces
+                    for iface in dhcp_interfaces
                     if iface.vlan_id is not None
                 ],
                 vlans=[
@@ -1338,15 +1353,64 @@ class DHCPConfigActivity(ActivityBase):
             "parameters": {"name": helper_path, "sync": False},
         }
 
-    async def get_kea_shared_networks_config_ipv4(
-        self, data: DHCPDataForAgent, rack_ip: str
+    async def get_kea_shared_networks_config(
+        self, data: DHCPDataForAgent, ip_version: int
+    ) -> dict[str, Any]:
+        if ip_version == 4:
+            return await self._get_kea_shared_networks_config_ipv4(data)
+        else:
+            return await self._get_kea_shared_networks_config_ipv6(data)
+
+    async def _get_kea_shared_networks_config_ipv4(
+        self, data: DHCPDataForAgent
     ) -> dict[str, Any]:
         """Generate the shared-networks configuration for ipv4 Kea.
 
         For more information on the configuration format, see
         https://kea.readthedocs.io/en/stable/arm/dhcp4-srv.html#shared-networks-in-dhcpv4
         """
-        cfg = {"shared-networks": []}
+        cfg = {
+            "shared-networks": [],
+            "client-classes": [
+                {
+                    "name": "PXE_lease_override",
+                    "test": "substring(option[60].text, 0, 3) == 'PXE'",
+                    "valid-lifetime": 30,
+                    "max-valid-lifetime": 30,
+                },
+                {
+                    "name": "path-prefix",
+                    "code": 210,
+                    "type": "string",
+                    "space": "dhcp4",
+                },
+                {
+                    "name": "ipxe-encap-opts",
+                    "code": 175,
+                    "type": "empty",
+                    "space": "dhcp4",
+                    "encapsulate": "ipxe",
+                },
+                {
+                    "name": "ipxe-http",
+                    "code": 19,
+                    "type": "uint8",
+                    "space": "ipxe",
+                },
+                {
+                    "name": "ipxe-bzimage",
+                    "code": 24,
+                    "type": "uint8",
+                    "space": "ipxe",
+                },
+                {
+                    "name": "ipxe-efi",
+                    "code": 36,
+                    "type": "uint8",
+                    "space": "ipxe",
+                },
+            ],
+        }
 
         def group_by_vlan(subnet: SubnetData):
             return subnet.vlan_id
@@ -1357,6 +1421,14 @@ class DHCPConfigActivity(ActivityBase):
             network: dict[str, Any] = {"name": f"vlan-{vlan_id}"}
             subnets = []
             for subnet in sns:
+                if subnet.ip_version != 4:
+                    continue
+                # TODO: filter out excluded bootloaders for subnet
+                # TODO: pick rack_ip better if next_server is Falsey
+                client_classes = await self.get_kea_bootloaders_client_classes(
+                    builtin_boot_methods, subnet.next_server, subnet.id, False
+                )
+                cfg["client-classes"].append(client_classes)
                 option_data = [
                     {"name": "subnet-mask", "data": subnet.mask},
                     {"name": "broadcast-address", "data": subnet.broadcast_ip},
@@ -1406,13 +1478,14 @@ class DHCPConfigActivity(ActivityBase):
                 }
                 if subnet.next_server:
                     sn["next-server"] = subnet.next_server
+                sn["client-classes"] = [c["name"] for c in client_classes]
                 subnets.append(sn)
             network["subnet4"] = subnets
             cfg["shared-networks"].append(network)
         return cfg
 
-    async def get_kea_shared_networks_config_ipv6(
-        self, data: DHCPDataForAgent, rack_ip: str
+    async def _get_kea_shared_networks_config_ipv6(
+        self, data: DHCPDataForAgent
     ) -> dict[str, Any]:
         """Generate the shared-networks configuration for ipv6 Kea.
 
@@ -1562,6 +1635,7 @@ class DHCPConfigActivity(ActivityBase):
         self,
         boot_methods: list[BootMethod],
         rack_ip: str,
+        subnet_id: int,
         ipv6: bool,
     ) -> list[dict[str, Any]]:
         client_classes = []
@@ -1582,7 +1656,9 @@ class DHCPConfigActivity(ActivityBase):
                 )
             )
 
-            client_class: dict[str, Any] = {"name": f"boot-{boot_method.name}"}
+            client_class: dict[str, Any] = {
+                "name": f"boot-{boot_method.name}-sn{subnet_id}"
+            }
             if boot_method.user_class is not None:
                 user_class_option = 15 if ipv6 else 77
                 client_class["test"] = (
@@ -1673,27 +1749,72 @@ class DHCPConfigActivity(ActivityBase):
                     f"Failed to send Kea command {payload}: '{reason}'"
                 )
 
-    @activity_defn_with_context(
-        name=SET_KEA_DHCP_CONFIG_FOR_AGENT_ACTIVITY_NAME
-    )
-    async def apply_kea_configuration(
-        self, param: ApplyKeaConfigParam
-    ) -> None:
-        """
-        Apply the given Kea configuration and instruct the server to write the configuration to disk.
-        """
-        session = self._create_session()
-        url = f"http{'s' if param.use_tls else ''}://{param.rack_ip}:{param.kea_api_port}/"
-        await self._send_kea_command(
-            session,
-            url,
-            "config-set",
-            f"dhcp{param.ip_version}",
-            {f"Dhcp{param.ip_version}": param.config},
+    # @activity_defn_with_context(
+    #     name=SET_KEA_DHCP_CONFIG_FOR_AGENT_ACTIVITY_NAME
+    # )
+    # async def apply_kea_configuration(
+    #     self, param: ApplyKeaConfigParam
+    # ) -> None:
+    #     """
+    #     Apply the given Kea configuration and instruct the server to write the configuration to disk.
+    #     """
+    #     session = self._create_session()
+    #     url = f"http{'s' if param.use_tls else ''}://{param.rack_ip}:{param.kea_api_port}/"
+    #     await self._send_kea_command(
+    #         session,
+    #         url,
+    #         "config-set",
+    #         f"dhcp{param.ip_version}",
+    #         {f"Dhcp{param.ip_version}": param.config},
+    #     )
+    #     await self._send_kea_command(
+    #         session, url, "config-write", f"dhcp{param.ip_version}", {}
+    #     )
+
+    @activity_defn_with_context(name=GET_KEA_CONFIG_FOR_AGENT_ACTIVITY_NAME)
+    async def get_kea_config_for_agent(
+        self, param: GetKeaConfigForAgentParam
+    ) -> dict[str, Any]:
+        shared_network_cfg = await self.get_kea_shared_networks_config(
+            param.dhcp_data, param.ip_version
         )
-        await self._send_kea_command(
-            session, url, "config-write", f"dhcp{param.ip_version}", {}
+        logfile = get_maas_data_path("dhcp/kea-dhcp4.log")
+        lfc_path = get_path("/usr/sbin/")
+        config = {
+            f"Dhcp{param.ip_version}": {
+                "interfaces-config": {
+                    "interfaces": [i.name for i in param.dhcp_data.interfaces],
+                },
+                "valid-lifetime": 600,
+                "max-valid-lifetime": 600,
+                "control-sockets": [
+                    {
+                        "socket-type": "http",
+                        "socket-address": "127.0.0.1",
+                        "socket-port": 8001,  # TODO: use port in 5200s?
+                    }
+                ],
+                "loggers": [
+                    {
+                        "name": "kea-dhcp4",
+                        "output_options": [ # TODO journal logging
+                            {
+                                "output": logfile,
+                                "maxsize": 2097152,
+                                "maxver": 4
+                            }
+                        ],
+                        "severity": "INFO",
+                        "debuglevel": 0
+                    }
+                ],
+            }
+        }
+        config[f"Dhcp{param.ip_version}"].update(
+            self.get_kea_hooks_libraries()
         )
+        config[f"Dhcp{param.ip_version}"].update(shared_network_cfg)
+        return config
 
 
 @workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
@@ -1701,56 +1822,78 @@ class ConfigureDHCPForAgentWorkflow:
     async def _configure_kea_dhcp(
         self, param: ConfigureDHCPForAgentParam
     ) -> None:
-        await workflow.execute_activity(
+        dhcp_data = await workflow.execute_activity(
             GET_KEA_DHCP_DATA_FOR_AGENT_ACTIVITY_NAME,
             GetDHCPDataForAgentParam(
                 system_id=param.system_id,
             ),
-            start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
+            result_type=DHCPDataForAgent,
+            start_to_close_timeout=GET_KEA_CONFIG_TIMEOUT,
+        )
+        kea_config = await workflow.execute_activity(
+            GET_KEA_CONFIG_FOR_AGENT_ACTIVITY_NAME,
+            GetKeaConfigForAgentParam(
+                system_id=param.system_id,
+                dhcp_data=dhcp_data,
+                ip_version=4,
+            ),
+            start_to_close_timeout=GET_KEA_CONFIG_TIMEOUT,
+        )
+
+        await workflow.execute_activity(
+            APPLY_KEA_CONFIG_ACTIVITY_NAME,
+            ApplyKeaConfigParam(
+                config=kea_config,
+                address="127.0.0.1",
+                port=8001,
+            ),
+            task_queue=f"{param.system_id}@agent:main",
+            start_to_close_timeout=APPLY_KEA_CONFIG_TIMEOUT,
         )
 
     @workflow_run_with_context
     async def run(self, param: ConfigureDHCPForAgentParam) -> None:
-        # When dhcpd restarts the static leases are lost unless they are present in the dhcpd config. This is why in every
-        # scenario we want to update the dhcpd config.
-        await workflow.execute_activity(
-            APPLY_DHCP_CONFIG_VIA_FILE_ACTIVITY_NAME,
-            task_queue=f"{param.system_id}@agent:main",
-            start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
-        )
-        if param.full_reload:
-            await workflow.execute_activity(
-                RESTART_DHCP_SERVICE_ACTIVITY_NAME,
-                task_queue=f"{param.system_id}@agent:main",
-                start_to_close_timeout=RESTART_DHCP_SERVICE_TIMEOUT,
-            )
-            # TODO call get_active_interfaces_for_agent and set config
-            # directly on the agent
-        else:
-            hosts = await workflow.execute_activity(
-                FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME,
-                FetchHostsForUpdateParam(
-                    system_id=param.system_id,
-                    static_ip_addr_ids=param.static_ip_addr_ids,
-                    reserved_ip_ids=param.reserved_ip_ids,
-                ),
-                start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
-            )
+        await self._configure_kea_dhcp(param)
+        # # When dhcpd restarts the static leases are lost unless they are present in the dhcpd config. This is why in every
+        # # scenario we want to update the dhcpd config.
+        # await workflow.execute_activity(
+        #     APPLY_DHCP_CONFIG_VIA_FILE_ACTIVITY_NAME,
+        #     task_queue=f"{param.system_id}@agent:main",
+        #     start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
+        # )
+        # if param.full_reload:
+        #     await workflow.execute_activity(
+        #         RESTART_DHCP_SERVICE_ACTIVITY_NAME,
+        #         task_queue=f"{param.system_id}@agent:main",
+        #         start_to_close_timeout=RESTART_DHCP_SERVICE_TIMEOUT,
+        #     )
+        #     # TODO call get_active_interfaces_for_agent and set config
+        #     # directly on the agent
+        # else:
+        #     hosts = await workflow.execute_activity(
+        #         FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME,
+        #         FetchHostsForUpdateParam(
+        #             system_id=param.system_id,
+        #             static_ip_addr_ids=param.static_ip_addr_ids,
+        #             reserved_ip_ids=param.reserved_ip_ids,
+        #         ),
+        #         start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
+        #     )
 
-            omapi_key = await workflow.execute_activity(
-                GET_OMAPI_KEY_ACTIVITY_NAME,
-                start_to_close_timeout=GET_OMAPI_KEY_TIMEOUT,
-            )
+        #     omapi_key = await workflow.execute_activity(
+        #         GET_OMAPI_KEY_ACTIVITY_NAME,
+        #         start_to_close_timeout=GET_OMAPI_KEY_TIMEOUT,
+        #     )
 
-            await workflow.execute_activity(
-                APPLY_DHCP_CONFIG_VIA_OMAPI_ACTIVITY_NAME,
-                ApplyConfigViaOmapiParam(
-                    hosts=hosts["hosts"],
-                    secret=omapi_key["key"],
-                ),
-                task_queue=f"{param.system_id}@agent:main",
-                start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT,
-            )
+        #     await workflow.execute_activity(
+        #         APPLY_DHCP_CONFIG_VIA_OMAPI_ACTIVITY_NAME,
+        #         ApplyConfigViaOmapiParam(
+        #             hosts=hosts["hosts"],
+        #             secret=omapi_key["key"],
+        #         ),
+        #         task_queue=f"{param.system_id}@agent:main",
+        #         start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT,
+        #     )
 
 
 @workflow.defn(name=CONFIGURE_DHCP_WORKFLOW_NAME, sandboxed=False)

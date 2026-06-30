@@ -20,7 +20,8 @@ rm -rf "$SNAP_DATA/pebble"
 rm -rf "$SNAP_COMMON/maas/boot-resources"
 mkdir -p \
     "$SNAP_COMMON/maas/image-storage" \
-    "$SNAP_COMMON/maas/tftp_root"
+    "$SNAP_COMMON/maas/tftp_root" \
+    "$SNAP_COMMON/maas/dhcp"
 
 # According to the official Snapcraft documentation, SNAP_COMMON is
 # intended for data shared across all revisions of a snap and

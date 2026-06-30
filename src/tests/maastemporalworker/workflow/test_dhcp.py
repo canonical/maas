@@ -787,7 +787,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await activities.get_kea_shared_networks_config_ipv4(
-            data, rack_ip="10.0.0.1"
+            data,
         )
 
         assert result == {
@@ -876,7 +876,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await activities.get_kea_shared_networks_config_ipv4(
-            data, rack_ip="10.0.0.1"
+            data,
         )
 
         assert result == {
@@ -945,7 +945,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await activities.get_kea_shared_networks_config_ipv4(
-            data, rack_ip="10.0.0.1"
+            data,
         )
 
         networks = result["shared-networks"]
@@ -1003,7 +1003,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await activities.get_kea_shared_networks_config_ipv6(
-            data, rack_ip="2001:db8::1"
+            data,
         )
 
         assert result == {
@@ -1358,7 +1358,10 @@ class TestDHCPConfigActivity:
         }
 
     def _mock_session(
-        self, mocker, activity: DHCPConfigActivity, bodies: list[dict[str, Any]]
+        self,
+        mocker,
+        activity: DHCPConfigActivity,
+        bodies: list[dict[str, Any]],
     ) -> Mock:
         mock_session = mocker.create_autospec(ClientSession)
         responses = []

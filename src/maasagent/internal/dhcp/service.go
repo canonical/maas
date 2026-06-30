@@ -16,6 +16,7 @@
 package dhcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -51,6 +52,38 @@ const (
 	dhcpdNotificationSocketName = "dhcpd.sock"
 	flushInterval               = 5 * time.Second
 	expirationInterval          = time.Second
+	baseV4Config                = `{
+    "Dhcp4": {
+        "interfaces-config": {
+            "interfaces": []
+        },
+        "valid-lifetime": 600,
+        "max-valid-lifetime": 600,
+        "control-sockets": [
+            {
+                "socket-type": "http",
+                "socket-address": "127.0.0.1",
+                "socket-port": 8001,
+            }
+        ],
+        "hooks-libraries": [
+        ],
+		"loggers": [
+			{
+				"name": "kea-dhcp4",
+				"output_options": [
+					{
+						"output": "/var/snap/maas/common/maas/dhcp/kea-dhcp4.log",
+						"maxsize": 2097152,
+						"maxver": 4
+					}
+				],
+				"severity": "INFO",
+				"debuglevel": 0
+			}
+		]
+    }
+}`
 )
 
 var (
@@ -246,6 +279,7 @@ func (s *DHCPService) ConfigurationActivities() map[string]any {
 		"apply-dhcp-config-via-omapi": s.configureViaOMAPI,
 		"set-active-interfaces":       s.setActiveInterfaces,
 		"restart-dhcp-service":        s.restartService,
+		"apply-kea-configuration":     s.applyKeaConfiguration,
 	}
 }
 
@@ -519,6 +553,112 @@ type dhcpConfig struct {
 	DHCPv4Interfaces string `json:"dhcpd_interfaces"`
 	DHCPv6Interfaces string `json:"dhcpd6_interfaces"`
 	DHCPv6Config     string `json:"dhcpd6"`
+}
+
+type ApplyKeaConfigParam struct {
+	Config  map[string]any `json:"config"`
+	Address string         `json:"address"`
+	Port    int            `json:"port"`
+}
+
+func (s *DHCPService) applyKeaConfiguration(ctx context.Context, param ApplyKeaConfigParam) error {
+	s.ensureBaseKeaConfigFiles()
+	s.ensureKeaService(ctx)
+	postKeaConfig(ctx, param)
+	return nil
+}
+
+type KeaPostBody struct {
+	Command   string         `json:"command"`
+	Arguments map[string]any `json:"arguments"`
+}
+
+func sendKeaRequest(ctx context.Context, client http.Client, url string, data map[string]any) error {
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(encoded))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	var respData struct {
+		Result int    `json:"result"`
+		Text   string `json:"text"`
+	}
+	if err := json.Unmarshal(respBody, &respData); err != nil {
+		return err
+	}
+	if respData.Result != 0 {
+		return fmt.Errorf("Got unexpected response from Kea API (result=%d): %s", respData.Result, respData.Text)
+	}
+	return nil
+}
+
+func postKeaConfig(ctx context.Context, param ApplyKeaConfigParam) error {
+	client := http.Client{}
+	url := fmt.Sprintf("http://%s:%d", param.Address, param.Port)
+	setData := map[string]any{
+		"command":   "config-set",
+		"arguments": param.Config,
+	}
+	if err := sendKeaRequest(ctx, client, url, setData); err != nil {
+		return err
+	}
+	writeData := map[string]any{
+		"command":   "config-write",
+		"arguments": []string{},
+	}
+	if err := sendKeaRequest(ctx, client, url, writeData); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *DHCPService) ensureKeaService(ctx context.Context) error {
+	runningV4 := s.runningV4.Load()
+	if !runningV4 {
+		err := s.controllerV4.Start(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	// runningV6 := s.runningV6.Load()
+	// if !runningV6 {
+	// 	err := s.controllerV6.Start(ctx)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
+	return nil
+}
+
+func (s *DHCPService) ensureBaseKeaConfigFiles() error {
+	files := [2]string{"kea-dhcp4.conf", "kea-dhcp6.conf"}
+	for _, file := range files {
+		configPath := s.dataPathFactory(file)
+		_, err := os.Stat(configPath)
+		if err == nil {
+			continue
+		}
+		contents := []byte(baseV4Config)
+		mode := os.FileMode(0o640)
+		err = writeConfigFile(configPath, contents, mode)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // configureViaFile registered as a Temporal Activity that is invoked during the
