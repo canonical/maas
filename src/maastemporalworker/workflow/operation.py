@@ -142,32 +142,32 @@ class OperationActivity(ActivityBase):
             operations = (
                 await services.operations.list_in_progress_operations()
             )
-        for operation in operations:
-            handle = self.temporal_client.get_workflow_handle(operation.uuid)
-            try:
-                description = await handle.describe()
-            except RPCError as e:
-                if e.status == RPCStatusCode.NOT_FOUND:
-                    if operation.status == OperationStatus.CANCELLING:
-                        status = OperationStatus.CANCELLED
-                        error = None
-                    else:
-                        status = OperationStatus.FAILED
-                        error = "Workflow execution not found in Temporal."
-                    async with self.start_transaction() as services:
+            for operation in operations:
+                handle = self.temporal_client.get_workflow_handle(
+                    operation.uuid
+                )
+                try:
+                    description = await handle.describe()
+                except RPCError as e:
+                    if e.status == RPCStatusCode.NOT_FOUND:
+                        if operation.status == OperationStatus.CANCELLING:
+                            status = OperationStatus.CANCELLED
+                            error = None
+                        else:
+                            status = OperationStatus.FAILED
+                            error = "Workflow execution not found in Temporal."
                         await services.operations.update_status(
                             operation_uuid=operation.uuid,
                             status=status,
                             error=error,
                         )
+                        continue
+                    raise
+                status = TEMPORAL_STATUS_TO_OPERATION_STATUS.get(
+                    description.status  # pyright: ignore[reportArgumentType]
+                )
+                if status is None:
                     continue
-                raise
-            status = TEMPORAL_STATUS_TO_OPERATION_STATUS.get(
-                description.status
-            )
-            if status is None:
-                continue
-            async with self.start_transaction() as services:
                 await services.operations.update_status(
                     operation_uuid=operation.uuid,
                     status=status,

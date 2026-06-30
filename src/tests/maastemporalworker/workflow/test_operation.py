@@ -465,9 +465,7 @@ class TestReconcileOperationsActivities:
         services_mock.temporal = Mock(TemporalService)
         services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_in_progress_operations = AsyncMock(
-            return_value=[
-                _make_operation("op-uuid", status=operation_status)
-            ]
+            return_value=[_make_operation("op-uuid", status=operation_status)]
         )
         services_mock.operations.update_status = AsyncMock()
         services_mock.produce.return_value = services_mock
