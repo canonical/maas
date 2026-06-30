@@ -978,6 +978,7 @@ class TestAuthApi:
             "metadata": created_provider.metadata.model_dump(),
             "token_type": "JWT",
             "user_count": 5,
+            "vendor": "Generic",
         }
 
     async def test_get_active_oauth_provider_not_found(
