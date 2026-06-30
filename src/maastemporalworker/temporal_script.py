@@ -304,8 +304,8 @@ async def main() -> None:
                 operation_activity.update_operation_status,
                 operation_activity.update_current_task,
                 # Operation reconciliation activities
-                operation_activity.get_stuck_operations,
-                operation_activity.start_operation_workflow,
+                operation_activity.reconcile_stuck_accepted_operations,
+                operation_activity.reconcile_in_progress_operations,
             ],
         ),
         # Individual region controller worker
