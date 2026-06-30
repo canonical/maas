@@ -706,6 +706,7 @@ class TestRackAgent(MAASTestCase):
         self.assertEqual(observed.system_id, system_id)
         self.assertEqual(observed.controller, "https://127.0.0.1:5242")
         self.assertEqual(observed.observability.logging.level, "info")
+        self.assertTrue(observed.observability.metrics.enabled)
 
     @inlineCallbacks
     def test_maybeApplyConfiguration_only_restarts_when_new_config(self):
