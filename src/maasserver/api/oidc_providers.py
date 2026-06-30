@@ -32,6 +32,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
+    ProviderVendorType,
 )
 
 UPDATABLE_FIELDS = (
@@ -41,9 +42,21 @@ UPDATABLE_FIELDS = (
     "client_secret",
     "enabled",
     "token_type",
+    "vendor",
     "redirect_uri",
     "scopes",
 )
+
+VENDOR_NAME_BY_TYPE = {
+    ProviderVendorType.GENERIC: "Generic",
+    ProviderVendorType.ENTRAID: "EntraID",
+    ProviderVendorType.AUTH0: "Auth0",
+    ProviderVendorType.KEYCLOAK: "Keycloak",
+}
+
+VENDOR_TYPE_BY_NAME = {
+    name.upper(): vendor for vendor, name in VENDOR_NAME_BY_TYPE.items()
+}
 
 
 def provider_to_dict(provider: OAuthProvider) -> dict:
@@ -55,6 +68,7 @@ def provider_to_dict(provider: OAuthProvider) -> dict:
         "client_secret": provider.client_secret,
         "enabled": provider.enabled,
         "token_type": "JWT" if provider.token_type == 0 else "Opaque",
+        "vendor": VENDOR_NAME_BY_TYPE[provider.vendor],
         "redirect_uri": provider.redirect_uri,
         "scopes": provider.scopes,
     }
@@ -70,6 +84,16 @@ def parse_token_type(token_type: str) -> AccessTokenType:
         raise MAASAPIBadRequest(
             f"Invalid token type: {token_type}. Must be 'JWT' or 'Opaque'."
         )
+
+
+def parse_vendor(vendor: str) -> ProviderVendorType:
+    try:
+        return VENDOR_TYPE_BY_NAME[vendor.upper()]
+    except KeyError:
+        valid = ", ".join(VENDOR_NAME_BY_TYPE.values())
+        raise MAASAPIBadRequest(
+            f"Invalid vendor: {vendor}. Must be one of: {valid}."
+        ) from None
 
 
 def validate_http_urls(value: str, field: str) -> None:
@@ -154,6 +178,7 @@ class OidcProviderHandler(OperationsHandler):
         @param (string) "client_secret" [required=false] New client secret for the OIDC provider.
         @param (boolean) "enabled" [required=false] Whether the OIDC provider should be enabled.
         @param (string) "token_type" [required=false] New token type for the OIDC provider (JWT or Opaque).
+        @param (string) "vendor" [required=false] New vendor for the OIDC provider (Generic, EntraID, Auth0, or Keycloak).
         @param (string) "redirect_uri" [required=false] New redirect URI for the OIDC provider.
         @param (string) "scopes" [required=false] Space-separated list of scopes for the OIDC provider.
 
@@ -175,6 +200,8 @@ class OidcProviderHandler(OperationsHandler):
             validate_http_urls(fields["redirect_uri"], "Redirect URI")
         if "token_type" in fields:
             fields["token_type"] = parse_token_type(fields["token_type"])
+        if "vendor" in fields:
+            fields["vendor"] = parse_vendor(fields["vendor"])
 
         builder = OAuthProviderBuilder(**fields)
         try:
@@ -263,6 +290,7 @@ class OidcProvidersHandler(OperationsHandler):
         @param (string) "client_secret" [required=true] Client secret for the new OIDC provider.
         @param (boolean) "enabled" [required=false] Whether the OIDC provider is enabled. Defaults to false.
         @param (string) "token_type" [required=false] Token type for the OIDC provider (JWT or Opaque). Defaults to JWT.
+        @param (string) "vendor" [required=false] Vendor for the OIDC provider (Generic, EntraID, Auth0, or Keycloak). Defaults to Generic.
         @param (string) "redirect_uri" [required=false] Redirect URI for the OIDC provider.
         @param (string) "scopes" [required=false] Space-separated list of scopes for the OIDC provider.
 
@@ -280,12 +308,14 @@ class OidcProvidersHandler(OperationsHandler):
         client_secret = request.POST.get("client_secret", None)
         enabled = request.POST.get("enabled", "false").lower() == "true"
         token_type = request.POST.get("token_type", "JWT")
+        vendor = request.POST.get("vendor", "Generic")
         redirect_uri = request.POST.get("redirect_uri", None)
         scopes = request.POST.get("scopes", "")
 
         validate_http_urls(issuer_url, "Issuer URL")
         validate_http_urls(redirect_uri, "Redirect URI")
         token_type = parse_token_type(token_type)
+        vendor = parse_vendor(vendor)
 
         builder = OAuthProviderBuilder(
             name=name,
@@ -294,6 +324,7 @@ class OidcProvidersHandler(OperationsHandler):
             client_secret=client_secret,
             enabled=enabled,
             token_type=token_type,
+            vendor=vendor,
             redirect_uri=redirect_uri,
             scopes=scopes,
         )
