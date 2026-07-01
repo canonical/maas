@@ -282,6 +282,26 @@ class UefiArm64HttpBootMetadata(UefiArm64BootMetadata):
         return "00:13"
 
 
+class UefiRiscv64BootMetadata(UefiAmd64BootMetadata):
+    bootloader_files = ["grubriscv64.efi"]
+
+    @property
+    def name(self) -> str:
+        return "uefi_riscv64_tftp"
+
+    @property
+    def bootloader_arches(self) -> list[str]:
+        return ["riscv64"]
+
+    @property
+    def bootloader_path(self) -> str:
+        return "grubriscv64.efi"
+
+    @property
+    def arch_octet(self) -> str:
+        return "00:1B"
+
+
 class OpenFirmwarePpc64elBootMetadata(UefiAmd64BootMetadata):
     bootloader_files = ["bootppc64.bin"]
 
@@ -448,6 +468,7 @@ BOOT_METHODS_METADATA: list[BootMethodMetadata] = [
     UefiEbcBootMetadata(),
     UefiArm64BootMetadata(),
     UefiArm64HttpBootMetadata(),
+    UefiRiscv64BootMetadata(),
     OpenFirmwarePpc64elBootMetadata(),
     PowerNvBootMetadata(),
     S390XBootMetadata(),
