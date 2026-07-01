@@ -103,13 +103,21 @@ class PreconditionFailedResponse(JSONResponse):
 class ValidationErrorBodyResponse(ErrorBodyResponse):
     code: int = status.HTTP_422_UNPROCESSABLE_ENTITY
     message: str = "Failed to validate the request."
+    fips_violation: bool = False
 
 
 class ValidationErrorResponse(JSONResponse):
-    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+    def __init__(
+        self,
+        details: Optional[list[BaseExceptionDetail]],
+        fips_violation: bool = False,
+    ):
         super().__init__(
             content=jsonable_encoder(
-                ValidationErrorBodyResponse(details=details)
+                ValidationErrorBodyResponse(
+                    details=details,
+                    fips_violation=fips_violation,
+                )
             ),
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )

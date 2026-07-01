@@ -12,6 +12,7 @@ from typing import Optional
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
+from maascommon.hardening import is_hardening_enabled
 from maascommon.worker import worker_socket_paths
 from maasserver.certificates import get_maas_certificate
 from maasserver.listener import (
@@ -62,7 +63,14 @@ class RegionHTTPService(Service):
     def _getConfiguration(self):
         cert = get_maas_certificate()
         port = Config.objects.get_config("tls_port")
-        return _Configuration(cert=cert, port=port)
+        hardening_active = False
+        try:
+            hardening_active = is_hardening_enabled()
+        except Exception:
+            pass
+        return _Configuration(
+            cert=cert, port=port, hardening_active=hardening_active
+        )
 
     def _configure(self, configuration):
         """Update the HTTP configuration for the region proxy service."""
@@ -86,6 +94,7 @@ class RegionHTTPService(Service):
             "apiserver_socket_path": apiserver_socket_path,
             "static_dir": str(get_root_path() / "usr/share/maas"),
             "boot_resources_dir": str(get_bootresource_store_path()),
+            "hardening": configuration.hardening_active,
         }
         rendered = template.substitute(environ).encode()
         target_path = Path(compose_http_config_path("regiond.nginx.conf"))
@@ -148,6 +157,7 @@ class _Configuration:
 
     cert: Optional[Certificate] = None
     port: Optional[int] = None
+    hardening_active: bool = False
 
     @property
     def tls_enabled(self) -> bool:

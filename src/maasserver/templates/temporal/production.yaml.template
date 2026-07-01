@@ -23,6 +23,13 @@ persistence:
         maxConns: 5
         maxIdleConns: 5
         maxConnLifetime: "5m"
+        {{if db_tls_enabled}}
+        tls:
+          enabled: true
+          certFile: "{{ database_sslcert }}"
+          keyFile: "{{ database_sslkey }}"
+          caFile: "{{ database_sslrootcert }}"
+        {{endif}}
 
     visibility:
       sql:
@@ -40,6 +47,13 @@ persistence:
         maxConns: 1
         maxIdleConns: 1
         maxConnLifetime: "5m"
+        {{if db_tls_enabled}}
+        tls:
+          enabled: true
+          certFile: "{{ database_sslcert }}"
+          keyFile: "{{ database_sslkey }}"
+          caFile: "{{ database_sslrootcert }}"
+        {{endif}}
 
 global:
   membership:
@@ -94,25 +108,25 @@ services:
     rpc:
       grpcPort: 5271
       membershipPort: 5281
-      bindOnIP: "0.0.0.0"
+      bindOnIP: "{{ temporal_bind }}"
 
   matching:
     rpc:
       grpcPort: 5272
       membershipPort: 5282
-      bindOnIP: "0.0.0.0"
+      bindOnIP: "{{ temporal_bind }}"
 
   history:
     rpc:
       grpcPort: 5273
       membershipPort: 5283
-      bindOnIP: "0.0.0.0"
+      bindOnIP: "{{ temporal_bind }}"
 
   worker:
     rpc:
       grpcPort: 5274
       membershipPort: 5284
-      bindOnIP: "0.0.0.0"
+      bindOnIP: "{{ temporal_bind }}"
 
 clusterMetadata:
   enableGlobalNamespace: false

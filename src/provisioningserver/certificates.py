@@ -6,7 +6,6 @@
 from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
-import random
 import re
 import secrets
 from tempfile import mkstemp
@@ -14,6 +13,7 @@ from typing import NamedTuple, Optional, Self, Tuple
 
 from OpenSSL import crypto
 
+from maascommon.fips import is_fips_enabled
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.snap import running_in_snap, SnapPaths
@@ -31,6 +31,29 @@ class CertificateError(Exception):
     """Error handling certificates and keys."""
 
 
+def _validate_fips_key(key: crypto.PKey) -> None:
+    """Validate that a generated or loaded key meets FIPS requirements.
+
+    Raises CertificateError when FIPS mode is active and the key uses a
+    prohibited algorithm or size.
+    """
+    if not is_fips_enabled():
+        return
+
+    key_type = key.type()
+    key_bits = key.bits()
+
+    if key_type == crypto.TYPE_DSA:
+        raise CertificateError(
+            "DSA keys are not FIPS-compliant. Use RSA or ECDSA instead."
+        )
+
+    if key_type == crypto.TYPE_RSA and key_bits < 2048:
+        raise CertificateError(
+            f"RSA key size {key_bits} bits is below the FIPS minimum of 2048."
+        )
+
+
 class CertificateRequest(NamedTuple):
     key: crypto.PKey
     csr: crypto.X509Req
@@ -46,6 +69,7 @@ class CertificateRequest(NamedTuple):
     ):
         key = crypto.PKey()
         key.generate_key(crypto.TYPE_RSA, key_bits)
+        _validate_fips_key(key)
 
         csr = crypto.X509Req()
         csr.get_subject().CN = cn[:64]
@@ -112,7 +136,7 @@ class Certificate(NamedTuple):
     ) -> crypto.X509:
         cert = crypto.X509()
         cert.set_version(version.value)
-        cert.set_serial_number(random.randint(0, (1 << 128) - 1))
+        cert.set_serial_number(secrets.randbits(160))
         cert.gmtime_adj_notBefore(0)
         cert.gmtime_adj_notAfter(int(validity.total_seconds()))
         cert.set_pubkey(key)
@@ -138,6 +162,7 @@ class Certificate(NamedTuple):
         """
         key = crypto.PKey()
         key.generate_key(crypto.TYPE_RSA, key_bits)
+        _validate_fips_key(key)
 
         cert = cls._build_base_certificate(
             key, crypto.x509.Version.v1, validity
@@ -169,6 +194,7 @@ class Certificate(NamedTuple):
         """
         key = crypto.PKey()
         key.generate_key(crypto.TYPE_RSA, key_bits)
+        _validate_fips_key(key)
 
         cert = cls._build_base_certificate(
             key, crypto.x509.Version.v3, validity

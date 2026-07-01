@@ -7,8 +7,9 @@ from pathlib import Path
 
 import structlog
 
+from maascommon.hardening import is_hardening_enabled
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
-from maasservicelayer.db import DatabaseConfig
+from maasservicelayer.db import build_database_config, DatabaseConfig
 from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
 from maasservicelayer.vault.manager import get_region_vault_manager
 from provisioningserver.path import get_maas_data_path
@@ -77,13 +78,17 @@ async def _get_default_db_config(
                 "Unable to fetch DB credentials from Vault: ", exc_info=e
             )
             pass
-
-    return DatabaseConfig(
+    return build_database_config(
         name=str(database_name),
         host=str(config.database_host),
         username=str(database_user),
         password=str(database_pass),
         port=int(str(config.database_port)),
+        sslmode=str(config.database_sslmode),
+        sslcert=str(config.database_sslcert),
+        sslkey=str(config.database_sslkey),
+        sslrootcert=str(config.database_sslrootcert),
+        hardening_active=is_hardening_enabled(),
     )
 
 

@@ -1,3 +1,11 @@
+{{default hardening = False}}
+{{default api_bind = ''}}
+{{default api_tls_cert = ''}}
+{{default api_tls_key = ''}}
+{{default api_tls_dhparam = ''}}
+{{default api_rate_limit_rate = '10r/s'}}
+{{default api_rate_limit_burst = 20}}
+{{default api_conn_limit = 100}}
 {{if upstream_http}}
 upstream maas-regions {
     {{for upstream in upstream_http}}
@@ -14,9 +22,45 @@ upstream maas-agent-http {
   server unix:{{maas_agent_http_socket_path}};
 }
 
+{{if hardening}}
+limit_req_zone $binary_remote_addr zone=api_rate:10m rate={{api_rate_limit_rate}};
+limit_conn_zone $binary_remote_addr zone=api_conn:10m;
+
+log_format siem '$remote_addr - $remote_user [$time_local] '
+               '"$request" $status $body_bytes_sent '
+               '"$http_referer" "$http_user_agent" '
+               '"$http_x_forwarded_for"';
+
+access_log /var/log/maas/http/access.log siem;
+{{endif}}
+
 server {
+    {{if hardening}}
+    listen {{api_bind}}:5443 ssl;
+    ssl_certificate {{api_tls_cert}};
+    ssl_certificate_key {{api_tls_key}};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers on;
+    ssl_session_tickets off;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    {{if api_tls_dhparam}}
+    ssl_dhparam {{api_tls_dhparam}};
+    {{endif}}
+    server_tokens off;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'" always;
+    limit_req zone=api_rate burst={{api_rate_limit_burst}} nodelay;
+    limit_conn api_conn {{api_conn_limit}};
+    {{else}}
     listen [::]:5248;
     listen 5248;
+    {{endif}}
 
     {{if upstream_http}}
     location /MAAS/ {
@@ -79,4 +123,10 @@ server {
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Port $remote_port;
     }
+
+    {{if hardening}}
+    if ($request_method = TRACE) {
+        return 405;
+    }
+    {{endif}}
 }

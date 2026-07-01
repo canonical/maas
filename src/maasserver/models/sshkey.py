@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
 
+from maascommon.fips import is_fips_enabled, validate_fips_ssh_public_key
 from maasserver.enum import KEYS_PROTOCOL_TYPE_CHOICES
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -61,11 +62,20 @@ class SSHKeyManager(Manager):
 def validate_ssh_public_key(value):
     """Validate that the given value contains a valid SSH public key."""
     try:
-        return service_layer.services.sshkeys.normalize_openssh_public_key(
-            key=value
+        normalized = (
+            service_layer.services.sshkeys.normalize_openssh_public_key(
+                key=value
+            )
         )
     except Exception as error:
         raise ValidationError("Invalid SSH public key: " + str(error))  # noqa: B904
+
+    if is_fips_enabled():
+        violation = validate_fips_ssh_public_key(normalized)
+        if violation is not None:
+            raise ValidationError(violation, code="fips_violation")
+
+    return normalized
 
 
 class SSHKey(CleanSave, TimestampedModel):

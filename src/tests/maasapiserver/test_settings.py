@@ -102,3 +102,57 @@ class TestGetDefaultDBConfig:
         assert config.username == "user"
         assert config.password == "pass"
         assert config.port == 12345
+
+    @pytest.mark.asyncio
+    async def test_hardening_rejects_insecure_sslmode(self):
+        """Hardening-active + insecure sslmode raises InsecureDBSSLModeError."""
+        import maascommon.hardening as _hardening
+        from maasservicelayer.db import InsecureDBSSLModeError
+
+        region_config = RegionConfiguration(
+            {
+                "database_name": "maasdb",
+                "database_user": "user",
+                "database_pass": "pass",
+                "database_host": "host",
+                "database_port": 12345,
+                "database_sslmode": "prefer",
+            }
+        )
+        _hardening._hardening_active = True
+        try:
+            with pytest.raises(InsecureDBSSLModeError):
+                await _get_default_db_config(region_config)
+        finally:
+            _hardening._hardening_active = False
+
+    @pytest.mark.asyncio
+    async def test_hardening_allows_secure_sslmode(self):
+        """Hardening-active + verify-full sslmode is accepted; SSL fields forwarded."""
+        import maascommon.hardening as _hardening
+
+        region_config = RegionConfiguration(
+            {
+                "database_name": "maasdb",
+                "database_user": "user",
+                "database_pass": "pass",
+                "database_host": "host",
+                "database_port": 12345,
+                "database_sslmode": "verify-full",
+                "database_sslcert": "/etc/maas/db.crt",
+                "database_sslkey": "/etc/maas/db.key",
+                "database_sslrootcert": "/etc/maas/ca.crt",
+            }
+        )
+        _hardening._hardening_active = True
+        try:
+            config = await _get_default_db_config(region_config)
+        finally:
+            _hardening._hardening_active = False
+
+        assert config.sslmode == "verify-full"
+        assert config.sslcert == "/etc/maas/db.crt"
+        assert config.sslkey == "/etc/maas/db.key"
+        assert config.sslrootcert == "/etc/maas/ca.crt"
+        assert config.dsn.query.get("sslmode") == "verify-full"
+        assert config.dsn.query.get("sslcert") == "/etc/maas/db.crt"

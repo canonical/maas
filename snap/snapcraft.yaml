@@ -75,7 +75,7 @@ parts:
   pebble:
     plugin: go
     build-packages:
-      - golang-go
+      - golang-1.24-go
     source-type: git
     source: https://github.com/canonical/pebble
     source-tag: v1.10.2
@@ -289,13 +289,13 @@ parts:
     plugin: make
     source: src/host-info
     build-packages:
-      - golang-go
+      - golang-1.24-go
 
   maas-netmon:
     plugin: make
     source: src/maasagent
     build-packages:
-      - golang-go
+      - golang-1.24-go
     organize:
       bin/maas-netmon: usr/sbin/maas-netmon
     prime:
@@ -305,7 +305,7 @@ parts:
     plugin: make
     source: src/maasagent
     build-packages:
-      - golang-go
+      - golang-1.24-go
     organize:
       bin/maas-agent: usr/sbin/maas-agent
     prime:

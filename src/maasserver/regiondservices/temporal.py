@@ -14,6 +14,7 @@ from django.db import connection as django_connection
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
+from maascommon.hardening import is_hardening_enabled
 from maasserver.config import RegionConfiguration
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
@@ -58,6 +59,13 @@ class RegionTemporalService(Service):
 
         with RegionConfiguration.open() as config:
             broadcast_address = config.broadcast_address
+            hardening_active = is_hardening_enabled()
+            temporal_bind = self._resolve_bind(
+                str(config.temporal_bind), hardening_active
+            )
+            database_sslcert = config.database_sslcert
+            database_sslkey = config.database_sslkey
+            database_sslrootcert = config.database_sslrootcert
 
         if not broadcast_address:
             try:
@@ -88,6 +96,11 @@ class RegionTemporalService(Service):
             "cert_file": cert_file,
             "key_file": key_file,
             "cacert_file": cacert_file,
+            "temporal_bind": temporal_bind,
+            "db_tls_enabled": hardening_active and bool(database_sslcert),
+            "database_sslcert": database_sslcert,
+            "database_sslkey": database_sslkey,
+            "database_sslrootcert": database_sslrootcert,
         }
 
         rendered_template = template.substitute(environ).encode()
@@ -125,3 +138,14 @@ class RegionTemporalService(Service):
         # local 10.0.0.37 dev lo src 10.0.0.37 uid 0
         # cache <local>
         return output.split("src ")[1].split()[0]
+
+    @staticmethod
+    def _resolve_bind(configured: str, hardening_active: bool) -> str:
+        """Return the effective bind address for Temporal services.
+
+        Uses the configured value when set; otherwise falls back to the
+        loopback address when hardening is active and 0.0.0.0 otherwise.
+        """
+        if configured:
+            return configured
+        return "127.0.0.1" if hardening_active else "0.0.0.0"

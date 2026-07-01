@@ -1,0 +1,20 @@
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from datetime import datetime
+from typing import Union
+
+from pydantic import Field
+
+from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
+
+
+class TrustedSshHostKeyBuilder(ResourceBuilder):
+    """Builder for TrustedSshHostKey."""
+
+    host: Union[str, Unset] = Field(default=UNSET, required=False)
+    key_type: Union[str, Unset] = Field(default=UNSET, required=False)
+    public_key: Union[str, Unset] = Field(default=UNSET, required=False)
+    label: Union[str, None, Unset] = Field(default=UNSET, required=False)
+    created: Union[datetime, Unset] = Field(default=UNSET, required=False)
+    updated: Union[datetime, Unset] = Field(default=UNSET, required=False)

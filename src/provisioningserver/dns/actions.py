@@ -175,11 +175,14 @@ def bind_write_configuration(
     )
 
 
-def bind_write_options(upstream_dns, dnssec_validation):
+def bind_write_options(upstream_dns, dnssec_validation, dns_bind=""):
     """Write BIND options.
 
     :param upstream_dns: A sequence of upstream DNS servers.
     :param dnssec_validation: Whether to enable DNSSec.
+    :param dns_bind: Address BIND listens on when hardening is active.
+        When non-empty, a ``listen-on { <dns_bind>; 127.0.0.1; };``
+        directive is emitted. Defaults to empty (no listen-on directive).
     """
     # upstream_dns was formerly specified as a single IP address. These
     # assertions are here to prevent code that assumes that slipping through.
@@ -187,7 +190,9 @@ def bind_write_options(upstream_dns, dnssec_validation):
     assert isinstance(upstream_dns, Sequence)
 
     set_up_options_conf(
-        upstream_dns=upstream_dns, dnssec_validation=dnssec_validation
+        upstream_dns=upstream_dns,
+        dnssec_validation=dnssec_validation,
+        dns_bind=dns_bind,
     )
 
 

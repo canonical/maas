@@ -45,9 +45,9 @@ class TestHMCPowerDriver(MAASTestCase):
         driver = HMCPowerDriver()
         command = factory.make_name("command")
         context = make_context()
-        SSHClient = self.patch(hmc_module, "SSHClient")
-        AutoAddPolicy = self.patch(hmc_module, "AutoAddPolicy")
-        ssh_client = SSHClient.return_value
+        make_ssh_client = self.patch(hmc_module, "make_ssh_client")
+        connect_ssh_client = self.patch(hmc_module, "connect_ssh_client")
+        ssh_client = make_ssh_client.return_value
         expected = factory.make_name("output").encode("utf-8")
         stdout = BytesIO(expected)
         streams = factory.make_streams(stdout=stdout)
@@ -55,14 +55,12 @@ class TestHMCPowerDriver(MAASTestCase):
         output = driver.run_hmc_command(command, **context)
 
         self.assertEqual(expected.decode("utf-8"), output)
-        SSHClient.assert_called_once_with()
-        ssh_client.set_missing_host_key_policy.assert_called_once_with(
-            AutoAddPolicy.return_value
-        )
-        ssh_client.connect.assert_called_once_with(
+        make_ssh_client.assert_called_once_with()
+        connect_ssh_client.assert_called_once_with(
+            ssh_client,
             context["power_address"],
-            username=context["power_user"],
-            password=context["power_pass"],
+            context["power_user"],
+            context["power_pass"],
         )
         ssh_client.exec_command.assert_called_once_with(command)
 
@@ -72,10 +70,9 @@ class TestHMCPowerDriver(MAASTestCase):
         driver = HMCPowerDriver()
         command = factory.make_name("command")
         context = make_context()
-        self.patch(hmc_module, "AutoAddPolicy")
-        SSHClient = self.patch(hmc_module, "SSHClient")
-        ssh_client = SSHClient.return_value
-        ssh_client.connect.side_effect = error
+        self.patch(hmc_module, "make_ssh_client")
+        connect_ssh_client = self.patch(hmc_module, "connect_ssh_client")
+        connect_ssh_client.side_effect = error
         self.assertRaises(
             PowerConnError, driver.run_hmc_command, command, **context
         )

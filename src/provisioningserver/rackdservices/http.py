@@ -176,6 +176,29 @@ class RackHTTPService(TimerService):
         )
         agent_http_socket_path = str(get_maas_run_path() / "agent-http.sock")
 
+        from maascommon.hardening import is_hardening_enabled
+        from provisioningserver.config import ClusterConfiguration
+
+        hardening_active = is_hardening_enabled()
+        api_bind = "0.0.0.0"
+        api_tls_cert = ""
+        api_tls_key = ""
+        api_tls_dhparam = ""
+        api_rate_limit_rate = "10r/s"
+        api_rate_limit_burst = 20
+        api_conn_limit = 100
+        try:
+            with ClusterConfiguration.open() as cluster_config:
+                api_bind = cluster_config.api_bind
+                api_tls_cert = cluster_config.api_tls_cert
+                api_tls_key = cluster_config.api_tls_key
+                api_tls_dhparam = cluster_config.api_tls_dhparam
+                api_rate_limit_rate = cluster_config.api_rate_limit_rate
+                api_rate_limit_burst = cluster_config.api_rate_limit_burst
+                api_conn_limit = cluster_config.api_conn_limit
+        except Exception:
+            pass
+
         try:
             rendered = template.substitute(
                 {
@@ -185,6 +208,14 @@ class RackHTTPService(TimerService):
                     "maas_agent_httpproxy_socket_path": httpproxy_socket_path,
                     "maas_agent_http_socket_path": agent_http_socket_path,
                     "boot_resources_dir": get_maas_data_path("image-storage"),
+                    "hardening": hardening_active,
+                    "api_bind": api_bind,
+                    "api_tls_cert": api_tls_cert,
+                    "api_tls_key": api_tls_key,
+                    "api_tls_dhparam": api_tls_dhparam,
+                    "api_rate_limit_rate": api_rate_limit_rate,
+                    "api_rate_limit_burst": api_rate_limit_burst,
+                    "api_conn_limit": api_conn_limit,
                 }
             )
         except NameError as error:
