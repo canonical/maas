@@ -23,7 +23,6 @@ from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.scriptresult import ScriptResultsService
 from maasservicelayer.services.secrets import SecretsService
-from provisioningserver.drivers.power.registry import sanitise_power_parameters
 
 
 class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
@@ -75,33 +74,6 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
                 )
             )
             bmc.power_parameters.update(secret_power_params)
-        return bmc
-
-    async def set_bmc(
-        self, system_id: str, power_type: str, power_parameters: dict
-    ) -> Bmc:
-        """Update the BMC power type and parameters for ``system_id``.
-
-        Secret parameters (those flagged ``secret`` by the power driver) are
-        extracted and stored in the secret store; only non-secret parameters
-        are written to the BMC row. The returned model has the secrets merged
-        back in, mirroring :meth:`get_bmc`.
-
-        Raises :class:`NotFoundException` if the machine has no linked BMC.
-        Subclasses may override this to add pre-flight validation (e.g. FIPS
-        compliance checks) before delegating to this implementation.
-        """
-        public_params, secrets = sanitise_power_parameters(
-            power_type, power_parameters
-        )
-        bmc = await self.repository.update_node_bmc(
-            system_id, power_type, public_params
-        )
-        if secrets:
-            await self.secrets_service.set_composite_secret(
-                BMCPowerParametersSecret(id=bmc.id), secrets
-            )
-            bmc.power_parameters.update(secrets)
         return bmc
 
     async def mark_failed(

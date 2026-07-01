@@ -8,9 +8,6 @@ from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.public.models.requests.machines import (
-    PowerParametersRequest,
-)
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.machines import (
     MachineResponse,
@@ -251,38 +248,6 @@ class MachinesHandler(Handler):
         if bmc is None:
             raise NotFoundException()
 
-        return PowerDriverResponse.from_model(
-            bmc=bmc,
-            self_base_hyperlink=f"{V3_API_PREFIX}/machines/{system_id}/power_parameters",
-        )
-
-    @handler(
-        path="/machines/{system_id}/power_parameters",
-        methods=["PUT"],
-        tags=TAGS,
-        responses={
-            200: {
-                "model": PowerDriverResponse,
-            },
-            404: {"model": NotFoundBodyResponse},
-        },
-        response_model_exclude_none=True,
-        status_code=200,
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
-        ],
-    )
-    async def set_machine_power_parameters(
-        self,
-        system_id: str,
-        body: PowerParametersRequest,
-        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> PowerDriverResponse:
-        bmc = await services.machines.set_bmc(
-            system_id,
-            body.power_type.value,
-            body.power_parameters,
-        )
         return PowerDriverResponse.from_model(
             bmc=bmc,
             self_base_hyperlink=f"{V3_API_PREFIX}/machines/{system_id}/power_parameters",
