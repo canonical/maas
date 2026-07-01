@@ -79,7 +79,7 @@ from provisioningserver.rpc.testing.doubles import (
     FakeBusyConnectionToRegion,
     FakeConnection,
 )
-from provisioningserver.security import fernet_encrypt_psk
+from provisioningserver.security import encrypt_psk
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import env as utils_env
 from provisioningserver.utils.env import MAAS_ID, MAAS_SECRET, MAAS_UUID
@@ -1275,7 +1275,7 @@ class TestClusterClientClusterCertificatesAreStored(TestClusterClientBase):
         callRemote.side_effect = always_succeed_with(
             {
                 "system_id": "...",
-                "encrypted_cluster_certificate": fernet_encrypt_psk(
+                "encrypted_cluster_certificate": encrypt_psk(
                     json.dumps(
                         {
                             "cert": certificate.certificate_pem(),
@@ -1316,7 +1316,7 @@ class TestClusterClientAgentCertificatesAreStored(TestClusterClientBase):
         callRemote.side_effect = always_succeed_with(
             {
                 "system_id": "...",
-                "encrypted_cluster_certificate": fernet_encrypt_psk(
+                "encrypted_cluster_certificate": encrypt_psk(
                     json.dumps(
                         {
                             "cert": certificate.certificate_pem(),

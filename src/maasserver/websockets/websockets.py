@@ -101,7 +101,7 @@ def _makeAccept(key: bytes) -> bytes:
     @rtype: C{bytes}
     @return: An encoded response.
     """
-    digest = sha1(b"%s%s" % (key, _WS_GUID)).digest()
+    digest = sha1(b"%s%s" % (key, _WS_GUID), usedforsecurity=False).digest()
     return base64.encodebytes(digest).strip()
 
 

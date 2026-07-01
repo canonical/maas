@@ -16,7 +16,7 @@ from unittest.mock import Mock
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.security import fernet_encrypt_psk, MissingSharedSecret
+from provisioningserver.security import encrypt_psk, MissingSharedSecret
 from provisioningserver.tests.test_security import SharedSecretTestCase
 from provisioningserver.utils import beaconing as beaconing_module
 from provisioningserver.utils.beaconing import (
@@ -165,16 +165,14 @@ class TestReadBeaconPayload(SharedSecretTestCase):
             read_beacon_payload(packet)
 
     def test_raises_when_inner_encapsulation_does_not_decompress(self):
-        packet = _make_beacon_payload(
-            payload=fernet_encrypt_psk("\n\n", raw=True)
-        )
+        packet = _make_beacon_payload(payload=encrypt_psk("\n\n", raw=True))
         with self.assertRaisesRegex(
             InvalidBeaconingPacket, ".*Failed to decompress.*"
         ):
             read_beacon_payload(packet)
 
     def test_raises_when_inner_encapsulation_is_not_bson(self):
-        payload = fernet_encrypt_psk(compress(b"\n\n"), raw=True)
+        payload = encrypt_psk(compress(b"\n\n"), raw=True)
         packet = _make_beacon_payload(payload=payload)
         with self.assertRaisesRegex(
             InvalidBeaconingPacket, ".*beacon payload is not BSON.*"
