@@ -382,6 +382,21 @@ class TestOperationsService:
             )
         )
 
+    async def test_list_in_progress_operations(self) -> None:
+        repository = Mock(OperationsRepository)
+        repository.get_many.return_value = [TEST_OPERATION]
+        service = self._service(repository)
+
+        operations = await service.list_in_progress_operations()
+
+        assert operations == [TEST_OPERATION]
+        query = repository.get_many.call_args.kwargs["query"]
+        assert query == QuerySpec(
+            where=OperationsClauseFactory.with_statuses(
+                [OperationStatus.RUNNING, OperationStatus.CANCELLING]
+            )
+        )
+
     async def test_update_status_running_sets_started(self) -> None:
         repository = Mock(OperationsRepository)
         repository.get_one.return_value = TEST_OPERATION
@@ -446,6 +461,22 @@ class TestOperationsService:
         # On failure current_task is left untouched so the user can see where
         # the operation stopped.
         assert "current_task" not in populated
+
+    async def test_update_status_cancelled_sets_finished(self) -> None:
+        repository = Mock(OperationsRepository)
+        repository.get_one.return_value = TEST_OPERATION
+        repository.update_by_id.return_value = TEST_OPERATION.model_copy(
+            update={"status": OperationStatus.CANCELLED}
+        )
+        service = self._service(repository)
+
+        await service.update_status("op-uuid", OperationStatus.CANCELLED)
+
+        builder = repository.update_by_id.call_args.kwargs["builder"]
+        populated = builder.populated_fields()
+        assert populated["status"] == OperationStatus.CANCELLED
+        assert "finished" in populated
+        assert "started" not in populated
 
     async def test_set_current_task(self) -> None:
         repository = Mock(OperationsRepository)
