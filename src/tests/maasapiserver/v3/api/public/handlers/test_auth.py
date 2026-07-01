@@ -16,6 +16,7 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
     OAuthTokenTypeChoices,
+    OAuthVendorChoices,
 )
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     CallbackTargetResponse,
@@ -623,6 +624,7 @@ class TestAuthApi:
             scopes="openid email profile",
             token_type=OAuthTokenTypeChoices.JWT,
             enabled=True,
+            vendor=OAuthVendorChoices.GENERIC,
         )
         updated_provider = OAuthProvider(
             id=1,
@@ -683,6 +685,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=OAuthTokenTypeChoices.JWT,
+            vendor=OAuthVendorChoices.GENERIC,
         )
         services_mock.external_oauth.update_provider.return_value = None
         response = await client.put(
@@ -742,6 +745,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=OAuthTokenTypeChoices.JWT,
+            vendor=OAuthVendorChoices.GENERIC,
         )
         created_provider = TEST_PROVIDER_1
         services_mock.external_oauth.create.return_value = created_provider
@@ -782,6 +786,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=OAuthTokenTypeChoices.JWT,
+            vendor=OAuthVendorChoices.GENERIC,
         )
 
         response = await client.post(
@@ -819,6 +824,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=OAuthTokenTypeChoices.JWT,
+            vendor=OAuthVendorChoices.GENERIC,
         )
 
         response = await client.post(
@@ -856,6 +862,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=OAuthTokenTypeChoices.JWT,
+            vendor=OAuthVendorChoices.GENERIC,
         )
 
         response = await client.post(
