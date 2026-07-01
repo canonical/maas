@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 
 from maascommon.fips import is_fips_enabled
 from maascommon.hardening import is_hardening_enabled
-from maascommon.validation import validate_password_complexity
+from maascommon.password_policy import validate_password_complexity
 from provisioningserver.drivers.power.fips import (
     FIPS_ALLOWED_IPMI_CIPHERS,
     get_fips_compliant_alternatives,

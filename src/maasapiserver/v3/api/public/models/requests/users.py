@@ -8,7 +8,7 @@ from fastapi import Query
 from pydantic import BaseModel, Field, validator
 
 from maascommon.hardening import get_hardening_config
-from maascommon.validation import validate_password_complexity
+from maascommon.password_policy import validate_password_complexity
 from maasservicelayer.builders.users import UserBuilder
 from maasservicelayer.db.filters import Clause
 from maasservicelayer.db.repositories.users import UserClauseFactory
