@@ -682,6 +682,31 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             },
         )
 
+    def test_create_dynamic_range_spanning_assigned_ip_fails(self):
+        subnet = make_plain_subnet()
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.30",
+        )
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.20",
+            end_ip="192.168.0.40",
+        )
+
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
+
     def test_modify_existing_performs_validation(self):
         subnet = make_plain_subnet()
         IPRange(
@@ -718,6 +743,216 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         # Make sure original range isn't deleted after failure to modify.
         iprange = reload_object(iprange)
         self.assertEqual(iprange.id, instance_id)
+
+    def test_modify_existing_dynamic_range_can_shrink_with_allocated_ip(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.30",
+        )
+
+        iprange.end_ip = "192.168.0.49"
+        iprange.clean()
+        iprange.save()
+
+    def test_modify_existing_dynamic_range_can_expand_with_allocated_ip(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.30",
+        )
+
+        iprange.end_ip = "192.168.0.60"
+        iprange.clean()
+        iprange.save()
+
+    def test_modify_dynamic_range_expand_start_fails_on_busy_edge_ip(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.9",
+        )
+
+        iprange.start_ip = "192.168.0.9"
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
+
+    def test_modify_dynamic_range_expand_end_fails_on_busy_edge_ip(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.51",
+        )
+
+        iprange.end_ip = "192.168.0.51"
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
+
+    def test_modify_dynamic_range_shrink_without_original_query(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.30",
+        )
+
+        iprange = reload_object(iprange)
+        mock_filter = self.patch(IPRange.objects, "filter")
+
+        iprange.end_ip = "192.168.0.49"
+        iprange.clean()
+
+        mock_filter.assert_not_called()
+
+    def test_move_dynamic_range_to_new_subnet_disables_resize_shortcut(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        iprange = reload_object(iprange)
+        other_subnet = factory.make_Subnet(
+            cidr="192.168.1.0/24",
+            gateway_ip="192.168.1.1",
+            dns_servers=[],
+        )
+        iprange.subnet = other_subnet
+        iprange.start_ip = "192.168.1.20"
+        iprange.end_ip = "192.168.1.30"
+
+        unused = other_subnet.get_ipranges_available_for_dynamic_range(
+            exclude_ip_range_id=iprange.id
+        )
+
+        self.assertFalse(
+            iprange._is_existing_dynamic_range_resize_allowed(
+                iprange.netaddr_iprange.first,
+                iprange.netaddr_iprange.last,
+                unused,
+            )
+        )
+
+    def test_move_dynamic_range_to_new_subnet_with_clash_fails_clean(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.10",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+
+        other_subnet = factory.make_Subnet(
+            cidr="192.168.1.0/24",
+            gateway_ip="192.168.1.1",
+            dns_servers=[],
+        )
+        IPRange(
+            subnet=other_subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.1.25",
+            end_ip="192.168.1.35",
+        ).save()
+
+        iprange = reload_object(iprange)
+        iprange.subnet = other_subnet
+        iprange.start_ip = "192.168.1.20"
+        iprange.end_ip = "192.168.1.30"
+
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
+
+    def test_modify_existing_dynamic_range_can_expand_start_with_allocated_ip(
+        self,
+    ):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.20",
+            end_ip="192.168.0.50",
+        )
+        iprange.save()
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="192.168.0.30",
+        )
+        iprange.start_ip = "192.168.0.10"
+        iprange.clean()
+        iprange.save()
 
     def test_dynamic_range_cant_overlap_gateway_ip(self):
         subnet = make_plain_subnet()
