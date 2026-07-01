@@ -15,6 +15,7 @@ from maasservicelayer.exceptions.catalog import (
     PreconditionFailedException,
 )
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.external_auth import ProviderVendorType
 
 
 def get_oidc_provider_uri(provider):
@@ -155,6 +156,48 @@ class TestOidcProvider(APITestCase.ForUser):
             provider_to_dict(updated_provider),
         )
 
+    def test_PUT_invalid_vendor(self):
+        self.become_admin()
+        provider = factory.make_OidcProvider()
+        self.external_oauth.get_by_id.return_value = provider
+
+        response = self.client.put(
+            get_oidc_provider_uri(provider),
+            data={
+                "vendor": "INVALID",
+            },
+        )
+
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            str(response.content, "utf-8"),
+            "Invalid vendor: INVALID. Must be one of: "
+            "Generic, EntraID, Auth0, Keycloak.",
+        )
+        self.external_oauth.update_provider.assert_not_called()
+
+    def test_PUT_updates_vendor(self):
+        self.become_admin()
+        provider = factory.make_OidcProvider(vendor=ProviderVendorType.GENERIC)
+        updated_provider = provider.copy()
+        updated_provider.vendor = ProviderVendorType.AUTH0
+        self.external_oauth.get_by_id.return_value = provider
+        self.external_oauth.update_provider.return_value = updated_provider
+
+        response = self.client.put(
+            get_oidc_provider_uri(provider),
+            data={
+                "vendor": "Auth0",
+            },
+        )
+
+        self.assertEqual(http.client.OK, response.status_code)
+        builder = self.external_oauth.update_provider.call_args.kwargs[
+            "builder"
+        ]
+        self.assertEqual(builder.vendor, ProviderVendorType.AUTH0)
+        self.assertEqual(json_load_bytes(response.content)["vendor"], "Auth0")
+
     def test_PUT_requires_admin(self):
         provider = factory.make_OidcProvider()
 
@@ -178,6 +221,7 @@ class TestOidcProviders(APITestCase.ForUser):
         "scopes": "openid profile email",
         "enabled": True,
         "token_type": "JWT",
+        "vendor": "Generic",
     }
 
     def setUp(self):
@@ -287,6 +331,22 @@ class TestOidcProviders(APITestCase.ForUser):
             "Invalid token type: INVALID. Must be 'JWT' or 'Opaque'.",
         )
 
+    def test_CREATE_invalid_vendor(self):
+        self.become_admin()
+        data = self.SAMPLE_PROVIDER_DATA.copy()
+        data["vendor"] = "INVALID"
+
+        response = self.client.post(
+            reverse("oidc_providers_handler"),
+            data=data,
+        )
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            str(response.content, "utf-8"),
+            "Invalid vendor: INVALID. Must be one of: "
+            "Generic, EntraID, Auth0, Keycloak.",
+        )
+
     def test_CREATE_bad_gateway(self):
         self.become_admin()
         self.external_oauth.create.side_effect = BadGatewayException()
@@ -341,6 +401,39 @@ class TestOidcProviders(APITestCase.ForUser):
         self.assertEqual(http.client.CREATED, response.status_code)
         self.assertEqual(
             json_load_bytes(response.content), provider_to_dict(provider)
+        )
+
+    def test_CREATE_defaults_vendor_to_generic(self):
+        self.become_admin()
+        provider = factory.make_OidcProvider(vendor=ProviderVendorType.GENERIC)
+        self.external_oauth.create.return_value = provider
+
+        response = self.client.post(
+            reverse("oidc_providers_handler"),
+            data=self.SAMPLE_PROVIDER_DATA,
+        )
+        self.assertEqual(http.client.CREATED, response.status_code)
+        builder = self.external_oauth.create.call_args.kwargs["builder"]
+        self.assertEqual(builder.vendor, ProviderVendorType.GENERIC)
+
+    def test_CREATE_with_vendor(self):
+        self.become_admin()
+        provider = factory.make_OidcProvider(
+            vendor=ProviderVendorType.KEYCLOAK
+        )
+        self.external_oauth.create.return_value = provider
+        data = self.SAMPLE_PROVIDER_DATA.copy()
+        data["vendor"] = "Keycloak"
+
+        response = self.client.post(
+            reverse("oidc_providers_handler"),
+            data=data,
+        )
+        self.assertEqual(http.client.CREATED, response.status_code)
+        builder = self.external_oauth.create.call_args.kwargs["builder"]
+        self.assertEqual(builder.vendor, ProviderVendorType.KEYCLOAK)
+        self.assertEqual(
+            json_load_bytes(response.content)["vendor"], "Keycloak"
         )
 
     def test_CREATE_requires_admin(self):

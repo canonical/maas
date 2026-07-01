@@ -9,6 +9,7 @@ from maasservicelayer.models.base import ResourceBuilder, UNSET, Unset
 from maasservicelayer.models.external_auth import (
     AccessTokenType,
     ProviderMetadata,
+    ProviderVendorType,
 )
 
 
@@ -30,3 +31,4 @@ class OAuthProviderBuilder(ResourceBuilder):
     scopes: str | Unset = Field(default=UNSET)
     token_type: AccessTokenType | Unset = Field(default=UNSET)
     updated: datetime | Unset = Field(default=UNSET)
+    vendor: ProviderVendorType | Unset = Field(default=UNSET)

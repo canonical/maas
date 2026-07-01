@@ -130,6 +130,60 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
             ),
         )
 
+    def test_is_authenticated_oidc_user_active(self):
+        SecretManager().delete_secret("external-auth")
+        mock_service_layer = self.patch(api_auth, "service_layer")
+        mock_service_layer.services.external_oauth.is_active_oidc_user.return_value = True
+
+        auth = MAASAPIAuthentication()
+        user = factory.make_User()
+        user.userprofile.is_local = False
+        user.userprofile.save()
+        mock_token = mock.Mock(user=user)
+        request = self.make_request()
+        auth.check_validity = lambda request: RequestValidityReport({}, {}, {})
+        auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
+
+        self.assertTrue(auth.is_authenticated(request))
+        mock_service_layer.services.external_oauth.is_active_oidc_user.assert_called_once_with(
+            user.username
+        )
+
+    def test_is_authenticated_oidc_user_inactive(self):
+        SecretManager().delete_secret("external-auth")
+        mock_service_layer = self.patch(api_auth, "service_layer")
+        mock_service_layer.services.external_oauth.is_active_oidc_user.return_value = False
+
+        auth = MAASAPIAuthentication()
+        user = factory.make_User()
+        user.userprofile.is_local = False
+        user.userprofile.save()
+        mock_token = mock.Mock(user=user)
+        request = self.make_request()
+        auth.check_validity = lambda request: RequestValidityReport({}, {}, {})
+        auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
+
+        self.assertFalse(auth.is_authenticated(request))
+        mock_service_layer.services.external_oauth.is_active_oidc_user.assert_called_once_with(
+            user.username
+        )
+
+    def test_is_authenticated_local_user_skips_oidc_check(self):
+        SecretManager().delete_secret("external-auth")
+        mock_service_layer = self.patch(api_auth, "service_layer")
+
+        auth = MAASAPIAuthentication()
+        user = factory.make_User()
+        user.userprofile.is_local = True
+        user.userprofile.save()
+        mock_token = mock.Mock(user=user)
+        request = self.make_request()
+        auth.check_validity = lambda request: RequestValidityReport({}, {}, {})
+        auth.validate_token = lambda request: (mock.Mock(), mock_token, None)
+
+        self.assertTrue(auth.is_authenticated(request))
+        mock_service_layer.services.external_oauth.is_active_oidc_user.assert_not_called()
+
     def test_validity_report(self):
         params = product(["AUTH_HEADER", "GET", "POST"], [True, False])
         valid_auth_headers = {

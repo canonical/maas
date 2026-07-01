@@ -8,12 +8,22 @@ from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.exceptions.catalog import ValidationException
-from maasservicelayer.models.external_auth import AccessTokenType
+from maasservicelayer.models.external_auth import (
+    AccessTokenType,
+    ProviderVendorType,
+)
 
 
 class OAuthTokenTypeChoices(StrEnum):
     JWT = "JWT"
     OPAQUE = "Opaque"
+
+
+class OAuthVendorChoices(StrEnum):
+    GENERIC = "Generic"
+    ENTRAID = "EntraID"
+    AUTH0 = "Auth0"
+    KEYCLOAK = "Keycloak"
 
 
 class OAuthProviderRequest(BaseModel):
@@ -34,6 +44,9 @@ class OAuthProviderRequest(BaseModel):
     )
     token_type: OAuthTokenTypeChoices = Field(
         description="The type of access tokens issued by the OIDC provider (e.g., JWT or opaque).",
+    )
+    vendor: OAuthVendorChoices = Field(
+        description="The OIDC provider vendor. Select from predefined vendors or use 'Generic' for other providers.",
     )
     scopes: str = Field(
         description="A space-separated list of OIDC scopes defining the information requested from the provider.",
@@ -60,6 +73,7 @@ class OAuthProviderRequest(BaseModel):
             if self.token_type == OAuthTokenTypeChoices.JWT
             else AccessTokenType.OPAQUE
         )
+        vendor = ProviderVendorType[self.vendor.name]
         return OAuthProviderBuilder(
             name=self.name,
             client_id=self.client_id,
@@ -67,6 +81,7 @@ class OAuthProviderRequest(BaseModel):
             issuer_url=self.issuer_url,
             redirect_uri=self.redirect_uri,
             token_type=token_type,
+            vendor=vendor,
             scopes=self.scopes,
             enabled=self.enabled,
         )

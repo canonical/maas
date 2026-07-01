@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthTokenTypeChoices,
+    OAuthVendorChoices,
 )
 from maasapiserver.v3.api.public.models.responses.base import PaginatedResponse
 from maasservicelayer.models.external_auth import (
@@ -73,6 +74,7 @@ class OAuthProviderResponse(BaseModel):
     metadata: ProviderMetadata
     user_count: int | None = None
     token_type: OAuthTokenTypeChoices
+    vendor: OAuthVendorChoices
 
     @classmethod
     def from_model(
@@ -92,6 +94,7 @@ class OAuthProviderResponse(BaseModel):
             token_type=OAuthTokenTypeChoices.JWT
             if provider.token_type == AccessTokenType.JWT
             else OAuthTokenTypeChoices.OPAQUE,
+            vendor=OAuthVendorChoices[provider.vendor.name],
         )
 
 

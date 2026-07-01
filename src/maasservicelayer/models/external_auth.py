@@ -32,10 +32,18 @@ class AccessTokenType(IntEnum):
     OPAQUE = 1
 
 
+class ProviderVendorType(IntEnum):
+    GENERIC = 0
+    ENTRAID = 1
+    AUTH0 = 2
+    KEYCLOAK = 3
+
+
 @generate_builder()
 class OAuthProvider(MaasTimestampedBaseModel):
     issuer_url: str
     name: str
+    vendor: ProviderVendorType
     client_id: str
     client_secret: str
     redirect_uri: str

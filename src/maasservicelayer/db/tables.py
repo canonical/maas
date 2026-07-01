@@ -1697,6 +1697,7 @@ OIDCProviderTable = Table(
     "maasserver_oidc_provider",
     METADATA,
     Column("id", BigInteger, Identity(), primary_key=True),
+    Column("vendor", Integer, nullable=False),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("name", String(255), nullable=False, unique=True),

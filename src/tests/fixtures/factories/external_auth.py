@@ -8,6 +8,7 @@ from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
+    ProviderVendorType,
     RootKey,
 )
 from maasservicelayer.utils.date import utcnow
@@ -48,6 +49,7 @@ async def create_provider(
         "redirect_uri": "https://example.com/callback",
         "scopes": "openid email profile",
         "token_type": AccessTokenType.JWT,
+        "vendor": ProviderVendorType.GENERIC,
         "enabled": True,
         "metadata": ProviderMetadata(
             authorization_endpoint="",
