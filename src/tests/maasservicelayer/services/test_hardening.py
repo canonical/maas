@@ -14,18 +14,15 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 import pytest
 
-from maascommon.hardening import HardeningConfig, HardeningMode
 from maasservicelayer.services.hardening import HardeningValidator
 
 
-def _active_config() -> HardeningConfig:
-    """Return a HardeningConfig with hardening_active == True."""
-    return HardeningConfig(mode=HardeningMode.AUTO, fips_enabled=True)
+def _active() -> bool:
+    return True
 
 
-def _inactive_config() -> HardeningConfig:
-    """Return a HardeningConfig with hardening_active == False."""
-    return HardeningConfig(mode=HardeningMode.AUTO, fips_enabled=False)
+def _inactive() -> bool:
+    return False
 
 
 def _generate_private_key() -> rsa.RSAPrivateKey:
@@ -66,10 +63,10 @@ class TestHardeningValidatorInactive:
         self, tmp_path: Path
     ) -> None:
         """When hardening is not active validate() returns valid with no I/O."""
-        config = _inactive_config()
+        config = _inactive()
         nonexistent = str(tmp_path / "nowhere.pem")
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_cert=nonexistent,
             api_tls_key=nonexistent,
             api_tls_dhparam=nonexistent,
@@ -88,12 +85,12 @@ class TestValidateTLSCert:
     def test_missing_cert_returns_missing_tls_cert(
         self, tmp_path: Path
     ) -> None:
-        config = _active_config()
+        config = _active()
         cert_path = str(tmp_path / "cert.pem")  # does not exist
         key_path = str(tmp_path / "key.pem")
 
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_cert=cert_path,
             api_tls_key=key_path,
         )
@@ -105,7 +102,7 @@ class TestValidateTLSCert:
         assert errors[0].file_path == cert_path
 
     def test_missing_key_returns_missing_tls_key(self, tmp_path: Path) -> None:
-        config = _active_config()
+        config = _active()
         key = _generate_private_key()
         cert = _generate_cert(key)
 
@@ -115,7 +112,7 @@ class TestValidateTLSCert:
         key_path = str(tmp_path / "key.pem")  # does not exist
 
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_cert=str(cert_path),
             api_tls_key=key_path,
         )
@@ -130,14 +127,14 @@ class TestValidateTLSCert:
         self, tmp_path: Path
     ) -> None:
         """Cert file exists but api_tls_key is None → MISSING_TLS_KEY."""
-        config = _active_config()
+        config = _active()
         key = _generate_private_key()
         cert = _generate_cert(key)
         cert_path = tmp_path / "cert.pem"
         _write_cert(cert_path, cert)
 
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_cert=str(cert_path),
             api_tls_key=None,
         )
@@ -148,7 +145,7 @@ class TestValidateTLSCert:
         assert errors[0].config_key == "api_tls_key"
 
     def test_cert_key_mismatch_returns_error(self, tmp_path: Path) -> None:
-        config = _active_config()
+        config = _active()
         key1 = _generate_private_key()
         key2 = _generate_private_key()
         cert = _generate_cert(key1)  # signed with key1
@@ -160,7 +157,7 @@ class TestValidateTLSCert:
         _write_key(key_path, key2)  # different key
 
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_cert=str(cert_path),
             api_tls_key=str(key_path),
         )
@@ -173,7 +170,7 @@ class TestValidateTLSCert:
     def test_valid_matching_pair_returns_no_errors(
         self, tmp_path: Path
     ) -> None:
-        config = _active_config()
+        config = _active()
         key = _generate_private_key()
         cert = _generate_cert(key)
 
@@ -184,7 +181,7 @@ class TestValidateTLSCert:
         _write_key(key_path, key)
 
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_cert=str(cert_path),
             api_tls_key=str(key_path),
         )
@@ -195,14 +192,16 @@ class TestValidateTLSCert:
 
 class TestValidateDHParams:
     def test_no_dhparam_returns_no_errors(self) -> None:
-        config = _active_config()
-        validator = HardeningValidator(config=config, api_tls_dhparam=None)
+        config = _active()
+        validator = HardeningValidator(
+            hardening_active=config, api_tls_dhparam=None
+        )
         assert validator._validate_dh_params() == []
 
     def test_missing_file_returns_no_errors(self, tmp_path: Path) -> None:
-        config = _active_config()
+        config = _active()
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_dhparam=str(tmp_path / "dhparam.pem"),
         )
         assert validator._validate_dh_params() == []
@@ -210,12 +209,12 @@ class TestValidateDHParams:
     def test_corrupt_file_returns_parse_error_code(
         self, tmp_path: Path
     ) -> None:
-        config = _active_config()
+        config = _active()
         dhparam_path = tmp_path / "dhparam.pem"
         dhparam_path.write_text("not a valid PEM file")
 
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_dhparam=str(dhparam_path),
         )
         errors = validator._validate_dh_params()
@@ -228,13 +227,13 @@ class TestValidateDHParams:
 
 class TestValidateKeyPermissions:
     def test_insecure_perms_0644_returns_error(self, tmp_path: Path) -> None:
-        config = _active_config()
+        config = _active()
         key_path = tmp_path / "key.pem"
         key_path.write_text("dummy key data")
         os.chmod(key_path, 0o644)
 
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_key=str(key_path),
         )
         errors = validator._validate_key_permissions()
@@ -245,13 +244,13 @@ class TestValidateKeyPermissions:
         assert errors[0].file_path == str(key_path)
 
     def test_secure_perms_0600_returns_no_error(self, tmp_path: Path) -> None:
-        config = _active_config()
+        config = _active()
         key_path = tmp_path / "key.pem"
         key_path.write_text("dummy key data")
         os.chmod(key_path, 0o600)
 
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_key=str(key_path),
         )
         errors = validator._validate_key_permissions()
@@ -261,33 +260,39 @@ class TestValidateKeyPermissions:
 
 class TestValidateBindings:
     def test_no_api_bind_returns_no_errors(self) -> None:
-        config = _active_config()
-        validator = HardeningValidator(config=config, api_bind=None)
+        config = _active()
+        validator = HardeningValidator(hardening_active=config, api_bind=None)
         assert validator._validate_bindings() == []
 
     def test_empty_api_bind_returns_no_errors(self) -> None:
-        config = _active_config()
-        validator = HardeningValidator(config=config, api_bind="")
+        config = _active()
+        validator = HardeningValidator(hardening_active=config, api_bind="")
         assert validator._validate_bindings() == []
 
     def test_valid_ipv4_returns_no_errors(self) -> None:
-        config = _active_config()
-        validator = HardeningValidator(config=config, api_bind="0.0.0.0")
+        config = _active()
+        validator = HardeningValidator(
+            hardening_active=config, api_bind="0.0.0.0"
+        )
         assert validator._validate_bindings() == []
 
     def test_valid_ipv4_specific_returns_no_errors(self) -> None:
-        config = _active_config()
-        validator = HardeningValidator(config=config, api_bind="192.168.1.1")
+        config = _active()
+        validator = HardeningValidator(
+            hardening_active=config, api_bind="192.168.1.1"
+        )
         assert validator._validate_bindings() == []
 
     def test_valid_ipv6_returns_no_errors(self) -> None:
-        config = _active_config()
-        validator = HardeningValidator(config=config, api_bind="::")
+        config = _active()
+        validator = HardeningValidator(hardening_active=config, api_bind="::")
         assert validator._validate_bindings() == []
 
     def test_hostname_returns_invalid_bind_address_error(self) -> None:
-        config = _active_config()
-        validator = HardeningValidator(config=config, api_bind="not-an-ip")
+        config = _active()
+        validator = HardeningValidator(
+            hardening_active=config, api_bind="not-an-ip"
+        )
         errors = validator._validate_bindings()
         assert len(errors) == 1
         assert errors[0].code == "INVALID_BIND_ADDRESS"
@@ -295,8 +300,10 @@ class TestValidateBindings:
         assert "not-an-ip" in errors[0].message
 
     def test_invalid_bind_propagates_into_validate(self) -> None:
-        config = _active_config()
-        validator = HardeningValidator(config=config, api_bind="bad-address")
+        config = _active()
+        validator = HardeningValidator(
+            hardening_active=config, api_bind="bad-address"
+        )
         result = validator.validate()
         assert result.is_valid is False
         assert any(e.code == "INVALID_BIND_ADDRESS" for e in result.errors)
@@ -305,8 +312,8 @@ class TestValidateBindings:
 class TestHardeningValidatorFullValidate:
     def test_validate_active_no_paths_returns_valid(self) -> None:
         """All paths None → skip all checks → valid result."""
-        config = _active_config()
-        validator = HardeningValidator(config=config)
+        config = _active()
+        validator = HardeningValidator(hardening_active=config)
         result = validator.validate()
         assert result.is_valid is True
         assert result.errors == []
@@ -315,9 +322,9 @@ class TestHardeningValidatorFullValidate:
         self, tmp_path: Path
     ) -> None:
         """A missing cert file propagates into the aggregate result."""
-        config = _active_config()
+        config = _active()
         validator = HardeningValidator(
-            config=config,
+            hardening_active=config,
             api_tls_cert=str(tmp_path / "missing.pem"),
             api_tls_key=str(tmp_path / "missing-key.pem"),
         )
@@ -328,56 +335,55 @@ class TestHardeningValidatorFullValidate:
 
 class TestRunHardeningStartupValidation:
     """Cover the startup-integration helper: no-op when inactive, exit on
-    invalid, log on failure. Uses ``get_hardening_config.cache_clear()`` to
-    flip between FIPS-on/FIPS-off across tests.
+    invalid, log on failure.
     """
 
-    def setup_method(self) -> None:
-        from maascommon.hardening import get_hardening_config
+    @pytest.fixture(autouse=True)
+    def reset_hardening(self):
+        import maascommon.hardening as _hardening
 
-        get_hardening_config.cache_clear()
+        original = _hardening._hardening_active
+        yield _hardening
+        _hardening._hardening_active = original
 
-    def test_inactive_returns_valid_without_io(self, tmp_path: Path) -> None:
+    def test_inactive_returns_valid_without_io(
+        self, tmp_path: Path, reset_hardening
+    ) -> None:
         """When hardening is inactive the helper is a no-op (no I/O)."""
-        from maascommon.hardening import get_hardening_config
         from maasservicelayer.services.hardening import (
             run_hardening_startup_validation,
         )
 
-        get_hardening_config.cache_clear()
-        with patch("maascommon.hardening.is_fips_enabled", return_value=False):
-            with patch(
-                "os.stat", side_effect=AssertionError("unexpected I/O")
-            ):
-                result = run_hardening_startup_validation(
-                    api_tls_cert=str(tmp_path / "missing.pem"),
-                    api_tls_key=str(tmp_path / "missing-key.pem"),
-                )
+        reset_hardening._hardening_active = False
+        with patch("os.stat", side_effect=AssertionError("unexpected I/O")):
+            result = run_hardening_startup_validation(
+                api_tls_cert=str(tmp_path / "missing.pem"),
+                api_tls_key=str(tmp_path / "missing-key.pem"),
+            )
 
         assert result.is_valid is True
         assert result.errors == []
 
-    def test_active_with_missing_cert_exits(self, tmp_path: Path) -> None:
+    def test_active_with_missing_cert_exits(
+        self, tmp_path: Path, reset_hardening
+    ) -> None:
         """Active hardening + missing cert → SystemExit(1)."""
-        from maascommon.hardening import get_hardening_config
         from maasservicelayer.services.hardening import (
             run_hardening_startup_validation,
         )
 
-        get_hardening_config.cache_clear()
-        with patch("maascommon.hardening.is_fips_enabled", return_value=True):
-            with pytest.raises(SystemExit) as exc_info:
-                run_hardening_startup_validation(
-                    api_tls_cert=str(tmp_path / "missing.pem"),
-                )
+        reset_hardening._hardening_active = True
+        with pytest.raises(SystemExit) as exc_info:
+            run_hardening_startup_validation(
+                api_tls_cert=str(tmp_path / "missing.pem"),
+            )
 
         assert exc_info.value.code == 1
 
     def test_active_with_valid_paths_returns_valid(
-        self, tmp_path: Path
+        self, tmp_path: Path, reset_hardening
     ) -> None:
         """Active hardening + valid matching cert/key → valid result."""
-        from maascommon.hardening import get_hardening_config
         from maasservicelayer.services.hardening import (
             run_hardening_startup_validation,
         )
@@ -390,31 +396,28 @@ class TestRunHardeningStartupValidation:
         _write_key(key_path, key)
         os.chmod(key_path, 0o600)
 
-        get_hardening_config.cache_clear()
-        with patch("maascommon.hardening.is_fips_enabled", return_value=True):
-            result = run_hardening_startup_validation(
-                api_tls_cert=str(cert_path),
-                api_tls_key=str(key_path),
-            )
+        reset_hardening._hardening_active = True
+        result = run_hardening_startup_validation(
+            api_tls_cert=str(cert_path),
+            api_tls_key=str(key_path),
+        )
 
         assert result.is_valid is True
         assert result.errors == []
 
     def test_active_with_errors_logs_each_error(
-        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture, reset_hardening
     ) -> None:
         """Each HardeningError is logged via the ``maas.hardening`` logger."""
-        from maascommon.hardening import get_hardening_config
         from maasservicelayer.services.hardening import (
             run_hardening_startup_validation,
         )
 
-        get_hardening_config.cache_clear()
-        with patch("maascommon.hardening.is_fips_enabled", return_value=True):
-            with caplog.at_level(logging.ERROR, logger="maas.hardening"):
-                with pytest.raises(SystemExit):
-                    run_hardening_startup_validation(
-                        api_tls_cert=str(tmp_path / "missing.pem"),
-                    )
+        reset_hardening._hardening_active = True
+        with caplog.at_level(logging.ERROR, logger="maas.hardening"):
+            with pytest.raises(SystemExit):
+                run_hardening_startup_validation(
+                    api_tls_cert=str(tmp_path / "missing.pem"),
+                )
 
         assert any("MISSING_TLS_CERT" in rec.message for rec in caplog.records)

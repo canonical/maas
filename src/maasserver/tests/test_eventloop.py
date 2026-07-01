@@ -406,7 +406,6 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_RegionService_hardening_off_binds_any(self):
         import maascommon.hardening as _hardening
-        from maascommon.hardening import HardeningConfig, HardeningMode
         from maasserver.config import RegionConfiguration
 
         mock_open = self.patch(RegionConfiguration, "open")
@@ -414,11 +413,7 @@ class TestFactories(MAASServerTestCase):
         mock_cfg.rpc_bind = ""
         mock_cfg.hardening_enabled = "auto"
         mock_open.return_value.__exit__.return_value = False
-        self.patch(
-            _hardening, "get_hardening_config"
-        ).return_value = HardeningConfig(
-            mode=HardeningMode.AUTO, fips_enabled=False
-        )
+        self.patch(_hardening, "is_hardening_enabled").return_value = False
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
@@ -426,7 +421,6 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_RegionService_hardening_on_binds_loopback(self):
         import maascommon.hardening as _hardening
-        from maascommon.hardening import HardeningConfig, HardeningMode
         from maasserver.config import RegionConfiguration
 
         mock_open = self.patch(RegionConfiguration, "open")
@@ -434,11 +428,7 @@ class TestFactories(MAASServerTestCase):
         mock_cfg.rpc_bind = ""
         mock_cfg.hardening_enabled = "on"
         mock_open.return_value.__exit__.return_value = False
-        self.patch(
-            _hardening, "get_hardening_config"
-        ).return_value = HardeningConfig(
-            mode=HardeningMode.ON, fips_enabled=False
-        )
+        self.patch(_hardening, "is_hardening_enabled").return_value = True
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
@@ -446,7 +436,6 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_RegionService_explicit_bind_overrides_hardening(self):
         import maascommon.hardening as _hardening
-        from maascommon.hardening import HardeningConfig, HardeningMode
         from maasserver.config import RegionConfiguration
 
         mock_open = self.patch(RegionConfiguration, "open")
@@ -454,11 +443,7 @@ class TestFactories(MAASServerTestCase):
         mock_cfg.rpc_bind = "10.0.0.1"
         mock_cfg.hardening_enabled = "on"
         mock_open.return_value.__exit__.return_value = False
-        self.patch(
-            _hardening, "get_hardening_config"
-        ).return_value = HardeningConfig(
-            mode=HardeningMode.ON, fips_enabled=False
-        )
+        self.patch(_hardening, "is_hardening_enabled").return_value = True
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 

@@ -4,7 +4,7 @@
 
 Validates TLS certificates, DH parameters, and key file permissions before
 services open their listening sockets. Activated only when
-``HardeningConfig.hardening_active`` is True (FIPS host or explicit opt-in).
+``is_hardening_enabled()`` returns True (FIPS host or explicit opt-in).
 """
 
 from dataclasses import dataclass
@@ -16,7 +16,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.serialization import load_pem_parameters
 
-from maascommon.hardening import HardeningConfig
+from maascommon.hardening import is_hardening_enabled
 
 
 @dataclass
@@ -40,22 +40,17 @@ class HardeningValidationResult:
 
 
 class HardeningValidator:
-    """Validates hardening prerequisites at service startup.
-
-    Accepts the TLS-related paths as constructor parameters because
-    ``HardeningConfig`` intentionally carries only the activation state,
-    not the per-service path values.
-    """
+    """Validates hardening prerequisites at service startup."""
 
     def __init__(
         self,
-        config: HardeningConfig,
+        hardening_active: bool,
         api_tls_cert: str | None = None,
         api_tls_key: str | None = None,
         api_tls_dhparam: str | None = None,
         api_bind: str | None = None,
     ) -> None:
-        self.config = config
+        self.hardening_active = hardening_active
         self.api_tls_cert = api_tls_cert
         self.api_tls_key = api_tls_key
         self.api_tls_dhparam = api_tls_dhparam
@@ -63,7 +58,7 @@ class HardeningValidator:
 
     def validate(self) -> HardeningValidationResult:
         """Run all hardening checks and return the aggregated result."""
-        if not self.config.hardening_active:
+        if not self.hardening_active:
             return HardeningValidationResult(
                 is_valid=True, errors=[], warnings=[]
             )
@@ -290,12 +285,9 @@ def run_hardening_startup_validation(
     ``maas.hardening`` and raises ``SystemExit(1)`` if any check fails.
     Sockets must not be opened before this returns.
     """
-    from maascommon.hardening import get_hardening_config
-
-    hardening_config = get_hardening_config()
 
     validator = HardeningValidator(
-        config=hardening_config,
+        hardening_active=is_hardening_enabled(),
         api_tls_cert=api_tls_cert,
         api_tls_key=api_tls_key,
         api_tls_dhparam=api_tls_dhparam,

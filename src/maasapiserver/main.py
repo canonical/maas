@@ -198,7 +198,7 @@ def run(app_config: Config | None = None):
     )
 
     # Determine security-hardening mode and run fail-fast startup validation.
-    from maascommon.hardening import configure_hardening, get_hardening_config
+    from maascommon.hardening import configure_hardening
     from maasserver.config import RegionConfiguration
     from maasservicelayer.services.hardening import (
         run_hardening_startup_validation,
@@ -216,7 +216,7 @@ def run(app_config: Config | None = None):
     except SystemExit:
         raise
     except Exception:
-        get_hardening_config()
+        configure_hardening("auto")
         run_hardening_startup_validation()
 
     # User app

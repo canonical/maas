@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import Query
 from pydantic import BaseModel, Field, validator
 
-from maascommon.hardening import get_hardening_config
+from maascommon.hardening import is_hardening_enabled
 from maascommon.password_policy import validate_password_complexity
 from maasservicelayer.builders.users import UserBuilder
 from maasservicelayer.db.filters import Clause
@@ -37,7 +37,7 @@ class UsersFiltersParams(BaseModel):
 
 def _enforce_password_complexity(password: str) -> str:
     """Reject weak passwords when hardening is active; no-op otherwise."""
-    if not get_hardening_config().hardening_active:
+    if not is_hardening_enabled():
         return password
     result = validate_password_complexity(password)
     if not result.is_valid:

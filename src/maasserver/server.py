@@ -73,7 +73,7 @@ def run():
     sys.argv = sys.argv[:1]
 
     # Determine security-hardening mode and run fail-fast startup validation.
-    from maascommon.hardening import configure_hardening, get_hardening_config
+    from maascommon.hardening import configure_hardening
     from maasserver.config import RegionConfiguration
     from maasservicelayer.services.hardening import (
         run_hardening_startup_validation,
@@ -91,7 +91,7 @@ def run():
     except SystemExit:
         raise
     except Exception:
-        get_hardening_config()
+        configure_hardening("auto")
         run_hardening_startup_validation()
 
     # Workers are spawned with environment so it knows that it would only

@@ -92,7 +92,7 @@ def runService(service):
 
 def run():
     """Run the maas-rackd service."""
-    from maascommon.hardening import configure_hardening, get_hardening_config
+    from maascommon.hardening import configure_hardening
     from maasservicelayer.services.hardening import (
         run_hardening_startup_validation,
     )
@@ -110,6 +110,6 @@ def run():
     except SystemExit:
         raise
     except Exception:
-        get_hardening_config()
+        configure_hardening("auto")
         run_hardening_startup_validation()
     runService("maas-rackd")

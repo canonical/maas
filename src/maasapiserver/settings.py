@@ -7,7 +7,7 @@ from pathlib import Path
 
 import structlog
 
-from maascommon.hardening import get_hardening_config
+from maascommon.hardening import is_hardening_enabled
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasservicelayer.db import build_database_config, DatabaseConfig
 from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
@@ -88,7 +88,7 @@ async def _get_default_db_config(
         sslcert=str(config.database_sslcert),
         sslkey=str(config.database_sslkey),
         sslrootcert=str(config.database_sslrootcert),
-        hardening_active=get_hardening_config().hardening_active,
+        hardening_active=is_hardening_enabled(),
     )
 
 

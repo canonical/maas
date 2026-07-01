@@ -6,7 +6,6 @@
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
-from maascommon.hardening import HardeningConfig, HardeningMode
 from maastesting.testcase import MAASTestCase
 from provisioningserver.rackdservices.http import RackHTTPService
 
@@ -44,11 +43,6 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
             m.api_conn_limit = extra.get("api_conn_limit", 100)
             yield m
 
-        hardening_cfg = HardeningConfig(
-            mode=HardeningMode.ON if hardening_active else HardeningMode.AUTO,
-            fips_enabled=False,
-        )
-
         patches = [
             patch(
                 "provisioningserver.rackdservices.http.load_template",
@@ -80,15 +74,13 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
             ),
             patch("provisioningserver.rackdservices.http.atomic_write"),
             patch("os.makedirs"),
-            # ClusterConfiguration is a local import inside _configure
             patch(
                 "provisioningserver.config.ClusterConfiguration.open",
                 side_effect=fake_cluster_open,
             ),
-            # get_hardening_config is also a local import inside _configure
             patch(
-                "maascommon.hardening.get_hardening_config",
-                return_value=hardening_cfg,
+                "maascommon.hardening.is_hardening_enabled",
+                return_value=hardening_active,
             ),
         ]
         for p in patches:

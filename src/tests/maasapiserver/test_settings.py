@@ -1,6 +1,5 @@
 from asyncio import Future
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -59,9 +58,6 @@ class TestDatabaseConfig:
 class TestGetDefaultDBConfig:
     @pytest.mark.asyncio
     async def test_local(self):
-        from maascommon.hardening import get_hardening_config
-
-        get_hardening_config.cache_clear()
         region_config = RegionConfiguration(
             {
                 "database_name": "maasdb",
@@ -80,9 +76,6 @@ class TestGetDefaultDBConfig:
 
     @pytest.mark.asyncio
     async def test_vault(self, mocker):
-        from maascommon.hardening import get_hardening_config
-
-        get_hardening_config.cache_clear()
         MAAS_ID.set("asdf")
         region_config = RegionConfiguration(
             {
@@ -113,7 +106,7 @@ class TestGetDefaultDBConfig:
     @pytest.mark.asyncio
     async def test_hardening_rejects_insecure_sslmode(self):
         """Hardening-active + insecure sslmode raises InsecureDBSSLModeError."""
-        from maascommon.hardening import get_hardening_config
+        import maascommon.hardening as _hardening
         from maasservicelayer.db import InsecureDBSSLModeError
 
         region_config = RegionConfiguration(
@@ -126,15 +119,17 @@ class TestGetDefaultDBConfig:
                 "database_sslmode": "prefer",
             }
         )
-        get_hardening_config.cache_clear()
-        with patch("maascommon.hardening.is_fips_enabled", return_value=True):
+        _hardening._hardening_active = True
+        try:
             with pytest.raises(InsecureDBSSLModeError):
                 await _get_default_db_config(region_config)
+        finally:
+            _hardening._hardening_active = False
 
     @pytest.mark.asyncio
     async def test_hardening_allows_secure_sslmode(self):
         """Hardening-active + verify-full sslmode is accepted; SSL fields forwarded."""
-        from maascommon.hardening import get_hardening_config
+        import maascommon.hardening as _hardening
 
         region_config = RegionConfiguration(
             {
@@ -149,9 +144,11 @@ class TestGetDefaultDBConfig:
                 "database_sslrootcert": "/etc/maas/ca.crt",
             }
         )
-        get_hardening_config.cache_clear()
-        with patch("maascommon.hardening.is_fips_enabled", return_value=True):
+        _hardening._hardening_active = True
+        try:
             config = await _get_default_db_config(region_config)
+        finally:
+            _hardening._hardening_active = False
 
         assert config.sslmode == "verify-full"
         assert config.sslcert == "/etc/maas/db.crt"
