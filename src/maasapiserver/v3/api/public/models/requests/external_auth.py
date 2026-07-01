@@ -46,7 +46,6 @@ class OAuthProviderRequest(BaseModel):
         description="The type of access tokens issued by the OIDC provider (e.g., JWT or opaque).",
     )
     vendor: OAuthVendorChoices = Field(
-        default=OAuthVendorChoices.GENERIC,
         description="The OIDC provider vendor. Select from predefined vendors or use 'Generic' for other providers.",
     )
     scopes: str = Field(

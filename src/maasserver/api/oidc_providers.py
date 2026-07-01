@@ -288,11 +288,11 @@ class OidcProvidersHandler(OperationsHandler):
         @param (string) "issuer_url" [required=true] Issuer URL for the new OIDC provider.
         @param (string) "client_id" [required=true] Client ID for the new OIDC provider.
         @param (string) "client_secret" [required=true] Client secret for the new OIDC provider.
-        @param (boolean) "enabled" [required=false] Whether the OIDC provider is enabled. Defaults to false.
-        @param (string) "token_type" [required=false] Token type for the OIDC provider (JWT or Opaque). Defaults to JWT.
-        @param (string) "vendor" [required=false] Vendor for the OIDC provider (Generic, EntraID, Auth0, or Keycloak). Defaults to Generic.
-        @param (string) "redirect_uri" [required=false] Redirect URI for the OIDC provider.
-        @param (string) "scopes" [required=false] Space-separated list of scopes for the OIDC provider.
+        @param (boolean) "enabled" [required=true] Whether the OIDC provider is enabled.
+        @param (string) "token_type" [required=true] Token type for the OIDC provider (JWT or Opaque).
+        @param (string) "vendor" [required=true] Vendor for the OIDC provider (Generic, EntraID, Auth0, or Keycloak).
+        @param (string) "redirect_uri" [required=true] Redirect URI for the OIDC provider.
+        @param (string) "scopes" [required=true] Space-separated list of scopes for the OIDC provider.
 
         @success (http-status-code) "server-success" 201
         @success (json) "success-json" A JSON object representing the newly created OIDC provider.
@@ -306,11 +306,11 @@ class OidcProvidersHandler(OperationsHandler):
         issuer_url = request.POST.get("issuer_url", None)
         client_id = request.POST.get("client_id", None)
         client_secret = request.POST.get("client_secret", None)
-        enabled = request.POST.get("enabled", "false").lower() == "true"
-        token_type = request.POST.get("token_type", "JWT")
-        vendor = request.POST.get("vendor", "Generic")
+        enabled = request.POST.get("enabled", None)
+        token_type = request.POST.get("token_type", None)
+        vendor = request.POST.get("vendor", None)
         redirect_uri = request.POST.get("redirect_uri", None)
-        scopes = request.POST.get("scopes", "")
+        scopes = request.POST.get("scopes", None)
 
         validate_http_urls(issuer_url, "Issuer URL")
         validate_http_urls(redirect_uri, "Redirect URI")
