@@ -221,6 +221,7 @@ class TestOidcProviders(APITestCase.ForUser):
         "scopes": "openid profile email",
         "enabled": True,
         "token_type": "JWT",
+        "vendor": "Generic",
     }
 
     def setUp(self):
