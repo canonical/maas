@@ -4,11 +4,16 @@
 from unittest.mock import AsyncMock
 
 from httpx import AsyncClient, Request, Response
+import pytest
 
 from maasservicelayer.auth.oidc_adapters import (
     Auth0Adapter,
     EntraIDAdapter,
     KeycloakAdapter,
+)
+from maasservicelayer.exceptions.catalog import BadGatewayException
+from maasservicelayer.exceptions.constants import (
+    PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
 from maasservicelayer.models.external_auth import (
     AccessTokenType,
@@ -168,3 +173,57 @@ class TestKeycloakAdapter:
         adapter = self._adapter(Response(200, json=[]))
 
         assert await adapter.user_is_active("user@example.com") is False
+
+
+class BaseAdapterErrorHandling:
+    def _adapter(self, http_client: AsyncClient) -> EntraIDAdapter:
+        provider = _provider("https://login.microsoftonline.com/tenant")
+        return EntraIDAdapter(provider, http_client)
+
+    async def test_get_token_raises_when_access_token_missing(self):
+        client = AsyncMock(spec=AsyncClient)
+        client.post.return_value = Response(
+            200, json={"expires_in": 3600}, request=_REQUEST
+        )
+        adapter = self._adapter(client)
+
+        with pytest.raises(BadGatewayException) as exc_info:
+            await adapter.get_token()
+
+        assert (
+            exc_info.value.details[0].type
+            == PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE
+        )
+
+    async def test_token_request_raises_on_http_status_error(self):
+        client = AsyncMock(spec=AsyncClient)
+        client.post.return_value = Response(
+            401, json={"error": "invalid_client"}, request=_REQUEST
+        )
+        adapter = self._adapter(client)
+
+        with pytest.raises(BadGatewayException) as exc_info:
+            await adapter.get_token()
+
+        assert (
+            exc_info.value.details[0].type
+            == PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE
+        )
+
+    async def test_get_raises_on_http_status_error(self):
+        client = AsyncMock(spec=AsyncClient)
+        client.post.return_value = Response(
+            200, json=TOKEN_RESPONSE, request=_REQUEST
+        )
+        client.get.return_value = Response(
+            403, json={"error": "forbidden"}, request=_REQUEST
+        )
+        adapter = self._adapter(client)
+
+        with pytest.raises(BadGatewayException) as exc_info:
+            await adapter.user_is_active("user@example.com")
+
+        assert (
+            exc_info.value.details[0].type
+            == PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE
+        )

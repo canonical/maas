@@ -5,8 +5,15 @@ from abc import ABC, abstractmethod
 from typing import Any
 from urllib.parse import urlparse
 
-from httpx import AsyncClient
+from httpx import AsyncClient, HTTPError
 
+from maasservicelayer.exceptions.catalog import (
+    BadGatewayException,
+    BaseExceptionDetail,
+)
+from maasservicelayer.exceptions.constants import (
+    PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
+)
 from maasservicelayer.models.external_auth import (
     OAuthProvider,
     ProviderVendorType,
@@ -36,6 +43,19 @@ class BaseProviderAdapter(ABC):
         result = await self._token_request(
             self._token_endpoint(), self._token_request_body()
         )
+        if "access_token" not in result:
+            raise BadGatewayException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
+                        message=(
+                            "The OIDC provider did not return an access "
+                            "token. Please ensure the provider is configured "
+                            "correctly."
+                        ),
+                    )
+                ]
+            )
         token: str = result["access_token"]
         self._token = token
         self._token_expiry = now + result.get("expires_in", DEFAULT_TOKEN_TTL)
@@ -51,9 +71,23 @@ class BaseProviderAdapter(ABC):
     async def _token_request(
         self, url: str, data: dict[str, str]
     ) -> dict[str, Any]:
-        response = await self._http.post(url, data=data)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await self._http.post(url, data=data)
+            response.raise_for_status()
+            return response.json()
+        except HTTPError as e:
+            raise BadGatewayException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
+                        message=(
+                            "Failed to retrieve a token from the OIDC "
+                            "provider. Please ensure the provider is "
+                            "configured correctly."
+                        ),
+                    )
+                ]
+            ) from e
 
     async def _get(
         self,
@@ -65,13 +99,27 @@ class BaseProviderAdapter(ABC):
         request_headers = {"Authorization": f"Bearer {token}"}
         if headers:
             request_headers.update(headers)
-        response = await self._http.get(
-            url,
-            params=params,
-            headers=request_headers,
-        )
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await self._http.get(
+                url,
+                params=params,
+                headers=request_headers,
+            )
+            response.raise_for_status()
+            return response.json()
+        except HTTPError as e:
+            raise BadGatewayException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
+                        message=(
+                            "The OIDC provider rejected the request. "
+                            "Please ensure the provider is configured "
+                            "correctly."
+                        ),
+                    )
+                ]
+            ) from e
 
     @abstractmethod
     async def user_is_active(self, email: str) -> bool:
