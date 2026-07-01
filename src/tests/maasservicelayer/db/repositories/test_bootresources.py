@@ -603,3 +603,151 @@ class TestBootResourceRepository:
         assert len(result.items) == 2
         returned_ids = {item.id for item in result.items}
         assert returned_ids == set(target_ids)
+
+    async def test_find_or_create_bootloader_creates_new(
+        self, repository: BootResourcesRepository
+    ) -> None:
+        bootloader = await repository.find_or_create_bootloader(
+            "ubuntu/jammy", "amd64/generic"
+        )
+
+        assert bootloader.name == "ubuntu/jammy"
+        assert bootloader.architecture == "amd64/generic"
+        assert bootloader.rtype == BootResourceType.UPLOADED
+        assert bootloader.bootloader_type == "custom"
+
+    async def test_find_or_create_bootloader_returns_existing(
+        self, repository: BootResourcesRepository, fixture: Fixture
+    ) -> None:
+        existing = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.UPLOADED,
+            name="ubuntu/jammy",
+            architecture="amd64/generic",
+            bootloader_type="custom",
+        )
+
+        bootloader = await repository.find_or_create_bootloader(
+            "ubuntu/jammy", "amd64/generic"
+        )
+
+        assert bootloader.id == existing.id
+
+    async def test_find_or_create_kernel_creates_new(
+        self, repository: BootResourcesRepository
+    ) -> None:
+        kernel = await repository.find_or_create_kernel(
+            "ubuntu/noble", "amd64/generic", "generic"
+        )
+
+        assert kernel.name == "ubuntu/noble"
+        assert kernel.architecture == "amd64/generic"
+        assert kernel.rtype == BootResourceType.UPLOADED
+        assert kernel.kflavor == "generic"
+        assert kernel.bootloader_type is None
+
+    async def test_find_or_create_kernel_returns_existing(
+        self, repository: BootResourcesRepository, fixture: Fixture
+    ) -> None:
+        existing = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.UPLOADED,
+            name="ubuntu/noble",
+            architecture="amd64/generic",
+            kflavor="generic",
+            bootloader_type=None,
+        )
+
+        kernel = await repository.find_or_create_kernel(
+            "ubuntu/noble", "amd64/generic", "generic"
+        )
+
+        assert kernel.id == existing.id
+
+    async def test_get_latest_version(
+        self, repository: BootResourcesRepository, fixture: Fixture
+    ) -> None:
+        resource = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.UPLOADED,
+            name="ubuntu/jammy",
+            architecture="amd64/generic",
+            bootloader_type="custom",
+        )
+        await create_test_bootresourceset_entry(
+            fixture,
+            version="20250101",
+            label="uploaded",
+            resource_id=resource.id,
+        )
+        latest = await create_test_bootresourceset_entry(
+            fixture,
+            version="20250102",
+            label="uploaded",
+            resource_id=resource.id,
+        )
+
+        observed = await repository.get_latest_version(resource.id)
+
+        assert observed is not None
+        assert observed.id == latest.id
+        assert observed.version == latest.version
+
+    async def test_get_bootloader_for_architecture(
+        self, repository: BootResourcesRepository, fixture: Fixture
+    ) -> None:
+        expected = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.UPLOADED,
+            name="ubuntu/jammy",
+            architecture="amd64/generic",
+            bootloader_type="custom",
+        )
+        await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.UPLOADED,
+            name="ubuntu/jammy",
+            architecture="arm64/generic",
+            bootloader_type="custom",
+        )
+
+        observed = await repository.get_bootloader_for_architecture(
+            "ubuntu/jammy", "amd64/generic"
+        )
+
+        assert observed is not None
+        assert observed.id == expected.id
+
+    async def test_get_bootloader_file_for_set(
+        self, repository: BootResourcesRepository, fixture: Fixture
+    ) -> None:
+        resource = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.UPLOADED,
+            name="ubuntu/jammy",
+            architecture="amd64/generic",
+            bootloader_type="custom",
+        )
+        resource_set = await create_test_bootresourceset_entry(
+            fixture,
+            version="20250101",
+            label="uploaded",
+            resource_id=resource.id,
+        )
+        expected = await create_test_bootresourcefile_entry(
+            fixture,
+            filename="bootloader.tar.gz",
+            filetype=BootResourceFileType.BOOTLOADER_TARBALL,
+            sha256="a" * 64,
+            size=1024,
+            filename_on_disk="abcdef1234",
+            resource_set_id=resource_set.id,
+        )
+
+        observed = await repository.get_bootloader_file_for_set(
+            resource_set.id
+        )
+
+        assert observed is not None
+        assert observed.id == expected.id
+        assert observed.filename == expected.filename

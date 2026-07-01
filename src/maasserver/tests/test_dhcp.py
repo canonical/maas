@@ -2383,6 +2383,71 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
 
         self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
 
+    def test_returns_bootloader_path_when_machine_has_custom_bootloader(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        node = factory.make_Node(interface=False, architecture="amd64/generic")
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
+        )
+        auto_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface
+        )
+        factory.make_NodeMetadata(
+            node=node, key="custom_bootloader", value="ubuntu/jammy"
+        )
+        mock_service_layer = self.patch(dhcp, "service_layer")
+        mock_service_layer.services.boot_resources.get_bootloader_path_for_machine.return_value = "99/grubx64.efi"
+
+        expected_hosts = [
+            {
+                "host": f"{node.hostname}-{interface.name}",
+                "mac": str(interface.mac_address),
+                "ip": str(auto_ip.ip),
+                "dhcp_snippets": [],
+                "bootloader_path": "99/grubx64.efi",
+            }
+        ]
+
+        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
+        mock_service_layer.services.boot_resources.get_bootloader_path_for_machine.assert_called_once_with(
+            machine_id=node.id,
+            bootloader_name="ubuntu/jammy",
+            architecture=node.architecture,
+        )
+
+    def test_does_not_return_bootloader_path_without_custom_bootloader(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        node = factory.make_Node(interface=False, architecture="amd64/generic")
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
+        )
+        auto_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface
+        )
+        mock_service_layer = self.patch(dhcp, "service_layer")
+
+        expected_hosts = [
+            {
+                "host": f"{node.hostname}-{interface.name}",
+                "mac": str(interface.mac_address),
+                "ip": str(auto_ip.ip),
+                "dhcp_snippets": [],
+            }
+        ]
+
+        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
+        mock_service_layer.services.boot_resources.get_bootloader_path_for_machine.assert_not_called()
+
 
 class TestMakeFailoverPeerConfig(MAASServerTestCase):
     """Tests for `make_failover_peer_config`."""

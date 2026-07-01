@@ -381,7 +381,29 @@ class TestGetConfig(MAASTestCase):
             self.assertIn(host["mac"], config_output)
             self.assertIn(host["ip"], config_output)
 
-    def test_renders_global_dhcp_snippets(self):
+    def test_renders_filename_directive_when_bootloader_path_present(self):
+        """Host with bootloader_path emits a filename directive (v4 only)."""
+        if self.ipv6:
+            return  # filename directive is v4-only
+        params = make_sample_params(self, ipv6=False)
+        bootloader_path = (
+            "bootloaders/ubuntu__jammy/amd64__generic/20250101/grubx64.efi"
+        )
+        params["hosts"][0]["bootloader_path"] = bootloader_path
+        config_output = config.get_config(self.template, **params)
+        self.assertIn(f'filename "{bootloader_path}";', config_output)
+
+    def test_omits_filename_directive_when_bootloader_path_absent(self):
+        """Host without bootloader_path does not emit a filename directive."""
+        if self.ipv6:
+            return  # filename directive is v4-only
+        params = make_sample_params(self, ipv6=False)
+        # Ensure no host has bootloader_path set.
+        for host in params["hosts"]:
+            host.pop("bootloader_path", None)
+        config_output = config.get_config(self.template, **params)
+        self.assertNotIn("filename", config_output)
+
         params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)

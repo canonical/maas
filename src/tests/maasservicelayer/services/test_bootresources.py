@@ -1,8 +1,10 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import datetime
+import io
 import random
-from unittest.mock import Mock
+import tarfile
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -19,8 +21,12 @@ from maasservicelayer.db.repositories.bootresources import (
 from maasservicelayer.db.repositories.bootresourcesets import (
     BootResourceSetClauseFactory,
 )
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootresourcesets import BootResourceSet
+from maasservicelayer.services.bootresourcefiles import (
+    BootResourceFilesService,
+)
 from maasservicelayer.services.bootresources import BootResourceService
 from maasservicelayer.services.bootresourcesets import BootResourceSetsService
 from maasservicelayer.utils.date import utcnow
@@ -57,6 +63,7 @@ class TestCommonBootResourceService(ServiceCommonTests):
             context=Context(),
             repository=Mock(BootResourcesRepository),
             boot_resource_sets_service=Mock(BootResourceSetsService),
+            boot_resource_files_service=Mock(BootResourceFilesService),
         )
 
     @pytest.fixture
@@ -74,13 +81,23 @@ class TestBootResourceService:
         return Mock(BootResourceSetsService)
 
     @pytest.fixture
+    def mock_boot_resource_files_service(self) -> Mock:
+        mock = Mock(BootResourceFilesService)
+        mock.create_uploaded_file = AsyncMock(return_value=Mock())
+        return mock
+
+    @pytest.fixture
     def service(
-        self, mock_repository: Mock, mock_boot_resource_sets_service: Mock
+        self,
+        mock_repository: Mock,
+        mock_boot_resource_sets_service: Mock,
+        mock_boot_resource_files_service: Mock,
     ) -> BootResourceService:
         return BootResourceService(
             context=Context(),
             repository=mock_repository,
             boot_resource_sets_service=mock_boot_resource_sets_service,
+            boot_resource_files_service=mock_boot_resource_files_service,
         )
 
     async def make_incomplete_boot_resource(
@@ -499,4 +516,220 @@ class TestBootResourceService:
         await service.list_custom_images_statistics(page=1, size=10)
         mock_repository.list_custom_images_statistics.assert_awaited_once_with(
             page=1, size=10, query=None
+        )
+
+    @staticmethod
+    def make_bootloader_tarball(files: dict[str, bytes]) -> bytes:
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+            for name, content in files.items():
+                info = tarfile.TarInfo(name=name)
+                info.size = len(content)
+                tar.addfile(info, io.BytesIO(content))
+        return buffer.getvalue()
+
+    async def test_upload_bootloader(
+        self,
+        mock_repository: Mock,
+        mock_boot_resource_sets_service: Mock,
+        mock_boot_resource_files_service: Mock,
+        service: BootResourceService,
+    ) -> None:
+        mock_repository.find_or_create_bootloader.return_value = (
+            TEST_BOOT_RESOURCE
+        )
+        mock_boot_resource_sets_service.create.return_value = BootResourceSet(
+            id=99,
+            created=utcnow(),
+            updated=utcnow(),
+            version="20250718",
+            label="uploaded",
+            resource_id=TEST_BOOT_RESOURCE.id,
+        )
+        service.get_next_version_name = AsyncMock(return_value="20250718")
+
+        resource, version = await service.upload_bootloader(
+            name="ubuntu/jammy",
+            architecture="amd64/generic",
+            sha256="a" * 64,
+            primary_file="grubx64.efi",
+            filename_on_disk="ab/cdef",
+            size=1024,
+        )
+
+        assert resource == TEST_BOOT_RESOURCE
+        assert version == "20250718"
+        mock_repository.find_or_create_bootloader.assert_awaited_once_with(
+            "ubuntu/jammy", "amd64/generic"
+        )
+        assert mock_boot_resource_files_service.create.await_count == 1
+
+    async def test_upload_bootloader_duplicate_identity_versions(
+        self,
+        mock_repository: Mock,
+        mock_boot_resource_sets_service: Mock,
+        service: BootResourceService,
+    ) -> None:
+        mock_repository.find_or_create_bootloader.return_value = (
+            TEST_BOOT_RESOURCE
+        )
+        mock_boot_resource_sets_service.create.return_value = BootResourceSet(
+            id=100,
+            created=utcnow(),
+            updated=utcnow(),
+            version="20250718.1",
+            label="uploaded",
+            resource_id=TEST_BOOT_RESOURCE.id,
+        )
+        service.get_next_version_name = AsyncMock(return_value="20250718.1")
+
+        _, version = await service.upload_bootloader(
+            name="ubuntu/jammy",
+            architecture="amd64/generic",
+            sha256="a" * 64,
+            primary_file="grubx64.efi",
+            filename_on_disk="ab/cdef",
+            size=1024,
+        )
+
+        assert version == "20250718.1"
+
+    async def test_upload_kernel(
+        self,
+        mock_repository: Mock,
+        mock_boot_resource_sets_service: Mock,
+        mock_boot_resource_files_service: Mock,
+        service: BootResourceService,
+    ) -> None:
+        mock_repository.find_or_create_kernel.return_value = TEST_BOOT_RESOURCE
+        mock_boot_resource_sets_service.create.return_value = BootResourceSet(
+            id=101,
+            created=utcnow(),
+            updated=utcnow(),
+            version="20250718",
+            label="uploaded",
+            resource_id=TEST_BOOT_RESOURCE.id,
+        )
+        service.get_next_version_name = AsyncMock(return_value="20250718")
+
+        resource, version = await service.upload_kernel(
+            name="ubuntu/noble",
+            architecture="amd64/generic",
+            kflavor="generic",
+            sha256="a" * 64,
+            filename_on_disk="aa/kernel",
+            size=512,
+        )
+
+        assert resource == TEST_BOOT_RESOURCE
+        assert version == "20250718"
+        assert mock_boot_resource_files_service.create.await_count == 1
+
+    async def test_upload_kernel_initrd(
+        self,
+        mock_boot_resource_sets_service: Mock,
+        mock_boot_resource_files_service: Mock,
+        service: BootResourceService,
+    ) -> None:
+        resource_set = BootResourceSet(
+            id=101,
+            created=utcnow(),
+            updated=utcnow(),
+            version="20250718",
+            label="uploaded",
+            resource_id=TEST_BOOT_RESOURCE.id,
+        )
+        service.get_one = AsyncMock(return_value=TEST_BOOT_RESOURCE)
+        mock_boot_resource_sets_service.get_many = AsyncMock(
+            return_value=[resource_set]
+        )
+
+        boot_resource, version = await service.upload_kernel_initrd(
+            resource_id=TEST_BOOT_RESOURCE.id,
+            sha256="b" * 64,
+            filename_on_disk="bb/initrd",
+            size=1024,
+        )
+
+        assert boot_resource == TEST_BOOT_RESOURCE
+        assert version == "20250718"
+        mock_boot_resource_files_service.create.assert_awaited_once()
+        call_kwargs = mock_boot_resource_files_service.create.call_args[0][0]
+        assert call_kwargs.filetype == BootResourceFileType.BOOT_INITRD
+
+    async def test_upload_kernel_initrd_resource_not_found(
+        self,
+        service: BootResourceService,
+    ) -> None:
+        service.get_one = AsyncMock(return_value=None)
+
+        with pytest.raises(NotFoundException):
+            await service.upload_kernel_initrd(
+                resource_id=TEST_BOOT_RESOURCE.id,
+                sha256="b" * 64,
+                filename_on_disk="bb/initrd",
+                size=1024,
+            )
+
+    async def test_resolve_boot_asset_for_deployment(
+        self, mock_repository: Mock, service: BootResourceService
+    ) -> None:
+        expected = BootResourceSet(
+            id=102,
+            created=utcnow(),
+            updated=utcnow(),
+            version="20250718",
+            label="uploaded",
+            resource_id=TEST_BOOT_RESOURCE.id,
+        )
+        mock_repository.get_bootloader_for_architecture.return_value = (
+            TEST_BOOT_RESOURCE
+        )
+        mock_repository.get_latest_version.return_value = expected
+
+        observed = await service.resolve_boot_asset_for_deployment(
+            name="ubuntu/jammy",
+            architecture="amd64/generic",
+            asset_type="bootloader",
+        )
+
+        assert observed == expected
+
+    async def test_resolve_boot_asset_for_deployment_raises_not_found(
+        self, mock_repository: Mock, service: BootResourceService
+    ) -> None:
+        mock_repository.get_bootloader_for_architecture.return_value = None
+
+        with pytest.raises(NotFoundException):
+            await service.resolve_boot_asset_for_deployment(
+                name="ubuntu/jammy",
+                architecture="amd64/generic",
+                asset_type="bootloader",
+            )
+
+    async def test_resolve_bootloader_for_deployment(
+        self, service: BootResourceService
+    ) -> None:
+        expected = BootResourceSet(
+            id=103,
+            created=utcnow(),
+            updated=utcnow(),
+            version="20250718",
+            label="uploaded",
+            resource_id=TEST_BOOT_RESOURCE.id,
+        )
+        service.resolve_boot_asset_for_deployment = AsyncMock(
+            return_value=expected
+        )
+
+        observed = await service.resolve_bootloader_for_deployment(
+            bootloader_name="ubuntu/jammy",
+            architecture="amd64/generic",
+        )
+
+        assert observed == expected
+        service.resolve_boot_asset_for_deployment.assert_called_once_with(
+            name="ubuntu/jammy",
+            architecture="amd64/generic",
+            asset_type="bootloader",
         )

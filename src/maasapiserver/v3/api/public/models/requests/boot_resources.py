@@ -26,6 +26,83 @@ from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 
 
+def _get_supported_operating_systems() -> dict[str, OperatingSystem]:
+    return {os_name: os for os_name, os in OperatingSystemRegistry}
+
+
+async def _get_reserved_os_names(
+    supported_osystems: list[str],
+    services: ServiceCollectionV3,
+) -> list[str]:
+    cached_os_releases = (
+        await services.boot_source_cache.get_unique_os_releases()
+    )
+    reserved_names = [
+        f"{cached_os_release.os}/{cached_os_release.release}"
+        for cached_os_release in cached_os_releases
+    ]
+    reserved_names += [i for name in reserved_names for i in name.split("/")]
+    reserved_names.extend(supported_osystems)
+    return reserved_names
+
+
+async def validate_boot_asset_name(
+    name: str,
+    services: ServiceCollectionV3,
+) -> str:
+    """Validate a boot asset name against reserved OS names."""
+    supported_osystems = list(_get_supported_operating_systems().keys())
+
+    if "/" in name:
+        osystem, _ = name.split("/", 1)
+        if osystem not in supported_osystems:
+            raise ValidationException.build_for_field(
+                field="name",
+                message=(
+                    f"Unsupported operating system {osystem}, "
+                    f"supported operating systems: {supported_osystems}"
+                ),
+                location="header",
+            )
+
+    reserved_names = await _get_reserved_os_names(supported_osystems, services)
+
+    if name in reserved_names or re.search(r"^centos\d\d?$", name):
+        raise ValidationException.build_for_field(
+            field="name",
+            message=f"{name} is a reserved name",
+            location="header",
+        )
+    return name
+
+
+async def validate_architecture(
+    architecture: str,
+    services: ServiceCollectionV3,
+) -> str:
+    """Validate architecture format and check it is usable in MAAS."""
+    architecture = architecture.lower().strip()
+
+    if not re.match(r"([a-zA-Z0-9]+)\/([a-zA-Z0-9\.-]+)", architecture):
+        raise ValidationException.build_for_field(
+            field="architecture",
+            message="Not a valid architecture string, needs to be in form '<arch>/<subarch>'",
+            location="header",
+        )
+
+    all_usable_architectures = (
+        await services.boot_resources.get_usable_architectures()
+    )
+
+    if architecture in all_usable_architectures:
+        return architecture
+    raise ValidationException.build_for_field(
+        field="architecture",
+        message=f"{architecture} is not a valid usable architecture",
+        location="header",
+    )
+
+
 class BootResourceFileTypeChoice(StrEnum):
     TGZ = "tgz"
     TBZ = "tbz"
@@ -62,6 +139,21 @@ class BootResourceFileTypeChoice(StrEnum):
         return filetypes.get(value, BootResourceFileType.ROOT_TGZ)
 
 
+class CustomImageTypeChoice(StrEnum):
+    BOOTLOADER = "bootloader"
+    KERNEL = "kernel"
+    IMAGE = "image"
+
+    def to_clause(self) -> Clause:
+        match self:
+            case CustomImageTypeChoice.BOOTLOADER:
+                return BootResourceClauseFactory.with_asset_type_bootloader()
+            case CustomImageTypeChoice.KERNEL:
+                return BootResourceClauseFactory.with_asset_type_kernel()
+            case CustomImageTypeChoice.IMAGE:
+                return BootResourceClauseFactory.with_asset_type_image()
+
+
 class BootResourceCreateRequest(BaseModel):
     name: Annotated[str, Field(description="Name of the boot resource.")]
     sha256: Annotated[
@@ -85,90 +177,19 @@ class BootResourceCreateRequest(BaseModel):
         ),
     ] = None
 
-    def _get_supported_operating_systems(self) -> dict[str, OperatingSystem]:
-        return {os_name: os for os_name, os in OperatingSystemRegistry}
-
-    async def _get_reserved_os_names(
-        self,
-        supported_osystems: list[str],
-        services: ServiceCollectionV3,
-    ) -> list[str]:
-        # Prevent the user from uploading any <osystem>/<release> or system name already used in the SimpleStreams.
-        cached_os_releases = (
-            await services.boot_source_cache.get_unique_os_releases()
-        )
-        reserved_names = [
-            f"{cached_os_release.os}/{cached_os_release.release}"
-            for cached_os_release in cached_os_releases
-        ]
-        reserved_names += [
-            i for name in reserved_names for i in name.split("/")
-        ]
-
-        reserved_names.extend(supported_osystems)
-        return reserved_names
-
     async def _validate_name(
         self, name: str, services: ServiceCollectionV3
     ) -> str:
-        supported_osystems = list(
-            self._get_supported_operating_systems().keys()
-        )
-
+        # Custom images additionally reject ubuntu/ — users must use custom/.
         if "/" in name:
-            # Don't strip `custom/` from the boot resource name. This was done
-            # in the past to deal with boot resource that were `GENERATED`.
-            osystem, _ = name.split("/")
+            osystem, _ = name.split("/", 1)
             if osystem == "ubuntu":
                 raise ValidationException.build_for_field(
                     field="name",
                     message="To upload an Ubuntu custom image you have to specify 'custom' as the OS",
                     location="header",
                 )
-            if osystem not in supported_osystems:
-                raise ValidationException.build_for_field(
-                    field="name",
-                    message=f"Unsupported operating system {osystem}, supported operating systems: {supported_osystems}",
-                    location="header",
-                )
-
-        reserved_names = await self._get_reserved_os_names(
-            supported_osystems, services
-        )
-
-        # Reserve CentOS version names for future MAAS use.
-        if name in reserved_names or re.search(r"^centos\d\d?$", name):
-            raise ValidationException.build_for_field(
-                field="name",
-                message=f"{name} is a reserved name",
-                location="header",
-            )
-        return name
-
-    async def _validate_architecture(
-        self, architecture: str, services: ServiceCollectionV3
-    ) -> str:
-        architecture = architecture.lower().strip()
-
-        if not re.match(r"([a-zA-Z0-9]+)\/([a-zA-Z0-9\.-]+)", architecture):
-            raise ValidationException.build_for_field(
-                field="architecture",
-                message="Not a valid architecture string, needs to be in form '<arch>/<subarch>'",
-                location="header",
-            )
-
-        all_usable_architectures = (
-            await services.boot_resources.get_usable_architectures()
-        )
-
-        if architecture in all_usable_architectures:
-            return architecture
-        else:
-            raise ValidationException.build_for_field(
-                field="architecture",
-                message=f"{architecture} is not a valid usable architecture",
-                location="header",
-            )
+        return await validate_boot_asset_name(name, services)
 
     async def _get_base_image_info(
         self,
@@ -250,7 +271,7 @@ class BootResourceCreateRequest(BaseModel):
                     location="header",
                 )
 
-        supported_base_images = self._get_supported_operating_systems()
+        supported_base_images = _get_supported_operating_systems()
         if not (
             base_osystem in supported_base_images
             and supported_base_images[base_osystem].is_release_supported(
@@ -273,9 +294,7 @@ class BootResourceCreateRequest(BaseModel):
 
         name = await self._validate_name(self.name, services)
 
-        architecture = await self._validate_architecture(
-            self.architecture, services
-        )
+        architecture = await validate_architecture(self.architecture, services)
 
         base_image = await self._validate_base_image(
             self.base_image, name, architecture, services

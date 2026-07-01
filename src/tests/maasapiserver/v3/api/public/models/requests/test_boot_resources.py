@@ -8,6 +8,7 @@ from maasapiserver.v3.api.public.models.requests.boot_resources import (
     BootResourceCreateRequest,
     BootResourceFileTypeChoice,
     CustomImageFilterParams,
+    validate_architecture,
 )
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
@@ -38,7 +39,7 @@ def mock_services():
 
 class TestBootResourceCreateRequest:
     @patch(
-        "maasapiserver.v3.api.public.models.requests.boot_resources.BootResourceCreateRequest._validate_architecture"
+        "maasapiserver.v3.api.public.models.requests.boot_resources.validate_architecture"
     )
     @patch(
         "maasapiserver.v3.api.public.models.requests.boot_resources.BootResourceCreateRequest._validate_base_image"
@@ -439,18 +440,7 @@ class TestBootResourceCreateRequest:
             "armhf/generic",
         ]
 
-        name = f"custom/{factory.make_name()}"
-
-        request = BootResourceCreateRequest(
-            name=name,
-            sha256="a" * 64,
-            architecture=architecture,
-            file_type=BootResourceFileTypeChoice.TGZ,
-            title=None,
-            base_image=None,
-        )
-
-        validated_architecture = await request._validate_architecture(
+        validated_architecture = await validate_architecture(
             architecture, mock_services
         )
 
@@ -462,41 +452,17 @@ class TestBootResourceCreateRequest:
         ]
 
         test_architecture = "arm64/generic"
-        name = f"custom/{factory.make_name()}"
-
-        request = BootResourceCreateRequest(
-            name=name,
-            sha256="test-sha256",
-            architecture=test_architecture,
-            file_type=BootResourceFileTypeChoice.TGZ,
-            title=None,
-            base_image=None,
-        )
 
         with pytest.raises(ValidationException) as validation_exception:
-            await request._validate_architecture(
-                test_architecture, mock_services
-            )
+            await validate_architecture(test_architecture, mock_services)
 
         assert validation_exception.value.details[0].field == "architecture"
 
     async def test_validate_architecture_invalid_format(self, mock_services):
         test_architecture = "asdfghjkl;./"
-        name = f"custom/{factory.make_name()}"
-
-        request = BootResourceCreateRequest(
-            name=name,
-            sha256="test-sha256",
-            architecture=test_architecture,
-            file_type=BootResourceFileTypeChoice.TGZ,
-            title=None,
-            base_image=None,
-        )
 
         with pytest.raises(ValidationException) as validation_exception:
-            await request._validate_architecture(
-                test_architecture, mock_services
-            )
+            await validate_architecture(test_architecture, mock_services)
 
         assert validation_exception.value.details[0].field == "architecture"
 
@@ -506,21 +472,9 @@ class TestBootResourceCreateRequest:
         mock_services.boot_resources.get_usable_architectures.return_value = []
 
         test_architecture = "amd64/generic"
-        name = f"custom/{factory.make_name()}"
-
-        request = BootResourceCreateRequest(
-            name=name,
-            sha256="test-sha256",
-            architecture=test_architecture,
-            file_type=BootResourceFileTypeChoice.TGZ,
-            title=None,
-            base_image=None,
-        )
 
         with pytest.raises(ValidationException) as validation_exception:
-            await request._validate_architecture(
-                test_architecture, mock_services
-            )
+            await validate_architecture(test_architecture, mock_services)
 
         assert validation_exception.value.details[0].field == "architecture"
 

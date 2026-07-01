@@ -16,6 +16,7 @@ from netaddr import IPAddress, IPNetwork
 from twisted.internet import defer
 import yaml
 
+from maasserver import dhcp as dhcp_module
 from maasserver import forms
 from maasserver.api import auth
 from maasserver.api import machines as machines_module
@@ -41,6 +42,7 @@ from maasserver.models import (
     Machine,
     Node,
     NodeKey,
+    NodeMetadata,
     NodeUserData,
     ScriptSet,
     StaticIPAddress,
@@ -68,6 +70,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import post_commit, post_commit_hooks, reload_object
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maastemporalworker.workflow import power as power_module
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.tests import test_hooks
@@ -803,6 +806,202 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         machine = reload_object(machine)
         self.assertTrue(machine.ephemeral_deploy)
+
+    def test_POST_deploy_with_custom_bootloader(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        mock_service_layer = self.patch(machines_module, "service_layer")
+        mock_configure_dhcp = self.patch(
+            dhcp_module, "configure_dhcp_on_agents"
+        )
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+        )
+
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {
+                "op": "deploy",
+                "distro_series": distro_series,
+                "custom_bootloader": "ubuntu/jammy",
+            },
+        )
+
+        self.assertEqual(http.client.OK, response.status_code)
+        mock_service_layer.services.boot_resources.resolve_boot_asset_for_deployment.assert_called_once_with(
+            name="ubuntu/jammy",
+            architecture=machine.architecture,
+            asset_type="bootloader",
+        )
+        mock_configure_dhcp.assert_called_once()
+        self.assertEqual(
+            "ubuntu/jammy",
+            NodeMetadata.objects.get(
+                node=machine, key="custom_bootloader"
+            ).value,
+        )
+
+    def test_POST_deploy_with_custom_kernel(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        mock_service_layer = self.patch(machines_module, "service_layer")
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+        )
+
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {
+                "op": "deploy",
+                "distro_series": distro_series,
+                "custom_kernel": "ubuntu/noble",
+                "custom_kernel_kflavor": "generic",
+            },
+        )
+
+        self.assertEqual(http.client.OK, response.status_code)
+        mock_service_layer.services.boot_resources.resolve_boot_asset_for_deployment.assert_called_once_with(
+            name="ubuntu/noble",
+            architecture=machine.architecture,
+            kflavor="generic",
+            asset_type="kernel",
+        )
+        self.assertEqual(
+            "ubuntu/noble",
+            NodeMetadata.objects.get(node=machine, key="custom_kernel").value,
+        )
+        self.assertEqual(
+            "generic",
+            NodeMetadata.objects.get(
+                node=machine, key="custom_kernel_kflavor"
+            ).value,
+        )
+
+    def test_POST_deploy_with_missing_custom_asset_returns_bad_request(self):
+        self.patch(machines_module, "get_curtin_merged_config")
+        mock_service_layer = self.patch(machines_module, "service_layer")
+        mock_service_layer.services.boot_resources.resolve_boot_asset_for_deployment.side_effect = NotFoundException()
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+        )
+
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {
+                "op": "deploy",
+                "distro_series": distro_series,
+                "custom_bootloader": "ubuntu/missing",
+            },
+        )
+
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
+    def test_POST_deploy_with_custom_assets_requires_permissions(self):
+        mock_service_layer = self.patch(machines_module, "service_layer")
+        user2 = factory.make_User()
+        machine = factory.make_Node(
+            status=NODE_STATUS.READY,
+            owner=user2,
+            interface=True,
+            power_type="manual",
+            architecture=make_usable_architecture(self),
+        )
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
+
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {
+                "op": "deploy",
+                "distro_series": distro_series,
+                "custom_bootloader": "ubuntu/jammy",
+            },
+        )
+
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        mock_service_layer.services.boot_resources.resolve_boot_asset_for_deployment.assert_not_called()
+
+    def test_POST_deploy_without_custom_asset_clears_existing_selection(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        self.patch(dhcp_module, "configure_dhcp_on_agents")
+        self.patch(machines_module, "service_layer")
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+        )
+        factory.make_NodeMetadata(
+            node=machine, key="custom_bootloader", value="ubuntu/jammy"
+        )
+        factory.make_NodeMetadata(
+            node=machine, key="custom_kernel", value="ubuntu/noble"
+        )
+        factory.make_NodeMetadata(
+            node=machine, key="custom_kernel_kflavor", value="generic"
+        )
+
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {
+                "op": "deploy",
+                "distro_series": distro_series,
+            },
+        )
+
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertFalse(
+            NodeMetadata.objects.filter(
+                node=machine,
+                key__in=[
+                    "custom_bootloader",
+                    "custom_kernel",
+                    "custom_kernel_kflavor",
+                ],
+            ).exists()
+        )
 
     def test_POST_deploy_fails_when_preseed_not_rendered(self):
         mock_get_curtin_merged_config = self.patch(
