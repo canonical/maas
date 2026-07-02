@@ -86,7 +86,6 @@ class OperationsService(
         resource_type: str | None = None,
         parameters: dict | None = None,
         user_id: int | None = None,
-        parent_id: str | None = None,
     ) -> Operation:
         """Create an ACCEPTED operation and schedule its workflow after commit."""
         workflow_name = workflow_name_for_operation_type(op_type)
@@ -104,7 +103,6 @@ class OperationsService(
                 parameters=parameters,
                 user_id=user_id,
                 is_bulk=False,
-                parent_id=parent_id,
             )
         )
         self.temporal_service.register_workflow_call(
@@ -131,7 +129,7 @@ class OperationsService(
         children: list[dict],
         user_id: int | None = None,
     ) -> Operation:
-        """Create an ACCEPTED bulk operation with children and schedule its workflow after commit."""
+        """Create an ACCEPTED bulk operation and schedule its workflow after commit."""
         workflow_name = workflow_name_for_operation_type(op_type)
         if workflow_name is None:
             raise ValueError(
@@ -147,15 +145,6 @@ class OperationsService(
                 is_bulk=True,
             )
         )
-        for child in children:
-            await self.create_accepted_operation(
-                op_type=OperationType(child["op_type"]),
-                resource_id=child.get("resource_id"),
-                resource_type=child.get("resource_type"),
-                parameters=child.get("parameters"),
-                user_id=user_id,
-                parent_id=operation.uuid,
-            )
         self.temporal_service.register_workflow_call(
             workflow_name=workflow_name,
             parameter=operation.parameters,
@@ -209,18 +198,40 @@ class OperationsService(
             )
         )
 
-    async def all_children_terminal(self, parent_uuid: str) -> bool:
-        """Return whether every child operation has reached a terminal status."""
-        children = await self.list_child_operations(parent_uuid)
-        return all(
-            child.status
-            in (
-                OperationStatus.COMPLETED,
-                OperationStatus.FAILED,
-                OperationStatus.CANCELLED,
+    async def create_child_operation_row(
+        self,
+        op_type: OperationType,
+        parent_uuid: str,
+        resource_id: int | None = None,
+        resource_type: str | None = None,
+        parameters: dict | None = None,
+    ) -> str:
+        parent = await self.repository.get_by_uuid(parent_uuid)
+        if parent is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=(
+                            f"Operation with uuid '{parent_uuid}' was not found."
+                        ),
+                    )
+                ]
             )
-            for child in children
+        operation = await self.create(
+            builder=OperationBuilder(
+                uuid=str(uuid4()),
+                op_type=op_type,
+                status=OperationStatus.ACCEPTED,
+                resource_id=resource_id,
+                resource_type=resource_type,
+                parameters=parameters,
+                user_id=parent.user_id,
+                is_bulk=False,
+                parent_id=parent_uuid,
+            )
         )
+        return operation.uuid
 
     async def update_bulk_status_from_children(
         self, parent_uuid: str

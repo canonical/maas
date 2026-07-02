@@ -389,7 +389,7 @@ class TestOperationsService:
         )
 
         assert operation.is_bulk is True
-        parent_builder = repository.create.call_args_list[0].kwargs["builder"]
+        parent_builder = repository.create.call_args.kwargs["builder"]
         parent_populated = parent_builder.populated_fields()
         assert parent_populated["op_type"] == OperationType.MACHINE_BULKDEPLOY
         assert parent_populated["status"] == OperationStatus.ACCEPTED
@@ -397,22 +397,11 @@ class TestOperationsService:
         assert parent_populated["parameters"] == {"children": children}
         assert parent_populated["user_id"] == 1
 
-        child_builders = [
-            c.kwargs["builder"] for c in repository.create.call_args_list[1:]
-        ]
-        assert len(child_builders) == 2
-        for child_builder in child_builders:
-            populated = child_builder.populated_fields()
-            assert populated["parent_id"] == TEST_OPERATION.uuid
-            assert populated["is_bulk"] is False
-            assert populated["op_type"] == OperationType.MACHINE_COMMISSION
-            assert populated["user_id"] == 1
+        assert repository.create.call_count == 1
 
-        parent_registration = (
-            temporal_service.register_workflow_call.call_args_list[-1]
-        )
-        assert parent_registration.kwargs["workflow_name"] == "bulk-operation"
-        assert parent_registration.kwargs["workflow_id"] == TEST_OPERATION.uuid
+        registration = temporal_service.register_workflow_call.call_args
+        assert registration.kwargs["workflow_name"] == "bulk-operation"
+        assert registration.kwargs["workflow_id"] == TEST_OPERATION.uuid
 
     async def test_create_accepted_bulk_operation_unmapped_op_type_raises(
         self,
@@ -476,25 +465,32 @@ class TestOperationsService:
             where=OperationsClauseFactory.with_parent_id("parent-uuid")
         )
 
-    @pytest.mark.parametrize(
-        "child_statuses, expected",
-        [
-            ([OperationStatus.COMPLETED, OperationStatus.FAILED], True),
-            ([OperationStatus.COMPLETED, OperationStatus.RUNNING], False),
-        ],
-    )
-    async def test_all_children_terminal(
-        self, child_statuses, expected
-    ) -> None:
-        children = [
-            TEST_OPERATION.model_copy(update={"status": status})
-            for status in child_statuses
-        ]
+    async def test_create_child_operation_row(self) -> None:
         repository = Mock(OperationsRepository)
-        repository.get_many.return_value = children
+        repository.get_by_uuid.return_value = TEST_OPERATION.model_copy(
+            update={"user_id": 1}
+        )
+        repository.create.return_value = TEST_OPERATION.model_copy(
+            update={"parent_id": "parent-uuid", "is_bulk": False}
+        )
         service = self._service(repository)
 
-        assert await service.all_children_terminal("parent-uuid") is expected
+        result_uuid = await service.create_child_operation_row(
+            op_type=OperationType.MACHINE_COMMISSION,
+            parent_uuid="parent-uuid",
+            resource_id=1,
+            resource_type="machine",
+        )
+
+        assert result_uuid == TEST_OPERATION.uuid
+        repository.get_by_uuid.assert_awaited_once_with("parent-uuid")
+        builder = repository.create.call_args.kwargs["builder"]
+        populated = builder.populated_fields()
+        assert populated["op_type"] == OperationType.MACHINE_COMMISSION
+        assert populated["parent_id"] == "parent-uuid"
+        assert populated["is_bulk"] is False
+        assert populated["status"] == OperationStatus.ACCEPTED
+        assert populated["user_id"] == 1
 
     @pytest.mark.parametrize(
         "child_statuses, expected_status",

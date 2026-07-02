@@ -22,7 +22,7 @@ from temporalio.exceptions import (
 )
 from temporalio.service import RPCError, RPCStatusCode
 
-from maascommon.enums.operations import OperationStatus
+from maascommon.enums.operations import OperationStatus, OperationType
 from maascommon.workflows.operation import (
     BULK_OPERATION_WORKFLOW_NAME,
     RECONCILE_OPERATIONS_WORKFLOW_NAME,
@@ -42,18 +42,17 @@ UPDATE_OPERATION_STATUS_TIMEOUT = timedelta(seconds=30)
 UPDATE_CURRENT_TASK_TIMEOUT = timedelta(seconds=30)
 RECONCILE_STUCK_ACCEPTED_TIMEOUT = timedelta(seconds=60)
 RECONCILE_IN_PROGRESS_TIMEOUT = timedelta(seconds=60)
-BULK_CHILDREN_TERMINAL_TIMEOUT = timedelta(seconds=30)
 ROLLUP_BULK_STATUS_TIMEOUT = timedelta(seconds=30)
+CREATE_CHILD_OPERATION_TIMEOUT = timedelta(seconds=30)
 
 STUCK_OPERATION_GRACE_PERIOD = timedelta(minutes=5)
-BULK_CHILDREN_POLL_INTERVAL = timedelta(seconds=30)
 
 UPDATE_OPERATION_STATUS_ACTIVITY_NAME = "update-operation-status"
 UPDATE_CURRENT_TASK_ACTIVITY_NAME = "update-current-task"
 RECONCILE_STUCK_ACCEPTED_ACTIVITY_NAME = "reconcile-stuck-accepted-operations"
 RECONCILE_IN_PROGRESS_ACTIVITY_NAME = "reconcile-in-progress-operations"
-BULK_CHILDREN_TERMINAL_ACTIVITY_NAME = "bulk-children-terminal"
 ROLLUP_BULK_STATUS_ACTIVITY_NAME = "rollup-bulk-operation-status"
+CREATE_CHILD_OPERATION_ACTIVITY_NAME = "create-child-operation"
 
 OPERATION_UUID_SEARCH_ATTRIBUTE = SearchAttributeKey.for_keyword(
     "OperationUUID"
@@ -81,6 +80,15 @@ class UpdateCurrentTaskParam:
     operation_uuid: str
     name: str
     task_number: int
+
+
+@dataclass
+class CreateChildOperationParam:
+    op_type: OperationType
+    parent_uuid: str
+    resource_id: int | None = None
+    resource_type: str | None = None
+    parameters: dict | None = None
 
 
 class OperationActivity(ActivityBase):
@@ -180,10 +188,18 @@ class OperationActivity(ActivityBase):
                     status=status,
                 )
 
-    @activity_defn_with_context(name=BULK_CHILDREN_TERMINAL_ACTIVITY_NAME)
-    async def bulk_children_terminal(self, parent_uuid: str) -> bool:
+    @activity_defn_with_context(name=CREATE_CHILD_OPERATION_ACTIVITY_NAME)
+    async def create_child_operation(
+        self, param: CreateChildOperationParam
+    ) -> str:
         async with self.start_transaction() as services:
-            return await services.operations.all_children_terminal(parent_uuid)
+            return await services.operations.create_child_operation_row(
+                op_type=param.op_type,
+                parent_uuid=param.parent_uuid,
+                resource_id=param.resource_id,
+                resource_type=param.resource_type,
+                parameters=param.parameters,
+            )
 
     @activity_defn_with_context(name=ROLLUP_BULK_STATUS_ACTIVITY_NAME)
     async def rollup_bulk_operation_status(self, parent_uuid: str) -> None:
@@ -314,7 +330,7 @@ class BulkOperationWorkflow:
     """Wait for child operations to finish and roll up the bulk parent status."""
 
     @workflow_run_with_context
-    async def run(self, _param: dict) -> None:
+    async def run(self, param: dict) -> None:
         parent_uuid = _get_operation_uuid()
         await workflow.execute_local_activity(
             UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
@@ -324,12 +340,42 @@ class BulkOperationWorkflow:
             ),
             start_to_close_timeout=UPDATE_OPERATION_STATUS_TIMEOUT,
         )
-        while not await workflow.execute_activity(
-            BULK_CHILDREN_TERMINAL_ACTIVITY_NAME,
-            parent_uuid,
-            start_to_close_timeout=BULK_CHILDREN_TERMINAL_TIMEOUT,
-        ):
-            await asyncio.sleep(BULK_CHILDREN_POLL_INTERVAL.total_seconds())
+        handles = []
+        for child in param["children"]:
+            child_uuid = await workflow.execute_activity(
+                CREATE_CHILD_OPERATION_ACTIVITY_NAME,
+                CreateChildOperationParam(
+                    op_type=OperationType(child["op_type"]),
+                    parent_uuid=parent_uuid,
+                    resource_id=child.get("resource_id"),
+                    resource_type=child.get("resource_type"),
+                    parameters=child.get("parameters"),
+                ),
+                start_to_close_timeout=CREATE_CHILD_OPERATION_TIMEOUT,
+            )
+            child_workflow_name = workflow_name_for_operation_type(
+                OperationType(child["op_type"])
+            )
+            if child_workflow_name is None:
+                raise ApplicationError(
+                    f"No workflow is mapped to operation type"
+                    f" '{child['op_type']}'.",
+                    non_retryable=True,
+                )
+            handle = await workflow.start_child_workflow(
+                child_workflow_name,
+                child.get("parameters"),
+                id=child_uuid,
+                search_attributes=TypedSearchAttributes(
+                    [
+                        SearchAttributePair(
+                            OPERATION_UUID_SEARCH_ATTRIBUTE, child_uuid
+                        )
+                    ]
+                ),
+            )
+            handles.append(handle)
+        await asyncio.gather(*handles, return_exceptions=True)
         await workflow.execute_activity(
             ROLLUP_BULK_STATUS_ACTIVITY_NAME,
             parent_uuid,

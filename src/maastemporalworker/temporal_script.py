@@ -310,7 +310,7 @@ async def main() -> None:
                 operation_activity.reconcile_stuck_accepted_operations,
                 operation_activity.reconcile_in_progress_operations,
                 # Bulk operation activities
-                operation_activity.bulk_children_terminal,
+                operation_activity.create_child_operation,
                 operation_activity.rollup_bulk_operation_status,
             ],
         ),

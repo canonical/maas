@@ -25,8 +25,9 @@ from maastemporalworker.worker import REGION_TASK_QUEUE
 import maastemporalworker.workflow.activity as activity_module
 import maastemporalworker.workflow.operation as operation_module
 from maastemporalworker.workflow.operation import (
-    BULK_CHILDREN_TERMINAL_ACTIVITY_NAME,
     BulkOperationWorkflow,
+    CREATE_CHILD_OPERATION_ACTIVITY_NAME,
+    CreateChildOperationParam,
     OperationActivity,
     RECONCILE_IN_PROGRESS_ACTIVITY_NAME,
     RECONCILE_STUCK_ACCEPTED_ACTIVITY_NAME,
@@ -520,13 +521,13 @@ class TestBulkOperationActivities:
             temporal_client=Mock(Client),
         )
 
-    async def test_bulk_children_terminal(
+    async def test_create_child_operation(
         self, services_mock: ServiceCollectionV3, monkeypatch
     ) -> None:
         services_mock.temporal = Mock(TemporalService)
         services_mock.operations = Mock(OperationsService)
-        services_mock.operations.all_children_terminal = AsyncMock(
-            return_value=True
+        services_mock.operations.create_child_operation_row = AsyncMock(
+            return_value="child-uuid"
         )
         services_mock.produce.return_value = services_mock
         monkeypatch.setattr(
@@ -534,11 +535,20 @@ class TestBulkOperationActivities:
         )
 
         activity = self._operation_activity()
-        result = await activity.bulk_children_terminal("parent-uuid")
+        param = CreateChildOperationParam(
+            op_type=OperationType.MACHINE_COMMISSION,
+            parent_uuid="parent-uuid",
+            resource_id=1,
+        )
+        result = await activity.create_child_operation(param)
 
-        assert result is True
-        services_mock.operations.all_children_terminal.assert_awaited_once_with(
-            "parent-uuid"
+        assert result == "child-uuid"
+        services_mock.operations.create_child_operation_row.assert_awaited_once_with(
+            op_type=OperationType.MACHINE_COMMISSION,
+            parent_uuid="parent-uuid",
+            resource_id=1,
+            resource_type=None,
+            parameters=None,
         )
 
     async def test_rollup_bulk_operation_status(
@@ -568,7 +578,7 @@ class TestBulkOperationWorkflow:
         info.typed_search_attributes.get.return_value = operation_uuid
         monkeypatch.setattr(operation_module.workflow, "info", lambda: info)
 
-    async def test_run_waits_for_children_then_rolls_up(
+    async def test_run_schedules_children_then_rolls_up(
         self, monkeypatch
     ) -> None:
         self._set_operation_uuid(monkeypatch, "parent-uuid")
@@ -578,25 +588,44 @@ class TestBulkOperationWorkflow:
             "execute_local_activity",
             local_activity,
         )
-        execute_activity = AsyncMock(side_effect=[False, True, None])
+        execute_activity = AsyncMock(
+            side_effect=["child-uuid-1", "child-uuid-2", None]
+        )
         monkeypatch.setattr(
             operation_module.workflow, "execute_activity", execute_activity
         )
-        sleep = AsyncMock()
-        monkeypatch.setattr(operation_module.asyncio, "sleep", sleep)
+        mock_handle = AsyncMock()
+        start_child_workflow = AsyncMock(return_value=mock_handle)
+        monkeypatch.setattr(
+            operation_module.workflow,
+            "start_child_workflow",
+            start_child_workflow,
+        )
+        gather = AsyncMock()
+        monkeypatch.setattr(operation_module.asyncio, "gather", gather)
 
-        await BulkOperationWorkflow().run({"children": []})
+        children = [
+            {"op_type": OperationType.MACHINE_COMMISSION, "resource_id": 1},
+            {"op_type": OperationType.MACHINE_COMMISSION, "resource_id": 2},
+        ]
+        await BulkOperationWorkflow().run({"children": children})
 
         running_param = local_activity.call_args.args[1]
         assert running_param.operation_uuid == "parent-uuid"
         assert running_param.status == OperationStatus.RUNNING
 
-        activity_names = [
-            call.args[0] for call in execute_activity.call_args_list
+        create_calls = [
+            call
+            for call in execute_activity.call_args_list
+            if call.args[0] == CREATE_CHILD_OPERATION_ACTIVITY_NAME
         ]
-        assert activity_names == [
-            BULK_CHILDREN_TERMINAL_ACTIVITY_NAME,
-            BULK_CHILDREN_TERMINAL_ACTIVITY_NAME,
-            ROLLUP_BULK_STATUS_ACTIVITY_NAME,
-        ]
-        sleep.assert_awaited_once()
+        assert len(create_calls) == 2
+
+        assert start_child_workflow.call_count == 2
+        gather.assert_awaited_once_with(
+            mock_handle, mock_handle, return_exceptions=True
+        )
+
+        rollup_call = execute_activity.call_args_list[-1]
+        assert rollup_call.args[0] == ROLLUP_BULK_STATUS_ACTIVITY_NAME
+        assert rollup_call.args[1] == "parent-uuid"
