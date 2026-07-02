@@ -18,6 +18,7 @@ from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
+    ProviderVendorType,
 )
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.external_auth import (
@@ -204,6 +205,7 @@ class TestExternalOAuthRepository(RepositoryCommonTests[OAuthProvider]):
             redirect_uri="https://myapp.com/oauth/callback",
             scopes="openid profile email",
             token_type=AccessTokenType.JWT,
+            vendor=ProviderVendorType.GENERIC,
             metadata=ProviderMetadata(
                 authorization_endpoint="",
                 token_endpoint="",

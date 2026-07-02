@@ -381,6 +381,7 @@ class RackAgent(RackOnlyExternalService):
                 logging=agent_config.AgentLogConfig(
                     "debug" if debug_enabled else "info",
                 ),
+                metrics=agent_config.AgentMetricsConfig(enabled=True),
             ),
             tls=agent_config.AgentTLSConfig(
                 key_file=key_file, cert_file=cert_file, ca_file=ca_file

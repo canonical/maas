@@ -41,6 +41,10 @@ from maasservicelayer.auth.macaroons.macaroon_client import (
     RbacAsyncClient,
 )
 from maasservicelayer.auth.macaroons.oven import AsyncOven
+from maasservicelayer.auth.oidc_adapters import (
+    BaseProviderAdapter,
+    get_provider_adapter,
+)
 from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
@@ -658,6 +662,27 @@ class ExternalOAuthService(
                 ]
             )
         return OAuth2Client(provider)
+
+    async def get_provider_adapter(self) -> BaseProviderAdapter | None:
+        client = await self.get_client()
+        return get_provider_adapter(
+            provider=client.provider,
+            http_client=self.get_httpx_client(),
+        )
+
+    async def is_active_oidc_user(self, email: str) -> bool:
+        provider = await self.get_provider()
+        if provider is None:
+            return False
+        user_profile = await self.users_service.get_user_profile(email)
+        if user_profile is None or user_profile.provider_id != provider.id:
+            return False
+        adapter = get_provider_adapter(
+            provider=provider, http_client=self.get_httpx_client()
+        )
+        if adapter is None:
+            return True
+        return await adapter.user_is_active(email)
 
     @Service.from_cache_or_execute(attr="httpx_client")
     def get_httpx_client(self) -> AsyncClient:

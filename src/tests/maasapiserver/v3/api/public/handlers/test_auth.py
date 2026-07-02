@@ -16,6 +16,7 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
     OAuthTokenTypeChoices,
+    OAuthVendorChoices,
 )
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     CallbackTargetResponse,
@@ -65,6 +66,7 @@ from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
+    ProviderVendorType,
 )
 from maasservicelayer.models.users import UserProfile
 from maasservicelayer.services import ServiceCollectionV3
@@ -90,6 +92,7 @@ TEST_PROVIDER_1 = OAuthProvider(
     scopes="openid email profile",
     enabled=True,
     token_type=AccessTokenType.JWT,
+    vendor=ProviderVendorType.GENERIC,
     metadata=ProviderMetadata(
         authorization_endpoint="",
         token_endpoint="",
@@ -109,6 +112,7 @@ TEST_PROVIDER_2 = OAuthProvider(
     scopes="openid email profile",
     enabled=True,
     token_type=AccessTokenType.OPAQUE,
+    vendor=ProviderVendorType.GENERIC,
     metadata=ProviderMetadata(
         authorization_endpoint="https://example2.com/authorize",
         token_endpoint="https://example2.com/token",
@@ -620,6 +624,7 @@ class TestAuthApi:
             scopes="openid email profile",
             token_type=OAuthTokenTypeChoices.JWT,
             enabled=True,
+            vendor=OAuthVendorChoices.GENERIC,
         )
         updated_provider = OAuthProvider(
             id=1,
@@ -633,6 +638,7 @@ class TestAuthApi:
             scopes="openid email profile",
             token_type=AccessTokenType.JWT,
             enabled=True,
+            vendor=ProviderVendorType.GENERIC,
             metadata=ProviderMetadata(
                 authorization_endpoint="",
                 token_endpoint="",
@@ -679,6 +685,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=OAuthTokenTypeChoices.JWT,
+            vendor=OAuthVendorChoices.GENERIC,
         )
         services_mock.external_oauth.update_provider.return_value = None
         response = await client.put(
@@ -738,6 +745,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=OAuthTokenTypeChoices.JWT,
+            vendor=OAuthVendorChoices.GENERIC,
         )
         created_provider = TEST_PROVIDER_1
         services_mock.external_oauth.create.return_value = created_provider
@@ -778,6 +786,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=OAuthTokenTypeChoices.JWT,
+            vendor=OAuthVendorChoices.GENERIC,
         )
 
         response = await client.post(
@@ -815,6 +824,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=OAuthTokenTypeChoices.JWT,
+            vendor=OAuthVendorChoices.GENERIC,
         )
 
         response = await client.post(
@@ -852,6 +862,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=OAuthTokenTypeChoices.JWT,
+            vendor=OAuthVendorChoices.GENERIC,
         )
 
         response = await client.post(
@@ -944,6 +955,7 @@ class TestAuthApi:
             scopes="openid email profile",
             enabled=True,
             token_type=AccessTokenType.JWT,
+            vendor=ProviderVendorType.GENERIC,
             metadata=ProviderMetadata(
                 authorization_endpoint="",
                 token_endpoint="",
@@ -973,6 +985,7 @@ class TestAuthApi:
             "metadata": created_provider.metadata.model_dump(),
             "token_type": "JWT",
             "user_count": 5,
+            "vendor": "Generic",
         }
 
     async def test_get_active_oauth_provider_not_found(

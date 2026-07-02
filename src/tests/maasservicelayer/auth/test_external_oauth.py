@@ -33,6 +33,7 @@ from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
+    ProviderVendorType,
 )
 from maasservicelayer.utils.date import utcnow
 
@@ -48,6 +49,7 @@ TEST_PROVIDER = OAuthProvider(
     updated=utcnow(),
     enabled=True,
     token_type=AccessTokenType.JWT,
+    vendor=ProviderVendorType.GENERIC,
     metadata=ProviderMetadata(
         authorization_endpoint="https://issuer.com/authorize",
         token_endpoint="https://issuer.com/token",

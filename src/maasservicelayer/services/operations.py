@@ -140,6 +140,16 @@ class OperationsService(
             )
         )
 
+    async def list_in_progress_operations(self) -> list[Operation]:
+        """Return operations that are RUNNING or CANCELLING."""
+        return await self.repository.get_many(
+            query=QuerySpec(
+                where=OperationsClauseFactory.with_statuses(
+                    [OperationStatus.RUNNING, OperationStatus.CANCELLING]
+                )
+            )
+        )
+
     async def update_status(
         self,
         operation_uuid: str,
@@ -153,6 +163,7 @@ class OperationsService(
         elif status in (
             OperationStatus.COMPLETED,
             OperationStatus.FAILED,
+            OperationStatus.CANCELLED,
         ):
             builder.finished = utcnow()
         # On success the operation is no longer running any task; on failure we

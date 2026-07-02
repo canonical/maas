@@ -66,6 +66,7 @@ from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
+    ProviderVendorType,
     RootKey,
 )
 from maasservicelayer.models.secrets import RootKeyMaterialSecret
@@ -870,6 +871,7 @@ class TestExternalOAuthService(ServiceCommonTests):
             created=utcnow(),
             updated=utcnow(),
             token_type=AccessTokenType.JWT,
+            vendor=ProviderVendorType.GENERIC,
             metadata=ProviderMetadata(
                 authorization_endpoint="https://example.com/auth",
                 token_endpoint="https://example.com/token",
@@ -1307,6 +1309,49 @@ class TestExternalOAuthService(ServiceCommonTests):
         client1 = service_instance.get_httpx_client()
         client2 = service_instance.get_httpx_client()
         assert client1 is client2
+
+    async def test_is_active_oidc_user_no_provider(
+        self,
+        service_instance: ExternalOAuthService,
+    ) -> None:
+        service_instance.get_provider = AsyncMock(return_value=None)
+
+        assert (
+            await service_instance.is_active_oidc_user("user@example.com")
+            is False
+        )
+
+    @patch("maasservicelayer.services.external_auth.get_provider_adapter")
+    async def test_is_active_oidc_user_queries_adapter(
+        self,
+        mock_get_provider_adapter: Mock,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        test_instance.vendor = ProviderVendorType.ENTRAID
+        service_instance.get_provider = AsyncMock(return_value=test_instance)
+        service_instance.users_service.get_user_profile = AsyncMock(
+            return_value=UserProfile(
+                id=1,
+                completed_intro=True,
+                is_local=False,
+                user_id=1,
+                provider_id=test_instance.id,
+            )
+        )
+        httpx_client = Mock()
+        service_instance.get_httpx_client = Mock(return_value=httpx_client)
+        adapter = Mock()
+        adapter.user_is_active = AsyncMock(return_value=False)
+        mock_get_provider_adapter.return_value = adapter
+
+        result = await service_instance.is_active_oidc_user("user@example.com")
+
+        assert result is False
+        mock_get_provider_adapter.assert_called_once_with(
+            provider=test_instance, http_client=httpx_client
+        )
+        adapter.user_is_active.assert_awaited_once_with("user@example.com")
 
     @patch("maasservicelayer.services.external_auth.logger")
     async def test_get_callback_user_exists(

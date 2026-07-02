@@ -132,6 +132,7 @@ from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
     ProviderMetadata,
+    ProviderVendorType,
 )
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroups import UserGroup
@@ -3886,6 +3887,7 @@ class Factory(maastesting.factory.Factory):
         redirect_uri=None,
         token_type=None,
         enabled=None,
+        vendor=None,
     ):
         if name is None:
             name = self.make_name("oidc_provider")
@@ -3903,6 +3905,8 @@ class Factory(maastesting.factory.Factory):
             token_type = self.pick_choice([(0, "JWT"), (1, "Opaque")])
         if enabled is None:
             enabled = self.pick_bool()
+        if vendor is None:
+            vendor = ProviderVendorType.GENERIC
         metadata = ProviderMetadata(
             authorization_endpoint=self.make_url(scheme="https"),
             token_endpoint=self.make_url(scheme="https"),
@@ -3918,6 +3922,7 @@ class Factory(maastesting.factory.Factory):
             scopes=scopes,
             redirect_uri=redirect_uri,
             token_type=AccessTokenType(token_type),
+            vendor=vendor,
             metadata=metadata,
             enabled=enabled,
         )
