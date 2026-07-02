@@ -1,12 +1,41 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from contextlib import contextmanager
+import contextvars
 from enum import StrEnum
+import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from maascommon.path import get_maas_data_path
+
+_suppress_httpx = contextvars.ContextVar("suppress_httpx", default=False)
+
+
+class _HTTPXLogFilter(logging.Filter):
+    """Drop httpx/httpcore INFO/DEBUG records when the `_suppress_httpx`
+    ContextVar is set to True. Warnings and above always pass through.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno >= logging.WARNING:
+            return True
+        return not _suppress_httpx.get()
+
+
+def _install_httpx_log_filter() -> None:
+    """Attach the context-aware filter to the httpx/httpcore loggers.
+
+    `addFilter` is idempotent, so repeated calls are harmless.
+    """
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).addFilter(_HTTPX_LOG_FILTER)
+
+
+_HTTPX_LOG_FILTER = _HTTPXLogFilter()
+_install_httpx_log_filter()
 
 
 class OpenFGAEntitlementResourceType(StrEnum):
@@ -61,6 +90,12 @@ class BaseOpenFGAClient:
 
     def __init__(self, unix_socket: str | None = None):
         self.socket_path = unix_socket or self._get_default_socket_path()
+
+    @classmethod
+    @contextmanager
+    def _suppress_httpx_logging(cls) -> Iterator[None]:
+        with _suppress_httpx.set(True):
+            yield
 
     def _get_default_socket_path(self) -> str:
         return str(
