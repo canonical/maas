@@ -87,6 +87,7 @@ SUPPORTED_BOOTLOADERS = {
     "uefi": [
         {"os": "grub-efi-signed", "arch": "amd64"},
         {"os": "grub-efi", "arch": "arm64"},
+        {"os": "grub-efi", "arch": "riscv64"},
     ],
     "open-firmware": [{"os": "grub-ieee1275", "arch": "ppc64el"}],
 }
