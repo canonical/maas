@@ -58,6 +58,8 @@ SCHEDULES: Final[dict[str, Schedule]] = {
         spec=ScheduleSpec(
             intervals=[ScheduleIntervalSpec(every=timedelta(minutes=5))]
         ),
+        # Re-enable this when we'll be using it.
+        state=ScheduleState(paused=True),
         policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.SKIP),
     ),
 }
