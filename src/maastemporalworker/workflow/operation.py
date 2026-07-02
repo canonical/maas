@@ -1,6 +1,7 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import wraps
@@ -23,6 +24,7 @@ from temporalio.service import RPCError, RPCStatusCode
 
 from maascommon.enums.operations import OperationStatus
 from maascommon.workflows.operation import (
+    BULK_OPERATION_WORKFLOW_NAME,
     RECONCILE_OPERATIONS_WORKFLOW_NAME,
     workflow_name_for_operation_type,
 )
@@ -40,13 +42,18 @@ UPDATE_OPERATION_STATUS_TIMEOUT = timedelta(seconds=30)
 UPDATE_CURRENT_TASK_TIMEOUT = timedelta(seconds=30)
 RECONCILE_STUCK_ACCEPTED_TIMEOUT = timedelta(seconds=60)
 RECONCILE_IN_PROGRESS_TIMEOUT = timedelta(seconds=60)
+BULK_CHILDREN_TERMINAL_TIMEOUT = timedelta(seconds=30)
+ROLLUP_BULK_STATUS_TIMEOUT = timedelta(seconds=30)
 
 STUCK_OPERATION_GRACE_PERIOD = timedelta(minutes=5)
+BULK_CHILDREN_POLL_INTERVAL = timedelta(seconds=30)
 
 UPDATE_OPERATION_STATUS_ACTIVITY_NAME = "update-operation-status"
 UPDATE_CURRENT_TASK_ACTIVITY_NAME = "update-current-task"
 RECONCILE_STUCK_ACCEPTED_ACTIVITY_NAME = "reconcile-stuck-accepted-operations"
 RECONCILE_IN_PROGRESS_ACTIVITY_NAME = "reconcile-in-progress-operations"
+BULK_CHILDREN_TERMINAL_ACTIVITY_NAME = "bulk-children-terminal"
+ROLLUP_BULK_STATUS_ACTIVITY_NAME = "rollup-bulk-operation-status"
 
 OPERATION_UUID_SEARCH_ATTRIBUTE = SearchAttributeKey.for_keyword(
     "OperationUUID"
@@ -173,6 +180,18 @@ class OperationActivity(ActivityBase):
                     status=status,
                 )
 
+    @activity_defn_with_context(name=BULK_CHILDREN_TERMINAL_ACTIVITY_NAME)
+    async def bulk_children_terminal(self, parent_uuid: str) -> bool:
+        async with self.start_transaction() as services:
+            return await services.operations.all_children_terminal(parent_uuid)
+
+    @activity_defn_with_context(name=ROLLUP_BULK_STATUS_ACTIVITY_NAME)
+    async def rollup_bulk_operation_status(self, parent_uuid: str) -> None:
+        async with self.start_transaction() as services:
+            await services.operations.update_bulk_status_from_children(
+                parent_uuid
+            )
+
 
 def _get_operation_uuid() -> str:
     """Return the operation UUID tracked by the running workflow.
@@ -287,4 +306,32 @@ class ReconcileOperationsWorkflow:
         await workflow.execute_activity(
             RECONCILE_IN_PROGRESS_ACTIVITY_NAME,
             start_to_close_timeout=RECONCILE_IN_PROGRESS_TIMEOUT,
+        )
+
+
+@workflow.defn(name=BULK_OPERATION_WORKFLOW_NAME, sandboxed=False)
+class BulkOperationWorkflow:
+    """Wait for child operations to finish and roll up the bulk parent status."""
+
+    @workflow_run_with_context
+    async def run(self, _param: dict) -> None:
+        parent_uuid = _get_operation_uuid()
+        await workflow.execute_local_activity(
+            UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
+            UpdateOperationStatusParam(
+                operation_uuid=parent_uuid,
+                status=OperationStatus.RUNNING,
+            ),
+            start_to_close_timeout=UPDATE_OPERATION_STATUS_TIMEOUT,
+        )
+        while not await workflow.execute_activity(
+            BULK_CHILDREN_TERMINAL_ACTIVITY_NAME,
+            parent_uuid,
+            start_to_close_timeout=BULK_CHILDREN_TERMINAL_TIMEOUT,
+        ):
+            await asyncio.sleep(BULK_CHILDREN_POLL_INTERVAL.total_seconds())
+        await workflow.execute_activity(
+            ROLLUP_BULK_STATUS_ACTIVITY_NAME,
+            parent_uuid,
+            start_to_close_timeout=ROLLUP_BULK_STATUS_TIMEOUT,
         )

@@ -25,10 +25,13 @@ from maastemporalworker.worker import REGION_TASK_QUEUE
 import maastemporalworker.workflow.activity as activity_module
 import maastemporalworker.workflow.operation as operation_module
 from maastemporalworker.workflow.operation import (
+    BULK_CHILDREN_TERMINAL_ACTIVITY_NAME,
+    BulkOperationWorkflow,
     OperationActivity,
     RECONCILE_IN_PROGRESS_ACTIVITY_NAME,
     RECONCILE_STUCK_ACCEPTED_ACTIVITY_NAME,
     ReconcileOperationsWorkflow,
+    ROLLUP_BULK_STATUS_ACTIVITY_NAME,
     track_operation_status,
     update_current_task,
     UpdateCurrentTaskParam,
@@ -505,3 +508,95 @@ class TestReconcileOperationsWorkflow:
             RECONCILE_STUCK_ACCEPTED_ACTIVITY_NAME,
             RECONCILE_IN_PROGRESS_ACTIVITY_NAME,
         ]
+
+
+@pytest.mark.asyncio
+class TestBulkOperationActivities:
+    def _operation_activity(self) -> OperationActivity:
+        return OperationActivity(
+            Mock(Database),
+            CacheForServices(),
+            connection=Mock(AsyncConnection),
+            temporal_client=Mock(Client),
+        )
+
+    async def test_bulk_children_terminal(
+        self, services_mock: ServiceCollectionV3, monkeypatch
+    ) -> None:
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.all_children_terminal = AsyncMock(
+            return_value=True
+        )
+        services_mock.produce.return_value = services_mock
+        monkeypatch.setattr(
+            activity_module, "ServiceCollectionV3", services_mock
+        )
+
+        activity = self._operation_activity()
+        result = await activity.bulk_children_terminal("parent-uuid")
+
+        assert result is True
+        services_mock.operations.all_children_terminal.assert_awaited_once_with(
+            "parent-uuid"
+        )
+
+    async def test_rollup_bulk_operation_status(
+        self, services_mock: ServiceCollectionV3, monkeypatch
+    ) -> None:
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.update_bulk_status_from_children = AsyncMock()
+        services_mock.produce.return_value = services_mock
+        monkeypatch.setattr(
+            activity_module, "ServiceCollectionV3", services_mock
+        )
+
+        activity = self._operation_activity()
+        await activity.rollup_bulk_operation_status("parent-uuid")
+
+        services_mock.operations.update_bulk_status_from_children.assert_awaited_once_with(
+            "parent-uuid"
+        )
+
+
+@pytest.mark.asyncio
+class TestBulkOperationWorkflow:
+    def _set_operation_uuid(self, monkeypatch, operation_uuid):
+        info = Mock()
+        info.workflow_type = "BulkOperationWorkflow"
+        info.typed_search_attributes.get.return_value = operation_uuid
+        monkeypatch.setattr(operation_module.workflow, "info", lambda: info)
+
+    async def test_run_waits_for_children_then_rolls_up(
+        self, monkeypatch
+    ) -> None:
+        self._set_operation_uuid(monkeypatch, "parent-uuid")
+        local_activity = AsyncMock()
+        monkeypatch.setattr(
+            operation_module.workflow,
+            "execute_local_activity",
+            local_activity,
+        )
+        execute_activity = AsyncMock(side_effect=[False, True, None])
+        monkeypatch.setattr(
+            operation_module.workflow, "execute_activity", execute_activity
+        )
+        sleep = AsyncMock()
+        monkeypatch.setattr(operation_module.asyncio, "sleep", sleep)
+
+        await BulkOperationWorkflow().run({"children": []})
+
+        running_param = local_activity.call_args.args[1]
+        assert running_param.operation_uuid == "parent-uuid"
+        assert running_param.status == OperationStatus.RUNNING
+
+        activity_names = [
+            call.args[0] for call in execute_activity.call_args_list
+        ]
+        assert activity_names == [
+            BULK_CHILDREN_TERMINAL_ACTIVITY_NAME,
+            BULK_CHILDREN_TERMINAL_ACTIVITY_NAME,
+            ROLLUP_BULK_STATUS_ACTIVITY_NAME,
+        ]
+        sleep.assert_awaited_once()
