@@ -52,7 +52,10 @@ def check_authentication() -> Callable:
         Callable: Decorator function that checks if the user is authenticated.
     """
 
-    async def wrapper(request: Request) -> None:
+    async def wrapper(
+        request: Request,
+        openapi_security_generator: None = Depends(oauth2_bearer_openapi),
+    ) -> None:
         authenticated_user = get_authenticated_user(request)
         if not authenticated_user:
             svc: ServiceCollectionV3 = request.state.services
