@@ -399,9 +399,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={USER_1.id: [GROUP_1]})
         )
-        response = await client.get(
-            f"{self.BASE_PATH}/1",
-        )
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         user_response = UserResponse(**response.json())
@@ -422,19 +420,16 @@ class TestUsersApi(ApiCommonTests):
         # no permissions on openfga
         client = mocked_api_client_user_with_permissions()
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id.return_value = USER_1
-        services_mock.users.get_groups_for_users.return_value = (
-            UserGroupsByUser(groups_by_user={USER_1.id: [GROUP_1]})
-        )
-        response = await client.get(
-            f"{self.BASE_PATH}/1",
-        )
+        # the user we use in tests has the id=0
+        response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 404
+        services_mock.users.get_by_id.assert_not_called()
+        services_mock.users.get_groups_for_users.assert_not_called()
 
     async def test_get_self_user_no_entitlement(
         self,
@@ -451,9 +446,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={user.id: [GROUP_1]})
         )
-        response = await client.get(
-            f"{self.BASE_PATH}/1",
-        )
+        response = await client.get(f"{self.BASE_PATH}/0")
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         user_response = UserResponse(**response.json())
@@ -476,9 +469,7 @@ class TestUsersApi(ApiCommonTests):
         )
         services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = None
-        response = await client.get(
-            f"{self.BASE_PATH}/99",
-        )
+        response = await client.get(f"{self.BASE_PATH}/99")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -498,9 +489,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.get_by_id.side_effect = RequestValidationError(
             errors=[]
         )
-        response = await client.get(
-            f"{self.BASE_PATH}/1a",
-        )
+        response = await client.get(f"{self.BASE_PATH}/1a")
         assert response.status_code == 422
         assert "ETag" not in response.headers
 

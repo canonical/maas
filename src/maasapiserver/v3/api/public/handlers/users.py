@@ -258,11 +258,11 @@ class UsersHandler(Handler):
                 authenticated_user.id
             )
         )
-        user = await services.users.get_by_id(user_id)
-        if not user:
+        if not can_view_identities and authenticated_user.id != user_id:
             raise NotFoundException()
 
-        if not can_view_identities and user.id != authenticated_user.id:
+        user = await services.users.get_by_id(user_id)
+        if not user:
             raise NotFoundException()
 
         groups_by_user = await services.users.get_groups_for_users([user.id])
