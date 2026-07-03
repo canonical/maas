@@ -233,18 +233,29 @@ class UsersHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
     async def get_user(
         self,
         user_id: int,
         response: Response,
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
+        assert authenticated_user is not None
+        if (
+            UserRole.ADMIN not in authenticated_user.roles
+            and authenticated_user.id != user_id
+        ):
+            raise NotFoundException()
+
         user = await services.users.get_by_id(user_id)
         if not user:
             raise NotFoundException()
+
 
         response.headers["ETag"] = user.etag()
         return UserResponse.from_model(
@@ -299,7 +310,7 @@ class UsersHandler(Handler):
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
     async def update_user(
@@ -307,8 +318,18 @@ class UsersHandler(Handler):
         user_id: int,
         user_request: UserUpdateRequest,
         response: Response,
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
+        assert authenticated_user is not None
+        if (
+            UserRole.ADMIN not in authenticated_user.roles
+            and authenticated_user.id != user_id
+        ):
+            raise NotFoundException()
+
         user = await services.users.update_by_id(
             user_id, user_request.to_builder()
         )
