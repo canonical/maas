@@ -119,11 +119,6 @@ class TestUsersApi(ApiCommonTests):
             ),
             Endpoint(
                 method="GET",
-                path=f"{self.BASE_PATH}/1",
-                permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
-            ),
-            Endpoint(
-                method="GET",
                 path=f"{V3_API_PREFIX}/users:statistics",
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
             ),
@@ -155,6 +150,11 @@ class TestUsersApi(ApiCommonTests):
             Endpoint(
                 method="GET",
                 path=f"{self.BASE_PATH}/me",
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
             ),
             Endpoint(
                 method="POST",
@@ -386,7 +386,7 @@ class TestUsersApi(ApiCommonTests):
         )
 
     # GET /users/{user_id}
-    async def test_get_user(
+    async def test_get_user_can_view_identities(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
@@ -412,6 +412,58 @@ class TestUsersApi(ApiCommonTests):
         ]
         services_mock.users.get_groups_for_users.assert_called_once_with(
             [USER_1.id]
+        )
+
+    async def test_get_other_user_no_entitlement(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        # no permissions on openfga
+        client = mocked_api_client_user_with_permissions()
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={USER_1.id: [GROUP_1]})
+        )
+        response = await client.get(
+            f"{self.BASE_PATH}/1",
+        )
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_get_self_user_no_entitlement(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        # no permissions on openfga
+        client = mocked_api_client_user_with_permissions()
+        user = USER_1.model_copy()
+        # the user we use in tests has the id=0
+        user.id = 0
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = user
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={user.id: [GROUP_1]})
+        )
+        response = await client.get(
+            f"{self.BASE_PATH}/1",
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+        user_response = UserResponse(**response.json())
+        assert user_response.id == 0
+        assert user_response.username == "username"
+        assert [(g.id, g.name) for g in user_response.groups] == [
+            (GROUP_1.id, GROUP_1.name)
+        ]
+        services_mock.users.get_groups_for_users.assert_called_once_with(
+            [user.id]
         )
 
     async def test_get_user_404(
@@ -443,7 +495,7 @@ class TestUsersApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_one.side_effect = RequestValidationError(
+        services_mock.users.get_by_id.side_effect = RequestValidationError(
             errors=[]
         )
         response = await client.get(

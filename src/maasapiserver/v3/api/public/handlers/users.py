@@ -1,7 +1,7 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Union
+from typing import Annotated, Union
 
 from fastapi import Depends, Header, Query, Response, status
 
@@ -241,22 +241,28 @@ class UsersHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(
-                check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
-                )
-            )
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_user(
         self,
         user_id: int,
         response: Response,
+        authenticated_user: Annotated[
+            AuthenticatedUser | None, Depends(get_authenticated_user)
+        ],
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
+        assert authenticated_user is not None
+        can_view_identities = (
+            await services.openfga_tuples.get_client().can_view_identities(
+                authenticated_user.id
+            )
+        )
         user = await services.users.get_by_id(user_id)
         if not user:
+            raise NotFoundException()
+
+        if not can_view_identities and user.id != authenticated_user.id:
             raise NotFoundException()
 
         groups_by_user = await services.users.get_groups_for_users([user.id])
