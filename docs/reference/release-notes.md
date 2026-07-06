@@ -174,7 +174,6 @@ We are happy to announce that MAAS 3.6.5 has been released, with the following b
 - [2147514](https://launchpad.net/maas/+bug/2147514): Power state not refreshed when a node transitions from COMMISSIONING to NEW (enlistment commissioning)
 - [2156073](https://launchpad.net/maas/+bug/2156073): DHCP configuration files created with incorrect permissions (-r----xrw-) due to octal/decimal formatting bug in Go agent
 
-
 ### MAAS 3.6.4 has been released
 
 We are happy to announce that MAAS 3.6.4 has been released, with the following bug fixes:
