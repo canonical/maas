@@ -175,6 +175,7 @@ class OperationsService(
                             OperationStatus.ACCEPTED
                         ),
                         OperationsClauseFactory.created_before(created_before),
+                        OperationsClauseFactory.without_parent_id(),
                     ]
                 )
             )
@@ -238,7 +239,9 @@ class OperationsService(
     ) -> Operation:
         """Set a bulk parent's status from its children's outcomes."""
         children = await self.list_child_operations(parent_uuid)
-        if all(
+        if not children:
+            status = OperationStatus.FAILED
+        elif all(
             child.status == OperationStatus.COMPLETED for child in children
         ):
             status = OperationStatus.COMPLETED

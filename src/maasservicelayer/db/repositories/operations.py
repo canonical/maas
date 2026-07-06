@@ -51,6 +51,10 @@ class OperationsClauseFactory(ClauseFactory):
     def created_before(cls, moment: datetime) -> Clause:
         return Clause(condition=le(OperationTable.c.created, moment))
 
+    @classmethod
+    def without_parent_id(cls) -> Clause:
+        return Clause(condition=OperationTable.c.parent_id.is_(None))
+
 
 class OperationsRepository(BaseRepository[Operation]):
     def get_repository_table(self) -> Table:

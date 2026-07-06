@@ -340,44 +340,57 @@ class BulkOperationWorkflow:
             ),
             start_to_close_timeout=UPDATE_OPERATION_STATUS_TIMEOUT,
         )
-        handles = []
-        for child in param["children"]:
-            child_uuid = await workflow.execute_activity(
-                CREATE_CHILD_OPERATION_ACTIVITY_NAME,
-                CreateChildOperationParam(
-                    op_type=OperationType(child["op_type"]),
-                    parent_uuid=parent_uuid,
-                    resource_id=child.get("resource_id"),
-                    resource_type=child.get("resource_type"),
-                    parameters=child.get("parameters"),
-                ),
-                start_to_close_timeout=CREATE_CHILD_OPERATION_TIMEOUT,
-            )
-            child_workflow_name = workflow_name_for_operation_type(
-                OperationType(child["op_type"])
-            )
-            if child_workflow_name is None:
-                raise ApplicationError(
-                    f"No workflow is mapped to operation type"
-                    f" '{child['op_type']}'.",
-                    non_retryable=True,
+        try:
+            handles = []
+            for child in param["children"]:
+                child_uuid = await workflow.execute_activity(
+                    CREATE_CHILD_OPERATION_ACTIVITY_NAME,
+                    CreateChildOperationParam(
+                        op_type=OperationType(child["op_type"]),
+                        parent_uuid=parent_uuid,
+                        resource_id=child.get("resource_id"),
+                        resource_type=child.get("resource_type"),
+                        parameters=child.get("parameters"),
+                    ),
+                    start_to_close_timeout=CREATE_CHILD_OPERATION_TIMEOUT,
                 )
-            handle = await workflow.start_child_workflow(
-                child_workflow_name,
-                child.get("parameters"),
-                id=child_uuid,
-                search_attributes=TypedSearchAttributes(
-                    [
-                        SearchAttributePair(
-                            OPERATION_UUID_SEARCH_ATTRIBUTE, child_uuid
-                        )
-                    ]
-                ),
+                child_workflow_name = workflow_name_for_operation_type(
+                    OperationType(child["op_type"])
+                )
+                if child_workflow_name is None:
+                    raise ApplicationError(
+                        f"No workflow is mapped to operation type"
+                        f" '{child['op_type']}'.",
+                        non_retryable=True,
+                    )
+                handle = await workflow.start_child_workflow(
+                    child_workflow_name,
+                    child.get("parameters"),
+                    id=child_uuid,
+                    search_attributes=TypedSearchAttributes(
+                        [
+                            SearchAttributePair(
+                                OPERATION_UUID_SEARCH_ATTRIBUTE, child_uuid
+                            )
+                        ]
+                    ),
+                )
+                handles.append(handle)
+            await asyncio.gather(*handles, return_exceptions=True)
+            await workflow.execute_activity(
+                ROLLUP_BULK_STATUS_ACTIVITY_NAME,
+                parent_uuid,
+                start_to_close_timeout=ROLLUP_BULK_STATUS_TIMEOUT,
             )
-            handles.append(handle)
-        await asyncio.gather(*handles, return_exceptions=True)
-        await workflow.execute_activity(
-            ROLLUP_BULK_STATUS_ACTIVITY_NAME,
-            parent_uuid,
-            start_to_close_timeout=ROLLUP_BULK_STATUS_TIMEOUT,
-        )
+        except Exception as exc:
+            if not is_cancelled_exception(exc):
+                await workflow.execute_local_activity(
+                    UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
+                    UpdateOperationStatusParam(
+                        operation_uuid=parent_uuid,
+                        status=OperationStatus.FAILED,
+                        error=str(exc),
+                    ),
+                    start_to_close_timeout=UPDATE_OPERATION_STATUS_TIMEOUT,
+                )
+            raise

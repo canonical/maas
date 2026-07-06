@@ -433,6 +433,7 @@ class TestOperationsService:
                         OperationStatus.ACCEPTED
                     ),
                     OperationsClauseFactory.created_before(cutoff),
+                    OperationsClauseFactory.without_parent_id(),
                 ]
             )
         )
@@ -495,6 +496,10 @@ class TestOperationsService:
     @pytest.mark.parametrize(
         "child_statuses, expected_status",
         [
+            (
+                [],
+                OperationStatus.FAILED,
+            ),
             (
                 [OperationStatus.COMPLETED, OperationStatus.COMPLETED],
                 OperationStatus.COMPLETED,

@@ -35,6 +35,7 @@ from maastemporalworker.workflow.operation import (
     ROLLUP_BULK_STATUS_ACTIVITY_NAME,
     track_operation_status,
     update_current_task,
+    UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
     UpdateCurrentTaskParam,
     UpdateOperationStatusParam,
 )
@@ -629,3 +630,37 @@ class TestBulkOperationWorkflow:
         rollup_call = execute_activity.call_args_list[-1]
         assert rollup_call.args[0] == ROLLUP_BULK_STATUS_ACTIVITY_NAME
         assert rollup_call.args[1] == "parent-uuid"
+
+    async def test_run_sets_parent_failed_on_orchestration_error(
+        self, monkeypatch
+    ) -> None:
+        self._set_operation_uuid(monkeypatch, "parent-uuid")
+        local_activity = AsyncMock()
+        monkeypatch.setattr(
+            operation_module.workflow,
+            "execute_local_activity",
+            local_activity,
+        )
+        monkeypatch.setattr(
+            operation_module.workflow,
+            "execute_activity",
+            AsyncMock(side_effect=ApplicationError("activity failed")),
+        )
+
+        with pytest.raises(ApplicationError):
+            await BulkOperationWorkflow().run(
+                {
+                    "children": [
+                        {
+                            "op_type": OperationType.MACHINE_COMMISSION,
+                            "resource_id": 1,
+                        }
+                    ]
+                }
+            )
+
+        failed_call = local_activity.call_args_list[-1]
+        assert failed_call.args[0] == UPDATE_OPERATION_STATUS_ACTIVITY_NAME
+        failed_param = failed_call.args[1]
+        assert failed_param.status == OperationStatus.FAILED
+        assert failed_param.operation_uuid == "parent-uuid"

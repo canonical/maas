@@ -117,6 +117,17 @@ class TestOperationsClauseFactory:
             == "maasserver_operation.user_id = 1"
         )
 
+    def test_without_parent_id(self) -> None:
+        clause = OperationsClauseFactory.without_parent_id()
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.parent_id IS NULL"
+        )
+
 
 class TestOperationsRepository(RepositoryCommonTests[Operation]):
     @pytest.fixture
