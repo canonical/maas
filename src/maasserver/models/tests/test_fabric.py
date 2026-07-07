@@ -10,6 +10,7 @@ from maasserver.models.vlan import DEFAULT_VID, DEFAULT_VLAN_NAME, VLAN
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.djangotestcase import count_queries
 
 
 class TestFabricManagerGetFabricOr404(MAASServerTestCase):
@@ -223,6 +224,24 @@ class TestFabric(MAASServerTestCase):
 
         with self.assertRaisesRegex(ValidationError, msg):
             fabric.delete()
+
+    def test_delete_interface_listing_query_count_is_constant(self):
+        # Building the "still connected interfaces" error reads each interface's
+        # node; the query count must not grow with the number of interfaces.
+        def attempt_delete(interface_count):
+            fabric = factory.make_Fabric()
+            for _ in range(interface_count):
+                factory.make_Interface(
+                    INTERFACE_TYPE.PHYSICAL, vlan=fabric.get_default_vlan()
+                )
+
+            def do_delete():
+                self.assertRaises(ValidationError, fabric.delete)
+
+            count, _ = count_queries(do_delete)
+            return count
+
+        self.assertEqual(attempt_delete(2), attempt_delete(4))
 
     def test_cant_delete_fabric_if_connected_to_subnet(self):
         fabric = factory.make_Fabric()
