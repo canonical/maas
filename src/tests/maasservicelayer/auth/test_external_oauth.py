@@ -569,17 +569,12 @@ class TestOauth2Client:
             request=Request("GET", url="https://issuer.com/some_endpoint"),
         )
 
-        client.client.request = AsyncMock(return_value=test_response)
+        client.client.get = AsyncMock(return_value=test_response)
 
         response = await client._request(
             url="https://issuer.com/some_endpoint",
         )
-        client.client.request.assert_awaited_once_with(
-            method="GET",
-            url="https://issuer.com/some_endpoint",
-            headers={},
-            withhold_token=True,
-        )
+        client.client.get.assert_awaited_once()
         assert response == {"key": "value"}
 
     async def test__client_request_failure(self) -> None:
@@ -590,13 +585,13 @@ class TestOauth2Client:
             request=Request("GET", url="https://issuer.com/some_endpoint"),
         )
 
-        client.client.request = AsyncMock(return_value=test_response)
+        client.client.get = AsyncMock(return_value=test_response)
 
         with pytest.raises(HTTPStatusError):
             await client._request(
                 url="https://issuer.com/some_endpoint",
             )
-        client.client.request.assert_awaited_once()
+        client.client.get.assert_awaited_once()
 
     async def test_revoke_token_no_endpoint(self) -> None:
         client = OAuth2Client(TEST_PROVIDER)
@@ -635,17 +630,14 @@ class TestOauth2Client:
             "client_id": TEST_PROVIDER.client_id,
             "client_secret": TEST_PROVIDER.client_secret,
         }
-        client.client.request = AsyncMock(return_value=test_response)
+        client.client.post = AsyncMock(return_value=test_response)
 
         await client._revoke_token(
             url="https://issuer.com/revoke", token="abc123"
         )
 
-        client.client.request.assert_awaited_once_with(
-            "POST",
-            "https://issuer.com/revoke",
-            data=req_data,
-            withhold_token=True,
+        client.client.post.assert_awaited_once_with(
+            url="https://issuer.com/revoke", data=req_data
         )
 
     async def test__revoke_token_failure(self) -> None:
@@ -655,7 +647,7 @@ class TestOauth2Client:
             content="Internal Server Error",
             request=Request("POST", url="https://issuer.com/some_endpoint"),
         )
-        client.client.request = AsyncMock(return_value=test_response)
+        client.client.post = AsyncMock(return_value=test_response)
 
         with pytest.raises(HTTPStatusError):
             await client._revoke_token(
@@ -779,7 +771,7 @@ class TestOauth2Client:
         TEST_PROVIDER.metadata.userinfo_endpoint = (
             "https://issuer.com/userinfo"
         )
-        client.client.request = AsyncMock(
+        client.client.get = AsyncMock(
             return_value=Response(
                 status_code=200,
                 content='{"sub": "user123", "email": "user@example.com"}',
@@ -787,10 +779,8 @@ class TestOauth2Client:
             )
         )
         response = await client._userinfo_request(access_token="opaque_token")
-        client.client.request.assert_awaited_once_with(
-            method="GET",
+        client.client.get.assert_awaited_once_with(
             url=TEST_PROVIDER.metadata.userinfo_endpoint,
             headers={"Authorization": "Bearer opaque_token"},
-            withhold_token=True,
         )
         assert response == {"sub": "user123", "email": "user@example.com"}
