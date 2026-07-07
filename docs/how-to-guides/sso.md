@@ -70,8 +70,8 @@ In the MAAS Web UI, go to the Single Sign-On configuration page. This can be fou
 
 Once you save the configuration, MAAS will attempt to discover the necessary endpoints from the IdP. If discovery is successful, you are ready to use SSO.
 
-
 ## Setting up Auth0 as an IdP
+
 1. Open an account on [Auth0](https://auth0.com/) and log in to the Auth0 dashboard.
 2. After logging in, go to `Applications` > `Applications` from the left-hand menu. Then, click the `Create Application` button.
 3. Give your application a name, and select `Regular Web Application` as the application type. Click `Create`.
@@ -87,8 +87,8 @@ Once you save the configuration, MAAS will attempt to discover the necessary end
     - Click `Grant Access` to save the changes.
 8. Auth0 is now ready to be used with MAAS. From the `Settings` tab, copy the `Client ID`, `Client Secret`, and `Domain` (which will be used as the Issuer URL) to configure your provider in MAAS.
 
-
 ## Setting up Microsoft Entra ID as an IdP
+
 1. Create an account and log in to the [Microsoft Entra admin center](https://entra.microsoft.com/).
 2. From the left-hand menu, under the `Entra ID` section, select `App registrations` > `New registration`.
 3. Give your application a name. For the redirect URI, select `Web` and enter your MAAS URL followed by `/r/login/oidc/callback`. Click `Register`.
@@ -106,8 +106,8 @@ Once you save the configuration, MAAS will attempt to discover the necessary end
     - Click `Grant admin consent for Default Directory` to grant the permissions you just added.
 8. Entra ID is now ready to be used with MAAS. Use the `Application (client) ID`, `Client Secret`, and the issuer URL you constructed earlier to configure your provider in MAAS.
 
-
 ## Setting up Keycloak as an IdP
+
 1. Ensure keycloak is running and accessible. Log in to the Keycloak admin console.
 2. From the left-hand menu, select `Clients` > `Create client`.
     - Enter a Client ID, a name and a description. Then, click `Next`.
@@ -121,8 +121,6 @@ Once you save the configuration, MAAS will attempt to discover the necessary end
     - Fill in the required details and click `Create`.
     - Go to the `Credentials` tab for the user and set a password. Ensure that you disable the "Temporary" option so that the user can log in without being forced to change their password.
 6. Keycloak is now ready to be used with MAAS. Use the Client ID, Client Secret, and the issuer URL (which is typically in the format `https://<keycloak-domain>/realms/master`, if you are using the master realm) to configure your provider in MAAS.
-
-
 
 ## Use Single Sign-On
 
@@ -141,7 +139,6 @@ To test the IdP configuration:
 6. After successful authentication, you will be redirected back to MAAS and logged in as that user. MAAS will create a new user profile based on the information received from the IdP.
 
 Note that Single Sign-On does not replace local login. Local users will still have access to the regular password-based authentication.
-
 
 ## Tear down
 
