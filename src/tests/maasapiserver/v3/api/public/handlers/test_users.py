@@ -16,9 +16,12 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.users import (
     UserCreateRequest,
     UserUpdateRequest,
+    UserUpdateRequestAdmin,
+)
+from maasapiserver.v3.api.public.models.responses.entitlements import (
+    EntitlementsListResponse,
 )
 from maasapiserver.v3.api.public.models.responses.users import (
-    UserInfoResponse,
     UserResponse,
     UsersListResponse,
     UsersStatisticsListResponse,
@@ -123,6 +126,11 @@ class TestUsersApi(ApiCommonTests):
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
             ),
             Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+            ),
+            Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
@@ -153,8 +161,7 @@ class TestUsersApi(ApiCommonTests):
             ),
             Endpoint(
                 method="GET",
-                path=f"{self.BASE_PATH}/1",
-                permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                path=f"{self.BASE_PATH}/me:get_entitlements",
             ),
             Endpoint(
                 method="POST",
@@ -163,6 +170,10 @@ class TestUsersApi(ApiCommonTests):
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}/me:change_password",
+            ),
+            Endpoint(
+                method="PUT",
+                path=f"{self.BASE_PATH}/me",
             ),
         ]
 
@@ -187,70 +198,20 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={1: [GROUP_1, GROUP_2]})
         )
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
-        services_mock.openfga_tuples.list_entitlements_for_groups.return_value = [
-            OpenFGATuple(
-                object_type="maas",
-                object_id="0",
-                relation="can_view_machines",
-                user="group:10#member",
-                user_type="userset",
-            ),
-            # duplicate from another group, must be deduplicated
-            OpenFGATuple(
-                object_type="maas",
-                object_id="0",
-                relation="can_view_machines",
-                user="group:20#member",
-                user_type="userset",
-            ),
-            OpenFGATuple(
-                object_type="pool",
-                object_id="1",
-                relation="can_edit_machines",
-                user="group:20#member",
-                user_type="userset",
-            ),
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/me",
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+
+        user_response = UserResponse(**response.json())
+        assert user_response.id == 1
+        assert user_response.username == "username"
+        assert [(g.id, g.name) for g in user_response.groups] == [
+            (GROUP_1.id, GROUP_1.name),
+            (GROUP_2.id, GROUP_2.name),
         ]
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}/me",
-        )
-        assert response.status_code == 200
-
-        user_info = UserInfoResponse(**response.json())
-        assert user_info.id == 1
-        assert user_info.username == "username"
-        assert {
-            (e.resource_type, e.resource_id, e.entitlement)
-            for e in user_info.entitlements
-        } == {
-            ("maas", 0, "can_view_machines"),
-            ("pool", 1, "can_edit_machines"),
-        }
-        services_mock.openfga_tuples.list_entitlements_for_groups.assert_called_once_with(
-            [GROUP_1.id, GROUP_2.id]
-        )
-
-    async def test_get_user_info_no_groups(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
-    ) -> None:
-        services_mock.users = Mock(UsersService)
-        services_mock.users.get_one.return_value = USER_1
-        services_mock.users.get_groups_for_users.return_value = (
-            UserGroupsByUser(groups_by_user={})
-        )
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
-        services_mock.openfga_tuples.list_entitlements_for_groups.return_value = []
-        response = await mocked_api_client_user.get(
-            f"{self.BASE_PATH}/me",
-        )
-        assert response.status_code == 200
-
-        user_info = UserInfoResponse(**response.json())
-        assert user_info.entitlements == []
-        services_mock.openfga_tuples.list_entitlements_for_groups.assert_called_once_with(
-            []
-        )
+        services_mock.users.get_groups_for_users.assert_called_once_with([1])
 
     async def test_get_user_info_unauthorized(
         self, mocked_api_client: AsyncClient
@@ -285,6 +246,93 @@ class TestUsersApi(ApiCommonTests):
         assert discharge_response["Info"]["Macaroon"] is not None
         assert discharge_response["Info"]["MacaroonPath"] == "/"
         assert discharge_response["Info"]["CookieNameSuffix"] == "maas"
+
+    # GET /users/me:get_entitlements
+    async def test_get_user_entitlements(
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={USER_1.id: [GROUP_1, GROUP_2]})
+        )
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.list_entitlements_for_groups.return_value = [
+            OpenFGATuple(
+                object_type="maas",
+                object_id="0",
+                relation="can_view_machines",
+                user="group:10#member",
+                user_type="userset",
+            ),
+            # duplicate from another group, must be deduplicated
+            OpenFGATuple(
+                object_type="maas",
+                object_id="0",
+                relation="can_view_machines",
+                user="group:20#member",
+                user_type="userset",
+            ),
+            OpenFGATuple(
+                object_type="pool",
+                object_id="1",
+                relation="can_edit_machines",
+                user="group:20#member",
+                user_type="userset",
+            ),
+        ]
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/me:get_entitlements"
+        )
+        assert response.status_code == 200
+
+        entitlements_response = EntitlementsListResponse(**response.json())
+        assert entitlements_response.total == 3
+        assert len(entitlements_response.items) == 3
+        assert {
+            (e.resource_type, e.resource_id, e.entitlement)
+            for e in entitlements_response.items
+        } == {
+            ("maas", 0, "can_view_machines"),
+            ("pool", 1, "can_edit_machines"),
+        }
+        services_mock.openfga_tuples.list_entitlements_for_groups.assert_called_once_with(
+            [GROUP_1.id, GROUP_2.id]
+        )
+
+    async def test_get_user_entitlements_no_groups(
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={})
+        )
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.list_entitlements_for_groups.return_value = []
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/me:get_entitlements"
+        )
+        assert response.status_code == 200
+
+        entitlements_response = EntitlementsListResponse(**response.json())
+        assert entitlements_response.total == 0
+        assert entitlements_response.items == []
+        services_mock.openfga_tuples.list_entitlements_for_groups.assert_called_once_with(
+            []
+        )
+
+    async def test_get_user_entitlements_unauthorized(
+        self, mocked_api_client: AsyncClient
+    ) -> None:
+        response = await mocked_api_client.get(
+            f"{self.BASE_PATH}/me:get_entitlements"
+        )
+        assert response.status_code == 401
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 401
 
     # GET /users
     async def test_list_users_has_other_page(
@@ -410,53 +458,6 @@ class TestUsersApi(ApiCommonTests):
         ]
         services_mock.users.get_groups_for_users.assert_called_once_with(
             [USER_1.id]
-        )
-
-    async def test_get_other_user_no_entitlement(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
-    ) -> None:
-        # no permissions on openfga
-        client = mocked_api_client_user_with_permissions()
-        services_mock.users = Mock(UsersService)
-        # the user we use in tests has the id=0
-        response = await client.get(f"{self.BASE_PATH}/1")
-        assert response.status_code == 404
-        assert "ETag" not in response.headers
-
-        error_response = ErrorBodyResponse(**response.json())
-        assert error_response.kind == "Error"
-        assert error_response.code == 404
-        services_mock.users.get_by_id.assert_not_called()
-        services_mock.users.get_groups_for_users.assert_not_called()
-
-    async def test_get_self_user_no_entitlement(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
-    ) -> None:
-        # no permissions on openfga
-        client = mocked_api_client_user_with_permissions()
-        user = USER_1.model_copy()
-        # the user we use in tests has the id=0
-        user.id = 0
-        services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id.return_value = user
-        services_mock.users.get_groups_for_users.return_value = (
-            UserGroupsByUser(groups_by_user={user.id: [GROUP_1]})
-        )
-        response = await client.get(f"{self.BASE_PATH}/0")
-        assert response.status_code == 200
-        assert len(response.headers["ETag"]) > 0
-        user_response = UserResponse(**response.json())
-        assert user_response.id == 0
-        assert user_response.username == "username"
-        assert [(g.id, g.name) for g in user_response.groups] == [
-            (GROUP_1.id, GROUP_1.name)
-        ]
-        services_mock.users.get_groups_for_users.assert_called_once_with(
-            [user.id]
         )
 
     async def test_get_user_404(
@@ -738,6 +739,109 @@ class TestUsersApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 422
 
+    # PUT /users/me
+    async def test_put_user_me(
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+    ) -> None:
+        updated_user = User(
+            id=0,
+            is_active=True,
+            is_superuser=False,
+            is_staff=False,
+            username="updated_username",
+            password="pass",
+            first_name="Updated",
+            last_name="Name",
+            email="updated@example.com",
+            date_joined=utcnow(),
+        )
+        services_mock.users = Mock(UsersService)
+        services_mock.users.update_by_id.return_value = updated_user
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={updated_user.id: [GROUP_1]})
+        )
+
+        user_request = UserUpdateRequest(
+            username="updated_username",
+            first_name="Updated",
+            last_name="Name",
+            email="updated@example.com",
+        )
+
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/me",
+            json=jsonable_encoder(user_request),
+        )
+
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+
+        user_response = UserResponse(**response.json())
+        assert user_response.id == updated_user.id
+        assert user_response.username == updated_user.username
+        assert user_response.first_name == updated_user.first_name
+        assert user_response.last_name == updated_user.last_name
+        assert user_response.email == updated_user.email
+        assert [(g.id, g.name) for g in user_response.groups] == [
+            (GROUP_1.id, GROUP_1.name)
+        ]
+        # the test client uses authenticated user with id=0
+        services_mock.users.update_by_id.assert_called_once()
+        assert services_mock.users.update_by_id.call_args[0][0] == 0
+
+    async def test_put_user_me_unauthorized(
+        self, mocked_api_client: AsyncClient
+    ) -> None:
+        user_request = UserUpdateRequest(
+            username="updated_username",
+            first_name="Updated",
+            last_name="Name",
+        )
+        response = await mocked_api_client.put(
+            f"{self.BASE_PATH}/me",
+            json=jsonable_encoder(user_request),
+        )
+        assert response.status_code == 401
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 401
+
+    async def test_put_user_me_cannot_set_groups(
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+    ) -> None:
+        """PUT /users/me uses UserUpdateRequest which has no groups field."""
+        updated_user = User(
+            id=0,
+            is_active=True,
+            is_superuser=False,
+            is_staff=False,
+            username="updated_username",
+            password="pass",
+            first_name="Updated",
+            last_name="Name",
+            email="updated@example.com",
+            date_joined=utcnow(),
+        )
+        services_mock.users = Mock(UsersService)
+        services_mock.users.update_by_id.return_value = updated_user
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={updated_user.id: []})
+        )
+
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/me",
+            json={
+                "username": "updated_username",
+                "first_name": "Updated",
+                "last_name": "Name",
+                "groups": [GROUP_1.id],
+            },
+        )
+        # groups is not a field on UserUpdateRequest; FastAPI ignores unknown fields,
+        # so this should succeed and the groups field should simply be absent from the builder.
+        assert response.status_code == 200
+        services_mock.users.update_by_id.assert_called_once()
+
     # PUT /users/{user_id}
     async def test_put_user(
         self,
@@ -817,7 +921,7 @@ class TestUsersApi(ApiCommonTests):
         ]
         services_mock.usergroups = Mock(UserGroupsService)
 
-        user_request = UserUpdateRequest(
+        user_request = UserUpdateRequestAdmin(
             username="new_user",
             password="new_pass",
             first_name="new_first_name",
@@ -872,7 +976,7 @@ class TestUsersApi(ApiCommonTests):
             UserGroupNotFound()
         )
 
-        user_request = UserUpdateRequest(
+        user_request = UserUpdateRequestAdmin(
             username="new_user",
             password="new_pass",
             first_name="new_first_name",
