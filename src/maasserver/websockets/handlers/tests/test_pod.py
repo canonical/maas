@@ -26,6 +26,7 @@ from maasserver.websockets.base import DATETIME_FORMAT
 from maasserver.websockets.handlers import pod as pod_module
 from maasserver.websockets.handlers.pod import ComposeMachineForm, PodHandler
 from maastesting.crochet import wait_for
+from maastesting.djangotestcase import count_queries
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredPod,
@@ -638,6 +639,28 @@ class TestPodHandler(MAASTransactionServerTestCase):
         expected_data = [handler.full_dehydrate(pod, for_list=True)]
         result = handler.list({"id": pod.id})
         self.assertEqual(expected_data, result)
+
+    def test_list_queryset_prefetches_host_node(self):
+        # dehydrate reads pod.host.system_id per pod in the list; get_queryset
+        # must prefetch hints__nodes so that access is served from the cache
+        # rather than querying the node per pod.
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        hosts = []
+        for _ in range(3):
+            node = factory.make_Node()
+            self.make_pod_with_hints(host=node)
+            hosts.append(node)
+
+        pods = list(handler.get_queryset(for_list=True))
+        self.assertEqual(len(hosts), len(pods))
+
+        def read_hosts():
+            return [pod.host.system_id if pod.host else None for pod in pods]
+
+        count, system_ids = count_queries(read_hosts)
+        self.assertEqual(0, count)
+        self.assertCountEqual([node.system_id for node in hosts], system_ids)
 
     def test_full_dehydrate_for_list_no_details(self):
         admin = factory.make_admin()
