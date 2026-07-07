@@ -416,7 +416,9 @@ class OAuth2Client:
         headers = {}
         if access_token:
             headers["Authorization"] = f"Bearer {access_token}"
-        response = await self.client.get(url=url, headers=headers)  # pyright: ignore [reportAttributeAccessIssue]
+        response = await self.client.request(
+            method="GET", url=url, headers=headers, withhold_token=True
+        )
         response.raise_for_status()
         return response.json()
 
@@ -427,5 +429,7 @@ class OAuth2Client:
             "client_id": self.provider.client_id,
             "client_secret": self.provider.client_secret,
         }
-        response = await self.client.post(url=url, data=data)  # pyright: ignore [reportAttributeAccessIssue]
+        response = await self.client.request(
+            method="POST", url=url, data=data, withhold_token=True
+        )
         response.raise_for_status()
