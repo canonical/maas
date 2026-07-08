@@ -2061,6 +2061,70 @@ class TestMakeSubnetConfig(MAASServerTestCase):
 
 
 class TestMakeHostsForSubnet(MAASServerTestCase):
+    def test_query_count_independent_of_host_count(self):
+        # Host generation must not run a query per allocated IP; the query
+        # count stays constant as more machines are added.
+        subnet = factory.make_Subnet()
+
+        def add_machines(count):
+            for _ in range(count):
+                node = factory.make_Node(interface=False)
+                iface = factory.make_Interface(
+                    INTERFACE_TYPE.PHYSICAL, node=node, vlan=subnet.vlan
+                )
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.AUTO,
+                    subnet=subnet,
+                    interface=iface,
+                )
+
+        add_machines(2)
+        count_2, hosts_2 = count_queries(dhcp.make_hosts_for_subnets, [subnet])
+        add_machines(3)
+        count_5, hosts_5 = count_queries(dhcp.make_hosts_for_subnets, [subnet])
+        self.assertEqual(2, len(hosts_2))
+        self.assertEqual(5, len(hosts_5))
+        self.assertEqual(count_2, count_5)
+
+    def test_query_count_independent_of_bond_parent_count(self):
+        # Bond parents get their own host entries and
+        # make_interface_hostname(parent) reads parent.node_config.node; the
+        # query count must not grow with the number of parents.
+        subnet = factory.make_Subnet()
+
+        def add_bond(parent_count):
+            node = factory.make_Node(interface=False)
+            parents = [
+                factory.make_Interface(
+                    INTERFACE_TYPE.PHYSICAL, node=node, vlan=subnet.vlan
+                )
+                for _ in range(parent_count)
+            ]
+            bond = factory.make_Interface(
+                INTERFACE_TYPE.BOND,
+                node=node,
+                vlan=subnet.vlan,
+                parents=parents,
+            )
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO,
+                subnet=subnet,
+                interface=bond,
+            )
+
+        add_bond(2)
+        count_small, hosts_small = count_queries(
+            dhcp.make_hosts_for_subnets, [subnet]
+        )
+        add_bond(4)
+        count_large, hosts_large = count_queries(
+            dhcp.make_hosts_for_subnets, [subnet]
+        )
+        # Each bond and its parents get a host entry (factory MACs differ).
+        self.assertEqual(3, len(hosts_small))
+        self.assertEqual(8, len(hosts_large))
+        self.assertEqual(count_small, count_large)
+
     def tests__returns_defined_hosts(self):
         rack_controller = factory.make_RackController(interface=False)
         vlan = factory.make_VLAN()
