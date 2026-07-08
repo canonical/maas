@@ -54,7 +54,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
                 )
             )
         ],
@@ -104,7 +104,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
                 )
             )
         ],
@@ -159,7 +159,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
                 )
             )
         ],
@@ -192,7 +192,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
                 )
             )
         ],
@@ -228,7 +228,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
                 )
             )
         ],
@@ -265,7 +265,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
                 )
             )
         ],
