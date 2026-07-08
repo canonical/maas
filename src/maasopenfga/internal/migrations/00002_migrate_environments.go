@@ -286,13 +286,12 @@ func Up00002(ctx context.Context, tx *sql.Tx) error {
 		"can_view_ipaddresses",
 		"can_view_dnsrecords",
 		"can_view_operations",
-		"can_edit_operations",
-		"can_edit_availability_zones"}
+		"can_edit_operations"}
 	if err := createGroup(ctx, tx, administratorGroupID, &relations); err != nil {
 		return fmt.Errorf("failed to create administrators group: %w", err)
 	}
 
-	relations = []string{"can_deploy_machines", "can_view_available_machines", "can_view_global_entities", "can_view_boot_entities", "can_view_availability_zones"}
+	relations = []string{"can_deploy_machines", "can_view_available_machines", "can_view_global_entities", "can_view_boot_entities"}
 	if err := createGroup(ctx, tx, usersGroupID, &relations); err != nil {
 		return fmt.Errorf("failed to create users group: %w", err)
 	}

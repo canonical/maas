@@ -42,8 +42,6 @@ class MAASResourceEntitlement(StrEnum):
     CAN_VIEW_DNSRECORDS = "can_view_dnsrecords"
     CAN_EDIT_OPERATIONS = "can_edit_operations"
     CAN_VIEW_OPERATIONS = "can_view_operations"
-    CAN_EDIT_AVAILABILITY_ZONES = "can_edit_availability_zones"
-    CAN_VIEW_AVAILABILITY_ZONES = "can_view_availability_zones"
 
 
 class PoolResourceEntitlements(StrEnum):
