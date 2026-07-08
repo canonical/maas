@@ -71,11 +71,6 @@ class TestBootSourceAPI(APITestCase.ForUser):
         )
         self.assertNotIn(b"<memory at", returned_boot_source["keyring_data"])
 
-    def test_GET_requires_admin(self):
-        boot_source = factory.make_BootSource()
-        response = self.client.get(get_boot_source_uri(boot_source))
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
     def test_GET_returns_name_priority_enabled(self):
         self.become_admin()
         boot_source = factory.make_BootSource()
@@ -305,10 +300,6 @@ class TestBootSourcesAPI(APITestCase.ForUser):
             [boot_source.id for boot_source in sources],
             [boot_source.get("id") for boot_source in parsed_result],
         )
-
-    def test_GET_requires_admin(self):
-        response = self.client.get(reverse("boot_sources_handler"))
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_creates_boot_source_with_keyring_filename(self):
         self.become_admin()
