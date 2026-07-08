@@ -21,12 +21,16 @@ from maasapiserver.v3.api.public.models.requests.users import (
     UserCreateRequest,
     UsersFiltersParams,
     UserUpdateRequest,
+    UserUpdateRequestAdmin,
 )
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
 )
+from maasapiserver.v3.api.public.models.responses.entitlements import (
+    EntitlementResponse,
+    EntitlementsListResponse,
+)
 from maasapiserver.v3.api.public.models.responses.users import (
-    UserInfoResponse,
     UserResponse,
     UsersListResponse,
     UsersStatisticsListResponse,
@@ -71,8 +75,10 @@ class UsersHandler(Handler):
         return [
             "get_me_statistics",
             "get_user_info",
+            "get_user_entitlements",
             "complete_intro",
             "change_password_user",
+            "update_user_me",
             "list_users",
             "get_user",
             "create_user",
@@ -87,9 +93,7 @@ class UsersHandler(Handler):
         methods=["GET"],
         tags=TAGS,
         responses={
-            200: {
-                "model": UserInfoResponse,
-            },
+            200: {"model": UserResponse},
             401: {"model": UnauthorizedBodyResponse},
         },
         response_model_exclude_none=True,
@@ -98,11 +102,12 @@ class UsersHandler(Handler):
     )
     async def get_user_info(
         self,
+        response: Response,
         authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> UserInfoResponse:
+    ) -> UserResponse:
         assert authenticated_user is not None
         user = await services.users.get_one(
             QuerySpec(
@@ -120,12 +125,61 @@ class UsersHandler(Handler):
             )
         groups_by_user = await services.users.get_groups_for_users([user.id])
         groups = groups_by_user.for_user(user.id)
+        response.headers["ETag"] = user.etag()
+        return UserResponse.from_model(
+            user=user,
+            groups=groups,
+            self_base_hyperlink=f"{V3_API_PREFIX}/users",
+        )
+
+    @handler(
+        path="/users/me:get_entitlements",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": EntitlementsListResponse,
+            },
+            401: {"model": UnauthorizedBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[Depends(check_authentication())],
+    )
+    async def get_user_entitlements(
+        self,
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> EntitlementsListResponse:
+        assert authenticated_user is not None
+        user = await services.users.get_by_id(authenticated_user.id)
+
+        if user is None:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
+                        message="The user does not exist",
+                    )
+                ]
+            )
+        groups_by_user = await services.users.get_groups_for_users([user.id])
+        groups = groups_by_user.for_user(user.id)
         entitlement_tuples = (
             await services.openfga_tuples.list_entitlements_for_groups(
                 [group.id for group in groups]
             )
         )
-        return UserInfoResponse.from_model(user, entitlement_tuples)
+        return EntitlementsListResponse(
+            items=[
+                EntitlementResponse.from_model(tuple_)
+                for tuple_ in entitlement_tuples
+            ],
+            total=len(entitlement_tuples),
+            next=None,
+        )
 
     @handler(
         path="/users/me:complete_intro",
@@ -176,6 +230,43 @@ class UsersHandler(Handler):
             password=change_password_request.password,
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/users/me",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            200: {"model": UserResponse},
+            401: {"model": UnauthorizedBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[Depends(check_authentication())],
+    )
+    async def update_user_me(
+        self,
+        user_request: UserUpdateRequest,
+        response: Response,
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> UserResponse:
+        assert authenticated_user is not None
+        user = await services.users.update_by_id(
+            authenticated_user.id, user_request.to_builder()
+        )
+
+        current_groups = (
+            await services.users.get_groups_for_users([user.id])
+        ).for_user(user.id)
+
+        response.headers["ETag"] = user.etag()
+        return UserResponse.from_model(
+            user=user,
+            groups=current_groups,
+            self_base_hyperlink=f"{V3_API_PREFIX}/users",
+        )
 
     @handler(
         path="/users",
@@ -349,7 +440,7 @@ class UsersHandler(Handler):
     async def update_user(
         self,
         user_id: int,
-        user_request: UserUpdateRequest,
+        user_request: UserUpdateRequestAdmin,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
