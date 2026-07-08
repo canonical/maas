@@ -101,6 +101,9 @@ type maas
 	define can_view_operations: [group#member]
 	define can_edit_operations: [group#member]
 
+    define can_edit_availability_zones: [group#member]
+    define can_view_availability_zones: [group#member] or can_edit_availability_zones
+
 type pool
   relations
     define parent: [maas]

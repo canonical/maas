@@ -231,6 +231,20 @@ class SyncOpenFGAClient(BaseOpenFGAClient):
             self.MAAS_GLOBAL_OBJ,
         )
 
+    def can_edit_availability_zones(self, user) -> bool:
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
+            self.MAAS_GLOBAL_OBJ,
+        )
+
+    def can_view_availability_zones(self, user) -> bool:
+        return self._check(
+            user,
+            MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
+            self.MAAS_GLOBAL_OBJ,
+        )
+
     # List Methods
     def list_pools_with_view_machines_access(self, user) -> list[int]:
         return self._list_objects(

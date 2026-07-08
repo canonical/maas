@@ -54,7 +54,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES
                 )
             )
         ],
@@ -104,7 +104,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES
                 )
             )
         ],
@@ -159,7 +159,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES
                 )
             )
         ],
@@ -192,7 +192,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES
                 )
             )
         ],
@@ -228,7 +228,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES
                 )
             )
         ],
@@ -265,7 +265,7 @@ class ZonesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES
                 )
             )
         ],

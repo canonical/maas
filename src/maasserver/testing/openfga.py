@@ -28,6 +28,7 @@ class OpenFGAClientMock(SyncOpenFGAClient):
         "can_view_devices",
         "can_view_ipaddresses",
         "can_view_dnsrecords",
+        "can_edit_availability_zones",
     ]
 
     # Methods allowing access to EVERYONE
@@ -35,6 +36,8 @@ class OpenFGAClientMock(SyncOpenFGAClient):
         "can_deploy_machines_in_pool",
         "can_view_available_machines_in_pool",
         "can_view_global_entities",
+        "can_view_boot_entities",
+        "can_view_availability_zones",
     ]
 
     # Methods returning pools ONLY for superusers

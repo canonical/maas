@@ -361,6 +361,30 @@ class OpenFGATupleBuilder(ResourceBuilder):
         )
 
     @classmethod
+    def build_group_can_edit_availability_zones(
+        cls, group_id: int
+    ) -> "OpenFGATupleBuilder":
+        return OpenFGATupleBuilder(
+            user=f"group:{group_id}#member",
+            user_type="userset",
+            relation=MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
+            object_id="0",
+            object_type=OpenFGAEntitlementResourceType.MAAS,
+        )
+
+    @classmethod
+    def build_group_can_view_availability_zones(
+        cls, group_id: int
+    ) -> "OpenFGATupleBuilder":
+        return OpenFGATupleBuilder(
+            user=f"group:{group_id}#member",
+            user_type="userset",
+            relation=MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
+            object_id="0",
+            object_type=OpenFGAEntitlementResourceType.MAAS,
+        )
+
+    @classmethod
     def build_pool(cls, pool_id: str) -> "OpenFGATupleBuilder":
         return OpenFGATupleBuilder(
             user="maas:0",

@@ -56,6 +56,18 @@ PERMISSION_METHODS = [
     ("can_view_dnsrecords", ("u1",), "can_view_dnsrecords", "maas:0"),
     ("can_view_operations", ("u1",), "can_view_operations", "maas:0"),
     ("can_edit_operations", ("u1",), "can_edit_operations", "maas:0"),
+    (
+        "can_edit_availability_zones",
+        ("u1",),
+        "can_edit_availability_zones",
+        "maas:0",
+    ),
+    (
+        "can_view_availability_zones",
+        ("u1",),
+        "can_view_availability_zones",
+        "maas:0",
+    ),
 ]
 
 LIST_METHODS = [

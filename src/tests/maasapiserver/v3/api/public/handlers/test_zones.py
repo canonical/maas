@@ -66,32 +66,32 @@ class TestZonesApi(ApiCommonTests):
             Endpoint(
                 method="GET",
                 path=f"{V3_API_PREFIX}/zones:statistics",
-                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+                permission=MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
             ),
             Endpoint(
                 method="GET",
                 path=f"{self.BASE_PATH}",
-                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+                permission=MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
             ),
             Endpoint(
                 method="GET",
                 path=f"{self.BASE_PATH}/2",
-                permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+                permission=MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
             ),
             Endpoint(
                 method="PUT",
                 path=f"{self.BASE_PATH}/1",
-                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                permission=MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}",
-                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                permission=MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/2",
-                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                permission=MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
             ),
         ]
 
@@ -101,7 +101,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.list.return_value = ListResult[Zone](
@@ -120,7 +120,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.list.return_value = ListResult[Zone](
@@ -139,7 +139,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.list.return_value = ListResult[Zone](
@@ -167,7 +167,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
         )
         zone_with_statistics = ZoneWithStatistics(
             id=0,
@@ -201,7 +201,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
         )
         zone_with_statistics = ZoneWithStatistics(
             id=0,
@@ -244,7 +244,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
         )
         # A "default" zone should be created at startup by the migration scripts.
         services_mock.zones = Mock(ZonesService)
@@ -262,7 +262,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.get_by_id.return_value = None
@@ -280,7 +280,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_VIEW_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.get_by_id.side_effect = RequestValidationError(
@@ -301,7 +301,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
         )
         updated_test_zone = TEST_ZONE
         updated_test_zone.name = "new_name"
@@ -336,7 +336,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.update_by_id.return_value = None
@@ -365,7 +365,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.update_by_id.return_value = None
@@ -395,7 +395,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
         )
         zone_request = ZoneRequest(
             name=TEST_ZONE.name, description=TEST_ZONE.description
@@ -422,7 +422,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
         )
         zone_request = ZoneRequest(name="myzone", description=None)
         services_mock.zones = Mock(ZonesService)
@@ -446,7 +446,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
         )
         zone_request = ZoneRequest(name="myzone", description=None)
         services_mock.zones = Mock(ZonesService)
@@ -493,7 +493,7 @@ class TestZonesApi(ApiCommonTests):
         zone_request: dict[str, str],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.create.side_effect = ValueError(
@@ -513,7 +513,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.delete_by_id.side_effect = BadRequestException(
@@ -542,7 +542,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.delete_by_id.side_effect = None
@@ -555,7 +555,7 @@ class TestZonesApi(ApiCommonTests):
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            MAASResourceEntitlement.CAN_EDIT_AVAILABILITY_ZONES,
         )
         services_mock.zones = Mock(ZonesService)
         services_mock.zones.delete_by_id.side_effect = [
