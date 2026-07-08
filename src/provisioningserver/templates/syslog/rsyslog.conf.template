@@ -102,7 +102,7 @@ if $programname == "maas_nginx" and $inputname == "imuxsock" then {
 {{if promtail_port > 0}}
 # Forward to promtail
 *.* action(type="omfwd" protocol="tcp" target="localhost" port="{{promtail_port}}" 
-           Template="RSYSLOG_SyslogProtocol23Format" 
+           Template="RSYSLOG_SyslogRFC5424Format"
            TCP_Framing="octet-counted" queue.filename="promtail")
 {{endif}}
 
