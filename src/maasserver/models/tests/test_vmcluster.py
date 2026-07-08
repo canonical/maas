@@ -18,6 +18,7 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
+from maastesting.djangotestcase import count_queries
 from provisioningserver.testing.certificates import get_sample_cert
 
 wait_for_reactor = wait_for()
@@ -139,6 +140,33 @@ class TestVMClusterManager(MAASServerTestCase):
 
 
 class TestVMCluster(MAASServerTestCase):
+    def test_tracked_virtual_machines_query_count_is_constant(self):
+        # Reading vm.machine while iterating tracked VMs must not query the
+        # machine per VM; the count stays constant as VMs are added.
+        project = factory.make_name("project")
+        cluster = VMCluster.objects.create(
+            name=factory.make_name("name"), project=project
+        )
+        pod = factory.make_Pod(pod_type="lxd", host=None, cluster=cluster)
+
+        def add_vms(count):
+            for _ in range(count):
+                node = factory.make_Node(bmc=pod)
+                factory.make_VirtualMachine(
+                    machine=node, bmc=pod, project=project
+                )
+
+        def read_machines():
+            return [vm.machine for vm in cluster.tracked_virtual_machines()]
+
+        add_vms(2)
+        count_2, machines_2 = count_queries(read_machines)
+        add_vms(3)
+        count_5, machines_5 = count_queries(read_machines)
+        self.assertEqual(2, len(machines_2))
+        self.assertEqual(5, len(machines_5))
+        self.assertEqual(count_2, count_5)
+
     def test_hosts(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
