@@ -563,9 +563,9 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_user: AsyncClient,
     ) -> None:
         updated_user = User(
-            id=1,
+            id=0,
             is_active=False,
-            is_superuser=True,
+            is_superuser=False,
             is_staff=False,
             username="new_user",
             password="new_pass",
@@ -592,6 +592,11 @@ class TestUsersApi(ApiCommonTests):
         )
 
         assert response.status_code == 200
+
+        user_response = UserResponse(**response.json())
+
+        # A normal user can't update the is_superuser field.
+        assert user_response.is_superuser is False
 
     async def test_put_user_cant_update_others(
         self,

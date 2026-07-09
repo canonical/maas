@@ -51,6 +51,7 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.base import UNSET
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 
@@ -323,11 +324,14 @@ class UsersHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
         assert authenticated_user is not None
-        if (
-            UserRole.ADMIN not in authenticated_user.roles
-            and authenticated_user.id != user_id
-        ):
+        is_admin = UserRole.ADMIN in authenticated_user.roles
+        if not is_admin and authenticated_user.id != user_id:
             raise NotFoundException()
+
+        builder = user_request.to_builder()
+
+        if not is_admin:
+            builder.is_superuser = UNSET
 
         user = await services.users.update_by_id(
             user_id, user_request.to_builder()
