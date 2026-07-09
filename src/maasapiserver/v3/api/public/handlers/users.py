@@ -256,7 +256,6 @@ class UsersHandler(Handler):
         if not user:
             raise NotFoundException()
 
-
         response.headers["ETag"] = user.etag()
         return UserResponse.from_model(
             user=user,
