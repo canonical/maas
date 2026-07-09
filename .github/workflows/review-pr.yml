@@ -1,0 +1,58 @@
+name: LLM Code Review
+
+# Use pull_request_target so the workflow always runs from the main branch.
+# This gives it access to repository secrets while still being triggered by
+# PRs from forks or feature branches.
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  # Model can be any Gemini model name that your GEMINI_API_KEY has access to.
+  # For example:
+  #  - gemini-3.1-pro-preview
+  #  - gemini-3.1-pro-preview-customtools
+  #  - gemini-3-flash-preview
+  #  - gemini-3-flash-lite-preview
+  #  - gemini-2.5-pro
+  #  - gemini-2.5-flash
+  MODEL: gemini-3.1-pro-preview
+  SNAP_CHANNEL: stable
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the PR HEAD so the LLM can read the actual files being
+      #    reviewed via --repo-dir.  We do NOT run any code from this checkout.
+      - name: Check out PR head (for file context)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install maas-code-reviewer
+        run: sudo snap install maas-code-reviewer --channel "$SNAP_CHANNEL"
+
+      - name: Run maas-code-reviewer
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          maas-code-reviewer review-pr \
+            --model "$MODEL" \
+            --repo-dir "$GITHUB_WORKSPACE" \
+            --metrics "$RUNNER_TEMP/metrics.json" \
+            "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+
+      - name: Upload metrics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: review-metrics-pr${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/metrics.json
+          retention-days: 30
