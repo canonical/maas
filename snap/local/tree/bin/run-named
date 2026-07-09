@@ -16,22 +16,6 @@ MAAS_ZONE_FILE_CONFIG_DIR="$SNAP_DATA/bind" \
     MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind" \
     "$SNAP/bin/maas-rack" setup-dns --no-clobber
 
-# named default socket limit (21k) can be higher than current limits.
-# Increase the limit to the max allowed and restrict named to this.
-# LP:1901999
-ulimit -n "$(ulimit -Hn)"
-MAAS_DNS_SOCK_LIMIT=$(ulimit -n)
-
-# Run named in FIPS mode (-F) when the host kernel has FIPS enabled, so bind9
-# restricts itself to FIPS-approved cryptography.
-NAMED_FIPS_FLAG=()
-if [ -f /proc/sys/crypto/fips_enabled ] && \
-   [ "$(cat /proc/sys/crypto/fips_enabled)" = "1" ]; then
-    NAMED_FIPS_FLAG=(-F)
-fi
-
 exec "$SNAP/usr/sbin/named" \
     -c "$SNAP_DATA/bind/named.conf" \
-    -S "$MAAS_DNS_SOCK_LIMIT" \
-    "${NAMED_FIPS_FLAG[@]}" \
     -g
