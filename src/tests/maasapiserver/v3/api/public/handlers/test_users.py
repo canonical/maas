@@ -557,6 +557,67 @@ class TestUsersApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 422
 
+    async def test_put_user_updates_self(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        updated_user = User(
+            id=1,
+            is_active=False,
+            is_superuser=True,
+            is_staff=False,
+            username="new_user",
+            password="new_pass",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_email@example.com",
+        )
+        services_mock.users = Mock(UsersService)
+        services_mock.users.update_by_id.return_value = updated_user
+
+        user_request = UserUpdateRequest(
+            is_superuser=True,
+            username="new_user",
+            password="new_pass",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_email@example.com",
+        )
+
+        # the user we use in tests has the id=0
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/0",
+            json=jsonable_encoder(user_request),
+        )
+
+        assert response.status_code == 200
+
+    async def test_put_user_cant_update_others(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+
+        user_request = UserUpdateRequest(
+            is_superuser=True,
+            username="new_user",
+            password="new_pass",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_email@example.com",
+        )
+
+        # the user we use in tests has the id=0
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(user_request),
+        )
+
+        assert response.status_code == 404
+        services_mock.users.update_by_id.assert_not_called()
+
     async def test_delete_204(
         self,
         services_mock: ServiceCollectionV3,
