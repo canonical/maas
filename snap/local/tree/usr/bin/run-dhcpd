@@ -15,4 +15,6 @@ export KEA_LOCKFILE_DIR=$DHCP_DIR
 export KEA_LOG_FILE_DIR=$DHCP_DIR
 export KEA_DHCP_DATA_DIR=$DHCP_DIR
 export KEA_LFC_EXECUTABLE=${SNAP}/usr/sbin/kea-lfc
+export KEA_HOOKS_PATH=${SNAP}/usr/lib/kea/hooks
+export KEA_HOOK_SCRIPTS_PATH=${SNAP}/usr/sbin
 exec $SNAP/usr/sbin/kea-dhcp4 -c "$DHCP_CONFIG"

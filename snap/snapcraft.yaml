@@ -231,6 +231,7 @@ parts:
       usr/lib/*-linux-gnu/blas/*: usr/lib/
       usr/local/bin/*: usr/bin/
       usr/local/lib/python3.14/*: usr/lib/python3.14/
+      usr/lib/x86_64-linux-gnu/kea/hooks: usr/lib/kea/hooks/
     stage:
       - etc/chrony
       - etc/freeipmi

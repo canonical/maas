@@ -562,9 +562,15 @@ type ApplyKeaConfigParam struct {
 }
 
 func (s *DHCPService) applyKeaConfiguration(ctx context.Context, param ApplyKeaConfigParam) error {
-	s.ensureBaseKeaConfigFiles()
-	s.ensureKeaService(ctx)
-	postKeaConfig(ctx, param)
+	if err := s.ensureBaseKeaConfigFiles(); err != nil {
+		return err
+	}
+	if err := s.ensureKeaService(ctx); err != nil {
+		return err
+	}
+	if err := s.postKeaConfig(ctx, param); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -573,7 +579,7 @@ type KeaPostBody struct {
 	Arguments map[string]any `json:"arguments"`
 }
 
-func sendKeaRequest(ctx context.Context, client http.Client, url string, data map[string]any) error {
+func (s *DHCPService) sendKeaRequest(ctx context.Context, client http.Client, url string, data map[string]any) error {
 	encoded, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -591,34 +597,36 @@ func sendKeaRequest(ctx context.Context, client http.Client, url string, data ma
 	if err != nil {
 		return err
 	}
-	var respData struct {
+	var respData []struct {
 		Result int    `json:"result"`
 		Text   string `json:"text"`
 	}
 	if err := json.Unmarshal(respBody, &respData); err != nil {
 		return err
 	}
-	if respData.Result != 0 {
-		return fmt.Errorf("Got unexpected response from Kea API (result=%d): %s", respData.Result, respData.Text)
+	for _, r := range respData {
+		if r.Result != 0 {
+			return fmt.Errorf("Got unexpected response from Kea API (result=%d): %s", r.Result, r.Text)
+		}
 	}
 	return nil
 }
 
-func postKeaConfig(ctx context.Context, param ApplyKeaConfigParam) error {
+func (s *DHCPService) postKeaConfig(ctx context.Context, param ApplyKeaConfigParam) error {
 	client := http.Client{}
 	url := fmt.Sprintf("http://%s:%d", param.Address, param.Port)
 	setData := map[string]any{
 		"command":   "config-set",
 		"arguments": param.Config,
 	}
-	if err := sendKeaRequest(ctx, client, url, setData); err != nil {
+	if err := s.sendKeaRequest(ctx, client, url, setData); err != nil {
 		return err
 	}
 	writeData := map[string]any{
 		"command":   "config-write",
-		"arguments": []string{},
+		"arguments": map[string]any{},
 	}
-	if err := sendKeaRequest(ctx, client, url, writeData); err != nil {
+	if err := s.sendKeaRequest(ctx, client, url, writeData); err != nil {
 		return err
 	}
 

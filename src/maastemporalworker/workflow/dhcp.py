@@ -1378,37 +1378,6 @@ class DHCPConfigActivity(ActivityBase):
                     "valid-lifetime": 30,
                     "max-valid-lifetime": 30,
                 },
-                {
-                    "name": "path-prefix",
-                    "code": 210,
-                    "type": "string",
-                    "space": "dhcp4",
-                },
-                {
-                    "name": "ipxe-encap-opts",
-                    "code": 175,
-                    "type": "empty",
-                    "space": "dhcp4",
-                    "encapsulate": "ipxe",
-                },
-                {
-                    "name": "ipxe-http",
-                    "code": 19,
-                    "type": "uint8",
-                    "space": "ipxe",
-                },
-                {
-                    "name": "ipxe-bzimage",
-                    "code": 24,
-                    "type": "uint8",
-                    "space": "ipxe",
-                },
-                {
-                    "name": "ipxe-efi",
-                    "code": 36,
-                    "type": "uint8",
-                    "space": "ipxe",
-                },
             ],
         }
 
@@ -1428,7 +1397,7 @@ class DHCPConfigActivity(ActivityBase):
                 client_classes = await self.get_kea_bootloaders_client_classes(
                     builtin_boot_methods, subnet.next_server, subnet.id, False
                 )
-                cfg["client-classes"].append(client_classes)
+                cfg["client-classes"].extend(client_classes)
                 option_data = [
                     {"name": "subnet-mask", "data": subnet.mask},
                     {"name": "broadcast-address", "data": subnet.broadcast_ip},
@@ -1461,6 +1430,7 @@ class DHCPConfigActivity(ActivityBase):
                     )
                 sn = {
                     "subnet": subnet.cidr,
+                    "id": subnet.id,
                     "match-client-id": False,
                     "pools": [
                         {"pool": f"{pool.start_ip} - {pool.end_ip}"}
@@ -1478,7 +1448,9 @@ class DHCPConfigActivity(ActivityBase):
                 }
                 if subnet.next_server:
                     sn["next-server"] = subnet.next_server
-                sn["client-classes"] = [c["name"] for c in client_classes]
+                sn["client-classes"] = [c["name"] for c in client_classes] + [
+                    "PXE_lease_override"
+                ]
                 subnets.append(sn)
             network["subnet4"] = subnets
             cfg["shared-networks"].append(network)
@@ -1779,12 +1751,47 @@ class DHCPConfigActivity(ActivityBase):
             param.dhcp_data, param.ip_version
         )
         logfile = get_maas_data_path("dhcp/kea-dhcp4.log")
-        lfc_path = get_path("/usr/sbin/")
         config = {
             f"Dhcp{param.ip_version}": {
                 "interfaces-config": {
                     "interfaces": [i.name for i in param.dhcp_data.interfaces],
                 },
+                "option-def": [
+                    {
+                        "space": "dhcp4",
+                        "name": "path-prefix",
+                        "code": 210,
+                        "type": "string",
+                    },
+                    #
+                    # IPXE Options
+                    #
+                    {
+                        "space": "dhcp4",
+                        "name": "ipxe-encap-opts",
+                        "code": 175,
+                        "type": "empty",
+                        "encapsulate": "ipxe",
+                    },
+                    {
+                        "space": "ipxe",
+                        "name": "http",
+                        "code": 19,
+                        "type": "uint8",
+                    },
+                    {
+                        "space": "ipxe",
+                        "name": "bzimage",
+                        "code": 24,
+                        "type": "uint8",
+                    },
+                    {
+                        "space": "ipxe",
+                        "name": "efi",
+                        "code": 36,
+                        "type": "uint8",
+                    },
+                ],
                 "valid-lifetime": 600,
                 "max-valid-lifetime": 600,
                 "control-sockets": [
@@ -1797,15 +1804,15 @@ class DHCPConfigActivity(ActivityBase):
                 "loggers": [
                     {
                         "name": "kea-dhcp4",
-                        "output_options": [ # TODO journal logging
+                        "output_options": [  # TODO journal logging
                             {
                                 "output": logfile,
                                 "maxsize": 2097152,
-                                "maxver": 4
+                                "maxver": 4,
                             }
                         ],
                         "severity": "INFO",
-                        "debuglevel": 0
+                        "debuglevel": 0,
                     }
                 ],
             }
