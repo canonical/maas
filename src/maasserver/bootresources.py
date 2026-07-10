@@ -25,7 +25,7 @@ import time
 from django.db import connection, connections
 from django.db.utils import load_backend
 from django.http import HttpResponse, StreamingHttpResponse
-from pkg_resources import parse_version
+from packaging.version import Version
 from simplestreams import util as sutil
 from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
 from simplestreams.objectstores import ObjectStore
@@ -1123,8 +1123,8 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         # If the item requires a specific version of MAAS check the running
         # version meets or exceeds that requirement.
         if maas_supported is not None:
-            supported_version = parse_version(maas_supported)
-            if supported_version > DISTRIBUTION.parsed_version:
+            supported_version = Version(maas_supported)
+            if supported_version > Version(DISTRIBUTION.version):
                 maaslog.warning(
                     "Ignoring %s, requires a newer version of MAAS(%s)"
                     % (product_name, supported_version)

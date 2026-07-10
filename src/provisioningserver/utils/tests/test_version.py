@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from pkg_resources import parse_version
-
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import deb, shell, snap, version
 from provisioningserver.utils.version import (
@@ -47,9 +45,7 @@ class TestGetVersionFromPythonPackage(MAASTestCase):
     ]
 
     def test_version(self):
-        self.patch(version, "DISTRIBUTION").parsed_version = parse_version(
-            self.version
-        )
+        self.patch(version, "DISTRIBUTION").version = self.version
         self.assertEqual(_get_version_from_python_package(), self.output)
 
 
@@ -308,9 +304,7 @@ class TestGetRunningVersion(TestVersionTestCase):
 
     def test_uses_version_from_python(self):
         self.patch(version, "_get_version_from_apt").return_value = None
-        self.patch(version, "DISTRIBUTION").parsed_version = parse_version(
-            "2.10.0b1"
-        )
+        self.patch(version, "DISTRIBUTION").version = "2.10.0b1"
         self.patch(version, "_get_maas_repo_hash").return_value = None
         self.patch(version, "_get_maas_repo_commit_count").return_value = 0
         maas_version = get_running_version()
@@ -319,9 +313,7 @@ class TestGetRunningVersion(TestVersionTestCase):
 
     def test_uses_version_from_python_with_git_info(self):
         self.patch(version, "_get_version_from_apt").return_value = None
-        self.patch(version, "DISTRIBUTION").parsed_version = parse_version(
-            "2.10.0b1"
-        )
+        self.patch(version, "DISTRIBUTION").version = "2.10.0b1"
         self.patch(version, "_get_maas_repo_commit_count").return_value = 1234
         self.patch(version, "_get_maas_repo_hash").return_value = "deadbeef"
         maas_version = get_running_version()
