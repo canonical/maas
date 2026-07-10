@@ -326,7 +326,6 @@ class Region(SecuredRPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.ReportNeighbours`.
         """
-
         def _suppress_retryable(failure):
             # After all retries are exhausted the @transactional decorator
             # lets the final OperationalError propagate.  ReportNeighbours is
@@ -343,7 +342,6 @@ class Region(SecuredRPCProtocol):
                 )
                 return {}
             return failure
-
         d = deferToDatabase(
             rackcontrollers.report_neighbours, system_id, neighbours
         )
