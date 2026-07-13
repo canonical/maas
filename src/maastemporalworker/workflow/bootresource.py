@@ -27,7 +27,7 @@ from temporalio.workflow import (
 )
 
 from maascommon.apiclient import MAASAPIClient
-from maascommon.enums.boot_resources import BootResourceType
+from maascommon.enums.boot_resources import BootResourceFileType
 from maascommon.enums.msm import MSMStatusEnum
 from maascommon.enums.node import NodeTypeEnum
 from maascommon.enums.notifications import (
@@ -612,9 +612,7 @@ class BootResourcesActivity(ActivityBase):
         async with self.start_transaction() as services:
             boot_resources = await services.boot_resources.get_many(
                 query=QuerySpec(
-                    where=BootResourceClauseFactory.with_rtype(
-                        BootResourceType.UPLOADED
-                    )
+                    where=BootResourceClauseFactory.with_uploaded_type()
                 )
             )
 
@@ -628,6 +626,18 @@ class BootResourcesActivity(ActivityBase):
                     resource_set.id
                 )
                 for file in files:
+                    extract_paths: list[str] = []
+                    if (
+                        file.filetype
+                        == BootResourceFileType.BOOTLOADER_TARBALL
+                    ):
+                        safe_name = boot_resource.name.replace("/", "__")
+                        safe_arch = boot_resource.architecture.replace(
+                            "/", "__"
+                        )
+                        extract_paths = [
+                            f"bootloaders/{safe_name}/{safe_arch}/{resource_set.version}/"
+                        ]
                     resources.append(
                         ResourceDownloadParam(
                             rfile_ids=[file.id],
@@ -635,6 +645,7 @@ class BootResourcesActivity(ActivityBase):
                             sha256=file.sha256,
                             filename_on_disk=file.filename_on_disk,
                             total_size=file.size,
+                            extract_paths=extract_paths,
                         )
                     )
             return GetLocalBootResourcesParamReturnValue(resources=resources)

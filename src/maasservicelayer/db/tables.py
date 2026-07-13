@@ -209,6 +209,31 @@ BootResourceTable = Table(
         nullable=True,
     ),
     UniqueConstraint("name", "architecture", "alias"),
+    # Partial unique indexes for custom boot asset identity
+    Index(
+        "uk_bootresource_bootloader_identity",
+        "name",
+        "architecture",
+        unique=True,
+        postgresql_where=text("(rtype = 2 AND bootloader_type IS NOT NULL)"),
+    ),
+    Index(
+        "uk_bootresource_kernel_identity",
+        "name",
+        "architecture",
+        "kflavor",
+        unique=True,
+        postgresql_where=text(
+            "(rtype = 2 AND bootloader_type IS NULL AND kflavor IS NOT NULL)"
+        ),
+    ),
+    # Lookup index for asset filtering
+    Index(
+        "idx_bootresource_rtype_name_arch",
+        "rtype",
+        "name",
+        "architecture",
+    ),
 )
 
 BootResourceFileTable = Table(

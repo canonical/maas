@@ -188,6 +188,9 @@ host {{host['host']}}-{{host['mac'].replace(":", "-")}} {
 
    hardware ethernet {{host['mac']}};
    fixed-address {{host['ip']}};
+   {{if "bootloader_path" in host and host['bootloader_path']}}
+   filename "{{host['bootloader_path']}}";
+   {{endif}}
 }
 {{endfor}}
 
