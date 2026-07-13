@@ -1107,8 +1107,16 @@ class Pod(BMC):
         # configuration.
         created_interfaces = []
         for idx, discovered_nic in enumerate(discovered_machine.interfaces):
+            # For the scenario of lxd, it returns the interfaces ordered
+            # alphabetically likely due to it being written in Go. So we need
+            # to properly match the correct name here instead of relying on
+            # order.
+            # When coming from virsh, the interfaces do not have a meaningful
+            # name. So we fall back to the previous behavior (which might
+            # be even correct in that scenario.)
+            name = discovered_nic.name or interface_names[idx]
             interface = self._create_interface(
-                discovered_nic, machine, name=interface_names[idx]
+                discovered_nic, machine, name=name
             )
             created_interfaces.append(interface)
             if discovered_nic.boot:
