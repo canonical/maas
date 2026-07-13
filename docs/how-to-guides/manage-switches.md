@@ -211,6 +211,100 @@ MAAS automatically handles the DHCP configuration needed for ONIE. When a switch
 
 💡 Switches can be registered in MAAS before or after they first boot. If a switch makes a DHCP request before registration, MAAS will create an UNKNOWN interface that can later be claimed when you register the switch.
 
+## Log a custom installer to syslog
+
+MAAS does not store ONIE installer output for switches. To keep those logs, send them from a custom installer wrapper to the MAAS syslog service, or point ONIE at your own syslog server.
+
+### Send logs to the MAAS syslog server
+
+The MAAS syslog listen port is `maas_syslog_port` (default `5247`). MAAS listens on both UDP and TCP on that port.
+
+1. **Find the syslog port:**
+
+   ```bash
+   maas $PROFILE maas get-config name=maas_syslog_port
+   ```
+
+2. **Find the rack IP** on the switch management network. Use the host from the installer URL MAAS puts in the ONIE DHCP reply:
+
+   ```text
+   http://<rack-ip>:5248/MAAS/a/v3/nos-installer
+   ```
+
+   That `<rack-ip>` is the rack controller address MAAS embeds in `onie.installer_url`. You can also list rack controllers:
+
+   ```bash
+   maas $PROFILE rack-controllers read
+   ```
+
+3. **Update your custom installer wrapper** so BusyBox `syslogd` forwards to that IP and port, then write messages with BusyBox `logger`:
+
+   ```sh
+   #!/bin/sh
+   set -eu
+
+   RACK_IP="<rack-ip>"
+   SYSLOG_PORT="5247"
+
+   killall syslogd >/dev/null 2>&1 || true
+   syslogd -b 3 -D -L -R "${RACK_IP}:${SYSLOG_PORT}"
+
+   logger -t nos-installer -p local0.info "wrapper start"
+   # Run your NOS installer here
+   logger -t nos-installer -p local0.info "wrapper finished"
+   ```
+
+   The `-b 3 -D -L` flags match ONIE defaults. `-R` adds the remote MAAS target.
+
+4. **Check the logs on a region controller** (or a combined region+rack host):
+
+   ```bash
+   journalctl -f MAAS_MACHINE_IP=<switch-management-ip>
+   ```
+
+   If that filter shows nothing, search by logger tag instead:
+
+   ```bash
+   journalctl -f SYSLOG_IDENTIFIER=maas-machine | grep nos-installer
+   ```
+
+💡 Always include the port in `-R <host>:<port>`. If you omit it, BusyBox defaults to UDP port `514`, which is not `maas_syslog_port`.
+
+💡 BusyBox `logger` only supports `-s`, `-t`, and `-p`. It writes to the local `syslogd` and cannot open a remote host by itself.
+
+💡 On a rack-only controller, MAAS receives remote messages and forwards them to the region; it does not write them to the local journal. After forwarding, `MAAS_MACHINE_IP` is the rack, so prefer the tag filter.
+
+### Send logs to your own syslog server
+
+Use this when you want ONIE progress on a syslog server you operate. DHCP option 7 (`log-servers`) carries IP addresses only. ONIE starts BusyBox `syslogd` with `-R <ip>` for each address, so the remote port is always BusyBox's default: `514`.
+
+This path cannot target the MAAS syslog service on `maas_syslog_port` (default `5247`).
+
+1. **Run a syslog collector** that listens on UDP port `514` at an IP the switch can reach on its management network.
+
+2. **Advertise that IP in DHCP.** MAAS does not set `option log-servers` by default. Add it on the switch management subnet with a DHCP snippet, or set the same option on an external DHCP server:
+
+   ```bash
+   maas $PROFILE subnets read
+   maas $PROFILE dhcpsnippets create \
+     name=onie-log-servers \
+     subnet=<subnet-id> \
+     enabled=1 \
+     value='option log-servers <syslog-server-ip>;'
+   ```
+
+   Equivalent ISC syntax:
+
+   ```text
+   option log-servers <syslog-server-ip>;
+   ```
+
+3. **Reboot the switch into ONIE** (or renew DHCP in ONIE) so it picks up option 7.
+
+4. **Confirm messages on your collector.** They will not appear in the MAAS journal.
+
+💡 DHCP snippets are deprecated as of MAAS 3.6 and will be removed in the next major version. Prefer an external DHCP server for this option when you can. See [Manage network services](manage-network-services.md) and [ONIE: Add a Remote Syslog Server](https://opencomputeproject.github.io/onie/user-guide/index.html#add-a-remote-syslog-server).
+
 ## Typical workflow
 
 ### Initial switch deployment
@@ -317,4 +411,5 @@ If you registered the wrong MAC address:
 ## Resources
 
 - [ONIE Project Documentation](https://opencomputeproject.github.io/onie/)
+- [ONIE: Add a Remote Syslog Server](https://opencomputeproject.github.io/onie/user-guide/index.html#add-a-remote-syslog-server)
 - [MAAS Images](manage-images.md)
