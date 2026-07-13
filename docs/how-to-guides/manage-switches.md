@@ -265,7 +265,7 @@ The MAAS syslog listen port is `maas_syslog_port` (default `5247`). MAAS listens
    If that filter shows nothing, search by logger tag instead:
 
    ```bash
-   journalctl -f SYSLOG_IDENTIFIER=maas-machine | grep nos-installer
+   journalctl -f SYSLOG_IDENTIFIER=maas-machine | grep --line-buffered nos-installer
    ```
 
 💡 Always include the port in `-R <host>:<port>`. If you omit it, BusyBox defaults to UDP port `514`, which is not `maas_syslog_port`.
