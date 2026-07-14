@@ -507,6 +507,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                 # current links because they are completely wrong.
                 interface.ip_addresses.all().delete()
                 interface.node_config = node.current_config
+            created = False
         else:
             interface = self.create(
                 name=name,
@@ -518,7 +519,8 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                 InterfaceRelationship(
                     child=interface, parent=parent_nic
                 ).save()
-        return interface
+            created = True
+        return interface, created
 
     def resolve_missing_mac_address(self, iface):
         if iface.mac_address is None:
