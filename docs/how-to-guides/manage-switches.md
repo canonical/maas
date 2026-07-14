@@ -502,6 +502,84 @@ Keep in mind:
 - The image is larger, so upload and sync time increase.
 - Rebuild and re-upload is needed for every NOS update.
 
+### Adding credentials, settings, or scripts after installation
+
+Some NOS images, such as SONiC, can be configurated after the installer has finished.
+In that case, keep the wrapped-image pattern and add your custom steps after the NOS installer returns successfully.
+
+The minimal wrapped script example above already uses:
+
+```sh
+"${NOS_BIN}"
+```
+
+You can then continue with post-install steps in the same script.
+
+Note that the exact file paths are dependent on the NOS and potentially even the version of the NOS.
+We demonstrate two examples here with SONIC Community:
+
+#### Method 1: write credentials or settings into the installed filesystem
+
+Use this method when you want to place files directly into the installed NOS,
+for example SSH keys or day-0 configuration files.
+
+Minimal example:
+
+```sh
+# Run after the NOS installer has completed successfully.
+mkdir -p /mnt/nos
+mount /dev/sda3 /mnt/nos
+
+SONIC_IMAGE_DIR=$(find /mnt/nos -maxdepth 1 -type d -name 'image-*' | head -n 1)
+TARGET_PATH="${SONIC_IMAGE_DIR}/rw/home/admin/.ssh"
+
+mkdir -p "${TARGET_PATH}"
+echo "ssh-ed25519 AAAA... user@example" > "${TARGET_PATH}/authorized_keys"
+
+umount /mnt/nos
+```
+
+Use this pattern when you need to:
+
+- add SSH public keys,
+- copy a configuration file,
+- or update a file that must exist before the first boot.
+
+#### Method 2: install first-boot scripts
+
+Use this method when you want the switch to run one or more scripts on first
+boot after the NOS has been installed.
+
+Minimal example:
+
+```sh
+# Run after the NOS installer has completed successfully.
+mkdir -p /mnt/nos
+mount /dev/sda3 /mnt/nos
+
+SONIC_IMAGE_DIR=$(find /mnt/nos -maxdepth 1 -type d -name 'image-*' | head -n 1)
+HOOK_DIR="${SONIC_IMAGE_DIR}/rw/etc/config-setup/factory-default-hooks.d"
+
+mkdir -p "${HOOK_DIR}"
+cat > "${HOOK_DIR}/01-create-admin-key" <<'EOF'
+#!/bin/sh
+mkdir -p /home/admin/.ssh
+echo "ssh-ed25519 AAAA... user@example" > /home/admin/.ssh/authorized_keys
+EOF
+
+chmod +x "${HOOK_DIR}/01-create-admin-key"
+umount /mnt/nos
+```
+
+Use this pattern when you need to:
+
+- run commands on first boot,
+- apply settings that depend on the running system,
+- or stage multiple initialization steps in a defined order.
+
+If you use multiple hook scripts, name them with numeric prefixes such as
+`01-setup`, `02-users`, and `03-services` so they run in a predictable order.
+
 ### Typical workflow
 
 1. Build or prepare a wrapped image that ONIE can execute.
