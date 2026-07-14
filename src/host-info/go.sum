@@ -1,5 +1,5 @@
-github.com/canonical/lxd v0.0.0-20260619131343-14db131f6598 h1:Xdj1O6zFuqh5cliL0N5k58LPt6bosloBptkAjWudyrM=
-github.com/canonical/lxd v0.0.0-20260619131343-14db131f6598/go.mod h1:zNYM5D2S6RTvQQTCuTljqINzxfy4FJdcqerDJLnUHKw=
+github.com/canonical/lxd v0.0.0-20260708160649-57c38b760253 h1:OxTETTx2MV5+2t66tPomaU86r4uOM1DybRn4rarRV00=
+github.com/canonical/lxd v0.0.0-20260708160649-57c38b760253/go.mod h1:wB1L9fkCGT95X02Q/zFei1mFHvyym9mNIX550lViVZ8=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e h1:vUmf0yezR0y7jJ5pceLHthLaYf4bA5T14B6q39S4q2Q=
