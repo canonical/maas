@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict zWhgS5rKnEYZ7mAM8PdEJCeuTNssgg9EGigIVOrVSFF7kcWg9MbMmH2nvr5R8G1
+\restrict rFfZtHO86UvhP1Cw1d2E3WhOiza3w8p9ImnIAbFuFa6s48Z3c67hAHGYORa5cyv
 
 -- Dumped from database version 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)
 -- Dumped by pg_dump version 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)
@@ -8836,7 +8836,7 @@ COPY public.maasserver_controllerinfo (created, updated, node_id, version, insta
 --
 
 COPY public.maasserver_defaultresource (id, created, updated, zone_id) FROM stdin;
-1	2026-07-14 13:15:10.098541+00	2026-07-14 13:15:10.098541+00	1
+1	2020-01-01 00:00:00+00	2020-01-01 00:00:00+00	1
 \.
 
 
@@ -8861,7 +8861,7 @@ COPY public.maasserver_dnsdata (id, created, updated, rrtype, rrdata, dnsresourc
 --
 
 COPY public.maasserver_dnspublication (id, serial, created, source, update) FROM stdin;
-1	1	2026-07-14 13:15:10.098541+00	Initial publication	
+1	1	2020-01-01 00:00:00+00	Initial publication	
 \.
 
 
@@ -8886,7 +8886,7 @@ COPY public.maasserver_dnsresource_ip_addresses (id, dnsresource_id, staticipadd
 --
 
 COPY public.maasserver_domain (id, created, updated, name, authoritative, ttl) FROM stdin;
-0	2026-07-14 13:15:10.098541+00	2026-07-14 13:15:10.098541+00	maas	t	\N
+0	2020-01-01 00:00:00+00	2020-01-01 00:00:00+00	maas	t	\N
 \.
 
 
@@ -8959,7 +8959,7 @@ COPY public.maasserver_forwarddnsserver_domains (id, forwarddnsserver_id, domain
 --
 
 COPY public.maasserver_globaldefault (id, created, updated, domain_id) FROM stdin;
-0	2026-07-14 13:15:10.098541+00	2026-07-14 13:15:10.098541+00	0
+0	2020-01-01 00:00:00+00	2020-01-01 00:00:00+00	0
 \.
 
 
@@ -9144,8 +9144,8 @@ COPY public.maasserver_ownerdata (id, key, value, node_id) FROM stdin;
 --
 
 COPY public.maasserver_packagerepository (id, created, updated, name, url, components, arches, key, "default", enabled, disabled_pockets, distributions, disabled_components, disable_sources) FROM stdin;
-1	2026-07-14 13:15:10.098541+00	2026-07-14 13:15:10.098541+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
-2	2026-07-14 13:15:10.098541+00	2026-07-14 13:15:10.098541+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
+1	2020-01-01 00:00:00+00	2020-01-01 00:00:00+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
+2	2020-01-01 00:00:00+00	2020-01-01 00:00:00+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
 \.
 
 
@@ -9258,7 +9258,7 @@ COPY public.maasserver_reservedip (id, created, updated, ip, mac_address, commen
 --
 
 COPY public.maasserver_resourcepool (id, created, updated, name, description) FROM stdin;
-0	2026-07-14 13:15:10.098541+00	2026-07-14 13:15:10.098541+00	default	Default pool
+0	2020-01-01 00:00:00+00	2020-01-01 00:00:00+00	default	Default pool
 \.
 
 
@@ -9459,7 +9459,7 @@ COPY public.maasserver_vmcluster (id, created, updated, name, project, pool_id, 
 --
 
 COPY public.maasserver_zone (id, created, updated, name, description) FROM stdin;
-1	2026-07-14 13:15:10.098541+00	2026-07-14 13:15:10.098541+00	default	
+1	2020-01-01 00:00:00+00	2020-01-01 00:00:00+00	default	
 \.
 
 
@@ -16318,5 +16318,5 @@ ALTER TABLE ONLY public.piston3_token
 -- PostgreSQL database dump complete
 --
 
-\unrestrict zWhgS5rKnEYZ7mAM8PdEJCeuTNssgg9EGigIVOrVSFF7kcWg9MbMmH2nvr5R8G1
+\unrestrict rFfZtHO86UvhP1Cw1d2E3WhOiza3w8p9ImnIAbFuFa6s48Z3c67hAHGYORa5cyv
 

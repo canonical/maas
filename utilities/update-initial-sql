@@ -38,3 +38,18 @@ bin/maas-region dbupgrade
 
 msg "dumping updated database file"
 pg_dump "$PGDATABASE" --no-owner --no-privileges --format=plain -f "$sql_dump_file"
+
+msg "pinning seed timestamps"
+# A freshly migrated database contains only boilerplate seed/default data, and
+# every timezone-aware timestamp (timestamptz, rendered by pg_dump with a
+# numeric offset) belongs to a migration-seeded default row (default domain,
+# zone, resource pool, package repositories, ...). Rewrite them all to a fixed
+# sentinel so tests can assert a stable value instead of whatever wall-clock
+# time the dump was regenerated at. Naive timestamps (e.g. django_migrations
+# applied times, which carry no offset) are left untouched. Idempotent: running
+# it on an already-pinned dump is a no-op.
+sentinel="$(bin/py -c \
+    'from maasserver.testing.initial_sql import INITIAL_SQL_SEED_TIMESTAMP_SQL as s; print(s)')"
+sed -i -E \
+    "s/[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?\+[0-9]{2}(:[0-9]{2})?/$sentinel/g" \
+    "$sql_dump_file"

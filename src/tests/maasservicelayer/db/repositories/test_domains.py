@@ -2,7 +2,6 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
 import random
 from typing import TypeVar
 
@@ -10,6 +9,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.ipaddress import IpAddressType
+from maasserver.testing.initial_sql import INITIAL_SQL_SEED_TIMESTAMP
 from maasservicelayer.builders.domains import DomainBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.domains import (
@@ -70,10 +70,10 @@ class TestDomainsRepository(RepositoryCommonTests[Domain]):
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> Sequence[Domain]:
-        # The default domain is created by the migrations
-        # and it has the following timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:8981
-        ts = datetime(2025, 9, 11, 12, 23, 3, 583496, tzinfo=timezone.utc)
+        # The default domain is seeded by the migrations. Its timestamp is
+        # normalized to a fixed sentinel in the SQL dump; see
+        # maasserver.testing.initial_sql.
+        ts = INITIAL_SQL_SEED_TIMESTAMP
         created_domains = [
             Domain(
                 id=0,
