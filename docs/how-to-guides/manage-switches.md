@@ -280,10 +280,12 @@ When assigning images to switches, MAAS uses a logical image name (`onie/<name>`
 
 3. Check where uploaded image files are stored:
    - Default path for a snap based MAAS: `/var/snap/maas/common/maas/image-storage/`
+   - Default path for a deb based MAAS: `/var/lib/maas/image-storage/`
 
 4. Match a known SHA256 to an on-disk file:
 
-- The name on disk will consist of the first seven characters of the sha256sum of the uploaded image.
+- The name on disk will usually consist of the first seven characters of the sha256sum of the uploaded image.
+- Should two image files have the same first seven characters MAAS will lengthen the on-disk names until they are unique.
 
 5. Build a rack URL for a specific file:
 
