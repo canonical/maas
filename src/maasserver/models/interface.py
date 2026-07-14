@@ -507,6 +507,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                 # current links because they are completely wrong.
                 interface.ip_addresses.all().delete()
                 interface.node_config = node.current_config
+            interface.save()
             created = False
         else:
             interface = self.create(
