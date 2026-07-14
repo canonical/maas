@@ -256,23 +256,25 @@ The MAAS syslog listen port is `maas_syslog_port` (default `5247`). MAAS listens
 
    The `-b 3 -D -L` flags match ONIE defaults. `-R` adds the remote MAAS target.
 
-4. **Check the logs on a region controller** (or a combined region+rack host):
+4. **Check the logs on a region controller** (or a combined region+rack host).
+
+   Snap and Debian use different `journalctl` units; see [Use logging](use-logging.md). Snap example:
 
    ```bash
-   journalctl -f MAAS_MACHINE_IP=<switch-management-ip>
+   journalctl -u snap.maas.pebble -t maas-machine -f MAAS_MACHINE_IP=<switch-management-ip>
    ```
 
    If that filter shows nothing, search by logger tag instead:
 
    ```bash
-   journalctl -f SYSLOG_IDENTIFIER=maas-machine | grep --line-buffered nos-installer
+   journalctl -u snap.maas.pebble -t maas-machine -f | grep --line-buffered nos-installer
    ```
 
-💡 Always include the port in `-R <host>:<port>`. If you omit it, BusyBox defaults to UDP port `514`, which is not `maas_syslog_port`.
+#### Important notes
 
-💡 BusyBox `logger` only supports `-s`, `-t`, and `-p`. It writes to the local `syslogd` and cannot open a remote host by itself.
-
-💡 On a rack-only controller, MAAS receives remote messages and forwards them to the region; it does not write them to the local journal. After forwarding, `MAAS_MACHINE_IP` is the rack, so prefer the tag filter.
+- Always include the port in `-R <host>:<port>`. If you omit it, BusyBox defaults to UDP port `514`, which is not `maas_syslog_port`.
+- BusyBox `logger` only supports `-s`, `-t`, and `-p`. It writes to the local `syslogd` and cannot open a remote host by itself.
+- On a rack-only controller, MAAS receives remote messages and forwards them to the region; it does not write them to the local journal. After forwarding, `MAAS_MACHINE_IP` is the rack, so prefer the tag filter.
 
 ### Send logs to your own syslog server
 
@@ -293,17 +295,13 @@ This path cannot target the MAAS syslog service on `maas_syslog_port` (default `
      value='option log-servers <syslog-server-ip>;'
    ```
 
-   Equivalent ISC syntax:
-
-   ```text
-   option log-servers <syslog-server-ip>;
-   ```
+   That `value` is the dhcpd option line; use the same option on an external DHCP server.
 
 3. **Reboot the switch into ONIE** (or renew DHCP in ONIE) so it picks up option 7.
 
 4. **Confirm messages on your collector.** They will not appear in the MAAS journal.
 
-💡 DHCP snippets are deprecated as of MAAS 3.6 and will be removed in the next major version. Prefer an external DHCP server for this option when you can. See [Manage network services](manage-network-services.md) and [ONIE: Add a Remote Syslog Server](https://opencomputeproject.github.io/onie/user-guide/index.html#add-a-remote-syslog-server).
+**Note:** DHCP snippets are deprecated as of MAAS 3.6 and will be removed in the next major version. Prefer an external DHCP server for this option when you can. See [Manage network services](manage-network-services.md) and [ONIE: Add a Remote Syslog Server](https://opencomputeproject.github.io/onie/user-guide/index.html#add-a-remote-syslog-server).
 
 ## Typical workflow
 
