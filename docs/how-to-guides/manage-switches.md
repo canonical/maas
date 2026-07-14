@@ -279,17 +279,11 @@ When assigning images to switches, MAAS uses a logical image name (`onie/<name>`
    ```
 
 3. Check where uploaded image files are stored:
-   - Default path: `/var/lib/maas/image-storage/`
-   - If `MAAS_DATA` is set, path is `${MAAS_DATA}/image-storage/`
+   - Default path for a snap based MAAS: `/var/snap/maas/common/maas/image-storage/`
 
 4. Match a known SHA256 to an on-disk file:
 
-   ```bash
-   TARGET_SHA256="<sha256-used-at-upload>"
-   find "${MAAS_DATA:-/var/lib/maas}/image-storage" -maxdepth 1 -type f -print0 \
-     | xargs -0 sha256sum \
-     | awk -v target="$TARGET_SHA256" '$1 == target {print $2}'
-   ```
+- The name on disk will consist of the first seven characters of the sha256sum of the uploaded image.
 
 5. Build a rack URL for a specific file:
 
@@ -306,11 +300,11 @@ The script below is a baseline you can adapt. It runs under ONIE (`#!/bin/sh`), 
 #!/bin/sh
 set -eu
 
-# Required input: full URL to the NOS installer binary.
-: "${NOS_URL:?NOS_URL must be set}"
+# Set this URL before uploading the script.
+NOS_URL="http://<YOUR_WEBSERVER_IP>/path/to/nos-installer.bin"
 
-# Optional integrity check.
-NOS_SHA256="${NOS_SHA256:-}"
+# Set to the expected SHA256 for production. Leave empty only for testing.
+NOS_SHA256=""
 
 WORKDIR="$(mktemp -d /tmp/onie-wrap.XXXXXX)"
 NOS_BIN="${WORKDIR}/nos-installer.bin"
@@ -402,10 +396,10 @@ If you see OOM failures, prefer [Example 1: minimal wrapped script (download and
 
 3. Build the self-extracting binary:
 
-   ```bash
-   makeself --nox11 ./onie-bundle ./onie-wrapped-mellanox-3.8.0.bin \
-     "ONIE wrapped NOS installer" ./run.sh
-   ```
+```bash
+makeself --nox11 --nocomp ./onie-bundle ./onie-wrapped-mellanox-3.8.0.bin \
+  "ONIE wrapped NOS installer" ./run.sh
+```
 
 4. Upload the generated `.bin` as a MAAS custom image (`file-type: self-extracting`) and assign it to the switch.
 
