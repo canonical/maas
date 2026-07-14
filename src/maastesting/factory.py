@@ -532,7 +532,7 @@ class Factory:
         start = time.mktime(datetime.datetime(year, 1, 1).timetuple())
         end = time.mktime(datetime.datetime(year + 1, 1, 1).timetuple())
         stamp = random.uniform(start, end)
-        return datetime.datetime.fromtimestamp(stamp)
+        return datetime.datetime.fromtimestamp(stamp, tz=datetime.timezone.utc)
 
     def make_timedelta(self):
         return datetime.timedelta(
