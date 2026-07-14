@@ -40,7 +40,7 @@ from maasservicelayer.exceptions.constants import (
     PRECONDITION_FAILED,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
-from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.base import ListResult, UNSET
 from maasservicelayer.models.users import User, UserProfile, UserWithSummary
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
@@ -593,10 +593,12 @@ class TestUsersApi(ApiCommonTests):
 
         assert response.status_code == 200
 
-        user_response = UserResponse(**response.json())
-
         # A normal user can't update the is_superuser field.
-        assert user_response.is_superuser is False
+        builder = user_request.to_builder()
+        builder.is_superuser = UNSET
+
+        update_by_id_call_args = services_mock.users.update_by_id.call_args[0]
+        assert update_by_id_call_args[1].is_superuser == UNSET
 
     async def test_put_user_cant_update_others(
         self,

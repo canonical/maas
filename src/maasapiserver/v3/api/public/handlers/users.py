@@ -333,9 +333,7 @@ class UsersHandler(Handler):
         if not is_admin:
             builder.is_superuser = UNSET
 
-        user = await services.users.update_by_id(
-            user_id, user_request.to_builder()
-        )
+        user = await services.users.update_by_id(user_id, builder)
 
         response.headers["ETag"] = user.etag()
         return UserResponse.from_model(
