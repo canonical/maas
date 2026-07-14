@@ -504,7 +504,7 @@ Keep in mind:
 
 ### Adding credentials, settings, or scripts after installation
 
-Some NOS images, such as SONiC, can be configurated after the installer has finished.
+Some NOS images, such as SONiC, can be configured after the installer has finished.
 In that case, keep the wrapped-image pattern and add your custom steps after the NOS installer returns successfully.
 
 The minimal wrapped script example above already uses:
@@ -516,7 +516,7 @@ The minimal wrapped script example above already uses:
 You can then continue with post-install steps in the same script.
 
 Note that the exact file paths are dependent on the NOS and potentially even the version of the NOS.
-We demonstrate two examples here with SONIC Community:
+We demonstrate two examples here with SONiC Community:
 
 #### Method 1: write credentials or settings into the installed filesystem
 
