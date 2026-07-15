@@ -50,6 +50,9 @@ REDFISH_POWER_CONTROL_ENDPOINT = (
 
 REDFISH_SYSTEMS_ENDPOINT = b"redfish/v1/Systems"
 
+OLD_REDFISH_BOOT_ENDPOINT = b"redfish/v1/Systems/%s"
+NEW_REDFISH_BOOT_ENDPOINT = b"redfish/v1/Systems/%s/Settings"
+
 MAX_REQUEST_RETRIES = 5
 
 MAX_STATUS_REQUEST_RETRIES = 7
@@ -341,7 +344,6 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
     @inlineCallbacks
     def set_pxe_boot(self, url, node_id, headers):
         """Set the machine with node_id to PXE boot."""
-        endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
 
         def _get_bodyProducer():
             return FileBodyProducer(
@@ -362,13 +364,26 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
             result = yield self.get_etag(url, node_id, headers)
             return result
 
-        yield self.redfish_request(
-            b"PATCH",
-            join(url, endpoint),
-            headers,
-            _get_bodyProducer,
-            _get_etag,
-        )
+        try:
+            # 1. Try the NEW boot settings endpoint (for upgraded iDRAC)
+            new_endpoint = NEW_REDFISH_BOOT_ENDPOINT % node_id
+            yield self.redfish_request(
+                b"PATCH",
+                join(url, new_endpoint),
+                headers,
+                _get_bodyProducer,
+                _get_etag,
+            )
+        except Exception:
+            # 2. Fall back to the OLD endpoint if the new one fails
+            old_endpoint = OLD_REDFISH_BOOT_ENDPOINT % node_id
+            yield self.redfish_request(
+                b"PATCH",
+                join(url, old_endpoint),
+                headers,
+                _get_bodyProducer,
+                _get_etag,
+            )
 
     @inlineCallbacks
     def power(self, power_change: PowerChange, url, node_id, headers):

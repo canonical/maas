@@ -34,6 +34,8 @@ from provisioningserver.drivers.power import (
 )
 import provisioningserver.drivers.power.redfish as redfish_module
 from provisioningserver.drivers.power.redfish import (
+    NEW_REDFISH_BOOT_ENDPOINT,
+    OLD_REDFISH_BOOT_ENDPOINT,
     REDFISH_POWER_CONTROL_ENDPOINT,
     RedfishPowerDriver,
     WebClientContextFactory,
@@ -924,6 +926,51 @@ class TestRedfishPowerDriver(MAASTestCase):
         # The 5th arg is a function that produces the etag.
         argument_etag = yield mock_redfish_request.mock_calls[0].args[4]()
         self.assertEqual(b"1631210000", argument_etag)
+
+    @inlineCallbacks
+    def test_set_pxe_boot_falls_back_to_old_endpoint(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        node_id = b"1"
+        headers = driver.make_auth_headers(**context)
+        mock_file_body_producer = self.patch(
+            redfish_module, "FileBodyProducer"
+        )
+        payload = FileBodyProducer(
+            BytesIO(
+                json.dumps(
+                    {
+                        "Boot": {
+                            "BootSourceOverrideEnabled": "Once",
+                            "BootSourceOverrideTarget": "Pxe",
+                        }
+                    }
+                ).encode("utf-8")
+            )
+        )
+        mock_file_body_producer.return_value = payload
+        mock_redfish_request = self.patch(driver, "redfish_request")
+        mock_redfish_request.side_effect = [
+            PowerActionError("Settings endpoint not supported"),
+            None,
+        ]
+        mock_get_etag = self.patch(driver, "get_etag")
+        mock_get_etag.return_value = None
+        yield driver.set_pxe_boot(url, node_id, headers)
+        self.assertEqual(2, len(mock_redfish_request.mock_calls))
+        # First call tries the new endpoint
+        self.assertEqual(b"PATCH", mock_redfish_request.mock_calls[0].args[0])
+        self.assertEqual(
+            join(url, NEW_REDFISH_BOOT_ENDPOINT % node_id),
+            mock_redfish_request.mock_calls[0].args[1],
+        )
+        # Second call falls back to the old endpoint
+        self.assertEqual(b"PATCH", mock_redfish_request.mock_calls[1].args[0])
+        self.assertEqual(
+            join(url, OLD_REDFISH_BOOT_ENDPOINT % node_id),
+            mock_redfish_request.mock_calls[1].args[1],
+        )
 
     @inlineCallbacks
     def test_redfish_request_retry_refreshed_etag(self):
