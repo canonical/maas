@@ -4,6 +4,8 @@ on:
   workflow_run:
     workflows: [CI check]
     types: [completed]
+  pull_request:
+    branches: [remove-lander-comment]
 
 permissions:
   actions: read
