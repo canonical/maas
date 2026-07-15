@@ -157,9 +157,7 @@ class Fabric(CleanSave, TimestampedModel):
         return self.id == 0
 
     def get_default_vlan(self):
-        # This logic is replicated in the dehydrate() function of the
-        # websockets handler.
-        return sorted(self.vlan_set.all(), key=attrgetter("id"))[0]
+        return min(self.vlan_set.all(), key=attrgetter("id"))
 
     def get_name(self):
         """Return the name of the fabric."""
