@@ -21,7 +21,7 @@ if (
     and not (Path(__file__).parents[1] / ".git").exists()
     # A shallow clone has a .git/shallow file; sphinx_last_updated_by_git
     # produces warnings when git log cannot traverse full history.
-    or (Path(__file__).parents[1] / ".git" / "shallow" ).exists()
+    or (Path(__file__).parents[1] / ".git" / "shallow").exists()
 ):
     # Some surgery in order to accomodate the fact that
     # canonical_sphinx and sphinx_sitemap both require
@@ -380,6 +380,7 @@ if IS_ONLINE:
 
 
 # Adds custom JavaScript files, located under 'html_static_path'
+# js/github_issue_links.js can be removed when a fix for https://github.com/canonical/canonical-sphinx/issues/51 is implemented.
 
 html_js_files = ["js/overwrite_links.js", "js/github_issue_links.js"]
 
