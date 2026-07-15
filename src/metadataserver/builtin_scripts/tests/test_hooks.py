@@ -4993,6 +4993,27 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             Interface.objects.get(id=interface_id).node_config,
         )
 
+    def test_reassign_interfaces_recomputes_vlan_for_new_node(self):
+        node1 = factory.make_Node()
+        stale_vlan = factory.make_VLAN()
+        eth0 = factory.make_Interface(
+            name="eth0",
+            mac_address=self.EXPECTED_INTERFACES["eth0"],
+            node=node1,
+            vlan=stale_vlan,
+        )
+
+        node2 = factory.make_Node()
+
+        with post_commit_hooks:
+            update_node_network_information(
+                node2, make_lxd_output(), create_numa_nodes(node2)
+            )
+
+        moved_eth0 = Interface.objects.get(id=eth0.id)
+        self.assertEqual(node2.current_config, moved_eth0.node_config)
+        self.assertNotEqual(stale_vlan, moved_eth0.vlan)
+
     def test_deletes_virtual_interfaces_with_shared_mac(self):
         # Note: since this VLANInterface will be linked to the default VLAN
         # ("vid 0", which is actually invalid) the VLANInterface will
