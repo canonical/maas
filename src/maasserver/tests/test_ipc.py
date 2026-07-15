@@ -633,17 +633,20 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
 
         rack_controller = yield deferToDatabase(factory.make_RackController)
 
-        for _ in range(2):
+        for connid in range(2):
+            connid_str = f"conn-{connid}"
             yield master.registerWorkerRPCConnection(
                 pid,
-                random.randint(1, 512),
+                connid_str,
                 rack_controller.system_id,
                 ip,
-                random.randint(1, 512),
+                connid + 1,
             )
 
-        for pid, conn in master.connections.items():
-            process = yield deferToDatabase(master._getProcessObjFor, pid)
+        for worker_pid, conn in master.connections.items():
+            process = yield deferToDatabase(
+                master._getProcessObjFor, worker_pid
+            )
             rpc_conns = conn["rpc"]["connections"].copy()
             rpc_conns.pop(random.choice(list(rpc_conns.keys())))
             yield deferToDatabase(
@@ -657,3 +660,5 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
 
         count = yield deferToDatabase(_get_conn_count)
         self.assertEqual(count, 1)
+
+        yield master.stopService()
