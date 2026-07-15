@@ -8,7 +8,6 @@ on:
 permissions:
   actions: read
   contents: read
-  issues: read
   pull-requests: read
 
 jobs:
@@ -32,12 +31,11 @@ jobs:
             echo "pr_number=$(cat pr-number.txt | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Parse preferences and send Mattermost notifications
+      - name: Send Mattermost DM
         uses: actions/github-script@v7
         env:
           MATTERMOST_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK_URL }}
           MATTERMOST_BOT_TOKEN: ${{ secrets.MATTERMOST_BOT_TOKEN }}
-          DEFAULT_CHANNEL: ${{ vars.MM_CHANNEL }}
           PR_NUMBER_FROM_ARTIFACT: ${{ steps.pr-artifact.outputs.pr_number }}
         with:
           github-token: ${{ secrets.ADMIN_PAT || github.token }}
@@ -45,70 +43,35 @@ jobs:
             const workflowRun = context.payload.workflow_run;
             const state = workflowRun.conclusion === 'success' ? 'success' : 'failure';
             const emoji = state === 'success' ? '✅' : ':notlikethis:';
-            const defaultChannel = process.env.DEFAULT_CHANNEL;
-            const promptText = 'Check where you would like a Mattermost message to be sent';
 
-            async function resolveNotificationTargets(pr) {
-              const { data: comments } = await github.rest.issues.listComments({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number
-              });
+            async function resolveDMTarget(pr) {
+              try {
+                const { data: commitData } = await github.rest.repos.getCommit({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: pr.head.sha
+                });
+                const email = commitData.commit.author.email;
+                const mattermostURL = new URL(process.env.MATTERMOST_WEBHOOK_URL).origin;
+                const mattermostResponse = await fetch(`${mattermostURL}/api/v4/users/email/${email}`, {
+                  headers: { Authorization: `Bearer ${process.env.MATTERMOST_BOT_TOKEN}` }
+                });
 
-              const mattermostComment = comments.find(c => c.body && c.body.includes(promptText));
-              if (!mattermostComment) {
-                console.log('No permission comment found. Skipping.');
-                return null;
-              }
-
-              const escapedDefaultChannel = defaultChannel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              const wantsDM = /-\s*\[[xX]\]\s*Direct message/i.test(mattermostComment.body);
-              const wantsChannel = new RegExp(`-\\s*\\[[xX]\\]\\s*~${escapedDefaultChannel}`, 'i').test(mattermostComment.body);
-
-              if (!wantsDM && !wantsChannel) {
-                console.log('No options selected. Skipping.');
-                return null;
-              }
-
-              const targetChannels = [];
-              let extraNote = '';
-
-              if (wantsChannel) {
-                targetChannels.push(defaultChannel);
-              }
-
-              if (wantsDM) {
-                try {
-                  const { data: commitData } = await github.rest.repos.getCommit({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    ref: pr.head.sha
-                  });
-                  const email = commitData.commit.author.email;
-                  const mattermostURL = new URL(process.env.MATTERMOST_WEBHOOK_URL).origin;
-                  const mattermostResponse = await fetch(`${mattermostURL}/api/v4/users/email/${email}`, {
-                    headers: { Authorization: `Bearer ${process.env.MATTERMOST_BOT_TOKEN}` }
-                  });
-
-                  if (mattermostResponse.ok) {
-                    const mattermostUser = await mattermostResponse.json();
-                    targetChannels.push(`@${mattermostUser.username}`);
-                  } else {
-                    extraNote = `*(Note: Could not find Mattermost account for ${email}. Falling back to ~${defaultChannel})*`;
-                    if (!targetChannels.includes(defaultChannel)) targetChannels.push(defaultChannel);
-                  }
-                } catch (error) {
-                  console.error('Mattermost lookup failed:', error);
-                  extraNote = `*(Note: Mattermost user lookup failed. Falling back to ~${defaultChannel})*`;
-                  if (!targetChannels.includes(defaultChannel)) targetChannels.push(defaultChannel);
+                if (mattermostResponse.ok) {
+                  const mattermostUser = await mattermostResponse.json();
+                  return `@${mattermostUser.username}`;
                 }
-              }
 
-              return { targetChannels, extraNote };
+                console.log(`Could not find Mattermost account for ${email}. Skipping.`);
+                return null;
+              } catch (error) {
+                console.error('Mattermost lookup failed:', error);
+                return null;
+              }
             }
 
             let statusMessage = '';
-            let targetChannels = [];
+            let dmTarget = null;
 
             if (workflowRun.event === 'pull_request') {
               let pullRequest = workflowRun.pull_requests[0];
@@ -129,12 +92,10 @@ jobs:
                 pull_number: pullRequest.number
               });
 
-              const result = await resolveNotificationTargets(pr);
-              if (!result) return;
+              dmTarget = await resolveDMTarget(pr);
+              if (!dmTarget) return;
 
-              ({ targetChannels } = result);
               statusMessage = `${emoji} CI Checks for [PR #${pr.number} ${pr.title}](${pr.html_url}) finished: **${state}**.`;
-              if (result.extraNote) statusMessage += `\n${result.extraNote}`;
 
             } else if (workflowRun.event === 'merge_group') {
               // Merge queue branch format: gh-readonly-queue/{base}/pr-{number}-{sha}
@@ -150,46 +111,35 @@ jobs:
                 pull_number: parseInt(match[1])
               });
 
-              const result = await resolveNotificationTargets(pr);
-              if (!result) return;
+              dmTarget = await resolveDMTarget(pr);
+              if (!dmTarget) return;
 
-              ({ targetChannels } = result);
               const mergeOutcome = state === 'success' ? `merged to \`${pr.base.ref}\`` : 'removed from merge queue';
               statusMessage = `${emoji} [PR #${pr.number} ${pr.title}](${pr.html_url}) ${mergeOutcome}.`;
-              if (result.extraNote) statusMessage += `\n${result.extraNote}`;
 
             } else {
               console.log(`Unsupported workflow_run event: ${workflowRun.event}. Skipping.`);
               return;
             }
 
-            targetChannels = [...new Set(targetChannels)];
+            console.log(`Sending DM to: ${dmTarget}`);
 
-            if (targetChannels.length === 0) {
-              console.log('No targets resolved. Skipping.');
+            const payload = {
+              text: statusMessage,
+              channel: dmTarget,
+              username: 'maasbot',
+              icon_url: 'https://launchpadlibrarian.net/91453111/Phoenix_landing-64x64.jpg'
+            };
+
+            const response = await fetch(process.env.MATTERMOST_WEBHOOK_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+              core.setFailed(`Failed to send DM to ${dmTarget}: ${response.status} ${response.statusText}`);
               return;
             }
 
-            console.log(`Sending notifications to: ${targetChannels.join(', ')}`);
-
-            for (const channel of targetChannels) {
-              const payload = {
-                text: statusMessage,
-                channel,
-                username: 'maasbot',
-                icon_url: 'https://launchpadlibrarian.net/91453111/Phoenix_landing-64x64.jpg'
-              };
-
-              const response = await fetch(process.env.MATTERMOST_WEBHOOK_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-              });
-
-              if (!response.ok) {
-                core.setFailed(`Failed to send to ${channel}: ${response.status} ${response.statusText}`);
-                return;
-              }
-
-              console.log(`Successfully sent to ${channel}`);
-            }
+            console.log(`Successfully sent DM to ${dmTarget}`);
