@@ -74,22 +74,24 @@ class TestVlansAPI(APITestCase.ForUser):
 
         fabric = factory.make_Fabric()
 
-        def make_vlan():
+        def make_vlan(with_relay: bool):
             space = factory.make_Space()
             subnet = factory.make_Subnet(fabric=fabric, space=space)
             primary_rack = factory.make_RackController()
             factory.make_Interface(node=primary_rack, subnet=subnet)
             secondary_rack = factory.make_RackController()
             factory.make_Interface(node=secondary_rack, subnet=subnet)
-            relay_vlan = factory.make_VLAN()
             vlan = subnet.vlan
             vlan.dhcp_on = True
             vlan.primary_rack = primary_rack
             vlan.secondary_rack = secondary_rack
-            vlan.relay_vlan = relay_vlan
+
+            if with_relay:
+                relay_vlan = factory.make_VLAN()
+                vlan.relay_vlan = relay_vlan
             vlan.save()
 
-        make_vlan()
+        make_vlan(with_relay=True)
 
         uri = get_vlans_uri(fabric)
         with CountQueries() as counter:
@@ -108,12 +110,24 @@ class TestVlansAPI(APITestCase.ForUser):
             vlan = vlans[serialized_vlan["id"]]
             self.assertEqual(serialize_vlan(vlan), serialized_vlan)
 
-        make_vlan()
+        make_vlan(with_relay=True)
         with CountQueries() as counter:
             response = self.client.get(uri)
-        # XXX: These really should be equal.
-        self.assertEqual(base_count + 7, counter.count)
-        self.assertEqual((base_count, counter.count), (25, 32))
+
+        # These should ideally be equal, but each VLAN's relay_vlan lives on
+        # its own Fabric instance, so get_default_vlan() re-queries once per
+        # additional relay_vlan instead of reusing a shared instance cache.
+        # If there is no relay_vlan, they are indeed equal.
+        self.assertEqual(base_count + 1, counter.count)
+
+        make_vlan(with_relay=False)
+        with CountQueries() as counter:
+            response = self.client.get(uri)
+
+        # Validating that adding a VLAN without a relay_vlan doesn't add
+        # further overhead: the count stays the same as after adding the
+        # second relay_vlan above.
+        self.assertEqual(base_count + 1, counter.count)
 
     def test_create(self):
         self.become_admin()
