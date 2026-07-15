@@ -963,7 +963,6 @@ HardwareProfileTable = Table(
     Column("storage", JSONB, nullable=False),
     Column("network", JSONB, nullable=False),
     Column("accelerators", JSONB, nullable=False),
-    Index("maasserver_hardwareprofile_node_id_idx", "node_id"),
     Index(
         "maasserver_hardwareprofile_fingerprint_idx", "hardware_fingerprint"
     ),
