@@ -21,17 +21,3 @@ const observer = new MutationObserver(function (mutations, obs) {
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
-
-// Overwrite the GitHub feedback link with a Launchpad bug report link.
-const feedbackObserver = new MutationObserver(function (mutations, obs) {
-  const feedbackLink = document.querySelector('.github-issue-link');
-  if (!feedbackLink) return;
-
-  obs.disconnect();
-
-  feedbackLink.href = (
-    "https://bugs.launchpad.net/maas/+filebug?"
-  );
-});
-
-feedbackObserver.observe(document.body, { childList: true, subtree: true });

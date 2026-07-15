@@ -381,7 +381,7 @@ if IS_ONLINE:
 
 # Adds custom JavaScript files, located under 'html_static_path'
 
-html_js_files = ["js/overwrite_links.js"]
+html_js_files = ["js/overwrite_links.js", "js/github_issue_links.js"]
 
 # JS for google analytics tracker setup:
 if IS_ONLINE:
@@ -399,7 +399,7 @@ rst_epilog = """
 #
 # TODO: To disable the button, uncomment this.
 
-# disable_feedback_button = True
+disable_feedback_button = True
 
 
 # Your manpage URL
