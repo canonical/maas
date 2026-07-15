@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resources."""
@@ -13,7 +13,6 @@ from pathlib import Path
 import shutil
 from textwrap import dedent
 
-from django.db import connection, transaction
 from django.db.models import F
 from temporalio.client import WorkflowExecutionStatus
 from temporalio.common import WorkflowIDReusePolicy
@@ -38,7 +37,6 @@ from maasserver.models import (
     RegionController,
 )
 from maasserver.sqlalchemy import service_layer
-from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.workflow import (
@@ -136,96 +134,6 @@ class ImportResourcesProgressService(TimerService):
         return BootResource.objects.all().exists()
 
 
-def _get_available_space(target_dir: Path) -> int:
-    _, _, free = shutil.disk_usage(target_dir)
-    return free
-
-
-def _get_db_images_size() -> int:
-    return sum(
-        BootResourceFile.objects.filter(largefile__isnull=False)
-        .distinct("sha256")
-        .values_list("size", flat=True)
-    )
-
-
-def export_images_from_db(region: RegionController, target_dir: Path):
-    from maasserver.models import LargeFile
-
-    required = _get_db_images_size()
-    avail = _get_available_space(target_dir)
-
-    if required > avail:
-        msg = dedent(
-            f"""\
-                Failed to export boot-resources from the database.
-                <br>Not enough disk space at '{target_dir}' on controller '{region.system_id}',
-                 missing {human_readable_bytes(required - avail)}.
-            """
-        )
-        register_persistent_error(COMPONENT.REGION_IMAGE_DB_EXPORT, msg)
-        maaslog.error("Failed to export boot-resources from the database")
-        return
-    elif required == 0:
-        # nothing to do
-        discard_persistent_error(COMPONENT.REGION_IMAGE_DB_EXPORT)
-        return
-
-    maaslog.info("Exporting image files to disk")
-
-    largefile_ids_to_delete = set()
-    oids_to_delete = set()
-    with transaction.atomic():
-        files = BootResourceFile.objects.filter(
-            largefile__isnull=False
-        ).select_related("largefile")
-
-        for file in files:
-            lfile = file.local_file()
-
-            def msg(message: str):
-                maaslog.info(f"{file.filename}: {message}")  # noqa: B023
-
-            def set_sync_status():
-                file.bootresourcefilesync_set.update_or_create(  # noqa: B023
-                    defaults=dict(size=lfile.size),  # noqa: B023
-                    region=region,
-                )
-
-            total_size = file.largefile.total_size
-            if lfile.valid:
-                msg("skipping, file already present")
-                set_sync_status()
-            elif file.largefile.size != total_size:
-                # we need to download this again
-                msg(f"ignoring, size is {file.largefile.size} of {total_size}")
-            else:
-                lfile.unlink()
-                msg("writing")
-                with (
-                    file.largefile.content.open("rb") as sfd,
-                    lfile.store() as dfd,
-                ):
-                    shutil.copyfileobj(sfd, dfd)
-                set_sync_status()
-
-            oids_to_delete.add(file.largefile.content.oid)
-            largefile_ids_to_delete.add(file.largefile_id)
-            # need to unset it because the post-delete signal will otherwise
-            # try to delete the largefile object, which is already handled
-            # below
-            file.largefile = None
-            file.save()
-
-        LargeFile.objects.filter(id__in=largefile_ids_to_delete).delete()
-        with connection.cursor() as cursor:
-            for oid in oids_to_delete:
-                cursor.execute("SELECT lo_unlink(%s)", [oid])
-
-    # clear any error status
-    discard_persistent_error(COMPONENT.REGION_IMAGE_DB_EXPORT)
-
-
 def initialize_image_storage(region: RegionController):
     """Initialize the image storage
 
@@ -239,8 +147,6 @@ def initialize_image_storage(region: RegionController):
     if bootloaders_dir.exists():
         shutil.rmtree(bootloaders_dir)
     bootloaders_dir.mkdir()
-
-    export_images_from_db(region, target_dir)
 
     expected_files = {bootloaders_dir}
 

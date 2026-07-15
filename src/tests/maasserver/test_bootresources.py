@@ -1,17 +1,15 @@
+# Copyright 2023-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import hashlib
-from hashlib import sha256
 import os
 from pathlib import Path
 import shutil
 
-from django.db import connection
 import pytest
 
 from maasserver import bootresources
-from maasserver.bootresources import (
-    export_images_from_db,
-    initialize_image_storage,
-)
+from maasserver.bootresources import initialize_image_storage
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.fields import LargeObjectFile
 from maasserver.models import (
@@ -108,152 +106,6 @@ def make_boot_resource_file_with_content_largefile(
         largefile=largefile,
         synced=[(r, -1) for r in regions] if regions else None,
     )
-
-
-@pytest.mark.usefixtures("maasdb")
-class TestExportImagesFromDB:
-    def test_create_files(self, controller, image_store_dir, factory):
-        resource1 = factory.make_BootResource(
-            name="ubuntu/jammy",
-            architecture="s390x/generic",
-        )
-        resource_set1 = factory.make_BootResourceSet(
-            resource=resource1,
-            version="20230901",
-            label="stable",
-        )
-        content1 = b"ubuntu-jammy"
-        make_boot_resource_file_with_content_largefile(
-            factory,
-            resource_set=resource_set1,
-            filename="boot-initrd",
-            content=content1,
-        )
-
-        resource2 = factory.make_BootResource(
-            name="centos/8",
-            architecture="amd64/generic",
-        )
-        resource_set2 = factory.make_BootResourceSet(
-            resource=resource2,
-            version="20230830",
-            label="candidate",
-        )
-        content2 = b"centos-8"
-        make_boot_resource_file_with_content_largefile(
-            factory,
-            resource_set=resource_set2,
-            filename="boot-kernel",
-            content=content2,
-        )
-        export_images_from_db(controller, image_store_dir)
-        assert list_files(image_store_dir) == {
-            sha256(content1).hexdigest()[:7],
-            sha256(content2).hexdigest()[:7],
-        }
-
-    def test_export_overwrite_changed(
-        self, controller, image_store_dir, factory
-    ):
-        content = b"ubuntu-jammy"
-        image = image_store_dir / sha256(content).hexdigest()[:7]
-        image.write_bytes(b"old")
-
-        resource = factory.make_BootResource(
-            name="ubuntu/jammy",
-            architecture="s390x/generic",
-        )
-        resource_set = factory.make_BootResourceSet(
-            resource=resource,
-            version="20230901",
-            label="stable",
-        )
-        make_boot_resource_file_with_content_largefile(
-            factory,
-            resource_set=resource_set,
-            filename="boot-initrd",
-            content=content,
-        )
-        export_images_from_db(controller, image_store_dir)
-        assert image.read_bytes() == content
-
-    def test_remove_largfile(self, controller, image_store_dir, factory):
-        resource = factory.make_BootResource(
-            name="ubuntu/jammy",
-            architecture="s390x/generic",
-        )
-        resource_set = factory.make_BootResourceSet(
-            resource=resource,
-            version="20230901",
-            label="stable",
-        )
-        resource_file = make_boot_resource_file_with_content_largefile(
-            factory,
-            resource_set=resource_set,
-            filename="boot-initrd",
-            content=b"some content",
-        )
-        largefile = resource_file.largefile
-        export_images_from_db(controller, image_store_dir)
-
-        assert reload_object(largefile) is None
-        # largeobject also gets deleted
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT loid FROM pg_largeobject")
-            assert cursor.fetchall() == []
-
-    def test_partial_largfile(self, controller, image_store_dir, factory):
-        resource = factory.make_BootResource(
-            name="ubuntu/jammy",
-            architecture="s390x/generic",
-        )
-        resource_set = factory.make_BootResourceSet(
-            resource=resource,
-            version="20230901",
-            label="stable",
-        )
-        resource_file = make_boot_resource_file_with_content_largefile(
-            factory,
-            resource_set=resource_set,
-            filename="boot-initrd",
-            content=b"some content",
-        )
-        largefile = resource_file.largefile
-        largefile.size = 0
-        largefile.save()
-
-        export_images_from_db(controller, image_store_dir)
-
-        assert reload_object(largefile) is None
-        # largeobject also gets deleted
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT loid FROM pg_largeobject")
-            assert cursor.fetchall() == []
-
-    def test_no_largefile_ignore(self, controller, image_store_dir, factory):
-        resource = factory.make_BootResource(
-            name="ubuntu/jammy",
-            architecture="s390x/generic",
-        )
-        resource_set = factory.make_BootResourceSet(
-            resource=resource,
-            version="20230901",
-            label="stable",
-        )
-        sha256 = "abcde"
-        factory.make_BootResourceFile(
-            resource_set=resource_set,
-            largefile=None,
-            filename="boot-initrd",
-            sha256=sha256,
-            filename_on_disk=sha256[:7],
-            size=100,
-        )
-
-        resource_file = image_store_dir / sha256[:7]
-        resource_file.touch()
-        export_images_from_db(controller, image_store_dir)
-        assert resource_file.exists()
 
 
 @pytest.mark.usefixtures("maasdb")
