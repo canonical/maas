@@ -4986,8 +4986,12 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             [], Interface.objects.filter(node_config=node1.current_config)
         )
 
-        # ... and ensure that the interface was deleted.
-        self.assertCountEqual([], Interface.objects.filter(id=interface_id))
+        # ... and ensure that the interface was reassigned to the second
+        # node.
+        self.assertEqual(
+            node2.current_config,
+            Interface.objects.get(id=interface_id).node_config,
+        )
 
     def test_deletes_virtual_interfaces_with_shared_mac(self):
         # Note: since this VLANInterface will be linked to the default VLAN
