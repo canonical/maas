@@ -51,6 +51,7 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.base import UNSET
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 
@@ -233,15 +234,25 @@ class UsersHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
     async def get_user(
         self,
         user_id: int,
         response: Response,
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
+        assert authenticated_user is not None
+        if (
+            UserRole.ADMIN not in authenticated_user.roles
+            and authenticated_user.id != user_id
+        ):
+            raise NotFoundException()
+
         user = await services.users.get_by_id(user_id)
         if not user:
             raise NotFoundException()
@@ -299,7 +310,7 @@ class UsersHandler(Handler):
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(check_permissions(required_roles={UserRole.USER}))
         ],
     )
     async def update_user(
@@ -307,11 +318,22 @@ class UsersHandler(Handler):
         user_id: int,
         user_request: UserUpdateRequest,
         response: Response,
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
-        user = await services.users.update_by_id(
-            user_id, user_request.to_builder()
-        )
+        assert authenticated_user is not None
+        is_admin = UserRole.ADMIN in authenticated_user.roles
+        if not is_admin and authenticated_user.id != user_id:
+            raise NotFoundException()
+
+        builder = user_request.to_builder()
+
+        if not is_admin:
+            builder.is_superuser = UNSET
+
+        user = await services.users.update_by_id(user_id, builder)
 
         response.headers["ETag"] = user.etag()
         return UserResponse.from_model(

@@ -40,7 +40,7 @@ from maasservicelayer.exceptions.constants import (
     PRECONDITION_FAILED,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
-from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.base import ListResult, UNSET
 from maasservicelayer.models.users import User, UserProfile, UserWithSummary
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
@@ -88,6 +88,8 @@ class TestUsersApi(ApiCommonTests):
     def user_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="GET", path=f"{self.BASE_PATH}/me"),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
+            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
             Endpoint(
                 method="POST", path=f"{self.BASE_PATH}/me:complete_intro"
             ),
@@ -100,10 +102,8 @@ class TestUsersApi(ApiCommonTests):
     def admin_endpoints(self) -> list[Endpoint]:
         return [
             Endpoint(method="GET", path=f"{self.BASE_PATH}"),
-            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="GET", path=f"{V3_API_PREFIX}/users_with_summary"),
             Endpoint(method="POST", path=f"{self.BASE_PATH}"),
-            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
             Endpoint(method="DELETE", path=f"{self.BASE_PATH}/1"),
             Endpoint(
                 method="POST", path=f"{self.BASE_PATH}/1:change_password"
@@ -243,7 +243,7 @@ class TestUsersApi(ApiCommonTests):
         assert users_response.next is None
 
     # GET /users/{user_id}
-    async def test_get_user(
+    async def test_get_user_admin(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
@@ -258,6 +258,38 @@ class TestUsersApi(ApiCommonTests):
         user_response = UserResponse(**response.json())
         assert user_response.id == 1
         assert user_response.username == "username"
+
+    async def test_get_self_user_non_admin(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        services_mock.users.get_by_id.return_value = USER_1
+        # the user we use in tests has the id=0
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/0",
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+        user_response = UserResponse(**response.json())
+        assert user_response.id == 1
+        assert user_response.username == "username"
+
+    async def test_get_other_user_non_admin(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/1",
+        )
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
 
     async def test_get_user_404(
         self,
@@ -525,13 +557,81 @@ class TestUsersApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 422
 
+    async def test_put_user_updates_self(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        updated_user = User(
+            id=0,
+            is_active=False,
+            is_superuser=False,
+            is_staff=False,
+            username="new_user",
+            password="new_pass",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_email@example.com",
+        )
+        services_mock.users = Mock(UsersService)
+        services_mock.users.update_by_id.return_value = updated_user
+
+        user_request = UserUpdateRequest(
+            is_superuser=True,
+            username="new_user",
+            password="new_pass",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_email@example.com",
+        )
+
+        # the user we use in tests has the id=0
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/0",
+            json=jsonable_encoder(user_request),
+        )
+
+        assert response.status_code == 200
+
+        # A normal user can't update the is_superuser field.
+        builder = user_request.to_builder()
+        builder.is_superuser = UNSET
+
+        update_by_id_call_args = services_mock.users.update_by_id.call_args[0]
+        assert update_by_id_call_args[1].is_superuser == UNSET
+
+    async def test_put_user_cant_update_others(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.users = Mock(UsersService)
+
+        user_request = UserUpdateRequest(
+            is_superuser=True,
+            username="new_user",
+            password="new_pass",
+            first_name="new_first_name",
+            last_name="new_last_name",
+            email="new_email@example.com",
+        )
+
+        # the user we use in tests has the id=0
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/1",
+            json=jsonable_encoder(user_request),
+        )
+
+        assert response.status_code == 404
+        services_mock.users.update_by_id.assert_not_called()
+
     async def test_delete_204(
         self,
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.exists.return_value = True
         services_mock.users.delete_by_id.return_value = USER_1
 
         response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/1")
@@ -581,11 +681,9 @@ class TestUsersApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_admin: AsyncClient,
     ) -> None:
-        user = USER_1.copy()
         # the api client we use has an authenticated user with id=0
-        user.id = 0
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id.return_value = user
+        services_mock.users.exists.return_value = True
 
         response = await mocked_api_client_admin.delete(f"{self.BASE_PATH}/0")
         assert response.status_code == 400
@@ -596,7 +694,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.exists.return_value = True
         services_mock.users.delete_by_id.side_effect = PreconditionFailedException(
             details=[
                 BaseExceptionDetail(
@@ -614,7 +712,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.exists.return_value = True
         services_mock.users.transfer_resources.return_value = None
         services_mock.users.delete_by_id.return_value = USER_1
 
@@ -630,7 +728,7 @@ class TestUsersApi(ApiCommonTests):
         mocked_api_client_admin: AsyncClient,
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.get_by_id.return_value = USER_1
+        services_mock.users.exists.return_value = True
         services_mock.users.transfer_resources.side_effect = BadRequestException(
             details=[
                 BaseExceptionDetail(
