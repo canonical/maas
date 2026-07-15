@@ -1686,6 +1686,10 @@ class Interface(CleanSave, TimestampedModel):
             # Use a single-round-trip UPDATE to avoid a REPEATABLE READ
             # conflict: loading the row and then saving it in the same
             # transaction races with concurrent deletions or updates.
+            # If the row was deleted by a concurrent transaction after
+            # get_or_create returned it, this UPDATE matches 0 rows and
+            # the observation is silently dropped.  The neighbour table is
+            # eventually consistent; losing one ARP observation is acceptable.
             Neighbour.objects.filter(pk=neighbour.pk).update(
                 time=time,
                 count=F("count") + 1,

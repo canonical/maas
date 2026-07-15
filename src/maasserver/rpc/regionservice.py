@@ -11,6 +11,7 @@ import random
 from socket import AF_INET, AF_INET6
 import uuid
 
+from django.db.utils import DatabaseError
 from django.utils import timezone
 from netaddr import AddrConversionError, IPAddress
 from twisted.application import service
@@ -306,10 +307,10 @@ class Region(SecuredRPCProtocol):
 
     @region.ReportMDNSEntries.responder
     def report_mdns_entries(self, system_id, mdns):
-        """report_neighbours()
+        """report_mdns_entries()
 
         Implementation of
-        :py:class:`~provisioningserver.rpc.region.ReportNeighbours`.
+        :py:class:`~provisioningserver.rpc.region.ReportMDNSEntries`.
         """
         d = deferToDatabase(
             rackcontrollers.report_mdns_entries, system_id, mdns
@@ -331,7 +332,7 @@ class Region(SecuredRPCProtocol):
             # a best-effort observation; losing one update under extreme ARP
             # contention is acceptable.  Log at warning level so the noise
             # doesn't fill syslog as [critical].
-            if failure.check(Exception) and is_retryable_failure(
+            if failure.check(DatabaseError) and is_retryable_failure(
                 failure.value
             ):
                 log.msg(
