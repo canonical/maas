@@ -45,21 +45,6 @@ class TestVlansAPI(APITestCase.ForUser):
         )
 
     def test_read(self):
-        def make_vlan():
-            space = factory.make_Space()
-            subnet = factory.make_Subnet(fabric=fabric, space=space)
-            primary_rack = factory.make_RackController()
-            factory.make_Interface(node=primary_rack, subnet=subnet)
-            secondary_rack = factory.make_RackController()
-            factory.make_Interface(node=secondary_rack, subnet=subnet)
-            relay_vlan = factory.make_VLAN()
-            vlan = subnet.vlan
-            vlan.dhcp_on = True
-            vlan.primary_rack = primary_rack
-            vlan.secondary_rack = secondary_rack
-            vlan.relay_vlan = relay_vlan
-            vlan.save()
-
         def serialize_vlan(vlan):
             return {
                 "id": vlan.id,
@@ -88,6 +73,22 @@ class TestVlansAPI(APITestCase.ForUser):
             }
 
         fabric = factory.make_Fabric()
+
+        def make_vlan():
+            space = factory.make_Space()
+            subnet = factory.make_Subnet(fabric=fabric, space=space)
+            primary_rack = factory.make_RackController()
+            factory.make_Interface(node=primary_rack, subnet=subnet)
+            secondary_rack = factory.make_RackController()
+            factory.make_Interface(node=secondary_rack, subnet=subnet)
+            relay_vlan = factory.make_VLAN()
+            vlan = subnet.vlan
+            vlan.dhcp_on = True
+            vlan.primary_rack = primary_rack
+            vlan.secondary_rack = secondary_rack
+            vlan.relay_vlan = relay_vlan
+            vlan.save()
+
         make_vlan()
 
         uri = get_vlans_uri(fabric)
