@@ -22,7 +22,8 @@ system-usernames:
 # 3: (2.9) drop "all" mode and builtin PostgresSQL server
 # 4: (3.5) supervisord -> Pebble migration
 # 5: (3.8) MAAS LTS, last version with image migration from database and django migrations
-epoch: 5*
+# 6: (4.0) Image migration from database and django migrations are dropped
+epoch: 6*
 
 package-repositories:
   - type: apt
