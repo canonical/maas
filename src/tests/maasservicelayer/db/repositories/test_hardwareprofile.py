@@ -29,18 +29,14 @@ class TestHardwareProfilesRepository(RepositoryCommonTests[HardwareProfile]):
         self, fixture: Fixture, num_objects: int
     ) -> list[HardwareProfile]:
         created_hardware_profiles = [
-            await create_test_hardware_profile_entry(
-                fixture, name=str(i), description=str(i)
-            )
-            for i in range(num_objects)
+            await create_test_hardware_profile_entry(fixture)
+            for _ in range(num_objects)
         ]
         return created_hardware_profiles
 
     @pytest.fixture
     async def created_instance(self, fixture: Fixture) -> HardwareProfile:
-        return await create_test_hardware_profile_entry(
-            fixture, name="name", description="description"
-        )
+        return await create_test_hardware_profile_entry(fixture)
 
     @pytest.fixture
     async def instance_builder_model(

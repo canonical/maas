@@ -20,6 +20,6 @@ class HardwareProfileService(
     def __init__(
         self,
         context: Context,
-        resource_pools_repository: HardwareProfileRepository,
+        hardware_profile_repository: HardwareProfileRepository,
     ):
-        super().__init__(context, resource_pools_repository)
+        super().__init__(context, hardware_profile_repository)

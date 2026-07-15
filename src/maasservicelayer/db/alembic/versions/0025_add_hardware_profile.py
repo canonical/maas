@@ -85,12 +85,6 @@ def upgrade() -> None:
         ["gpu_count"],
         unique=False,
     )
-    op.create_index(
-        "maasserver_hardwareprofile_node_id_idx",
-        "maasserver_hardwareprofile",
-        ["node_id"],
-        unique=False,
-    )
 
 
 def downgrade() -> None:
