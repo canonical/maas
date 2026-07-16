@@ -21,10 +21,10 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.drop_table("django_migrations", if_exists=True)
-    op.drop_table("maasserver_largefile", if_exists=True)
     op.drop_column(
         "maasserver_bootresourcefile", "largefile_id", if_exists=True
     )
+    op.drop_table("maasserver_largefile", if_exists=True)
 
 
 def downgrade() -> None:
