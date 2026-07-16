@@ -933,6 +933,45 @@ GlobalDefaultTable = Table(
     Index("maasserver_globaldefault_domain_id_11c3ee74", "domain_id"),
 )
 
+HardwareProfileTable = Table(
+    "maasserver_hardwareprofile",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column(
+        "node_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+        unique=True,
+    ),
+    Column("architecture", String(31), nullable=False),
+    Column("cpu_cores", Integer, nullable=False),
+    Column("cpu_speed_mhz", Integer, nullable=False),
+    Column("memory_mb", Integer, nullable=False),
+    Column("disk_count", Integer, nullable=False),
+    Column("total_storage_bytes", BigInteger, nullable=False),
+    Column("nic_count", Integer, nullable=False),
+    Column("gpu_count", Integer, nullable=False),
+    Column("system_vendor", String(256), nullable=True),
+    Column("system_product", String(256), nullable=True),
+    Column("hardware_fingerprint", String(64), nullable=False),
+    # JSONB columns for grouped inventory
+    Column("storage", JSONB, nullable=False),
+    Column("network", JSONB, nullable=False),
+    Column("accelerators", JSONB, nullable=False),
+    Index(
+        "maasserver_hardwareprofile_fingerprint_idx", "hardware_fingerprint"
+    ),
+    Index("maasserver_hardwareprofile_arch_idx", "architecture"),
+    Index("maasserver_hardwareprofile_cpu_mem_idx", "cpu_cores", "memory_mb"),
+    Index("maasserver_hardwareprofile_gpu_count_idx", "gpu_count"),
+)
+
+
 ImageManifestTable = Table(
     "maasserver_imagemanifest",
     METADATA,

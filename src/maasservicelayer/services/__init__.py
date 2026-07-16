@@ -55,6 +55,9 @@ from maasservicelayer.db.repositories.external_auth import (
 )
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
 from maasservicelayer.db.repositories.filestorage import FileStorageRepository
+from maasservicelayer.db.repositories.hardwareprofile import (
+    HardwareProfileRepository,
+)
 from maasservicelayer.db.repositories.image_manifests import (
     ImageManifestsRepository,
 )
@@ -164,6 +167,7 @@ from maasservicelayer.services.external_auth import (
 )
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.filestorage import FileStorageService
+from maasservicelayer.services.hardwareprofile import HardwareProfileService
 from maasservicelayer.services.hooked_configurations import (
     HookedConfigurationsService,
 )
@@ -281,6 +285,7 @@ class ServiceCollectionV3:
     external_oauth: ExternalOAuthService
     fabrics: FabricsService
     filestorage: FileStorageService
+    hardware_profiles: HardwareProfileService
     hooked_configurations: HookedConfigurationsService
     image_manifests: ImageManifestsService
     image_sync: ImageSyncService
@@ -773,5 +778,9 @@ class ServiceCollectionV3:
             operations_repository=OperationsRepository(context),
             operation_tasks_repository=OperationTasksRepository(context),
             temporal_service=services.temporal,
+        )
+        services.hardware_profiles = HardwareProfileService(
+            context=context,
+            hardware_profile_repository=HardwareProfileRepository(context),
         )
         return services
