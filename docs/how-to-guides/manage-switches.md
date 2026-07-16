@@ -585,7 +585,7 @@ This path cannot target the MAAS syslog service on `maas_syslog_port` (default `
 
 **Note:** DHCP snippets are deprecated as of MAAS 3.6 and will be removed in the next major version. Prefer an external DHCP server for this option when you can. See [Manage network services](manage-network-services.md) and [ONIE: Add a Remote Syslog Server](https://opencomputeproject.github.io/onie/user-guide/index.html#add-a-remote-syslog-server).
 
-### Typical Custom Installer Workflow
+### Typical custom installer workflow
 
 1. Build or prepare a wrapped image that ONIE can execute.
 
