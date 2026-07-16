@@ -53,7 +53,7 @@ jobs:
                 });
                 const email = commitData.commit.author.email;
                 const mattermostURL = new URL(process.env.MATTERMOST_WEBHOOK_URL).origin;
-                const mattermostResponse = await fetch(`${mattermostURL}/api/v4/users/email/${email}`, {
+                const mattermostResponse = await fetch(`${mattermostURL}/api/v4/users/email/${encodeURIComponent(email)}`, {
                   headers: { Authorization: `Bearer ${process.env.MATTERMOST_BOT_TOKEN}` }
                 });
 
