@@ -1,7 +1,6 @@
 # Copyright 2023-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -10,14 +9,6 @@ import pytest
 
 from maasserver import bootresources
 from maasserver.bootresources import initialize_image_storage
-from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
-from maasserver.fields import LargeObjectFile
-from maasserver.models import (
-    BootResourceFile,
-    BootResourceSet,
-    RegionController,
-)
-from maasserver.models.largefile import LargeFile
 from maasserver.utils.orm import reload_object
 from provisioningserver.config import ClusterConfiguration
 

@@ -24,7 +24,7 @@ from sqlalchemy import (
     text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, CIDR, INET, JSONB, OID
+from sqlalchemy.dialects.postgresql import ARRAY, CIDR, INET, JSONB
 from sqlalchemy.sql.schema import PrimaryKeyConstraint
 
 METADATA = MetaData()
