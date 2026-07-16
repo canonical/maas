@@ -50,9 +50,6 @@ REDFISH_POWER_CONTROL_ENDPOINT = (
 
 REDFISH_SYSTEMS_ENDPOINT = b"redfish/v1/Systems"
 
-OLD_REDFISH_BOOT_ENDPOINT = b"redfish/v1/Systems/%s"
-NEW_REDFISH_BOOT_ENDPOINT = b"redfish/v1/Systems/%s/Settings"
-
 MAX_REQUEST_RETRIES = 5
 
 MAX_STATUS_REQUEST_RETRIES = 7
@@ -319,7 +316,7 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
 
     @inlineCallbacks
     def get_etag(self, url, node_id, headers, endpoint=None):
-        """Get the Etag suggested for PATCH calls."""
+        """Get the system Etag suggested for PATCH calls."""
         if endpoint is None:
             endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
         uri = join(url, endpoint)
@@ -344,6 +341,36 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
         return basename(member).encode("utf-8")
 
     @inlineCallbacks
+    def get_boot_endpoint(self, url, node_id, headers):
+        """Discover the boot settings endpoint dynamically from the System object."""
+        system_endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
+        system_uri = join(url, system_endpoint)
+
+        try:
+            node_data, _ = yield self.redfish_request(
+                b"GET", system_uri, headers
+            )
+        except PowerFatalError:
+            raise
+        except Exception:
+            return system_endpoint
+
+        if not isinstance(node_data, dict):
+            return system_endpoint
+        redfish_settings = node_data.get("@Redfish.Settings") or {}
+        if not isinstance(redfish_settings, dict):
+            return system_endpoint
+        settings_obj = redfish_settings.get("SettingsObject") or {}
+        if not isinstance(settings_obj, dict):
+            return system_endpoint
+        odata_id = settings_obj.get("@odata.id")
+
+        if isinstance(odata_id, str) and odata_id:
+            return odata_id.lstrip("/").encode("utf-8")
+
+        return system_endpoint
+
+    @inlineCallbacks
     def set_pxe_boot(self, url, node_id, headers):
         """Set the machine with node_id to PXE boot."""
 
@@ -361,44 +388,25 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
                 )
             )
 
-        # 1. Try the standard legacy endpoint first (works for majority of vendors/older FW)
-        old_endpoint = OLD_REDFISH_BOOT_ENDPOINT % node_id
-        
+        # 1. Discover the correct endpoint dynamically
+        target_endpoint = yield self.get_boot_endpoint(url, node_id, headers)
+
+        # 2. Retrieve context-aware ETag for our discovered target endpoint
         @inlineCallbacks
-        def _get_old_etag():
-            result = yield self.get_etag(url, node_id, headers, endpoint=old_endpoint)
+        def _get_target_etag():
+            result = yield self.get_etag(
+                url, node_id, headers, endpoint=target_endpoint
+            )
             return result
 
-        try:
-            yield self.redfish_request(
-                b"PATCH",
-                join(url, old_endpoint),
-                headers,
-                _get_bodyProducer,
-                _get_old_etag,
-            )
-        except PowerActionError as e:
-            # Check if it failed due to a Method Not Allowed (405) or Bad Request (400) on the root endpoint.
-            # If so, fall back instantly to the iDRAC10 /Settings endpoint.
-            maaslog.info(
-                "PATCH on root system endpoint failed for node %s. Retrying via modern /Settings endpoint...",
-                node_id.decode("utf-8")
-            )
-            
-            new_endpoint = NEW_REDFISH_BOOT_ENDPOINT % node_id
-            
-            @inlineCallbacks
-            def _get_new_etag():
-                result = yield self.get_etag(url, node_id, headers, endpoint=new_endpoint)
-                return result
-
-            yield self.redfish_request(
-                b"PATCH",
-                join(url, new_endpoint),
-                headers,
-                _get_bodyProducer,
-                _get_new_etag,
-            )
+        # 3. Perform the PATCH operation
+        yield self.redfish_request(
+            b"PATCH",
+            join(url, target_endpoint),
+            headers,
+            _get_bodyProducer,
+            _get_target_etag,
+        )
 
     @inlineCallbacks
     def power(self, power_change: PowerChange, url, node_id, headers):
