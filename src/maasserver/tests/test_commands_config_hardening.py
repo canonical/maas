@@ -28,9 +28,7 @@ class _Base(TestCase):
 
 class TestConfigHardeningSet(_Base):
     def test_set_config_key_writes_to_db(self):
-        with patch(
-            "maasserver.management.commands.config_hardening.Config"
-        ) as MockConfig:
+        with patch("maasserver.models.Config") as MockConfig:
             mock_mgr = MagicMock()
             MockConfig.objects.db_manager.return_value = mock_mgr
             self._cmd(command="set", key="hardening_enabled", value="on")
@@ -148,9 +146,7 @@ class TestConfigHardeningDisable(_Base):
                 "maasserver.management.commands.config_hardening.is_fips_enabled",
                 return_value=False,
             ),
-            patch(
-                "maasserver.management.commands.config_hardening.Config"
-            ) as MockConfig,
+            patch("maasserver.models.Config") as MockConfig,
         ):
             mock_mgr = MagicMock()
             MockConfig.objects.db_manager.return_value = mock_mgr
@@ -171,9 +167,7 @@ class TestConfigHardeningEnable(_Base):
 
     def test_sets_config_and_seeds_unset_binds(self):
         with (
-            patch(
-                "maasserver.management.commands.config_hardening.Config"
-            ) as MockConfig,
+            patch("maasserver.models.Config") as MockConfig,
             patch(
                 "maasserver.management.commands.config_hardening.RegionConfiguration"
             ) as MockRegionCfg,
@@ -190,7 +184,7 @@ class TestConfigHardeningEnable(_Base):
 
     def test_skips_seeding_when_binds_already_set(self):
         with (
-            patch("maasserver.management.commands.config_hardening.Config"),
+            patch("maasserver.models.Config"),
             patch(
                 "maasserver.management.commands.config_hardening.RegionConfiguration"
             ) as MockRegionCfg,
@@ -205,9 +199,7 @@ class TestConfigHardeningEnable(_Base):
 
     def test_warns_on_conf_write_failure(self):
         with (
-            patch(
-                "maasserver.management.commands.config_hardening.Config"
-            ) as MockConfig,
+            patch("maasserver.models.Config") as MockConfig,
             patch(
                 "maasserver.management.commands.config_hardening.RegionConfiguration"
             ) as MockRegionCfg,
