@@ -1,8 +1,6 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
-
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -57,19 +55,8 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[Zone]:
-        # The default zone is created by the migration and it has the following
-        # timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:9553
-        ts = datetime(2025, 9, 11, 12, 23, 3, 583496, tzinfo=timezone.utc)
-        created_zones = [
-            Zone(
-                id=1,
-                name="default",
-                description="",
-                created=ts,
-                updated=ts,
-            )
-        ]
+        # The default zone is created by the migrations
+        created_zones = await fixture.get_typed(ZoneTable.name, Zone)
         created_zones.extend(
             [
                 (

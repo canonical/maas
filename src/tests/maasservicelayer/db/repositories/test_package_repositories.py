@@ -1,15 +1,9 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timezone
-
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maascommon.enums.package_repositories import (
-    PACKAGE_REPO_MAIN_ARCHES,
-    PACKAGE_REPO_PORTS_ARCHES,
-)
 from maasservicelayer.builders.package_repositories import (
     PackageRepositoryBuilder,
 )
@@ -17,6 +11,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
 )
+from maasservicelayer.db.tables import PackageRepositoryTable
 from maasservicelayer.models.fields import PackageRepoUrl
 from maasservicelayer.models.package_repositories import PackageRepository
 from tests.fixtures.factories.package_repositories import (
@@ -41,44 +36,10 @@ class TestCommonPackageRepositoriesRepository(
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[PackageRepository]:
-        # The default package repositories are created by the migration and it
-        # has the following timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:9239
-        ts = datetime(2025, 9, 11, 12, 23, 3, 583496, tzinfo=timezone.utc)
-        created_package_repositories = [
-            PackageRepository(
-                id=1,
-                created=ts,
-                updated=ts,
-                name="main_archive",
-                url=PackageRepoUrl("http://archive.ubuntu.com/ubuntu"),
-                components=set(),
-                arches=PACKAGE_REPO_MAIN_ARCHES,
-                key="",
-                default=True,
-                enabled=True,
-                disabled_pockets=set(),
-                distributions=[],
-                disabled_components=set(),
-                disable_sources=True,
-            ),
-            PackageRepository(
-                id=2,
-                created=ts,
-                updated=ts,
-                name="ports_archive",
-                url=PackageRepoUrl("http://ports.ubuntu.com/ubuntu-ports"),
-                components=set(),
-                arches=PACKAGE_REPO_PORTS_ARCHES,
-                key="",
-                default=True,
-                enabled=True,
-                disabled_pockets=set(),
-                distributions=[],
-                disabled_components=set(),
-                disable_sources=True,
-            ),
-        ]
+        # The default package repositories are created by the migrations
+        created_package_repositories = await fixture.get_typed(
+            PackageRepositoryTable.name, PackageRepository
+        )
         created_package_repositories.extend(
             [
                 await create_test_package_repository(
