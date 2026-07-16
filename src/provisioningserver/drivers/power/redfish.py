@@ -318,9 +318,11 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
         return url, node_id, headers
 
     @inlineCallbacks
-    def get_etag(self, url, node_id, headers):
-        """Get the system Etag suggested for PATCH calls"""
-        uri = join(url, REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
+    def get_etag(self, url, node_id, headers, endpoint=None):
+        """Get the Etag suggested for PATCH calls."""
+        if endpoint is None:
+            endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
+        uri = join(url, endpoint)
         node_data, node_headers = yield self.redfish_request(
             b"GET", uri, headers
         )
@@ -359,30 +361,43 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
                 )
             )
 
+        # 1. Try the standard legacy endpoint first (works for majority of vendors/older FW)
+        old_endpoint = OLD_REDFISH_BOOT_ENDPOINT % node_id
+        
         @inlineCallbacks
-        def _get_etag():
-            result = yield self.get_etag(url, node_id, headers)
+        def _get_old_etag():
+            result = yield self.get_etag(url, node_id, headers, endpoint=old_endpoint)
             return result
 
         try:
-            # 1. Try the NEW boot settings endpoint (for upgraded iDRAC)
-            new_endpoint = NEW_REDFISH_BOOT_ENDPOINT % node_id
-            yield self.redfish_request(
-                b"PATCH",
-                join(url, new_endpoint),
-                headers,
-                _get_bodyProducer,
-                _get_etag,
-            )
-        except Exception:
-            # 2. Fall back to the OLD endpoint if the new one fails
-            old_endpoint = OLD_REDFISH_BOOT_ENDPOINT % node_id
             yield self.redfish_request(
                 b"PATCH",
                 join(url, old_endpoint),
                 headers,
                 _get_bodyProducer,
-                _get_etag,
+                _get_old_etag,
+            )
+        except PowerActionError as e:
+            # Check if it failed due to a Method Not Allowed (405) or Bad Request (400) on the root endpoint.
+            # If so, fall back instantly to the iDRAC10 /Settings endpoint.
+            maaslog.info(
+                "PATCH on root system endpoint failed for node %s. Retrying via modern /Settings endpoint...",
+                node_id.decode("utf-8")
+            )
+            
+            new_endpoint = NEW_REDFISH_BOOT_ENDPOINT % node_id
+            
+            @inlineCallbacks
+            def _get_new_etag():
+                result = yield self.get_etag(url, node_id, headers, endpoint=new_endpoint)
+                return result
+
+            yield self.redfish_request(
+                b"PATCH",
+                join(url, new_endpoint),
+                headers,
+                _get_bodyProducer,
+                _get_new_etag,
             )
 
     @inlineCallbacks
