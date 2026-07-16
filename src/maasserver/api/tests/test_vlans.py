@@ -112,6 +112,7 @@ class TestVlansAPI(APITestCase.ForUser):
             response = self.client.get(uri)
 
         self.assertEqual(base_count, counter.count)
+        self.assertEqual(base_count, 19)
 
     def test_create(self):
         self.become_admin()
