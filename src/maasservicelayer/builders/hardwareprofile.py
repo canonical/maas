@@ -1,7 +1,8 @@
-# Copyright 2026 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
+import hashlib
 
 from pydantic import Field
 
@@ -11,6 +12,41 @@ from maasservicelayer.models.hardwareprofile import (
     HardwareNetworkGroup,
     HardwareStorageGroup,
 )
+from maasservicelayer.utils.lxd import MachineResources
+from maasservicelayer.utils.lxd_parsing import (
+    parse_accelerators,
+    parse_architecture,
+    parse_cpu,
+    parse_memory_mb,
+    parse_network,
+    parse_storage,
+)
+
+
+def _hardware_fingerprint(
+    architecture: str,
+    cpu_cores: int,
+    memory_mb: int,
+    storage: list[HardwareStorageGroup],
+    network: list[HardwareNetworkGroup],
+    accelerators: list[HardwareAcceleratorGroup],
+) -> str:
+    """Return a stable hash identifying this hardware configuration."""
+    parts = [architecture, str(cpu_cores), str(memory_mb)]
+    parts += sorted(
+        f"{item.serial}:{item.size_bytes}"
+        for group in storage
+        for item in group.items
+    )
+    parts += sorted(
+        item.mac_address for group in network for item in group.items
+    )
+    parts += sorted(
+        f"{item.vendor_id}:{item.product_id}:{item.pci_address}"
+        for group in accelerators
+        for item in group.items
+    )
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
 
 class HardwareProfileBuilder(ResourceBuilder):
@@ -37,3 +73,54 @@ class HardwareProfileBuilder(ResourceBuilder):
     system_vendor: str | None | Unset = Field(default=UNSET)
     total_storage_bytes: int | Unset = Field(default=UNSET)
     updated: datetime | Unset = Field(default=UNSET)
+
+    @classmethod
+    def from_commissioning_output(
+        cls, output: dict, node_id: int
+    ) -> "HardwareProfileBuilder":
+        """Build a hardware profile from the commissioning script output.
+
+        `output` is the JSON produced by the ``50-maas-01-commissioning``
+        script (the ``machine-resources`` binary output).
+        """
+        machine_resources = MachineResources(**output)
+        resources = machine_resources.resources
+
+        architecture = parse_architecture(machine_resources)
+        cpu_cores, cpu_speed_mhz = parse_cpu(resources.cpu)
+        memory_mb = parse_memory_mb(resources.memory)
+
+        storage = parse_storage(resources.storage)
+        network = parse_network(resources.network)
+        accelerators = parse_accelerators(resources.gpu)
+
+        total_storage_bytes = sum(
+            group.size_bytes * group.count for group in storage
+        )
+        disk_count = sum(group.count for group in storage)
+        nic_count = sum(group.count for group in network)
+
+        return cls(
+            node_id=node_id,
+            accelerators=accelerators,
+            architecture=architecture,
+            cpu_cores=cpu_cores,
+            cpu_speed_mhz=cpu_speed_mhz,
+            disk_count=disk_count,
+            gpu_count=len(resources.gpu.cards),
+            hardware_fingerprint=_hardware_fingerprint(
+                architecture,
+                cpu_cores,
+                memory_mb,
+                storage,
+                network,
+                accelerators,
+            ),
+            memory_mb=memory_mb,
+            network=network,
+            nic_count=nic_count,
+            storage=storage,
+            system_product=resources.system.product or None,
+            system_vendor=resources.system.vendor or None,
+            total_storage_bytes=total_storage_bytes,
+        )

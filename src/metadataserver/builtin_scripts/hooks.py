@@ -1241,6 +1241,7 @@ def process_lxd_results(node, output, exit_status):
         _process_lxd_environment(node, data["environment"])
         _process_lxd_resources(node, data)
         _process_machine_extra(node, data.get("machine-extra", None))
+        _populate_hardware_profile(node.id, data)
     except Exception as e:
         log_failure_event(str(e))
         raise
@@ -1638,6 +1639,17 @@ def _link_dpu(node):
         else:
             node.parent = parent
             node.save()
+
+
+def _populate_hardware_profile(node_id: int, data: dict) -> None:
+    """Create or update the hardware profile row for the given node."""
+    from maasserver.sqlalchemy import service_layer
+    from maasservicelayer.builders.hardwareprofile import (
+        HardwareProfileBuilder,
+    )
+
+    builder = HardwareProfileBuilder.from_commissioning_output(data, node_id)
+    service_layer.services.hardware_profiles.create_or_update(builder)
 
 
 # Register the post processing hooks.
