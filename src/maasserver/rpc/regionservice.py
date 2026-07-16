@@ -11,6 +11,7 @@ import random
 from socket import AF_INET, AF_INET6
 import uuid
 
+from django.db.utils import DatabaseError
 from django.utils import timezone
 from netaddr import AddrConversionError, IPAddress
 from twisted.application import service
@@ -43,7 +44,7 @@ from maasserver.rpc.nodes import (
 from maasserver.rpc.services import update_services
 from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.security import get_shared_secret
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import is_retryable_failure, transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.prometheus.metrics import (
@@ -307,10 +308,10 @@ class Region(SecuredRPCProtocol):
 
     @region.ReportMDNSEntries.responder
     def report_mdns_entries(self, system_id, mdns):
-        """report_neighbours()
+        """report_mdns_entries()
 
         Implementation of
-        :py:class:`~provisioningserver.rpc.region.ReportNeighbours`.
+        :py:class:`~provisioningserver.rpc.region.ReportMDNSEntries`.
         """
         d = deferToDatabase(
             rackcontrollers.report_mdns_entries, system_id, mdns
@@ -325,10 +326,29 @@ class Region(SecuredRPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.ReportNeighbours`.
         """
+
+        def _suppress_retryable(failure):
+            # After all retries are exhausted the @transactional decorator
+            # lets the final OperationalError propagate.  ReportNeighbours is
+            # a best-effort observation; losing one update under extreme ARP
+            # contention is acceptable.  Log at warning level so the noise
+            # doesn't fill syslog as [critical].
+            if failure.check(DatabaseError) and is_retryable_failure(
+                failure.value
+            ):
+                log.msg(
+                    "Discarding retryable DB failure in ReportNeighbours "
+                    "after exhausting retries: {err}",
+                    err=failure.value,
+                )
+                return {}
+            return failure
+
         d = deferToDatabase(
             rackcontrollers.report_neighbours, system_id, neighbours
         )
         d.addCallback(lambda args: {})
+        d.addErrback(_suppress_retryable)
         return d
 
     @region.RequestNodeInfoByMACAddress.responder

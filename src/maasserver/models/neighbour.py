@@ -89,9 +89,11 @@ class NeighbourManager(Manager, NeighbourQueriesMixin):
         Returns True if a binding was (deleted and a log was generated).
         """
         deleted = False
-        previous_bindings = self.filter(
-            interface=interface, ip=ip, vid=vid
-        ).exclude(mac_address=mac)
+        previous_bindings = (
+            self.filter(interface=interface, ip=ip, vid=vid)
+            .exclude(mac_address=mac)
+            .select_for_update()
+        )
         # Technically there should be just one existing mapping for this
         # (interface, ip, vid), but the defensive thing to do is to delete
         # them all.
