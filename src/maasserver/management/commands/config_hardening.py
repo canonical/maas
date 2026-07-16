@@ -8,8 +8,6 @@ from maascommon.fips import is_fips_enabled
 from maascommon.hardening import configure_hardening, is_hardening_enabled
 from maasserver.config import RegionConfiguration
 from maasserver.management.commands.base import BaseCommandWithConnection
-from maasserver.models import Config
-from maasserver.models.config import read_hardening_enabled_from_db
 from maasservicelayer.services.hardening import (
     configure_and_validate_hardening,
 )
@@ -106,6 +104,8 @@ class Command(BaseCommandWithConnection):
         )
 
     def handle(self, *args, **options):
+        from maasserver.models.config import read_hardening_enabled_from_db
+
         configure_hardening(read_hardening_enabled_from_db())
 
         command = options["command"]
@@ -146,6 +146,8 @@ class Command(BaseCommandWithConnection):
         except ValueError as exc:
             self.stderr.write(f"{exc}\n")
             raise SystemExit(1) from exc
+
+        from maasserver.models import Config
 
         Config.objects.db_manager(DEFAULT_DB_ALIAS).set_config(key, stored)
         self.stdout.write(f"Set {key} in DB Config store\n")
@@ -223,6 +225,8 @@ class Command(BaseCommandWithConnection):
         raise SystemExit(1)
 
     def _cmd_enable(self) -> None:
+        from maasserver.models import Config
+
         Config.objects.db_manager(DEFAULT_DB_ALIAS).set_config(
             "hardening_enabled", "on"
         )
@@ -258,6 +262,8 @@ class Command(BaseCommandWithConnection):
             )
             raise SystemExit(1)
 
+        from maasserver.models import Config
+
         Config.objects.db_manager(DEFAULT_DB_ALIAS).set_config(
             "hardening_enabled", "off"
         )
@@ -292,6 +298,8 @@ class Command(BaseCommandWithConnection):
             return {}
 
     def _read_fips_declared(self) -> "bool | None":
+        from maasserver.models import Config
+
         return Config.objects.db_manager(DEFAULT_DB_ALIAS).get_config(
             "fips_enabled"
         )
@@ -301,6 +309,8 @@ class Command(BaseCommandWithConnection):
         if store == "unknown":
             return "<unknown key>"
         if store == "config":
+            from maasserver.models import Config
+
             value = Config.objects.db_manager(DEFAULT_DB_ALIAS).get_config(key)
             return str(value) if value is not None else "<not set>"
         return self._read_conf_values().get(key, "<not in conf>")
