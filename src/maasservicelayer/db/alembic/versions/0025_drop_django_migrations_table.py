@@ -1,4 +1,7 @@
-"""Environments that are migrating from 3.x must have gone through 3.8,
+"""Drop django_migrations and maasserver_largefile tables
+
+
+Environments that are migrating from 3.x must have gone through 3.8,
 which already moved the images out of the database and moved away from django
 migrations. Hence, we can safely drop everything here.
 
