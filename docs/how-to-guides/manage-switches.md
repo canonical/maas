@@ -261,8 +261,8 @@ Use this pattern when you need custom installation logic, additional validation,
 
 ### Creating a custom installer
 
-Creating a custom installer may involve wrapping an installer already existing on MAAS, in which case the file path must be known in order for the custom installer to correctly download this installer.
-Another option is creating a single binary which contains both the NOS installer and customization logic.
+Creating a custom installer can involve wrapping a NOS installer that already exists in MAAS. In this case, you must know the file's path so the custom installer can download it.
+Alternatively, you can create a single binary that contains both the NOS installer and the customization logic.
 
 #### Finding image name and path on MAAS
 
@@ -585,7 +585,7 @@ This path cannot target the MAAS syslog service on `maas_syslog_port` (default `
 
 **Note:** DHCP snippets are deprecated as of MAAS 3.6 and will be removed in the next major version. Prefer an external DHCP server for this option when you can. See [Manage network services](manage-network-services.md) and [ONIE: Add a Remote Syslog Server](https://opencomputeproject.github.io/onie/user-guide/index.html#add-a-remote-syslog-server).
 
-### Typical workflow
+### Typical Custom Installer Workflow
 
 1. Build or prepare a wrapped image that ONIE can execute.
 
