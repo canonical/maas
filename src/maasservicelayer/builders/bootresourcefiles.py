@@ -28,7 +28,6 @@ class BootResourceFileBuilder(ResourceBuilder):
     filename: str | Unset = Field(default=UNSET)
     filename_on_disk: str | Unset = Field(default=UNSET)
     filetype: BootResourceFileType | Unset = Field(default=UNSET)
-    largefile_id: int | None | Unset = Field(default=UNSET)
     resource_set_id: int | None | Unset = Field(default=UNSET)
     sha256: str | Unset = Field(default=UNSET)
     size: int | Unset = Field(default=UNSET)

@@ -221,16 +221,6 @@ BootResourceFileTable = Table(
     Column("filetype", String(20), nullable=False),
     Column("extra", JSONB, nullable=False),
     Column(
-        "largefile_id",
-        BigInteger,
-        ForeignKey(
-            "maasserver_largefile.id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=True,
-    ),
-    Column(
         "resource_set_id",
         BigInteger,
         ForeignKey(
@@ -245,7 +235,6 @@ BootResourceFileTable = Table(
     Column("filename_on_disk", String(64), nullable=False),
     UniqueConstraint("resource_set_id", "filename"),
     Index("maasserver__sha256_f07a8e_idx", "sha256"),
-    Index("maasserver_bootresourcefile_largefile_id_cf035187", "largefile_id"),
     Index(
         "maasserver_bootresourcefile_resource_set_id_2fd093ab",
         "resource_set_id",
@@ -1085,23 +1074,6 @@ IPRangeTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
     Index("maasserver_iprange_user_id_5d0f7718", "user_id"),
     Index("maasserver_iprange_subnet_id_de83b8f1", "subnet_id"),
-)
-
-LargeFileTable = Table(
-    "maasserver_largefile",
-    METADATA,
-    Column("id", BigInteger, Identity(), primary_key=True, nullable=False),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-    Column("sha256", String(64), nullable=False, unique=True),
-    Column("total_size", BigInteger, nullable=False),
-    Column("content", OID, nullable=False),
-    Column("size", BigInteger, nullable=False),
-    Index(
-        "maasserver_largefile_sha256_40052db0_like",
-        "sha256",
-        postgresql_ops={"sha256": "varchar_pattern_ops"},
-    ),
 )
 
 MDNSTable = Table(

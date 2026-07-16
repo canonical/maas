@@ -234,7 +234,6 @@ class CustomImagesHandler(Handler):
             filetype=resource_filetype,
             sha256=create_request.sha256,
             size=file_size,
-            largefile_id=None,
             resource_set_id=resource_set.id,
             created=now,
             updated=now,

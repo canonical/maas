@@ -40,7 +40,6 @@ __all__ = [
     "GlobalDefault",
     "Interface",
     "IPRange",
-    "LargeFile",
     "LicenseKey",
     "Machine",
     "MDNS",
@@ -162,7 +161,6 @@ from maasserver.models.interface import (
     VLANInterface,
 )
 from maasserver.models.iprange import IPRange
-from maasserver.models.largefile import LargeFile
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.mdns import MDNS
 from maasserver.models.neighbour import Neighbour

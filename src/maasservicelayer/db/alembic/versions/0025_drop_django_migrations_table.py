@@ -1,4 +1,6 @@
-"""drop django_migrations table
+"""Environments that are migrating from 3.x must have gone through 3.8,
+which already moved the images out of the database and moved away from django
+migrations. Hence, we can safely drop everything here.
 
 Revision ID: 0025
 Revises: 0024
@@ -19,6 +21,10 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.drop_table("django_migrations", if_exists=True)
+    op.drop_table("maasserver_largefile", if_exists=True)
+    op.drop_column(
+        "maasserver_bootresourcefile", "largefile_id", if_exists=True
+    )
 
 
 def downgrade() -> None:
