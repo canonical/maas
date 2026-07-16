@@ -70,7 +70,7 @@ class VlansHandler(OperationsHandler):
             "relay_vlan__space",
             "relay_vlan__primary_rack",
             "relay_vlan__secondary_rack",
-        ).prefetch_related("fabric__vlan_set")
+        ).prefetch_related("fabric__vlan_set", "relay_vlan__fabric__vlan_set")
 
     def create(self, request, fabric_id):
         """@description-title Create a VLAN
