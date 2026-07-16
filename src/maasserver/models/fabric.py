@@ -157,6 +157,7 @@ class Fabric(CleanSave, TimestampedModel):
         return self.id == 0
 
     def get_default_vlan(self):
+        # Fabrics always have at least one vlan. See `.save`.
         return min(self.vlan_set.all(), key=attrgetter("id"))
 
     def get_name(self):
