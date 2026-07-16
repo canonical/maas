@@ -62,3 +62,6 @@ def configure_logging(level=logging.INFO, query_level=logging.WARNING):
     # Configure sqlalchemy
     logging.getLogger("sqlalchemy.engine").setLevel(query_level)
     logging.getLogger("sqlalchemy.pool").setLevel(query_level)
+
+    # httpx talks too much
+    logging.getLogger("httpx").setLevel(logging.WARNING)

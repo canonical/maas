@@ -120,9 +120,10 @@ def get_logging_config(verbosity: int):
                 "handlers": [] if is_dev else ["syslog"],
                 "propagate": is_dev,
             },
-            # The `requests` and `urllib3` modules talk too much.
+            # The `requests`, `urllib3` and 'httpx' modules talk too much.
             "requests": {"level": get_logging_level(verbosity - 1)},
             "urllib3": {"level": get_logging_level(verbosity - 1)},
+            "httpx": {"level": get_logging_level(verbosity - 1)},
             # Keep `nose` relatively quiet in tests.
             "nose": {"level": get_logging_level(verbosity - 1)},
         },
