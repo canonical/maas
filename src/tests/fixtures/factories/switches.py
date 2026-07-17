@@ -18,6 +18,7 @@ async def create_test_switch_entry(
     switch = {
         "created": created_at,
         "updated": updated_at,
+        "name": "switch-0",
         "target_image_id": None,
     }
     switch.update(extra_details)

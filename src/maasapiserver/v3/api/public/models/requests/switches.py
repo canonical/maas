@@ -76,6 +76,7 @@ class SwitchRequest(BaseModel):
     """Request model for creating a switch."""
 
     mac_address: MacAddress
+    name: str | None = Field(default=None)
     image: str | None = Field(
         default=None,
         description="Boot resource name for the NOS to install on the switch. "
@@ -88,6 +89,7 @@ class SwitchRequest(BaseModel):
     ) -> SwitchBuilder:
         target_image_id = await resolve_image_id(self.image, services)
         return SwitchBuilder(
+            name=self.name,
             target_image_id=target_image_id,
         )
 
@@ -95,6 +97,7 @@ class SwitchRequest(BaseModel):
 class SwitchUpdateRequest(BaseModel):
     """Request model for updating a switch."""
 
+    name: str | None = Field(default=None)
     image: str | None = Field(
         default=None,
         description="Boot resource name for the NOS to install on the switch. "
@@ -107,5 +110,6 @@ class SwitchUpdateRequest(BaseModel):
     ) -> SwitchBuilder:
         target_image_id = await resolve_image_id(self.image, services)
         return SwitchBuilder(
+            name=self.name,
             target_image_id=target_image_id,
         )

@@ -90,6 +90,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
     @pytest.fixture
     async def instance_builder(self) -> SwitchBuilder:
         return SwitchBuilder(
+            name="switch-a",
             target_image_id=None,
         )
 
@@ -123,6 +124,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
     ):
         resource = await repository_instance.create(instance_builder)
         assert resource.id > 0
+        assert resource.name == "switch-a"
         assert resource.target_image_id is None
 
     async def test_update_switch(
@@ -131,12 +133,14 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         created_instance: Switch,
     ) -> None:
         builder = SwitchBuilder(
+            name="switch-updated",
             target_image_id=1,
         )
         updated = await repository_instance.update_by_id(
             created_instance.id, builder
         )
         assert updated.id == created_instance.id
+        assert updated.name == "switch-updated"
         assert updated.target_image_id == 1
 
     async def test_delete_switch(
@@ -177,6 +181,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
 
         switch = await repository_instance.get_one_with_target_image(switch_id)
         assert switch is not None
+        assert switch.name == "switch-0"
         assert switch.target_image == "onie/sonic"
         assert switch.target_image_id == boot_resource.id
 
@@ -189,6 +194,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
             created_instance.id
         )
         assert switch is not None
+        assert switch.name == "switch-0"
         assert switch.target_image is None
         assert switch.target_image_id is None
 
@@ -207,9 +213,11 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         assert switches.total == 2
         assert len(switches.items) == 2
         assert switches.items[0].id == switch1_id
+        assert switches.items[0].name == "switch-0"
         assert switches.items[0].target_image == "onie/sonic"
         assert switches.items[0].target_image_id == boot_resource.id
         assert switches.items[1].id == switch2_id
+        assert switches.items[1].name == "switch-0"
         assert switches.items[1].target_image is None
         assert switches.items[1].target_image_id is None
 
@@ -226,5 +234,6 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         assert switches.total == 2
         assert len(switches.items) == 1
         assert switches.items[0].id == switch2_id
+        assert switches.items[0].name == "switch-0"
         assert switches.items[0].target_image is None
         assert switches.items[0].target_image_id is None
