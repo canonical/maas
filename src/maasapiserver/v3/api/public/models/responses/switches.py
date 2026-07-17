@@ -22,6 +22,7 @@ class SwitchResponse(HalResponse[BaseHal]):
 
     kind: str = Field(default="Switch")
     id: int
+    name: str | None = None
     target_image_id: int | None = None
     target_image: str | None = None
 
@@ -42,6 +43,7 @@ class SwitchResponse(HalResponse[BaseHal]):
         """
         return cls(
             id=switch.id,
+            name=switch.name,
             target_image_id=switch.target_image_id,
             target_image=switch.target_image,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
@@ -70,6 +72,7 @@ class SwitchResponse(HalResponse[BaseHal]):
         """
         return cls(
             id=switch.id,
+            name=switch.name,
             target_image_id=switch.target_image_id,
             target_image=target_image,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]

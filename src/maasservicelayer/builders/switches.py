@@ -16,6 +16,7 @@ class SwitchBuilder(ResourceBuilder):
     """
 
     created: datetime | Unset = Field(default=UNSET)
+    name: str | None | Unset = Field(default=UNSET)
     target_image_id: int | None | Unset = Field(default=UNSET)
     updated: datetime | Unset = Field(default=UNSET)
 
@@ -28,6 +29,7 @@ class SwitchWithTargetImageBuilder(ResourceBuilder):
     """
 
     created: datetime | Unset = Field(default=UNSET)
+    name: str | None | Unset = Field(default=UNSET)
     target_image: str | None | Unset = Field(default=UNSET)
     target_image_id: int | None | Unset = Field(default=UNSET)
     updated: datetime | Unset = Field(default=UNSET)
