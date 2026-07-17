@@ -75,6 +75,14 @@ class TestValidatePowerParamsFips(MAASTestCase):
             self.assertIsNotNone(exc)
             self.assertEqual("fips_violation", exc.code)
 
+    def test_accepts_lxd_driver_in_fips(self):
+        """LXD driver is FIPS-compliant and not rejected under FIPS."""
+        with patch(
+            "maasserver.forms.fips_power.is_fips_enabled", return_value=True
+        ):
+            # Should not raise
+            validate_power_params_fips("lxd", {})
+
 
 class TestValidatePowerPassComplexity(MAASTestCase):
     def _patch(self, active):

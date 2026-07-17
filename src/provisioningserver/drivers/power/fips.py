@@ -27,6 +27,7 @@ DRIVER_FIPS_REGISTRY = {
     "openbmc": (DriverFIPSStatus.COMPLIANT, None),
     "proxmox": (DriverFIPSStatus.COMPLIANT, None),
     "redfish": (DriverFIPSStatus.COMPLIANT, None),
+    "lxd": (DriverFIPSStatus.COMPLIANT, None),
     "virsh": (DriverFIPSStatus.COMPLIANT, None),
     "vmware": (DriverFIPSStatus.COMPLIANT, None),
     "webhook": (DriverFIPSStatus.COMPLIANT, None),
