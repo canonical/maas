@@ -3,6 +3,8 @@
 
 """Test AMP argument classes."""
 
+import copy
+
 from twisted.protocols import amp
 
 from maastesting.factory import factory
@@ -40,8 +42,13 @@ class TestCompressedAmpList:
             ]
         }
 
+        expected = copy.deepcopy(leases)
         box: dict[bytes, bytes] = {}
         argument.toBox(b_arg_name, box, leases, None)
         assert len(box.keys()) == 3
-        for v in box.items():
-            assert len(v) < 2**16
+        for chunk in box.values():
+            assert len(chunk) < 2**16
+
+        decoded: dict[bytes, bytes] = {}
+        argument.fromBox(b_arg_name, box, decoded, None)
+        assert expected == decoded

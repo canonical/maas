@@ -5,7 +5,7 @@
 
 from collections.abc import Mapping
 import importlib
-from io import BytesIO
+from io import BytesIO, SEEK_END
 from itertools import count
 import json
 import urllib.parse
@@ -189,6 +189,7 @@ class CompressedAmpList(AmpList):
             objects[nk] = None
         else:
             buffer = BytesIO(st)
+            buffer.seek(0, SEEK_END)
             for counter in count(2):
                 chunk = strings.get(f"{name.decode()}.{counter}".encode())
                 if chunk is None:
