@@ -29,8 +29,9 @@ from maascommon.workflows.deploy import (
 from maascommon.workflows.power import (
     PowerCycleParam,
     PowerOnParam,
-    PowerParam,
     PowerQueryParam,
+    SET_BOOT_ORDER_ACTIVITY_NAME,
+    SetBootOrderParam,
 )
 from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.db.tables import (
@@ -40,7 +41,6 @@ from maasservicelayer.db.tables import (
     NodeTable,
     PhysicalBlockDeviceTable,
     StaticIPAddressTable,
-    VirtualBlockDeviceTable,
 )
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.power import (
@@ -65,7 +65,6 @@ DEFAULT_DEPLOY_RETRY_TIMEOUT = timedelta(seconds=60)
 GET_BOOT_ORDER_ACTIVITY_NAME = "get-boot-order"
 SET_NODE_STATUS_ACTIVITY_NAME = "set-node-status"
 MARK_NODE_FAILED_ACTIVITY_NAME = "mark-node-failed"
-SET_BOOT_ORDER_ACTIVITY_NAME = "set-boot-order"
 
 
 class InvalidMachineStateException(Exception):
@@ -94,13 +93,6 @@ class GetBootOrderParam:
 @dataclass
 class GetBootOrderResult:
     system_id: str
-    order: list[dict[str, Any]]
-
-
-@dataclass
-class SetBootOrderParam:
-    system_id: str
-    power_params: PowerParam
     order: list[dict[str, Any]]
 
 
@@ -176,8 +168,19 @@ class DeployActivity(ActivityBase):
     async def _get_boot_disk(
         self, tx: AsyncConnection, system_id: str
     ) -> dict[str, Any]:
+        # Only physical block devices can be boot devices for the power
+        # drivers, and they expect the same fields PhysicalBlockDevice.serialize
+        # produces (notably "serial"/"model", which live on the physical block
+        # device table). Returns an empty dict when the node has no boot disk
+        # set or its boot disk is not a physical block device.
         boot_disk_stmt = (
-            select(BlockDeviceTable)
+            select(
+                BlockDeviceTable.c.id,
+                BlockDeviceTable.c.name,
+                BlockDeviceTable.c.id_path,
+                PhysicalBlockDeviceTable.c.model,
+                PhysicalBlockDeviceTable.c.serial,
+            )
             .select_from(NodeTable)
             .join(
                 BlockDeviceTable,
@@ -188,25 +191,10 @@ class DeployActivity(ActivityBase):
                 PhysicalBlockDeviceTable.c.blockdevice_ptr_id
                 == BlockDeviceTable.c.id,
             )
-            .join(
-                VirtualBlockDeviceTable,
-                VirtualBlockDeviceTable.c.blockdevice_ptr_id
-                == BlockDeviceTable.c.id,
-            )
             .filter(NodeTable.c.system_id == system_id)
         )
         boot_disk_result = await tx.execute(boot_disk_stmt)
-        boot_disk = self._single_result_to_dict(boot_disk_result)
-        actual_instance_id = boot_disk.get("actual_instance_id")
-        if actual_instance_id:
-            actual_stmt = (
-                select("*")
-                .select_from(BlockDeviceTable)
-                .filter(id == actual_instance_id)
-            )
-            actual_result = await tx.execute(actual_stmt)
-            boot_disk = self._single_result_to_dict(actual_result)
-        return boot_disk
+        return self._single_result_to_dict(boot_disk_result)
 
     def _stringify_datetime_fields(
         self, obj: dict[str, Any]
@@ -257,13 +245,28 @@ class DeployActivity(ActivityBase):
             if boot_iface:
                 ifaces = [boot_iface] + ifaces
 
+            # Only physical block devices can be boot devices, and power
+            # drivers expect the same fields that PhysicalBlockDevice.serialize
+            # produces (notably "serial" and "model", which live on the
+            # physical block device table, not the base block device table).
             block_dev_stmt = (
-                select(BlockDeviceTable)
+                select(
+                    BlockDeviceTable.c.id,
+                    BlockDeviceTable.c.name,
+                    BlockDeviceTable.c.id_path,
+                    PhysicalBlockDeviceTable.c.model,
+                    PhysicalBlockDeviceTable.c.serial,
+                )
                 .select_from(NodeTable)
                 .join(
                     BlockDeviceTable,
                     BlockDeviceTable.c.node_config_id
                     == NodeTable.c.current_config_id,
+                )
+                .join(
+                    PhysicalBlockDeviceTable,
+                    PhysicalBlockDeviceTable.c.blockdevice_ptr_id
+                    == BlockDeviceTable.c.id,
                 )
                 .filter(
                     NodeTable.c.system_id == params.system_id,
@@ -452,12 +455,14 @@ class DeployWorkflow:
                 ),
             )
 
-    async def _set_boot_order(self, params: DeployParam) -> None:
+    async def _set_boot_order(
+        self, params: DeployParam, netboot: bool
+    ) -> None:
         boot_order = await workflow.execute_activity(
             GET_BOOT_ORDER_ACTIVITY_NAME,
             GetBootOrderParam(
                 system_id=params.system_id,
-                netboot=False,
+                netboot=netboot,
             ),
             task_queue="region",
             start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
@@ -484,13 +489,19 @@ class DeployWorkflow:
 
     @workflow_run_with_context
     async def run(self, params: DeployParam) -> DeployResult:
+        # Arm network boot before powering on so the machine PXE boots into
+        # the ephemeral environment. Applies to both ephemeral and regular
+        # deployments, matching the legacy behavior.
+        if params.can_set_boot_order:
+            await self._set_boot_order(params, netboot=True)
+
         await self._start_deployment(params)
 
         if not params.ephemeral_deploy:
             await workflow.wait_condition(lambda: self._has_netbooted)
 
             if params.can_set_boot_order:
-                await self._set_boot_order(params)
+                await self._set_boot_order(params, netboot=False)
 
         await workflow.wait_condition(lambda: self._deployed_os_ready)
 
