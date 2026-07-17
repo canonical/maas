@@ -23,16 +23,6 @@ fi
 msg "importing SQL dump"
 psql -c "\i $sql_dump_file" >/dev/null
 
-msg "applying switch table name-column hotfix"
-psql <<'SQL'
-BEGIN;
-
-ALTER TABLE maasserver_switch
-ADD COLUMN IF NOT EXISTS name VARCHAR(255) NULL;
-
-COMMIT;
-SQL
-
 msg "upgrading schema"
 bin/maas-region dbupgrade --openfga-path "$PWD/src/maasopenfga/build/"
 
