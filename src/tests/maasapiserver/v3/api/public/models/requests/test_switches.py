@@ -6,9 +6,9 @@ from unittest.mock import Mock
 import pytest
 
 from maasapiserver.v3.api.public.models.requests.switches import (
+    resolve_image_id,
     SwitchRequest,
     SwitchUpdateRequest,
-    resolve_image_id,
 )
 from maascommon.enums.boot_resources import BootResourceType
 from maasservicelayer.exceptions.catalog import ValidationException
