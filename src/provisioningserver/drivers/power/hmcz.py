@@ -10,6 +10,7 @@ https://github.com/zhmcclient/python-zhmcclient/issues/494
 """
 
 import contextlib
+import time
 
 from twisted.internet.defer import inlineCallbacks
 
@@ -28,13 +29,69 @@ from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils.twisted import asynchronous, threadDeferred
 
 try:
-    from zhmcclient import Client, NotFound, Session, StatusTimeout
+    from zhmcclient import Client, HTTPError, NotFound, Session, StatusTimeout
 except ImportError:
     no_zhmcclient = True
 else:
     no_zhmcclient = False
 
 maaslog = get_maas_logger("drivers.power.hmcz")
+
+
+def _retry_on_busy(
+    func,
+    *args,
+    op_desc,
+    system_id,
+    max_attempts=12,
+    retry_delay=5,
+    **kwargs,
+):
+    """Run a zhmcclient call, retrying while the partition is 409,2 busy.
+
+    IBM Z rejects a write against a partition with HTTP 409 reason 2 while
+    another operation is in flight on that partition -- e.g. a fire-and-forget
+    start/stop still settling on the HMC, or a guest re-IPL after the install.
+    That busy window is transient and is not reflected in the partition status,
+    so retry the call for a bounded time before giving up. Any other error is
+    re-raised immediately.
+
+    These power/boot operations run inside the short-lived maas.power CLI under
+    a Temporal power activity whose start_to_close timeout is 5 minutes, so the
+    ~60s budget here stays comfortably under that.
+    """
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return func(*args, **kwargs)
+        except HTTPError as exc:
+            if not (exc.http_status == 409 and exc.reason == 2):
+                raise
+            if attempt >= max_attempts:
+                maaslog.error(
+                    "%s: %s still 409,2 busy after %d attempts; giving up. "
+                    "HMC error: %s [%s %s]",
+                    system_id,
+                    op_desc,
+                    attempt,
+                    exc.message,
+                    exc.request_method,
+                    exc.request_uri,
+                )
+                raise
+            maaslog.warning(
+                "%s: %s got 409,2 busy (attempt %d/%d); retrying in %ds. "
+                "HMC error: %s [%s %s]",
+                system_id,
+                op_desc,
+                attempt,
+                max_attempts,
+                retry_delay,
+                exc.message,
+                exc.request_method,
+                exc.request_uri,
+            )
+            time.sleep(retry_delay)
+
 
 VERIFY_SSL_YES = "y"
 VERIFY_SSL_NO = "n"
@@ -118,7 +175,12 @@ class HMCZPowerDriver(PowerDriver):
             # the stop action completes. This holds the thread in MAAS for ~30s.
             # IBM is aware this isn't optimal for us so they are looking into
             # modifying IBM Z to go into a stopped state.
-            partition.stop(wait_for_completion=True)
+            _retry_on_busy(
+                partition.stop,
+                wait_for_completion=True,
+                op_desc="power_on pre-start stop",
+                system_id=system_id,
+            )
         elif status == "stopping":
             # The HMC does not allow a machine to be powered on if its
             # currently stopping. Wait 120s for it which should be more
@@ -134,7 +196,12 @@ class HMCZPowerDriver(PowerDriver):
                     f"{partition.get_property('status')} state!"
                 )
 
-        partition.start(wait_for_completion=False)
+        _retry_on_busy(
+            partition.start,
+            wait_for_completion=False,
+            op_desc="power_on start",
+            system_id=system_id,
+        )
 
     @asynchronous
     @threadDeferred
@@ -156,7 +223,12 @@ class HMCZPowerDriver(PowerDriver):
                     "Partition is stuck in a "
                     f"{partition.get_property('status')} state!"
                 )
-        partition.stop(wait_for_completion=False)
+        _retry_on_busy(
+            partition.stop,
+            wait_for_completion=False,
+            op_desc="power_off stop",
+            system_id=system_id,
+        )
 
     @asynchronous
     @threadDeferred
@@ -202,9 +274,17 @@ class HMCZPowerDriver(PowerDriver):
 
         if status in {"starting", "stopping"}:
             # The HMC does not allow a machine's boot order to be reconfigured
-            # while in a transitional state. Wait for it to complete. If this
-            # times out allow it to be raised so the region can log it.
-            partition.wait_for_status(["stopped", "active"], 120)
+            # while in a transitional (starting/stopping) state. Wait for it to
+            # settle. Accept any non-transitional state -- including "paused",
+            # which IBM Z can land in (e.g. after `shutdown -h now` or a quick
+            # release/redeploy) and which never resolves to stopped/active on
+            # its own. Waiting only for ["stopped", "active"] would then hang
+            # the full 120s and raise StatusTimeout. If it times out anyway,
+            # allow it to be raised so the region can log it.
+            partition.wait_for_status(
+                ["stopped", "active", "degraded", "paused", "terminated"],
+                120,
+            )
 
         # You can only specify one boot device on IBM Z
         boot_device = order[0]
@@ -212,11 +292,14 @@ class HMCZPowerDriver(PowerDriver):
             nic = partition.nics.find(
                 **{"mac-address": boot_device["mac_address"]}
             )
-            partition.update_properties(
+            _retry_on_busy(
+                partition.update_properties,
                 {
                     "boot-device": "network-adapter",
                     "boot-network-device": nic.uri,
-                }
+                },
+                op_desc="set_boot_order network-adapter",
+                system_id=system_id,
             )
         else:
             for storage_group in partition.list_attached_storage_groups():
@@ -229,11 +312,14 @@ class HMCZPowerDriver(PowerDriver):
                         vol.properties.get("uuid", "").strip(),
                         vol.properties.get("serial-number", "").strip(),
                     ]:
-                        partition.update_properties(
+                        _retry_on_busy(
+                            partition.update_properties,
                             {
                                 "boot-device": "storage-volume",
                                 "boot-storage-volume": vol.uri,
-                            }
+                            },
+                            op_desc="set_boot_order storage-volume",
+                            system_id=system_id,
                         )
                         return
 

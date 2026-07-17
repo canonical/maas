@@ -94,6 +94,22 @@ def _stringify_datetime_fields(obj: dict[str, Any]) -> dict[str, Any]:
     return obj
 
 
+def _expected_boot_disk(block_device: dict[str, Any]) -> dict[str, Any]:
+    """Project a block device fixture to the fields get_boot_order returns.
+
+    The activity only selects the base block device id/name/id_path plus the
+    physical block device model/serial (the fields the power drivers need), so
+    the expected boot-order entry for a disk is that narrowed projection.
+    """
+    return {
+        "id": block_device["id"],
+        "name": block_device["name"],
+        "id_path": block_device["id_path"],
+        "model": block_device["model"],
+        "serial": block_device["serial"],
+    }
+
+
 @pytest.mark.asyncio
 class TestDeployActivity:
     async def test_set_node_status(
@@ -164,8 +180,8 @@ class TestDeployActivity:
 
         assert boot_order.order == [
             _stringify_datetime_fields(dev)
-            for dev in [boot_iface, other_iface, boot_disk, other_disk]
-        ]
+            for dev in [boot_iface, other_iface]
+        ] + [_expected_boot_disk(dev) for dev in [boot_disk, other_disk]]
 
     async def test_get_boot_order_without_netboot(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
@@ -209,8 +225,10 @@ class TestDeployActivity:
             GetBootOrderParam(system_id=machine["system_id"], netboot=False),
         )
         assert boot_order.order == [
+            _expected_boot_disk(dev) for dev in [boot_disk, other_disk]
+        ] + [
             _stringify_datetime_fields(dev)
-            for dev in [boot_disk, other_disk, boot_iface, other_iface]
+            for dev in [boot_iface, other_iface]
         ]
 
 
@@ -788,7 +806,7 @@ class TestDeployManyWorkflow:
                 await wf.result()
 
                 assert len(calls["set_node_status"]) == 3
-                assert len(calls["get_boot_order"]) == 1
+                assert len(calls["get_boot_order"]) == 2
                 assert len(calls["power_query"]) == 3
                 assert len(calls["power_on"]) == 3
                 assert len(calls["power_cycle"]) == 0
@@ -1490,13 +1508,138 @@ class TestDeployWorkflow:
                 await wf.result()
 
                 assert len(calls["set_node_status"]) == 0
-                assert len(calls["get_boot_order"]) == 1
-                assert len(calls["set_boot_order"]) == 1
+                assert len(calls["get_boot_order"]) == 2
+                assert len(calls["set_boot_order"]) == 2
                 assert len(calls["power_query"]) == 1
                 assert len(calls["power_on"]) == 1
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 1
                 assert len(calls["power_reset"]) == 0
+
+    async def test_deploy_workflow_ephemeral_sets_network_boot_order(
+        self,
+        fixture: Fixture,
+        db_connection: AsyncConnection,
+        db: Database,
+    ) -> None:
+        bmc = await create_test_bmc_entry(fixture)
+        machine = await create_test_machine_entry(fixture, bmc_id=bmc["id"])
+        subnet = await create_test_subnet_entry(fixture)
+        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        boot_iface = await create_test_interface_dict(
+            fixture, node=machine, ips=[ip]
+        )
+        boot_disk = await create_test_blockdevice_entry(fixture, node=machine)
+
+        calls = defaultdict(list)
+
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
+        async def set_node_status(params: SetNodeStatusParam) -> None:
+            calls["set_node_status"].append(True)
+
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
+        async def get_boot_order(
+            params: GetBootOrderParam,
+        ) -> GetBootOrderResult:
+            calls["get_boot_order"].append(params.netboot)
+            for link in boot_iface["links"]:
+                link["ip"] = str(link["ip"])
+            if params.netboot:
+                order = [boot_iface, boot_disk]
+            else:
+                order = [boot_disk, boot_iface]
+            return GetBootOrderResult(
+                system_id=machine["system_id"],
+                order=[_stringify_datetime_fields(dev) for dev in order],
+            )
+
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
+        async def power_query(params: PowerQueryParam) -> PowerQueryResult:
+            calls["power_query"].append(True)
+            return PowerQueryResult(state="off")
+
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
+        async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
+            calls["power_cycle"].append(True)
+            return PowerCycleResult(state="on")
+
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
+        async def power_on(params: PowerOnParam) -> PowerOnResult:
+            calls["power_on"].append(True)
+            return PowerOnResult(state="on")
+
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
+        async def power_off(params: PowerOffParam) -> PowerOffResult:
+            calls["power_off"].append(True)
+            return PowerOffResult(state="off")
+
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
+        @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
+        async def set_boot_order(params: SetBootOrderParam) -> None:
+            calls["set_boot_order"].append(True)
+            return
+
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="region",
+                workflows=[DeployWorkflow],
+                activities=[
+                    set_node_status,
+                    get_boot_order,
+                    set_boot_order,
+                    set_power_state,
+                    power_query,
+                    power_cycle,
+                    power_on,
+                    power_off,
+                    power_reset,
+                ],
+            ) as worker:
+                wf = await env.client.start_workflow(
+                    DEPLOY_WORKFLOW_NAME,
+                    DeployParam(
+                        system_id=machine["system_id"],
+                        ephemeral_deploy=True,
+                        can_set_boot_order=True,
+                        task_queue=worker.task_queue,
+                        power_params=PowerParam(
+                            system_id=machine["system_id"],
+                            driver_type=bmc["power_type"],
+                            driver_opts=bmc["power_parameters"],
+                            task_queue=worker.task_queue,
+                            is_dpu=machine["is_dpu"],
+                        ),
+                    ),
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+                assert (
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
+
+                await env.sleep(duration=timedelta(seconds=5))
+                await wf.signal("deployed-os-ready")
+                await env.sleep(duration=timedelta(seconds=5))
+
+                await wf.result()
+
+                # Only the network boot order is armed at the start; an
+                # ephemeral deploy never switches to local disk boot.
+                assert calls["get_boot_order"] == [True]
+                assert len(calls["set_boot_order"]) == 1
+                assert len(calls["power_query"]) == 1
+                assert len(calls["power_on"]) == 1
 
     async def test_deploy_workflow_manual_power_skips_power_actions(
         self,

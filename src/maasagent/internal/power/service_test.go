@@ -18,6 +18,7 @@ package power
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -591,4 +592,143 @@ func TestPowerResetDPU(t *testing.T) {
 
 	assert.NoError(t, val.Get(&res))
 	assert.Equal(t, expectedResult.State, res.State)
+}
+
+func TestSetBootOrder(t *testing.T) {
+	// Setup a set-boot-order activity input. The driver type and options are
+	// carried inside the nested PowerParams (unlike the flat power actions).
+	param := SetBootOrderParam{
+		SystemID: "abc123",
+		PowerParams: PowerParam{
+			DriverOpts: map[string]any{
+				"power_address": "0.0.0.0",
+				"power_user":    "maas",
+				"power_pass":    "maas",
+			},
+			DriverType: "hmcz",
+		},
+		Order: []map[string]any{{"id": 1}},
+	}
+
+	// The CLI is invoked with the driver taken from PowerParams and the boot
+	// order forwarded as a JSON array. If the PowerParams were not decoded
+	// (e.g. json tag drift), DriverType would be empty and the driver argument
+	// would be "".
+	orderJSON, err := json.Marshal(param.Order)
+	assert.NoError(t, err)
+
+	expectedArgs := append(
+		[]string{"set-boot-order", param.PowerParams.DriverType},
+		fmtPowerOpts(param.PowerParams.DriverOpts)...,
+	)
+	expectedArgs = append(expectedArgs, "--order", string(orderJSON))
+
+	// Override the factories defined in service.go with mocks
+	var mockedPowerProc testPowerProc
+
+	procFactory = func(_ context.Context, _, _ *bytes.Buffer, name string, arg ...string) powerProc {
+		mockedPowerProc = testPowerProc{
+			name: name,
+			arg:  arg,
+		}
+
+		return mockedPowerProc
+	}
+
+	pathFactory = func(_ string) (string, error) {
+		return expectedMAASCLIName, nil
+	}
+
+	ps := PowerService{}
+
+	// Setup the environment to test a temporal activity with
+	testSuite := &testsuite.WorkflowTestSuite{}
+	env := testSuite.NewTestActivityEnvironment()
+	env.RegisterActivity(ps.SetBootOrder)
+
+	// Run the activity/test
+	_, err = env.ExecuteActivity(ps.SetBootOrder, param)
+
+	// Ensure the powerCommand was called correctly
+	assert.Equal(t, expectedMAASCLIName, mockedPowerProc.name)
+	assert.ElementsMatch(t, expectedArgs, mockedPowerProc.arg)
+	assert.NoError(t, err)
+}
+
+// TestSetBootOrderEmptyOrderOmitsFlag ensures no empty "--order ”" is emitted
+// when the boot order is empty; an empty --order is rejected by the maas.power
+// CLI (unrecognized argument).
+func TestSetBootOrderEmptyOrderOmitsFlag(t *testing.T) {
+	param := SetBootOrderParam{
+		SystemID: "abc123",
+		PowerParams: PowerParam{
+			DriverOpts: map[string]any{"power_address": "0.0.0.0"},
+			DriverType: "hmcz",
+		},
+		Order: nil,
+	}
+
+	var mockedPowerProc testPowerProc
+
+	procFactory = func(_ context.Context, _, _ *bytes.Buffer, name string, arg ...string) powerProc {
+		mockedPowerProc = testPowerProc{
+			name: name,
+			arg:  arg,
+		}
+
+		return mockedPowerProc
+	}
+
+	pathFactory = func(_ string) (string, error) {
+		return expectedMAASCLIName, nil
+	}
+
+	ps := PowerService{}
+
+	testSuite := &testsuite.WorkflowTestSuite{}
+	env := testSuite.NewTestActivityEnvironment()
+	env.RegisterActivity(ps.SetBootOrder)
+
+	_, err := env.ExecuteActivity(ps.SetBootOrder, param)
+
+	assert.NoError(t, err)
+	assert.NotContains(t, mockedPowerProc.arg, "--order")
+}
+
+// TestSetBootOrderParamJSONContract pins the Go struct to the wire contract
+// produced by the Python workflow
+// (maastemporalworker.workflow.deploy.SetBootOrderParam). Python serializes the
+// nested power parameters under the key "power_params"; the Go activity MUST
+// decode that exact key. A drift in the json tag (e.g. "power_param") would
+// silently leave PowerParams empty and break set-boot-order at runtime.
+//
+// This must decode a literal payload rather than round-trip a Go value: a Go
+// marshal/unmarshal round-trip uses the same (possibly wrong) tag in both
+// directions and is therefore symmetric, so it cannot detect the mismatch.
+func TestSetBootOrderParamJSONContract(t *testing.T) {
+	// Mirrors exactly what the Python side emits, including the extra
+	// system_id/task_queue fields on PowerParam that Go does not declare and
+	// harmlessly ignores.
+	raw := []byte(`{
+		"system_id": "abc123",
+		"power_params": {
+			"system_id": "abc123",
+			"driver_type": "hmcz",
+			"driver_opts": {"power_address": "10.0.0.1", "power_user": "maas"},
+			"task_queue": "agent:power@vlan-1",
+			"is_dpu": false
+		},
+		"order": [{"id": 1}]
+	}`)
+
+	var param SetBootOrderParam
+
+	assert.NoError(t, json.Unmarshal(raw, &param))
+
+	assert.Equal(t, "abc123", param.SystemID)
+	// The key assertion: the nested power params decoded from "power_params".
+	assert.Equal(t, "hmcz", param.PowerParams.DriverType)
+	assert.Equal(t, "10.0.0.1", param.PowerParams.DriverOpts["power_address"])
+	assert.False(t, param.PowerParams.IsDPU)
+	assert.Len(t, param.Order, 1)
 }
