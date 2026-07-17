@@ -29,9 +29,9 @@ persistence:
         {{if database_sslcert}}
           certFile: "{{ database_sslcert }}"
           keyFile: "{{ database_sslkey }}"
-          {{if database_sslrootcert}}
+        {{endif}}
+        {{if database_sslrootcert}}
           caFile: "{{ database_sslrootcert }}"
-          {{endif}}
         {{endif}}
 
     visibility:
@@ -56,9 +56,9 @@ persistence:
         {{if database_sslcert}}
           certFile: "{{ database_sslcert }}"
           keyFile: "{{ database_sslkey }}"
-          {{if database_sslrootcert}}
+        {{endif}}
+        {{if database_sslrootcert}}
           caFile: "{{ database_sslrootcert }}"
-          {{endif}}
         {{endif}}
 
 global:
