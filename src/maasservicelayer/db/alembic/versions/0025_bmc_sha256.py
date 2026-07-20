@@ -30,14 +30,14 @@ def upgrade() -> None:
     # sha256(bytea): digest() accepts text directly (avoiding a lossy
     # text->bytea cast that mis-parses backslash escapes) and routes to the
     # OpenSSL provider, i.e. the FIPS-validated cryptographic module.
-    op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
+    op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public")
     # Drop the old md5-based unique index.
     op.execute("DROP INDEX IF EXISTS maasserver_bmc_power_type_parameters_idx")
     op.execute(
         """
         CREATE UNIQUE INDEX maasserver_bmc_power_type_parameters_idx
         ON maasserver_bmc
-        USING btree (power_type, digest((power_parameters)::text, 'sha256'))
+        USING btree (power_type, public.digest((power_parameters)::text, 'sha256'))
         WHERE ((power_type)::text <> 'manual'::text)
         """
     )
