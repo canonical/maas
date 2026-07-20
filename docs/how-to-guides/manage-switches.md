@@ -211,98 +211,6 @@ MAAS automatically handles the DHCP configuration needed for ONIE. When a switch
 
 💡 Switches can be registered in MAAS before or after they first boot. If a switch makes a DHCP request before registration, MAAS will create an UNKNOWN interface that can later be claimed when you register the switch.
 
-## Log a custom installer to syslog
-
-MAAS does not store ONIE installer output for switches. To keep those logs, send them from a custom installer wrapper to the MAAS syslog service, or point ONIE at your own syslog server.
-
-### Send logs to the MAAS syslog server
-
-The MAAS syslog listen port is `maas_syslog_port` (default `5247`). MAAS listens on both UDP and TCP on that port.
-
-1. **Find the syslog port:**
-
-   ```bash
-   maas $PROFILE maas get-config name=maas_syslog_port
-   ```
-
-2. **Find the rack IP** on the switch management network. Use the host from the installer URL MAAS puts in the ONIE DHCP reply:
-
-   ```text
-   http://<rack-ip>:5248/MAAS/a/v3/nos-installer
-   ```
-
-   That `<rack-ip>` is the rack controller address MAAS embeds in `onie.installer_url`. You can also list rack controllers:
-
-   ```bash
-   maas $PROFILE rack-controllers read
-   ```
-
-3. **Update your custom installer wrapper** so BusyBox `syslogd` forwards to that IP and port, then write messages with BusyBox `logger`:
-
-   ```sh
-   #!/bin/sh
-   set -eu
-
-   RACK_IP="<rack-ip>"
-   SYSLOG_PORT="5247"
-
-   killall syslogd >/dev/null 2>&1 || true
-   syslogd -b 3 -D -L -R "${RACK_IP}:${SYSLOG_PORT}"
-
-   logger -t nos-installer -p local0.info "wrapper start"
-   # Run your NOS installer here
-   logger -t nos-installer -p local0.info "wrapper finished"
-   ```
-
-   The `-b 3 -D -L` flags match ONIE defaults. `-R` adds the remote MAAS target.
-
-4. **Check the logs on a region controller** (or a combined region+rack host).
-
-   Snap and Debian use different `journalctl` units; see [Use logging](use-logging.md). Snap example:
-
-   ```bash
-   journalctl -u snap.maas.pebble -t maas-machine -f MAAS_MACHINE_IP=<switch-management-ip>
-   ```
-
-   If that filter shows nothing, search by logger tag instead:
-
-   ```bash
-   journalctl -u snap.maas.pebble -t maas-machine -f | grep --line-buffered nos-installer
-   ```
-
-#### Important notes
-
-- Always include the port in `-R <host>:<port>`. If you omit it, BusyBox defaults to UDP port `514`, which is not `maas_syslog_port`.
-- BusyBox `logger` only supports `-s`, `-t`, and `-p`. It writes to the local `syslogd` and cannot open a remote host by itself.
-- On a rack-only controller, MAAS receives remote messages and forwards them to the region; it does not write them to the local journal. After forwarding, `MAAS_MACHINE_IP` is the rack, so prefer the tag filter.
-
-### Send logs to your own syslog server
-
-Use this when you want ONIE progress on a syslog server you operate. DHCP option 7 (`log-servers`) carries IP addresses only. ONIE starts BusyBox `syslogd` with `-R <ip>` for each address, so the remote port is always BusyBox's default: `514`.
-
-This path cannot target the MAAS syslog service on `maas_syslog_port` (default `5247`).
-
-1. **Run a syslog collector** that listens on UDP port `514` at an IP the switch can reach on its management network.
-
-2. **Advertise that IP in DHCP.** MAAS does not set `option log-servers` by default. Add it on the switch management subnet with a DHCP snippet, or set the same option on an external DHCP server:
-
-   ```bash
-   maas $PROFILE subnets read
-   maas $PROFILE dhcpsnippets create \
-     name=onie-log-servers \
-     subnet=<subnet-id> \
-     enabled=1 \
-     value='option log-servers <syslog-server-ip>;'
-   ```
-
-   That `value` is the dhcpd option line; use the same option on an external DHCP server.
-
-3. **Reboot the switch into ONIE** (or renew DHCP in ONIE) so it picks up option 7.
-
-4. **Confirm messages on your collector.** They will not appear in the MAAS journal.
-
-**Note:** DHCP snippets are deprecated as of MAAS 3.6 and will be removed in the next major version. Prefer an external DHCP server for this option when you can. See [Manage network services](manage-network-services.md) and [ONIE: Add a Remote Syslog Server](https://opencomputeproject.github.io/onie/user-guide/index.html#add-a-remote-syslog-server).
-
 ## Typical workflow
 
 ### Initial switch deployment
@@ -351,7 +259,12 @@ Instead of uploading only a vendor NOS installer, upload a wrapped image (a scri
 
 Use this pattern when you need custom installation logic, additional validation, or environment-specific automation.
 
-### Finding image name and path on MAAS
+### Creating a custom installer
+
+Creating a custom installer can involve wrapping a NOS installer that already exists in MAAS. In this case, you must know the file's path so the custom installer can download it.
+Alternatively, you can create a single binary that contains both the NOS installer and the customization logic.
+
+#### Finding image name and path on MAAS
 
 When assigning images to switches, MAAS uses a logical image name (`onie/<name>`). Uploaded files are stored on disk with internal filenames.
 
@@ -386,7 +299,7 @@ When assigning images to switches, MAAS uses a logical image name (`onie/<name>`
    echo "http://<rack-controller>:5248/images/${FILENAME_ON_DISK}"
    ```
 
-### Example 1: minimal wrapped script (download and execute NOS)
+#### Example 1: minimal wrapped script (download and execute NOS)
 
 The script below is a baseline you can adapt. It runs under ONIE (`#!/bin/sh`), downloads a NOS installer, optionally verifies the checksum, and executes it.
 
@@ -452,7 +365,7 @@ curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
 
 Assign this image to the switch using `image: "mellanox-wrapper-3.8.0"` (or full `onie/mellanox-wrapper-3.8.0`).
 
-### Example 2: package wrapper script and NOS installer in one binary
+#### Example 2: package wrapper script and NOS installer in one binary
 
 If you want to avoid runtime downloads, build one self-extracting binary that contains both wrapper logic and the NOS installer.
 
@@ -502,7 +415,177 @@ Keep in mind:
 - The image is larger, so upload and sync time increase.
 - Rebuild and re-upload is needed for every NOS update.
 
-### Typical workflow
+### Adding credentials, settings, or scripts after installation
+
+Some NOS images, such as SONiC, can be configured after the installer has finished.
+In that case, keep the wrapped-image pattern and add your custom steps after the NOS installer returns successfully.
+
+The minimal wrapped script example above already uses:
+
+```sh
+"${NOS_BIN}"
+```
+
+You can then continue with post-install steps in the same script.
+
+Note that the exact file paths are dependent on the NOS and potentially even the version of the NOS.
+We demonstrate two examples here with SONiC Community:
+
+#### Method 1: write credentials or settings into the installed filesystem
+
+Use this method when you want to place files directly into the installed NOS,
+for example SSH keys or day-0 configuration files.
+
+Minimal example:
+
+```sh
+# Run after the NOS installer has completed successfully.
+mkdir -p /mnt/nos
+mount /dev/sda3 /mnt/nos
+
+SONIC_IMAGE_DIR=$(find /mnt/nos -maxdepth 1 -type d -name 'image-*' | head -n 1)
+TARGET_PATH="${SONIC_IMAGE_DIR}/rw/home/admin/.ssh"
+
+mkdir -p "${TARGET_PATH}"
+echo "ssh-ed25519 AAAA... user@example" > "${TARGET_PATH}/authorized_keys"
+
+umount /mnt/nos
+```
+
+Use this pattern when you need to:
+
+- add SSH public keys,
+- copy a configuration file,
+- or update a file that must exist before the first boot.
+
+#### Method 2: install first-boot scripts
+
+Use this method when you want the switch to run one or more scripts on first
+boot after the NOS has been installed.
+
+Minimal example:
+
+```sh
+# Run after the NOS installer has completed successfully.
+mkdir -p /mnt/nos
+mount /dev/sda3 /mnt/nos
+
+SONIC_IMAGE_DIR=$(find /mnt/nos -maxdepth 1 -type d -name 'image-*' | head -n 1)
+HOOK_DIR="${SONIC_IMAGE_DIR}/rw/etc/config-setup/factory-default-hooks.d"
+
+mkdir -p "${HOOK_DIR}"
+cat > "${HOOK_DIR}/01-create-admin-key" <<'EOF'
+#!/bin/sh
+mkdir -p /home/admin/.ssh
+echo "ssh-ed25519 AAAA... user@example" > /home/admin/.ssh/authorized_keys
+EOF
+
+chmod +x "${HOOK_DIR}/01-create-admin-key"
+umount /mnt/nos
+```
+
+Use this pattern when you need to:
+
+- run commands on first boot,
+- apply settings that depend on the running system,
+- or stage multiple initialization steps in a defined order.
+
+If you use multiple hook scripts, name them with numeric prefixes such as
+`01-setup`, `02-users`, and `03-services` so they run in a predictable order.
+
+### Log a custom installer to syslog
+
+MAAS does not store ONIE installer output for switches. To keep those logs, send them from a custom installer wrapper to the MAAS syslog service, or point ONIE at your own syslog server.
+
+#### Send logs to the MAAS syslog server
+
+The MAAS syslog listen port is `maas_syslog_port` (default `5247`). MAAS listens on both UDP and TCP on that port.
+
+1. **Find the syslog port:**
+
+   ```bash
+   maas $PROFILE maas get-config name=maas_syslog_port
+   ```
+
+2. **Find the rack IP** on the switch management network. Use the host from the installer URL MAAS puts in the ONIE DHCP reply:
+
+   ```text
+   http://<rack-ip>:5248/MAAS/a/v3/nos-installer
+   ```
+
+   That `<rack-ip>` is the rack controller address MAAS embeds in `onie.installer_url`. You can also list rack controllers:
+
+   ```bash
+   maas $PROFILE rack-controllers read
+   ```
+
+3. **Update your custom installer wrapper** so BusyBox `syslogd` forwards to that IP and port, then write messages with BusyBox `logger`:
+
+   ```sh
+   #!/bin/sh
+   set -eu
+
+   RACK_IP="<rack-ip>"
+   SYSLOG_PORT="5247"
+
+   killall syslogd >/dev/null 2>&1 || true
+   syslogd -b 3 -D -L -R "${RACK_IP}:${SYSLOG_PORT}"
+
+   logger -t nos-installer -p local0.info "wrapper start"
+   # Run your NOS installer here
+   logger -t nos-installer -p local0.info "wrapper finished"
+   ```
+
+   The `-b 3 -D -L` flags match ONIE defaults. `-R` adds the remote MAAS target.
+
+4. **Check the logs on a region controller** (or a combined region+rack host).
+
+   Snap and Debian use different `journalctl` units; see [Use logging](use-logging.md). Snap example:
+
+   ```bash
+   journalctl -u snap.maas.pebble -t maas-machine -f MAAS_MACHINE_IP=<switch-management-ip>
+   ```
+
+   If that filter shows nothing, search by logger tag instead:
+
+   ```bash
+   journalctl -u snap.maas.pebble -t maas-machine -f | grep --line-buffered nos-installer
+   ```
+
+##### Important notes
+
+- Always include the port in `-R <host>:<port>`. If you omit it, BusyBox defaults to UDP port `514`, which is not `maas_syslog_port`.
+- BusyBox `logger` only supports `-s`, `-t`, and `-p`. It writes to the local `syslogd` and cannot open a remote host by itself.
+- On a rack-only controller, MAAS receives remote messages and forwards them to the region; it does not write them to the local journal. After forwarding, `MAAS_MACHINE_IP` is the rack, so prefer the tag filter.
+
+#### Send logs to your own syslog server
+
+Use this when you want ONIE progress on a syslog server you operate. DHCP option 7 (`log-servers`) carries IP addresses only. ONIE starts BusyBox `syslogd` with `-R <ip>` for each address, so the remote port is always BusyBox's default: `514`.
+
+This path cannot target the MAAS syslog service on `maas_syslog_port` (default `5247`).
+
+1. **Run a syslog collector** that listens on UDP port `514` at an IP the switch can reach on its management network.
+
+2. **Advertise that IP in DHCP.** MAAS does not set `option log-servers` by default. Add it on the switch management subnet with a DHCP snippet, or set the same option on an external DHCP server:
+
+   ```bash
+   maas $PROFILE subnets read
+   maas $PROFILE dhcpsnippets create \
+     name=onie-log-servers \
+     subnet=<subnet-id> \
+     enabled=1 \
+     value='option log-servers <syslog-server-ip>;'
+   ```
+
+   That `value` is the dhcpd option line; use the same option on an external DHCP server.
+
+3. **Reboot the switch into ONIE** (or renew DHCP in ONIE) so it picks up option 7.
+
+4. **Confirm messages on your collector.** They will not appear in the MAAS journal.
+
+**Note:** DHCP snippets are deprecated as of MAAS 3.6 and will be removed in the next major version. Prefer an external DHCP server for this option when you can. See [Manage network services](manage-network-services.md) and [ONIE: Add a Remote Syslog Server](https://opencomputeproject.github.io/onie/user-guide/index.html#add-a-remote-syslog-server).
+
+### Typical custom installer workflow
 
 1. Build or prepare a wrapped image that ONIE can execute.
 

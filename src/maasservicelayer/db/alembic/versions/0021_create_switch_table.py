@@ -30,6 +30,7 @@ def upgrade() -> None:
         ),
         sa.Column("created", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=True),
         sa.Column(
             "target_image_id",
             sa.BigInteger(),

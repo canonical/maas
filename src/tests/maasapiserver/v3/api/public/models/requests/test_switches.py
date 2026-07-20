@@ -7,6 +7,8 @@ import pytest
 
 from maasapiserver.v3.api.public.models.requests.switches import (
     resolve_image_id,
+    SwitchRequest,
+    SwitchUpdateRequest,
 )
 from maascommon.enums.boot_resources import BootResourceType
 from maasservicelayer.exceptions.catalog import ValidationException
@@ -118,3 +120,36 @@ class TestResolveImageId:
                 "Use 'boot_resources' endpoint to list available images."
             )
         services_mock.boot_resources.get_one.assert_called_once()
+
+
+@pytest.mark.asyncio
+class TestSwitchRequestBuilders:
+    async def test_switch_request_to_builder_includes_name(
+        self, services_mock: ServiceCollectionV3
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = None
+
+        request = SwitchRequest(
+            mac_address="00:11:22:33:44:55",
+            name="leaf-01",
+            image=None,
+        )
+
+        builder = await request.to_switch_builder(services_mock)
+
+        assert builder.name == "leaf-01"
+        assert builder.target_image_id is None
+
+    async def test_switch_update_request_to_builder_includes_name(
+        self, services_mock: ServiceCollectionV3
+    ) -> None:
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.get_one.return_value = None
+
+        request = SwitchUpdateRequest(name="leaf-02", image=None)
+
+        builder = await request.to_switch_builder(services_mock)
+
+        assert builder.name == "leaf-02"
+        assert builder.target_image_id is None
