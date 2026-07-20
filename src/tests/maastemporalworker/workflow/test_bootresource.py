@@ -115,9 +115,9 @@ from maastemporalworker.worker import (
 from maastemporalworker.workflow.bootresource import (
     BootResourcesActivity,
     CLEANUP_BOOT_RESOURCE_SETS_FOR_SELECTION_ACTIVITY_NAME,
+    DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME,
     DELETE_NOTIFICATION_ACTIVITY_NAME,
     DELETE_PENDING_FILES_FOR_SELECTION_ACTIVITY_NAME,
-    DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME,
     DeleteBootResourceWorkflow,
     DOWNLOAD_BOOTRESOURCEFILE_ACTIVITY_NAME,
     DownloadBootResourceWorkflow,
