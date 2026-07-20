@@ -679,9 +679,7 @@ class TestSwitchesService:
         service,
     ) -> None:
         await service.list_with_details(12, 5)
-        switches_repository.list_with_details.assert_called_once_with(
-            12, 5
-        )
+        switches_repository.list_with_details.assert_called_once_with(12, 5)
 
     async def test_get_with_details(
         self,

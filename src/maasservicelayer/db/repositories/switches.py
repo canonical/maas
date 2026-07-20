@@ -60,7 +60,9 @@ class SwitchesRepository(BaseRepository[Switch]):
             )
         )
 
-    async def get_one_with_details(self, id: int) -> SwitchWithTargetImage | None:
+    async def get_one_with_details(
+        self, id: int
+    ) -> SwitchWithTargetImage | None:
         stmt = self.select_all_with_details.where(SwitchTable.c.id == id)
         row = (await self.execute_stmt(stmt)).one_or_none()
         return (
@@ -73,9 +75,9 @@ class SwitchesRepository(BaseRepository[Switch]):
         total_stmt = select(func.count()).select_from(SwitchTable)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
-        stmt = self.select_all_with_details.offset(
-            (page - 1) * size
-        ).limit(size)
+        stmt = self.select_all_with_details.offset((page - 1) * size).limit(
+            size
+        )
         result = (await self.execute_stmt(stmt)).all()
         return ListResult(
             items=[SwitchWithTargetImage(**row._asdict()) for row in result],

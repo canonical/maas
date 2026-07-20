@@ -315,7 +315,9 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         assert switches.total == 2
         assert len(switches.items) == 2
         assert {item.id for item in switches.items} == {switch1_id, switch2_id}
-        switch1 = next(item for item in switches.items if item.id == switch1_id)
+        switch1 = next(
+            item for item in switches.items if item.id == switch1_id
+        )
         assert switch1.management_mac == "00:11:22:33:44:66"
 
     async def test_list_with_details_with_pagination(

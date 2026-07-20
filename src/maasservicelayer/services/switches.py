@@ -51,7 +51,9 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         self.boot_resource_sets_service = boot_resource_sets_service
         self.boot_resource_files_service = boot_resource_files_service
 
-    async def get_one_with_details(self, id: int) -> SwitchWithTargetImage | None:
+    async def get_one_with_details(
+        self, id: int
+    ) -> SwitchWithTargetImage | None:
         return await self.repository.get_one_with_details(id)
 
     async def list_with_details(

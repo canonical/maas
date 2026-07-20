@@ -122,22 +122,22 @@ class TestSwitchesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.list_with_details.return_value = (
-            ListResult[SwitchWithTargetImage](
-                items=[
-                    SwitchWithTargetImage.from_switch(
-                        TEST_SWITCH,
-                        None,
-                        management_mac=TEST_SWITCH_INTERFACE.mac_address,
-                    ),
-                    SwitchWithTargetImage.from_switch(
-                        TEST_SWITCH_2,
-                        TEST_NOS_IMAGE.name,
-                        management_mac=TEST_SWITCH_2_INTERFACE.mac_address,
-                    ),
-                ],
-                total=2,
-            )
+        services_mock.switches.list_with_details.return_value = ListResult[
+            SwitchWithTargetImage
+        ](
+            items=[
+                SwitchWithTargetImage.from_switch(
+                    TEST_SWITCH,
+                    None,
+                    management_mac=TEST_SWITCH_INTERFACE.mac_address,
+                ),
+                SwitchWithTargetImage.from_switch(
+                    TEST_SWITCH_2,
+                    TEST_NOS_IMAGE.name,
+                    management_mac=TEST_SWITCH_2_INTERFACE.mac_address,
+                ),
+            ],
+            total=2,
         )
 
         response = await client.get(f"{self.BASE_PATH}")
@@ -172,11 +172,11 @@ class TestSwitchesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.list_with_details.return_value = (
-            ListResult[SwitchWithTargetImage](
-                items=[SwitchWithTargetImage.from_switch(TEST_SWITCH, None)],
-                total=2,
-            )
+        services_mock.switches.list_with_details.return_value = ListResult[
+            SwitchWithTargetImage
+        ](
+            items=[SwitchWithTargetImage.from_switch(TEST_SWITCH, None)],
+            total=2,
         )
 
         response = await client.get(f"{self.BASE_PATH}?page=1&size=1")
@@ -210,7 +210,9 @@ class TestSwitchesApi(ApiCommonTests):
         switch_response = SwitchResponse(**response.json())
         assert switch_response.id == 1
         assert switch_response.name == "leaf-01"
-        assert switch_response.management_mac == TEST_SWITCH_INTERFACE.mac_address
+        assert (
+            switch_response.management_mac == TEST_SWITCH_INTERFACE.mac_address
+        )
         assert switch_response.target_image_id is None
         assert switch_response.target_image is None
 
@@ -259,7 +261,9 @@ class TestSwitchesApi(ApiCommonTests):
         assert response.status_code == 201
 
         switch_response = SwitchResponse(**response.json())
-        assert switch_response.management_mac == TEST_SWITCH_INTERFACE.mac_address
+        assert (
+            switch_response.management_mac == TEST_SWITCH_INTERFACE.mac_address
+        )
 
     async def test_create_switch_with_image(
         self,
@@ -308,7 +312,9 @@ class TestSwitchesApi(ApiCommonTests):
 
         switch_response = SwitchResponse(**response.json())
         assert switch_response.name == "leaf-01"
-        assert switch_response.management_mac == TEST_SWITCH_INTERFACE.mac_address
+        assert (
+            switch_response.management_mac == TEST_SWITCH_INTERFACE.mac_address
+        )
         assert switch_response.target_image_id == TEST_NOS_IMAGE.id
         assert switch_response.target_image == TEST_NOS_IMAGE.name
 
@@ -432,7 +438,9 @@ class TestSwitchesApi(ApiCommonTests):
         response = await client.post(f"{self.BASE_PATH}", json=new_switch_data)
         assert response.status_code == 201
         switch_response = SwitchResponse(**response.json())
-        assert switch_response.management_mac == TEST_SWITCH_INTERFACE.mac_address
+        assert (
+            switch_response.management_mac == TEST_SWITCH_INTERFACE.mac_address
+        )
         # Verify that create_switch_and_link_interface was called instead of create_new_switch_and_interface
         services_mock.switches.create_switch_and_link_interface.assert_called_once()
 
@@ -487,7 +495,9 @@ class TestSwitchesApi(ApiCommonTests):
 
         switch_response = SwitchResponse(**response.json())
         assert switch_response.name == "leaf-01"
-        assert switch_response.management_mac == TEST_SWITCH_INTERFACE.mac_address
+        assert (
+            switch_response.management_mac == TEST_SWITCH_INTERFACE.mac_address
+        )
         assert switch_response.target_image_id == TEST_NOS_IMAGE.id
         assert switch_response.target_image == TEST_NOS_IMAGE.name
 
@@ -520,9 +530,7 @@ class TestSwitchesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.get_one_with_details.return_value = (
-            TEST_SWITCH
-        )
+        services_mock.switches.get_one_with_details.return_value = TEST_SWITCH
 
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None

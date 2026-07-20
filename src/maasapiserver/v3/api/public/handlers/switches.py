@@ -206,7 +206,9 @@ class SwitchesHandler(Handler):
                 switch_request.mac_address,
             )
 
-        created_switch = await services.switches.get_one_with_details(switch.id)
+        created_switch = await services.switches.get_one_with_details(
+            switch.id
+        )
         if created_switch is None:
             raise NotFoundException(
                 details=[
@@ -254,7 +256,9 @@ class SwitchesHandler(Handler):
         **Experimental**: this endpoint is part of an experimental feature set
         and may change in future releases.
         """
-        existing_switch = await services.switches.get_one_with_details(switch_id)
+        existing_switch = await services.switches.get_one_with_details(
+            switch_id
+        )
         if not existing_switch:
             raise NotFoundException(
                 details=[
@@ -273,7 +277,9 @@ class SwitchesHandler(Handler):
             switch_id, await switch_request.to_switch_builder(services)
         )
 
-        updated_switch = await services.switches.get_one_with_details(switch.id)
+        updated_switch = await services.switches.get_one_with_details(
+            switch.id
+        )
         if updated_switch is None:
             raise NotFoundException(
                 details=[
