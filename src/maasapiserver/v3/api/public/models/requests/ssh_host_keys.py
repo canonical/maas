@@ -23,10 +23,14 @@ _VALID_KEY_TYPES = frozenset(
 
 class SshHostKeyRequest(BaseModel):
     host: str = Field(
-        max_length=255, description="The hostname or IP address."
+        min_length=1, max_length=255, description="The hostname or IP address."
     )
-    key_type: str = Field(description="The SSH key type (e.g. ssh-rsa).")
-    public_key: str = Field(description="The Base64-encoded public key.")
+    key_type: str = Field(
+        min_length=1, description="The SSH key type (e.g. ssh-rsa)."
+    )
+    public_key: str = Field(
+        min_length=1, description="The Base64-encoded public key."
+    )
     label: str | None = Field(
         default=None,
         max_length=255,
