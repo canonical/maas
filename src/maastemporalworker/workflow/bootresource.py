@@ -953,8 +953,8 @@ class DeleteBootResourceWorkflow:
             start_to_close_timeout=timedelta(seconds=30),
         )
         regions = frozenset(endpoints.keys())
-        for r in regions:
-            await workflow.execute_activity(
+        tasks = [
+            workflow.execute_activity(
                 DELETE_BOOTRESOURCEFILE_ACTIVITY_NAME,
                 input,
                 task_queue=f"region:{r}",
@@ -962,6 +962,9 @@ class DeleteBootResourceWorkflow:
                 schedule_to_close_timeout=DISK_TIMEOUT,
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
+            for r in regions
+        ]
+        await asyncio.gather(*tasks)
 
 
 @workflow.defn(
