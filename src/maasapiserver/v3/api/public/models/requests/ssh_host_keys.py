@@ -10,7 +10,6 @@ from maasservicelayer.builders.ssh_host_keys import TrustedSshHostKeyBuilder
 _VALID_KEY_TYPES = frozenset(
     {
         "ssh-rsa",
-        "ssh-dss",
         "ecdsa-sha2-nistp256",
         "ecdsa-sha2-nistp384",
         "ecdsa-sha2-nistp521",
