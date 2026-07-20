@@ -366,7 +366,7 @@ class BootResourcesActivity(ActivityBase):
                 for f in await services.boot_resource_files.get_many(
                     query=QuerySpec(
                         where=BootResourceFileClauseFactory.with_sha256_in(
-                            [file.sha256 for file in param.files]
+                            list({file.sha256 for file in param.files})
                         )
                     )
                 )
