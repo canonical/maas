@@ -45,21 +45,6 @@ class TestVlansAPI(APITestCase.ForUser):
         )
 
     def test_read(self):
-        def make_vlan():
-            space = factory.make_Space()
-            subnet = factory.make_Subnet(fabric=fabric, space=space)
-            primary_rack = factory.make_RackController()
-            factory.make_Interface(node=primary_rack, subnet=subnet)
-            secondary_rack = factory.make_RackController()
-            factory.make_Interface(node=secondary_rack, subnet=subnet)
-            relay_vlan = factory.make_VLAN()
-            vlan = subnet.vlan
-            vlan.dhcp_on = True
-            vlan.primary_rack = primary_rack
-            vlan.secondary_rack = secondary_rack
-            vlan.relay_vlan = relay_vlan
-            vlan.save()
-
         def serialize_vlan(vlan):
             return {
                 "id": vlan.id,
@@ -88,6 +73,21 @@ class TestVlansAPI(APITestCase.ForUser):
             }
 
         fabric = factory.make_Fabric()
+
+        def make_vlan():
+            space = factory.make_Space()
+            subnet = factory.make_Subnet(fabric=fabric, space=space)
+            primary_rack = factory.make_RackController()
+            factory.make_Interface(node=primary_rack, subnet=subnet)
+            secondary_rack = factory.make_RackController()
+            factory.make_Interface(node=secondary_rack, subnet=subnet)
+            vlan = subnet.vlan
+            vlan.dhcp_on = True
+            vlan.primary_rack = primary_rack
+            vlan.secondary_rack = secondary_rack
+            vlan.relay_vlan = factory.make_VLAN()
+            vlan.save()
+
         make_vlan()
 
         uri = get_vlans_uri(fabric)
@@ -110,9 +110,9 @@ class TestVlansAPI(APITestCase.ForUser):
         make_vlan()
         with CountQueries() as counter:
             response = self.client.get(uri)
-        # XXX: These really should be equal.
-        self.assertEqual(base_count + 7, counter.count)
-        self.assertEqual((base_count, counter.count), (25, 32))
+
+        self.assertEqual(base_count, counter.count)
+        self.assertEqual(base_count, 19)
 
     def test_create(self):
         self.become_admin()

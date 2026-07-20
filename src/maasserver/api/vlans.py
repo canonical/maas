@@ -61,7 +61,16 @@ class VlansHandler(OperationsHandler):
         fabric = Fabric.objects.get_fabric_or_404(
             fabric_id, request.user, NodePermission.view
         )
-        return fabric.vlan_set.all()
+        return fabric.vlan_set.select_related(
+            "space",
+            "primary_rack",
+            "secondary_rack",
+            "relay_vlan",
+            "relay_vlan__fabric",
+            "relay_vlan__space",
+            "relay_vlan__primary_rack",
+            "relay_vlan__secondary_rack",
+        ).prefetch_related("fabric__vlan_set", "relay_vlan__fabric__vlan_set")
 
     def create(self, request, fabric_id):
         """@description-title Create a VLAN
