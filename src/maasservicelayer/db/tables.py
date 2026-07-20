@@ -1507,7 +1507,6 @@ NodeTable = Table(
         ),
         nullable=True,
     ),
-    Column("install_rackd", Boolean, nullable=False),
     Column("locked", Boolean, nullable=False),
     Column(
         "pool_id",

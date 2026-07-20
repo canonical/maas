@@ -820,8 +820,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         # Deploying a node requires re-checking for EDIT permissions.
         if not request.user.has_perm(NodePermission.edit, machine):
             raise PermissionDenied()
-        # Disable the deploy as rackd feature. TODO: remove all the code related to
-        # the `install_rackd` feature before 4.0 is released.
+        # Deploy as rackd has been removed in 4.0.
         if options.install_rackd:
             raise MAASAPIBadRequest(
                 "Deploying a machine as a rackd has been disabled and it's not supported anymore."
@@ -881,7 +880,6 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
                 else enable_kernel_crash_dump
             )
         )
-        form.set_install_rackd(install_rackd=options.install_rackd)
         form.set_ephemeral_deploy(ephemeral_deploy=ephemeral_deploy)
         form.set_enable_hw_sync(enable_hw_sync=options.enable_hw_sync)
         if form.is_valid():

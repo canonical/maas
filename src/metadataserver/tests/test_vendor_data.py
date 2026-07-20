@@ -1,4 +1,4 @@
-# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
@@ -30,7 +30,6 @@ from metadataserver.vendor_data import (
     generate_ntp_configuration,
     generate_openvswitch_configuration,
     generate_overlayroot_tmpfs_size_fix,
-    generate_rack_controller_configuration,
     generate_snap_configuration,
     generate_system_info,
     get_node_maas_url,
@@ -55,9 +54,7 @@ class TestGetVendorData(MAASServerTestCase):
         ControllerInfo.objects.set_version(controller, "3.0.0-123-g.abc")
         secret = factory.make_string()
         SecretManager().set_simple_secret("rpc-shared", secret)
-        node = factory.make_Node(
-            netboot=False, install_rackd=True, osystem="ubuntu"
-        )
+        node = factory.make_Node(netboot=False, osystem="ubuntu")
         config = get_vendor_data(node, None)
         self.assertEqual(
             config["runcmd"],
@@ -229,79 +226,6 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
                     "pools": [],
                 }
             },
-        )
-
-
-class TestGenerateRackControllerConfiguration(MAASServerTestCase):
-    def test_yields_nothing_when_node_is_not_netboot_disabled(self):
-        node = factory.make_Node(osystem="ubuntu", install_rackd=True)
-        configuration = generate_rack_controller_configuration(
-            node=node,
-        )
-        self.assertEqual(list(configuration), [])
-
-    def test_yields_nothing_when_node_is_not_ubuntu(self):
-        node = factory.make_Node(
-            osystem="centos", netboot=False, install_rackd=True
-        )
-        configuration = generate_rack_controller_configuration(node)
-        self.assertEqual(list(configuration), [])
-
-    def test_yields_configuration_with_ubuntu(self):
-        controller = factory.make_RackController()
-        ControllerInfo.objects.set_version(controller, "3.0.0-123-g.abc")
-        node = factory.make_Node(
-            osystem="ubuntu", netboot=False, install_rackd=True
-        )
-        configuration = generate_rack_controller_configuration(node)
-        secret = "1234"
-        SecretManager().set_simple_secret("rpc-shared", secret)
-        maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
-            node.get_boot_rack_controller()
-        )
-        self.assertEqual(
-            list(configuration),
-            [
-                (
-                    "runcmd",
-                    [
-                        "snap install maas --channel=3.0/stable",
-                        f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
-                    ],
-                ),
-            ],
-        )
-
-    def test_yields_nothing_when_machine_install_rackd_false(self):
-        node = factory.make_Node(
-            osystem="ubuntu", netboot=False, install_rackd=False
-        )
-        configuration = generate_rack_controller_configuration(node)
-        self.assertEqual(list(configuration), [])
-
-    def test_yields_configuration_when_machine_install_rackd_true(self):
-        controller = factory.make_RackController()
-        ControllerInfo.objects.set_version(controller, "3.0.0-123-g.abc")
-        node = factory.make_Node(
-            osystem="ubuntu", netboot=False, install_rackd=True
-        )
-        configuration = generate_rack_controller_configuration(node)
-        secret = "1234"
-        SecretManager().set_simple_secret("rpc-shared", secret)
-        maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
-            node.get_boot_rack_controller()
-        )
-        self.assertEqual(
-            list(configuration),
-            [
-                (
-                    "runcmd",
-                    [
-                        "snap install maas --channel=3.0/stable",
-                        f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
-                    ],
-                ),
-            ],
         )
 
 

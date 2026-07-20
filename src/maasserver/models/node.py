@@ -1032,8 +1032,6 @@ class Node(CleanSave, TimestampedModel):
     :ivar bmc: The BMC / power controller for this node.
     :ivar tags: The list of :class:`Tag`s associated with this `Node`.
     :ivar objects: The :class:`GeneralManager`.
-    :ivar install_rackd: An optional flag to indicate if this node should be
-        deployed with the rack controller.
     :ivar install_kvm: An optional flag to indicate if this node should be
         deployed with KVM and added to MAAS.
     :ivar register_vmhost: An optional flag to indicate if this node should be
@@ -1296,9 +1294,6 @@ class Node(CleanSave, TimestampedModel):
     # Used to configure the default username for this machine. It will be
     # empty by default, and the default user.
     default_user = CharField(max_length=32, blank=True, default="")
-
-    # Used to deploy the rack controller on a installation machine.
-    install_rackd = BooleanField(default=False)
 
     # Used to deploy KVM (via libvirt) on a machine and register it as a VM
     # host.
