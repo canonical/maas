@@ -48,9 +48,9 @@ class SwitchesHandler(Handler):
     async def _get_management_mac(
         self, switch_id: int, services: ServiceCollectionV3
     ) -> str | None:
-        interface = await services.interfaces.get_one(
-            query=QuerySpec(
-                where=InterfaceClauseFactory.with_switch_id(switch_id)
+        interface = (
+            await services.interfaces.interface_repository.get_management_for_switch(
+                switch_id
             )
         )
         return interface.mac_address if interface is not None else None

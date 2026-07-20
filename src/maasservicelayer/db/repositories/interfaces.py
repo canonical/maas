@@ -205,6 +205,30 @@ class InterfaceRepository(BaseRepository):
         result = (await self.execute_stmt(stmt)).one()
         return result[0]  # pyright: ignore [reportArgumentType]
 
+    async def get_management_for_switch(
+        self, switch_id: int
+    ) -> Interface | None:
+        """Get the management interface for a switch.
+
+        The primary selector is the default management interface name (mgmt0).
+        If no mgmt0 interface exists, fall back to the earliest PHYSICAL
+        interface so the result remains deterministic.
+        """
+        stmt = (
+            self._select_all_statement()
+            .where(eq(InterfaceTable.c.switch_id, switch_id))
+            .order_by(
+                desc(InterfaceTable.c.name == "mgmt0"),
+                desc(InterfaceTable.c.type == InterfaceType.PHYSICAL),
+                InterfaceTable.c.id,
+            )
+            .limit(1)
+        )
+        row = (await self.execute_stmt(stmt)).one_or_none()
+        if row is None:
+            return None
+        return Interface(**build_interface_links(row._asdict()))  # pyright: ignore [reportArgumentType]
+
     async def create_unknwown_interface(
         self, mac: str, vlan_id: int
     ) -> Interface:

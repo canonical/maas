@@ -3,8 +3,9 @@
 
 from operator import eq
 
-from sqlalchemy import func, Select, select, Table
+from sqlalchemy import case, func, Select, select, Table
 
+from maascommon.enums.interface import InterfaceType
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -38,18 +39,32 @@ class SwitchesRepository(BaseRepository[Switch]):
         return Switch
 
     @property
+    def management_mac_subquery(self):
+        return (
+            select(InterfaceTable.c.mac_address)
+            .where(InterfaceTable.c.switch_id == SwitchTable.c.id)
+            .order_by(
+                case((InterfaceTable.c.name == "mgmt0", 1), else_=0).desc(),
+                case(
+                    (InterfaceTable.c.type == InterfaceType.PHYSICAL, 1),
+                    else_=0,
+                ).desc(),
+                InterfaceTable.c.id.asc(),
+            )
+            .limit(1)
+            .scalar_subquery()
+        )
+
+    @property
     def select_all_join_boot_resource(self) -> Select:
         return select(
             SwitchTable,
             BootResourceTable.c.name.label("target_image"),
-            InterfaceTable.c.mac_address.label("management_mac"),
+            self.management_mac_subquery.label("management_mac"),
         ).select_from(
             SwitchTable.outerjoin(
                 BootResourceTable,
                 SwitchTable.c.target_image_id == BootResourceTable.c.id,
-            ).outerjoin(
-                InterfaceTable,
-                SwitchTable.c.id == InterfaceTable.c.switch_id,
             )
         )
 

@@ -3,7 +3,7 @@
 
 from datetime import datetime, timezone
 from typing import Callable
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 from httpx import AsyncClient
 import pytest
@@ -248,10 +248,11 @@ class TestSwitchesApi(ApiCommonTests):
         )
         services_mock.switches = Mock(SwitchesService)
         services_mock.interfaces = Mock(InterfacesService)
-        services_mock.interfaces.get_one.side_effect = [
-            None,
-            TEST_SWITCH_INTERFACE,
-        ]
+        services_mock.interfaces.get_one.return_value = None
+        services_mock.interfaces.interface_repository = Mock()
+        services_mock.interfaces.interface_repository.get_management_for_switch = AsyncMock(
+            return_value=TEST_SWITCH_INTERFACE
+        )
         services_mock.switches.create_new_switch_and_interface.return_value = (
             TEST_SWITCH
         )
@@ -277,10 +278,11 @@ class TestSwitchesApi(ApiCommonTests):
         )
         services_mock.switches = Mock(SwitchesService)
         services_mock.interfaces = Mock(InterfacesService)
-        services_mock.interfaces.get_one.side_effect = [
-            None,
-            TEST_SWITCH_INTERFACE,
-        ]
+        services_mock.interfaces.get_one.return_value = None
+        services_mock.interfaces.interface_repository = Mock()
+        services_mock.interfaces.interface_repository.get_management_for_switch = AsyncMock(
+            return_value=TEST_SWITCH_INTERFACE
+        )
         services_mock.switches.create_new_switch_and_interface.return_value = (
             Switch(
                 **{
@@ -402,7 +404,6 @@ class TestSwitchesApi(ApiCommonTests):
         )
         services_mock.switches = Mock(SwitchesService)
         services_mock.interfaces = Mock(InterfacesService)
-        # Return an UNKNOWN interface with no assignments
         services_mock.interfaces.get_one.return_value = Interface(
             id=1,
             created=datetime.now(timezone.utc),
@@ -413,20 +414,10 @@ class TestSwitchesApi(ApiCommonTests):
             switch_id=None,  # Not assigned to a switch
             type=InterfaceType.UNKNOWN,  # UNKNOWN interface
         )
-
-        services_mock.interfaces.get_one.side_effect = [
-            Interface(
-                id=1,
-                created=datetime.now(timezone.utc),
-                updated=datetime.now(timezone.utc),
-                name="eth0",
-                mac_address="00:11:22:33:44:55",
-                node_config_id=None,
-                switch_id=None,
-                type=InterfaceType.UNKNOWN,
-            ),
-            TEST_SWITCH_INTERFACE,
-        ]
+        services_mock.interfaces.interface_repository = Mock()
+        services_mock.interfaces.interface_repository.get_management_for_switch = AsyncMock(
+            return_value=TEST_SWITCH_INTERFACE
+        )
 
         services_mock.switches.create_switch_and_link_interface.return_value = TEST_SWITCH
 
@@ -469,7 +460,10 @@ class TestSwitchesApi(ApiCommonTests):
         )
         services_mock.switches.update_by_id.return_value = updated_switch
         services_mock.interfaces = Mock(InterfacesService)
-        services_mock.interfaces.get_one.return_value = TEST_SWITCH_INTERFACE
+        services_mock.interfaces.interface_repository = Mock()
+        services_mock.interfaces.interface_repository.get_management_for_switch = AsyncMock(
+            return_value=TEST_SWITCH_INTERFACE
+        )
 
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = TEST_NOS_IMAGE
