@@ -178,7 +178,7 @@ BMCTable = Table(
     Index(
         "maasserver_bmc_power_type_parameters_idx",
         "power_type",
-        func.digest(text("(power_parameters)::text"), "sha256"),
+        func.public.digest(text("(power_parameters)::text"), "sha256"),
         unique=True,
         postgresql_where=text("(power_type)::text <> 'manual'::text"),
     ),
