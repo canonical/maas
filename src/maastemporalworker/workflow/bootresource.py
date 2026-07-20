@@ -357,6 +357,9 @@ class BootResourcesActivity(ActivityBase):
         is genuinely in use again. So each file is re-checked against the
         database immediately before it is unlinked.
         """
+        if not param.files:
+            return True
+
         async with self.start_transaction() as services:
             still_referenced_shas = {
                 f.sha256
