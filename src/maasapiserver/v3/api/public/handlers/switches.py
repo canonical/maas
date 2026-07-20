@@ -206,21 +206,10 @@ class SwitchesHandler(Handler):
                 switch_request.mac_address,
             )
 
-        created_switch = await services.switches.get_one_with_details(
-            switch.id
-        )
-        if created_switch is None:
-            raise NotFoundException(
-                details=[
-                    BaseExceptionDetail(
-                        type="SwitchNotFound",
-                        message=f"Switch with id '{switch.id}' was not found.",
-                    )
-                ]
-            )
-
-        return SwitchResponse.from_model(
-            switch=created_switch,
+        return SwitchResponse.from_switch_model(
+            switch=switch,
+            target_image=switch_request.image,
+            management_mac=switch_request.mac_address,
             self_base_hyperlink=f"{V3_API_PREFIX}/switches",
         )
 
