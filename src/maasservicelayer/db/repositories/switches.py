@@ -7,7 +7,11 @@ from sqlalchemy import func, Select, select, Table
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
-from maasservicelayer.db.tables import BootResourceTable, SwitchTable
+from maasservicelayer.db.tables import (
+    BootResourceTable,
+    InterfaceTable,
+    SwitchTable,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.switches import Switch, SwitchWithTargetImage
 
@@ -38,10 +42,14 @@ class SwitchesRepository(BaseRepository[Switch]):
         return select(
             SwitchTable,
             BootResourceTable.c.name.label("target_image"),
+            InterfaceTable.c.mac_address.label("management_mac"),
         ).select_from(
             SwitchTable.outerjoin(
                 BootResourceTable,
                 SwitchTable.c.target_image_id == BootResourceTable.c.id,
+            ).outerjoin(
+                InterfaceTable,
+                SwitchTable.c.id == InterfaceTable.c.switch_id,
             )
         )
 

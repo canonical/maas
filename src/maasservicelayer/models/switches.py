@@ -24,6 +24,7 @@ class SwitchWithTargetImage(Switch):
     """Model representing a network switch, with it's target image name."""
 
     target_image: str | None = None
+    management_mac: str | None = None
 
     @classmethod
     def from_switch(cls, switch: Switch, target_image: str | None) -> Self:
@@ -34,4 +35,5 @@ class SwitchWithTargetImage(Switch):
             created=switch.created,
             updated=switch.updated,
             target_image=target_image,
+            management_mac=None,
         )

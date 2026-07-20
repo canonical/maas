@@ -45,6 +45,16 @@ class SwitchesHandler(Handler):
 
     TAGS = ["Switches"]
 
+    async def _get_management_mac(
+        self, switch_id: int, services: ServiceCollectionV3
+    ) -> str | None:
+        interface = await services.interfaces.get_one(
+            query=QuerySpec(
+                where=InterfaceClauseFactory.with_switch_id(switch_id)
+            )
+        )
+        return interface.mac_address if interface is not None else None
+
     @handler(
         path="/switches",
         methods=["GET"],
@@ -209,6 +219,9 @@ class SwitchesHandler(Handler):
         return SwitchResponse.from_switch_model(
             switch=switch,
             target_image=switch_request.image,
+            management_mac=await self._get_management_mac(
+                switch.id, services
+            ),
             self_base_hyperlink=f"{V3_API_PREFIX}/switches",
         )
 
@@ -268,6 +281,9 @@ class SwitchesHandler(Handler):
         return SwitchResponse.from_switch_model(
             switch=switch,
             target_image=switch_request.image,
+            management_mac=await self._get_management_mac(
+                switch.id, services
+            ),
             self_base_hyperlink=f"{V3_API_PREFIX}/switches",
         )
 

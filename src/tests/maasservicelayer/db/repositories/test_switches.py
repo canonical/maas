@@ -18,7 +18,10 @@ from maasservicelayer.db.repositories.switches import (
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.switches import Switch
 from maasservicelayer.utils.date import utcnow
-from tests.fixtures.factories.switches import create_test_switch
+from tests.fixtures.factories.switches import (
+    create_test_switch,
+    create_test_switch_interface,
+)
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
@@ -185,6 +188,22 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         assert switch.target_image == "onie/sonic"
         assert switch.target_image_id == boot_resource.id
 
+    async def test_get_one_with_target_image_includes_management_mac(
+        self,
+        fixture: Fixture,
+        repository_instance: SwitchesRepository,
+    ) -> None:
+        switch_id = await create_test_switch(fixture)
+        await create_test_switch_interface(
+            fixture,
+            switch_id=switch_id,
+            mac_address="00:11:22:33:44:66",
+        )
+
+        switch = await repository_instance.get_one_with_target_image(switch_id)
+        assert switch is not None
+        assert switch.management_mac == "00:11:22:33:44:66"
+
     async def test_get_one_with_target_image_no_image(
         self,
         created_instance: Switch,
@@ -220,6 +239,28 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         assert switches.items[1].name == "switch-0"
         assert switches.items[1].target_image is None
         assert switches.items[1].target_image_id is None
+
+    async def test_list_with_target_image_includes_management_mac(
+        self,
+        fixture: Fixture,
+        repository_instance: SwitchesRepository,
+    ) -> None:
+        switch1_id = await create_test_switch(fixture)
+        switch2_id = await create_test_switch(fixture)
+        await create_test_switch_interface(
+            fixture,
+            switch_id=switch1_id,
+            mac_address="00:11:22:33:44:66",
+        )
+        await create_test_switch_interface(
+            fixture,
+            switch_id=switch2_id,
+            mac_address="00:11:22:33:44:77",
+        )
+
+        switches = await repository_instance.list_with_target_image(1, 2)
+        assert switches.items[0].management_mac == "00:11:22:33:44:66"
+        assert switches.items[1].management_mac == "00:11:22:33:44:77"
 
     async def test_list_with_target_image_with_pagination(
         self,
