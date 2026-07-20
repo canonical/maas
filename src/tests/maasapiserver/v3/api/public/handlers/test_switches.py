@@ -3,7 +3,7 @@
 
 from datetime import datetime, timezone
 from typing import Callable
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from httpx import AsyncClient
 import pytest
@@ -126,22 +126,14 @@ class TestSwitchesApi(ApiCommonTests):
             ListResult[SwitchWithTargetImage](
                 items=[
                     SwitchWithTargetImage.from_switch(
-                        TEST_SWITCH, None
-                    ).model_copy(
-                        update={
-                            "management_mac": (
-                                TEST_SWITCH_INTERFACE.mac_address
-                            )
-                        }
+                        TEST_SWITCH,
+                        None,
+                        management_mac=TEST_SWITCH_INTERFACE.mac_address,
                     ),
                     SwitchWithTargetImage.from_switch(
-                        TEST_SWITCH_2, TEST_NOS_IMAGE.name
-                    ).model_copy(
-                        update={
-                            "management_mac": (
-                                TEST_SWITCH_2_INTERFACE.mac_address
-                            )
-                        }
+                        TEST_SWITCH_2,
+                        TEST_NOS_IMAGE.name,
+                        management_mac=TEST_SWITCH_2_INTERFACE.mac_address,
                     ),
                 ],
                 total=2,
@@ -206,11 +198,9 @@ class TestSwitchesApi(ApiCommonTests):
         services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_one_with_target_image.return_value = (
             SwitchWithTargetImage.from_switch(
-                TEST_SWITCH, None
-            ).model_copy(
-                update={
-                    "management_mac": TEST_SWITCH_INTERFACE.mac_address
-                }
+                TEST_SWITCH,
+                None,
+                management_mac=TEST_SWITCH_INTERFACE.mac_address,
             )
         )
 
@@ -249,9 +239,12 @@ class TestSwitchesApi(ApiCommonTests):
         services_mock.switches = Mock(SwitchesService)
         services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.get_one.return_value = None
-        services_mock.interfaces.interface_repository = Mock()
-        services_mock.interfaces.interface_repository.get_management_for_switch = AsyncMock(
-            return_value=TEST_SWITCH_INTERFACE
+        services_mock.switches.get_one_with_target_image.return_value = (
+            SwitchWithTargetImage.from_switch(
+                TEST_SWITCH,
+                None,
+                management_mac=TEST_SWITCH_INTERFACE.mac_address,
+            )
         )
         services_mock.switches.create_new_switch_and_interface.return_value = (
             TEST_SWITCH
@@ -279,9 +272,17 @@ class TestSwitchesApi(ApiCommonTests):
         services_mock.switches = Mock(SwitchesService)
         services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.get_one.return_value = None
-        services_mock.interfaces.interface_repository = Mock()
-        services_mock.interfaces.interface_repository.get_management_for_switch = AsyncMock(
-            return_value=TEST_SWITCH_INTERFACE
+        services_mock.switches.get_one_with_target_image.return_value = (
+            SwitchWithTargetImage.from_switch(
+                Switch(
+                    **{
+                        **TEST_SWITCH.model_dump(),
+                        "target_image_id": TEST_NOS_IMAGE.id,
+                    }
+                ),
+                TEST_NOS_IMAGE.name,
+                management_mac=TEST_SWITCH_INTERFACE.mac_address,
+            )
         )
         services_mock.switches.create_new_switch_and_interface.return_value = (
             Switch(
@@ -414,9 +415,12 @@ class TestSwitchesApi(ApiCommonTests):
             switch_id=None,  # Not assigned to a switch
             type=InterfaceType.UNKNOWN,  # UNKNOWN interface
         )
-        services_mock.interfaces.interface_repository = Mock()
-        services_mock.interfaces.interface_repository.get_management_for_switch = AsyncMock(
-            return_value=TEST_SWITCH_INTERFACE
+        services_mock.switches.get_one_with_target_image.return_value = (
+            SwitchWithTargetImage.from_switch(
+                TEST_SWITCH,
+                None,
+                management_mac=TEST_SWITCH_INTERFACE.mac_address,
+            )
         )
 
         services_mock.switches.create_switch_and_link_interface.return_value = TEST_SWITCH
@@ -444,11 +448,9 @@ class TestSwitchesApi(ApiCommonTests):
         services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_one_with_target_image.return_value = (
             SwitchWithTargetImage.from_switch(
-                TEST_SWITCH, None
-            ).model_copy(
-                update={
-                    "management_mac": TEST_SWITCH_INTERFACE.mac_address
-                }
+                TEST_SWITCH,
+                None,
+                management_mac=TEST_SWITCH_INTERFACE.mac_address,
             )
         )
         updated_switch = Switch(
@@ -459,11 +461,18 @@ class TestSwitchesApi(ApiCommonTests):
             }
         )
         services_mock.switches.update_by_id.return_value = updated_switch
-        services_mock.interfaces = Mock(InterfacesService)
-        services_mock.interfaces.interface_repository = Mock()
-        services_mock.interfaces.interface_repository.get_management_for_switch = AsyncMock(
-            return_value=TEST_SWITCH_INTERFACE
-        )
+        services_mock.switches.get_one_with_target_image.side_effect = [
+            SwitchWithTargetImage.from_switch(
+                TEST_SWITCH,
+                None,
+                management_mac=TEST_SWITCH_INTERFACE.mac_address,
+            ),
+            SwitchWithTargetImage.from_switch(
+                updated_switch,
+                TEST_NOS_IMAGE.name,
+                management_mac=TEST_SWITCH_INTERFACE.mac_address,
+            ),
+        ]
 
         services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = TEST_NOS_IMAGE

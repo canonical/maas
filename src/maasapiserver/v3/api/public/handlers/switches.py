@@ -45,16 +45,6 @@ class SwitchesHandler(Handler):
 
     TAGS = ["Switches"]
 
-    async def _get_management_mac(
-        self, switch_id: int, services: ServiceCollectionV3
-    ) -> str | None:
-        interface = (
-            await services.interfaces.interface_repository.get_management_for_switch(
-                switch_id
-            )
-        )
-        return interface.mac_address if interface is not None else None
-
     @handler(
         path="/switches",
         methods=["GET"],
@@ -219,9 +209,7 @@ class SwitchesHandler(Handler):
         return SwitchResponse.from_switch_model(
             switch=switch,
             target_image=switch_request.image,
-            management_mac=await self._get_management_mac(
-                switch.id, services
-            ),
+            management_mac=switch_request.mac_address,
             self_base_hyperlink=f"{V3_API_PREFIX}/switches",
         )
 
@@ -278,12 +266,21 @@ class SwitchesHandler(Handler):
             switch_id, await switch_request.to_switch_builder(services)
         )
 
-        return SwitchResponse.from_switch_model(
-            switch=switch,
-            target_image=switch_request.image,
-            management_mac=await self._get_management_mac(
-                switch.id, services
-            ),
+        updated_switch = await services.switches.get_one_with_target_image(
+            switch.id
+        )
+        if updated_switch is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type="SwitchNotFound",
+                        message=f"Switch with id '{switch.id}' was not found.",
+                    )
+                ]
+            )
+
+        return SwitchResponse.from_model(
+            switch=updated_switch,
             self_base_hyperlink=f"{V3_API_PREFIX}/switches",
         )
 

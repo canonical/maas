@@ -27,7 +27,12 @@ class SwitchWithTargetImage(Switch):
     management_mac: str | None = None
 
     @classmethod
-    def from_switch(cls, switch: Switch, target_image: str | None) -> Self:
+    def from_switch(
+        cls,
+        switch: Switch,
+        target_image: str | None,
+        management_mac: str | None = None,
+    ) -> Self:
         return cls(
             id=switch.id,
             name=switch.name,
@@ -35,5 +40,5 @@ class SwitchWithTargetImage(Switch):
             created=switch.created,
             updated=switch.updated,
             target_image=target_image,
-            management_mac=None,
+            management_mac=management_mac,
         )

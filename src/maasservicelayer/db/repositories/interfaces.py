@@ -3,7 +3,7 @@
 
 from typing import Any, List, Type
 
-from sqlalchemy import delete, desc, insert, Select, select, Table
+from sqlalchemy import case, delete, desc, insert, Select, select, Table
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.functions import count
@@ -218,8 +218,11 @@ class InterfaceRepository(BaseRepository):
             self._select_all_statement()
             .where(eq(InterfaceTable.c.switch_id, switch_id))
             .order_by(
-                desc(InterfaceTable.c.name == "mgmt0"),
-                desc(InterfaceTable.c.type == InterfaceType.PHYSICAL),
+                case((InterfaceTable.c.name == "mgmt0", 1), else_=0).desc(),
+                case(
+                    (InterfaceTable.c.type == InterfaceType.PHYSICAL, 1),
+                    else_=0,
+                ).desc(),
                 InterfaceTable.c.id,
             )
             .limit(1)
