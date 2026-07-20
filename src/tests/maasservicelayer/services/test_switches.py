@@ -673,22 +673,20 @@ class TestSwitchesService:
             call(300),
         ]
 
-    async def test_list_with_target_image(
+    async def test_list_with_details(
         self,
         switches_repository,
         service,
     ) -> None:
-        await service.list_with_target_image(12, 5)
-        switches_repository.list_with_target_image.assert_called_once_with(
+        await service.list_with_details(12, 5)
+        switches_repository.list_with_details.assert_called_once_with(
             12, 5
         )
 
-    async def test_get_with_target_image(
+    async def test_get_with_details(
         self,
         switches_repository,
         service,
     ) -> None:
-        await service.get_one_with_target_image(12)
-        switches_repository.get_one_with_target_image.assert_called_once_with(
-            12
-        )
+        await service.get_one_with_details(12)
+        switches_repository.get_one_with_details.assert_called_once_with(12)

@@ -122,7 +122,7 @@ class TestSwitchesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.list_with_target_image.return_value = (
+        services_mock.switches.list_with_details.return_value = (
             ListResult[SwitchWithTargetImage](
                 items=[
                     SwitchWithTargetImage.from_switch(
@@ -172,7 +172,7 @@ class TestSwitchesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.list_with_target_image.return_value = (
+        services_mock.switches.list_with_details.return_value = (
             ListResult[SwitchWithTargetImage](
                 items=[SwitchWithTargetImage.from_switch(TEST_SWITCH, None)],
                 total=2,
@@ -196,7 +196,7 @@ class TestSwitchesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.get_one_with_target_image.return_value = (
+        services_mock.switches.get_one_with_details.return_value = (
             SwitchWithTargetImage.from_switch(
                 TEST_SWITCH,
                 None,
@@ -223,7 +223,7 @@ class TestSwitchesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.get_one_with_target_image.return_value = None
+        services_mock.switches.get_one_with_details.return_value = None
 
         response = await client.get(f"{self.BASE_PATH}/999")
         assert response.status_code == 404
@@ -239,7 +239,7 @@ class TestSwitchesApi(ApiCommonTests):
         services_mock.switches = Mock(SwitchesService)
         services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.get_one.return_value = None
-        services_mock.switches.get_one_with_target_image.return_value = (
+        services_mock.switches.get_one_with_details.return_value = (
             SwitchWithTargetImage.from_switch(
                 TEST_SWITCH,
                 None,
@@ -272,7 +272,7 @@ class TestSwitchesApi(ApiCommonTests):
         services_mock.switches = Mock(SwitchesService)
         services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.get_one.return_value = None
-        services_mock.switches.get_one_with_target_image.return_value = (
+        services_mock.switches.get_one_with_details.return_value = (
             SwitchWithTargetImage.from_switch(
                 Switch(
                     **{
@@ -415,7 +415,7 @@ class TestSwitchesApi(ApiCommonTests):
             switch_id=None,  # Not assigned to a switch
             type=InterfaceType.UNKNOWN,  # UNKNOWN interface
         )
-        services_mock.switches.get_one_with_target_image.return_value = (
+        services_mock.switches.get_one_with_details.return_value = (
             SwitchWithTargetImage.from_switch(
                 TEST_SWITCH,
                 None,
@@ -446,7 +446,7 @@ class TestSwitchesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.get_one_with_target_image.return_value = (
+        services_mock.switches.get_one_with_details.return_value = (
             SwitchWithTargetImage.from_switch(
                 TEST_SWITCH,
                 None,
@@ -461,7 +461,7 @@ class TestSwitchesApi(ApiCommonTests):
             }
         )
         services_mock.switches.update_by_id.return_value = updated_switch
-        services_mock.switches.get_one_with_target_image.side_effect = [
+        services_mock.switches.get_one_with_details.side_effect = [
             SwitchWithTargetImage.from_switch(
                 TEST_SWITCH,
                 None,
@@ -500,7 +500,7 @@ class TestSwitchesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.get_one_with_target_image.return_value = None
+        services_mock.switches.get_one_with_details.return_value = None
 
         update_data = {
             "image": "onie/dellos10",
@@ -520,7 +520,7 @@ class TestSwitchesApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
         services_mock.switches = Mock(SwitchesService)
-        services_mock.switches.get_one_with_target_image.return_value = (
+        services_mock.switches.get_one_with_details.return_value = (
             TEST_SWITCH
         )
 

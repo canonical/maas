@@ -51,15 +51,13 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         self.boot_resource_sets_service = boot_resource_sets_service
         self.boot_resource_files_service = boot_resource_files_service
 
-    async def get_one_with_target_image(
-        self, id: int
-    ) -> SwitchWithTargetImage | None:
-        return await self.repository.get_one_with_target_image(id)
+    async def get_one_with_details(self, id: int) -> SwitchWithTargetImage | None:
+        return await self.repository.get_one_with_details(id)
 
-    async def list_with_target_image(
+    async def list_with_details(
         self, page: int, size: int
     ) -> ListResult[SwitchWithTargetImage]:
-        return await self.repository.list_with_target_image(page, size)
+        return await self.repository.list_with_details(page, size)
 
     async def create_new_switch_and_interface(
         self,

@@ -172,7 +172,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
     ):
         pass
 
-    async def test_get_one_with_target_image(
+    async def test_get_one_with_details(
         self,
         fixture: Fixture,
         boot_resource: BootResource,
@@ -182,13 +182,13 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
             fixture, target_image_id=boot_resource.id
         )
 
-        switch = await repository_instance.get_one_with_target_image(switch_id)
+        switch = await repository_instance.get_one_with_details(switch_id)
         assert switch is not None
         assert switch.name == "switch-0"
         assert switch.target_image == "onie/sonic"
         assert switch.target_image_id == boot_resource.id
 
-    async def test_get_one_with_target_image_includes_management_mac(
+    async def test_get_one_with_details_includes_management_mac(
         self,
         fixture: Fixture,
         repository_instance: SwitchesRepository,
@@ -200,11 +200,11 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
             mac_address="00:11:22:33:44:66",
         )
 
-        switch = await repository_instance.get_one_with_target_image(switch_id)
+        switch = await repository_instance.get_one_with_details(switch_id)
         assert switch is not None
         assert switch.management_mac == "00:11:22:33:44:66"
 
-    async def test_get_one_with_target_image_prefers_mgmt0_interface(
+    async def test_get_one_with_details_uses_first_interface(
         self,
         fixture: Fixture,
         repository_instance: SwitchesRepository,
@@ -223,16 +223,16 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
             mac_address="00:11:22:33:44:77",
         )
 
-        switch = await repository_instance.get_one_with_target_image(switch_id)
+        switch = await repository_instance.get_one_with_details(switch_id)
         assert switch is not None
-        assert switch.management_mac == "00:11:22:33:44:77"
+        assert switch.management_mac == "00:11:22:33:44:66"
 
-    async def test_get_one_with_target_image_no_image(
+    async def test_get_one_with_details_no_image(
         self,
         created_instance: Switch,
         repository_instance: SwitchesRepository,
     ) -> None:
-        switch = await repository_instance.get_one_with_target_image(
+        switch = await repository_instance.get_one_with_details(
             created_instance.id
         )
         assert switch is not None
@@ -240,7 +240,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         assert switch.target_image is None
         assert switch.target_image_id is None
 
-    async def test_list_with_target_image(
+    async def test_list_with_details(
         self,
         fixture: Fixture,
         boot_resource: BootResource,
@@ -251,7 +251,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         )
         switch2_id = await create_test_switch(fixture)
 
-        switches = await repository_instance.list_with_target_image(1, 2)
+        switches = await repository_instance.list_with_details(1, 2)
         assert switches.total == 2
         assert len(switches.items) == 2
         assert switches.items[0].id == switch1_id
@@ -263,7 +263,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         assert switches.items[1].target_image is None
         assert switches.items[1].target_image_id is None
 
-    async def test_list_with_target_image_includes_management_mac(
+    async def test_list_with_details_includes_management_mac(
         self,
         fixture: Fixture,
         repository_instance: SwitchesRepository,
@@ -281,11 +281,11 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
             mac_address="00:11:22:33:44:77",
         )
 
-        switches = await repository_instance.list_with_target_image(1, 2)
+        switches = await repository_instance.list_with_details(1, 2)
         assert switches.items[0].management_mac == "00:11:22:33:44:66"
         assert switches.items[1].management_mac == "00:11:22:33:44:77"
 
-    async def test_list_with_target_image_does_not_duplicate_switch_rows(
+    async def test_list_with_details_does_not_duplicate_switch_rows(
         self,
         fixture: Fixture,
         repository_instance: SwitchesRepository,
@@ -311,14 +311,14 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
             mac_address="00:11:22:33:44:88",
         )
 
-        switches = await repository_instance.list_with_target_image(1, 2)
+        switches = await repository_instance.list_with_details(1, 2)
         assert switches.total == 2
         assert len(switches.items) == 2
         assert {item.id for item in switches.items} == {switch1_id, switch2_id}
         switch1 = next(item for item in switches.items if item.id == switch1_id)
-        assert switch1.management_mac == "00:11:22:33:44:77"
+        assert switch1.management_mac == "00:11:22:33:44:66"
 
-    async def test_list_with_target_image_with_pagination(
+    async def test_list_with_details_with_pagination(
         self,
         fixture: Fixture,
         boot_resource: BootResource,
@@ -327,7 +327,7 @@ class TestSwitchesRepository(RepositoryCommonTests[Switch]):
         await create_test_switch(fixture, target_image_id=boot_resource.id)
         switch2_id = await create_test_switch(fixture)
 
-        switches = await repository_instance.list_with_target_image(2, 1)
+        switches = await repository_instance.list_with_details(2, 1)
         assert switches.total == 2
         assert len(switches.items) == 1
         assert switches.items[0].id == switch2_id

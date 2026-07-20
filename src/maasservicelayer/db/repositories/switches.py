@@ -3,9 +3,8 @@
 
 from operator import eq
 
-from sqlalchemy import case, func, Select, select, Table
+from sqlalchemy import func, Select, select, Table
 
-from maascommon.enums.interface import InterfaceType
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -43,20 +42,13 @@ class SwitchesRepository(BaseRepository[Switch]):
         return (
             select(InterfaceTable.c.mac_address)
             .where(InterfaceTable.c.switch_id == SwitchTable.c.id)
-            .order_by(
-                case((InterfaceTable.c.name == "mgmt0", 1), else_=0).desc(),
-                case(
-                    (InterfaceTable.c.type == InterfaceType.PHYSICAL, 1),
-                    else_=0,
-                ).desc(),
-                InterfaceTable.c.id.asc(),
-            )
+            .order_by(InterfaceTable.c.id.asc())
             .limit(1)
             .scalar_subquery()
         )
 
     @property
-    def select_all_join_boot_resource(self) -> Select:
+    def select_all_with_details(self) -> Select:
         return select(
             SwitchTable,
             BootResourceTable.c.name.label("target_image"),
@@ -68,22 +60,20 @@ class SwitchesRepository(BaseRepository[Switch]):
             )
         )
 
-    async def get_one_with_target_image(
-        self, id: int
-    ) -> SwitchWithTargetImage | None:
-        stmt = self.select_all_join_boot_resource.where(SwitchTable.c.id == id)
+    async def get_one_with_details(self, id: int) -> SwitchWithTargetImage | None:
+        stmt = self.select_all_with_details.where(SwitchTable.c.id == id)
         row = (await self.execute_stmt(stmt)).one_or_none()
         return (
             SwitchWithTargetImage(**row._asdict()) if row is not None else None
         )
 
-    async def list_with_target_image(
+    async def list_with_details(
         self, page: int, size: int
     ) -> ListResult[SwitchWithTargetImage]:
         total_stmt = select(func.count()).select_from(SwitchTable)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
-        stmt = self.select_all_join_boot_resource.offset(
+        stmt = self.select_all_with_details.offset(
             (page - 1) * size
         ).limit(size)
         result = (await self.execute_stmt(stmt)).all()
