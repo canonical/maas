@@ -348,8 +348,34 @@ class BootResourcesActivity(ActivityBase):
     async def delete_bootresourcefile(
         self, param: ResourceDeleteParam
     ) -> bool:
-        """Delete files from disk"""
+        """Delete files from disk, unless they have become referenced again.
+
+        The files to delete are chosen when the workflow is scheduled, but
+        execution (particularly resolving region endpoints) can be
+        delayed. If a newer import recreates a BootResourceFile with the
+        same sha256 in the meantime, deleting it would remove content that
+        is genuinely in use again. So each file is re-checked against the
+        database immediately before it is unlinked.
+        """
+        async with self.start_transaction() as services:
+            still_referenced_shas = {
+                f.sha256
+                for f in await services.boot_resource_files.get_many(
+                    query=QuerySpec(
+                        where=BootResourceFileClauseFactory.with_sha256_in(
+                            [file.sha256 for file in param.files]
+                        )
+                    )
+                )
+            }
         for file in param.files:
+            if file.sha256 in still_referenced_shas:
+                logger.info(
+                    f"skipping delete of {file}: a BootResourceFile with "
+                    "this sha256 was recreated since the deletion was "
+                    "scheduled"
+                )
+                continue
             logger.debug(f"attempt to delete {file}")
             lfile = AsyncLocalBootResourceFile(
                 file.sha256, file.filename_on_disk, 0
@@ -906,7 +932,15 @@ class SyncBootResourcesWorkflow:
 
 @workflow.defn(name=DELETE_BOOTRESOURCE_WORKFLOW_NAME, sandboxed=False)
 class DeleteBootResourceWorkflow:
-    """Delete a BootResourceFile from this cluster"""
+    """Delete a BootResourceFile, unless it has become referenced again.
+
+    The files targeted by this workflow are chosen when it is scheduled,
+    but execution (particularly resolving region endpoints) can be
+    delayed. If a newer import recreates a BootResourceFile with the same
+    sha256 the meantime, deleting it would remove content that is genuinely
+    in use again. So this workflow re-checks the database immediately
+    before deleting and skips any file that is no longer safe to remove.
+    """
 
     @workflow_run_with_context
     async def run(self, input: ResourceDeleteParam) -> None:
