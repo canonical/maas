@@ -17,6 +17,7 @@ class TestSwitchResponse:
             created=now,
             updated=now,
             name="leaf-01",
+            management_mac="00:11:22:33:44:55",
             target_image_id=1,
             target_image="onie/mellanox",
         )
@@ -26,6 +27,7 @@ class TestSwitchResponse:
         )
         assert switch.id == switch_response.id
         assert switch.name == switch_response.name
+        assert switch.management_mac == switch_response.management_mac
         assert switch.target_image_id == switch_response.target_image_id
         assert switch.target_image == switch_response.target_image
         assert switch_response.hal_links is not None
@@ -45,10 +47,12 @@ class TestSwitchResponse:
         switch_response = SwitchResponse.from_switch_model(
             switch=switch,
             target_image="onie/mellanox",
+            management_mac="00:11:22:33:44:55",
             self_base_hyperlink=f"{V3_API_PREFIX}/staticroutes",
         )
         assert switch.id == switch_response.id
         assert switch.name == switch_response.name
+        assert switch_response.management_mac == "00:11:22:33:44:55"
         assert switch.target_image_id == switch_response.target_image_id
         assert switch_response.target_image == "onie/mellanox"
         assert switch_response.hal_links is not None
