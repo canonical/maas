@@ -667,7 +667,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            b"Deploying a machine as a rackd has been disabled and it's not supported anymore.",
+            b"Support for install_rackd allocation parameter has been removed.",
             response.content,
         )
 

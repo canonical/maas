@@ -9,7 +9,7 @@ import tempita
 import yaml
 
 from maasserver.enum import BRIDGE_TYPE, INTERFACE_TYPE, NODE_STATUS
-from maasserver.models import Config, ControllerInfo, NodeKey
+from maasserver.models import Config, NodeKey
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
@@ -48,22 +48,6 @@ class TestGetVendorData(MAASServerTestCase):
     def test_returns_dict(self):
         node = factory.make_Node()
         self.assertIsInstance(get_vendor_data(node, None), dict)
-
-    def test_combines_key_values(self):
-        controller = factory.make_RackController()
-        ControllerInfo.objects.set_version(controller, "3.0.0-123-g.abc")
-        secret = factory.make_string()
-        SecretManager().set_simple_secret("rpc-shared", secret)
-        node = factory.make_Node(netboot=False, osystem="ubuntu")
-        config = get_vendor_data(node, None)
-        self.assertEqual(
-            config["runcmd"],
-            [
-                "snap install maas --channel=3.0/stable",
-                f"/snap/bin/maas init rack --maas-url http://localhost:5240/MAAS --secret {secret}",
-                "rm -rf /run/netplan",
-            ],
-        )
 
     def test_includes_no_system_information_if_no_default_user(self):
         node = factory.make_Node(owner=factory.make_User())
