@@ -17,7 +17,6 @@ class BootResourceFile(MaasTimestampedBaseModel):
     sha256: str
     size: int
     filename_on_disk: str
-    largefile_id: int | None = None
     resource_set_id: int | None = None
 
     def create_local_file(self) -> AsyncLocalBootResourceFile:

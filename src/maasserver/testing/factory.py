@@ -111,7 +111,6 @@ from maasserver.models.bmc import BMC, BMCRoutableRackControllerRelationship
 from maasserver.models.bootresourceset import XINSTALL_TYPES
 from maasserver.models.bootsourceselection import BootSourceSelectionNew
 from maasserver.models.interface import Interface, InterfaceRelationship
-from maasserver.models.largefile import LargeFile
 from maasserver.models.nodeconfig import NODE_CONFIG_TYPE, NodeConfig
 from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.partition import MIN_PARTITION_SIZE
@@ -2715,13 +2714,10 @@ class Factory(maastesting.factory.Factory):
         filename_on_disk: str | None = None,
         extra: dict | None = None,
         size: int = 0,
-        largefile: LargeFile | None = None,
         synced: Iterable[tuple[RegionController, int]] | None = None,
     ) -> BootResourceFile:
         if sha256 is None:
-            sha256 = (
-                largefile.sha256 if largefile else factory.make_hex_string(64)
-            )
+            sha256 = factory.make_hex_string(64)
         if filename_on_disk is None:
             filename_on_disk = sha256[:7]
         if filename is None:
@@ -2741,7 +2737,6 @@ class Factory(maastesting.factory.Factory):
             sha256=sha256,
             filename_on_disk=filename_on_disk,
             size=size,
-            largefile=largefile,
         )
 
         if synced:

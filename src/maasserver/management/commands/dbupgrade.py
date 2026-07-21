@@ -10,10 +10,8 @@ from importlib.resources import files
 import os
 import subprocess
 import sys
-from textwrap import dedent
 
 from alembic import command, config
-from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import connections, DEFAULT_DB_ALIAS
 
@@ -43,46 +41,6 @@ class Command(BaseCommand):
             default="/usr/sbin/",
             help=("The path to the openfga migrator binaries."),
         )
-
-    @classmethod
-    def _get_all_triggers(cls, database):
-        """Return list of all triggers in the database."""
-        with connections[database].cursor() as cursor:
-            cursor.execute(
-                dedent(
-                    """\
-                SELECT tgname::text, pg_class.relname
-                FROM pg_trigger, pg_class
-                WHERE pg_trigger.tgrelid = pg_class.oid AND (
-                    pg_class.relname LIKE 'maasserver_%' OR
-                    pg_class.relname LIKE 'metadataserver_%' OR
-                    pg_class.relname LIKE 'auth_%') AND
-                    NOT pg_trigger.tgisinternal
-                ORDER BY tgname::text;
-                """
-                )
-            )
-            return [(row[0], row[1]) for row in cursor.fetchall()]
-
-    @classmethod
-    def _drop_all_triggers(cls, database):
-        """Remove all of the triggers that MAAS has created previously."""
-        triggers = cls._get_all_triggers(database)
-        with connections[database].cursor() as cursor:
-            for trigger_name, table in triggers:
-                cursor.execute(
-                    f"DROP TRIGGER IF EXISTS {trigger_name} ON {table};"
-                )
-
-    @classmethod
-    def _drop_all_views(cls, database):
-        """Register all PL/pgSQL views.
-
-        :attention: `database` argument is not used!
-        """
-        from maasserver import dbviews
-
-        dbviews.drop_all_views()
 
     @classmethod
     def _temporal_migration(cls, database):
@@ -230,30 +188,6 @@ class Command(BaseCommand):
                 connstring = f"{connstring}?search_path={search_path}"
         return connstring
 
-    @classmethod
-    def _should_run_django_migrations(cls, database) -> bool:
-        """
-        Returns True if the django_migrations table exists AND the alembic_version table does not. False otherwise.
-
-        In theory, this should be True when there is an existing environment running MAAS 3.6 and below that is upgrading to >
-        3.7.
-        """
-        with connections[database].cursor() as cursor:
-            cursor.execute("""
-                    SELECT
-                        EXISTS (
-                            SELECT 1
-                            FROM information_schema.tables
-                            WHERE table_name = 'django_migrations'
-                        )
-                        AND NOT EXISTS (
-                            SELECT 1
-                            FROM information_schema.tables
-                            WHERE table_name = 'alembic_version'
-                        );
-                """)
-            return cursor.fetchone()[0]
-
     def _openfga_migration(self, openfga_path, database, uri):
         print("Running OpenFGA migrations:")
         conn = connections[database]
@@ -297,24 +231,6 @@ class Command(BaseCommand):
         pg_ver = conn.cursor().connection.server_version
         if pg_ver // 100 < PGSQL_MIN_VERSION:
             raise UnsupportedDBException(pg_ver)
-
-        # If the django_migrations table exists and the alembic table does not, it means this is an existing environment that
-        # still needs to run the django migrations. After the migrations are executed, the alembic table will be created so the
-        # django migrations will not be executed anymore.
-        # TODO: We must make the LTS a mandatory version that users can't skip it during an upgrade. After the LTS, we will remove
-        #  entirely the django migrations and only the alembic ones will be executed.
-        if self._should_run_django_migrations(database):
-            # Before 3.7, we used to delete/recreate the views and the triggers at every execution of dbupgrade.
-            # From 3.7, we do create the views and the triggers in the alembic migrations. So we have to drop them one last
-            # time here since we come from a < 3.7 environment.
-            self._drop_all_views(database)
-            self._drop_all_triggers(database)
-
-            call_command(
-                "migrate",
-                interactive=False,
-                verbosity=options.get("verbosity"),
-            )
 
         # When we execute the unit tests we don't have OpenFGA built binaries available at the location where the migrator
         # expects them, so we let the unit tests specify where to find them. We have to run the openfga built-in migrations before the alembic ones because the alembic migrations depend on some of the database structures created by the openfga built-in migrations.

@@ -31,7 +31,6 @@ from maasserver.enum import (
 from maasserver.models.bootresource import BootResource
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.largefile import LargeFile
 from maasserver.models.node import RegionController
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.workflow import execute_workflow
@@ -151,8 +150,6 @@ class BootResourceFile(CleanSave, TimestampedModel):
         editable=False,
         on_delete=CASCADE,
     )
-
-    largefile = ForeignKey(LargeFile, on_delete=CASCADE, null=True)
 
     filename = CharField(max_length=255, editable=False)
 
