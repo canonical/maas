@@ -65,6 +65,7 @@ maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/armhf
 maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/i386
 maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/ppc64el
 maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/s390x
+maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/riscv64
 
 # Allow running refresh scripts on controllers
 maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/20-maas-03-machine-resources
