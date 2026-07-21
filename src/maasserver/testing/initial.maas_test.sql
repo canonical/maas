@@ -3728,7 +3728,6 @@ CREATE TABLE public.maasserver_node (
     current_commissioning_script_set_id bigint,
     current_installation_script_set_id bigint,
     current_testing_script_set_id bigint,
-    install_rackd boolean NOT NULL,
     locked boolean NOT NULL,
     pool_id integer,
     instance_power_parameters jsonb NOT NULL,
@@ -10187,7 +10186,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0030
+0031
 \.
 
 
@@ -11605,7 +11604,7 @@ COPY public.maasserver_neighbour (id, created, updated, ip, "time", vid, count, 
 -- Data for Name: maasserver_node; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout, current_config_id, enable_hw_sync, last_sync, sync_interval, current_release_script_set_id, enable_kernel_crash_dump, is_dpu, current_deployment_script_set_id) FROM stdin;
+COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout, current_config_id, enable_hw_sync, last_sync, sync_interval, current_release_script_set_id, enable_kernel_crash_dump, is_dpu, current_deployment_script_set_id) FROM stdin;
 \.
 
 
