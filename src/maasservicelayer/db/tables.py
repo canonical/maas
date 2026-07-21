@@ -178,7 +178,7 @@ BMCTable = Table(
     Index(
         "maasserver_bmc_power_type_parameters_idx",
         "power_type",
-        func.md5(text("power_parameters::text")),
+        func.public.digest(text("(power_parameters)::text"), "sha256"),
         unique=True,
         postgresql_where=text("(power_type)::text <> 'manual'::text"),
     ),
@@ -2421,6 +2421,21 @@ TokenTable = Table(
     ),
     Index("piston3_token_user_id_e5cd818c", "user_id"),
     Index("piston3_token_consumer_id_b178993d", "consumer_id"),
+)
+
+TrustedSshHostKeyTable = Table(
+    "maasserver_trustedsshhostkey",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("host", String(255), nullable=False),
+    Column("key_type", String(64), nullable=False),
+    Column("public_key", Text, nullable=False),
+    Column("label", String(255), nullable=True),
+    UniqueConstraint(
+        "host", "key_type", "public_key", name="uq_trusted_host_key"
+    ),
 )
 
 UserGroupTable = Table(
