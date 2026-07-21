@@ -21,11 +21,12 @@ system-usernames:
 # 2: (2.8) move MAAS data to $SNAP_COMMON
 # 3: (2.9) drop "all" mode and builtin PostgresSQL server
 # 4: (3.5) supervisord -> Pebble migration
-epoch: 4*
+# 5: (3.8) MAAS LTS, last version with image migration from database and django migrations
+epoch: 5*
 
 package-repositories:
   - type: apt
-    ppa: maas-committers/latest-deps
+    ppa: maas/3.8-next
 
 environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages
