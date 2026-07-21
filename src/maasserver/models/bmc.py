@@ -1088,8 +1088,10 @@ class Pod(BMC):
     ):
         # Enumerating the LabeledConstraintMap of interfaces will yield the
         # name of each interface, in the same order that they will exist
-        # on the hypervisor. (This is a fortunate coincidence, since
-        # dictionaries in Python 3.6+ preserve insertion order.)
+        # on the hypervisor for virsh. (This is a fortunate coincidence,
+        # since dictionaries in Python 3.6+ preserve insertion order.)
+        # For lxd this is not the case, as there is an API boundary in the
+        # middle that returns reordered interfaces.
         if interface_constraints is not None:
             interface_names = [
                 get_ifname_for_label(label) for label in interface_constraints
