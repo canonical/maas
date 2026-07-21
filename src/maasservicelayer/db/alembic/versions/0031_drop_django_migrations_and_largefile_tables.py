@@ -5,9 +5,9 @@ Environments that are migrating from 3.x must have gone through 3.8,
 which already moved the images out of the database and moved away from django
 migrations. Hence, we can safely drop everything here.
 
-Revision ID: 0025
-Revises: 0024
-Create Date: 2026-07-15 17:13:41.571567+00:00
+Revision ID: 0031
+Revises: 0030
+Create Date: 2026-07-21 09:13:41.571567+00:00
 
 """
 
@@ -16,8 +16,8 @@ from typing import Sequence
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0025"
-down_revision: str | None = "0024"
+revision: str = "0031"
+down_revision: str | None = "0030"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
