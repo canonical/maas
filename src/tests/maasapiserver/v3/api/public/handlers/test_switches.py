@@ -33,6 +33,7 @@ from tests.maasapiserver.v3.api.public.handlers.base import (
 
 TEST_SWITCH = Switch(
     id=1,
+    name="leaf-01",
     target_image_id=None,
     created=utcnow(),
     updated=utcnow(),
@@ -40,6 +41,7 @@ TEST_SWITCH = Switch(
 
 TEST_SWITCH_2 = Switch(
     id=2,
+    name="leaf-02",
     target_image_id=10,
     created=utcnow(),
     updated=utcnow(),
@@ -119,9 +121,11 @@ class TestSwitchesApi(ApiCommonTests):
         assert len(switches_response.items) == 2
         assert switches_response.total == 2
         assert switches_response.items[0].id == 1
+        assert switches_response.items[0].name == "leaf-01"
         assert switches_response.items[0].target_image_id is None
         assert switches_response.items[0].target_image is None
         assert switches_response.items[1].id == 2
+        assert switches_response.items[1].name == "leaf-02"
         assert switches_response.items[1].target_image_id == 10
         assert switches_response.items[1].target_image == TEST_NOS_IMAGE.name
 
@@ -167,6 +171,7 @@ class TestSwitchesApi(ApiCommonTests):
 
         switch_response = SwitchResponse(**response.json())
         assert switch_response.id == 1
+        assert switch_response.name == "leaf-01"
         assert switch_response.target_image_id is None
         assert switch_response.target_image is None
 
@@ -201,6 +206,7 @@ class TestSwitchesApi(ApiCommonTests):
 
         new_switch_data = {
             "mac_address": "00:11:22:33:44:55",
+            "name": "leaf-01",
         }
 
         response = await client.post(f"{self.BASE_PATH}", json=new_switch_data)
@@ -232,6 +238,7 @@ class TestSwitchesApi(ApiCommonTests):
 
         new_switch_data = {
             "mac_address": "00:11:22:33:44:55",
+            "name": "leaf-01",
             "image": "onie/dellos10",
         }
 
@@ -239,6 +246,7 @@ class TestSwitchesApi(ApiCommonTests):
         assert response.status_code == 201
 
         switch_response = SwitchResponse(**response.json())
+        assert switch_response.name == "leaf-01"
         assert switch_response.target_image_id == TEST_NOS_IMAGE.id
         assert switch_response.target_image == TEST_NOS_IMAGE.name
 
@@ -385,12 +393,14 @@ class TestSwitchesApi(ApiCommonTests):
 
         update_data = {
             "image": TEST_NOS_IMAGE.name,
+            "name": "leaf-01",
         }
 
         response = await client.patch(f"{self.BASE_PATH}/1", json=update_data)
         assert response.status_code == 200
 
         switch_response = SwitchResponse(**response.json())
+        assert switch_response.name == "leaf-01"
         assert switch_response.target_image_id == TEST_NOS_IMAGE.id
         assert switch_response.target_image == TEST_NOS_IMAGE.name
 

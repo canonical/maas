@@ -8081,7 +8081,8 @@ CREATE TABLE public.maasserver_switch (
     id bigint NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    target_image_id bigint
+    target_image_id bigint,
+    name character varying(255)
 );
 
 
@@ -11983,7 +11984,7 @@ COPY public.maasserver_subnet (id, created, updated, name, cidr, gateway_ip, dns
 -- Data for Name: maasserver_switch; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_switch (id, created, updated, target_image_id) FROM stdin;
+COPY public.maasserver_switch (id, created, updated, target_image_id, name) FROM stdin;
 \.
 
 
