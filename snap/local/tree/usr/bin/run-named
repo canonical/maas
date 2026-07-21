@@ -1,13 +1,34 @@
 #!/bin/bash -e
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2017 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
-# Copy the bind config from /etc.
 mkdir -p "$SNAP_DATA/bind"
-cp -f "$SNAP"/etc/bind/* "$SNAP_DATA/bind/"
 
-# Overwrite named.conf from the one shipped with the snap.
-cp -f "$SNAP/usr/share/maas/bind/named.conf" "$SNAP_DATA/bind/"
+# Copy bind9 config files and patch paths for the snap environment.
+sed "s|/etc/bind/|$SNAP_DATA/bind/|g" \
+    "$SNAP/etc/bind/named.conf" > "$SNAP_DATA/bind/named.conf"
+
+# Write named.conf.options with snap-specific paths.
+# This replaces the bind9-shipped file which only sets the cache directory.
+cat > "$SNAP_DATA/bind/named.conf.options" <<EOF
+options {
+    directory "$SNAP_DATA/bind/cache";
+    pid-file "$SNAP_DATA/bind/named.pid";
+    bindkeys-file "$SNAP/etc/bind/bind.keys";
+    session-keyfile "$SNAP_DATA/bind/session.key";
+    auth-nxdomain no;
+    listen-on-v6 { any; };
+    include "$SNAP_DATA/bind/named.conf.options.inside.maas";
+};
+EOF
+
+sed "s|/usr/share/dns/|$SNAP/usr/share/dns/|g" \
+    "$SNAP/etc/bind/named.conf.root-hints" > "$SNAP_DATA/bind/named.conf.root-hints"
+
+# Copy named.conf.local and append the MAAS zone config include.
+# This mirrors what edit_named_options does for the deb install.
+cp "$SNAP/etc/bind/named.conf.local" "$SNAP_DATA/bind/named.conf.local"
+echo "include \"$SNAP_DATA/bind/named.conf.maas\";" >> "$SNAP_DATA/bind/named.conf.local"
 
 mkdir -p "$SNAP_DATA/bind/cache"
 
