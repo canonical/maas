@@ -941,8 +941,9 @@ class DeleteBootResourceWorkflow:
     but execution (particularly resolving region endpoints) can be
     delayed. If a newer import recreates a BootResourceFile with the same
     sha256 in the meantime, deleting it would remove content that is genuinely
-    in use again. So this workflow re-checks the database immediately
-    before deleting and skips any file that is no longer safe to remove.
+    in use again. So, before deleting, an activity of this workflow
+    re-checks the database immediately and skips any file that is no
+    longer safe to remove.
     """
 
     @workflow_run_with_context
