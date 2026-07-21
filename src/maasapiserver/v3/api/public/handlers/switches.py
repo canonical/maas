@@ -73,7 +73,7 @@ class SwitchesHandler(Handler):
         **Experimental**: this endpoint is part of an experimental feature set
         and may change in future releases.
         """
-        switches = await services.switches.list_with_target_image(
+        switches = await services.switches.list_with_details(
             pagination_params.page,
             pagination_params.size,
         )
@@ -125,7 +125,7 @@ class SwitchesHandler(Handler):
         **Experimental**: this endpoint is part of an experimental feature set
         and may change in future releases.
         """
-        switch = await services.switches.get_one_with_target_image(switch_id)
+        switch = await services.switches.get_one_with_details(switch_id)
         if not switch:
             raise NotFoundException(
                 details=[
@@ -209,6 +209,7 @@ class SwitchesHandler(Handler):
         return SwitchResponse.from_switch_model(
             switch=switch,
             target_image=switch_request.image,
+            management_mac=switch_request.mac_address,
             self_base_hyperlink=f"{V3_API_PREFIX}/switches",
         )
 
@@ -244,7 +245,7 @@ class SwitchesHandler(Handler):
         **Experimental**: this endpoint is part of an experimental feature set
         and may change in future releases.
         """
-        existing_switch = await services.switches.get_one_with_target_image(
+        existing_switch = await services.switches.get_one_with_details(
             switch_id
         )
         if not existing_switch:
@@ -265,9 +266,21 @@ class SwitchesHandler(Handler):
             switch_id, await switch_request.to_switch_builder(services)
         )
 
-        return SwitchResponse.from_switch_model(
-            switch=switch,
-            target_image=switch_request.image,
+        updated_switch = await services.switches.get_one_with_details(
+            switch.id
+        )
+        if updated_switch is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type="SwitchNotFound",
+                        message=f"Switch with id '{switch.id}' was not found.",
+                    )
+                ]
+            )
+
+        return SwitchResponse.from_model(
+            switch=updated_switch,
             self_base_hyperlink=f"{V3_API_PREFIX}/switches",
         )
 
