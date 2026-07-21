@@ -672,9 +672,12 @@ class TestDeleteBootresourcefileActivity:
         self,
         mocker,
         boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
         activity_env: ActivityEnvironment,
     ) -> None:
         mocker.patch("asyncio.sleep")
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+        services_mock.boot_resource_files.get_many = AsyncMock(return_value=[])
 
         heartbeats = []
         activity_env.on_heartbeat = lambda *args: heartbeats.append(args[0])
@@ -692,10 +695,41 @@ class TestDeleteBootresourcefileActivity:
         self,
         mock_local_file: Mock,
         boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
         activity_env: ActivityEnvironment,
     ) -> None:
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+        services_mock.boot_resource_files.get_many = AsyncMock(return_value=[])
+
         param = ResourceDeleteParam(
             files=[ResourceIdentifier("0" * 64, "0" * 7)]
+        )
+        res = await activity_env.run(
+            boot_activities.delete_bootresourcefile, param
+        )
+        assert res is True
+        mock_local_file.unlink.assert_called_once()
+
+    async def test_skips_files_that_were_recreated(
+        self,
+        mock_local_file: Mock,
+        boot_activities: BootResourcesActivity,
+        services_mock: ServiceCollectionV3,
+        activity_env: ActivityEnvironment,
+    ) -> None:
+        # A newer import recreated a BootResourceFile reusing the sha256
+        # of the first identifier below, after the delete was scheduled.
+        recreated_file = Mock(BootResourceFile, sha256="1" * 64)
+        services_mock.boot_resource_files = Mock(BootResourceFilesService)
+        services_mock.boot_resource_files.get_many = AsyncMock(
+            return_value=[recreated_file]
+        )
+
+        param = ResourceDeleteParam(
+            files=[
+                ResourceIdentifier("1" * 64, "1" * 7),
+                ResourceIdentifier("2" * 64, "2" * 7),
+            ]
         )
         res = await activity_env.run(
             boot_activities.delete_bootresourcefile, param
