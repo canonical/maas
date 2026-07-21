@@ -54,6 +54,9 @@ from maasservicelayer.db.repositories.service_status import (
     ServiceStatusRepository,
 )
 from maasservicelayer.db.repositories.spaces import SpacesRepository
+from maasservicelayer.db.repositories.ssh_host_keys import (
+    TrustedSshHostKeyRepository,
+)
 from maasservicelayer.db.repositories.sshkeys import SshKeysRepository
 from maasservicelayer.db.repositories.sslkeys import SSLKeysRepository
 from maasservicelayer.db.repositories.staticipaddress import (
@@ -118,6 +121,7 @@ from maasservicelayer.services.secrets import (
 )
 from maasservicelayer.services.service_status import ServiceStatusService
 from maasservicelayer.services.spaces import SpacesService
+from maasservicelayer.services.ssh_host_keys import TrustedSshHostKeysService
 from maasservicelayer.services.sshkeys import SshKeysService
 from maasservicelayer.services.sslkey import SSLKeysService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
@@ -201,6 +205,7 @@ class ServiceCollectionV3:
     staticroutes: StaticRoutesService
     subnets: SubnetsService
     tags: TagsService
+    trusted_ssh_host_keys: TrustedSshHostKeysService
     temporal: TemporalService
     tokens: TokensService
     users: UsersService
@@ -256,6 +261,10 @@ class ServiceCollectionV3:
             repository=TagsRepository(context),
             events_service=services.events,
             temporal_service=services.temporal,
+        )
+        services.trusted_ssh_host_keys = TrustedSshHostKeysService(
+            context=context,
+            repository=TrustedSshHostKeyRepository(context),
         )
         services.scriptresults = ScriptResultsService(
             context=context,
