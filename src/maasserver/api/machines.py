@@ -229,7 +229,6 @@ AllocationOptions = namedtuple(
         "bridge_fd",
         "bridge_stp",
         "comment",
-        "install_rackd",
         "install_kvm",
         "register_vmhost",
         "ephemeral_deploy",
@@ -270,6 +269,11 @@ def get_allocation_options(request) -> AllocationOptions:
     install_rackd = get_optional_param(
         request.POST, "install_rackd", default=False, validator=StringBool
     )
+    # Deploy as rackd has been removed in 4.0.
+    if install_rackd:
+        raise MAASAPIBadRequest(
+            "Support for install_rackd allocation parameter has been removed."
+        )
     install_kvm = get_optional_param(
         request.POST, "install_kvm", default=False, validator=StringBool
     )
@@ -317,7 +321,6 @@ def get_allocation_options(request) -> AllocationOptions:
         bridge_fd,
         bridge_stp,
         comment,
-        install_rackd,
         install_kvm,
         register_vmhost,
         ephemeral_deploy,
@@ -820,12 +823,6 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         # Deploying a node requires re-checking for EDIT permissions.
         if not request.user.has_perm(NodePermission.edit, machine):
             raise PermissionDenied()
-        # Disable the deploy as rackd feature. TODO: remove all the code related to
-        # the `install_rackd` feature before 4.0 is released.
-        if options.install_rackd:
-            raise MAASAPIBadRequest(
-                "Deploying a machine as a rackd has been disabled and it's not supported anymore."
-            )
         if (
             options.install_kvm or options.register_vmhost
         ) and not request.user.has_perm(NodePermission.admin, machine):
@@ -881,7 +878,6 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
                 else enable_kernel_crash_dump
             )
         )
-        form.set_install_rackd(install_rackd=options.install_rackd)
         form.set_ephemeral_deploy(ephemeral_deploy=ephemeral_deploy)
         form.set_enable_hw_sync(enable_hw_sync=options.enable_hw_sync)
         if form.is_valid():

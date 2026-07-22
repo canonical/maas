@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The device handler for the WebSocket connection."""
@@ -145,7 +145,6 @@ class DeviceHandler(NodeHandler):
             "url",
             "last_image_sync",
             "default_user",
-            "install_rackd",
             "install_kvm",
             "register_vmhost",
             "hardware_uuid",

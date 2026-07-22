@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -62,7 +62,6 @@ class TestMachineForm(MAASServerTestCase):
                 "swap_size",
                 "min_hwe_kernel",
                 "hwe_kernel",
-                "install_rackd",
                 "ephemeral_deploy",
                 "enable_hw_sync",
                 "commission",
@@ -586,7 +585,6 @@ class TestAdminMachineForm(MAASServerTestCase):
                 "swap_size",
                 "min_hwe_kernel",
                 "hwe_kernel",
-                "install_rackd",
                 "ephemeral_deploy",
                 "cpu_count",
                 "memory",
