@@ -14,7 +14,6 @@ import os.path
 import random
 import string
 import subprocess
-import time
 from typing import Optional
 import unicodedata
 from unittest import mock
@@ -526,10 +525,14 @@ class Factory:
         return leases
 
     def make_date(self, year=2017):
-        start = time.mktime(datetime.datetime(year, 1, 1).timetuple())
-        end = time.mktime(datetime.datetime(year + 1, 1, 1).timetuple())
+        start = datetime.datetime(
+            year, 1, 1, tzinfo=datetime.timezone.utc
+        ).timestamp()
+        end = datetime.datetime(
+            year + 1, 1, 1, tzinfo=datetime.timezone.utc
+        ).timestamp()
         stamp = random.uniform(start, end)
-        return datetime.datetime.fromtimestamp(stamp)
+        return datetime.datetime.fromtimestamp(stamp, tz=datetime.timezone.utc)
 
     def make_timedelta(self):
         return datetime.timedelta(

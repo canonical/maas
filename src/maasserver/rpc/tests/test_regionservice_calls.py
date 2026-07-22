@@ -9,8 +9,10 @@ from json import dumps
 import random
 from random import randint
 
+from django.db.utils import IntegrityError
 from django.utils import timezone
 from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.protocols.amp import UnknownRemoteError
 from twisted.python.failure import Failure
 
 from maasserver import eventloop
@@ -33,7 +35,11 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import reload_object, transactional
+from maasserver.utils.orm import (
+    make_serialization_failure,
+    reload_object,
+    transactional,
+)
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.testcase import MAASTestCase
@@ -925,6 +931,38 @@ class TestRegionProtocol_ReportNeighbours(MAASServerTestCase):
         report_neighbours.assert_called_once_with(
             params["system_id"], params["neighbours"]
         )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_retryable_db_failure_is_suppressed(self):
+        report_neighbours = self.patch(
+            regionservice.rackcontrollers, "report_neighbours"
+        )
+        report_neighbours.side_effect = make_serialization_failure()
+
+        params = {
+            "system_id": factory.make_name("system_id"),
+            "neighbours": [{"ip": "127.0.0.1"}],
+        }
+
+        response = yield call_responder(Region(), ReportNeighbours, params)
+        self.assertEqual({}, response)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_non_retryable_db_failure_propagates(self):
+        report_neighbours = self.patch(
+            regionservice.rackcontrollers, "report_neighbours"
+        )
+        report_neighbours.side_effect = IntegrityError("constraint violation")
+
+        params = {
+            "system_id": factory.make_name("system_id"),
+            "neighbours": [{"ip": "127.0.0.1"}],
+        }
+
+        with self.assertRaisesRegex(UnknownRemoteError, ".*"):
+            yield call_responder(Region(), ReportNeighbours, params)
 
 
 class TestRegionProtocol_RequestNodeInforByMACAddress(

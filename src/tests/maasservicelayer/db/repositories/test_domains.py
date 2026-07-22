@@ -2,7 +2,6 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
 import random
 from typing import TypeVar
 
@@ -16,6 +15,7 @@ from maasservicelayer.db.repositories.domains import (
     DomainsClauseFactory,
     DomainsRepository,
 )
+from maasservicelayer.db.tables import DomainTable
 from maasservicelayer.models.base import MaasTimestampedBaseModel
 from maasservicelayer.models.domains import Domain
 from tests.fixtures.factories.domain import create_test_domain_entry
@@ -71,24 +71,10 @@ class TestDomainsRepository(RepositoryCommonTests[Domain]):
         self, fixture: Fixture, num_objects: int
     ) -> Sequence[Domain]:
         # The default domain is created by the migrations
-        # and it has the following timestamp hardcoded in the test sql dump,
-        # see src/maasserver/testing/inital.maas_test.sql:8981
-        ts = datetime(2025, 9, 11, 12, 23, 3, 583496, tzinfo=timezone.utc)
-        created_domains = [
-            Domain(
-                id=0,
-                created=ts,
-                updated=ts,
-                name="maas",
-                authoritative=True,
-                ttl=None,
-            )
-        ]
+        created_domains = await fixture.get_typed(DomainTable.name, Domain)
         created_domains.extend(
             [
-                await create_test_domain_entry(
-                    fixture,
-                )
+                await create_test_domain_entry(fixture)
                 for _ in range(num_objects - 1)
             ]
         )

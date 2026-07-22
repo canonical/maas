@@ -25,6 +25,9 @@ from maasapiserver.v3.api.public.handlers.resource_pools import (
 )
 from maasapiserver.v3.api.public.handlers.root import RootHandler
 from maasapiserver.v3.api.public.handlers.spaces import SpacesHandler
+from maasapiserver.v3.api.public.handlers.ssh_host_keys import (
+    SshHostKeysHandler,
+)
 from maasapiserver.v3.api.public.handlers.sshkeys import SshKeysHandler
 from maasapiserver.v3.api.public.handlers.sslkeys import SSLKeysHandler
 from maasapiserver.v3.api.public.handlers.staticroutes import (
@@ -58,6 +61,7 @@ APIv3 = API(
         SpacesHandler(),
         SshKeysHandler(),
         SSLKeysHandler(),
+        SshHostKeysHandler(),
         SubnetsHandler(),
         TagsHandler(),
         UsersHandler(),
