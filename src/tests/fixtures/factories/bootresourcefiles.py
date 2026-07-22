@@ -16,7 +16,6 @@ async def create_test_bootresourcefile_entry(
     size: int,
     filename_on_disk: str,
     resource_set_id: int,
-    largefile_id: int | None = None,
     **extra_details,
 ) -> BootResourceFile:
     now = utcnow()
@@ -30,7 +29,6 @@ async def create_test_bootresourcefile_entry(
         "size": size,
         "filename_on_disk": filename_on_disk,
         "resource_set_id": resource_set_id,
-        "largefile_id": largefile_id,
         "extra": {},
     }
     file.update(extra_details)
