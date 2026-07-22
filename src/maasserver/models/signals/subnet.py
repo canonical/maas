@@ -143,7 +143,7 @@ signals.watch_fields(
 signals.watch_fields(
     update_dhcp,
     Subnet,
-    ["vlan_id"],
+    ["vlan_id", "dns_servers"],
     delete=False,
 )
 
