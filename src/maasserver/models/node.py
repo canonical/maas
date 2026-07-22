@@ -4037,7 +4037,6 @@ class Node(CleanSave, TimestampedModel):
         self.license_key = ""
         self.hwe_kernel = None
         self.current_deployment_script_set = None
-        self.install_rackd = False
         self.install_kvm = False
         self.register_vmhost = False
         self.enable_hw_sync = False
