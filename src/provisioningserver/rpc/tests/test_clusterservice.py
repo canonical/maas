@@ -2142,22 +2142,6 @@ class TestClusterProtocol_ScanNetworks(
             args, [get_maas_common_command().encode("utf-8"), b"scan-network"]
         )
 
-    def test_get_scan_all_networks_args_sudo(self):
-        is_dev_environment_mock = self.patch_autospec(
-            clusterservice, "is_dev_environment"
-        )
-        is_dev_environment_mock.return_value = False
-        args = get_scan_all_networks_args(scan_all=True)
-        self.assertEqual(
-            args,
-            [
-                b"sudo",
-                b"-n",
-                get_maas_common_command().encode("utf-8"),
-                b"scan-network",
-            ],
-        )
-
     def test_get_scan_all_networks_args_returns_supplied_cidrs(self):
         args = get_scan_all_networks_args(
             cidrs=[IPNetwork("192.168.0.0/24"), IPNetwork("192.168.1.0/24")]

@@ -1,11 +1,9 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test helpers for DNS."""
 
 from fixtures import EnvironmentVariable
-
-from provisioningserver.dns import config
 
 
 def patch_dns_config_path(testcase, config_dir=None):

@@ -286,8 +286,8 @@ class FakeLXDCluster:
 
 def _make_maas_certs(test_case):
     tempdir = Path(test_case.useFixture(TempDir()).path)
-    test_case.useFixture(EnvironmentVariable("MAAS_ROOT", str(tempdir)))
-    test_case.certs_dir = tempdir / "etc/maas/certificates"
+    test_case.useFixture(EnvironmentVariable("SNAP_COMMON", str(tempdir)))
+    test_case.certs_dir = tempdir / "certificates"
     test_case.certs_dir.mkdir(parents=True)
     maas_cert = test_case.certs_dir / "maas.crt"
     maas_cert.touch()

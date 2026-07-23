@@ -492,7 +492,7 @@ class TestRackProxy(MAASTestCase):
             prefer_v4_proxy=proxy_prefer_v4_proxy,
             maas_proxy_port=proxy_port,
         )
-        service_monitor.reloadService.assert_called_once_with("proxy_rack")
+        service_monitor.restartService.assert_called_once_with("proxy_rack")
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `_configure`.
         yield service._orig_tryUpdate()
@@ -502,7 +502,7 @@ class TestRackProxy(MAASTestCase):
             prefer_v4_proxy=proxy_prefer_v4_proxy,
             maas_proxy_port=proxy_port,
         )
-        service_monitor.reloadService.assert_called_once_with("proxy_rack")
+        service_monitor.restartService.assert_called_once_with("proxy_rack")
 
     @inlineCallbacks
     def test_sets_proxy_rack_service_to_any_when_is_region(self):

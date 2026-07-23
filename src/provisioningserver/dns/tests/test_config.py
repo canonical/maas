@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test cases for dns.config"""
@@ -20,7 +20,6 @@ from provisioningserver.dns import config
 from provisioningserver.dns.config import (
     clean_old_zone_files,
     compose_config_path,
-    DEFAULT_CONTROLS,
     DNSConfig,
     DNSConfigDirectoryMissing,
     DNSConfigFail,

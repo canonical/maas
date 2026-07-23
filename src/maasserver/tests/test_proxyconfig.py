@@ -164,16 +164,6 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_calls_reloadService(self):
-        self.patch(settings, "PROXY_CONNECT", True)
-        yield deferToDatabase(self.make_subnet)
-        yield proxyconfig.proxy_update_config()
-        self.service_monitor.reloadService.assert_called_once_with(
-            "proxy", if_on=True
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_calls_restartService(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(self.make_subnet)
@@ -184,16 +174,16 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_doesnt_call_reloadService_when_PROXY_CONNECT_False(self):
+    def test_doesnt_call_restartService_when_PROXY_CONNECT_False(self):
         self.patch(settings, "PROXY_CONNECT", False)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
-        self.service_monitor.reloadService.assert_not_called()
+        self.service_monitor.restartService.assert_not_called()
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_doesnt_call_reloadService_when_reload_proxy_False(self):
+    def test_doesnt_call_restartService_when_reload_proxy_False(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config(reload_proxy=False)
-        self.service_monitor.reloadService.assert_not_called()
+        self.service_monitor.restartService.assert_not_called()
