@@ -283,9 +283,7 @@ When assigning images to switches, MAAS uses a logical image name (`onie/<name>`
      | jq -r '.items[] | select(.os == "onie") | "onie/\(.release) (id=\(.id))"'
    ```
 
-3. Check where uploaded image files are stored:
-   - Default path for a snap based MAAS: `/var/snap/maas/common/maas/image-storage/`
-   - Default path for a deb based MAAS: `/var/lib/maas/image-storage/`
+3. Check where uploaded image files are stored `/var/snap/maas/common/maas/image-storage/`
 
 4. Match a known SHA256 to an on-disk file:
 
@@ -540,7 +538,7 @@ The MAAS syslog listen port is `maas_syslog_port` (default `5247`). MAAS listens
 
 4. **Check the logs on a region controller** (or a combined region+rack host).
 
-   Snap and Debian use different `journalctl` units; see [Use logging](use-logging.md). Snap example:
+   Check the `journalctl` units; see [Use logging](use-logging.md). Example:
 
    ```bash
    journalctl -u snap.maas.pebble -t maas-machine -f MAAS_MACHINE_IP=<switch-management-ip>
