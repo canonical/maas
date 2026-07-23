@@ -237,39 +237,6 @@ def atomic_symlink(source, link_name):
         raise
 
 
-def incremental_write(content, filename, mode=0o600, uid=None, gid=None):
-    """Write the given `content` into the file `filename`.  In the past, this
-    would potentially change modification time to arbitrary values.
-
-    :type content: `bytes`
-    :param mode: Access permissions for the file.
-    """
-    # We used to change modification time on the files, in an attempt to out
-    # smart BIND into loading zones on file systems where time was not granular
-    # enough.  BIND got smarter about how it loads zones and remembers when it
-    # last loaded the zone: either the then-current time, or the mtime of the
-    # file, whichever is later.  When BIND then gets a reload request, it
-    # compares the current time to the loadtime for the domain, and skips it if
-    # the file is not new.  If we set mtime in the past, then zones don't load.
-    # If we set it in the future, then we WILL sometimes hit the race condition
-    # where BIND looks at the time after we atomic_write, but before we manage
-    # to set the time into the future.  N.B.: /etc on filesystems with 1-second
-    # granularity are no longer supported by MAAS.  The good news is that since
-    # 2.6, linux has supported nanosecond-granular time.  As of bind9
-    # 1:9.10.3.dfsg.P2-5, BIND even uses it.
-    atomic_write(content, filename, mode=mode, uid=uid, gid=gid)
-
-
-def sudo_write_file(filename, contents, mode=0o644):
-    """Write (or overwrite) file.
-
-    :type contents: `bytes`.
-    """
-    if not isinstance(contents, bytes):
-        raise TypeError(f"Content must be bytes, got: {contents!r}")
-    atomic_write(contents, filename, mode=mode)
-
-
 def sudo_delete_file(filename):
     """Delete file."""
     atomic_delete(filename)

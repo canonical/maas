@@ -291,7 +291,6 @@ class TestInnerStartUp(MAASServerTestCase):
             start_up.inner_start_up()
         region = RegionController.objects.first()
         self.assertEqual(region.version, "3.1.0-1234-g.deadbeef")
-        self.assertEqual(region.info.install_type, "snap")
 
     def test_sets_vault_flag_disabled(self):
         self.patch(start_up, "get_region_vault_client").return_value = None

@@ -104,15 +104,6 @@ def flatten(*things):
     return _flatten(things)
 
 
-def sudo(command_args):
-    """Return the command arguments unchanged.
-
-    MAAS always runs confined in a snap where commands are executed as root,
-    so no privilege escalation is required.
-    """
-    return command_args
-
-
 class CircularDependency(ValueError):
     """A circular dependency has been found."""
 

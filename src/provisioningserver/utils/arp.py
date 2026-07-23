@@ -9,7 +9,6 @@ import sys
 from textwrap import dedent
 
 from provisioningserver.path import get_path
-from provisioningserver.utils import sudo
 from provisioningserver.utils.script import ActionScriptError
 
 
@@ -48,7 +47,6 @@ def run(args, output=sys.stdout):
         raise ActionScriptError("Required argument: interface")
 
     cmd = [get_path("/usr/sbin/maas-netmon"), args.interface]
-    cmd = sudo(cmd)
     network_monitor = subprocess.Popen(cmd, stdout=output)
     if network_monitor is not None:
         return_code = network_monitor.wait()

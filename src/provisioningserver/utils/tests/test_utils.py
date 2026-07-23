@@ -20,7 +20,6 @@ from provisioningserver.utils import (
     locate_config,
     locate_template,
     sorttop,
-    sudo,
 )
 
 
@@ -136,12 +135,6 @@ class TestFlatten(MAASTestCase):
             ["a", "b", "c", "d", "e", "f"],
             list(flatten("a", "b", "c", "d", "e", "f")),
         )
-
-
-class TestSudo(MAASTestCase):
-    def test_returns_same_command(self):
-        cmd = [factory.make_name("cmd") for _ in range(3)]
-        self.assertEqual(cmd, sudo(cmd))
 
 
 EMPTY = frozenset()

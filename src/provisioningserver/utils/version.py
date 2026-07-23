@@ -83,7 +83,6 @@ class MAASVersion:
     @classmethod
     def from_string(cls, version: str):
         r = re.compile(
-            r"((?P<epoch>\d+):)?"  # optional version epoch
             r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<point>\d+)"
             r"(~?(?P<qualifier_type>[a-z]+)(?P<qualifier_version>\d+))?"
             r"(-(?P<revno>\d+))?"  # number of commits in tree

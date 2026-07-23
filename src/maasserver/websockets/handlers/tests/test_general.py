@@ -446,23 +446,6 @@ class TestGeneralHandler(MAASServerTestCase):
         result = handler.maas_url({})
         self.assertEqual(url, result)
 
-    def test_install_type(self):
-        controller = factory.make_RackController()
-        ControllerInfo.objects.set_versions_info(
-            controller,
-            SnapVersionsInfo(
-                current={
-                    "version": "3.0.0~beta2-123-g.asdf",
-                    "revision": "1234",
-                },
-                channel="3.0/beta",
-                cohort="abc",
-            ),
-        )
-        handler = GeneralHandler(factory.make_User(), {}, None)
-        result = handler.install_type({})
-        self.assertEqual("snap", result)
-
 
 class TestGeneralHandlerOpenFGAIntegration(
     OpenFGAMockMixin, MAASServerTestCase

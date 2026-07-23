@@ -196,9 +196,7 @@ def uncomment_named_conf(named_comment):
     return re.sub("^# ", "", named_comment, flags=re.MULTILINE)
 
 
-def generate_rndc(
-    port=953, key_name="rndc-maas-key", include_default_controls=True
-):
+def generate_rndc(port=953, key_name="rndc-maas-key"):
     """Use `rndc-confgen` (from bind9utils) to generate a rndc+named
     configuration.
 
@@ -222,12 +220,6 @@ def generate_rndc(
     rndc_content = rndc_content.decode("ascii")
     named_comment = extract_suggested_named_conf(rndc_content)
     named_conf = uncomment_named_conf(named_comment)
-
-    # The 'named' configuration contains a 'control' statement to enable
-    # remote management by MAAS.  If appropriate, add one to enable remote
-    # management by the init scripts as well.
-    if include_default_controls:
-        named_conf += DEFAULT_CONTROLS
 
     # Return a tuple of the two configurations.
     return rndc_content, named_conf
@@ -276,12 +268,7 @@ def set_up_rndc():
     """Writes out the two files needed to enable MAAS to use rndc commands:
     MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME.
     """
-    rndc_content, named_content = generate_rndc(
-        port=get_dns_rndc_port(),
-        # The default controls don't work in a confined snap, since it
-        # implicitly requires access to /etc/bind
-        include_default_controls=False,
-    )
+    rndc_content, named_content = generate_rndc(port=get_dns_rndc_port())
 
     target_file = get_rndc_conf_path()
     with open(target_file, "w", encoding="ascii") as f:

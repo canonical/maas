@@ -12,7 +12,6 @@ from typing import NamedTuple, Optional, Self
 
 import yaml
 
-from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.utils.shell import run_command
 
 
@@ -130,11 +129,13 @@ def get_snap_mode():
     return mode
 
 
+# Key used to wrap the versions info in the RPC "versions" state payload.
+SNAP_VERSIONS_INFO_KEY = "snap"
+
+
 @dataclasses.dataclass
 class SnapVersionsInfo:
     """Information about snap versions."""
-
-    install_type = CONTROLLER_INSTALL_TYPE.SNAP
 
     current: SnapVersion
     channel: Optional[SnapChannel] = None

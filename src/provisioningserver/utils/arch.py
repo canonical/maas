@@ -26,14 +26,7 @@ KERNEL_TO_DEBIAN_ARCHITECTURES = {
 @lru_cache(maxsize=1)
 def get_architecture():
     """Get the Debian architecture of the running system."""
-    arch = os.getenv("SNAP_ARCH")
-    if not arch:
-        # not running in a snap
-        import apt_pkg
-
-        apt_pkg.init()
-        arch = apt_pkg.get_architectures()[0]
-    return arch
+    return os.getenv("SNAP_ARCH")
 
 
 def kernel_to_debian_architecture(kernel_arch):

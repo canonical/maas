@@ -30,7 +30,7 @@ from provisioningserver.certificates import (
     store_maas_agent_cert_tuple,
     store_maas_cluster_cert_tuple,
 )
-from provisioningserver.config import ClusterConfiguration, is_dev_environment
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
 )
@@ -56,7 +56,6 @@ from provisioningserver.rpc.connectionpool import ConnectionPool
 from provisioningserver.rpc.interfaces import IConnectionToRegion
 from provisioningserver.rpc.power import get_power_state
 from provisioningserver.security import calculate_digest, fernet_decrypt_psk
-from provisioningserver.utils import sudo
 from provisioningserver.utils.env import (
     MAAS_AGENT_UUID,
     MAAS_ID,
@@ -120,8 +119,6 @@ def get_scan_all_networks_args(
     :param cidrs: an iterable of CIDR strings
     """
     args = [get_maas_common_command(), "scan-network"]
-    if not is_dev_environment():
-        args = sudo(args)
     if threads is not None:
         args.extend(["--threads", str(threads)])
     if force_ping:

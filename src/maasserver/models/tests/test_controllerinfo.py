@@ -4,7 +4,6 @@
 
 from maasserver.models import ControllerInfo, Notification
 from maasserver.models.controllerinfo import (
-    get_maas_install_type,
     get_maas_version,
     get_target_version,
     TargetVersion,
@@ -15,7 +14,6 @@ from maasserver.models.controllerinfo import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.utils.snap import SnapChannel, SnapVersionsInfo
 from provisioningserver.utils.version import MAASVersion
 
@@ -47,9 +45,6 @@ class TestControllerInfo(MAASServerTestCase):
         )
         ControllerInfo.objects.set_versions_info(controller, versions)
         controller_info = controller.controllerinfo
-        self.assertEqual(
-            controller_info.install_type, CONTROLLER_INSTALL_TYPE.SNAP
-        )
         self.assertEqual(
             controller_info.version, "3.0.0~alpha1-111-g.deadbeef"
         )
@@ -960,15 +955,3 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
             {"status": "inprogress", "version": "3.0.2"},
         )
         self.assertNotEqual(notification1.id, notification2.id)
-
-    def test_get_maas_install_type(self):
-        c1 = factory.make_RegionRackController()
-        ControllerInfo.objects.set_versions_info(
-            c1,
-            SnapVersionsInfo(
-                current={"version": "3.0.0-111.aaa", "revision": "1"},
-                update={"version": "3.0.1-222-g.bbb", "revision": "1"},
-            ),
-        )
-        install_type = get_maas_install_type()
-        self.assertEqual(install_type, "snap")

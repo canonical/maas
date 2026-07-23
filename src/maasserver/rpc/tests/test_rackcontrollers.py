@@ -24,7 +24,6 @@ from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasservicelayer.models.agents import Agent
 from maasservicelayer.services.agents import AgentsService
 from metadataserver.builtin_scripts import load_builtin_scripts
-from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoSuchScope
 
 
@@ -532,9 +531,6 @@ class TestUpdateState(MAASServerTestCase):
         }
         update_state(rack.system_id, "versions", versions)
         controller_info = rack.controllerinfo
-        self.assertEqual(
-            controller_info.install_type, CONTROLLER_INSTALL_TYPE.SNAP
-        )
         self.assertEqual(
             controller_info.version, "3.0.0~alpha1-111-g.deadbeef"
         )

@@ -37,16 +37,6 @@ def enum_choices(
     )
 
 
-class CONTROLLER_INSTALL_TYPE:
-    """MAAS controller install type."""
-
-    UNKNOWN = ""
-    SNAP = "snap"
-
-
-CONTROLLER_INSTALL_TYPE_CHOICES = enum_choices(CONTROLLER_INSTALL_TYPE)
-
-
 class MACVLAN_MODE:
     BRIDGE = "bridge"
     PASSTHRU = "passthru"

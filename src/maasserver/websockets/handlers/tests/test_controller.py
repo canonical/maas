@@ -275,7 +275,6 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual(
             list_results[0]["versions"],
             {
-                "install_type": "snap",
                 "current": {
                     "version": "3.0.0~alpha1-111-g.deadbeef",
                     "snap_revision": "1234",
@@ -307,7 +306,6 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual(
             list_results[0]["versions"],
             {
-                "install_type": "snap",
                 "current": {
                     "version": "3.0.0~alpha1-111-g.deadbeef",
                     "snap_revision": "1234",
@@ -345,7 +343,6 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual(
             list_results[0]["versions"],
             {
-                "install_type": "snap",
                 "current": {
                     "version": "3.0.0~alpha1-111-g.deadbeef",
                     "snap_revision": "1234",

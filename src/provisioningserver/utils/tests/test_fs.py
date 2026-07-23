@@ -36,12 +36,10 @@ from provisioningserver.utils.fs import (
     FilesystemLock,
     get_maas_common_command,
     get_root_path,
-    incremental_write,
     NamedLock,
     read_text_file,
     RunLock,
     sudo_delete_file,
-    sudo_write_file,
     SystemLock,
     write_text_file,
 )
@@ -367,36 +365,6 @@ class TestAtomicSymlink(MAASTestCase):
         self.assertTrue(os.path.samefile(target_path, link_path))
 
 
-class TestIncrementalWrite(MAASTestCase):
-    """Test `incremental_write`."""
-
-    def test_incremental_write_updates_modification_time(self):
-        content = factory.make_bytes()
-        filename = self.make_file(contents=factory.make_string())
-        # Pretend that this file is older than it is.  So that
-        # incrementing its mtime won't put it in the future.
-        old_mtime = os.stat(filename).st_mtime - 10
-        os.utime(filename, (old_mtime, old_mtime))
-        incremental_write(content, filename)
-        self.assertTrue(os.stat(filename).st_mtime > old_mtime)
-
-    def test_incremental_write_does_not_set_future_time(self):
-        content = factory.make_bytes()
-        filename = self.make_file(contents=factory.make_string())
-        # Pretend that this file is older than it is.  So that
-        # incrementing its mtime won't put it in the future.
-        old_mtime = os.stat(filename).st_mtime + 10
-        os.utime(filename, (old_mtime, old_mtime))
-        incremental_write(content, filename)
-        self.assertTrue(os.stat(filename).st_mtime <= old_mtime)
-
-    def test_incremental_write_sets_permissions(self):
-        atomic_file = self.make_file()
-        mode = 0o323
-        incremental_write(factory.make_bytes(), atomic_file, mode=mode)
-        self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
-
-
 class TestGetMAASProvisionCommand(MAASTestCase):
     def test_returns_maas_rack_for_snap(self):
         self.patch(provisioningserver.config, "is_dev_environment")
@@ -413,31 +381,6 @@ class TestGetMAASProvisionCommand(MAASTestCase):
             dev_root.rstrip("/") + "/usr/bin/maas-common",
             get_maas_common_command(),
         )
-
-
-class TestSudoWriteFile(MAASTestCase):
-    """Testing for `sudo_write_file`."""
-
-    def test_writes_file(self):
-        path = os.path.join(self.make_dir(), factory.make_name("file"))
-        contents = factory.make_bytes()
-        sudo_write_file(path, contents)
-        with open(path, "rb") as fh:
-            self.assertEqual(fh.read(), contents)
-
-    def test_rejects_non_bytes_contents(self):
-        self.assertRaises(
-            TypeError, sudo_write_file, self.make_file(), factory.make_string()
-        )
-
-    def test_writes_file_with_mode(self):
-        filename = get_maas_data_path("dhcpd.conf")
-        contents = factory.make_bytes()  # Binary safe.
-        mode = random.randint(0o400, 0o1000)  # Always u+r.
-        sudo_write_file(filename, contents, mode)
-        with open(filename, "rb") as fh:
-            self.assertEqual(fh.read(), contents)
-        self.assertEqual(mode, os.stat(filename).st_mode & 0o777)
 
 
 class TestSudoDeleteFile(MAASTestCase):
