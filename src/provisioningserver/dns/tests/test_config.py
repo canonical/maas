@@ -41,7 +41,6 @@ from provisioningserver.dns.config import (
 )
 from provisioningserver.dns.testing import (
     patch_dns_config_path,
-    patch_dns_default_controls,
     patch_zone_file_config_path,
 )
 from provisioningserver.dns.zoneconfig import (
@@ -133,9 +132,6 @@ class TestHelpers(MAASTestCase):
         port = factory.pick_port()
         self.useFixture(EnvironmentVariable("MAAS_DNS_RNDC_PORT", "%d" % port))
         self.assertEqual(port, config.get_dns_rndc_port())
-
-    def test_get_dns_default_controls_always_false(self):
-        self.assertFalse(config.get_dns_default_controls())
 
     def test_get_zone_file_config_dir_defaults_to_var_lib_bind_maas(self):
         self.useFixture(EnvironmentVariable("MAAS_ZONE_FILE_CONFIG_DIR"))
@@ -284,15 +280,6 @@ class TestRNDCUtilities(MAASTestCase):
 
         clean_old_zone_files()
         self.assertIsNotNone(os.stat(child_dir))
-
-    def test_rndc_config_includes_default_controls(self):
-        dns_conf_dir = patch_dns_config_path(self)
-        patch_dns_default_controls(self, enable=True)
-        set_up_rndc()
-        rndc_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
-        with open(rndc_file, encoding="ascii") as stream:
-            conf_content = stream.read()
-        self.assertIn(DEFAULT_CONTROLS, conf_content)
 
     def test_execute_rndc_command_executes_command(self):
         fake_dir = patch_dns_config_path(self)

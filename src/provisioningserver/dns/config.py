@@ -154,13 +154,6 @@ def get_dns_rndc_port():
     return int(setting)
 
 
-def get_dns_default_controls():
-    """Include the default RNDC controls (default RNDC key on port 953)?"""
-    # The default controls don't work in a confined snap, since it
-    # implicitly requires access to /etc/bind
-    return False
-
-
 class DNSConfigDirectoryMissing(Exception):
     """The directory where the config was about to be written is missing."""
 
@@ -285,7 +278,9 @@ def set_up_rndc():
     """
     rndc_content, named_content = generate_rndc(
         port=get_dns_rndc_port(),
-        include_default_controls=get_dns_default_controls(),
+        # The default controls don't work in a confined snap, since it
+        # implicitly requires access to /etc/bind
+        include_default_controls=False,
     )
 
     target_file = get_rndc_conf_path()

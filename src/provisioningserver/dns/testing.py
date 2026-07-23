@@ -31,7 +31,3 @@ def patch_zone_file_config_path(testcase, config_dir=None):
 
 def patch_dns_rndc_port(testcase, port):
     testcase.useFixture(EnvironmentVariable("MAAS_DNS_RNDC_PORT", "%d" % port))
-
-
-def patch_dns_default_controls(testcase, enable):
-    testcase.patch(config, "get_dns_default_controls").return_value = enable
