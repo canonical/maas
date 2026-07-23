@@ -182,19 +182,25 @@ class MAASTestCase(
         """Simulate a snap environment for the duration of the test.
 
         MAAS only runs as a snap, so tests must exercise the snap-only code
-        paths. This provides sensible defaults for the snap environment
-        variables and clears the cached running version so it is recomputed
-        from the simulated environment.
+        paths that would otherwise crash when the snap version or common
+        directory are unavailable (e.g. get_running_version,
+        get_maas_cert_tuple).
+
+        Only the variables strictly required to avoid those crashes are set.
+        In particular ``SNAP`` (the snap root path) is deliberately left
+        unset: setting it would change path-prefixing behaviour for code
+        relying on ``SnapPaths.snap`` (e.g. curtin helpers, nginx static
+        roots, wsman config) and break tests exercising the default paths.
+        The cached running version is cleared so it is recomputed from the
+        simulated environment.
         """
         from provisioningserver.utils import version
 
-        snap_dir = self.useFixture(TempDirectory()).path
         common_dir = self.useFixture(TempDirectory()).path
-        data_dir = self.useFixture(TempDirectory()).path
-        self.useFixture(EnvironmentVariable("SNAP", snap_dir))
         self.useFixture(EnvironmentVariable("SNAP_COMMON", common_dir))
-        self.useFixture(EnvironmentVariable("SNAP_DATA", data_dir))
-        self.useFixture(EnvironmentVariable("SNAP_VERSION", "3.0.0-456-g.deadbeef"))
+        self.useFixture(
+            EnvironmentVariable("SNAP_VERSION", "3.0.0-456-g.deadbeef")
+        )
         self.useFixture(EnvironmentVariable("SNAP_REVISION", "1234"))
 
         version.get_running_version.cache_clear()
