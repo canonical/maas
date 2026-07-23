@@ -237,11 +237,6 @@ def atomic_symlink(source, link_name):
         raise
 
 
-def sudo_delete_file(filename):
-    """Delete file."""
-    atomic_delete(filename)
-
-
 def read_text_file(path, encoding="utf-8"):
     """Read and decode the text file at the given path."""
     with open(path, encoding=encoding) as infile:

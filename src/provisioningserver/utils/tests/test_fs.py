@@ -39,7 +39,6 @@ from provisioningserver.utils.fs import (
     NamedLock,
     read_text_file,
     RunLock,
-    sudo_delete_file,
     SystemLock,
     write_text_file,
 )
@@ -381,17 +380,6 @@ class TestGetMAASProvisionCommand(MAASTestCase):
             dev_root.rstrip("/") + "/usr/bin/maas-common",
             get_maas_common_command(),
         )
-
-
-class TestSudoDeleteFile(MAASTestCase):
-    """Testing for `sudo_delete_file`."""
-
-    def test_deletes_file(self):
-        filename = get_maas_data_path("dhcpd.conf")
-        with open(filename, "wb") as fd:
-            fd.write(factory.make_bytes())
-        sudo_delete_file(filename)
-        self.assertFalse(os.path.exists(filename))
 
 
 def load_script(filename):
