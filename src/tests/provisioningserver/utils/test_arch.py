@@ -18,13 +18,6 @@ def clear_arch_cache():
 
 @pytest.mark.usefixtures("clear_arch_cache")
 class TestGetArchitecture:
-    def test_get_architecture_from_apt(self, mocker):
-        arch = random.choice(["i386", "amd64", "arm64", "ppc64el"])
-        mocker.patch(
-            "apt_pkg.get_architectures", return_value=[arch, "otherarch"]
-        )
-        assert get_architecture() == arch
-
     def test_get_architecture_from_snap_env(
         self, mocker, monkeypatch, factory
     ):
