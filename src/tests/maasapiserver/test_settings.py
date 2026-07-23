@@ -102,3 +102,49 @@ class TestGetDefaultDBConfig:
         assert config.username == "user"
         assert config.password == "pass"
         assert config.port == 12345
+
+    @pytest.mark.asyncio
+    async def test_insecure_sslmode_accepted_by_get_default_db_config(self):
+        """_get_default_db_config does not reject insecure SSL modes.
+
+        SSL-mode enforcement is the responsibility of the hardening validator
+        (configure_and_validate_hardening in inner_start_up), not of the DSN
+        builder.
+        """
+        region_config = RegionConfiguration(
+            {
+                "database_name": "maasdb",
+                "database_user": "user",
+                "database_pass": "pass",
+                "database_host": "host",
+                "database_port": 12345,
+                "database_sslmode": "prefer",
+            }
+        )
+        config = await _get_default_db_config(region_config)
+        assert config.sslmode == "prefer"
+
+    @pytest.mark.asyncio
+    async def test_secure_sslmode_fields_forwarded(self):
+        """verify-full sslmode and TLS fields are forwarded into the config."""
+        region_config = RegionConfiguration(
+            {
+                "database_name": "maasdb",
+                "database_user": "user",
+                "database_pass": "pass",
+                "database_host": "host",
+                "database_port": 12345,
+                "database_sslmode": "verify-full",
+                "database_sslcert": "/etc/maas/db.crt",
+                "database_sslkey": "/etc/maas/db.key",
+                "database_sslrootcert": "/etc/maas/ca.crt",
+            }
+        )
+        config = await _get_default_db_config(region_config)
+
+        assert config.sslmode == "verify-full"
+        assert config.sslcert == "/etc/maas/db.crt"
+        assert config.sslkey == "/etc/maas/db.key"
+        assert config.sslrootcert == "/etc/maas/ca.crt"
+        assert config.dsn.query.get("sslmode") == "verify-full"
+        assert config.dsn.query.get("sslcert") == "/etc/maas/db.crt"

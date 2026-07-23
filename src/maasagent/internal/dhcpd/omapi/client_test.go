@@ -85,7 +85,7 @@ subnet %s netmask %s {
     range %s %s;
 }
 key omapi_key {
-    algorithm hmac-md5;
+    algorithm hmac-sha256;
     secret "a2V5";
 }
 omapi-port 7911;
@@ -109,7 +109,8 @@ systemctl restart isc-dhcp-server
 	}, retry)
 	assert.NoError(s.T(), err)
 
-	authenticator := NewHMACMD5Authenticator("omapi_key", "a2V5")
+	authenticator, err := NewHMACSHA256Authenticator("omapi_key", "a2V5")
+	assert.NoError(s.T(), err)
 
 	client, err := NewClient(conn, &authenticator)
 	assert.NoError(s.T(), err)

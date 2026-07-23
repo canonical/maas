@@ -184,6 +184,70 @@ class TestRegionHTTPService(
         self.assertIn("listen 5240;", nginx_config)
         self.assertIn("location /MAAS/api/2.0/machines {", nginx_config)
 
+    def _configure_to_file(self, configuration):
+        tempdir = self.make_dir()
+        nginx_conf = Path(tempdir) / "regiond.nginx.conf"
+        nginx_stream_conf = Path(tempdir) / "regiond.nginx.stream.conf"
+        service = http.RegionHTTPService()
+        self.patch(http, "compose_http_config_path").side_effect = [
+            str(nginx_conf),
+            str(nginx_stream_conf),
+        ]
+        mock_create_cert_files = self.patch(service, "_create_cert_files")
+        mock_create_cert_files.return_value = ("key_path", "cert_path")
+        service._configure(configuration)
+        return nginx_conf.read_text()
+
+    def test_tls_main_server_binds_to_api_bind(self):
+        cert = get_sample_cert_with_cacerts()
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=cert,
+                port=5443,
+                api_bind="10.0.0.5",
+                api_bind6="fd00::5",
+            )
+        )
+        self.assertIn("listen 10.0.0.5:5443 ssl http2;", nginx_config)
+        self.assertIn("listen [fd00::5]:5443 ssl http2;", nginx_config)
+        self.assertNotIn("listen [::]:5443 ssl http2;", nginx_config)
+
+    def test_plain_http_binds_to_api_bind_without_tls(self):
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=None, port=None, api_bind="10.0.0.5")
+        )
+        self.assertIn("listen 10.0.0.5:5240;", nginx_config)
+        self.assertNotIn("listen [::]:5240;", nginx_config)
+
+    def test_tls_internal_server_binds_to_api_int_bind(self):
+        cert = get_sample_cert_with_cacerts()
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=cert,
+                port=5443,
+                api_int_bind="192.168.0.2",
+                api_int_bind6="fe80::2",
+            )
+        )
+        self.assertIn("listen 192.168.0.2:5240;", nginx_config)
+        self.assertIn("listen [fe80::2]:5240;", nginx_config)
+
+    def test_ssl_dhparam_emitted_when_set(self):
+        cert = get_sample_cert_with_cacerts()
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=cert, port=5443, api_tls_dhparam="/etc/maas/dhparam.pem"
+            )
+        )
+        self.assertIn("ssl_dhparam /etc/maas/dhparam.pem;", nginx_config)
+
+    def test_ssl_dhparam_absent_when_unset(self):
+        cert = get_sample_cert_with_cacerts()
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=cert, port=5443)
+        )
+        self.assertNotIn("ssl_dhparam", nginx_config)
+
     def test_create_cert_files_writes_full_chain(self):
         cert = get_sample_cert_with_cacerts()
         tempdir = Path(self.make_dir())

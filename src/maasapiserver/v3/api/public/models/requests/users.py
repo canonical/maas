@@ -1,5 +1,5 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import re
 from typing import Optional
@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import Query
 from pydantic import BaseModel, Field, validator
 
+from maascommon.password_policy import enforce_password_complexity
 from maasservicelayer.builders.users import UserBuilder
 from maasservicelayer.db.filters import Clause
 from maasservicelayer.db.repositories.users import UserClauseFactory
@@ -33,6 +34,16 @@ class UsersFiltersParams(BaseModel):
         )
 
 
+def _enforce_password_complexity(password: str) -> str:
+    """Reject weak passwords when hardening is active; no-op otherwise.
+
+    Thin adapter over :func:`enforce_password_complexity` that returns the
+    password so it can be used directly as a pydantic validator.
+    """
+    enforce_password_complexity(password)
+    return password
+
+
 class BaseUserRequest(BaseModel):
     username: str
     is_superuser: bool
@@ -40,6 +51,7 @@ class BaseUserRequest(BaseModel):
     last_name: str
     email: Optional[str]
 
+    # TODO: move to @field_validator when we migrate to pydantic 2.x.
     @validator("email")
     def check_email(cls, v: str) -> str:
         match = re.fullmatch(r"^(?!\.)[\w\.\+\-]+@([\w-]+\.)+[\w-]{2,4}$", v)
@@ -50,6 +62,10 @@ class BaseUserRequest(BaseModel):
 
 class UserCreateRequest(BaseUserRequest):
     password: str = Field(..., min_length=1)
+
+    @validator("password")
+    def _check_password(cls, v: str) -> str:
+        return _enforce_password_complexity(v)
 
     def to_builder(self) -> UserBuilder:
         hashed_password = UserBuilder.hash_password(self.password)
@@ -67,6 +83,12 @@ class UserCreateRequest(BaseUserRequest):
 
 class UserUpdateRequest(BaseUserRequest):
     password: str | None = Field(min_length=1, default=None)
+
+    @validator("password")
+    def _check_password(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return _enforce_password_complexity(v)
 
     def to_builder(self) -> UserBuilder:
         password = (
@@ -88,3 +110,8 @@ class UserUpdateRequest(BaseUserRequest):
 
 class UserChangePasswordRequest(BaseModel):
     password: str = Field(..., min_length=1)
+
+    # TODO: move to @field_validator when we migrate to pydantic 2.x.
+    @validator("password")
+    def _check_password(cls, v: str) -> str:
+        return _enforce_password_complexity(v)

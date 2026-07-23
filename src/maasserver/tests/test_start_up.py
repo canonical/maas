@@ -412,6 +412,19 @@ class TestInnerStartUp(MAASServerTestCase):
         else:
             self.fail("No exceptions were raised.")
 
+    def test_fips_enabled_written_to_db_on_fips_host(self):
+        self.patch(start_up, "is_fips_enabled").return_value = True
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+        self.assertTrue(Config.objects.get_config("fips_enabled"))
+
+    def test_fips_enabled_not_written_to_db_on_non_fips_host(self):
+        self.patch(start_up, "is_fips_enabled").return_value = False
+        Config.objects.filter(name="fips_enabled").delete()
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+        self.assertIsNone(Config.objects.get_config("fips_enabled"))
+
 
 class TestVaultMigrateDbCredentials(MAASServerTestCase):
     def setUp(self):

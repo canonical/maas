@@ -33,6 +33,8 @@ class Command(BaseCommandWithConnection):
     def handle(self, *args, **options):
         from django.contrib.auth import get_user_model
 
+        from maascommon.password_policy import enforce_password_complexity
+
         count = 0
         UserModel = get_user_model()
         for line in fileinput(args, openhook=hook_encoded("utf-8")):
@@ -49,6 +51,16 @@ class Command(BaseCommandWithConnection):
                 )
             except UserModel.DoesNotExist:
                 raise CommandError("User '%s' does not exist." % username)  # noqa: B904
+            # Enforce the hardening complexity policy (no-op when hardening is
+            # inactive) so PBKDF2/HMAC hashing does not fail under FIPS with
+            # "[Provider routines] invalid key length" for passwords < 14 bytes.
+            try:
+                enforce_password_complexity(password)
+            except ValueError as error:
+                raise CommandError(  # noqa: B904
+                    "Password for user '%s' is not compliant: %s"
+                    % (username, error)
+                )
             user.set_password(password)
             user.save()
             count += 1

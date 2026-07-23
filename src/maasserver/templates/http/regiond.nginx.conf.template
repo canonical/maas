@@ -23,10 +23,16 @@ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $scheme;
 proxy_set_header X-Forwarded-Host $http_host;
 
+{{if api_rate_limit_rate}}
+limit_req_zone $binary_remote_addr zone=regiond_rate:10m rate={{api_rate_limit_rate}};
+limit_conn_zone $binary_remote_addr zone=regiond_conn:10m;
+{{endif}}
+
 server {
+    {{for addr in main_listen}}
+    listen {{addr}}{{if tls_enabled}} ssl http2{{endif}};
+    {{endfor}}
     {{if tls_enabled}}
-    listen [::]:{{tls_port}} ssl http2;
-    listen {{tls_port}} ssl http2;
     ssl_certificate {{tls_cert_path}};
     ssl_certificate_key {{tls_key_path}};
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -34,11 +40,24 @@ server {
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
     ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
+    {{if tls_dhparam}}
+    ssl_dhparam {{tls_dhparam}};
+    {{endif}}
 
     add_header Strict-Transport-Security 'max-age=63072000; includeSubdomains' always;
-    {{else}}
-    listen [::]:{{http_port}};
-    listen {{http_port}};
+    {{endif}}
+
+    {{if hardening}}
+    server_tokens off;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'" always;
+    {{endif}}
+    {{if api_rate_limit_rate}}
+    limit_req zone=regiond_rate burst={{api_rate_limit_burst}} nodelay;
+    limit_conn regiond_conn {{api_conn_limit}};
     {{endif}}
 
     absolute_redirect off;
@@ -114,13 +133,20 @@ server {
         root {{boot_resources_dir}};
         try_files /$1 /$1/$2 =404;
     }
+    {{if hardening}}
+    if ($request_method ~ ^(TRACE|OPTIONS)$) {
+        return 444;
+    }
+    {{endif}}
 }
 
 {{if tls_enabled}}
-# when TLS is enabled, HTTP access still need to be allowed for some resources
+# when TLS is enabled, plain HTTP access is still needed by racks for some
+# resources; bind it to the internal (rack-facing) interfaces.
 server {
-    listen [::]:{{http_port}};
-    listen {{http_port}};
+    {{for addr in internal_listen}}
+    listen {{addr}};
+    {{endfor}}
 
     location /MAAS/rpc/ {
         proxy_pass http://regiond-webapp;

@@ -13,6 +13,7 @@ from django.contrib.auth.models import User
 from django.core.management.base import CommandError
 
 from apiclient.creds import convert_tuple_to_string
+import maascommon.hardening as H
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.management.commands import changepasswords, createadmin
 from maasserver.models.sshkey import SSHKey
@@ -35,6 +36,24 @@ def assertCommandErrors(runner, command, *args, **kwargs):
         CommandError, runner.call_command, command, *args, **kwargs
     )
     return str(exception)
+
+
+def set_hardening(testcase, active):
+    """Toggle the process-wide hardening state for the duration of a test.
+
+    Saves the current globals and registers a cleanup that restores them, so
+    the toggle never leaks into other tests.
+    """
+    original_active = H._hardening_active
+    original_configured = H._hardening_configured
+
+    def restore():
+        H._hardening_active = original_active
+        H._hardening_configured = original_configured
+
+    testcase.addCleanup(restore)
+    H._hardening_active = active
+    H._hardening_configured = True
 
 
 class TestCommands(MAASServerTestCase):
@@ -396,6 +415,65 @@ class TestCommands(MAASServerTestCase):
             "lp:rubbish:here",
         )
 
+    def test_createadmin_rejects_weak_password_when_hardening_active(self):
+        set_hardening(self, True)
+        username = factory.make_name("user")
+        email = factory.make_email_address()
+        before = User.objects.count()
+        self.assertRaises(
+            createadmin.WeakPassword,
+            self.call_command,
+            "createadmin",
+            username=username,
+            password="secret",
+            email=email,
+            stdout=StringIO(),
+            stderr=StringIO(),
+        )
+        # No user was created before the policy rejected the password.
+        self.assertEqual(before, User.objects.count())
+        self.assertEqual(0, User.objects.filter(username=username).count())
+
+    def test_createadmin_weak_password_error_is_command_error(self):
+        # WeakPassword is a CommandError subclass so the CLI reports it as a
+        # clean operator-facing error rather than a raw traceback.
+        self.assertTrue(issubclass(createadmin.WeakPassword, CommandError))
+
+    def test_createadmin_accepts_compliant_password_when_hardening_active(
+        self,
+    ):
+        set_hardening(self, True)
+        username = factory.make_name("user")
+        password = "Sup3rSecret!pw"
+        email = factory.make_email_address()
+        self.call_command(
+            "createadmin",
+            username=username,
+            password=password,
+            email=email,
+            stdout=StringIO(),
+            stderr=StringIO(),
+        )
+        user = User.objects.get(username=username)
+        self.assertTrue(user.check_password(password))
+        self.assertTrue(user.is_superuser)
+
+    def test_createadmin_allows_weak_password_when_hardening_inactive(self):
+        set_hardening(self, False)
+        username = factory.make_name("user")
+        password = "secret"
+        email = factory.make_email_address()
+        self.call_command(
+            "createadmin",
+            username=username,
+            password=password,
+            email=email,
+            stdout=StringIO(),
+            stderr=StringIO(),
+        )
+        user = User.objects.get(username=username)
+        self.assertTrue(user.check_password(password))
+
 
 class TestChangePasswords(MAASServerTestCase):
     def test_bad_input(self):
@@ -439,6 +517,31 @@ class TestChangePasswords(MAASServerTestCase):
         self.call_command("changepasswords")
         for user, newpass in users_passwords:
             self.assertTrue(reload_object(user).check_password(newpass))
+
+    def test_rejects_weak_password_when_hardening_active(self):
+        set_hardening(self, True)
+        username = factory.make_username()
+        original = "Sup3rSecret!pw"
+        user = factory.make_User(username=username, password=original)
+        self.assertTrue(user.check_password(original))
+        stdin = io.StringIO(f"{username}:secret")
+        self.patch(changepasswords, "fileinput").return_value = stdin
+        error_text = assertCommandErrors(self, "changepasswords")
+        self.assertIn("is not compliant", error_text)
+        # The weak password was rejected before hashing; the stored password
+        # is unchanged.
+        self.assertTrue(reload_object(user).check_password(original))
+        self.assertFalse(reload_object(user).check_password("secret"))
+
+    def test_allows_weak_password_when_hardening_inactive(self):
+        set_hardening(self, False)
+        username = factory.make_username()
+        user = factory.make_User(username=username)
+        newpass = "secret"
+        stdin = io.StringIO(f"{username}:{newpass}")
+        self.patch(changepasswords, "fileinput").return_value = stdin
+        self.call_command("changepasswords")
+        self.assertTrue(reload_object(user).check_password(newpass))
 
 
 class TestApikeyCommand(MAASServerTestCase):

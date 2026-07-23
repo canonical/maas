@@ -10,6 +10,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, ForeignKey, Manager, TextField
 from OpenSSL import crypto
 
+from maascommon.fips import is_fips_enabled
 from maasserver import logger
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -26,7 +27,7 @@ class SSLKeyManager(Manager):
 def validate_ssl_key(value):
     """Validate that the given value contains a valid SSL key."""
     try:
-        crypto.load_certificate(crypto.FILETYPE_PEM, value)
+        cert = crypto.load_certificate(crypto.FILETYPE_PEM, value)
     except Exception:
         # crypto.load_certificate raises all sorts of exceptions.
         # Here, we catch them all and return a ValidationError since this
@@ -34,6 +35,33 @@ def validate_ssl_key(value):
         # the failure.
         logger.exception("Invalid SSL key.")
         raise ValidationError("Invalid SSL key.")  # noqa: B904
+
+    if not is_fips_enabled():
+        return
+
+    # FIPS checks using the pyOpenSSL cert already loaded above.
+    sig_algo = (
+        cert.get_signature_algorithm()
+        .decode("ascii", errors="replace")
+        .lower()
+    )
+    if "sha1" in sig_algo or "md5" in sig_algo:
+        raise ValidationError(
+            "Certificate signed with SHA-1 or MD5 is not FIPS-compliant.",
+            code="fips_violation",
+        )
+
+    pub = cert.get_pubkey()
+    if pub.type() == crypto.TYPE_DSA:
+        raise ValidationError(
+            "DSA certificates are not FIPS-compliant.",
+            code="fips_violation",
+        )
+    if pub.type() == crypto.TYPE_RSA and pub.bits() < 2048:
+        raise ValidationError(
+            f"RSA key size {pub.bits()} bits is below the FIPS minimum of 2048 bits.",
+            code="fips_violation",
+        )
 
 
 class SSLKey(CleanSave, TimestampedModel):
