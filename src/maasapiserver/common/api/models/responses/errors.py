@@ -120,7 +120,6 @@ class ValidationErrorResponse(JSONResponse):
             fips_violation=fips_violation,
         )
         encoded = jsonable_encoder(body_response)
-        # Strip null fips_violation so normal 422s stay clean.
         if fips_violation is None and "fips_violation" in encoded:
             del encoded["fips_violation"]
         super().__init__(

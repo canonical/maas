@@ -20,7 +20,7 @@ def log_fips_tls_handshake(
     protocol_version: str,
     peer: str,
     cert_issuer: str,
-    verify_enabled: bool,
+    cert_valid: bool,
 ) -> None:
     _log.info(
         "%s",
@@ -31,7 +31,7 @@ def log_fips_tls_handshake(
             "protocol_version": protocol_version,
             "peer": peer,
             "cert_issuer": cert_issuer,
-            "verify_enabled": verify_enabled,
+            "cert_valid": cert_valid,
         },
     )
 

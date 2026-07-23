@@ -24,7 +24,7 @@ class TestLogFipsTlsHandshake:
                 protocol_version="TLSv1.3",
                 peer="10.0.0.1:443",
                 cert_issuer="CN=My CA",
-                verify_enabled=True,
+                cert_valid=True,
             )
         assert len(caplog.records) == 1
         record = caplog.records[0]
@@ -38,7 +38,7 @@ class TestLogFipsTlsHandshake:
                 protocol_version="TLSv1.2",
                 peer="192.168.1.1:443",
                 cert_issuer="CN=Issuer",
-                verify_enabled=False,
+                cert_valid=False,
             )
         record = caplog.records[0]
         assert record.__dict__["event"] == FIPS_TLS_HANDSHAKE
@@ -46,7 +46,7 @@ class TestLogFipsTlsHandshake:
         assert record.__dict__["protocol_version"] == "TLSv1.2"
         assert record.__dict__["peer"] == "192.168.1.1:443"
         assert record.__dict__["cert_issuer"] == "CN=Issuer"
-        assert record.__dict__["verify_enabled"] is False
+        assert record.__dict__["cert_valid"] is False
 
 
 class TestLogFipsSshAuthentication:

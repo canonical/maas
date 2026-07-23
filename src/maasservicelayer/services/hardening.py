@@ -202,7 +202,7 @@ class HardeningValidator:
                     _violation(
                         code="WEAK_DH_PARAMS",
                         message=f"DH parameters are {bit_length} bits; minimum is 2048",
-                        resolution="Run: openssl dhparam -out dhparam.pem 2048, then set api_tls_dhparam in regiond.conf",
+                        resolution="Run: openssl dhparam -out dhparam.pem 2048, then run: maas config-hardening set api_tls_dhparam=<path>",
                         config_key="api_tls_dhparam",
                         file_path=str(dhparam_path),
                     )
@@ -212,7 +212,7 @@ class HardeningValidator:
                 _violation(
                     code="DH_PARAMS_PARSE_ERROR",
                     message=f"Failed to parse DH parameters file: {exc}",
-                    resolution="Set api_tls_dhparam in regiond.conf to a valid PEM DH parameters file",
+                    resolution="Run: maas config-hardening set api_tls_dhparam=<path> pointing to a valid PEM DH parameters file",
                     config_key="api_tls_dhparam",
                     file_path=str(dhparam_path),
                 )

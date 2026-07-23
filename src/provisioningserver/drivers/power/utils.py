@@ -46,7 +46,7 @@ def _make_tls_info_callback(hostname: str, verify: bool):
             protocol_version=version,
             peer=hostname,
             cert_issuer=cert_issuer,
-            verify_enabled=verify,
+            cert_valid=verify,
         )
 
     return _cb
