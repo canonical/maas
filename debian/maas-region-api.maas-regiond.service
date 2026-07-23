@@ -2,7 +2,7 @@
 Description=MAAS Region Controller
 Documentation=https://maas.io/docs/
 Requires=network-online.target maas-apiserver.service maas-openfga.service
-After=network-online.target
+After=network-online.target maas-apiserver.service maas-openfga.service
 ConditionPathExists=/etc/maas/regiond.conf
 
 [Service]
