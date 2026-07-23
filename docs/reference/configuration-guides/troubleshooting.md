@@ -2621,7 +2621,7 @@ If you need to modify your MAAS server's IP, reinitialize MAAS with the new IP a
 sudo maas init region --skip-admin
 ```
 
-Alternatively, update the region controller configuration and restart the snap.
+Alternatively, update the region controller configuration at `/var/snap/maas/current/regiond.conf` and restart the snap.
 
 ## Network booting IBM Power servers
 
