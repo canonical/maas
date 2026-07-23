@@ -8,12 +8,14 @@ from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.v3.api import services
 from maasapiserver.v3.auth.base import check_permissions
 from maascommon.fips import get_fips_status
+from maascommon.hardening import is_hardening_enabled
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.services import ServiceCollectionV3
 
 
 class SystemInfoResponse(BaseModel):
     fips_active: bool
+    hardening_active: bool
     version: str
 
 
@@ -44,5 +46,6 @@ class SystemHandler(Handler):
             )
         return SystemInfoResponse(
             fips_active=fips_status.enabled,
+            hardening_active=is_hardening_enabled(),
             version=version,
         )

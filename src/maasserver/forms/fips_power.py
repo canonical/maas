@@ -26,7 +26,6 @@ def validate_power_params_fips(
     if not is_fips_enabled():
         return
 
-    # Check driver FIPS support
     supported, reason = get_fips_status_for_driver(power_type)
     if not supported:
         alternatives = get_fips_compliant_alternatives()
@@ -37,7 +36,6 @@ def validate_power_params_fips(
             code="fips_violation",
         )
 
-    # IPMI: enforce cipher suite 17
     if power_type == "ipmi":
         cipher = str(power_parameters.get("cipher_suite_id", "17"))
         if cipher not in FIPS_ALLOWED_IPMI_CIPHERS:
