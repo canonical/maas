@@ -2706,7 +2706,6 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(node.osystem, "")
         self.assertEqual(node.distro_series, "")
         self.assertEqual(node.license_key, "")
-        self.assertFalse(node.install_rackd)
 
         expected_power_info = node.get_effective_power_info()
         node._power_control_node.assert_called_once_with(
@@ -2749,7 +2748,6 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(node.osystem, "")
         self.assertEqual(node.distro_series, "")
         self.assertEqual(node.license_key, "")
-        self.assertFalse(node.install_rackd)
         mock_stop.assert_called_once_with(node.owner)
         mock_finalize_release.assert_called_once_with()
 
@@ -2781,7 +2779,6 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(node.osystem, "")
         self.assertEqual(node.distro_series, "")
         self.assertEqual(node.license_key, "")
-        self.assertFalse(node.install_rackd)
         self.assertFalse(OwnerData.objects.filter(node=node).exists())
 
     def test_release_to_new_if_no_commissioning_data(self):
@@ -3058,17 +3055,6 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.release()
         self.assertTrue(node.netboot)
-
-    def test_release_sets_install_rackd_false(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_User()
-        )
-        self.patch(node, "_stop")
-        self.patch(node, "_set_status")
-        node.install_rackd = True
-        with post_commit_hooks:
-            node.release()
-        self.assertFalse(node.install_rackd)
 
     def test_release_logs_user_request_and_creates_sts_msg(self):
         owner = factory.make_User()

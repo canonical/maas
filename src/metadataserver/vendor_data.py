@@ -1,4 +1,4 @@
-# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """vendor-data for cloud-init's use."""
@@ -19,7 +19,6 @@ import yaml
 from maasserver import ntp
 from maasserver.enum import BRIDGE_TYPE, INTERFACE_TYPE
 from maasserver.models import Config, NodeKey, NodeMetadata
-from maasserver.models.controllerinfo import get_target_version
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import (
@@ -47,7 +46,6 @@ def get_vendor_data(node, proxy):
         generate_system_info(node),
         generate_snap_configuration(node, proxy),
         generate_ntp_configuration(node),
-        generate_rack_controller_configuration(node),
         generate_kvm_pod_configuration(node),
         generate_ephemeral_netplan_lock_removal(node),
         generate_ephemeral_deployment_network_configuration(node),
@@ -139,29 +137,6 @@ def generate_ntp_configuration(node):
     servers = [addr.format() for addr in sorted(addrs)]
     pools = sorted(other)  # Hostnames and FQDNs only.
     yield "ntp", {"servers": servers, "pools": pools}
-
-
-def generate_rack_controller_configuration(node):
-    """Generate cloud-init configuration to install the rack controller."""
-    # To determine this is a machine that's accessing the metadata after
-    # initial deployment, we use 'node.netboot'. This flag is set to off after
-    # curtin has installed the operating system and before the machine reboots
-    # for the first time.
-    if (
-        not node.netboot
-        and node.install_rackd
-        and node.osystem in ("ubuntu", "ubuntu-core")
-    ):
-        maas_url = get_node_maas_url(node)
-        secret = SecretManager().get_simple_secret("rpc-shared")
-        channel = str(get_target_version().snap_channel)
-        yield (
-            "runcmd",
-            [
-                f"snap install maas --channel={channel}",
-                f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
-            ],
-        )
 
 
 def generate_ephemeral_netplan_lock_removal(node):
