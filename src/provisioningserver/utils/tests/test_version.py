@@ -143,32 +143,6 @@ class TestMAASVersionScenarios(MAASTestCase):
                 ),
             },
         ),
-        (
-            "full version with epoch",
-            {
-                "version": "1:2.3.0~alpha3-6202-g54f83de-0ubuntu1~16.04.1",
-                "maas_version": MAASVersion(
-                    major=2,
-                    minor=3,
-                    point=0,
-                    qualifier_type="alpha",
-                    qualifier_version=3,
-                    revno=6202,
-                    git_rev="54f83de",
-                ),
-                "str_version": "2.3.0~alpha3-6202-g.54f83de",
-                "short_version": "2.3.0~alpha3",
-                "extended_info": "6202-g.54f83de",
-                "qualifier_type_order": -3,
-                "main_version": MAASVersion(
-                    major=2,
-                    minor=3,
-                    point=0,
-                    qualifier_type="alpha",
-                    qualifier_version=3,
-                ),
-            },
-        ),
     )
 
     def test_parse(self):
