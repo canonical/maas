@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.service_monitor`."""
@@ -178,7 +178,6 @@ class TestServiceMonitor(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def run_under_snap(self):
-        self.patch(snap, "running_in_snap").return_value = True
         # Snap always uses pebble
         self.patch(
             service_monitor_module, "_running_under_pebble"

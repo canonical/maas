@@ -1,4 +1,4 @@
-# Copyright 2016-2022 Canonical Ltd. This software is licnesed under the
+# Copyright 2016-2026 Canonical Ltd. This software is licnesed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -24,7 +24,6 @@ from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasservicelayer.models.agents import Agent
 from maasservicelayer.services.agents import AgentsService
 from metadataserver.builtin_scripts import load_builtin_scripts
-from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoSuchScope
 
 
@@ -533,9 +532,6 @@ class TestUpdateState(MAASServerTestCase):
         update_state(rack.system_id, "versions", versions)
         controller_info = rack.controllerinfo
         self.assertEqual(
-            controller_info.install_type, CONTROLLER_INSTALL_TYPE.SNAP
-        )
-        self.assertEqual(
             controller_info.version, "3.0.0~alpha1-111-g.deadbeef"
         )
         self.assertEqual(
@@ -545,39 +541,6 @@ class TestUpdateState(MAASServerTestCase):
         self.assertEqual(controller_info.snap_revision, "1234")
         self.assertEqual(controller_info.snap_update_revision, "5678")
         self.assertEqual(controller_info.snap_cohort, "abc123")
-
-    def test_scope_versions_deb(self):
-        rack = factory.make_RackController()
-        versions = {
-            "deb": {
-                "current": {
-                    "version": "3.0.0~alpha1-111-g.deadbeef",
-                    "origin": "http://archive.ubuntu.com/ focal/main",
-                },
-                "update": {
-                    "version": "3.0.0~alpha2-222-g.cafecafe",
-                    "origin": "http://archive.ubuntu.com/ focal/main",
-                },
-            },
-        }
-        update_state(rack.system_id, "versions", versions)
-        controller_info = rack.controllerinfo
-        self.assertEqual(
-            controller_info.install_type, CONTROLLER_INSTALL_TYPE.DEB
-        )
-        self.assertEqual(
-            controller_info.version, "3.0.0~alpha1-111-g.deadbeef"
-        )
-        self.assertEqual(
-            controller_info.update_version, "3.0.0~alpha2-222-g.cafecafe"
-        )
-        self.assertEqual(
-            controller_info.update_origin,
-            "http://archive.ubuntu.com/ focal/main",
-        )
-        self.assertEqual(controller_info.snap_revision, "")
-        self.assertEqual(controller_info.snap_update_revision, "")
-        self.assertEqual(controller_info.snap_cohort, "")
 
     def test_scope_versions_other(self):
         rack = factory.make_RackController()

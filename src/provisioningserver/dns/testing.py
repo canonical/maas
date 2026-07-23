@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test helpers for DNS."""
@@ -29,11 +29,3 @@ def patch_zone_file_config_path(testcase, config_dir=None):
 
 def patch_dns_rndc_port(testcase, port):
     testcase.useFixture(EnvironmentVariable("MAAS_DNS_RNDC_PORT", "%d" % port))
-
-
-def patch_dns_default_controls(testcase, enable):
-    testcase.useFixture(
-        EnvironmentVariable(
-            "MAAS_DNS_DEFAULT_CONTROLS", "1" if enable else "0"
-        )
-    )

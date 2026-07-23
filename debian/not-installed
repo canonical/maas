@@ -1,4 +1,0 @@
-# Remove unneeded test scripts
-/usr/bin/test.*
-/usr/bin/maas-sampledata
-

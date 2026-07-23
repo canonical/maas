@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Snap utilities."""
@@ -12,13 +12,7 @@ from typing import NamedTuple, Optional, Self
 
 import yaml
 
-from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.utils.shell import run_command
-
-
-def running_in_snap():
-    """Return True if running in a snap."""
-    return "SNAP" in os.environ
 
 
 class SnapPaths(NamedTuple):
@@ -135,11 +129,13 @@ def get_snap_mode():
     return mode
 
 
+# Key used to wrap the versions info in the RPC "versions" state payload.
+SNAP_VERSIONS_INFO_KEY = "snap"
+
+
 @dataclasses.dataclass
 class SnapVersionsInfo:
     """Information about snap versions."""
-
-    install_type = CONTROLLER_INSTALL_TYPE.SNAP
 
     current: SnapVersion
     channel: Optional[SnapChannel] = None
@@ -158,9 +154,6 @@ class SnapVersionsInfo:
 
 def get_snap_versions_info() -> Optional[SnapVersionsInfo]:
     """Return versions information for current snap and update."""
-    if not running_in_snap():
-        return None
-
     versions = SnapVersionsInfo(current=get_snap_version())
 
     result = run_command("snapctl", "refresh", "--pending")

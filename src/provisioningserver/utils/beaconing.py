@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for working with beaconing packets."""
@@ -23,7 +23,6 @@ from ulid import ULID
 
 from provisioningserver.path import get_path
 from provisioningserver.security import fernet_decrypt_psk, fernet_encrypt_psk
-from provisioningserver.utils import sudo
 from provisioningserver.utils.network import format_eui
 from provisioningserver.utils.pcap import PCAP, PCAPError
 from provisioningserver.utils.script import ActionScriptError
@@ -337,7 +336,7 @@ def run(
     if args.input_file is None:
         if args.interface is None:
             raise ActionScriptError("Required argument: interface")
-        cmd = sudo([get_path("/usr/lib/maas/beacon-monitor"), args.interface])
+        cmd = [get_path("/usr/lib/maas/beacon-monitor"), args.interface]
         network_monitor = subprocess.Popen(
             cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE
         )

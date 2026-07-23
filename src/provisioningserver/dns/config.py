@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DNS configuration."""
@@ -23,7 +23,6 @@ from provisioningserver.utils import load_template, locate_config
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.isc import read_isc_file
 from provisioningserver.utils.shell import call_and_check
-from provisioningserver.utils.snap import running_in_snap
 
 maaslog = get_maas_logger("dns")
 NAMED_CONF_OPTIONS = "named.conf.options"
@@ -155,16 +154,6 @@ def get_dns_rndc_port():
     return int(setting)
 
 
-def get_dns_default_controls():
-    """Include the default RNDC controls (default RNDC key on port 953)?"""
-    if running_in_snap():
-        # The default controls don't work in a confined snap, since it
-        # implicitly requires access to /etc/bind
-        return False
-    setting = os.getenv("MAAS_DNS_DEFAULT_CONTROLS", "1")
-    return setting == "1"
-
-
 class DNSConfigDirectoryMissing(Exception):
     """The directory where the config was about to be written is missing."""
 
@@ -207,9 +196,7 @@ def uncomment_named_conf(named_comment):
     return re.sub("^# ", "", named_comment, flags=re.MULTILINE)
 
 
-def generate_rndc(
-    port=953, key_name="rndc-maas-key", include_default_controls=True
-):
+def generate_rndc(port=953, key_name="rndc-maas-key"):
     """Use `rndc-confgen` (from bind9utils) to generate a rndc+named
     configuration.
 
@@ -233,12 +220,6 @@ def generate_rndc(
     rndc_content = rndc_content.decode("ascii")
     named_comment = extract_suggested_named_conf(rndc_content)
     named_conf = uncomment_named_conf(named_comment)
-
-    # The 'named' configuration contains a 'control' statement to enable
-    # remote management by MAAS.  If appropriate, add one to enable remote
-    # management by the init scripts as well.
-    if include_default_controls:
-        named_conf += DEFAULT_CONTROLS
 
     # Return a tuple of the two configurations.
     return rndc_content, named_conf
@@ -287,10 +268,7 @@ def set_up_rndc():
     """Writes out the two files needed to enable MAAS to use rndc commands:
     MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME.
     """
-    rndc_content, named_content = generate_rndc(
-        port=get_dns_rndc_port(),
-        include_default_controls=get_dns_default_controls(),
-    )
+    rndc_content, named_content = generate_rndc(port=get_dns_rndc_port())
 
     target_file = get_rndc_conf_path()
     with open(target_file, "w", encoding="ascii") as f:

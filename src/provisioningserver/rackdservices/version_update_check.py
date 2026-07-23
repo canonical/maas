@@ -1,4 +1,4 @@
-# Copyright 2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2021-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Service to periodically check for version updates."""
@@ -12,6 +12,7 @@ from twisted.internet.defer import inlineCallbacks
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateControllerState
 from provisioningserver.utils.services import SingleInstanceService
+from provisioningserver.utils.snap import SNAP_VERSIONS_INFO_KEY
 from provisioningserver.utils.twisted import pause
 from provisioningserver.utils.version import get_versions_info
 
@@ -51,7 +52,7 @@ class RackVersionUpdateCheckService(VersionUpdateCheckService):
         )
 
     def _get_state(self, versions_info):
-        return {versions_info.install_type: dataclasses.asdict(versions_info)}
+        return {SNAP_VERSIONS_INFO_KEY: dataclasses.asdict(versions_info)}
 
     @inlineCallbacks
     def _getRPCClient(self):

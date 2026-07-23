@@ -205,7 +205,6 @@ class ControllerHandler(NodeHandler):
             return {}
 
         versions = {
-            "install_type": info.install_type,
             "current": {
                 "version": info.version,
             },

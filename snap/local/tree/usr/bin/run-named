@@ -1,5 +1,5 @@
 #!/bin/bash -e
-#  Copyright 2017 Canonical Ltd.  This software is licensed under the
+#  Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 mkdir -p "$SNAP_DATA/bind"
@@ -26,7 +26,7 @@ sed "s|/usr/share/dns/|$SNAP/usr/share/dns/|g" \
     "$SNAP/etc/bind/named.conf.root-hints" > "$SNAP_DATA/bind/named.conf.root-hints"
 
 # Copy named.conf.local and append the MAAS zone config include.
-# This mirrors what edit_named_options does for the deb install.
+# This mirrors what edit_named_options does.
 cp "$SNAP/etc/bind/named.conf.local" "$SNAP_DATA/bind/named.conf.local"
 echo "include \"$SNAP_DATA/bind/named.conf.maas\";" >> "$SNAP_DATA/bind/named.conf.local"
 

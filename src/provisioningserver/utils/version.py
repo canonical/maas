@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Version utilities."""
@@ -9,9 +9,7 @@ from importlib.metadata import distribution
 import re
 from typing import Optional, Self
 
-from packaging.version import Version
-
-from provisioningserver.utils import deb, shell, snap
+from provisioningserver.utils import snap
 
 DISTRIBUTION = distribution("maas")
 
@@ -85,7 +83,6 @@ class MAASVersion:
     @classmethod
     def from_string(cls, version: str):
         r = re.compile(
-            r"((?P<epoch>\d+):)?"  # deb package epoch
             r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<point>\d+)"
             r"(~?(?P<qualifier_type>[a-z]+)(?P<qualifier_version>\d+))?"
             r"(-(?P<revno>\d+))?"  # number of commits in tree
@@ -119,72 +116,10 @@ class MAASVersion:
 @lru_cache(maxsize=1)
 def get_running_version() -> MAASVersion:
     """Return the version for the running MAAS."""
-    git_rev = None
-    revno = 0
-
-    version_str = ""
-    if snap.running_in_snap():
-        version_str = snap.get_snap_version().version
-    else:
-        deb_versions = deb.get_deb_versions_info()
-        if deb_versions:
-            version_str = deb_versions.current.version
-    if not version_str:
-        version_str = _get_version_from_python_package()
-        git_rev = _get_maas_repo_hash()
-        revno = _get_maas_repo_commit_count()
-
-    maas_version = MAASVersion.from_string(version_str)
-    if (not maas_version.git_rev) and git_rev:
-        maas_version = dataclasses.replace(maas_version, git_rev=git_rev)
-    if (not maas_version.revno) and revno:
-        maas_version = dataclasses.replace(maas_version, revno=revno)
-
-    return maas_version
+    version_str = snap.get_snap_version().version
+    return MAASVersion.from_string(version_str)
 
 
 def get_versions_info():
     """Get a versions info object based on the install type."""
-    versions_info = snap.get_snap_versions_info()
-    if not versions_info:
-        versions_info = deb.get_deb_versions_info()
-    return versions_info
-
-
-def _get_version_from_python_package():
-    """Return a string with the version from the python package."""
-    parsed_version = Version(DISTRIBUTION.version)
-    str_version = parsed_version.base_version
-    # pre is a tuple with qualifier and version, or None
-    if pre := parsed_version.pre:
-        qualifier, qual_version = pre
-        qualifiers = {"a": "alpha", "b": "beta"}
-        if qualifier in qualifiers:
-            qualifier = qualifiers[qualifier]
-        str_version += f"~{qualifier}{qual_version}"
-    return str_version
-
-
-def _get_maas_repo_hash():
-    """Return the Git hash for this running MAAS.
-
-    :return: A string if MAAS is running from a git working tree, else `None`.
-    """
-    return _git_cmd("rev-parse", "--short", "HEAD")
-
-
-def _get_maas_repo_commit_count():
-    """Return the number of commit counts in the git tree, or 0 when not in a tree."""
-    return _git_cmd("rev-list", "--count", "HEAD") or 0
-
-
-def _git_cmd(*cmd):
-    """Run a git command and return output, or None in case of error."""
-    try:
-        return (
-            shell.call_and_check(["git"] + list(cmd)).decode("ascii").strip()
-        )
-    except (shell.ExternalProcessError, FileNotFoundError):
-        # We may not be in a git repository, or any manner of other errors, or
-        # git is not installed.
-        return None
+    return snap.get_snap_versions_info()

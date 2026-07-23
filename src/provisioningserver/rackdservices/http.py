@@ -1,4 +1,4 @@
-# Copyright 2018-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """HTTP service for the rack controller."""
@@ -153,8 +153,7 @@ class RackHTTPService(TimerService):
             `_getConfiguration`.
         """
         d = deferToThread(self._configure, configuration.upstream_http)
-        # If running in snap and pebble, this will send a SIGHUP signal to nginx to reload the configuration.
-        # If running in deb, this will run systemctl reload.
+        # send a SIGHUP signal to nginx to reload the configuration.
         d.addCallback(lambda _: service_monitor.reloadService("http"))
         return d
 

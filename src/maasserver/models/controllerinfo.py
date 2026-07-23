@@ -1,11 +1,10 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
 from collections import Counter
 from datetime import datetime
 from enum import Enum
-import re
 from typing import List, NamedTuple, Optional
 
 from django.db.models import (
@@ -24,16 +23,8 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
 from maasserver.models.notification import Notification
 from maasserver.models.timestampedmodel import TimestampedModel
-from provisioningserver.enum import (
-    CONTROLLER_INSTALL_TYPE,
-    CONTROLLER_INSTALL_TYPE_CHOICES,
-)
 from provisioningserver.utils.snap import SnapChannel
 from provisioningserver.utils.version import MAASVersion
-
-PPA_URL_RE = re.compile(
-    r"http://ppa.launchpad.net/(?P<ppa>\w+/[\w\.]+)/ubuntu/ (?P<release>\w+)/main$"
-)
 
 
 class TargetVersion(NamedTuple):
@@ -59,31 +50,16 @@ class ControllerInfoManager(Manager):
 
     def set_versions_info(self, controller, versions):
         details = {
-            "install_type": versions.install_type,
             "version": str(MAASVersion.from_string(versions.current.version)),
-            # initialize other fields as null in case the controller is
-            # upgraded from one install type to another
             "update_version": "",
-            "update_origin": "",
-            "snap_cohort": "",
-            "snap_revision": "",
+            "snap_revision": versions.current.revision,
+            "snap_cohort": versions.cohort,
+            "update_origin": (
+                str(versions.channel) if versions.channel else ""
+            ),
             "snap_update_revision": "",
             "update_first_reported": None,
         }
-        if versions.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
-            details.update(
-                {
-                    "snap_revision": versions.current.revision,
-                    "snap_cohort": versions.cohort,
-                    "update_origin": (
-                        str(versions.channel) if versions.channel else ""
-                    ),
-                }
-            )
-        elif versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
-            details["update_origin"] = self._parse_deb_origin(
-                versions.current.origin
-            )
 
         if versions.update:
             details.update(
@@ -92,39 +68,21 @@ class ControllerInfoManager(Manager):
                         MAASVersion.from_string(versions.update.version)
                     ),
                     "update_first_reported": timezone.now(),
+                    "snap_update_revision": versions.update.revision,
                 }
             )
-            if versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
-                # override the update origin as it might be different from the
-                # installed one
-                details["update_origin"] = self._parse_deb_origin(
-                    versions.update.origin
-                )
-            elif versions.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
-                details["snap_update_revision"] = versions.update.revision
 
         info, created = self.get_or_create(defaults=details, node=controller)
         if created:
             return
 
         if versions.update:
-            if (
-                versions.update.version == info.update_version
-                and versions.install_type == info.install_type
-            ):
-                # if the version is the same but the install type has changed,
-                # still update the first reported time
+            if versions.update.version == info.update_version:
                 del details["update_first_reported"]
 
         for key, value in details.items():
             setattr(info, key, value)
         info.save()
-
-    def _parse_deb_origin(self, origin):
-        match = PPA_URL_RE.match(origin)
-        if match:
-            return f"ppa:{match['ppa']}"
-        return origin
 
 
 class ControllerInfo(CleanSave, TimestampedModel):
@@ -141,15 +99,9 @@ class ControllerInfo(CleanSave, TimestampedModel):
 
     version = CharField(max_length=255, blank=True, default="")
     update_version = CharField(max_length=255, blank=True, default="")
-    # the snap channel or deb repo for the update
+    # the snap channel for the update
     update_origin = CharField(max_length=255, blank=True, default="")
     update_first_reported = DateTimeField(blank=True, null=True)
-    install_type = CharField(
-        max_length=255,
-        blank=True,
-        choices=CONTROLLER_INSTALL_TYPE_CHOICES,
-        default=CONTROLLER_INSTALL_TYPE.UNKNOWN,
-    )
     snap_cohort = CharField(max_length=255, blank=True, default="")
     snap_revision = CharField(max_length=255, blank=True, default="")
     snap_update_revision = CharField(max_length=255, blank=True, default="")
@@ -168,26 +120,17 @@ class ControllerInfo(CleanSave, TimestampedModel):
     def get_version_issues(self, target: TargetVersion) -> List[str]:
         """Return a list of version-related issues compared to the target version."""
         issues = []
-        if self.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
-            if self.update_origin:
-                snap_channel = SnapChannel.from_string(self.update_origin)
-            else:
-                snap_channel = None
-                issues.append(VERSION_ISSUES.MISSING_CHANNEL.value)
+        if self.update_origin:
+            snap_channel = SnapChannel.from_string(self.update_origin)
+        else:
+            snap_channel = None
+            issues.append(VERSION_ISSUES.MISSING_CHANNEL.value)
 
-            if snap_channel and snap_channel != target.snap_channel:
-                issues.append(VERSION_ISSUES.DIFFERENT_CHANNEL.value)
-            if self.snap_cohort != target.snap_cohort:
-                issues.append(VERSION_ISSUES.DIFFERENT_COHORT.value)
+        if snap_channel and snap_channel != target.snap_channel:
+            issues.append(VERSION_ISSUES.DIFFERENT_CHANNEL.value)
+        if self.snap_cohort != target.snap_cohort:
+            issues.append(VERSION_ISSUES.DIFFERENT_COHORT.value)
         return issues
-
-
-def get_maas_install_type() -> str:
-    install_types = ControllerInfo.objects.exclude(
-        install_type=""
-    ).values_list("install_type", flat=True)
-    # all the controllers have the same install type, return the first
-    return install_types[0]
 
 
 def get_maas_version() -> Optional[MAASVersion]:
@@ -268,7 +211,6 @@ def get_target_version() -> Optional[TargetVersion]:
         return list(
             ControllerInfo.objects.filter(
                 Q(version=version) | Q(update_version=version),
-                install_type=CONTROLLER_INSTALL_TYPE.SNAP,
             )
             .exclude(**{field: ""})
             .values_list(field, flat=True)
@@ -317,14 +259,13 @@ def update_version_notifications():
 
 def _process_udpate_issues_notification():
     info = ControllerInfo.objects
-    multiple_install_types = info.values("install_type").distinct().count() > 1
     multiple_origins = info.values("update_origin").distinct().count() > 1
     multiple_cohorts = info.values("snap_cohort").distinct().count() > 1
     # note that `version` and `update_version` are compared here as strings
     # from the database. It's possible the same effective version is reported
-    # as different strings because of deb epoch, but it doesn't really matter
-    # in this case as other discrepancies would trigger the "different
-    # installation sources" notification before
+    # as different strings, but it doesn't really matter in this case as other
+    # discrepancies would trigger the "different installation sources"
+    # notification before
     multiple_versions = info.values("version").distinct().count() > 1
     multiple_upgrade_versions = (
         info.exclude(update_version="")
@@ -353,7 +294,7 @@ def _process_udpate_issues_notification():
                 ident=UPGRADE_ISSUE_NOTIFICATION_IDENT, **defaults
             )
 
-    if any((multiple_install_types, multiple_origins, multiple_cohorts)):
+    if any((multiple_origins, multiple_cohorts)):
         set_warning(
             "install_source", "Controllers have different installation sources"
         )

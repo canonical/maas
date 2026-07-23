@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.syslog.config`."""
@@ -11,7 +11,6 @@ from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.syslog import config
-from provisioningserver.utils import snap
 
 
 class TestGetConfigDir(MAASTestCase):
@@ -53,20 +52,7 @@ class TestWriteConfig(MAASTestCase):
                 return
         self.fail(f"{match} was not present in: {lines}")
 
-    def test_packaging_maas_user_group_with_drop(self):
-        config.write_config(False)
-        needles = [
-            "$FileOwner maas",
-            "$FileGroup maas",
-            "$PrivDropToUser maas",
-            "$PrivDropToGroup maas",
-        ]
-        contents = self.syslog_path.read_text()
-        for needle in needles:
-            self.assertIn(needle, contents)
-
     def test_snap_root_user_group_no_drop(self):
-        self.patch(snap, "running_in_snap").return_value = True
         config.write_config(False)
         needles = ["$FileOwner root", "$FileGroup root"]
         contents = self.syslog_path.read_text()

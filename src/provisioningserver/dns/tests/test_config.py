@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test cases for dns.config"""
@@ -20,7 +20,6 @@ from provisioningserver.dns import config
 from provisioningserver.dns.config import (
     clean_old_zone_files,
     compose_config_path,
-    DEFAULT_CONTROLS,
     DNSConfig,
     DNSConfigDirectoryMissing,
     DNSConfigFail,
@@ -41,7 +40,6 @@ from provisioningserver.dns.config import (
 )
 from provisioningserver.dns.testing import (
     patch_dns_config_path,
-    patch_dns_default_controls,
     patch_zone_file_config_path,
 )
 from provisioningserver.dns.zoneconfig import (
@@ -134,19 +132,6 @@ class TestHelpers(MAASTestCase):
         self.useFixture(EnvironmentVariable("MAAS_DNS_RNDC_PORT", "%d" % port))
         self.assertEqual(port, config.get_dns_rndc_port())
 
-    def test_get_dns_default_controls_defaults_to_affirmative(self):
-        self.useFixture(EnvironmentVariable("MAAS_DNS_DEFAULT_CONTROLS"))
-        self.assertTrue(config.get_dns_default_controls())
-
-    def test_get_dns_default_controls_defaults_always_false_in_snap(self):
-        self.useFixture(EnvironmentVariable("MAAS_DNS_DEFAULT_CONTROLS", "1"))
-        self.patch(config, "running_in_snap").return_value = True
-        self.assertFalse(config.get_dns_default_controls())
-
-    def test_get_dns_default_controls_checks_environ_first(self):
-        self.useFixture(EnvironmentVariable("MAAS_DNS_DEFAULT_CONTROLS", "0"))
-        self.assertFalse(config.get_dns_default_controls())
-
     def test_get_zone_file_config_dir_defaults_to_var_lib_bind_maas(self):
         self.useFixture(EnvironmentVariable("MAAS_ZONE_FILE_CONFIG_DIR"))
         self.assertEqual(
@@ -163,9 +148,7 @@ class TestHelpers(MAASTestCase):
 
 class TestRNDCUtilities(MAASTestCase):
     def test_generate_rndc_returns_configurations(self):
-        rndc_content, named_content = generate_rndc(
-            include_default_controls=False
-        )
+        rndc_content, named_content = generate_rndc()
         # rndc_content and named_content look right.
         self.assertIn("# Start of rndc.conf", rndc_content)
         self.assertIn("controls {", named_content)
@@ -294,15 +277,6 @@ class TestRNDCUtilities(MAASTestCase):
 
         clean_old_zone_files()
         self.assertIsNotNone(os.stat(child_dir))
-
-    def test_rndc_config_includes_default_controls(self):
-        dns_conf_dir = patch_dns_config_path(self)
-        patch_dns_default_controls(self, enable=True)
-        set_up_rndc()
-        rndc_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
-        with open(rndc_file, encoding="ascii") as stream:
-            conf_content = stream.read()
-        self.assertIn(DEFAULT_CONTROLS, conf_content)
 
     def test_execute_rndc_command_executes_command(self):
         fake_dir = patch_dns_config_path(self)

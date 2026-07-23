@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DNS zone generator."""
@@ -87,8 +87,7 @@ WARNING_MESSAGE = (
     "The DNS server will use the address '%s',  which is inside the "
     "loopback network.  This may not be a problem if you're not using "
     "MAAS's DNS features or if you don't rely on this information. "
-    "Consult the command: 'maas-region local_config_set --maas-url'"
-    "(deb installs) or 'maas config --maas-url' (snap installs)"
+    "Consult the command: 'maas config --maas-url' "
     "for details on how to set the MAAS URL."
 )
 
@@ -103,8 +102,7 @@ def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):
     """Return a single DNS server IP address (based on address family).
 
     That address is derived from the config maas_url or rack_controller.url.
-    Consult the command: 'maas-region local_config_set --maas-url' (deb
-    installs) or 'maas config --maas-url' (snap installs) for details on how
+    Consult the command: 'maas config --maas-url' for details on how
     to set the MAAS URL.
 
     :param rack_controller: Optional rack controller to which the DNS server
@@ -133,8 +131,7 @@ def get_dns_server_addresses(
     """Return the DNS server's IP addresses.
 
     That address is derived from the config maas_url or rack_controller.url.
-    Consult the command: 'maas-region local_config_set --maas-url' (deb
-    installs) or 'maas config --maas-url' (snap installs) for details on how
+    Consult the command: 'maas config --maas-url' for details on how
     to set the MAAS URL.
 
     :param rack_controller: Optional rack controller to which the DNS server
@@ -165,9 +162,8 @@ def get_dns_server_addresses(
             "Unable to find MAAS server IP address: %s. MAAS's DNS server "
             "requires this IP address for the NS records in its zone files. "
             "Make sure that the configuration setting for the MAAS URL has "
-            "the correct hostname. Consult the command 'maas-region "
-            "local_config_set --maas-url' (deb installs) or 'maas config "
-            "--maas-url' (snap installs) for more details." % e.strerror
+            "the correct hostname. Consult the command 'maas config "
+            "--maas-url' for more details." % e.strerror
         )
 
     if filter_allowed_dns:

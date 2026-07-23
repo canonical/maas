@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generic utilities for dealing with files and the filesystem."""
@@ -13,7 +13,6 @@ from pathlib import Path
 from random import randint
 from shutil import copyfile
 import string
-from subprocess import PIPE, Popen
 import tempfile
 import threading
 from time import sleep
@@ -21,9 +20,8 @@ from time import sleep
 from twisted.python.filepath import FilePath
 from twisted.python.lockfile import FilesystemLock as TwistedFilesystemLock
 
-from provisioningserver.path import get_data_path, get_path
-from provisioningserver.utils import snap, sudo
-from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.path import get_data_path
+from provisioningserver.utils import snap
 from provisioningserver.utils.twisted import retries
 
 
@@ -41,13 +39,10 @@ def get_maas_common_command():
         from maastesting import dev_root
 
         return os.path.join(dev_root, "usr/bin/maas-common")
-    elif snap.running_in_snap():
-        # there's no maas-common in the snap as maas-rack is always present
-        return os.path.join(
-            snap.SnapPaths.from_environ().snap, "usr/bin/maas-rack"
-        )
-    else:
-        return get_path("usr/lib/maas/maas-common")
+    # there's no maas-common in the snap as maas-rack is always present
+    return os.path.join(
+        snap.SnapPaths.from_environ().snap, "usr/bin/maas-rack"
+    )
 
 
 def get_root_path():
@@ -56,30 +51,6 @@ def get_root_path():
     $SNAP if running in a snap, otherwise /.
     """
     return snap.SnapPaths.from_environ().snap or Path("/")
-
-
-def get_library_script_path(name):
-    """Return path to a "library script".
-
-    By convention (here) scripts are always installed to ``/usr/lib/maas`` on
-    the target machine.
-
-    The FHS (Filesystem Hierarchy Standard) defines ``/usr/lib/`` as the
-    location for libraries used by binaries in ``/usr/bin`` and ``/usr/sbin``,
-    hence the term "library script".
-
-    In production mode this will return ``/usr/lib/maas/$name``, but in
-    development mode it will return
-    ``$dev_root/package-files/usr/lib/maas/$name``.
-    """
-    from provisioningserver.config import is_dev_environment
-
-    if is_dev_environment():
-        from maastesting import dev_root
-
-        return os.path.join(dev_root, "package-files/usr/lib/maas", name)
-    else:
-        return os.path.join(get_path("/usr/lib/maas"), name)
 
 
 def _write_temp_file(content, filename):
@@ -264,92 +235,6 @@ def atomic_symlink(source, link_name):
         # garbage does not accumulate.
         os.unlink(prov)
         raise
-
-
-def incremental_write(content, filename, mode=0o600, uid=None, gid=None):
-    """Write the given `content` into the file `filename`.  In the past, this
-    would potentially change modification time to arbitrary values.
-
-    :type content: `bytes`
-    :param mode: Access permissions for the file.
-    """
-    # We used to change modification time on the files, in an attempt to out
-    # smart BIND into loading zones on file systems where time was not granular
-    # enough.  BIND got smarter about how it loads zones and remembers when it
-    # last loaded the zone: either the then-current time, or the mtime of the
-    # file, whichever is later.  When BIND then gets a reload request, it
-    # compares the current time to the loadtime for the domain, and skips it if
-    # the file is not new.  If we set mtime in the past, then zones don't load.
-    # If we set it in the future, then we WILL sometimes hit the race condition
-    # where BIND looks at the time after we atomic_write, but before we manage
-    # to set the time into the future.  N.B.: /etc on filesystems with 1-second
-    # granularity are no longer supported by MAAS.  The good news is that since
-    # 2.6, linux has supported nanosecond-granular time.  As of bind9
-    # 1:9.10.3.dfsg.P2-5, BIND even uses it.
-    atomic_write(content, filename, mode=mode, uid=uid, gid=gid)
-
-
-def _with_dev_python(*command):
-    # Avoid circular imports.
-    from provisioningserver.config import is_dev_environment
-
-    if is_dev_environment():
-        from maastesting import dev_root
-
-        interpreter = os.path.join(dev_root, "bin", "py")
-        command = interpreter, *command
-    return command
-
-
-def sudo_write_file(filename, contents, mode=0o644):
-    """Write (or overwrite) file as root.  USE WITH EXTREME CARE.
-
-    Runs an atomic update using non-interactive `sudo`.  This will fail if
-    it needs to prompt for a password.
-
-    When running in a snap or devel mode, this function calls
-    `atomic_write` directly.
-
-    :type contents: `bytes`.
-    """
-    from provisioningserver.config import is_dev_environment
-
-    if not isinstance(contents, bytes):
-        raise TypeError(f"Content must be bytes, got: {contents!r}")
-    if snap.running_in_snap():
-        atomic_write(contents, filename, mode=mode)
-    else:
-        maas_write_file = get_library_script_path("maas-write-file")
-        command = _with_dev_python(maas_write_file, filename, "%.4o" % mode)
-        if not is_dev_environment():
-            command = sudo(command)
-        proc = Popen(command, stdin=PIPE)
-        stdout, stderr = proc.communicate(contents)
-        if proc.returncode != 0:
-            raise ExternalProcessError(proc.returncode, command, stderr)
-
-
-def sudo_delete_file(filename):
-    """Delete file as root.  USE WITH EXTREME CARE.
-
-    Runs an atomic update using non-interactive `sudo`.  This will fail if
-    it needs to prompt for a password.
-
-    When running in a snap this function calls `atomic_write` directly.
-    """
-    from provisioningserver.config import is_dev_environment
-
-    if snap.running_in_snap():
-        atomic_delete(filename)
-    else:
-        maas_delete_file = get_library_script_path("maas-delete-file")
-        command = _with_dev_python(maas_delete_file, filename)
-        if not is_dev_environment():
-            command = sudo(command)
-        proc = Popen(command)
-        stdout, stderr = proc.communicate()
-        if proc.returncode != 0:
-            raise ExternalProcessError(proc.returncode, command, stderr)
 
 
 def read_text_file(path, encoding="utf-8"):

@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for ``provisioningserver.utils.beaconing``."""
@@ -250,23 +250,7 @@ class TestObserveBeaconsCommand(MAASTestCase):
         output = io.StringIO()
         run(args, output=output)
         popen.assert_called_once_with(
-            ["sudo", "-n", "/usr/lib/maas/beacon-monitor", "eth0"],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-        )
-
-    def test_calls_subprocess_for_interface_sudo(self):
-        parser = ArgumentParser()
-        add_arguments(parser)
-        args = parser.parse_args(["eth0"])
-        popen = self.patch(beaconing_module.subprocess, "Popen")
-        popen.return_value.poll = Mock()
-        popen.return_value.poll.return_value = None
-        popen.return_value.stdout = io.BytesIO(BEACON_PCAP)
-        output = io.StringIO()
-        run(args, output=output)
-        popen.assert_called_once_with(
-            ["sudo", "-n", "/usr/lib/maas/beacon-monitor", "eth0"],
+            ["/usr/lib/maas/beacon-monitor", "eth0"],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
         )

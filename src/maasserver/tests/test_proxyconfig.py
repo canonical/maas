@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the proxyconfig."""
@@ -18,7 +18,6 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from provisioningserver.proxy import config
-from provisioningserver.utils import snap
 
 wait_for_reactor = wait_for()
 
@@ -165,19 +164,8 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_calls_reloadService(self):
-        self.patch(settings, "PROXY_CONNECT", True)
-        yield deferToDatabase(self.make_subnet)
-        yield proxyconfig.proxy_update_config()
-        self.service_monitor.reloadService.assert_called_once_with(
-            "proxy", if_on=True
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_calls_restartService(self):
         self.patch(settings, "PROXY_CONNECT", True)
-        self.patch(snap, "running_in_snap").return_value = True
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
         self.service_monitor.restartService.assert_called_once_with(
@@ -186,16 +174,16 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_doesnt_call_reloadService_when_PROXY_CONNECT_False(self):
+    def test_doesnt_call_restartService_when_PROXY_CONNECT_False(self):
         self.patch(settings, "PROXY_CONNECT", False)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
-        self.service_monitor.reloadService.assert_not_called()
+        self.service_monitor.restartService.assert_not_called()
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_doesnt_call_reloadService_when_reload_proxy_False(self):
+    def test_doesnt_call_restartService_when_reload_proxy_False(self):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config(reload_proxy=False)
-        self.service_monitor.reloadService.assert_not_called()
+        self.service_monitor.restartService.assert_not_called()

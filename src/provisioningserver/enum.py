@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the rack contoller (and possibly the region)."""
@@ -35,17 +35,6 @@ def enum_choices(
         for attr, value in enum.__dict__.items()
         if not attr.startswith("_")
     )
-
-
-class CONTROLLER_INSTALL_TYPE:
-    """MAAS controller install type."""
-
-    UNKNOWN = ""
-    SNAP = "snap"
-    DEB = "deb"
-
-
-CONTROLLER_INSTALL_TYPE_CHOICES = enum_choices(CONTROLLER_INSTALL_TYPE)
 
 
 class MACVLAN_MODE:

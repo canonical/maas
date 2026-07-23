@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for filesystem-related utilities."""
@@ -10,7 +10,6 @@ import os.path
 from pathlib import Path
 import random
 import stat
-from subprocess import CalledProcessError, PIPE
 import tempfile
 import tokenize
 import types
@@ -26,7 +25,7 @@ from maastesting.fixtures import CaptureStandardIO
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import provisioningserver.config
-from provisioningserver.path import get_maas_data_path, get_tentative_data_path
+from provisioningserver.path import get_tentative_data_path
 import provisioningserver.utils.fs as fs_module
 from provisioningserver.utils.fs import (
     atomic_copy,
@@ -35,15 +34,11 @@ from provisioningserver.utils.fs import (
     atomic_write,
     FileLock,
     FilesystemLock,
-    get_library_script_path,
     get_maas_common_command,
     get_root_path,
-    incremental_write,
     NamedLock,
     read_text_file,
     RunLock,
-    sudo_delete_file,
-    sudo_write_file,
     SystemLock,
     write_text_file,
 )
@@ -369,44 +364,7 @@ class TestAtomicSymlink(MAASTestCase):
         self.assertTrue(os.path.samefile(target_path, link_path))
 
 
-class TestIncrementalWrite(MAASTestCase):
-    """Test `incremental_write`."""
-
-    def test_incremental_write_updates_modification_time(self):
-        content = factory.make_bytes()
-        filename = self.make_file(contents=factory.make_string())
-        # Pretend that this file is older than it is.  So that
-        # incrementing its mtime won't put it in the future.
-        old_mtime = os.stat(filename).st_mtime - 10
-        os.utime(filename, (old_mtime, old_mtime))
-        incremental_write(content, filename)
-        self.assertTrue(os.stat(filename).st_mtime > old_mtime)
-
-    def test_incremental_write_does_not_set_future_time(self):
-        content = factory.make_bytes()
-        filename = self.make_file(contents=factory.make_string())
-        # Pretend that this file is older than it is.  So that
-        # incrementing its mtime won't put it in the future.
-        old_mtime = os.stat(filename).st_mtime + 10
-        os.utime(filename, (old_mtime, old_mtime))
-        incremental_write(content, filename)
-        self.assertTrue(os.stat(filename).st_mtime <= old_mtime)
-
-    def test_incremental_write_sets_permissions(self):
-        atomic_file = self.make_file()
-        mode = 0o323
-        incremental_write(factory.make_bytes(), atomic_file, mode=mode)
-        self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
-
-
 class TestGetMAASProvisionCommand(MAASTestCase):
-    def test_returns_just_command_for_production(self):
-        self.patch(provisioningserver.config, "is_dev_environment")
-        provisioningserver.config.is_dev_environment.return_value = False
-        self.assertEqual(
-            "/usr/lib/maas/maas-common", get_maas_common_command()
-        )
-
     def test_returns_maas_rack_for_snap(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = False
@@ -422,149 +380,6 @@ class TestGetMAASProvisionCommand(MAASTestCase):
             dev_root.rstrip("/") + "/usr/bin/maas-common",
             get_maas_common_command(),
         )
-
-
-class TestGetLibraryScriptPath(MAASTestCase):
-    """Tests for `get_library_script_path`."""
-
-    def test_returns_usr_lib_maas_name_for_production(self):
-        self.patch(provisioningserver.config, "is_dev_environment")
-        provisioningserver.config.is_dev_environment.return_value = False
-        script_name = factory.make_name("script")
-        self.assertEqual(
-            "/usr/lib/maas/" + script_name,
-            get_library_script_path(script_name),
-        )
-
-    def test_returns_full_path_for_development(self):
-        self.patch(provisioningserver.config, "is_dev_environment")
-        provisioningserver.config.is_dev_environment.return_value = True
-        script_name = factory.make_name("script")
-        self.assertEqual(
-            f"{dev_root}/package-files/usr/lib/maas/{script_name}",
-            get_library_script_path(script_name),
-        )
-
-
-def patch_popen(test, returncode=0):
-    process = test.patch_autospec(fs_module, "Popen").return_value
-    process.communicate.return_value = "output", "error output"
-    process.returncode = returncode
-    return process
-
-
-def patch_sudo(test):
-    # Ensure that the `sudo` function always prepends a call to `sudo -n` to
-    # the command; is_dev_environment will otherwise influence it.
-    sudo = test.patch_autospec(fs_module, "sudo")
-    sudo.side_effect = lambda command: ["sudo", "-n", *command]
-
-
-def patch_dev(test, is_dev_environment):
-    ide = test.patch_autospec(provisioningserver.config, "is_dev_environment")
-    ide.return_value = bool(is_dev_environment)
-
-
-class TestSudoWriteFile(MAASTestCase):
-    """Testing for `sudo_write_file`."""
-
-    def test_calls_atomic_write(self):
-        patch_popen(self)
-        patch_sudo(self)
-        patch_dev(self, False)
-
-        path = os.path.join(self.make_dir(), factory.make_name("file"))
-        contents = factory.make_bytes()
-        sudo_write_file(path, contents)
-
-        fs_module.Popen.assert_called_once_with(
-            [
-                "sudo",
-                "-n",
-                get_library_script_path("maas-write-file"),
-                path,
-                "0644",
-            ],
-            stdin=PIPE,
-        )
-
-    def test_calls_atomic_write_dev_mode(self):
-        patch_popen(self)
-        patch_dev(self, True)
-
-        path = os.path.join(self.make_dir(), factory.make_name("file"))
-        contents = factory.make_bytes()
-        sudo_write_file(path, contents)
-
-        called_command = fs_module.Popen.call_args[0][0]
-        self.assertNotIn("sudo", called_command)
-
-    def test_rejects_non_bytes_contents(self):
-        self.assertRaises(
-            TypeError, sudo_write_file, self.make_file(), factory.make_string()
-        )
-
-    def test_catches_failures(self):
-        patch_popen(self, 1)
-        self.assertRaises(
-            CalledProcessError,
-            sudo_write_file,
-            self.make_file(),
-            factory.make_bytes(),
-        )
-
-    def test_can_write_file_in_development(self):
-        filename = get_maas_data_path("dhcpd.conf")
-        contents = factory.make_bytes()  # Binary safe.
-        mode = random.randint(0o400, 0o1000)  # Always u+r.
-        sudo_write_file(filename, contents, mode)
-        with open(filename, "rb") as fh:
-            self.assertEqual(fh.read(), contents)
-        self.assertEqual(mode, os.stat(filename).st_mode & 0o777)
-
-
-class TestSudoDeleteFile(MAASTestCase):
-    """Testing for `sudo_delete_file`."""
-
-    def test_calls_atomic_delete(self):
-        patch_popen(self)
-        patch_sudo(self)
-        patch_dev(self, False)
-
-        path = os.path.join(self.make_dir(), factory.make_name("file"))
-        sudo_delete_file(path)
-
-        fs_module.Popen.assert_called_once_with(
-            [
-                "sudo",
-                "-n",
-                get_library_script_path("maas-delete-file"),
-                path,
-            ]
-        )
-
-    def test_calls_atomic_delete_dev_mode(self):
-        patch_popen(self)
-        patch_dev(self, True)
-
-        path = os.path.join(self.make_dir(), factory.make_name("file"))
-        sudo_delete_file(path)
-
-        called_command = fs_module.Popen.call_args[0][0]
-        self.assertNotIn("sudo", called_command)
-
-    def test_catches_failures(self):
-        patch_popen(self, 1)
-        self.assertRaises(
-            CalledProcessError, sudo_delete_file, self.make_file()
-        )
-
-    def test_can_delete_file_in_development(self):
-        filename = get_maas_data_path("dhcpd.conf")
-        with open(filename, "wb") as fd:
-            fd.write(factory.make_bytes())
-        sudo_delete_file(filename)
-        self.assertFalse(os.path.exists(filename))
 
 
 def load_script(filename):

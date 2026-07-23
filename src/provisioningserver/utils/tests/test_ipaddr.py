@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import json
@@ -128,7 +128,6 @@ class TestGetIPAddr(MAASTestCase):
     """Tests for `get_ip_addr`, `get_mac_addresses`."""
 
     def test_get_ip_addr_calls_methods(self):
-        self.patch(ipaddr_module, "running_in_snap").return_value = False
         self.patch(
             ipaddr_module, "_get_resources_bin_path"
         ).return_value = "/path/to/amd64"
@@ -138,20 +137,6 @@ class TestGetIPAddr(MAASTestCase):
         )
         # all interfaces from binary output are included in result
         self.assertCountEqual(SAMPLE_LXD_NETWORKS, get_ip_addr())
-        patch_call_and_check.assert_called_once_with(
-            ["sudo", "/path/to/amd64"]
-        )
-
-    def test_no_use_sudo_in_snap(self):
-        self.patch(
-            ipaddr_module, "_get_resources_bin_path"
-        ).return_value = "/path/to/amd64"
-        patch_call_and_check = self.patch(ipaddr_module, "call_and_check")
-        patch_call_and_check.return_value = json.dumps(
-            {"networks": SAMPLE_LXD_NETWORKS}
-        )
-        self.patch(ipaddr_module, "running_in_snap").return_value = True
-        get_ip_addr()
         patch_call_and_check.assert_called_once_with(["/path/to/amd64"])
 
     def test_get_mac_addresses_returns_all_mac_addresses(self):

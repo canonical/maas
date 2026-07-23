@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities."""
@@ -42,8 +42,7 @@ def absolute_reverse(
     the configured MAAS URL.
 
     For details on how to set the MAAS URL, consult the command:
-    'maas-region local_config_set --default-url' for deb installs, or
-    'maas config --maas-url' for snap installs.
+    'maas config --maas-url'.
 
     :param view_name: Django's view function name/reference or URL pattern
         name for which to compute the absolute URL.

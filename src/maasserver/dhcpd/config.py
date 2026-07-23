@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Write config output for ISC DHCPD."""
@@ -355,7 +355,6 @@ def get_config(
     hosts: Sequence[dict],
     omapi_key: str,
     ipv6: bool,
-    running_in_snap: bool,
 ) -> str:
     """Return a DHCP config file based on the supplied parameters.
 
@@ -372,7 +371,6 @@ def get_config(
             shared_networks,
             hosts,
             omapi_key,
-            running_in_snap,
         )
     else:
         return get_config_v4(
@@ -382,7 +380,6 @@ def get_config(
             shared_networks,
             hosts,
             omapi_key,
-            running_in_snap,
         )
 
 
@@ -409,7 +406,6 @@ def get_config_v4(
     shared_networks: Sequence[dict],
     hosts: Sequence[dict],
     omapi_key: str,
-    running_in_snap: bool,
 ) -> str:
     """Return a DHCP config file based on the supplied parameters.
 
@@ -425,7 +421,6 @@ def get_config_v4(
         "oneline": normalise_whitespace,
         "commalist": normalise_any_iterable_to_comma_list,
         "quoted_commalist": normalise_any_iterable_to_quoted_comma_list,
-        "running_in_snap": running_in_snap,
     }
 
     for shared_network in shared_networks:
@@ -459,7 +454,6 @@ def get_config_v6(
     shared_networks: Sequence[dict],
     hosts: Sequence[dict],
     omapi_key: str,
-    running_in_snap: bool,
 ) -> str:
     """Return a DHCP config file based on the supplied parameters.
 
@@ -473,7 +467,6 @@ def get_config_v6(
         "oneline": normalise_whitespace,
         "commalist": normalise_any_iterable_to_comma_list,
         "quoted_commalist": normalise_any_iterable_to_quoted_comma_list,
-        "running_in_snap": running_in_snap,
     }
 
     shared_networks = _process_network_parameters_v6(
