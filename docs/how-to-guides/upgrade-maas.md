@@ -11,18 +11,9 @@ This guide outlines the steps to upgrade MAAS to the latest version
 
 ## Upgrade commands
 
-- Snap
-
-  ```bash
-  sudo snap refresh maas --channel=<version>/stable
-  ```
-
-- Debian package (PPA)
-
-  ```bash
-  sudo apt-add-repository ppa:maas/<version>
-  sudo apt update && sudo apt upgrade maas
-  ```
+```bash
+sudo snap refresh maas --channel=<version>/stable
+```
 
 ## Version-specific notes
 

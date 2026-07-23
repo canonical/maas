@@ -273,19 +273,12 @@ maas $PROFILE maas set-config name="remote_syslog" value="
 
 ## Direct log access
 
-Logs can be found at the following paths depending on your installation type (snap or package):
+Logs can be found at the following paths for snap installations:
 
-- Snap installation:
-  - /var/snap/maas/common/log/maas.log
-  - /var/snap/maas/common/log/regiond.log
-  - /var/snap/maas/common/log/rackd.log
-  - /var/snap/maas/common/log/rsyslog/$MACHINE_NAME/$RELEVANT_DATE/messages
-
-- Package installation:
-  - /var/log/maas/maas.log
-  - /var/log/maas/regiond.log
-  - /var/log/maas/rackd.log
-  - /var/log/maas/rsyslog/$MACHINE_NAME/$RELEVANT_DATE/messages
+- /var/snap/maas/common/log/maas.log
+- /var/snap/maas/common/log/regiond.log
+- /var/snap/maas/common/log/rackd.log
+- /var/snap/maas/common/log/rsyslog/$MACHINE_NAME/$RELEVANT_DATE/messages
 
 Logs can be extensive and challenging to search. The MAAS web UI does not categorize events by type.
 

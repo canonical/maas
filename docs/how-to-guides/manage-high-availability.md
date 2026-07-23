@@ -8,24 +8,12 @@ This page explains how to enable and manage HA for both rack and region controll
 
 Adding a second rack controller automatically enables HA.
 
-### Snap install
-
 ```shell
 sudo snap install maas
 sudo maas init rack --maas-url $MAAS_URL --secret $SECRET
 ```
 
-### Package install
-
-```shell
-sudo apt install maas-rack-controller
-sudo maas-rack register --url $MAAS_URL --secret $SECRET
-```
-
-The `$SECRET` is stored at:
-
-- Snap: `/var/snap/maas/common/maas/secret`
-- Package: `/var/lib/maas/secret`
+The `$SECRET` is stored at `/var/snap/maas/common/maas/secret`.
 
 You can also follow the UI path: *Controllers* > *Add rack controller*.
 
@@ -78,27 +66,7 @@ Moving between MAAS instances or versions is not supported and risks data loss. 
 
 Region controllers coordinate racks and present the API/UI.
 
-### Add a region controller
-
-On a secondary host:
-
-```text
-sudo apt install maas-region-api
-```
-
-Copy `regiond.conf` from the primary API server, set ownership, and point it to the primary PostgreSQL database:
-
-```text
-sudo systemctl stop maas-regiond
-sudo scp ubuntu@$PRIMARY_API_SERVER:regiond.conf /etc/maas/regiond.conf
-sudo chown root:maas /etc/maas/regiond.conf
-sudo chmod 640 /etc/maas/regiond.conf
-sudo maas-region local_config_set --database-host $PRIMARY_PG_SERVER
-sudo systemctl restart bind9
-sudo systemctl start maas-regiond
-```
-
-Check logs for errors.
+To add a region controller using snaps, follow the [installation guide](/how-to-guides/get-started/install-maas.md) on a secondary host. Then configure it to use the primary PostgreSQL database.
 
 ### Enable HA PostgreSQL
 
@@ -111,20 +79,7 @@ All region controllers share the same PostgreSQL DB.
    sudo systemctl restart postgresql
    ```
 
-2. Add the region controller:
-
-   ```shell
-   sudo apt install maas-region-api
-   ```
-
-3. Configure it:
-
-   ```shell
-   sudo scp ubuntu@$PRIMARY_API:/etc/maas/regiond.conf /etc/maas/
-   sudo maas-region local_config_set --database-host $PRIMARY_PG_SERVER
-   sudo systemctl restart bind9
-   sudo systemctl start maas-regiond
-   ```
+2. Configure the secondary region controller to point to the primary PostgreSQL database by modifying its configuration.
 
 ### Boost region performance
 
@@ -173,10 +128,7 @@ Enable via:
 
 ### Multiple region endpoints
 
-Define endpoints manually:
-
-- Snap: `/var/snap/maas/current/rackd.conf`
-- Package: `/etc/maas/rackd.conf`
+Define endpoints manually in `/var/snap/maas/current/rackd.conf`:
 
 ```yaml
 maas_url:
