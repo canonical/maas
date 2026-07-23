@@ -99,15 +99,3 @@ You have just created a profile in the MAAS CLI called `admin`, logged in using 
 Open a browser and navigate to `http://<maas-ip>:5240/MAAS`, replacing `<maas-ip>` with the IP address of your MAAS region controller. If you are on the same machine as the machine running MAAS, use `http://localhost:5240/MAAS`.
 
 Log in with the administrator credentials you created in the previous steps.
-
-## Alternative installation methods
-
-An alternative to installing the MAAS snap is to install the MAAS deb package. Install it with the following commands:
-
-```bash
-sudo apt-add-repository ppa:maas/3.7
-sudo apt update
-sudo apt -y install maas
-```
-
-Once installed, [install PostgreSQL](#install-postgresql) and [initialize MAAS](#initialize-maas) as described in the previous sections.
