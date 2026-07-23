@@ -2615,11 +2615,13 @@ Ensure that your subnets don't overlap to avoid deployment failures. Check and d
 
 ## Need to reconfigure server IP address
 
-If you need to modify your MAAS server's IP, simply re-run the setup:
+If you need to modify your MAAS server's IP, reinitialize MAAS with the new IP address:
 
-```text
-sudo dpkg-reconfigure maas-region-controller
+```bash
+sudo maas init region --skip-admin
 ```
+
+Alternatively, update the region controller configuration and restart the snap.
 
 ## Network booting IBM Power servers
 
