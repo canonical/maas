@@ -41,6 +41,7 @@ def setup_testenv(monkeypatch, tmpdir):
     monkeypatch.setenv("SNAP_COMMON", str(snap_common))
     monkeypatch.setenv("SNAP_VERSION", "3.0.0-456-g.deadbeef")
     monkeypatch.setenv("SNAP_REVISION", "1234")
+    monkeypatch.setenv("SNAP_ARCH", "amd64")
 
     from provisioningserver.utils import version
 

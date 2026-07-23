@@ -25,7 +25,7 @@ from maastesting.fixtures import CaptureStandardIO
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import provisioningserver.config
-from provisioningserver.path import get_maas_data_path, get_tentative_data_path
+from provisioningserver.path import get_tentative_data_path
 import provisioningserver.utils.fs as fs_module
 from provisioningserver.utils.fs import (
     atomic_copy,
