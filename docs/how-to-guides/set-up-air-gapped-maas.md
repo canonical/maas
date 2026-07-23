@@ -4,8 +4,8 @@ Operating MAAS without internet access is possible, but requires planning. Four 
 
 1. Snap updates via the Enterprise Store.
 2. Local package repository
-3. MAAS-specific images from a local mirror.
-4. Other OS images from various sources.
+3. MAAS-specific images from a local mirror
+4. Other OS images from various sources
 
 Some of these resources can also utilize a transparent proxy, minimizing impact on your existing MAAS setup.
 
