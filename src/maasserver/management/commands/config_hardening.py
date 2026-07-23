@@ -131,12 +131,10 @@ class Command(BaseCommandWithConnection):
             )
             raise SystemExit(1)
 
-        if _store_for(key) != "config":
-            self.stderr.write(
-                f"Key '{key}' is stored in regiond.conf and cannot be set"
-                " via this command. Edit regiond.conf directly.\n"
-            )
-            raise SystemExit(1)
+        if _store_for(key) == "conf":
+            self._write_conf_key(key, value)
+            self.stdout.write(f"Set {key} in regiond.conf\n")
+            return
 
         try:
             if key == "hardening_enabled":

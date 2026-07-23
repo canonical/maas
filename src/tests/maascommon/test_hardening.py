@@ -5,7 +5,11 @@
 import pytest
 
 import maascommon.hardening as _hardening
-from maascommon.hardening import configure_hardening, is_hardening_enabled
+from maascommon.hardening import (
+    configure_hardening,
+    HardeningMode,
+    is_hardening_enabled,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -21,28 +25,28 @@ def reset_hardening_state():
 class TestConfigureHardening:
     def test_fips_host_activates_regardless_of_setting(self, monkeypatch):
         monkeypatch.setattr(_hardening, "is_fips_enabled", lambda: True)
-        configure_hardening("off")
+        configure_hardening(HardeningMode.OFF)
         assert is_hardening_enabled() is True
 
     def test_explicit_on_activates_on_non_fips_host(self, monkeypatch):
         monkeypatch.setattr(_hardening, "is_fips_enabled", lambda: False)
-        configure_hardening("on")
+        configure_hardening(HardeningMode.ON)
         assert is_hardening_enabled() is True
 
     def test_auto_is_inactive_on_non_fips_host(self, monkeypatch):
         monkeypatch.setattr(_hardening, "is_fips_enabled", lambda: False)
-        configure_hardening("auto")
+        configure_hardening(HardeningMode.AUTO)
         assert is_hardening_enabled() is False
 
-    def test_setting_is_case_insensitive(self, monkeypatch):
+    def test_none_is_inactive_on_non_fips_host(self, monkeypatch):
         monkeypatch.setattr(_hardening, "is_fips_enabled", lambda: False)
-        configure_hardening("ON")
-        assert is_hardening_enabled() is True
+        configure_hardening(None)
+        assert is_hardening_enabled() is False
 
     def test_second_call_is_ignored(self, monkeypatch):
         monkeypatch.setattr(_hardening, "is_fips_enabled", lambda: False)
-        configure_hardening("on")
+        configure_hardening(HardeningMode.ON)
         assert is_hardening_enabled() is True
-        configure_hardening("off")
+        configure_hardening(HardeningMode.OFF)
         # Second call must not change the already-configured state.
         assert is_hardening_enabled() is True

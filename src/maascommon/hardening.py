@@ -2,6 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 """Runtime security-hardening mode determination for MAAS."""
 
+from enum import StrEnum
 import logging
 
 from maascommon.fips import is_fips_enabled
@@ -13,7 +14,13 @@ _hardening_active: bool = False
 _hardening_configured: bool = False
 
 
-def configure_hardening(hardening_enabled: "str | None") -> None:
+class HardeningMode(StrEnum):
+    AUTO = "auto"
+    ON = "on"
+    OFF = "off"
+
+
+def configure_hardening(hardening_enabled: HardeningMode | None) -> None:
     """Set the process-wide hardening state.
 
     Must be called once at process startup, before any service reads
@@ -34,9 +41,7 @@ def configure_hardening(hardening_enabled: "str | None") -> None:
         )
         return
     fips = is_fips_enabled()
-    _hardening_active = (
-        fips or (hardening_enabled or "").strip().lower() == "on"
-    )
+    _hardening_active = fips or hardening_enabled == HardeningMode.ON
     _hardening_configured = True
     _logger.info(
         "hardening_mode_determined: setting=%s fips_enabled=%s "

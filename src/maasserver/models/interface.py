@@ -1689,6 +1689,7 @@ class Interface(CleanSave, TimestampedModel):
                 count=F("count") + 1,
                 updated=timezone.now(),
             )
+            neighbour.refresh_from_db()
         return neighbour
 
     def update_mdns_entry(self, avahi_json: dict):
