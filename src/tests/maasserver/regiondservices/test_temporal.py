@@ -92,15 +92,15 @@ def _run_configure(
 def test_tls_disabled_for_non_encrypting_modes(sslmode, tmp_path, monkeypatch):
     monkeypatch.setenv("MAAS_TEMPORAL_CONFIG_DIR", str(tmp_path))
     environ = _run_configure(_db_with_sslmode(sslmode), monkeypatch)
-    assert environ["tls_enabled"] is False
-    assert environ["enable_host_verification"] is False
+    assert environ["tls_enabled"] == "false"
+    assert environ["enable_host_verification"] == "false"
 
 
 def test_tls_enabled_no_host_verif_for_require(tmp_path, monkeypatch):
     monkeypatch.setenv("MAAS_TEMPORAL_CONFIG_DIR", str(tmp_path))
     environ = _run_configure(_db_with_sslmode("require"), monkeypatch)
-    assert environ["tls_enabled"] is True
-    assert environ["enable_host_verification"] is False
+    assert environ["tls_enabled"] == "true"
+    assert environ["enable_host_verification"] == "false"
 
 
 @pytest.mark.parametrize("sslmode", ["verify-ca", "verify-full"])
@@ -109,8 +109,8 @@ def test_tls_enabled_with_host_verif_for_verify_modes(
 ):
     monkeypatch.setenv("MAAS_TEMPORAL_CONFIG_DIR", str(tmp_path))
     environ = _run_configure(_db_with_sslmode(sslmode), monkeypatch)
-    assert environ["tls_enabled"] is True
-    assert environ["enable_host_verification"] is True
+    assert environ["tls_enabled"] == "true"
+    assert environ["enable_host_verification"] == "true"
 
 
 def test_tls_disabled_when_options_has_no_sslmode(tmp_path, monkeypatch):
@@ -119,7 +119,7 @@ def test_tls_disabled_when_options_has_no_sslmode(tmp_path, monkeypatch):
     db = {k: dict(v) for k, v in _BASE_DATABASES.items()}
     db["default"]["OPTIONS"] = {}
     environ = _run_configure(db, monkeypatch)
-    assert environ["tls_enabled"] is False
+    assert environ["tls_enabled"] == "false"
 
 
 def test_tls_disabled_when_databases_has_no_options(tmp_path, monkeypatch):
@@ -128,7 +128,7 @@ def test_tls_disabled_when_databases_has_no_options(tmp_path, monkeypatch):
     db = {k: dict(v) for k, v in _BASE_DATABASES.items()}
     del db["default"]["OPTIONS"]
     environ = _run_configure(db, monkeypatch)
-    assert environ["tls_enabled"] is False
+    assert environ["tls_enabled"] == "false"
 
 
 def test_cert_fields_forwarded_when_present(tmp_path, monkeypatch):
