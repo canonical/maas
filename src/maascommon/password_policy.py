@@ -8,8 +8,11 @@ import re
 
 @dataclass
 class PasswordValidationResult:
-    is_valid: bool
     errors: list[str] = field(default_factory=list)
+
+    @property
+    def is_valid(self) -> bool:
+        return not self.errors
 
 
 def validate_password_complexity(password: str) -> PasswordValidationResult:
@@ -39,7 +42,7 @@ def validate_password_complexity(password: str) -> PasswordValidationResult:
             " (any non-alphanumeric character)"
         )
 
-    return PasswordValidationResult(is_valid=len(errors) == 0, errors=errors)
+    return PasswordValidationResult(errors=errors)
 
 
 def enforce_password_complexity(password: str) -> None:

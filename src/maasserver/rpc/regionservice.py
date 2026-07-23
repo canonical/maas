@@ -336,7 +336,7 @@ class Region(SecuredRPCProtocol):
             if failure.check(DatabaseError) and is_retryable_failure(
                 failure.value
             ):
-                log.msg(
+                log.info(
                     "Discarding retryable DB failure in ReportNeighbours "
                     "after exhausting retries: {err}",
                     err=failure.value,

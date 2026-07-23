@@ -41,7 +41,7 @@ from maasapiserver.v3.middlewares.auth import (
 )
 from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
-from maascommon.hardening import configure_hardening
+from maascommon.hardening import configure_hardening, HardeningMode
 from maascommon.worker import set_max_workers_count
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
@@ -89,7 +89,7 @@ async def prepare_app(
     # In maasserver we have a startup lock. If it is set, we have to wait to start maasapiserver as well.
     await wait_for_startup(db)
 
-    _hardening_value = "auto"
+    _hardening_value: HardeningMode | None = None
     try:
         async with db.engine.connect() as conn:
             async with conn.begin():
@@ -100,7 +100,9 @@ async def prepare_app(
                         context
                     ),
                 )
-                _hardening_value = str(await service.get("hardening_enabled"))
+                val = await service.get("hardening_enabled")
+                if val is not None:
+                    _hardening_value = HardeningMode(str(val))
     except Exception:
         pass
     configure_hardening(_hardening_value)

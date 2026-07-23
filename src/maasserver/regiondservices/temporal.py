@@ -103,8 +103,10 @@ class RegionTemporalService(Service):
             "key_file": key_file,
             "cacert_file": cacert_file,
             "temporal_bind": temporal_bind,
-            "tls_enabled": tls_enabled,
-            "enable_host_verification": enable_host_verification,
+            "tls_enabled": "true" if tls_enabled else "false",
+            "enable_host_verification": "true"
+            if enable_host_verification
+            else "false",
             "database_sslcert": database_sslcert,
             "database_sslkey": database_sslkey,
             "database_sslrootcert": database_sslrootcert,

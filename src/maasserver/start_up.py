@@ -259,16 +259,16 @@ def start_up(master=False):
 @transactional
 def inner_start_up(master=False):
     """Startup jobs that must run serialized w.r.t. other starting servers."""
-    # All commissioning and testing scripts are stored in the database. For
-    # a commissioning ScriptSet to be created Scripts must exist first. Call
-    # this early, only on the master process, to ensure they exist and are
-    # only created once. If get_or_create_running_controller() is called before
-    # this it will fail on first run.
     configure_hardening(read_hardening_enabled_from_db())
     if is_fips_enabled():
         Config.objects.set_config("fips_enabled", True)
 
     if master:
+        # All commissioning and testing scripts are stored in the database. For
+        # a commissioning ScriptSet to be created Scripts must exist first. Call
+        # this early, only on the master process, to ensure they exist and are
+        # only created once. If get_or_create_running_controller() is called before
+        # this it will fail on first run.
         load_builtin_scripts()
 
     # Ensure the this region is represented in the database. The first regiond

@@ -23,4 +23,4 @@ class PowerTypesService(Service):
 
     async def list(self) -> list[dict[str, Any]]:
         """Return all power types with FIPS classification fields."""
-        return await self.repository.list()
+        return self.repository.list()

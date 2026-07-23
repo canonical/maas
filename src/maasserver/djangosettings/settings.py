@@ -84,7 +84,7 @@ def _get_default_db_config(config: RegionConfiguration) -> dict:
     maas_id = MAAS_ID.get() or "NO_ID"
     application_name = f"maas-regiond-{maas_id}"
 
-    return {
+    db = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": database_name,
         "USER": database_user,
@@ -99,23 +99,15 @@ def _get_default_db_config(config: RegionConfiguration) -> dict:
             "keepalives_count": config.database_keepalive_count,
             "application_name": application_name,
             "sslmode": config.database_sslmode,
-            **(
-                {"sslcert": config.database_sslcert}
-                if config.database_sslcert
-                else {}
-            ),
-            **(
-                {"sslkey": config.database_sslkey}
-                if config.database_sslkey
-                else {}
-            ),
-            **(
-                {"sslrootcert": config.database_sslrootcert}
-                if config.database_sslrootcert
-                else {}
-            ),
         },
     }
+    if config.database_sslcert:
+        db["OPTIONS"]["sslcert"] = config.database_sslcert
+    if config.database_sslkey:
+        db["OPTIONS"]["sslkey"] = config.database_sslkey
+    if config.database_sslrootcert:
+        db["OPTIONS"]["sslrootcert"] = config.database_sslrootcert
+    return db
 
 
 # Enable HA which uses the new rack controller and BMC code paths. This is a

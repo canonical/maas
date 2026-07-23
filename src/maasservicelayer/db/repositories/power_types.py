@@ -19,14 +19,14 @@ class AbstractPowerTypeRepository(ABC):
     """Read interface for power-type data."""
 
     @abstractmethod
-    async def list(self) -> list[dict[str, Any]]:
+    def list(self) -> list[dict[str, Any]]:
         """Return all power types with FIPS classification fields."""
 
 
 class PowerTypeRepository(AbstractPowerTypeRepository):
     """Reads power-type data from the in-process driver registry."""
 
-    async def list(self) -> list[dict[str, Any]]:
+    def list(self) -> list[dict[str, Any]]:
         power_types = PowerDriverRegistry.get_schema(
             detect_missing_packages=False
         )
