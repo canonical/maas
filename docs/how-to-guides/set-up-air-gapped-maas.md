@@ -1,22 +1,29 @@
 # Set up air-gapped MAAS
 
-Operating MAAS without internet access is possible, but requires planning. Three key elements must be in place for a seamless experience:
+Operating MAAS without internet access is possible, but requires planning. Four key elements must be in place for a seamless experience:
 
 1. Snap updates via the Enterprise Store.
-2. MAAS-specific images from a local mirror.
-3. Other OS images from various sources.
+2. Local package repository
+3. MAAS-specific images from a local mirror.
+4. Other OS images from various sources.
 
 Some of these resources can also utilize a transparent proxy, minimizing impact on your existing MAAS setup.
 
 ## Enterprise Store
 
-To manage snaps in an air-gapped setup, use the Enterprise Store. This eliminates the need for devices to connect to the internet. Steps to get this up:
+To manage snaps in an air-gapped setup, use the Enterprise Store. This  eliminates the need for devices to connect to the internet. Steps to get this up:
 
 1. Register the Enterprise Store on a machine with internet access.
 2. Secure your deployment with HTTP.
 3. Populate the store with snaps needed for your MAAS environment.
 
 For detailed guidance, see the [official documentation](https://documentation.ubuntu.com/enterprise-store).
+
+## Local package update
+
+Utilize the `reprepro` command to manage local Debian package repositories. It's the recommended way, as `apt-mirror` is no longer maintained. `Reprepro` does not require an external database and manages package signatures efficiently.
+
+For easier access, you might want to use a transparent proxy.
 
 ## Local image mirror
 
