@@ -4,6 +4,7 @@ build-essential
 curl
 dos2unix
 git
+golang-go
 libnss-wrapper
 psmisc
 python3-jinja2
