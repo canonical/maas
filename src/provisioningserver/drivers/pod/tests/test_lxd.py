@@ -995,6 +995,7 @@ class TestLXDPodDriver(MAASTestCase):
                 boot=True,
                 attach_type=InterfaceAttachType.BRIDGE,
                 attach_name="lxdbr0",
+                name="eth0",
             ),
         )
         self.assertEqual(
@@ -1006,6 +1007,7 @@ class TestLXDPodDriver(MAASTestCase):
                 boot=False,
                 attach_type=InterfaceAttachType.BRIDGE,
                 attach_name="br1",
+                name="eth1",
             ),
         )
         self.assertEqual(
@@ -1017,6 +1019,7 @@ class TestLXDPodDriver(MAASTestCase):
                 boot=False,
                 attach_type=InterfaceAttachType.MACVLAN,
                 attach_name="eno2",
+                name="eth2",
             ),
         )
         self.assertEqual(
@@ -1028,6 +1031,7 @@ class TestLXDPodDriver(MAASTestCase):
                 boot=False,
                 attach_type=InterfaceAttachType.SRIOV,
                 attach_name="eno3",
+                name="eth3",
             ),
         )
         self.assertEqual(
@@ -1039,6 +1043,7 @@ class TestLXDPodDriver(MAASTestCase):
                 boot=False,
                 attach_type=InterfaceAttachType.SRIOV,
                 attach_name="eno3",
+                name="eth4",
             ),
         )
         self.assertEqual(
@@ -1050,6 +1055,7 @@ class TestLXDPodDriver(MAASTestCase):
                 boot=False,
                 attach_type=InterfaceAttachType.SRIOV,
                 attach_name="eno3",
+                name="eth5",
             ),
         )
         self.assertEqual([], discovered_machine.tags)
