@@ -63,7 +63,6 @@ async def _create_test_node_entry(
         "previous_status": NodeStatus.NEW,
         "default_user": "",
         "cpu_speed": 0,
-        "install_rackd": False,
         "locked": False,
         "instance_power_parameters": {},
         "install_kvm": False,
