@@ -13,7 +13,6 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.proxy.config import write_config
-from provisioningserver.utils import snap
 from provisioningserver.utils.twisted import asynchronous
 
 maaslog = get_maas_logger("dns")
@@ -62,18 +61,9 @@ def proxy_update_config(reload_proxy=True):
             # XXX: andreserl 2016-05-09 bug=1687620. When running in a snap,
             # supervisord tracks services. It does not support reloading.
             # Instead, we need to restart the service.
-            if snap.running_in_snap():
-                d.addCallback(
-                    lambda _: service_monitor.restartService(
-                        "proxy", if_on=True
-                    )
-                )
-            else:
-                d.addCallback(
-                    lambda _: service_monitor.reloadService(
-                        "proxy", if_on=True
-                    )
-                )
+            d.addCallback(
+                lambda _: service_monitor.restartService("proxy", if_on=True)
+            )
         return d
     else:
         return succeed(None)

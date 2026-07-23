@@ -14,7 +14,7 @@ from provisioningserver.config import is_dev_environment
 from provisioningserver.utils.arch import get_architecture
 from provisioningserver.utils.lxd import parse_lxd_networks
 from provisioningserver.utils.shell import call_and_check
-from provisioningserver.utils.snap import running_in_snap, SnapPaths
+from provisioningserver.utils.snap import SnapPaths
 
 
 def get_ip_addr():
@@ -24,7 +24,7 @@ def get_ip_addr():
         gathered.
     """
     cmd_path = _get_resources_bin_path()
-    command = [cmd_path] if running_in_snap() else ["sudo", cmd_path]
+    command = [cmd_path]
     output = call_and_check(command)
     ifaces = parse_lxd_networks(json.loads(output)["networks"])
     _update_interface_type(ifaces)

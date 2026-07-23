@@ -42,7 +42,6 @@ class CONTROLLER_INSTALL_TYPE:
 
     UNKNOWN = ""
     SNAP = "snap"
-    DEB = "deb"
 
 
 CONTROLLER_INSTALL_TYPE_CHOICES = enum_choices(CONTROLLER_INSTALL_TYPE)

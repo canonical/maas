@@ -17,7 +17,6 @@ from provisioningserver.rackdservices.version_update_check import (
 from provisioningserver.rpc import clusterservice
 from provisioningserver.rpc.region import UpdateControllerState
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
-from provisioningserver.utils.deb import DebVersion, DebVersionsInfo
 from provisioningserver.utils.snap import (
     SnapChannel,
     SnapVersion,
@@ -74,25 +73,6 @@ class TestRackVersionUpdateCheckService(MAASTestCase):
         protocol, connecting = fixture.makeEventLoop(UpdateControllerState)
         self.addCleanup((yield connecting))
         return protocol
-
-    def test_get_state_in_deb(self):
-        service = RackVersionUpdateCheckService(None)
-        versions_info = DebVersionsInfo(
-            current=DebVersion(
-                version="3.0.0~alpha1-111-g.deadbeef",
-                origin="http://archive.ubuntu.com/ubuntu focal/main",
-            ),
-            update=DebVersion(
-                version="3.0.0~alpha2-222-g.cafecafe",
-                origin="http://archive.ubuntu.com/ubuntu focal/main",
-            ),
-        )
-        self.assertEqual(
-            service._get_state(versions_info),
-            {
-                "deb": dataclasses.asdict(versions_info),
-            },
-        )
 
     def test_get_versions_state_in_snap(self):
         service = RackVersionUpdateCheckService(None)

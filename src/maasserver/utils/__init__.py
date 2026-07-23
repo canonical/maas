@@ -42,8 +42,7 @@ def absolute_reverse(
     the configured MAAS URL.
 
     For details on how to set the MAAS URL, consult the command:
-    'maas-region local_config_set --default-url' for deb installs, or
-    'maas config --maas-url' for snap installs.
+    'maas config --maas-url'.
 
     :param view_name: Django's view function name/reference or URL pattern
         name for which to compute the absolute URL.

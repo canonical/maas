@@ -16,11 +16,6 @@ from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.utils.shell import run_command
 
 
-def running_in_snap():
-    """Return True if running in a snap."""
-    return "SNAP" in os.environ
-
-
 class SnapPaths(NamedTuple):
     """Paths inside a snap."""
 
@@ -158,9 +153,6 @@ class SnapVersionsInfo:
 
 def get_snap_versions_info() -> Optional[SnapVersionsInfo]:
     """Return versions information for current snap and update."""
-    if not running_in_snap():
-        return None
-
     versions = SnapVersionsInfo(current=get_snap_version())
 
     result = run_command("snapctl", "refresh", "--pending")

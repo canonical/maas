@@ -36,9 +36,6 @@ class TestRefresh(MAASTestCase):
         # When running scripts in a tty MAAS outputs the results to help with
         # debug. Quiet the output when running in tests.
         self.patch(sys, "stdout")
-        # by default, fake running in snap so sudo is not used
-        self.mock_running_in_snap = self.patch(refresh, "running_in_snap")
-        self.mock_running_in_snap.return_value = True
         self.urlopen_calls = []
         self.patch(
             maas_api_helper.urllib.request, "urlopen"
@@ -431,54 +428,6 @@ class TestRefresh(MAASTestCase):
         script_path = Path(self.tmpdir) / script_name
         mock_popen.assert_called_once_with(
             [str(script_path)],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=ANY,
-        )
-
-    def test_refresh_runs_script_sudo_if_no_snap(self):
-        self.mock_running_in_snap.return_value = False
-        mock_popen = self.patch(refresh, "Popen")
-        mock_popen.side_effect = OSError()
-        self.patch(refresh, "signal")
-        script_name = factory.make_name("script_name")
-        script_content = dedent(
-            """\
-        #!/bin/bash
-        echo 'test script'
-        echo '{status: skipped}' > $RESULT_PATH
-        """
-        )
-        info_scripts = self.create_scripts_success(
-            script_name, script_content=script_content
-        )
-
-        system_id = factory.make_name("system_id")
-        consumer_key = factory.make_name("consumer_key")
-        token_key = factory.make_name("token_key")
-        token_secret = factory.make_name("token_secret")
-        url = factory.make_url()
-
-        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
-            refresh.refresh(
-                system_id, consumer_key, token_key, token_secret, url
-            )
-        script_path = Path(self.tmpdir) / script_name
-        mock_popen.assert_called_once_with(
-            [
-                "sudo",
-                "--preserve-env=MAAS_BASE_URL",
-                "--preserve-env=MAAS_RESOURCES_FILE",
-                "--preserve-env=OUTPUT_COMBINED_PATH",
-                "--preserve-env=OUTPUT_STDOUT_PATH",
-                "--preserve-env=OUTPUT_STDERR_PATH",
-                "--preserve-env=RESULT_PATH",
-                "--preserve-env=TMPDIR",
-                "--preserve-env=MAAS_MACHINE_EXTRA_FILE",
-                "--preserve-env=MAAS_STORAGE_CONFIG_FILE",
-                str(script_path),
-            ],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

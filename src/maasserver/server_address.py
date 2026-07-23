@@ -44,8 +44,7 @@ def get_maas_facing_server_addresses(
 
     The address is taken from the configured MAAS URL or `controller.url`.
     For details on how to set the MAAS URL, consult the command:
-    'maas-region local_config_set --default-url' for deb installs, or
-    'maas config --maas-url' for snap installs.
+    'maas config --maas-url'.
 
     If there is more than one IP address for the host, all of the addresses for
     the appropriate family will be returned.  (If link_local is False, then

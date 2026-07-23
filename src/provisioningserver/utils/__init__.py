@@ -11,8 +11,6 @@ from typing import Tuple
 
 import tempita
 
-from provisioningserver.utils import snap
-
 
 def locate_config(*path: Tuple[str]) -> str:
     """Return the location of a given config file or directory.
@@ -107,11 +105,12 @@ def flatten(*things):
 
 
 def sudo(command_args):
-    """Wrap the command arguments in a sudo command, if not in debug mode."""
-    if snap.running_in_snap():
-        return command_args
-    else:
-        return ["sudo", "-n", *command_args]
+    """Return the command arguments unchanged.
+
+    MAAS always runs confined in a snap where commands are executed as root,
+    so no privilege escalation is required.
+    """
+    return command_args
 
 
 class CircularDependency(ValueError):

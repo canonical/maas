@@ -56,7 +56,6 @@ def write_config(
         "modified": str(datetime.date.today()),
         "fqdn": socket.getfqdn(),
         "cidrs": allowed_cidrs,
-        "running_in_snap": snap.running_in_snap(),
         "snap_path": snap_paths.snap,
         "snap_data_path": snap_paths.data,
         "snap_common_path": snap_paths.common,

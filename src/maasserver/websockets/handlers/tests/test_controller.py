@@ -20,7 +20,6 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.controller import ControllerHandler
 from maastesting.djangotestcase import count_queries
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
-from provisioningserver.utils.deb import DebVersionsInfo
 from provisioningserver.utils.snap import SnapVersionsInfo
 
 
@@ -287,38 +286,6 @@ class TestControllerHandler(MAASServerTestCase):
                 },
                 "origin": "3.0/stable",
                 "snap_cohort": "abc123",
-                "up_to_date": False,
-                "issues": [],
-            },
-        )
-
-    def test_dehydrate_with_versions_deb(self):
-        owner = factory.make_admin()
-        handler = ControllerHandler(owner, {}, None)
-        rack = factory.make_RackController()
-        versions = DebVersionsInfo(
-            current={
-                "version": "3.0.0~alpha1-111-g.deadbeef",
-                "origin": "http://archive.ubuntu.com main/focal",
-            },
-            update={
-                "version": "3.0.0~alpha2-222-g.cafecafe",
-                "origin": "http://archive.ubuntu.com main/focal",
-            },
-        )
-        ControllerInfo.objects.set_versions_info(rack, versions)
-        list_results = handler.list({})
-        self.assertEqual(
-            list_results[0]["versions"],
-            {
-                "install_type": "deb",
-                "current": {
-                    "version": "3.0.0~alpha1-111-g.deadbeef",
-                },
-                "update": {
-                    "version": "3.0.0~alpha2-222-g.cafecafe",
-                },
-                "origin": "http://archive.ubuntu.com main/focal",
                 "up_to_date": False,
                 "issues": [],
             },

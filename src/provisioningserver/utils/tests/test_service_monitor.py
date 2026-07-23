@@ -178,7 +178,6 @@ class TestServiceMonitor(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def run_under_snap(self):
-        self.patch(snap, "running_in_snap").return_value = True
         # Snap always uses pebble
         self.patch(
             service_monitor_module, "_running_under_pebble"

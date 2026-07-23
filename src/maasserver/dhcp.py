@@ -40,7 +40,6 @@ from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils.orm import transactional
 from maasserver.workflow import start_workflow
 from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
-from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.text import split_string_list
@@ -909,10 +908,6 @@ def generate_dhcp_configuration(rack_controller):
 
     result = {}
 
-    running_in_snap = (
-        rack_controller.info.install_type == CONTROLLER_INSTALL_TYPE.SNAP
-    )
-
     result["dhcpd"] = base64.b64encode(
         get_config_v4(
             template_name="dhcpd.conf.template",
@@ -921,7 +916,6 @@ def generate_dhcp_configuration(rack_controller):
             shared_networks=config.shared_networks_v4,
             hosts=config.hosts_v4,
             omapi_key=config.omapi_key,
-            running_in_snap=running_in_snap,
         ).encode("utf-8")
     ).decode("utf-8")
 
@@ -937,7 +931,6 @@ def generate_dhcp_configuration(rack_controller):
             shared_networks=config.shared_networks_v6,
             hosts=config.hosts_v6,
             omapi_key=config.omapi_key,
-            running_in_snap=running_in_snap,
         ).encode("utf-8")
     ).decode("utf-8")
 

@@ -43,12 +43,12 @@ from provisioningserver.certificates import (
 from provisioningserver.config import ConfigurationFile
 from provisioningserver.security import to_hex
 from provisioningserver.utils import ipaddr
-from provisioningserver.utils.deb import DebVersionsInfo
 from provisioningserver.utils.env import (
     MAAS_ID,
     MAAS_SECRET,
     MAAS_SHARED_SECRET,
 )
+from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.testing import MAASIDFixture, MAASUUIDFixture
 
 
@@ -139,8 +139,8 @@ class TestInnerStartUp(MAASServerTestCase):
         self.useFixture(MAASUUIDFixture("uuid"))
         self.patch_autospec(start_up, "dns_kms_setting_changed")
         self.patch(ipaddr, "get_ip_addr").return_value = {}
-        self.versions_info = DebVersionsInfo(
-            current={"version": "1:3.1.0-1234-g.deadbeef"}
+        self.versions_info = SnapVersionsInfo(
+            current={"revision": "1234", "version": "3.1.0-1234-g.deadbeef"}
         )
         self.patch(
             start_up, "get_versions_info"
@@ -291,7 +291,7 @@ class TestInnerStartUp(MAASServerTestCase):
             start_up.inner_start_up()
         region = RegionController.objects.first()
         self.assertEqual(region.version, "3.1.0-1234-g.deadbeef")
-        self.assertEqual(region.info.install_type, "deb")
+        self.assertEqual(region.info.install_type, "snap")
 
     def test_sets_vault_flag_disabled(self):
         self.patch(start_up, "get_region_vault_client").return_value = None

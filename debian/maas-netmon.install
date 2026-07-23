@@ -1,3 +1,0 @@
-debian/extras/99-maas-netmon-sudoers etc/sudoers.d
-
-usr/sbin/maas-netmon

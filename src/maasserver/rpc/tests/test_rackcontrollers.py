@@ -546,39 +546,6 @@ class TestUpdateState(MAASServerTestCase):
         self.assertEqual(controller_info.snap_update_revision, "5678")
         self.assertEqual(controller_info.snap_cohort, "abc123")
 
-    def test_scope_versions_deb(self):
-        rack = factory.make_RackController()
-        versions = {
-            "deb": {
-                "current": {
-                    "version": "3.0.0~alpha1-111-g.deadbeef",
-                    "origin": "http://archive.ubuntu.com/ focal/main",
-                },
-                "update": {
-                    "version": "3.0.0~alpha2-222-g.cafecafe",
-                    "origin": "http://archive.ubuntu.com/ focal/main",
-                },
-            },
-        }
-        update_state(rack.system_id, "versions", versions)
-        controller_info = rack.controllerinfo
-        self.assertEqual(
-            controller_info.install_type, CONTROLLER_INSTALL_TYPE.DEB
-        )
-        self.assertEqual(
-            controller_info.version, "3.0.0~alpha1-111-g.deadbeef"
-        )
-        self.assertEqual(
-            controller_info.update_version, "3.0.0~alpha2-222-g.cafecafe"
-        )
-        self.assertEqual(
-            controller_info.update_origin,
-            "http://archive.ubuntu.com/ focal/main",
-        )
-        self.assertEqual(controller_info.snap_revision, "")
-        self.assertEqual(controller_info.snap_update_revision, "")
-        self.assertEqual(controller_info.snap_cohort, "")
-
     def test_scope_versions_other(self):
         rack = factory.make_RackController()
         update_state(rack.system_id, "versions", {"something": "else"})

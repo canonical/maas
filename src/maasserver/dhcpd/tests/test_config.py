@@ -75,7 +75,6 @@ def make_sample_params_only(
         "hosts": [make_host(ipv6=ipv6) for _ in range(3)],
         "global_dhcp_snippets": make_global_dhcp_snippets(),
         "ipv6": ipv6,
-        "running_in_snap": factory.pick_bool(),
     }
 
 

@@ -18,7 +18,6 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from provisioningserver.proxy import config
-from provisioningserver.utils import snap
 
 wait_for_reactor = wait_for()
 
@@ -177,7 +176,6 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_calls_restartService(self):
         self.patch(settings, "PROXY_CONNECT", True)
-        self.patch(snap, "running_in_snap").return_value = True
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
         self.service_monitor.restartService.assert_called_once_with(

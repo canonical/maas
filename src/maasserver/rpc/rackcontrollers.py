@@ -31,7 +31,6 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.agents import AgentsClauseFactory
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchNode, NoSuchScope
-from provisioningserver.utils.deb import DebVersionsInfo
 from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.twisted import synchronous
 
@@ -302,12 +301,8 @@ def update_state(system_id, scope, state):
 
 def _update_controller_versions(node, state):
     """Update reported version for a controller."""
-    versions_info = None
-    for info_class in (SnapVersionsInfo, DebVersionsInfo):
-        info = state.get(info_class.install_type)
-        if info:
-            versions_info = info_class(**info)
-            break
-    if not versions_info:
+    info = state.get(SnapVersionsInfo.install_type)
+    if not info:
         return
+    versions_info = SnapVersionsInfo(**info)
     ControllerInfo.objects.set_versions_info(node, versions_info)

@@ -5,7 +5,6 @@
 from collections import Counter
 from datetime import datetime
 from enum import Enum
-import re
 from typing import List, NamedTuple, Optional
 
 from django.db.models import (
@@ -30,10 +29,6 @@ from provisioningserver.enum import (
 )
 from provisioningserver.utils.snap import SnapChannel
 from provisioningserver.utils.version import MAASVersion
-
-PPA_URL_RE = re.compile(
-    r"http://ppa.launchpad.net/(?P<ppa>\w+/[\w\.]+)/ubuntu/ (?P<release>\w+)/main$"
-)
 
 
 class TargetVersion(NamedTuple):
@@ -80,10 +75,6 @@ class ControllerInfoManager(Manager):
                     ),
                 }
             )
-        elif versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
-            details["update_origin"] = self._parse_deb_origin(
-                versions.current.origin
-            )
 
         if versions.update:
             details.update(
@@ -94,13 +85,7 @@ class ControllerInfoManager(Manager):
                     "update_first_reported": timezone.now(),
                 }
             )
-            if versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
-                # override the update origin as it might be different from the
-                # installed one
-                details["update_origin"] = self._parse_deb_origin(
-                    versions.update.origin
-                )
-            elif versions.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
+            if versions.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
                 details["snap_update_revision"] = versions.update.revision
 
         info, created = self.get_or_create(defaults=details, node=controller)
@@ -120,12 +105,6 @@ class ControllerInfoManager(Manager):
             setattr(info, key, value)
         info.save()
 
-    def _parse_deb_origin(self, origin):
-        match = PPA_URL_RE.match(origin)
-        if match:
-            return f"ppa:{match['ppa']}"
-        return origin
-
 
 class ControllerInfo(CleanSave, TimestampedModel):
     """Metadata about a node that is a controller."""
@@ -141,7 +120,7 @@ class ControllerInfo(CleanSave, TimestampedModel):
 
     version = CharField(max_length=255, blank=True, default="")
     update_version = CharField(max_length=255, blank=True, default="")
-    # the snap channel or deb repo for the update
+    # the snap channel for the update
     update_origin = CharField(max_length=255, blank=True, default="")
     update_first_reported = DateTimeField(blank=True, null=True)
     install_type = CharField(
@@ -322,9 +301,9 @@ def _process_udpate_issues_notification():
     multiple_cohorts = info.values("snap_cohort").distinct().count() > 1
     # note that `version` and `update_version` are compared here as strings
     # from the database. It's possible the same effective version is reported
-    # as different strings because of deb epoch, but it doesn't really matter
-    # in this case as other discrepancies would trigger the "different
-    # installation sources" notification before
+    # as different strings, but it doesn't really matter in this case as other
+    # discrepancies would trigger the "different installation sources"
+    # notification before
     multiple_versions = info.values("version").distinct().count() > 1
     multiple_upgrade_versions = (
         info.exclude(update_version="")

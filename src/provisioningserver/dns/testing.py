@@ -5,6 +5,8 @@
 
 from fixtures import EnvironmentVariable
 
+from provisioningserver.dns import config
+
 
 def patch_dns_config_path(testcase, config_dir=None):
     """Set the DNS config dir to a temporary directory, and return its path."""
@@ -32,8 +34,4 @@ def patch_dns_rndc_port(testcase, port):
 
 
 def patch_dns_default_controls(testcase, enable):
-    testcase.useFixture(
-        EnvironmentVariable(
-            "MAAS_DNS_DEFAULT_CONTROLS", "1" if enable else "0"
-        )
-    )
+    testcase.patch(config, "get_dns_default_controls").return_value = enable

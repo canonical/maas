@@ -28,7 +28,7 @@ def get_architecture():
     """Get the Debian architecture of the running system."""
     arch = os.getenv("SNAP_ARCH")
     if not arch:
-        # assume it's a deb environment
+        # not running in a snap
         import apt_pkg
 
         apt_pkg.init()

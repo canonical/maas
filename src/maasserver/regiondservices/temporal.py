@@ -21,7 +21,7 @@ from provisioningserver.certificates import get_maas_cluster_cert_paths
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils.env import MAAS_ID
-from provisioningserver.utils.fs import atomic_write, snap
+from provisioningserver.utils.fs import atomic_write
 
 maaslog = get_maas_logger()
 
@@ -111,10 +111,7 @@ class RegionTemporalService(Service):
 
     @inlineCallbacks
     def _reload_service(self):
-        if snap.running_in_snap():
-            yield service_monitor.restartService("temporal")
-        else:
-            yield service_monitor.reloadService("temporal")
+        yield service_monitor.restartService("temporal")
 
     def get_broadcast_address(self, maas_url):
         parsed = urlparse(maas_url)

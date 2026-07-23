@@ -17,7 +17,6 @@ from provisioningserver.refresh.maas_api_helper import (
     signal,
 )
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
-from provisioningserver.utils.snap import running_in_snap
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("refresh")
@@ -80,8 +79,6 @@ SCRIPTS_BASE_PATH = os.path.dirname(__file__)
 def runscripts(
     scripts, url, creds, tmpdir, post_process_hook=None, retry=True
 ):
-    in_snap = running_in_snap()
-
     total_scripts = len(scripts)
     current_script = 1
     failed_scripts = []
@@ -122,18 +119,7 @@ def runscripts(
             "TMPDIR": tmpdir,
         }
 
-        # sudo-rs doesn't implement the -E flag, so we pass the --preserve-env
-        # flag for each environment variable that we might need.
-        vars_to_keep = list(env_vars.keys()) + [
-            "MAAS_MACHINE_EXTRA_FILE",
-            "MAAS_STORAGE_CONFIG_FILE",
-        ]
-        deb_cmd = (
-            ["sudo"]
-            + [f"--preserve-env={var}" for var in vars_to_keep]
-            + [script_path]
-        )
-        command = [script_path] if in_snap else deb_cmd
+        command = [script_path]
         try:
             env = os.environ | env_vars
             timeout = 60

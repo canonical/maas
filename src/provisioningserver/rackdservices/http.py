@@ -154,7 +154,7 @@ class RackHTTPService(TimerService):
         """
         d = deferToThread(self._configure, configuration.upstream_http)
         # If running in snap and pebble, this will send a SIGHUP signal to nginx to reload the configuration.
-        # If running in deb, this will run systemctl reload.
+        # Otherwise, this will run systemctl reload.
         d.addCallback(lambda _: service_monitor.reloadService("http"))
         return d
 

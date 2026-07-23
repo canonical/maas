@@ -38,7 +38,6 @@ cache_mem 512 MB
 minimum_object_size 0 MB
 maximum_object_size 1024 MB
 maximum_object_size_in_memory 100 MB
-{{if running_in_snap}}
 pid_filename {{snap_data_path}}/proxy/squid.pid
 mime_table {{snap_path}}/usr/share/squid/mime.conf
 pinger_program {{snap_path}}/usr/lib/squid/pinger
@@ -50,10 +49,6 @@ coredump_dir {{snap_common_path}}/proxy/spool
 cache_dir aufs {{snap_common_path}}/proxy/cache 40000 16 256
 cache_effective_user snap_daemon
 cache_effective_group snap_daemon
-{{else}}
-coredump_dir /var/spool/maas-proxy
-cache_dir aufs /var/spool/maas-proxy 40000 16 256
-{{endif}}
 # We run squid with -d argument instead to receive the logs in stdout
 cache_log /dev/null
 access_log syslog:daemon.debug

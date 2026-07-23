@@ -96,7 +96,6 @@ install-dependencies:
 ifneq ($(MAAS_PPA),)
 	sudo apt-add-repository -y $(MAAS_PPA)
 endif
-	$(apt) build-dep .
 	$(apt_install) $(foreach deps,$(required_deps_files),$(call list_packages,$(deps)))
 	$(apt) purge $(call list_packages,forbidden)
 	if [ -x /usr/bin/snap ]; then xargs -L1 sudo snap install < required-packages/snaps; fi
@@ -390,78 +389,6 @@ sampledata: SAMPLEDATA_MACHINES ?= 100
 sampledata: build syncdb bin/maas-sampledata
 	$(dbrun) bin/maas-sampledata --machine $(SAMPLEDATA_MACHINES)
 .PHONY: sampledata
-
-#
-# deb packages building
-#
-
-packaging-build-area := $(abspath ../build-area)
-packaging-version := $(shell utilities/package-version)
-packaging-dir := maas_$(packaging-version)
-packaging-orig-tar := $(packaging-dir).orig.tar
-packaging-orig-targz := $(packaging-dir).orig.tar.gz
-
-$(packaging-build-area):
-	mkdir -p $@
-
--packaging-clean:
-	rm -rf $(packaging-build-area)
-.PHONY: -packaging-clean
-
--packaging-export-tree:
-ifeq ($(packaging-export-uncommitted),true)
-	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
-		xargs tar --transform 's,^,$(packaging-dir)/,' \
-			-cf $(packaging-build-area)/$(packaging-orig-tar)
-else
-	git archive --format=tar $(packaging-export-extra) \
-		--prefix=$(packaging-dir)/ \
-		-o $(packaging-build-area)/$(packaging-orig-tar) HEAD
-endif
-.PHONY: -packaging-export-tree
-
--packaging-tarball:
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) \
-		--transform 's,^,$(packaging-dir)/,'
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(DOCS_BUILD) \
-		--transform 's,^,$(packaging-dir)/,'
-	$(MAKE) --no-print-directory -C src/host-info vendor
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/host-info/vendor \
-		--transform 's,^,$(packaging-dir)/,'
-	$(MAKE) --no-print-directory -C src/maasagent vendor
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/maasagent/vendor \
-		--transform 's,^,$(packaging-dir)/,'
-	$(MAKE) --no-print-directory -C src/maasopenfga vendor
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/maasopenfga/vendor \
-		--transform 's,^,$(packaging-dir)/,'
-	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
-.PHONY: -packaging-tarball
-
--package-tree: changelog := $(packaging-build-area)/$(packaging-dir)/debian/changelog
--package-tree: $(UI_BUILD) $(DOCS_BUILD) $(packaging-build-area) -packaging-export-tree -packaging-tarball
-	(cd $(packaging-build-area) && tar xfz $(packaging-orig-targz))
-	cp -r debian $(packaging-build-area)/$(packaging-dir)
-	echo "maas (1:$(packaging-version)-0ubuntu1) UNRELEASED; urgency=medium" \
-		> $(changelog)
-	tail -n +2 debian/changelog >> $(changelog)
-.PHONY: -package-tree
-
-package-tree: -packaging-clean -package-tree
-
-package: package-tree
-	(cd $(packaging-build-area)/$(packaging-dir) && debuild -uc -us)
-	@echo Binary packages built, see $(packaging-build-area).
-.PHONY: package
-
-package-dev:
-	$(MAKE) --no-print-directory packaging-export-uncommitted=true package
-.PHONY: package-dev
-
-package-clean: patterns := *.deb *.udeb *.dsc *.build *.changes
-package-clean: patterns += *.debian.tar.xz *.orig.tar.gz
-package-clean:
-	$(RM) -f $(addprefix $(packaging-build-area)/,$(patterns))
-.PHONY: package-clean
 
 #
 # Snap building

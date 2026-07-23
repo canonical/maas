@@ -3196,16 +3196,6 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
         )
         self.assertIsNotNone(responder)
 
-    def test_issues_restart_systemd(self):
-        mock_call_and_check = self.patch(clusterservice, "call_and_check")
-        response = call_responder(
-            Cluster(), cluster.DisableAndShutoffRackd, {}
-        )
-        self.assertEqual({}, response.result)
-        mock_call_and_check.assert_called_once_with(
-            ["sudo", "systemctl", "restart", "maas-rackd"]
-        )
-
     def test_remove_shared_secret(self):
         root_path = Path(self.useFixture(TempDir()).path)
         shared_secret_path = root_path / "secret"
@@ -3221,7 +3211,6 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
         self.assertFalse(shared_secret_path.exists())
 
     def test_issues_restart_snap(self):
-        self.patch(clusterservice, "running_in_snap").return_value = True
         mock_call_and_check = self.patch(clusterservice, "call_and_check")
         response = call_responder(
             Cluster(), cluster.DisableAndShutoffRackd, {}
@@ -3230,15 +3219,6 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
         mock_call_and_check.assert_called_once_with(
             ["snapctl", "restart", "maas.pebble"]
         )
-
-    @inlineCallbacks
-    def test_raises_error_on_failure_systemd(self):
-        mock_call_and_check = self.patch(clusterservice, "call_and_check")
-        mock_call_and_check.side_effect = ExternalProcessError(
-            1, "systemctl", "failure"
-        )
-        with self.assertRaises(exceptions.CannotDisableAndShutoffRackd):
-            yield call_responder(Cluster(), cluster.DisableAndShutoffRackd, {})
 
     @inlineCallbacks
     def test_raises_error_on_failure_snap(self):
@@ -3250,7 +3230,6 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
             yield call_responder(Cluster(), cluster.DisableAndShutoffRackd, {})
 
     def test_snap_ignores_signal_error_code_on_restart(self):
-        self.patch(clusterservice, "running_in_snap").return_value = True
         mock_call_and_check = self.patch(clusterservice, "call_and_check")
         mock_call_and_check.side_effect = ExternalProcessError(
             -15, "maas", "failure"

@@ -8,7 +8,6 @@ from pathlib import Path
 from fixtures import EnvironmentVariable
 import yaml
 
-from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import snap
 from provisioningserver.utils.shell import ProcessResult
@@ -16,7 +15,6 @@ from provisioningserver.utils.snap import (
     get_snap_mode,
     get_snap_version,
     get_snap_versions_info,
-    running_in_snap,
     SnapChannel,
     SnapPaths,
     SnapVersion,
@@ -42,16 +40,6 @@ class TestSnapPaths(MAASTestCase):
         self.assertEqual(paths.snap, Path("/snap/base"))
         self.assertEqual(paths.common, Path("/snap/common"))
         self.assertEqual(paths.data, Path("/snap/data"))
-
-
-class TestRunningInSnap(MAASTestCase):
-    def test_in_snap(self):
-        self.patch(os, "environ", {"SNAP": factory.make_name()})
-        self.assertTrue(running_in_snap())
-
-    def test_not_in_snap(self):
-        self.patch(os, "environ", {})
-        self.assertFalse(running_in_snap())
 
 
 class TestSnapChannel(MAASTestCase):
@@ -260,10 +248,6 @@ class TestGetSnapVersionsInfo(MAASTestCase):
             stderr="",
             returncode=returncode,
         )
-
-    def test_get_snap_versions_info_not_snap(self):
-        self.patch(os, "environ", {})
-        self.assertIsNone(get_snap_versions_info())
 
     def test_get_snap_versions_failed_command(self):
         self.mock_snapctl_info(returncode=1)

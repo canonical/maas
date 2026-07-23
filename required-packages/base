@@ -1,6 +1,5 @@
 bind9
 bind9utils
-devscripts
 distro-info
 dnsutils
 freeipmi-tools
