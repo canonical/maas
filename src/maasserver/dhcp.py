@@ -10,7 +10,7 @@ from operator import itemgetter
 import secrets
 from typing import Iterable, Optional, Union
 
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from netaddr import IPAddress, IPNetwork
 
 from maascommon.workflows.dhcp import CONFIGURE_DHCP_WORKFLOW_NAME
@@ -29,6 +29,7 @@ from maasserver.models import (
     Config,
     DHCPSnippet,
     Domain,
+    Interface,
     RackController,
     ReservedIP,
     StaticIPAddress,
@@ -338,16 +339,39 @@ def make_hosts_for_subnets(
                 dhcp_snippets.append(make_dhcp_snippet(dhcp_snippet))
         return dhcp_snippets
 
-    sips = StaticIPAddress.objects.filter(
-        alloc_type__in=[
-            IPADDRESS_TYPE.AUTO,
-            IPADDRESS_TYPE.STICKY,
-            IPADDRESS_TYPE.USER_RESERVED,
-        ],
-        subnet__in=subnets,
-        ip__isnull=False,
-        temp_expires_on__isnull=True,
-    ).order_by("id")
+    sips = (
+        StaticIPAddress.objects.filter(
+            alloc_type__in=[
+                IPADDRESS_TYPE.AUTO,
+                IPADDRESS_TYPE.STICKY,
+                IPADDRESS_TYPE.USER_RESERVED,
+            ],
+            subnet__in=subnets,
+            ip__isnull=False,
+            temp_expires_on__isnull=True,
+        )
+        .order_by("id")
+        .prefetch_related(
+            # Prefetch interfaces (+ node and parents used below) to avoid a query
+            # per IP; ordering stays here so the .all() below hits the cache.
+            Prefetch(
+                "interface_set",
+                queryset=Interface.objects.order_by("id")
+                .select_related("node_config__node")
+                .prefetch_related(
+                    # Bond parents become host entries too, and
+                    # make_interface_hostname(parent) reads parent.node_config.node,
+                    # so pull each parent's node in the same query.
+                    Prefetch(
+                        "parents",
+                        queryset=Interface.objects.select_related(
+                            "node_config__node"
+                        ),
+                    )
+                ),
+            ),
+        )
+    )
     hosts = []
     interface_ids = set()
     for sip in sips:
@@ -359,7 +383,7 @@ def make_hosts_for_subnets(
             continue
 
         # Add all interfaces attached to this IP address.
-        for interface in sip.interface_set.order_by("id"):
+        for interface in sip.interface_set.all():
             # Only allow an interface to be in hosts once.
             if interface.id in interface_ids:
                 continue

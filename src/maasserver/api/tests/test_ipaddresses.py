@@ -6,9 +6,11 @@
 import http.client
 
 from django.conf import settings
+from django.test import RequestFactory
 from django.urls import reverse
 from netaddr import IPAddress
 
+from maasserver.api.ip_addresses import IPAddressesHandler
 from maasserver.enum import INTERFACE_LINK_TYPE, INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import DNSResource, StaticIPAddress
 from maasserver.models import staticipaddress as staticipaddress_module
@@ -17,6 +19,7 @@ from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object, transactional
+from maastesting.djangotestcase import count_queries
 
 
 class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
@@ -225,6 +228,53 @@ class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
         ]
         observed = [result["ip"] for result in parsed_result]
         self.assertEqual(expected, observed)
+
+
+class TestIPAddressesReadPrefetch(APITestCase.ForAdmin):
+    def setUp(self):
+        super().setUp()
+        self.patch(vlan_signals_module, "post_commit_do")
+        self.patch(staticipaddress_module, "post_commit_do")
+
+    def test_read_all_does_not_query_node_per_ip(self):
+        # read() serializes interface_set, whose system_id/resource_uri call
+        # get_node(); without prefetch that runs a query per IP. The node
+        # query count must stay flat as machines are added.
+        subnet = factory.make_Subnet()
+        request = RequestFactory().get("/", {"all": "true"})
+        request.user = self.user
+        handler = IPAddressesHandler()
+
+        def access_nodes():
+            query = handler.read(request)
+            return [
+                iface.get_node()
+                for ip in query
+                for iface in ip.interface_set.all()
+            ]
+
+        def add_machines(count):
+            for _ in range(count):
+                node = factory.make_Node(interface=False)
+                iface = factory.make_Interface(
+                    INTERFACE_TYPE.PHYSICAL, node=node, vlan=subnet.vlan
+                )
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.AUTO,
+                    subnet=subnet,
+                    interface=iface,
+                )
+
+        add_machines(2)
+        # Warm the permission cache; the first read() call runs one extra
+        # authorization query that later calls serve from the cache.
+        access_nodes()
+        count_2, nodes_2 = count_queries(access_nodes)
+        add_machines(3)
+        count_5, nodes_5 = count_queries(access_nodes)
+        self.assertEqual(2, len(nodes_2))
+        self.assertEqual(5, len(nodes_5))
+        self.assertEqual(count_2, count_5)
 
 
 class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):

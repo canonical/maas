@@ -12,6 +12,7 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db import IntegrityError
+from django.db.models import Prefetch
 from django.db.models.deletion import ProtectedError
 from django.http import Http404
 import petname
@@ -57,6 +58,7 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
+from maastesting.djangotestcase import count_queries
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
@@ -908,6 +910,30 @@ class PodTestMixin:
 
 
 class TestPod(MAASServerTestCase, PodTestMixin):
+    def test_host_returns_lowest_pk_node(self):
+        # Node has no Meta.ordering; Pod.host must still pick the pk-first node,
+        # matching hints.nodes.first().
+        pod = factory.make_Pod()
+        pod.hints.nodes.add(*[factory.make_Node() for _ in range(3)])
+        self.assertEqual(pod.hints.nodes.order_by("id").first(), pod.host)
+
+    def test_host_reuses_prefetched_nodes(self):
+        # With hints.nodes prefetched, Pod.host must serve from the cache
+        # without querying and still return the pk-first node.
+        pod = factory.make_Pod()
+        pod.hints.nodes.add(*[factory.make_Node() for _ in range(3)])
+        expected = pod.hints.nodes.order_by("id").first()
+        loaded = (
+            Pod.objects.select_related("hints")
+            .prefetch_related(
+                Prefetch("hints__nodes", queryset=Node.objects.order_by("id"))
+            )
+            .get(id=pod.id)
+        )
+        count, host = count_queries(lambda: loaded.host)
+        self.assertEqual(expected, host)
+        self.assertEqual(0, count)
+
     def test_name_project_cluster_uniqueness(self):
         user = factory.make_User()
         cluster = factory.make_VMCluster(pods=0)
