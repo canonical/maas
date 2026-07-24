@@ -3689,18 +3689,33 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         ]
         self.assertCountEqual([], created_names)
 
-    def test_skips_devices_used_by_virtual_holders(self):
+    def test_skips_bcache_virtual_holder_devices(self):
         node = factory.make_Node()
-        USED_BY_BCACHE = deepcopy(SAMPLE_LXD_RESOURCES)
-        USED_BY_BCACHE["storage"]["disks"][0]["used_by"] = "bcache"
+        WITH_BCACHE = deepcopy(SAMPLE_LXD_RESOURCES)
+        WITH_BCACHE["storage"]["disks"].append(
+            {
+                "id": "bcache0",
+                "device": "251:0",
+                "type": "block",
+                "read_only": False,
+                "mounted": False,
+                "size": 10737410048,
+                "removable": False,
+                "numa_node": 0,
+                "block_size": 512,
+                "rpm": 0,
+                "device_id": "",
+                "partitions": [],
+                "device_fs_uuid": "",
+            }
+        )
         _update_node_physical_block_devices(
-            node, USED_BY_BCACHE, create_numa_nodes(node)
+            node, WITH_BCACHE, create_numa_nodes(node)
         )
         created_names = [
             device.name for device in node.physicalblockdevice_set.all()
         ]
-        skipped_name = USED_BY_BCACHE["storage"]["disks"][0]["id"]
-        self.assertNotIn(skipped_name, created_names)
+        self.assertNotIn("bcache0", created_names)
 
     def test_handles_renamed_block_device(self):
         node = factory.make_Node()
