@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Proxy config management module."""
@@ -56,7 +56,6 @@ def write_config(
         "modified": str(datetime.date.today()),
         "fqdn": socket.getfqdn(),
         "cidrs": allowed_cidrs,
-        "running_in_snap": snap.running_in_snap(),
         "snap_path": snap_paths.snap,
         "snap_data_path": snap_paths.data,
         "snap_common_path": snap_paths.common,

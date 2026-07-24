@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `provisioningserver.utils`."""
@@ -12,9 +12,6 @@ from fixtures import EnvironmentVariableFixture
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-import provisioningserver
-import provisioningserver.config
-import provisioningserver.utils
 from provisioningserver.utils import (
     CircularDependency,
     classify,
@@ -23,7 +20,6 @@ from provisioningserver.utils import (
     locate_config,
     locate_template,
     sorttop,
-    sudo,
 )
 
 
@@ -139,34 +135,6 @@ class TestFlatten(MAASTestCase):
             ["a", "b", "c", "d", "e", "f"],
             list(flatten("a", "b", "c", "d", "e", "f")),
         )
-
-
-class TestSudo(MAASTestCase):
-    def set_is_dev_environment(self, value):
-        self.patch(provisioningserver.config, "is_dev_environment")
-        provisioningserver.config.is_dev_environment.return_value = value
-
-    def set_is_in_snap(self, value):
-        self.patch(provisioningserver.utils.snap, "running_in_snap")
-        provisioningserver.utils.snap.running_in_snap.return_value = value
-
-    def test_returns_sudo_command_when_is_dev_environment(self):
-        cmd = [factory.make_name("cmd") for _ in range(3)]
-        self.set_is_dev_environment(True)
-        self.set_is_in_snap(False)
-        self.assertEqual(["sudo", "-n"] + cmd, sudo(cmd))
-
-    def test_returns_same_command_when_in_snap(self):
-        cmd = [factory.make_name("cmd") for _ in range(3)]
-        self.set_is_dev_environment(False)
-        self.set_is_in_snap(True)
-        self.assertEqual(cmd, sudo(cmd))
-
-    def test_returns_sudo_command_when_is_not_dev_environment(self):
-        cmd = [factory.make_name("cmd") for _ in range(3)]
-        self.set_is_dev_environment(False)
-        self.set_is_in_snap(False)
-        self.assertEqual(["sudo", "-n"] + cmd, sudo(cmd))
 
 
 EMPTY = frozenset()

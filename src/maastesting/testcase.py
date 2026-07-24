@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test related classes and functions for MAAS and its applications."""
@@ -17,6 +17,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import crochet
+from fixtures import EnvironmentVariable
 from nose.proxy import ResultProxy
 from nose.tools import nottest
 import testresources
@@ -143,6 +144,12 @@ class MAASTestCase(
         if "MAAS_CACHE" in os.environ:
             self.useFixture(MAASCacheFixture())
 
+        # MAAS always runs as a snap, so simulate a snap environment for
+        # every test. This ensures code paths relying on snap-only utilities
+        # (e.g. get_running_version, get_maas_cert_tuple) work as they would
+        # in production. Individual tests can still override these variables.
+        self.setUpSnapEnviron()
+
         rand_seed = os.environ.get("MAAS_RAND_SEED")
         random.seed(rand_seed)
         seed_info = []
@@ -170,6 +177,34 @@ class MAASTestCase(
         testresources.setUpResources(
             self, self.resources, testresources._get_result()
         )
+
+    def setUpSnapEnviron(self):
+        """Simulate a snap environment for the duration of the test.
+
+        MAAS only runs as a snap, so tests must exercise the snap-only code
+        paths that would otherwise crash when the snap version or common
+        directory are unavailable (e.g. get_running_version,
+        get_maas_cert_tuple).
+
+        Only the variables strictly required to avoid those crashes are set.
+        In particular ``SNAP`` (the snap root path) is deliberately left
+        unset: setting it would change path-prefixing behaviour for code
+        relying on ``SnapPaths.snap`` (e.g. curtin helpers, nginx static
+        roots, wsman config) and break tests exercising the default paths.
+        The cached running version is cleared so it is recomputed from the
+        simulated environment.
+        """
+        from provisioningserver.utils import version
+
+        common_dir = self.useFixture(TempDirectory()).path
+        self.useFixture(EnvironmentVariable("SNAP_COMMON", common_dir))
+        self.useFixture(
+            EnvironmentVariable("SNAP_VERSION", "3.0.0-456-g.deadbeef")
+        )
+        self.useFixture(EnvironmentVariable("SNAP_REVISION", "1234"))
+
+        version.get_running_version.cache_clear()
+        self.addCleanup(version.get_running_version.cache_clear)
 
     def tearDown(self):
         super().tearDown()

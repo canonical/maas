@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from hashlib import sha256
 from hmac import HMAC
@@ -2142,22 +2142,6 @@ class TestClusterProtocol_ScanNetworks(
             args, [get_maas_common_command().encode("utf-8"), b"scan-network"]
         )
 
-    def test_get_scan_all_networks_args_sudo(self):
-        is_dev_environment_mock = self.patch_autospec(
-            clusterservice, "is_dev_environment"
-        )
-        is_dev_environment_mock.return_value = False
-        args = get_scan_all_networks_args(scan_all=True)
-        self.assertEqual(
-            args,
-            [
-                b"sudo",
-                b"-n",
-                get_maas_common_command().encode("utf-8"),
-                b"scan-network",
-            ],
-        )
-
     def test_get_scan_all_networks_args_returns_supplied_cidrs(self):
         args = get_scan_all_networks_args(
             cidrs=[IPNetwork("192.168.0.0/24"), IPNetwork("192.168.1.0/24")]
@@ -3196,16 +3180,6 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
         )
         self.assertIsNotNone(responder)
 
-    def test_issues_restart_systemd(self):
-        mock_call_and_check = self.patch(clusterservice, "call_and_check")
-        response = call_responder(
-            Cluster(), cluster.DisableAndShutoffRackd, {}
-        )
-        self.assertEqual({}, response.result)
-        mock_call_and_check.assert_called_once_with(
-            ["sudo", "systemctl", "restart", "maas-rackd"]
-        )
-
     def test_remove_shared_secret(self):
         root_path = Path(self.useFixture(TempDir()).path)
         shared_secret_path = root_path / "secret"
@@ -3221,7 +3195,6 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
         self.assertFalse(shared_secret_path.exists())
 
     def test_issues_restart_snap(self):
-        self.patch(clusterservice, "running_in_snap").return_value = True
         mock_call_and_check = self.patch(clusterservice, "call_and_check")
         response = call_responder(
             Cluster(), cluster.DisableAndShutoffRackd, {}
@@ -3230,15 +3203,6 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
         mock_call_and_check.assert_called_once_with(
             ["snapctl", "restart", "maas.pebble"]
         )
-
-    @inlineCallbacks
-    def test_raises_error_on_failure_systemd(self):
-        mock_call_and_check = self.patch(clusterservice, "call_and_check")
-        mock_call_and_check.side_effect = ExternalProcessError(
-            1, "systemctl", "failure"
-        )
-        with self.assertRaises(exceptions.CannotDisableAndShutoffRackd):
-            yield call_responder(Cluster(), cluster.DisableAndShutoffRackd, {})
 
     @inlineCallbacks
     def test_raises_error_on_failure_snap(self):
@@ -3250,7 +3214,6 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
             yield call_responder(Cluster(), cluster.DisableAndShutoffRackd, {})
 
     def test_snap_ignores_signal_error_code_on_restart(self):
-        self.patch(clusterservice, "running_in_snap").return_value = True
         mock_call_and_check = self.patch(clusterservice, "call_and_check")
         mock_call_and_check.side_effect = ExternalProcessError(
             -15, "maas", "failure"

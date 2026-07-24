@@ -1,1 +1,0 @@
-maas ALL= NOPASSWD: /usr/sbin/maas-netmon

@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for BIND zone config generation."""
@@ -78,12 +78,12 @@ class TestDomainConfigBase(MAASTestCase):
             provisioningserver.dns.zoneconfig, "render_dns_template"
         )
         render_dns_template.return_value = ""
-        incremental_write = self.patch(
-            provisioningserver.dns.zoneconfig, "incremental_write"
+        atomic_write = self.patch(
+            provisioningserver.dns.zoneconfig, "atomic_write"
         )
         tmp_file = mktemp()
         DomainConfigBase.write_zone_file(tmp_file)
-        incremental_write.assert_called_once_with(
+        atomic_write.assert_called_once_with(
             "".encode("utf-8"),
             tmp_file,
             mode=0o644,

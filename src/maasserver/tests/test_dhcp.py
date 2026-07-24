@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import base64
 from operator import itemgetter
@@ -20,7 +20,7 @@ from maasserver.dhcp import (
 )
 from maasserver.dhcpd.config import compose_conditional_bootloader
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
-from maasserver.models import Config, ControllerInfo, DHCPSnippet, Domain
+from maasserver.models import Config, DHCPSnippet, Domain
 from maasserver.models import dnspublication as dnspublications_module
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
@@ -34,8 +34,6 @@ from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
 from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.deb import DebVersionsInfo
-from provisioningserver.utils.snap import SnapVersionsInfo
 
 wait_for_reactor = wait_for()
 
@@ -3090,43 +3088,15 @@ class TestConfigureDhcpOnAgents(MAASServerTestCase):
 
 
 class TestGenerateDHCPConfiguration(MAASTransactionServerTestCase):
-    scenarios = (
-        ("snap", {"running_in_snap": True}),
-        ("deb", {"running_in_snap": False}),
-    )
-
     @transactional
     def create_rack_controller(
         self,
         dhcp_on=True,
         missing_ipv4=False,
         missing_ipv6=False,
-        is_running_in_snap=False,
     ):
-        if is_running_in_snap:
-            versions = SnapVersionsInfo(
-                current={
-                    "revision": "1234",
-                    "version": "3.1.0",
-                },
-                channel={"track": "3.0", "risk": "stable"},
-                update={
-                    "revision": "5678",
-                    "version": "3.1.1",
-                },
-                cohort="abc123",
-            )
-        else:
-            versions = DebVersionsInfo(
-                current={
-                    "version": "3.0.0~alpha1-111-g.deadbeef",
-                    "origin": "http://archive.ubuntu.com/ focal/main",
-                },
-            )
         primary_rack = factory.make_RackController(interface=False)
-        ControllerInfo.objects.set_versions_info(primary_rack, versions)
         secondary_rack = factory.make_RackController(interface=False)
-        ControllerInfo.objects.set_versions_info(secondary_rack, versions)
 
         vlan = factory.make_VLAN(
             dhcp_on=dhcp_on,
@@ -3201,7 +3171,6 @@ class TestGenerateDHCPConfiguration(MAASTransactionServerTestCase):
     def test_generate_dhcp_configuration_for_both_ipv4_and_ipv6(self):
         rack_controller, dhcp_config = yield deferToDatabase(
             self.create_rack_controller,
-            is_running_in_snap=self.running_in_snap,
         )
 
         interfaces_v4 = " ".join(
@@ -3227,7 +3196,6 @@ class TestGenerateDHCPConfiguration(MAASTransactionServerTestCase):
             shared_networks=dhcp_config.shared_networks_v4,
             hosts=dhcp_config.hosts_v4,
             omapi_key=dhcp_config.omapi_key,
-            running_in_snap=self.running_in_snap,
         )
         get_config_v6_stub.assert_called_once_with(
             template_name="dhcpd6.conf.template",
@@ -3236,7 +3204,6 @@ class TestGenerateDHCPConfiguration(MAASTransactionServerTestCase):
             shared_networks=dhcp_config.shared_networks_v6,
             hosts=dhcp_config.hosts_v6,
             omapi_key=dhcp_config.omapi_key,
-            running_in_snap=self.running_in_snap,
         )
 
         assert result["dhcpd_interfaces"] == base64.b64encode(

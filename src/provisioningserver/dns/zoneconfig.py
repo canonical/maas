@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Classes for generating BIND zone config files."""
@@ -20,7 +20,7 @@ from provisioningserver.dns.config import (
     report_missing_config_dir,
 )
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.utils.fs import incremental_write
+from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.network import (
     intersect_iprange,
     ip_range_within_network,
@@ -222,7 +222,7 @@ class DomainConfigBase:
         for outfile in output_file:
             content = render_dns_template(cls.template_file_name, *parameters)
             with report_missing_config_dir():
-                incremental_write(
+                atomic_write(
                     content.encode("utf-8"),
                     outfile,
                     mode=0o644,

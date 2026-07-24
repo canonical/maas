@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.preseed` and related bits and bobs."""
@@ -1447,7 +1447,6 @@ class TestGetCurtinUserDataOS(BootImageHelperMixin, MAASServerTestCase):
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rack_controller, osystem=self.os_name
         )
-        arch, subarch = node.split_arch()
         self.make_boot_image_for_node(node, "xinstall")
         user_data = get_curtin_installer(make_HttpRequest(), node)
 

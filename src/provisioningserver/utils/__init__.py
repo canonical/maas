@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for the provisioning server."""
@@ -10,8 +10,6 @@ import os
 from typing import Tuple
 
 import tempita
-
-from provisioningserver.utils import snap
 
 
 def locate_config(*path: Tuple[str]) -> str:
@@ -104,14 +102,6 @@ def flatten(*things):
             return iter((things,))
 
     return _flatten(things)
-
-
-def sudo(command_args):
-    """Wrap the command arguments in a sudo command, if not in debug mode."""
-    if snap.running_in_snap():
-        return command_args
-    else:
-        return ["sudo", "-n", *command_args]
 
 
 class CircularDependency(ValueError):

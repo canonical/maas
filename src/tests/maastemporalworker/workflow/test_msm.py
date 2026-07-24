@@ -107,6 +107,7 @@ from maastemporalworker.workflow.msm import (
     SiteStatus,
     TaskStatus,
 )
+from provisioningserver.utils.version import MAASVersion
 from tests.fixtures import AsyncContextManagerMock
 from tests.fixtures.factories.node import create_test_machine_entry
 from tests.maasapiserver.fixtures.db import Fixture
@@ -808,7 +809,11 @@ class TestMSMActivities:
         config_opts = await env.run(msm_act.get_known_config_options)
         assert config_opts == list(CONFIGURATION_ACTIVITIES)
 
-    async def test_get_running_version(self, msm_act):
+    async def test_get_running_version(self, mocker, msm_act):
+        mocker.patch(
+            "maastemporalworker.workflow.msm.get_running_version",
+            return_value=MAASVersion.from_string("3.6.0"),
+        )
         env = ActivityEnvironment()
         version = await env.run(msm_act.get_running_version)
         # Verify version is in X.Y.Z format

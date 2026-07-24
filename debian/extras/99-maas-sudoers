@@ -1,9 +1,0 @@
-maas ALL= NOPASSWD: /bin/systemctl status maas-dhcpd
-maas ALL= NOPASSWD: /bin/systemctl start maas-dhcpd
-maas ALL= NOPASSWD: /bin/systemctl restart maas-dhcpd
-maas ALL= NOPASSWD: /bin/systemctl stop maas-dhcpd
-maas ALL= NOPASSWD: /bin/systemctl status maas-dhcpd6
-maas ALL= NOPASSWD: /bin/systemctl start maas-dhcpd6
-maas ALL= NOPASSWD: /bin/systemctl restart maas-dhcpd6
-maas ALL= NOPASSWD: /bin/systemctl stop maas-dhcpd6
-maas ALL= NOPASSWD: /bin/systemctl restart maas-rackd

@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Server fixture for BIND."""
@@ -163,7 +163,6 @@ class BINDServerResources(fixtures.Fixture):
         rndcconf, namedrndcconf = generate_rndc(
             port=self.rndc_port,
             key_name="dnsfixture-rndc-key",
-            include_default_controls=False,
         )
         # Write main BIND config file.
         if should_write(self.conf_file, overwrite_config):

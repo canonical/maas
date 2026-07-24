@@ -5536,7 +5536,6 @@ CREATE TABLE public.maasserver_controllerinfo (
     updated timestamp with time zone NOT NULL,
     node_id bigint NOT NULL,
     version character varying(255) NOT NULL,
-    install_type character varying(255) NOT NULL,
     snap_cohort character varying(255) NOT NULL,
     snap_revision character varying(255) NOT NULL,
     snap_update_revision character varying(255) NOT NULL,
@@ -10105,7 +10104,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0032
+0033
 \.
 
 
@@ -10904,7 +10903,7 @@ COPY public.maasserver_config (id, name, value) FROM stdin;
 -- Data for Name: maasserver_controllerinfo; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_controllerinfo (created, updated, node_id, version, install_type, snap_cohort, snap_revision, snap_update_revision, update_origin, update_version, update_first_reported, vault_configured) FROM stdin;
+COPY public.maasserver_controllerinfo (created, updated, node_id, version, snap_cohort, snap_revision, snap_update_revision, update_origin, update_version, update_first_reported, vault_configured) FROM stdin;
 \.
 
 

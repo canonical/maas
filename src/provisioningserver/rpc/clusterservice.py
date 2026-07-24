@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for clusters."""
@@ -30,7 +30,7 @@ from provisioningserver.certificates import (
     store_maas_agent_cert_tuple,
     store_maas_cluster_cert_tuple,
 )
-from provisioningserver.config import ClusterConfiguration, is_dev_environment
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
 )
@@ -56,7 +56,6 @@ from provisioningserver.rpc.connectionpool import ConnectionPool
 from provisioningserver.rpc.interfaces import IConnectionToRegion
 from provisioningserver.rpc.power import get_power_state
 from provisioningserver.security import calculate_digest, fernet_decrypt_psk
-from provisioningserver.utils import sudo
 from provisioningserver.utils.env import (
     MAAS_AGENT_UUID,
     MAAS_ID,
@@ -76,7 +75,6 @@ from provisioningserver.utils.shell import (
     ExternalProcessError,
     get_env_with_bytes_locale,
 )
-from provisioningserver.utils.snap import running_in_snap
 from provisioningserver.utils.twisted import (
     call,
     callOut,
@@ -121,8 +119,6 @@ def get_scan_all_networks_args(
     :param cidrs: an iterable of CIDR strings
     """
     args = [get_maas_common_command(), "scan-network"]
-    if not is_dev_environment():
-        args = sudo(args)
     if threads is not None:
         args.extend(["--threads", str(threads)])
     if force_ping:
@@ -580,17 +576,14 @@ class Cluster(SecuredRPCProtocol):
         MAAS_SECRET.set(None)
         MAAS_SHARED_SECRET.set(None)
         try:
-            if running_in_snap():
-                call_and_check(["snapctl", "restart", "maas.pebble"])
-            else:
-                call_and_check(["sudo", "systemctl", "restart", "maas-rackd"])
+            call_and_check(["snapctl", "restart", "maas.pebble"])
         except ExternalProcessError as e:
             # Since the snap sends a SIGTERM to terminate the process, python
             # returns -15 as a return code. This indicates the termination
             # signal has been performed and the process terminated. However,
             # This is not a failure. As such, work around the non-zero return
             # (-15) and do not raise an error.
-            if not (running_in_snap() and e.returncode == -15):
+            if e.returncode != -15:
                 maaslog.error("Unable to disable and stop the rackd service")
                 raise exceptions.CannotDisableAndShutoffRackd(  # noqa: B904
                     e.output_as_unicode

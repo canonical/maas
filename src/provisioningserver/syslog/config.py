@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Syslog config management module."""
@@ -9,7 +9,7 @@ import sys
 
 import tempita
 
-from provisioningserver.utils import locate_template, snap
+from provisioningserver.utils import locate_template
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import synchronous
 
@@ -60,9 +60,9 @@ def is_config_present():
 def write_config(write_local, forwarders=None, port=None, promtail_port=None):
     """Write the syslog configuration."""
     context = {
-        "user": "maas",
-        "group": "maas",
-        "drop_priv": True,
+        "user": "root",
+        "group": "root",
+        "drop_priv": False,
         "work_dir": get_syslog_workdir_path(),
         "log_dir": get_syslog_log_path(),
         "write_local": write_local,
@@ -74,12 +74,6 @@ def write_config(write_local, forwarders=None, port=None, promtail_port=None):
         ),
         "promtail_port": promtail_port if promtail_port else 0,
     }
-
-    # Running inside the snap rsyslog is root.
-    if snap.running_in_snap():
-        context["user"] = "root"
-        context["group"] = "root"
-        context["drop_priv"] = False
 
     template_path = locate_template("syslog", MAAS_SYSLOG_CONF_TEMPLATE)
     template = tempita.Template.from_filename(template_path, encoding="UTF-8")

@@ -1,4 +1,4 @@
-# Copyright 2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2020-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -410,26 +410,11 @@ class TestGetMAASCertTuple(MAASTestCase):
         self.tempdir = Path(self.useFixture(TempDir()).path)
 
     def test_get_maas_cert_tuple_missing_files(self):
-        self.useFixture(EnvironmentVariable("MAAS_ROOT", str(self.tempdir)))
-        self.useFixture(EnvironmentVariable("SNAP", None))
+        self.useFixture(EnvironmentVariable("SNAP_COMMON", str(self.tempdir)))
+        self.useFixture(EnvironmentVariable("SNAP", "/snap/maas/current"))
         self.assertIsNone(get_maas_cert_tuple())
 
     def test_get_maas_cert_tuple(self):
-        certs_dir = self.tempdir / "etc/maas/certificates"
-        certs_dir.mkdir(parents=True)
-        (certs_dir / "maas.crt").touch()
-        (certs_dir / "maas.key").touch()
-        self.useFixture(EnvironmentVariable("MAAS_ROOT", str(self.tempdir)))
-        self.useFixture(EnvironmentVariable("SNAP", None))
-        self.assertEqual(
-            get_maas_cert_tuple(),
-            (
-                f"{certs_dir}/maas.crt",
-                f"{certs_dir}/maas.key",
-            ),
-        )
-
-    def test_get_maas_cert_tuple_snap(self):
         certs_dir = self.tempdir / "certificates"
         certs_dir.mkdir(parents=True)
         (certs_dir / "maas.crt").touch()

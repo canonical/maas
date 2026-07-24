@@ -19,7 +19,6 @@ from maasserver.enum import (
 from maasserver.models.bootresource import BootResource
 from maasserver.models.config import Config
 from maasserver.models.controllerinfo import (
-    get_maas_install_type,
     get_maas_version,
     get_target_version,
 )
@@ -55,7 +54,6 @@ class GeneralHandler(Handler):
             "device_actions",
             "generate_client_certificate",
             "hwe_kernels",
-            "install_type",
             "known_architectures",
             "known_boot_architectures",
             "machine_actions",
@@ -287,6 +285,3 @@ class GeneralHandler(Handler):
 
     def maas_url(self, params):
         return Config.objects.get_config("maas_url")
-
-    def install_type(self, params):
-        return get_maas_install_type()

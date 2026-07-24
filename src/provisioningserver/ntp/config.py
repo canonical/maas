@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """NTP service configuration."""
@@ -13,7 +13,7 @@ import re
 from netaddr import AddrFormatError, IPAddress
 
 from provisioningserver.path import get_data_path, get_maas_run_path
-from provisioningserver.utils.fs import sudo_write_file
+from provisioningserver.utils.fs import atomic_write
 
 _NTP_CONF_NAME = "chrony/chrony.conf"
 _NTP_MAAS_CONF_NAME = "chrony/maas.conf"
@@ -25,8 +25,7 @@ _NTP_DIR_NAME = "chrony"
 def configure(servers, peers, offset):
     """Configure the local NTP server with the given time references.
 
-    This writes new ``chrony.chrony.conf`` and ``chrony.maas.conf`` files,
-    using ``sudo`` in production.
+    This writes new ``chrony.chrony.conf`` and ``chrony.maas.conf`` files.
 
     :param servers: An iterable of server addresses -- IPv4, IPv6, hostnames
         -- to use as time references.
@@ -37,12 +36,10 @@ def configure(servers, peers, offset):
     """
     ntp_maas_conf = _render_ntp_maas_conf(servers, peers, offset)
     ntp_maas_conf_path = get_data_path("etc", _NTP_MAAS_CONF_NAME)
-    sudo_write_file(
-        ntp_maas_conf_path, ntp_maas_conf.encode("utf-8"), mode=0o644
-    )
+    atomic_write(ntp_maas_conf.encode("utf-8"), ntp_maas_conf_path, mode=0o644)
     ntp_conf = _render_ntp_conf(ntp_maas_conf_path)
     ntp_conf_path = get_data_path("etc", _NTP_CONF_NAME)
-    sudo_write_file(ntp_conf_path, ntp_conf.encode("utf-8"), mode=0o644)
+    atomic_write(ntp_conf.encode("utf-8"), ntp_conf_path, mode=0o644)
 
 
 configure_region = partial(configure, offset=0)

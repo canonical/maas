@@ -15,8 +15,6 @@
 /dev-snap
 /build_pkg
 /db
-/debian/build/
-/debian/debhelper-build-stamp
 /dist
 /api-docs.rst
 /openapi.yaml

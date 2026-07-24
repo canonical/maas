@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Setup the MAAS named configuration.
@@ -6,8 +6,7 @@
 This creates a basic, blank DNS configuration which will allow MAAS to
 reload its configuration once zone files will be written.
 
-The main purpose of this command is for it to be run when 'maas-region-api' or
-'maas-rack-controller' is installed.
+The main purpose of this command is for it to be run when MAAS is installed.
 """
 
 import sys

@@ -1,9 +1,0 @@
-#!/bin/sh
-
-set -e
-
-#DEBHELPER#
-
-if [ -d /run/systemd/system ]; then
-	deb-systemd-invoke stop 'maas-rackd.service' >/dev/null || true
-fi

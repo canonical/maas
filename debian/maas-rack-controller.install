@@ -1,8 +1,0 @@
-# Install maas-dhcp-helper
-package-files/usr/sbin/maas-dhcp-helper usr/sbin
-
-# Install all other stuff
-debian/extras/99-maas-sudoers etc/sudoers.d
-usr/bin/maas-rack usr/sbin
-usr/bin/rackd usr/sbin
-usr/bin/maas.power usr/sbin

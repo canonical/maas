@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.proxy.config`."""
@@ -13,7 +13,6 @@ from maastesting.crochet import wait_for
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.proxy import config
-from provisioningserver.utils import snap
 
 wait_for_reactor = wait_for()
 
@@ -119,17 +118,8 @@ class TestWriteConfig(MAASTestCase):
             self.assertIn("http_port %s" % port, lines)
 
     def test_user_in_snap(self):
-        self.patch(snap, "running_in_snap").return_value = True
         config.write_config(allowed_cidrs=[])
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
             self.assertIn("cache_effective_user snap_daemon", lines)
             self.assertIn("cache_effective_group snap_daemon", lines)
-
-    def test_user_not_in_snap(self):
-        self.patch(snap, "running_in_snap").return_value = False
-        config.write_config(allowed_cidrs=[])
-        with self.proxy_path.open() as proxy_file:
-            lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertNotIn("cache_effective_user snap_daemon", lines)
-            self.assertNotIn("cache_effective_group snap_daemon", lines)
