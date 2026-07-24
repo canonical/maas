@@ -1,10 +1,5 @@
 """add config column for oidc
 
-This migration descends from 0030 (the common ancestor shared with the
-3.8 branch) so it can be backported to 3.8 without introducing a
-conflicting definition of revision 0034. On master it branches alongside
-0032, and the resulting heads are reconciled by the 0034 merge migration.
-
 Revision ID: 0034
 Revises: 0030
 Create Date: 2026-07-24 11:32:43.402422+00:00
