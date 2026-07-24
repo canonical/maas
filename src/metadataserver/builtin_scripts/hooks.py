@@ -815,12 +815,13 @@ _DEV_PATH = re.compile(
 
 
 # bcache virtual holder devices are always named "bcacheN" by the kernel
-# (e.g. /dev/bcache0); the name is assigned by the bcache driver itself and
-# isn't user-configurable, unlike e.g. mdadm arrays or LVM volumes. LXD
-# reports them alongside physical disks in the "storage.disks" list, but
-# they are stacked virtual devices backed by other disks that are already
-# present in this same list, so they must not be imported as
-# `PhysicalBlockDevice`s.
+# (e.g. /dev/bcache0). This name comes from the "id" LXD reports for a
+# disk, which is just the /sys/class/block/<name> directory name assigned
+# by the originating kernel driver at registration time. It cannot be
+# overridden by users. LXD reports bcache holders alongside physical
+# disks in the "storage.disks" list, but they are stacked virtual devices
+# backed by other disks that are already present in this same list, so
+# they must not be imported as `PhysicalBlockDevice`s.
 def _is_virtual_bcache_holder(block_info):
     return block_info.get("id", "").startswith("bcache")
 
