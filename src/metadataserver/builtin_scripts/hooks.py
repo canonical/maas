@@ -813,6 +813,7 @@ _DEV_PATH = re.compile(
     r"^(?P<bus>\w+)-(?P<bus_addr>[\da-fA-F:\.]+)-(?P<proto>\w+)-(?P<device>.*)$"
 )
 
+
 # bcache virtual holder devices are always named "bcacheN" by the kernel
 # (e.g. /dev/bcache0); the name is assigned by the bcache driver itself and
 # isn't user-configurable, unlike e.g. mdadm arrays or LVM volumes. LXD
@@ -821,7 +822,7 @@ _DEV_PATH = re.compile(
 # present in this same list, so they must not be imported as
 # `PhysicalBlockDevice`s.
 def _is_virtual_bcache_holder(block_info):
-    return block_info["id"].startswith("bcache")
+    return block_info.get("id", "").startswith("bcache")
 
 
 def _condense_luns(disks):
