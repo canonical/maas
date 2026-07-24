@@ -814,6 +814,18 @@ _DEV_PATH = re.compile(
 )
 
 
+# bcache virtual holder devices are always named "bcacheN" by the kernel
+# (e.g. /dev/bcache0). This name comes from the "id" LXD reports for a
+# disk, which is just the /sys/class/block/<name> directory name assigned
+# by the originating kernel driver at registration time. It cannot be
+# overridden by users. LXD reports bcache holders alongside physical
+# disks in the "storage.disks" list, but they are stacked virtual devices
+# backed by other disks that are already present in this same list, so
+# they must not be imported as `PhysicalBlockDevice`s.
+def _is_virtual_bcache_holder(block_info):
+    return block_info.get("id", "").startswith("bcache")
+
+
 def _condense_luns(disks):
     """Condense disks by LUN.
 
@@ -986,6 +998,11 @@ def _update_node_physical_block_devices(
         # Skip the read-only devices or cdroms. We keep them in the output
         # for the user to view but they do not get an entry in the database.
         if block_info["read_only"] or block_info["type"] == "cdrom":
+            continue
+        # Skip virtual holder devices (e.g. bcache). These are stacked block
+        # devices backed by other disks already present in this list and are
+        # not independent physical disks.
+        if _is_virtual_bcache_holder(block_info):
             continue
         name = block_info["id"]
         model = block_info.get("model", "")
