@@ -2,12 +2,12 @@
 
 This migration descends from 0030 (the common ancestor shared with the
 3.8 branch) so it can be backported to 3.8 without introducing a
-conflicting definition of revision 0033. On master it branches alongside
+conflicting definition of revision 0034. On master it branches alongside
 0032, and the resulting heads are reconciled by the 0034 merge migration.
 
-Revision ID: 0033
+Revision ID: 0034
 Revises: 0030
-Create Date: 2026-07-22 11:32:43.402422+00:00
+Create Date: 2026-07-24 11:32:43.402422+00:00
 
 """
 
@@ -18,7 +18,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "0033"
+revision: str = "0034"
 down_revision: str | None = "0030"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
