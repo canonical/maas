@@ -987,6 +987,12 @@ def _update_node_physical_block_devices(
         # for the user to view but they do not get an entry in the database.
         if block_info["read_only"] or block_info["type"] == "cdrom":
             continue
+        # Skip virtual holder devices (e.g. bcache) reported by LXD's
+        # "used_by" field. These are stacked block devices backed by other
+        # disks already present in this list and are not independent
+        # physical disks.
+        if block_info.get("used_by"):
+            continue
         name = block_info["id"]
         model = block_info.get("model", "")
         serial = block_info.get("serial", "")
