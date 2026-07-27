@@ -1573,6 +1573,67 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             ),
         )
 
+    def test_create_machine_uses_discovered_interface_name_when_out_of_order(
+        self,
+    ):
+        interfaces = [
+            self.make_discovered_interface(),
+            self.make_discovered_interface(),
+            self.make_discovered_interface(),
+        ]
+        interfaces[0].boot = True
+
+        # Adding names out of alphabetical order, as a previous
+        # bug was inadvertendly reordering things alphabetically.
+        interfaces[0].name = "maas1"
+        interfaces[1].name = "maas0"
+        interfaces[2].name = "maas2"
+
+        mac_to_expected_name = {
+            iface.mac_address: iface.name for iface in interfaces
+        }
+        discovered_machine = self.make_discovered_machine(
+            interfaces=interfaces
+        )
+
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(
+            fabric=fabric,
+            dhcp_on=True,
+            primary_rack=factory.make_RackController(),
+        )
+        vlan2 = factory.make_VLAN(
+            fabric=fabric,
+            dhcp_on=False,
+            primary_rack=factory.make_RackController(),
+        )
+        vlan3 = factory.make_VLAN(
+            fabric=fabric,
+            dhcp_on=False,
+            primary_rack=factory.make_RackController(),
+        )
+
+        pod = factory.make_Pod()
+        machine = pod.create_machine(
+            discovered_machine,
+            factory.make_User(),
+            interfaces=LabeledConstraintMap(
+                "maas0:vlan=id:%d;maas1:vlan=id:%d;maas2:vlan=id:%d"
+                % (vlan.id, vlan2.id, vlan3.id)
+            ),
+        )
+        # Each created interface must keep the name reported by the
+        # driver (matched by MAC address), regardless of the position it
+        # occupied in the discovered interfaces list.
+        for interface in machine.current_config.interface_set.all():
+            self.assertEqual(
+                mac_to_expected_name[interface.mac_address], interface.name
+            )
+
     def test_create_machine_allocates_requested_ip_addresses(self):
         discovered_machine = self.make_discovered_machine()
         self.patch(Machine, "set_default_storage_layout")
