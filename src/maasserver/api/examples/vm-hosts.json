@@ -304,10 +304,6 @@
 		},
 		"resource_uri": "/MAAS/api/2.0/pods/1/"
 	},
-    "compose": {
-		"system_id": "wdpx3n",
-		"resource_uri": "/MAAS/api/2.0/machines/wdpx3n/"
-	},
     "refresh-vmhost": {
 		"type": "virsh",
 		"name": "mypod",

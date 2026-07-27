@@ -71,12 +71,6 @@ from maasserver.api.packagerepositories import (
     PackageRepositoryHandler,
 )
 from maasserver.api.partitions import PartitionHandler, PartitionsHandler
-from maasserver.api.pods import (
-    PodHandler,
-    PodsHandler,
-    VmHostHandler,
-    VmHostsHandler,
-)
 from maasserver.api.rackcontrollers import (
     RackControllerHandler,
     RackControllersHandler,
@@ -111,12 +105,7 @@ from maasserver.api.tags import TagHandler, TagsHandler
 from maasserver.api.usergroups import UserGroupHandler, UserGroupsHandler
 from maasserver.api.users import UserHandler, UsersHandler
 from maasserver.api.version import VersionHandler
-from maasserver.api.virtualmachine import (
-    VirtualMachineHandler,
-    VirtualMachinesHandler,
-)
 from maasserver.api.vlans import VlanHandler, VlansHandler
-from maasserver.api.vmcluster import VmClusterHandler, VmClustersHandler
 from maasserver.api.vmfs_datastores import (
     VmfsDatastoreHandler,
     VmfsDatastoresHandler,
@@ -170,22 +159,6 @@ regioncontrollers_handler = RestrictedResource(
 )
 device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
-pod_handler = RestrictedResource(PodHandler, authentication=api_auth)
-pods_handler = RestrictedResource(PodsHandler, authentication=api_auth)
-vm_cluster_handler = RestrictedResource(
-    VmClusterHandler, authentication=api_auth
-)
-vm_clusters_handler = RestrictedResource(
-    VmClustersHandler, authentication=api_auth
-)
-vm_host_handler = RestrictedResource(VmHostHandler, authentication=api_auth)
-vm_hosts_handler = RestrictedResource(VmHostsHandler, authentication=api_auth)
-virtual_machine_handler = RestrictedResource(
-    VirtualMachineHandler, authentication=api_auth
-)
-virtual_machines_handler = RestrictedResource(
-    VirtualMachinesHandler, authentication=api_auth
-)
 oidc_provider_handler = RestrictedResource(
     OidcProviderHandler, authentication=api_auth
 )
@@ -544,34 +517,6 @@ patterns += [
         name="device_handler",
     ),
     re_path(r"^devices/$", devices_handler, name="devices_handler"),
-    re_path(r"^pods/(?P<id>[^/]+)/$", pod_handler, name="pod_handler"),
-    re_path(r"^pods/$", pods_handler, name="pods_handler"),
-    # XXX: ltrager 2020-05-11 - Pods are being renamed vm-hosts. For now keep
-    # pods to not break API compatibility.
-    re_path(
-        r"^vm-hosts/(?P<id>[^/]+)/$", vm_host_handler, name="vm_host_handler"
-    ),
-    re_path(r"^vm-hosts/$", vm_hosts_handler, name="vm_hosts_handler"),
-    re_path(
-        r"^virtual-machines/(?P<id>[^/]+)$",
-        virtual_machine_handler,
-        name="virtual_machine_handler",
-    ),
-    re_path(
-        r"^virtual-machines/$",
-        virtual_machines_handler,
-        name="virtual_machines_handler",
-    ),
-    re_path(
-        r"^vm-clusters/(?P<id>[^/]+)$",
-        vm_cluster_handler,
-        name="vm_cluster_handler",
-    ),
-    re_path(
-        r"^vm-clusters/$",
-        vm_clusters_handler,
-        name="vm_clusters_handler",
-    ),
     re_path(r"^events/$", events_handler, name="events_handler"),
     re_path(r"^discovery/$", discoveries_handler, name="discoveries_handler"),
     re_path(

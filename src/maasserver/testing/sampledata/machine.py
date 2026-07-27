@@ -6,7 +6,7 @@ from typing import List
 from django.contrib.auth.models import User
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models import BMC, Machine, Pod, ResourcePool, Tag
+from maasserver.models import BMC, Machine, ResourcePool, Tag
 from maasserver.testing.commissioning import FakeCommissioningData
 from metadataserver.builtin_scripts.hooks import (
     process_lxd_results,
@@ -35,17 +35,13 @@ def make_machine_infos(count: int, hostname_prefix: str):
 
 def make_machines(
     machine_infos: List[FakeCommissioningData],
-    vmhosts: List[Pod],
     tags: List[Tag],
     users: List[User],
     redfish_address: str,
     resourcepools: List[ResourcePool],
 ):
-    bmcs = cycle(vmhosts)
     owners = cycle(users)
     machines = []
-    # ensure machines in a VM host have matching arches
-    vmhost_ratio = len(MACHINE_ARCHES) * 2
 
     if redfish_address:
         redfish_bmc = BMC.objects.create(
@@ -61,14 +57,7 @@ def make_machines(
 
     for n, machine_info in enumerate(machine_infos, 1):
         hostname = machine_info.environment["server_name"]
-        if n % vmhost_ratio == 0:
-            bmc = next(bmcs)
-            instance_power_parameters = {
-                (
-                    "instance_name" if bmc.power_type == "lxd" else "power_id"
-                ): hostname
-            }
-        elif redfish_bmc:
+        if redfish_bmc:
             bmc = redfish_bmc
             instance_power_parameters = {"node_id": hostname}
         else:

@@ -46,7 +46,7 @@ from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.prometheus.metrics import set_global_labels
-from provisioningserver.rpc import cluster, common, exceptions, pods, region
+from provisioningserver.rpc import cluster, common, exceptions, region
 from provisioningserver.rpc.common import (
     ConnectionAuthStatus,
     Ping,
@@ -453,75 +453,6 @@ class Cluster(SecuredRPCProtocol):
             message = "Unknown chassis type %s" % chassis_type
             maaslog.error(message)
         return {}
-
-    @cluster.DiscoverPodProjects.responder
-    def discover_pod_projects(self, type, context):
-        """DiscoverPod()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.DiscoverPodProjects`.
-        """
-
-        return pods.discover_pod_projects(type, context)
-
-    @cluster.DiscoverPod.responder
-    def discover_pod(self, type, context, pod_id=None, name=None):
-        """DiscoverPod()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.DiscoverPod`.
-        """
-        return pods.discover_pod(type, context, pod_id=pod_id, name=name)
-
-    @cluster.SendPodCommissioningResults.responder
-    def send_pod_commissioning_results(
-        self,
-        pod_id,
-        name,
-        type,
-        system_id,
-        context,
-        consumer_key,
-        token_key,
-        token_secret,
-        metadata_url,
-    ):
-        """SendPodCommissioningResults()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.SendPodCommissioningResults`.
-        """
-        return pods.send_pod_commissioning_results(
-            type,
-            context,
-            pod_id,
-            name,
-            system_id,
-            consumer_key,
-            token_key,
-            token_secret,
-            metadata_url,
-        )
-
-    @cluster.ComposeMachine.responder
-    def compose_machine(self, type, context, request, pod_id, name):
-        """ComposeMachine()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.ComposeMachine`.
-        """
-        return pods.compose_machine(
-            type, context, request, pod_id=pod_id, name=name
-        )
-
-    @cluster.DecomposeMachine.responder
-    def decompose_machine(self, type, context, pod_id, name):
-        """DecomposeMachine()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.DecomposeMachine`.
-        """
-        return pods.decompose_machine(type, context, pod_id=pod_id, name=name)
 
     @cluster.ScanNetworks.responder
     def scan_all_networks(

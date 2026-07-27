@@ -3,16 +3,12 @@
 
 """vendor-data for cloud-init's use."""
 
-from base64 import b64encode
 from ipaddress import ip_address
 from itertools import chain
-from os import urandom
 import pkgutil
 import re
-from textwrap import dedent
 
 from netaddr import IPAddress
-from passlib.hash import sha512_crypt
 import tempita
 import yaml
 
@@ -28,13 +24,9 @@ from maasserver.preseed import (
 from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
-from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.converters import systemd_interval_to_calendar
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
-
-DEPLOY_SECRETS_LXD_KEY = "lxd-certificate"
-DEPLOY_SECRETS_VIRSH_KEY = "virsh-password"
 
 HARDWARE_SYNC_MACHINE_TOKEN_PATH = "/etc/maas/maas-machine-creds.yml"
 HARDWARE_SYNC_SERVICE_TEMPLATE = "hardware_sync_service.template"
@@ -46,7 +38,6 @@ def get_vendor_data(node, proxy):
         generate_system_info(node),
         generate_snap_configuration(node, proxy),
         generate_ntp_configuration(node),
-        generate_kvm_pod_configuration(node),
         generate_ephemeral_netplan_lock_removal(node),
         generate_ephemeral_deployment_network_configuration(node),
         generate_overlayroot_tmpfs_size_fix(node),
@@ -223,177 +214,6 @@ def generate_openvswitch_configuration(node):
         yield "packages", ["openvswitch-switch"]
 
 
-def generate_kvm_pod_configuration(node):
-    """Generate cloud-init configuration to install the node as a KVM pod."""
-    if node.netboot or not (node.install_kvm or node.register_vmhost):
-        return
-
-    deploy_secrets = {}
-
-    arch, _ = node.split_arch()
-
-    if node.register_vmhost:
-        cert = generate_certificate(Config.objects.get_config("maas_name"))
-        cert_pem = cert.certificate_pem() + cert.private_key_pem()
-        deploy_secrets[DEPLOY_SECRETS_LXD_KEY] = cert_pem
-        # write out the LXD cert on node to add it to the trust after setup
-        maas_project = "maas"
-        cert_file = "/root/lxd.crt"
-        yield (
-            "write_files",
-            [
-                {
-                    "content": cert.certificate_pem(),
-                    "path": cert_file,
-                },
-            ],
-        )
-        # When installing LXD, ensure no deb packages are installed, since they
-        # would conflict with the snap. Also, ensure that the snap version is
-        # the latest, since MAAS requires features not present in the one
-        # installed by default in Focal.
-        yield (
-            "runcmd",
-            [
-                # Remove existing LXD packages, since they were installed by default
-                # until bionic.
-                "apt-get autoremove --purge --yes lxd || true",
-                "apt-get autoremove --purge --yes lxd-client || true",
-                "apt-get autoremove --purge --yes lxcfs || true",
-                # Retry snap installation due to bug https://bugs.launchpad.net/snapd/+bug/2104066.
-                "timeout 600 bash -c 'until snap install lxd --channel=5.21/stable; do sleep 10; done'",
-                # In case lxd was already installed, we need to refresh in order to have
-                # it point to the right channel.
-                "snap refresh lxd --channel=5.21/stable",
-                "lxd waitready -t 300",
-                "lxd init --auto --network-address=[::]",
-                f"lxc project create {maas_project}",
-                f"lxc config trust add {cert_file} --restricted --projects {maas_project}",
-                f"rm {cert_file}",
-            ],
-        )
-
-    if node.install_kvm:
-        password = _generate_password()
-        deploy_secrets[DEPLOY_SECRETS_VIRSH_KEY] = password
-        # Make sure SSH password authentication is enabled.
-        yield "ssh_pwauth", True
-        # Create a custom 'virsh' user (in addition to the default user)
-        # with the encrypted password, and a locked-down shell.
-        yield (
-            "users",
-            [
-                "default",
-                {
-                    "name": "virsh",
-                    "lock_passwd": False,
-                    "passwd": sha512_crypt.hash(password),
-                    "shell": "/bin/rbash",
-                },
-            ],
-        )
-
-        packages = ["libvirt-daemon-system", "libvirt-clients"]
-        # libvirt emulates UEFI on ARM64 however qemu-efi-aarch64 is only a
-        # suggestion on ARM64 so cloud-init doesn't install it.
-        if arch == "arm64":
-            packages.append("qemu-efi-aarch64")
-        yield "packages", packages
-
-        # set up virsh user and ssh authentication
-        yield (
-            "runcmd",
-            [
-                # Restrict the $PATH so that rbash can be used to limit what the
-                # virsh user can do if they manage to get a shell.
-                "mkdir -p /home/virsh/bin",
-                "ln -s /usr/bin/virsh /home/virsh/bin/virsh",
-                # Make sure the 'virsh' user is allowed to access libvirt.
-                "/usr/sbin/usermod --append --groups libvirt,libvirt-qemu virsh",
-                # SSH needs to be restarted in order for the above changes to take
-                # effect.
-                "[ -f /usr/lib/systemd/system/sshd.service ] && systemctl restart sshd || systemctl restart ssh",
-            ],
-        )
-
-        yield (
-            "write_files",
-            [
-                {
-                    "path": "/home/virsh/.bash_profile",
-                    "content": "PATH=/home/virsh/bin",
-                },
-                # Use a ForceCommand to make sure the only thing the virsh user can
-                # do with SSH is communicate with libvirt.
-                {
-                    "path": "/etc/ssh/sshd_config",
-                    "content": dedent(
-                        """\
-                    Match user virsh
-                      X11Forwarding no
-                      AllowTcpForwarding no
-                      PermitTTY no
-                      ForceCommand nc -q 0 -U /var/run/libvirt/libvirt-sock
-                    """
-                    ),
-                    "append": True,
-                },
-            ],
-        )
-
-    secret_manager = SecretManager()
-    node = node.as_node()
-    if deploy_secrets:
-        secret_manager.set_composite_secret(
-            "deploy-metadata", deploy_secrets, obj=node
-        )
-    else:
-        secret_manager.delete_secret("deploy-metadata", obj=node)
-
-    if arch == "ppc64el":
-        rc_script = dedent(
-            """\
-            #!/bin/sh
-            # This file was generated by MAAS to disable SMT on PPC64EL since
-            # VMs are not supported otherwise.
-            ppc64_cpu --smt=off
-            exit 0
-            """
-        )
-    elif arch == "s390x":
-        rc_script = dedent(
-            """\
-            #!/bin/bash
-            # This file was generated by MAAS to enable VNIC characteristics to allow
-            # packets to be forwarded over a bridge.
-            for bridge in $(bridge link show | awk -F"[ :]" '{ print $3 }'); do
-                # Isolated networks are not associated with a qeth and do not need
-                # anything enabled. Ignore them.
-                phy_addr=$(lsqeth $bridge 2>/dev/null | awk -F ': ' '/cdev0/ {print $2}')
-                if [ -n "$phy_addr" ]; then
-                    chzdev $phy_addr vnicc/learning=1
-                fi
-            done
-            """
-        )
-    else:
-        rc_script = None
-
-    if rc_script:
-        rc_local = "/etc/rc.local"
-        yield (
-            "write_files",
-            [
-                {
-                    "path": rc_local,
-                    "content": rc_script,
-                    "permissions": "0755",
-                },
-            ],
-        )
-        yield "runcmd", [rc_local]
-
-
 def generate_vcenter_configuration(node):
     """Generate vendor config when deploying ESXi."""
     if node.osystem != "esxi":
@@ -511,8 +331,3 @@ def generate_hardware_sync_systemd_configuration(node):
             "systemctl enable maas_hardware_sync.timer",
         ],
     )
-
-
-def _generate_password():
-    """Generate a 32-character password by encoding 24 bytes as base64."""
-    return b64encode(urandom(24), altchars=b".!").decode("ascii")

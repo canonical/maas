@@ -93,19 +93,6 @@ class UnknownPowerType(Exception):
     """Raised when trying to process an unknown power type."""
 
 
-class UnknownPodType(Exception):
-    """Raised when trying to process an unknown pod type."""
-
-
-class PodActionFail(Exception):
-    """Raised when performing a pod action."""
-
-
-class PodInvalidResources(Exception):
-    """Raised when a pod cannot compose a machine because of
-    invalid resources."""
-
-
 class CannotRegisterCluster(Exception):
     """The cluster could not be registered."""
 

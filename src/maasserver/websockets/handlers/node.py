@@ -207,9 +207,6 @@ class NodeHandler(TimestampedModelHandler):
             return None
         return {"id": pool.id, "name": pool.name}
 
-    def dehydrate_pod(self, pod):
-        return {"id": pod.id, "name": pod.name}
-
     def dehydrate_numanode(self, numa_node):
         details = {
             attr: getattr(numa_node, attr)

@@ -49,7 +49,6 @@ from maasserver.api.utils import (
 from maasserver.authorization import can_edit_machines
 from maasserver.clusterrpc.driver_parameters import get_all_power_types
 from maasserver.enum import (
-    BMC_TYPE,
     BRIDGE_TYPE,
     BRIDGE_TYPE_CHOICES,
     BRIDGE_TYPE_CHOICES_DICT,
@@ -76,7 +75,6 @@ from maasserver.forms.filesystem import (
     MountNonStorageFilesystemForm,
     UnmountNonStorageFilesystemForm,
 )
-from maasserver.forms.pods import ComposeMachineForPodsForm
 from maasserver.models import (
     Config,
     Domain,
@@ -84,18 +82,13 @@ from maasserver.models import (
     Machine,
     NodeMetadata,
     PhysicalBlockDevice,
-    Pod,
     RackController,
     VirtualBlockDevice,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
-from maasserver.node_constraint_filter_forms import (
-    AcquireNodeForm,
-    nodes_by_interface,
-    nodes_by_storage,
-)
+from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.node_status import NODE_TRANSITIONS
-from maasserver.permissions import NodePermission, PodPermission
+from maasserver.permissions import NodePermission
 from maasserver.preseed import get_curtin_merged_config
 from maasserver.storage_layouts import (
     StorageLayoutError,
@@ -169,7 +162,6 @@ DISPLAYED_MACHINE_FIELDS = (
     "node_type_name",
     "special_filesystems",
     "parent",
-    "pod",
     "default_gateways",
     "current_commissioning_result_id",
     "current_testing_result_id",
@@ -192,7 +184,6 @@ DISPLAYED_MACHINE_FIELDS = (
     "interface_test_status",
     "interface_test_status_name",
     ("numanode_set", DISPLAYED_NUMANODE_FIELDS),
-    "virtualmachine_id",
     "workload_annotations",
     "last_sync",
     "sync_interval",
@@ -229,8 +220,6 @@ AllocationOptions = namedtuple(
         "bridge_fd",
         "bridge_stp",
         "comment",
-        "install_kvm",
-        "register_vmhost",
         "ephemeral_deploy",
         "enable_hw_sync",
     ),
@@ -265,7 +254,6 @@ def get_storage_layout_params(request, required=False, extract_params=False):
 def get_allocation_options(request) -> AllocationOptions:
     """Parses optional parameters for allocation and deployment."""
     comment = get_optional_param(request.POST, "comment")
-    default_bridge_all = False
     install_rackd = get_optional_param(
         request.POST, "install_rackd", default=False, validator=StringBool
     )
@@ -277,18 +265,27 @@ def get_allocation_options(request) -> AllocationOptions:
     install_kvm = get_optional_param(
         request.POST, "install_kvm", default=False, validator=StringBool
     )
+    # Deploying a machine as a VM host has been removed in 4.0.
+    if install_kvm:
+        raise MAASAPIBadRequest(
+            "Support for install_kvm allocation parameter has been removed."
+        )
     register_vmhost = get_optional_param(
         request.POST, "register_vmhost", default=False, validator=StringBool
     )
+    # Deploying a machine as a VM host has been removed in 4.0.
+    if register_vmhost:
+        raise MAASAPIBadRequest(
+            "Support for register_vmhost allocation parameter has been "
+            "removed."
+        )
     ephemeral_deploy = get_optional_param(
         request.POST, "ephemeral_deploy", default=False, validator=StringBool
     )
-    if (install_kvm or register_vmhost) and not ephemeral_deploy:
-        default_bridge_all = True
     bridge_all = get_optional_param(
         request.POST,
         "bridge_all",
-        default=default_bridge_all,
+        default=False,
         validator=StringBool,
     )
     bridge_type = get_optional_param(
@@ -321,61 +318,9 @@ def get_allocation_options(request) -> AllocationOptions:
         bridge_fd,
         bridge_stp,
         comment,
-        install_kvm,
-        register_vmhost,
         ephemeral_deploy,
         enable_hw_sync,
     )
-
-
-def get_allocated_composed_machine(
-    request, data, storage, interfaces, pods, form, input_constraints
-):
-    """Return composed machine if input constraints are matched."""
-    machine = None
-    # Gather tags and not_tags.
-    tags = None
-    not_tags = None
-    for name, value in input_constraints:
-        if name == "tags":
-            tags = value
-        elif name == "not_tags":
-            not_tags = value
-
-    if tags:
-        pods = pods.filter(tags__contains=tags)
-    if not_tags:
-        pods = pods.exclude(tags__contains=not_tags)
-    if form.cleaned_data.get("pod"):
-        pods = pods.filter(name__in=form.cleaned_data.get("pod"))
-    if form.cleaned_data.get("pod_type"):
-        pods = pods.filter(power_type__in=form.cleaned_data.get("pod_type"))
-    if form.cleaned_data.get("not_pod"):
-        pods = pods.exclude(name__in=form.cleaned_data.get("not_pod"))
-    if form.cleaned_data.get("not_pod_type"):
-        pods = pods.exclude(
-            power_type__in=form.cleaned_data.get("not_pod_type")
-        )
-    compose_form = ComposeMachineForPodsForm(
-        request=request, data=data, pods=pods
-    )
-    if compose_form.is_valid():
-        machine = compose_form.compose()
-        if machine is not None:
-            # Set the storage variable so the constraint_map is
-            # set correct for the composed machine.
-            storage = nodes_by_storage(storage, node_ids=[machine.id])
-            if storage is None:
-                storage = {}
-            if interfaces:
-                result = nodes_by_interface(
-                    interfaces,
-                    include_filter=dict(node_config__node_id=machine.id),
-                )
-                interfaces = result.label_map
-            else:
-                interfaces = {}
-    return machine, storage, interfaces
 
 
 class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
@@ -393,10 +338,6 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
     def delete(self, request, system_id):
         """@description-title Delete a machine
         @description Deletes a machine with the given system_id.
-
-        Note: A machine cannot be deleted if it hosts pod virtual machines.
-        Use ``force`` to override this behavior. Forcing deletion will also
-        remove hosted pods. E.g. ``/machines/abc123/?force=1``.
 
         @param (string) "{system_id}" [required=true] The machines's system_id.
 
@@ -444,21 +385,6 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
                 ),
                 "__incomplete__": True,
             }
-
-    @classmethod
-    def pod(handler, machine):
-        """The pod this machine is part of."""
-        bmc = machine.bmc
-        if bmc is None:
-            return None
-        elif bmc.bmc_type == BMC_TYPE.POD:
-            return {
-                "id": bmc.id,
-                "name": bmc.name,
-                "resource_uri": reverse("pod_handler", kwargs={"id": bmc.id}),
-            }
-        else:
-            return None
 
     @classmethod
     def blockdevice_set(handler, machine):
@@ -583,14 +509,6 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
                 "link_id": machine.gateway_link_ipv6_id,
             },
         }
-
-    @classmethod
-    def virtualmachine_id(handler, machine):
-        """The ID of the VirtualMachine associated to this machine, or None."""
-        vm = getattr(machine, "virtualmachine", None)
-        if vm is None:
-            return None
-        return vm.id
 
     def update(self, request, system_id):
         """@description-title Update a machine
@@ -771,11 +689,13 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @param (boolean) "install_rackd" [required=false] Deprecated. If true, the rack
         controller will be installed on this machine. This feature has been removed and can't be used anymore.
 
-        @param (boolean) "install_kvm" [required=false] If true, KVM will be
-        installed on this machine and added to MAAS.
+        @param (boolean) "install_kvm" [required=false] Deprecated. If true, KVM
+        will be installed on this machine and added to MAAS. This feature has
+        been removed and can't be used anymore.
 
-        @param (boolean) "register_vmhost" [required=false] If true, the
-        machine will be registered as a LXD VM host in MAAS.
+        @param (boolean) "register_vmhost" [required=false] Deprecated. If true,
+        the machine will be registered as a LXD VM host in MAAS. This feature
+        has been removed and can't be used anymore.
 
         @param (boolean) "ephemeral_deploy" [required=false] If true, machine
         will be deployed ephemerally even if it has disks.
@@ -823,17 +743,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         # Deploying a node requires re-checking for EDIT permissions.
         if not request.user.has_perm(NodePermission.edit, machine):
             raise PermissionDenied()
-        if (
-            options.install_kvm or options.register_vmhost
-        ) and not request.user.has_perm(NodePermission.admin, machine):
-            raise PermissionDenied("Only administratros can deploy VM hosts")
         ephemeral_deploy = options.ephemeral_deploy or machine.is_diskless
-        if (
-            options.install_kvm or options.register_vmhost
-        ) and ephemeral_deploy:
-            raise MAASAPIBadRequest(
-                "A machine can not be a VM host if it is deployed to memory."
-            )
         if machine.status == NODE_STATUS.READY:
             with locks.node_acquire:
                 if machine.owner is not None and machine.owner != request.user:
@@ -2361,18 +2271,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
         request multiple pools to exclude, this parameter must be repeated in
         the request with each value.
 
-        @param (string) "pod" [required=false] Pod the machine must be located
-        in.
-
-        @param (string) "not_pod" [required=false] Pod the machine must not be
-        located in.
-
-        @param (string) "pod_type" [required=false] Pod type the machine must
-        be located in.
-
-        @param (string) "not_pod_type" [required=false] Pod type the machine
-        must not be located in.
-
         @param (string) "subnets" [required=false,formatting=true] Subnets that
         must be linked to the machine.
 
@@ -2553,7 +2451,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
         dry_run = get_optional_param(
             request.POST, "dry_run", default=False, validator=StringBool
         )
-        zone = get_optional_param(request.POST, "zone", default=None)
 
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -2571,47 +2468,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
             system_id = get_optional_param(
                 request.POST, "system_id", default=None
             )
-            if machine is None and system_id is None:
-                cores = form.cleaned_data.get("cpu_count")
-                if cores:
-                    cores = int(min(cores))
-                memory = form.cleaned_data.get("mem")
-                if memory:
-                    memory = int(min(memory))
-                architecture = None
-                architectures = form.cleaned_data.get("arch")
-                if architectures is not None:
-                    architecture = (
-                        None if len(architectures) == 0 else min(architectures)
-                    )
-                storage = form.cleaned_data.get("storage")
-                interfaces = form.cleaned_data.get("interfaces")
-                data = {
-                    "cores": cores,
-                    "memory": memory,
-                    "architecture": architecture,
-                    "storage": storage,
-                    "interfaces": interfaces,
-                }
-                pods = Pod.objects.get_pods(
-                    request.user, PodPermission.dynamic_compose
-                )
-                if zone is not None:
-                    pods = pods.filter(zone__name=zone)
-                if pods:
-                    (
-                        machine,
-                        storage,
-                        interfaces,
-                    ) = get_allocated_composed_machine(
-                        request,
-                        data,
-                        storage,
-                        interfaces,
-                        pods,
-                        form,
-                        input_constraints,
-                    )
 
             if machine is None:
                 constraints = form.describe_constraints()

@@ -374,24 +374,6 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertTrue(eth0_0102.link_connected)
         self.assertEqual([eth0], list(eth0_0102.parents.all()))
 
-    def test_vlans_with_alternate_naming_conventions_vm_host(self):
-        host = factory.make_Machine()
-        factory.make_Pod(host=host)
-        data = FakeCommissioningData()
-        eth0_network = data.create_physical_network("eth0")
-        data.create_vlan_network("vlan0100", parent=eth0_network, vid=1)
-        data.create_vlan_network("vlan101", parent=eth0_network, vid=2)
-        data.create_vlan_network("eth0.0102", parent=eth0_network, vid=3)
-
-        self.update_interfaces(host, data)
-
-        interface_names = VLANInterface.objects.filter(
-            node_config=host.current_config
-        ).values_list("name", flat=True)
-        self.assertCountEqual(
-            ["eth0.0102", "vlan0100", "vlan101"], interface_names
-        )
-
     def test_vlans_with_alternate_naming_conventions_host(self):
         host = factory.make_Machine()
         data = FakeCommissioningData()

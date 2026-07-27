@@ -127,15 +127,7 @@ Provision VMs with LXD.
      maas $PROFILE vm-hosts create type=lxd power_address=$LXD_ADDRESS project=$PROJECT_NAME
      ```
 
-3. Add VMs:
-   - **UI**: *KVM* > *VM host* > *Add VM* > fill in cores, RAM, disks > *Compose machine*
-   - **CLI**:
-
-     ```bash
-     maas $PROFILE vm-host compose $VM_HOST_ID cores=4 memory=8G disks=1:size=20G
-     ```
-
-4. Move or delete VMs:
+3. Move or delete VMs:
    - **UI**: *Machines* > *[VM]* > *Take action* > *Delete*
    - **CLI**:
 
@@ -349,14 +341,6 @@ Upload a commissioning script that outputs a JSON layout.
 
     ```bash
     maas $PROFILE machine deploy $SYSTEM_ID ephemeral_deploy=true
-    ```
-
-- Deploy as VM host:
-  - **UI**: *Machines* > *[machine]* > *Take action* > *Deploy* > *Install KVM*
-  - **CLI**:
-
-    ```bash
-    maas $PROFILE machine deploy $SYSTEM_ID install_kvm=True
     ```
 
 - Deploy with cloud-init:

@@ -8,7 +8,6 @@ from django.utils.http import urlencode
 
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import NODE_TYPE
-from maasserver.models.bmc import Pod
 from maasserver.testing.api import APITestCase, explain_unexpected_response
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -55,11 +54,6 @@ class TestRegionControllerAPI(APITestCase.ForUser):
         region = factory.make_Node_with_Interface_on_Subnet(
             node_type=NODE_TYPE.REGION_CONTROLLER, subnet=subnet, vlan=vlan
         )
-        ip = factory.make_StaticIPAddress(
-            interface=region.current_config.interface_set.first()
-        )
-        factory.make_Pod(ip_address=ip)
-        mock_async_delete = self.patch(Pod, "async_delete")
         response = self.client.delete(
             self.get_region_uri(region),
             QUERY_STRING=urlencode({"force": "true"}, doseq=True),
@@ -69,48 +63,6 @@ class TestRegionControllerAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.NO_CONTENT, response),
         )
-        mock_async_delete.assert_called_once_with()
-
-    def test_DELETE_force_not_required_for_pod_region_rack(self):
-        self.become_admin()
-        vlan = factory.make_VLAN()
-        factory.make_Subnet(vlan=vlan)
-        rack = factory.make_RegionRackController(vlan=vlan)
-        ip = factory.make_StaticIPAddress(
-            interface=rack.current_config.interface_set.first()
-        )
-        factory.make_Pod(ip_address=ip)
-        mock_async_delete = self.patch(Pod, "async_delete")
-        response = self.client.delete(
-            self.get_region_uri(rack),
-            QUERY_STRING=urlencode({"force": "true"}, doseq=True),
-        )
-        self.assertEqual(
-            http.client.NO_CONTENT,
-            response.status_code,
-            explain_unexpected_response(http.client.NO_CONTENT, response),
-        )
-        mock_async_delete.assert_not_called()
-
-    def test_pod_DELETE_delete_without_force(self):
-        self.become_admin()
-        vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan)
-        region = factory.make_Node_with_Interface_on_Subnet(
-            node_type=NODE_TYPE.REGION_CONTROLLER, subnet=subnet, vlan=vlan
-        )
-        ip = factory.make_StaticIPAddress(
-            interface=region.current_config.interface_set.first()
-        )
-        factory.make_Pod(ip_address=ip)
-        mock_async_delete = self.patch(Pod, "async_delete")
-        response = self.client.delete(self.get_region_uri(region))
-        self.assertEqual(
-            http.client.BAD_REQUEST,
-            response.status_code,
-            explain_unexpected_response(http.client.BAD_REQUEST, response),
-        )
-        mock_async_delete.assert_not_called()
 
 
 class TestRegionControllersAPI(APITestCase.ForUser):

@@ -1246,9 +1246,6 @@ def process_lxd_results(node, output, exit_status):
                 execution_timeout=timedelta(seconds=120),
             )
 
-    for pod in node.get_hosted_pods():
-        pod.sync_hints_from_nodes()
-
 
 def create_metadata_by_modalias(node, output: bytes, exit_status):
     """Tags the node based on discovered hardware, determined by modaliases.

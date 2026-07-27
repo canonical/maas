@@ -60,8 +60,6 @@ PUBLIC_URL_PREFIXES = [
     reverse("maas-run-scripts"),
     # Prometheus metrics with usage stats
     reverse("metrics"),
-    # VM host certificates are publicly accessible
-    "/MAAS/vmhost-certificate",
     # API meta-information is publicly visible.
     reverse("api_version"),
     reverse("api_v1_error"),

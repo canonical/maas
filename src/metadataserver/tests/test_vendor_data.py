@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
-from textwrap import dedent
 
 from netaddr import IPAddress
 import tempita
@@ -18,15 +17,11 @@ from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import systemd_interval_to_calendar
 from maasserver.utils.orm import post_commit_hooks
-from metadataserver import vendor_data
 from metadataserver.vendor_data import (
     _get_metadataserver_template,
-    DEPLOY_SECRETS_LXD_KEY,
-    DEPLOY_SECRETS_VIRSH_KEY,
     generate_ephemeral_deployment_network_configuration,
     generate_ephemeral_netplan_lock_removal,
     generate_hardware_sync_systemd_configuration,
-    generate_kvm_pod_configuration,
     generate_ntp_configuration,
     generate_openvswitch_configuration,
     generate_overlayroot_tmpfs_size_fix,
@@ -39,7 +34,6 @@ from metadataserver.vendor_data import (
     HARDWARE_SYNC_SERVICE_TEMPLATE,
     HARDWARE_SYNC_TIMER_TEMPLATE,
 )
-from provisioningserver.testing.certificates import get_sample_cert
 
 
 class TestGetVendorData(MAASServerTestCase):
@@ -242,222 +236,6 @@ class TestGenerateOpenVSwitchConfiguration(MAASServerTestCase):
             generate_openvswitch_configuration(node),
             [("packages", ["openvswitch-switch"])],
         )
-
-
-class TestGenerateKVMPodConfiguration(MAASServerTestCase):
-    def test_yields_configuration_when_machine_install_kvm_true(self):
-        password = "123secure"
-        self.patch(vendor_data, "_generate_password").return_value = password
-        self.patch(
-            vendor_data.sha512_crypt, "hash"
-        ).return_value = "123crypted"
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING,
-            osystem="ubuntu",
-            netboot=False,
-            install_kvm=True,
-        )
-        secret_manager = SecretManager()
-        secret_manager.set_composite_secret(
-            "deploy-metadata",
-            {
-                DEPLOY_SECRETS_VIRSH_KEY: "old value",
-                DEPLOY_SECRETS_LXD_KEY: "old value",
-            },
-            obj=node,
-        )
-
-        config = list(generate_kvm_pod_configuration(node))
-        self.assertEqual(
-            config,
-            [
-                ("ssh_pwauth", True),
-                (
-                    "users",
-                    [
-                        "default",
-                        {
-                            "name": "virsh",
-                            "lock_passwd": False,
-                            "passwd": "123crypted",
-                            "shell": "/bin/rbash",
-                        },
-                    ],
-                ),
-                ("packages", ["libvirt-daemon-system", "libvirt-clients"]),
-                (
-                    "runcmd",
-                    [
-                        "mkdir -p /home/virsh/bin",
-                        "ln -s /usr/bin/virsh /home/virsh/bin/virsh",
-                        "/usr/sbin/usermod --append --groups libvirt,libvirt-qemu virsh",
-                        "[ -f /usr/lib/systemd/system/sshd.service ] && systemctl restart sshd || systemctl restart ssh",
-                    ],
-                ),
-                (
-                    "write_files",
-                    [
-                        {
-                            "content": "PATH=/home/virsh/bin",
-                            "path": "/home/virsh/.bash_profile",
-                        },
-                        {
-                            "content": dedent(
-                                """\
-                                Match user virsh
-                                  X11Forwarding no
-                                  AllowTcpForwarding no
-                                  PermitTTY no
-                                  ForceCommand nc -q 0 -U /var/run/libvirt/libvirt-sock
-                                """
-                            ),
-                            "path": "/etc/ssh/sshd_config",
-                            "append": True,
-                        },
-                    ],
-                ),
-            ],
-        )
-        self.assertEqual(
-            secret_manager.get_composite_secret("deploy-metadata", obj=node),
-            {DEPLOY_SECRETS_VIRSH_KEY: password},
-        )
-
-    def test_yields_configuration_when_machine_register_vmhost_true(self):
-        cert = get_sample_cert()
-        self.patch(vendor_data, "generate_certificate").return_value = cert
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING,
-            osystem="ubuntu",
-            netboot=False,
-            register_vmhost=True,
-        )
-        secret_manager = SecretManager()
-        secret_manager.set_composite_secret(
-            "deploy-metadata",
-            {
-                DEPLOY_SECRETS_VIRSH_KEY: "old value",
-                DEPLOY_SECRETS_LXD_KEY: "old value",
-            },
-            obj=node,
-        )
-
-        config = list(generate_kvm_pod_configuration(node))
-        self.assertEqual(
-            config,
-            [
-                (
-                    "write_files",
-                    [
-                        {
-                            "content": cert.certificate_pem(),
-                            "path": "/root/lxd.crt",
-                        },
-                    ],
-                ),
-                (
-                    "runcmd",
-                    [
-                        "apt-get autoremove --purge --yes lxd || true",
-                        "apt-get autoremove --purge --yes lxd-client || true",
-                        "apt-get autoremove --purge --yes lxcfs || true",
-                        "timeout 600 bash -c 'until snap install lxd --channel=5.21/stable; do sleep 10; done'",
-                        "snap refresh lxd --channel=5.21/stable",
-                        "lxd waitready -t 300",
-                        "lxd init --auto --network-address=[::]",
-                        "lxc project create maas",
-                        "lxc config trust add /root/lxd.crt --restricted --projects maas",
-                        "rm /root/lxd.crt",
-                    ],
-                ),
-            ],
-        )
-        self.assertEqual(
-            secret_manager.get_composite_secret("deploy-metadata", obj=node),
-            {
-                DEPLOY_SECRETS_LXD_KEY: cert.certificate_pem()
-                + cert.private_key_pem()
-            },
-        )
-
-    def test_includes_smt_off_for_install_kvm_on_ppc64(self):
-        password = "123secure"
-        cert = get_sample_cert()
-        self.patch(vendor_data, "generate_certificate").return_value = cert
-        self.patch(vendor_data, "_generate_password").return_value = password
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING,
-            osystem="ubuntu",
-            netboot=False,
-            architecture="ppc64el/generic",
-            register_vmhost=True,
-        )
-        config = list(generate_kvm_pod_configuration(node))
-        self.assertIn(
-            (
-                "write_files",
-                [
-                    {
-                        "path": "/etc/rc.local",
-                        "content": (
-                            "#!/bin/sh\n"
-                            "# This file was generated by MAAS to disable SMT "
-                            "on PPC64EL since\n"
-                            "# VMs are not supported otherwise.\n"
-                            "ppc64_cpu --smt=off\n"
-                            "exit 0\n"
-                        ),
-                        "permissions": "0755",
-                    },
-                ],
-            ),
-            config,
-        )
-        self.assertIn(("runcmd", ["/etc/rc.local"]), config)
-
-    def test_enables_vnic_characteristics_on_s390x(self):
-        password = "123secure"
-        cert = get_sample_cert()
-        self.patch(vendor_data, "generate_certificate").return_value = cert
-        self.patch(vendor_data, "_generate_password").return_value = password
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING,
-            osystem="ubuntu",
-            netboot=False,
-            architecture="s390x/generic",
-            register_vmhost=True,
-        )
-        config = list(generate_kvm_pod_configuration(node))
-        self.assertIn(
-            (
-                "write_files",
-                [
-                    {
-                        "path": "/etc/rc.local",
-                        "content": (
-                            "#!/bin/bash\n"
-                            "# This file was generated by MAAS to enable VNIC "
-                            "characteristics to allow\n"
-                            "# packets to be forwarded over a bridge.\n"
-                            'for bridge in $(bridge link show | awk -F"[ :]" '
-                            "'{ print $3 }'); do\n"
-                            "    # Isolated networks are not associated with "
-                            "a qeth and do not need\n"
-                            "    # anything enabled. Ignore them.\n"
-                            "    phy_addr=$(lsqeth $bridge 2>/dev/null | "
-                            "awk -F ': ' '/cdev0/ {print $2}')\n"
-                            '    if [ -n "$phy_addr" ]; then\n'
-                            "        chzdev $phy_addr vnicc/learning=1\n"
-                            "    fi\n"
-                            "done\n"
-                        ),
-                        "permissions": "0755",
-                    },
-                ],
-            ),
-            config,
-        )
-        self.assertIn(("runcmd", ["/etc/rc.local"]), config)
 
 
 class TestGenerateEphemeralNetplanLockRemoval(MAASServerTestCase):

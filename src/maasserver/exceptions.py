@@ -229,17 +229,6 @@ class PowerProblem(MAASAPIException):
     api_error = int(http.client.SERVICE_UNAVAILABLE)
 
 
-class PodProblem(MAASAPIException):
-    """Raised when there's a problem with a pod operation.
-
-    This could be a problem with parameters, a problem with the pod's
-    controller, or something else.  The exception text will contain more
-    information.
-    """
-
-    api_error = int(http.client.SERVICE_UNAVAILABLE)
-
-
 class NoScriptsFound(MAASException):
     """Raised when no Scripts are found based on user input."""
 

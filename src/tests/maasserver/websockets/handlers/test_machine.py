@@ -465,55 +465,6 @@ class TestMachineHandlerNewSchema:
         assert result["count"] == 1
         assert result["groups"][0]["items"][0]["id"] == node.id
 
-    def test_group_label_dynamic(self, mocker):
-        mocker.patch("maasserver.utils.orm.post_commit_hooks")
-        mocker.patch("maasserver.utils.orm.post_commit_do")
-        user, session = factory.make_User_with_session()
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.ALLOCATED,
-            bmc=factory.make_Pod(pod_type="lxd"),
-        )
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.ALLOCATED,
-            bmc=factory.make_Pod(pod_type="virsh"),
-        )
-        handler = MachineHandler(user, {}, None)
-        result = handler.list_ids(
-            {
-                "group_key": "pod_type",
-            }
-        )
-        assert result["groups"][0]["name"] == "lxd"
-        assert result["groups"][1]["name"] == "virsh"
-
-    def test_group_collapse_dynamic(self, mocker):
-        mocker.patch("maasserver.utils.orm.post_commit_hooks")
-        mocker.patch("maasserver.utils.orm.post_commit_do")
-        user, session = factory.make_User_with_session()
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.ALLOCATED,
-            bmc=factory.make_Pod(pod_type="lxd"),
-        )
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.ALLOCATED,
-            bmc=factory.make_Pod(pod_type="virsh"),
-        )
-        handler = MachineHandler(user, {}, None)
-        result = handler.list_ids(
-            {
-                "group_key": "pod_type",
-                "group_collapsed": ["lxd"],
-            }
-        )
-        assert result["groups"][0]["name"] == "lxd"
-        assert result["groups"][0]["collapsed"]
-        assert result["groups"][1]["name"] == "virsh"
-        assert not result["groups"][1]["collapsed"]
-
     def test_group_label_static(self, mocker):
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
@@ -781,7 +732,7 @@ class TestMachineHandlerNewSchema:
             factory.make_usable_boot_resource(architecture="amd64/generic")
             node = factory.make_Machine_with_Interface_on_Subnet(
                 architecture="amd64/generic",
-                bmc=factory.make_Pod(),
+                bmc=factory.make_BMC(),
                 owner=user,
                 fabric=fabric,
                 interface_speed=1000,
@@ -1031,21 +982,6 @@ class TestMachineHandlerWithServiceLayer:
             status=NODE_STATUS.READY,
             with_boot_disk=False,
         )
-        transaction.commit()
-        list_results = handler.list({})
-        assert list_results["groups"][0]["items"] == [
-            TestMachineHandlerUtils.dehydrate_node(
-                node, handler, for_list=True
-            )
-        ]
-
-    def test_list_includes_pod_details_when_available(self, mocker):
-        mocker.patch("maasserver.utils.orm.post_commit_hooks")
-        mocker.patch("maasserver.utils.orm.post_commit_do")
-        user, session = factory.make_User_with_session()
-        pod = factory.make_Pod()
-        node = factory.make_Node(owner=user, bmc=pod)
-        handler = MachineHandler(user, {}, None)
         transaction.commit()
         list_results = handler.list({})
         assert list_results["groups"][0]["items"] == [

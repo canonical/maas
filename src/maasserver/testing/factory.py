@@ -80,8 +80,6 @@ from maasserver.models import (
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
-    Pod,
-    PodStoragePool,
     RegionController,
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
@@ -102,7 +100,6 @@ from maasserver.models import (
     VersionedTextFile,
     VirtualBlockDevice,
     VLAN,
-    VMCluster,
     VolumeGroup,
     Zone,
 )
@@ -115,7 +112,6 @@ from maasserver.models.nodeconfig import NODE_CONFIG_TYPE, NodeConfig
 from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
-from maasserver.models.virtualmachine import VirtualMachine, VirtualMachineDisk
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.sessiontimeout import SessionStore
 from maasserver.sqlalchemy import service_layer
@@ -790,49 +786,6 @@ class Factory(maastesting.factory.Factory):
         metadata = NodeMetadata(node=node, key=key, value=value)
         metadata.save()
         return metadata
-
-    def make_Pod(
-        self,
-        pod_type=None,
-        parameters=None,
-        ip_address=None,
-        host=None,
-        project=None,
-        cluster=None,
-        **kwargs,
-    ):
-        if pod_type is None:
-            pod_type = "virsh"
-        if parameters is None:
-            parameters = {}
-            if ip_address is not None:
-                ip = str(ip_address.ip)
-            else:
-                ip = self.make_ip_address()
-            if ":" in ip:
-                ip = "[%s]" % ip
-            if pod_type == "virsh":
-                parameters = {"power_address": f"qemu+ssh://{ip}/system"}
-            elif pod_type == "lxd":
-                parameters = {"power_address": f"{ip}:8443"}
-        if project:
-            parameters["project"] = project
-        pod = Pod(
-            power_type=pod_type,
-            power_parameters=parameters,
-            ip_address=ip_address,
-            **kwargs,
-        )
-
-        with post_commit_hooks:
-            pod.save()
-            if host is not None:
-                pod.hints.nodes.add(host)
-            if cluster is not None:
-                pod.hints.cluster = cluster
-                pod.hints.save()
-
-        return pod
 
     def make_Domain(self, name=None, ttl=None, authoritative=True):
         if name is None:
@@ -3394,60 +3347,6 @@ class Factory(maastesting.factory.Factory):
             *args, group_type=FILESYSTEM_GROUP_TYPE.VMFS6, **kwargs
         )
 
-    def make_VMCluster(
-        self,
-        name=None,
-        project=None,
-        pods=1,
-        vms=0,
-        pool=None,
-        zone=None,
-        memory=4096,
-        vm_memory=1024,
-        cores=8,
-        storage=None,
-        disk_size=None,
-    ):
-        if name is None:
-            name = self.make_name("name")
-        if project is None:
-            project = self.make_name("project")
-        if zone is None:
-            zone = DefaultResource.objects.get_default_zone()
-
-        cluster = VMCluster.objects.create(
-            name=name,
-            project=project,
-            pool=pool,
-            zone=zone,
-        )
-
-        for _ in range(0, pods):
-            pod = self.make_Pod(
-                pod_type="lxd",
-                cores=cores,
-                memory=memory,
-                cluster=cluster,
-                project=project,
-            )
-            pool = self.make_PodStoragePool(pod=pod, storage=storage)
-
-            for _ in range(0, vms):
-                node = self.make_Node(bmc=pod)
-                vm = self.make_VirtualMachine(
-                    machine=node,
-                    memory=vm_memory,
-                    pinned_cores=[0, 2],
-                    hugepages_backed=False,
-                    bmc=pod,
-                    project=project,
-                )
-                self.make_VirtualMachineDisk(
-                    vm=vm, backing_pool=pool, size=disk_size
-                )
-
-        return cluster
-
     def make_VirtualBlockDevice(
         self,
         name=None,
@@ -3630,36 +3529,6 @@ class Factory(maastesting.factory.Factory):
 
         return notification
 
-    def make_PodStoragePool(
-        self,
-        pod=None,
-        name=None,
-        pool_id=None,
-        pool_type=None,
-        path=None,
-        storage=None,
-    ):
-        if pod is None:
-            pod = self.make_Pod()
-        if name is None:
-            name = self.make_name("name")
-        if pool_id is None:
-            pool_id = self.make_name("pool_id")
-        if pool_type is None:
-            pool_type = random.choice(["dir", "lvm"])
-        if path is None:
-            path = "/var/lib/%s" % name
-        if storage is None:
-            storage = random.randint(10 * 1024**3, 100 * 1024**3)
-        return PodStoragePool.objects.create(
-            pod=pod,
-            name=name,
-            pool_id=pool_id,
-            pool_type=pool_type,
-            path=path,
-            storage=storage,
-        )
-
     def make_NUMANode(self, node=None, cores=None, memory=None):
         if node is None:
             node = factory.make_Node()
@@ -3692,72 +3561,6 @@ class Factory(maastesting.factory.Factory):
             node = factory.make_Node()
             return node.current_config
         return NodeConfig.objects.create(node=node, name=name)
-
-    def make_VirtualMachine(
-        self,
-        identifier=None,
-        bmc=None,
-        project="",
-        machine=None,
-        pinned_cores=None,
-        unpinned_cores=0,
-        memory=None,
-        hugepages_backed=None,
-    ):
-        if identifier is None:
-            identifier = factory.make_string(20)
-        if bmc is None:
-            bmc = factory.make_BMC(
-                power_type="lxd",
-                power_parameters={
-                    "power_address": self.make_ip_address(),
-                },
-            )
-        if pinned_cores is None:
-            pinned_cores = []
-            if unpinned_cores == 0 and machine is not None:
-                unpinned_cores = machine.cpu_count
-        if memory is None:
-            if machine is None:
-                memory = 0
-            else:
-                memory = machine.memory
-        if hugepages_backed is None:
-            hugepages_backed = self.pick_bool()
-        return VirtualMachine.objects.create(
-            identifier=identifier,
-            bmc=bmc,
-            project=project,
-            hugepages_backed=hugepages_backed,
-            memory=memory,
-            machine=machine,
-            pinned_cores=pinned_cores,
-            unpinned_cores=unpinned_cores,
-        )
-
-    def make_VirtualMachineDisk(
-        self,
-        vm=None,
-        name=None,
-        size=None,
-        block_device=None,
-        backing_pool=None,
-    ):
-        if vm is None:
-            vm = factory.make_VirtualMachine()
-        if name is None:
-            name = factory.make_name("vmdisk")
-        if size is None:
-            size = random.randint(
-                MIN_BLOCK_DEVICE_SIZE * 4, MIN_BLOCK_DEVICE_SIZE * 1024
-            )
-        return VirtualMachineDisk.objects.create(
-            name=name,
-            vm=vm,
-            size=size,
-            block_device=block_device,
-            backing_pool=backing_pool,
-        )
 
     def make_NodeDevice(
         self,
