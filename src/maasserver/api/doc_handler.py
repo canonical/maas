@@ -67,7 +67,6 @@ from maasserver.api.annotations import APIDocstringParser
 from maasserver.api.doc import (
     find_api_resources,
     generate_api_docs,
-    generate_pod_types_doc,
     generate_power_types_doc,
     get_api_description,
 )
@@ -210,7 +209,6 @@ def render_api_docs():
     line(generate_power_types_doc())
     line()
     line()
-    line(generate_pod_types_doc())
 
     return output.getvalue()
 

@@ -171,8 +171,7 @@ class Discovery(Model):
     that MAAS believes has been discovered.
 
     Note that this class is backed by the `maasserver_discovery` view. Any
-    updates to this model must be reflected in `maasserver/dbviews.py` under
-    the `maasserver_discovery` view.
+    updates to this model must be reflected in an alembic database migration.
     """
 
     class Meta:

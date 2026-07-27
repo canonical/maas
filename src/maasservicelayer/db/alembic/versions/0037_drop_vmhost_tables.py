@@ -1,8 +1,8 @@
 """Drop VM host (Pod) tables, columns and notification triggers
 
-Revision ID: 0034
-Revises: 0033
-Create Date: 2026-07-24 08:00:00.000000+00:00
+Revision ID: 0037
+Revises: 0036
+Create Date: 2026-07-27 08:00:00.000000+00:00
 
 """
 
@@ -11,8 +11,8 @@ from typing import Sequence
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0034"
-down_revision: str | None = "0033"
+revision: str = "0037"
+down_revision: str | None = "0036"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -73,6 +73,11 @@ VMHOST_TABLES = (
 
 
 def upgrade() -> None:
+    # The maasserver_podhost view joins VM hosts (pods) to the nodes they
+    # host and depends on pod-only columns of maasserver_bmc. Drop it before
+    # removing those columns.
+    op.execute("DROP VIEW IF EXISTS maasserver_podhost")
+
     for function in VMHOST_TRIGGER_FUNCTIONS:
         op.execute(f"DROP FUNCTION IF EXISTS {function}() CASCADE")
 

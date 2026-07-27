@@ -12,7 +12,6 @@ class TestViews:
     _ALL_VIEWS = [
         "maasserver_discovery",
         "maasserver_routable_pairs",
-        "maasserver_podhost",
         "maasserver_ui_subnet_view",
         "maasserver_bootsourceselectionstatus_view",
         "maasserver_usergroup_members_view",

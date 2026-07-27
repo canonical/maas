@@ -71,7 +71,6 @@ def include_object(object, name, type_, reflected, compare_to):
         "maasserver_bootsourceselectionstatus_view",
         "maasserver_discovery",
         "maasserver_routable_pairs",
-        "maasserver_podhost",
         "maasserver_ui_subnet_view",
     }
 
