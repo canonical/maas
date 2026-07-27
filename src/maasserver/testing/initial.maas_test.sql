@@ -6898,7 +6898,8 @@ CREATE TABLE public.maasserver_oidc_provider (
     enabled boolean NOT NULL,
     metadata jsonb NOT NULL,
     token_type integer NOT NULL,
-    vendor integer NOT NULL
+    vendor integer NOT NULL,
+    config jsonb
 );
 
 
@@ -10104,7 +10105,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0033
+0035
 \.
 
 
@@ -11211,7 +11212,7 @@ COPY public.maasserver_numanodehugepages (id, created, updated, page_size, total
 -- Data for Name: maasserver_oidc_provider; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_oidc_provider (id, created, updated, name, client_id, client_secret, issuer_url, redirect_uri, scopes, enabled, metadata, token_type, vendor) FROM stdin;
+COPY public.maasserver_oidc_provider (id, created, updated, name, client_id, client_secret, issuer_url, redirect_uri, scopes, enabled, metadata, token_type, vendor, config) FROM stdin;
 \.
 
 
