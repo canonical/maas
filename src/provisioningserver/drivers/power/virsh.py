@@ -195,7 +195,7 @@ class VirshPowerDriver(PowerDriver):
     # Virtual machines on the same host share a single BMC (the hypervisor),
     # so the driver must be a chassis for BMC deduplication to work.
     chassis = True
-    can_probe = False
+    can_probe = True
     can_set_boot_order = False
     settings = [
         make_setting_field("power_address", "Address", required=True),

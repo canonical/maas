@@ -11,7 +11,6 @@ from itertools import chain
 
 import bson
 from django.db.models import Prefetch
-from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from piston3.utils import rc
 
@@ -60,7 +59,6 @@ NODES_SELECT_RELATED = (
     "pool",
     "current_config",
     "boot_interface__node_config__node",
-    "virtualmachine",
 )
 
 
@@ -880,9 +878,6 @@ class NodesHandler(OperationsHandler):
             nodes, _, _ = form.filter_nodes(nodes)
             nodes = nodes.select_related(*NODES_SELECT_RELATED)
             nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
-            nodes = nodes.annotate(
-                virtualmachine_id=Coalesce("virtualmachine__id", None)
-            )
         # Assign the correct domain to each node. Manually setting the domain
         # object avoids extra work by Piston when serializing the nodes.
         for node in nodes:

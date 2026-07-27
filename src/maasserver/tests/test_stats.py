@@ -184,7 +184,7 @@ class TestMAASStats(MAASServerTestCase):
             },
             "bmcs": {
                 "auto_detected": {},
-                "user_created": {"lxd": 1, "virsh": 2},
+                "user_created": {"virsh": 1},
                 "unknown": {},
             },
             "vault": {
@@ -288,56 +288,6 @@ class TestMAASStats(MAASServerTestCase):
                 "vlans": VLAN.objects.count(),
                 "subnets_v4": 0,
                 "subnets_v6": 0,
-            },
-            "vm_hosts": {
-                "lxd": {
-                    "vm_hosts": 0,
-                    "vms": 0,
-                    "available_resources": {
-                        "cores": 0,
-                        "memory": 0,
-                        "over_cores": 0.0,
-                        "over_memory": 0.0,
-                        "storage": 0,
-                    },
-                    "utilized_resources": {
-                        "cores": 0,
-                        "memory": 0,
-                        "storage": 0,
-                    },
-                    "initial_auth": {
-                        "trust_password": 0,
-                        "no_trust_password": 0,
-                        "maas_generated_cert": 0,
-                        "user_provided_cert": 0,
-                        "cert_expiration_days": {
-                            "10_days": 0,
-                            "1_month": 0,
-                            "3_months": 0,
-                            "1_year": 0,
-                            "2_years": 0,
-                            "3_years": 0,
-                            "10_years": 0,
-                            "more_than_10_years": 0,
-                        },
-                    },
-                },
-                "virsh": {
-                    "vm_hosts": 0,
-                    "vms": 0,
-                    "available_resources": {
-                        "cores": 0,
-                        "memory": 0,
-                        "over_cores": 0.0,
-                        "over_memory": 0.0,
-                        "storage": 0,
-                    },
-                    "utilized_resources": {
-                        "cores": 0,
-                        "memory": 0,
-                        "storage": 0,
-                    },
-                },
             },
             "workload_annotations": {
                 "annotated_machines": 0,

@@ -6180,7 +6180,10 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                 architecture=architectures[i % len(architectures)],
                 owner=user,
                 bmc=factory.make_BMC(
-                    power_type=random.choice(["lxd", "virsh"])
+                    power_type=random.choice(["lxd", "virsh"]),
+                    power_parameters={
+                        "power_address": factory.make_ip_address()
+                    },
                 ),
             )
             for i in range(5)

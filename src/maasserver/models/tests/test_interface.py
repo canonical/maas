@@ -375,7 +375,7 @@ class TestInterfaceManager(MAASServerTestCase):
     def test_resolve_missing_mac_address(self):
         iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
-            node=factory.make_Node(bmc=factory.make_BMC()),
+            node=factory.make_Node(bmc=factory.make_BMC(power_type="virsh")),
         )
         iface.mac_address = None
         with post_commit_hooks:
@@ -390,7 +390,7 @@ class TestInterfaceManager(MAASServerTestCase):
     ):
         iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
-            node=factory.make_Node(bmc=factory.make_BMC()),
+            node=factory.make_Node(bmc=factory.make_BMC(power_type="virsh")),
         )
         iface.mac_address = None
         with post_commit_hooks:

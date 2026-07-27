@@ -52,7 +52,7 @@ class LXDPowerDriver(PowerDriver):
     # Virtual machines on the same host share a single BMC (the hypervisor),
     # so the driver must be a chassis for BMC deduplication to work.
     chassis = True
-    can_probe = False
+    can_probe = True
     can_set_boot_order = False
     description = "LXD (virtual systems)"
     wait_time = LXD_WAITING_POLICY
