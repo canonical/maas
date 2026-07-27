@@ -57,7 +57,6 @@ BMC_VMHOST_COLUMNS = (
     "created_with_cert_expiration_days",
     "created_with_maas_generated_cert",
     "created_with_trust_password",
-    "created_by_commissioning",
 )
 
 # Tables dependent on maasserver_bmc are removed child-first.

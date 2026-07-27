@@ -117,6 +117,7 @@ BMCTable = Table(
     ),
     Column("bmc_type", Integer, nullable=False),
     Column("power_parameters", JSONB, nullable=False),
+    Column("created_by_commissioning", Boolean, nullable=True),
     Index("maasserver__power_p_511df2_hash", "power_parameters"),
     Index("maasserver_bmc_ip_address_id_79362d14", "ip_address_id"),
     Index("maasserver_bmc_power_type_93755dda", "power_type"),

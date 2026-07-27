@@ -148,6 +148,15 @@ class BMC(CleanSave, TimestampedModel):
     # encoded as JSON. These apply to all Nodes controlled by this BMC.
     power_parameters = JSONField(max_length=(2**15), blank=True, default=str)
 
+    created_by_commissioning = BooleanField(
+        # We allow None, since before 3.2 we didn't track this, and we
+        # don't know whether the BMC was created manually or
+        # automatically by commissioning.
+        null=True,
+        default=False,
+        editable=False,
+    )
+
     # Rack controllers that have access to the BMC by routing instead of
     # having direct layer 2 access.
     routable_rack_controllers = ManyToManyField(
