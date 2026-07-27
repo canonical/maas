@@ -3,18 +3,13 @@
 
 """API handlers: `VMCluster`.
 
-KVM/VM host support has been removed from MAAS. These endpoints are kept for
-backwards compatibility but every operation responds with HTTP 410 Gone.
+KVM/VM host support has been removed from MAAS. These endpoints are kept in
+order to provide more informative messages for clients that might still try
+to call them.
 """
 
 from maasserver.api.support import OperationsHandler
-from maasserver.exceptions import MAASAPIGone
-
-VMHOST_REMOVED_MESSAGE = "VM host (KVM) support has been removed from MAAS."
-
-
-def _gone(*args, **kwargs):
-    raise MAASAPIGone(VMHOST_REMOVED_MESSAGE)
+from maasserver.api.vmhost_removed import vmhost_gone as _gone
 
 
 class VmClusterHandler(OperationsHandler):

@@ -8,8 +8,6 @@ from django.db.models.signals import post_delete, pre_delete
 from maasserver.models import BMC
 from maasserver.utils.signals import SignalsManager
 
-BMC_CLASSES = [BMC]
-
 signals = SignalsManager()
 
 
@@ -18,8 +16,7 @@ def pre_delete_bmc_clean_orphaned_ip(sender, instance, **kwargs):
     instance.__previous_ip_address = instance.ip_address
 
 
-for klass in BMC_CLASSES:
-    signals.watch(pre_delete, pre_delete_bmc_clean_orphaned_ip, sender=klass)
+signals.watch(pre_delete, pre_delete_bmc_clean_orphaned_ip, sender=BMC)
 
 
 def post_delete_bmc_clean_orphaned_ip(sender, instance, **kwargs):
@@ -38,8 +35,7 @@ def post_delete_bmc_clean_orphaned_ip(sender, instance, **kwargs):
     instance.__previous_ip_address.delete()
 
 
-for klass in BMC_CLASSES:
-    signals.watch(post_delete, post_delete_bmc_clean_orphaned_ip, sender=klass)
+signals.watch(post_delete, post_delete_bmc_clean_orphaned_ip, sender=BMC)
 
 # Enable all signals by default.
 signals.enable()
