@@ -192,7 +192,9 @@ class VirshSSH(pexpect.spawn):
 class VirshPowerDriver(PowerDriver):
     name = "virsh"
     description = "Virsh (virtual systems)"
-    chassis = False
+    # Virtual machines on the same host share a single BMC (the hypervisor),
+    # so the driver must be a chassis for BMC deduplication to work.
+    chassis = True
     can_probe = False
     can_set_boot_order = False
     settings = [
