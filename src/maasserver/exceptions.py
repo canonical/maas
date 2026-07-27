@@ -66,6 +66,16 @@ class MAASAPIForbidden(MAASAPIException):
     api_error = int(http.client.FORBIDDEN)
 
 
+class MAASAPIGone(MAASAPIException):
+    """HTTP error 410: Gone.
+
+    The requested resource is no longer available and will not be available
+    again. Used for endpoints whose feature has been removed.
+    """
+
+    api_error = int(http.client.GONE)
+
+
 class MAASAPIValidationError(MAASAPIBadRequest, ValidationError):
     """A validation error raised during a MAAS API request."""
 
