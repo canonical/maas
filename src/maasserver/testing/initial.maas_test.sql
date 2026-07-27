@@ -10249,6 +10249,7 @@ COPY public.maasserver_dnsdata (id, created, updated, rrtype, rrdata, dnsresourc
 --
 
 COPY public.maasserver_dnspublication (id, serial, created, source, update) FROM stdin;
+1	1	2021-11-19 12:40:49.607453+00	Initial publication	
 \.
 
 
@@ -10856,6 +10857,7 @@ COPY public.maasserver_vlan (id, created, updated, name, vid, mtu, fabric_id, dh
 --
 
 COPY public.maasserver_zone (id, created, updated, name, description) FROM stdin;
+1	2021-11-19 12:40:43.705399+00	2021-11-19 12:40:43.705399+00	default	
 \.
 
 
@@ -16750,6 +16752,14 @@ ALTER TABLE ONLY public.maasserver_bootstraptoken
 
 ALTER TABLE ONLY public.maasserver_controllerinfo
     ADD CONSTRAINT maasserver_controllerinfo_node_id_e38255a5_fk FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_defaultresource maasserver_defaultre_zone_id_29a5153a_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_defaultresource
+    ADD CONSTRAINT maasserver_defaultre_zone_id_29a5153a_fk_maasserve FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
