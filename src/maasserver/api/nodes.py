@@ -79,7 +79,6 @@ def blockdev_prefetch(expression):
                     "filesystem_group",
                 ),
             )
-        yield f"{device}__vmdisk__backing_pool"
 
     yield f"{expression}__physicalblockdevice__numa_node"
 
