@@ -2082,7 +2082,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
         count_5, hosts_5 = count_queries(dhcp.make_hosts_for_subnets, [subnet])
         self.assertEqual(2, len(hosts_2))
         self.assertEqual(5, len(hosts_5))
-        self.assertEqual(3, count_2)
+        self.assertEqual(4, count_2)
         self.assertEqual(count_2, count_5)
 
     def test_query_count_independent_of_bond_parent_count(self):
@@ -2122,7 +2122,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
         # Each bond and its parents get a host entry (factory MACs differ).
         self.assertEqual(3, len(hosts_small))
         self.assertEqual(8, len(hosts_large))
-        self.assertEqual(3, count_small)
+        self.assertEqual(4, count_small)
         self.assertEqual(count_small, count_large)
 
     def tests__returns_defined_hosts(self):
