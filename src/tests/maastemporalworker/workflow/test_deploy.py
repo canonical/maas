@@ -808,7 +808,12 @@ class TestDeployManyWorkflow:
                 assert len(calls["set_node_status"]) == 3
                 assert len(calls["get_boot_order"]) == 2
                 assert len(calls["power_query"]) == 3
-                assert len(calls["power_on"]) == 3
+                # 3 initial deploy power-ons + 1 extra power-on for the single
+                # can_set_boot_order machine, which MAAS power-cycles to switch
+                # its boot device to disk (power off -> set boot order ->
+                # power on).
+                assert len(calls["power_on"]) == 4
+                assert len(calls["power_off"]) == 1
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 3
                 assert len(calls["power_reset"]) == 0
@@ -1511,7 +1516,11 @@ class TestDeployWorkflow:
                 assert len(calls["get_boot_order"]) == 2
                 assert len(calls["set_boot_order"]) == 2
                 assert len(calls["power_query"]) == 1
-                assert len(calls["power_on"]) == 1
+                # Two power-ons: the initial deploy start, plus the
+                # MAAS-driven power-on after switching the boot device to
+                # disk (power off -> set boot order -> power on).
+                assert len(calls["power_on"]) == 2
+                assert len(calls["power_off"]) == 1
                 assert len(calls["power_cycle"]) == 0
                 assert len(calls["set_power_state"]) == 1
                 assert len(calls["power_reset"]) == 0

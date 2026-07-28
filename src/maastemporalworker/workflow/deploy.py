@@ -46,6 +46,7 @@ from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.power import (
     POWER_ACTION_ACTIVITY_TIMEOUT,
     POWER_CYCLE_ACTIVITY_NAME,
+    POWER_OFF_ACTIVITY_NAME,
     POWER_ON_ACTIVITY_NAME,
     POWER_QUERY_ACTIVITY_NAME,
     SET_POWER_STATE_ACTIVITY_NAME,
@@ -487,6 +488,41 @@ class DeployWorkflow:
         else:
             raise InvalidMachineStateException("no boot order found")
 
+    async def _power(self, params: DeployParam, activity_name: str) -> None:
+        """Run a power activity (on/off) on the agent for this machine."""
+        await workflow.execute_activity(
+            activity_name,
+            {
+                "driver_type": params.power_params.driver_type,
+                "driver_opts": params.power_params.driver_opts,
+                "is_dpu": params.power_params.is_dpu,
+            },
+            task_queue=params.power_params.task_queue,
+            start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
+            retry_policy=RetryPolicy(maximum_attempts=3),
+        )
+
+    async def _switch_to_local_boot(self, params: DeployParam) -> None:
+        """Point a boot-order-capable machine at its local disk to boot.
+
+        MAAS drives the power transition itself (power off -> confirm off ->
+        set boot order to disk -> power on) instead of relying on the
+        in-installer reboot.
+
+        This avoids a race specific to BMCs that MAAS controls the boot order
+        for (``can_set_boot_order``) and whose firmware cannot fall through
+        from a netboot config to the local disk -- notably IBM Z DPM. Once the
+        installer finishes, MAAS stops serving a netboot kernel; if the guest
+        reboots before the boot device is flipped to disk, the machine
+        network-IPLs into an empty config and hangs ("No value found for
+        kernel", IPL failed 110). Powering off and confirming the machine is
+        actually down before the flip closes that window (and also sidesteps
+        the transient HMC "busy" state seen while an operation is in flight).
+        """
+        await self._power(params, POWER_OFF_ACTIVITY_NAME)
+        await self._set_boot_order(params, netboot=False)
+        await self._power(params, POWER_ON_ACTIVITY_NAME)
+
     @workflow_run_with_context
     async def run(self, params: DeployParam) -> DeployResult:
         # Arm network boot before powering on so the machine PXE boots into
@@ -501,7 +537,7 @@ class DeployWorkflow:
             await workflow.wait_condition(lambda: self._has_netbooted)
 
             if params.can_set_boot_order:
-                await self._set_boot_order(params, netboot=False)
+                await self._switch_to_local_boot(params)
 
         await workflow.wait_condition(lambda: self._deployed_os_ready)
 
