@@ -3,7 +3,6 @@
 
 from unittest.mock import MagicMock, Mock, patch
 
-from macaroonbakery.bakery import Macaroon
 import pytest
 from starlette.requests import Request
 from starlette.types import ASGIApp
@@ -11,7 +10,6 @@ from starlette.types import ASGIApp
 from maasapiserver.common.api.models.responses.errors import (
     BadRequestResponse,
     ConflictResponse,
-    DischargeRequiredErrorResponse,
     ForbiddenResponse,
     InsufficientStorageErrorResponse,
     InternalServerErrorResponse,
@@ -28,7 +26,6 @@ from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
     ConflictException,
-    DischargeRequiredException,
     ForbiddenException,
     InsufficientStorageException,
     NotFoundException,
@@ -67,13 +64,6 @@ class TestExceptionMiddleware:
                     details=[BaseExceptionDetail(type="type", message="msg")]
                 ),
                 UnauthorizedResponse,
-            ),
-            (
-                DischargeRequiredException(
-                    macaroon=Macaroon(root_key="key", id="id"),
-                    details=[BaseExceptionDetail(type="type", message="msg")],
-                ),
-                DischargeRequiredErrorResponse,
             ),
             (
                 ForbiddenException(

@@ -77,16 +77,12 @@ def get_auth_tokens(user):
 # When a user is created: create the related profile, and the default
 # consumer/token. Also add the user to the default group.
 def create_user(sender, instance, created, **kwargs):
-    from maasserver.macaroon_auth import external_auth_enabled
     from maasserver.models.userprofile import UserProfile
 
     # System users do not have profiles.
     if created and instance.username not in SYSTEM_USERS:
         # Create related UserProfile.
-        profile = UserProfile.objects.create(
-            user=instance,
-            is_local=not external_auth_enabled(),
-        )
+        profile = UserProfile.objects.create(user=instance, is_local=True)
 
         # Create initial authorisation token.
         if not SKIP_CREATE_AUTHORISATION_TOKEN:

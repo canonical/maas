@@ -24,9 +24,7 @@ from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db import Database
-from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
-    DischargeRequiredException,
     ForbiddenException,
     UnauthorizedException,
 )
@@ -57,7 +55,7 @@ class AuthTestMiddleware(BaseHTTPMiddleware):
             request.state.authenticated_user = None
         try:
             return await call_next(request)
-        except (UnauthorizedException, DischargeRequiredException):
+        except UnauthorizedException:
             return Response(status_code=401)
         except ForbiddenException:
             return Response(status_code=403)
@@ -125,64 +123,6 @@ def _build_auth_app(
     async def endpoint_with_permissions() -> Response:
         return Response(status_code=200)
 
-    @app.post(
-        f"{V3_API_PREFIX}/rbac_pools",
-        dependencies=[
-            Depends(
-                check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
-                    rbac_permissions={
-                        RbacPermission.VIEW,
-                        RbacPermission.VIEW_ALL,
-                        RbacPermission.DEPLOY_MACHINES,
-                        RbacPermission.ADMIN_MACHINES,
-                    },
-                )
-            )
-        ],
-    )
-    async def rbac_pools(
-        authenticated_user: Optional[AuthenticatedUser] = Depends(  # noqa: B008
-            get_authenticated_user
-        ),
-    ) -> Optional[AuthenticatedUser]:
-        return authenticated_user
-
-    @app.post(
-        f"{V3_API_PREFIX}/rbac_admin_pools",
-        dependencies=[
-            Depends(
-                check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
-                    rbac_permissions={RbacPermission.EDIT},
-                )
-            )
-        ],
-    )
-    async def rbac_admin_pools(
-        authenticated_user: Optional[AuthenticatedUser] = Depends(  # noqa: B008
-            get_authenticated_user
-        ),
-    ) -> Optional[AuthenticatedUser]:
-        return authenticated_user
-
-    @app.post(
-        f"{V3_API_PREFIX}/rbac_no_permissions",
-        dependencies=[
-            Depends(
-                check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
-                )
-            )
-        ],
-    )
-    async def rbac_no_permissions(
-        authenticated_user: Optional[AuthenticatedUser] = Depends(  # noqa: B008
-            get_authenticated_user
-        ),
-    ) -> Optional[AuthenticatedUser]:
-        return authenticated_user
-
     return app
 
 
@@ -192,7 +132,7 @@ def auth_app(
     db_connection: AsyncConnection,
     transaction_middleware_class: type,
 ) -> Iterator[FastAPI]:
-    # The default app grants CAN_EDIT_GLOBAL_ENTITIES so that all non-RBAC endpoints pass the OpenFGA check.
+    # The default app grants CAN_EDIT_GLOBAL_ENTITIES so OpenFGA checks pass.
     yield _build_auth_app(
         db,
         db_connection,
@@ -234,26 +174,6 @@ async def auth_client_no_permissions(
     async with AsyncClient(
         transport=ASGITransport(app=auth_app_no_permissions),
         base_url="http://test/",
-    ) as client:
-        yield client
-
-
-@pytest.fixture
-async def auth_client_candid(
-    auth_app: FastAPI, enable_candid
-) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(
-        transport=ASGITransport(app=auth_app), base_url="http://test/"
-    ) as client:
-        yield client
-
-
-@pytest.fixture
-async def auth_client_rbac(
-    auth_app: FastAPI, enable_rbac
-) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(
-        transport=ASGITransport(app=auth_app), base_url="http://test/"
     ) as client:
         yield client
 
@@ -312,129 +232,3 @@ class TestPermissionsFunctions:
     async def test_check_permissions_requires_at_least_one_arg(self) -> None:
         with pytest.raises(ValueError, match="At least one"):
             check_permissions()
-
-    async def test_get_user_candid(
-        self, auth_client_candid: AsyncClient
-    ) -> None:
-        user_response = await auth_client_candid.post(
-            f"{V3_API_PREFIX}/user",
-            json=self._build_request("test"),
-        )
-        assert user_response.status_code == 200
-        authenticated_user = AuthenticatedUser(**user_response.json())
-        assert authenticated_user.username == "test"
-        assert authenticated_user.rbac_permissions is None
-
-        # Candid auth skips the OpenFGA check, so the endpoint should
-        # succeed even though no openfga_permission is granted by the mock.
-        user_response = await auth_client_candid.post(
-            f"{V3_API_PREFIX}/rbac_pools",
-            json=self._build_request("test"),
-        )
-        assert user_response.status_code == 200
-        authenticated_user = AuthenticatedUser(**user_response.json())
-        assert authenticated_user.rbac_permissions is None
-
-        user_response = await auth_client_candid.post(
-            f"{V3_API_PREFIX}/rbac_admin_pools",
-            json=self._build_request("test"),
-        )
-        assert user_response.status_code == 200
-        authenticated_user = AuthenticatedUser(**user_response.json())
-        assert authenticated_user.rbac_permissions is None
-
-        user_response = await auth_client_candid.post(
-            f"{V3_API_PREFIX}/rbac_no_permissions",
-            json=self._build_request("test"),
-        )
-        assert user_response.status_code == 200
-        authenticated_user = AuthenticatedUser(**user_response.json())
-        assert authenticated_user.rbac_permissions is None
-
-    async def test_get_user_rbac(
-        self, auth_client_rbac: AsyncClient, mock_aioresponse
-    ) -> None:
-        def mock_allowed_for_user_endpoint(
-            perms: list[RbacPermission], response_ids: list[list]
-        ):
-            rbac_url = "http://rbac.example:5000"
-            endpoint = (
-                rbac_url
-                + "/api/service/v1/resources/resource-pool/allowed-for-user"
-            )
-            endpoint += "?p=" + "&p=".join([perm for perm in perms])
-            endpoint += "&u=test"
-            payload = {
-                k: v for (k, v) in zip(perms, response_ids, strict=False)
-            }
-            mock_aioresponse.get(endpoint, payload=payload)
-
-        user_response = await auth_client_rbac.post(
-            f"{V3_API_PREFIX}/user",
-            json=self._build_request("test"),
-        )
-        assert user_response.status_code == 200
-        authenticated_user = AuthenticatedUser(**user_response.json())
-        assert authenticated_user.username == "test"
-        assert authenticated_user.rbac_permissions is None
-
-        mock_allowed_for_user_endpoint(
-            [
-                RbacPermission.VIEW,
-                RbacPermission.VIEW_ALL,
-                RbacPermission.DEPLOY_MACHINES,
-                RbacPermission.ADMIN_MACHINES,
-            ],
-            [[""], [1, 2], [3], [4]],
-        )
-        user_response = await auth_client_rbac.post(
-            f"{V3_API_PREFIX}/rbac_pools",
-            json=self._build_request("test"),
-        )
-        assert user_response.status_code == 200
-        authenticated_user = AuthenticatedUser(**user_response.json())
-        # visible_pools is set to all resources (`[""]`), so they are fetched
-        # from the db where only the default one with id=0 is present.
-        assert authenticated_user.rbac_permissions.visible_pools == {0}
-        assert authenticated_user.rbac_permissions.view_all_pools == {1, 2}
-        assert authenticated_user.rbac_permissions.deploy_pools == {3}
-        assert authenticated_user.rbac_permissions.admin_pools == {4}
-        assert authenticated_user.rbac_permissions.edit_pools is None
-        assert (
-            authenticated_user.rbac_permissions.can_edit_all_resource_pools
-            is None
-        )
-
-        mock_allowed_for_user_endpoint([RbacPermission.EDIT], [[""]])
-        user_response = await auth_client_rbac.post(
-            f"{V3_API_PREFIX}/rbac_admin_pools",
-            json=self._build_request("test"),
-        )
-        assert user_response.status_code == 200
-        authenticated_user = AuthenticatedUser(**user_response.json())
-        assert authenticated_user.rbac_permissions.visible_pools is None
-        assert authenticated_user.rbac_permissions.view_all_pools is None
-        assert authenticated_user.rbac_permissions.deploy_pools is None
-        assert authenticated_user.rbac_permissions.admin_pools is None
-        assert authenticated_user.rbac_permissions.edit_pools == {0}
-        assert (
-            authenticated_user.rbac_permissions.can_edit_all_resource_pools
-            is True
-        )
-
-        user_response = await auth_client_rbac.post(
-            f"{V3_API_PREFIX}/rbac_no_permissions",
-            json=self._build_request("test"),
-        )
-        assert user_response.status_code == 200
-        authenticated_user = AuthenticatedUser(**user_response.json())
-        assert authenticated_user.rbac_permissions is not None
-        assert authenticated_user.rbac_permissions.visible_pools is None
-        assert authenticated_user.rbac_permissions.view_all_pools is None
-        assert authenticated_user.rbac_permissions.deploy_pools is None
-        assert authenticated_user.rbac_permissions.admin_pools is None
-        assert authenticated_user.rbac_permissions.edit_pools is None
-        assert (
-            authenticated_user.rbac_permissions.can_edit_all_resource_pools
-            is None
-        )

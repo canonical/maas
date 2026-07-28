@@ -9,7 +9,6 @@ from django.views.generic import TemplateView
 
 from maasserver import urls_api
 from maasserver.api.doc_oapi import landing_page
-from maasserver.macaroon_auth import MacaroonDischargeRequest
 from maasserver.prometheus.service import prometheus_discovery_handler
 from maasserver.prometheus.stats import prometheus_stats_handler
 from maasserver.views.account import authenticate, csrf, login, logout
@@ -20,11 +19,6 @@ from maasserver.views.vmhost import vmhost_certificate_handler
 urlpatterns = [
     path("accounts/login/", login, name="login"),
     path("accounts/authenticate/", authenticate, name="authenticate"),
-    path(
-        "accounts/discharge-request/",
-        MacaroonDischargeRequest(),
-        name="discharge-request",
-    ),
     path(
         "maas-run-scripts",
         TemplateView.as_view(

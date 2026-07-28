@@ -22,7 +22,6 @@ from maasserver.models.node import get_default_zone
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.zone import Zone
-from maasserver.permissions import VMClusterPermission
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.utils.twisted import asynchronous
@@ -88,8 +87,6 @@ def aggregate_vmhost_resources(cluster_resources, host_resources):
 
 class VMClusterManager(Manager):
     def group_by_physical_cluster(self, user, perm):
-        from maasserver.rbac import rbac
-
         cursor = connection.cursor()
 
         # find all unique power addresses with a cluster relation,
@@ -107,38 +104,12 @@ class VMClusterManager(Manager):
         cursor.execute(query)
         cluster_groups = cursor.fetchall()
 
-        if rbac.is_enabled():
-            if perm != VMClusterPermission.view:
-                raise ValueError("Unknown perm: %s" % perm)
-            result = []
-            fetched = rbac.get_resource_pool_ids(
-                user.username, "view", "view-all"
-            )
-            pool_ids = set(fetched["view"] + fetched["view-all"])
-            for cluster_group in cluster_groups:
-                cluster_group_list = list(
-                    self.filter(id__in=cluster_group[0], pool_id__in=pool_ids)
-                )
-                if cluster_group_list:
-                    result.append(cluster_group_list)
-            return result
         return [
             list(self.filter(id__in=cluster_group[0]))
             for cluster_group in cluster_groups
         ]
 
     def get_clusters(self, user, perm):
-        from maasserver.rbac import rbac
-
-        if rbac.is_enabled():
-            if perm == VMClusterPermission.view:
-                fetched = rbac.get_resource_pool_ids(
-                    user.username, "view", "view-all"
-                )
-                pool_ids = set(fetched["view"] + fetched["view-all"])
-                return self.filter(pool_id__in=pool_ids)
-            else:
-                raise ValueError("Unknown perm: %s" % perm)
         return self.all()
 
     def get_cluster_or_404(self, id, user, perm, **kwargs):

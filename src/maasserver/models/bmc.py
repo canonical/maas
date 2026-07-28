@@ -60,7 +60,6 @@ from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
-from maasserver.permissions import PodPermission
 from maasserver.rpc import getAllClients, getClientFromIdentifiers
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -667,32 +666,6 @@ class PodManager(BaseBMCManager):
            #django.contrib.auth.models.User
 
         """
-        # Circular imports.
-        from maasserver.rbac import rbac
-
-        if rbac.is_enabled():
-            if perm == PodPermission.view:
-                fetched = rbac.get_resource_pool_ids(
-                    user.username, "view", "view-all"
-                )
-                pool_ids = set(fetched["view"] + fetched["view-all"])
-                return self.filter(pool_id__in=pool_ids)
-            elif perm == PodPermission.edit or perm == PodPermission.compose:
-                return self.filter(
-                    pool_id__in=rbac.get_resource_pool_ids(
-                        user.username, "admin-machines"
-                    )["admin-machines"]
-                )
-            elif perm == PodPermission.dynamic_compose:
-                fetched = rbac.get_resource_pool_ids(
-                    user.username, "deploy-machines", "admin-machines"
-                )
-                pool_ids = set(
-                    fetched["deploy-machines"] + fetched["admin-machines"]
-                )
-                return self.filter(pool_id__in=pool_ids)
-            else:
-                raise ValueError("Unknown perm: %s", perm)
         return self.all()
 
     def get_pod_or_404(self, id, user, perm, **kwargs):

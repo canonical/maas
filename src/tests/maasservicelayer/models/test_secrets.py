@@ -6,15 +6,12 @@ import pytest
 from maasservicelayer.models.secrets import (
     BMCPowerParametersSecret,
     ClusterCertificateSecret,
-    ExternalAuthSecret,
     MAASAutoIPMIKGBmcKeySecret,
     MAASCACertificateSecret,
-    MacaroonKeySecret,
     MSMConnectorSecret,
     NodeDeployMetadataSecret,
     NodePowerParametersSecret,
     OMAPIKeySecret,
-    RootKeyMaterialSecret,
     RPCSharedSecret,
     SecretForObject,
     SecretModel,
@@ -29,10 +26,8 @@ class TestSecretModels:
         "model, expected_output",
         [
             (ClusterCertificateSecret(), "global/cluster-certificate"),
-            (ExternalAuthSecret(), "global/external-auth"),
             (MAASAutoIPMIKGBmcKeySecret(), "global/ipmi-k_g-key"),
             (MAASCACertificateSecret(), "global/maas-ca-certificate"),
-            (MacaroonKeySecret(), "global/macaroon-key"),
             (MSMConnectorSecret(), "global/msm-connector"),
             (OMAPIKeySecret(), "global/omapi-key"),
             (RPCSharedSecret(), "global/rpc-shared"),
@@ -51,7 +46,6 @@ class TestSecretModels:
         [
             (NodeDeployMetadataSecret(id=1), "node/1/deploy-metadata"),
             (NodePowerParametersSecret(id=1), "node/1/power-parameters"),
-            (RootKeyMaterialSecret(id=1), "rootkey/1/material"),
             (BMCPowerParametersSecret(id=1), "bmc/1/power-parameters"),
         ],
     )

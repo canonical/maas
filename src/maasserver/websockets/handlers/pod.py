@@ -184,7 +184,7 @@ class PodHandler(TimestampedModelHandler):
 
         @transactional
         def create_obj(params):
-            # Clear rbac/openfga cache before check (this is in its own thread).
+            # Clear openfga cache before check (this is in its own thread).
             clear_caches()
 
             if not self.user.has_perm(self._meta.create_permission):
@@ -213,7 +213,7 @@ class PodHandler(TimestampedModelHandler):
 
         @transactional
         def update_obj(params):
-            # Clear rbac/openfga cache before check (this is in its own thread).
+            # Clear openfga cache before check (this is in its own thread).
             clear_caches()
 
             obj = self.get_object(params)
@@ -246,7 +246,7 @@ class PodHandler(TimestampedModelHandler):
 
         @transactional
         def get_object(params):
-            # Clear rbac/openfga cache before check (this is in its own thread).
+            # Clear openfga cache before check (this is in its own thread).
             clear_caches()
 
             obj = self.get_object(params)
@@ -267,7 +267,7 @@ class PodHandler(TimestampedModelHandler):
 
         @transactional
         def get_object(params):
-            # Clear rbac/openfga cache before check (this is in its own thread).
+            # Clear openfga cache before check (this is in its own thread).
             clear_caches()
 
             obj = self.get_object(params)
@@ -289,7 +289,7 @@ class PodHandler(TimestampedModelHandler):
 
         @transactional
         def get_object(params):
-            # Running inside new database thread, be sure the rbac cache is
+            # Running inside new database thread, be sure the openfga cache is
             # cleared so accessing information will not be already cached.
             clear_caches()
 

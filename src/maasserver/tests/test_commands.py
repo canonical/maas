@@ -85,9 +85,7 @@ class TestCommands(MAASServerTestCase):
         self.assertTrue(user.check_password(password))
 
     def test_createadmin_not_prompts_for_password_if_ext_auth(self):
-        SecretManager().set_composite_secret(
-            "external-auth", {"url": "https://example.com"}
-        )
+        SecretManager().set_composite_secret()
         stderr = StringIO()
         stdout = StringIO()
         username = factory.make_name("user")

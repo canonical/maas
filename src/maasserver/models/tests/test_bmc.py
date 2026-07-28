@@ -49,7 +49,6 @@ from maasserver.models.vmcluster import VMCluster
 from maasserver.permissions import PodPermission
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -653,89 +652,6 @@ class TestBMC(MAASServerTestCase):
 
 
 class TestPodManager(MAASServerTestCase):
-    def enable_rbac(self):
-        rbac = self.useFixture(RBACEnabled())
-        self.store = rbac.store
-
-    def test_get_pods_no_rbac_always_all(self):
-        pods = [factory.make_Pod() for _ in range(3)]
-        for perm in PodPermission:
-            self.assertCountEqual(
-                pods, Pod.objects.get_pods(factory.make_User(), perm)
-            )
-
-    def test_get_pods_view_rbac_returns_view_rights(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        view_pool = factory.make_ResourcePool()
-        view = factory.make_Pod(pool=view_pool)
-        self.store.add_pool(view_pool)
-        self.store.allow(user.username, view_pool, "view")
-        view_all_pool = factory.make_ResourcePool()
-        view_all = factory.make_Pod(pool=view_all_pool)
-        self.store.add_pool(view_all_pool)
-        self.store.allow(user.username, view_all_pool, "view-all")
-
-        # others not shown
-        for _ in range(3):
-            factory.make_Pod()
-
-        self.assertCountEqual(
-            [view, view_all], Pod.objects.get_pods(user, PodPermission.view)
-        )
-
-    def test_get_pods_edit_compose_rbac_returns_admin_rights(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        view_pool = factory.make_ResourcePool()
-        factory.make_Pod(pool=view_pool)
-        self.store.add_pool(view_pool)
-        self.store.allow(user.username, view_pool, "view")
-        deploy_pool = factory.make_ResourcePool()
-        factory.make_Pod(pool=deploy_pool)
-        self.store.add_pool(deploy_pool)
-        self.store.allow(user.username, deploy_pool, "deploy-machines")
-        admin_pool = factory.make_ResourcePool()
-        admin_pod = factory.make_Pod(pool=admin_pool)
-        self.store.add_pool(admin_pool)
-        self.store.allow(user.username, admin_pool, "admin-machines")
-
-        # others not shown
-        for _ in range(3):
-            factory.make_Pod()
-
-        self.assertCountEqual(
-            [admin_pod], Pod.objects.get_pods(user, PodPermission.edit)
-        )
-        self.assertCountEqual(
-            [admin_pod], Pod.objects.get_pods(user, PodPermission.compose)
-        )
-
-    def test_get_pods_dynamic_compose_rbac_returns_deploy_admin_rights(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        view_pool = factory.make_ResourcePool()
-        factory.make_Pod(pool=view_pool)
-        self.store.add_pool(view_pool)
-        self.store.allow(user.username, view_pool, "view")
-        deploy_pool = factory.make_ResourcePool()
-        deploy_pod = factory.make_Pod(pool=deploy_pool)
-        self.store.add_pool(deploy_pool)
-        self.store.allow(user.username, deploy_pool, "deploy-machines")
-        admin_pool = factory.make_ResourcePool()
-        admin_pod = factory.make_Pod(pool=admin_pool)
-        self.store.add_pool(admin_pool)
-        self.store.allow(user.username, admin_pool, "admin-machines")
-
-        # others not shown
-        for _ in range(3):
-            factory.make_Pod()
-
-        self.assertCountEqual(
-            [deploy_pod, admin_pod],
-            Pod.objects.get_pods(user, PodPermission.dynamic_compose),
-        )
-
     def test_get_pod_or_404_raises_404(self):
         user = factory.make_User()
         self.patch(user, "has_perm").return_value = False

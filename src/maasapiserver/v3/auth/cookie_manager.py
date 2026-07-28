@@ -31,10 +31,6 @@ class MAASDjangoCookie(StrEnum):
     CSRF_TOKEN = "csrftoken"
 
 
-class MAASMacaroonCookie(StrEnum):
-    MACAROON_MAAS = "macaroon-maas"
-
-
 class MAASLocalCookie(StrEnum):
     JWT_TOKEN = MAAS_LOCAL_JWT_TOKEN_COOKIE_NAME
     REFRESH_TOKEN = MAAS_LOCAL_REFRESH_TOKEN_COOKIE_NAME

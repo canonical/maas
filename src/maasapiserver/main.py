@@ -44,7 +44,6 @@ from maasapiserver.v3.listeners.vault import VaultMigrationPostgresListener
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
     LocalAuthenticationProvider,
-    MacaroonAuthenticationProvider,
     OIDCAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
@@ -97,7 +96,6 @@ def craft_public_app(
                     jwt_authentication_providers=[
                         LocalAuthenticationProvider()
                     ],
-                    macaroon_authentication_provider=MacaroonAuthenticationProvider(),
                     oidc_authentication_provider=OIDCAuthenticationProvider(),
                 ),
             ),

@@ -66,8 +66,6 @@ __all__ = [
     "PodStoragePool",
     "RackController",
     "RAID",
-    "RBACLastSync",
-    "RBACSync",
     "RDNS",
     "RegionController",
     "RegionControllerProcess",
@@ -75,7 +73,6 @@ __all__ = [
     "RegionRackRPCConnection",
     "ReservedIP",
     "ResourcePool",
-    "RootKey",
     "Script",
     "ScriptResult",
     "ScriptSet",
@@ -188,7 +185,6 @@ from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podhints import PodHints
 from maasserver.models.podstoragepool import PodStoragePool
-from maasserver.models.rbacsync import RBACLastSync, RBACSync
 from maasserver.models.rdns import RDNS
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
@@ -197,7 +193,6 @@ from maasserver.models.regioncontrollerprocessendpoint import (
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
 from maasserver.models.reservedip import ReservedIP
 from maasserver.models.resourcepool import ResourcePool
-from maasserver.models.rootkey import RootKey
 from maasserver.models.script import Script
 from maasserver.models.scriptresult import ScriptResult
 from maasserver.models.scriptset import ScriptSet

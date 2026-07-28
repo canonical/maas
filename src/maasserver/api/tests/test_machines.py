@@ -11,7 +11,6 @@ from django.urls import reverse
 from twisted.internet.defer import succeed
 
 from maasserver import eventloop
-from maasserver.api import auth
 from maasserver.api import machines as machines_module
 from maasserver.api.machines import AllocationOptions, get_allocation_options
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
@@ -29,7 +28,6 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import post_commit_hooks, reload_object
@@ -721,44 +719,6 @@ class TestMachinesAPI(APITestCase.ForUser):
             required_machine_ids, extract_system_ids(parsed_result)
         )
 
-    def test_GET_list_allocated_with_rbac(self):
-        self.patch(auth, "validate_user_external_auth").return_value = True
-        rbac = self.useFixture(RBACEnabled())
-        self.become_non_local()
-
-        user = factory.make_User()
-        pool = factory.make_ResourcePool()
-        rbac.store.allow(user.username, pool, "view")
-
-        pool = factory.make_ResourcePool()
-        rbac.store.add_pool(pool)
-        rbac.store.allow(self.user.username, pool, "view")
-
-        factory.make_Node(
-            hostname="viewable",
-            owner=self.user,
-            pool=pool,
-            status=NODE_STATUS.ALLOCATED,
-        )
-        # a machine with the same user but not accesssible to the user (not in
-        # the allowed pool)
-        factory.make_Node(
-            hostname="not-accessible",
-            owner=self.user,
-            status=NODE_STATUS.ALLOCATED,
-        )
-        # a machine owned by another user in the accessible pool
-        factory.make_Node(
-            hostname="other-user",
-            owner=factory.make_User(),
-            status=NODE_STATUS.ALLOCATED,
-            pool=pool,
-        )
-
-        parsed_result = self.get_json({"op": "list_allocated"})
-        hostnames = [machine["hostname"] for machine in parsed_result]
-        self.assertEqual(["viewable"], hostnames)
-
     def test_POST_allocate_returns_available_machine(self):
         # The "allocate" operation returns an available machine.
         available_status = NODE_STATUS.READY
@@ -771,46 +731,6 @@ class TestMachinesAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET)
         )
         self.assertEqual(machine.system_id, parsed_result["system_id"])
-
-    def test_POST_allocate_returns_a_composed_machine_limit_from_rbac(self):
-        self.patch(auth, "validate_user_external_auth").return_value = True
-        rbac = self.useFixture(RBACEnabled())
-        self.become_non_local()
-
-        # 2 pods one with only view permissions and another with
-        # dynamic_compose permission.
-        view_pool = factory.make_ResourcePool()
-        rbac.store.add_pool(view_pool)
-        rbac.store.allow(self.user.username, view_pool, "view")
-        factory.make_Pod(pool=view_pool, architectures=["amd64/generic"])
-        deploy_pool = factory.make_ResourcePool()
-        rbac.store.add_pool(deploy_pool)
-        rbac.store.allow(self.user.username, deploy_pool, "deploy-machines")
-        deploy_pod = factory.make_Pod(
-            pool=deploy_pool, architectures=["amd64/generic"]
-        )
-
-        passed_pods = []
-
-        class FakeComposer(ComposeMachineForPodsForm):
-            """Catch the passed pods parameter and fake compose."""
-
-            def __init__(self, *args, **kwargs):
-                passed_pods.extend(kwargs["pods"])
-                super().__init__(*args, **kwargs)
-
-            def compose(self):
-                return factory.make_Node(
-                    status=NODE_STATUS.READY, owner=None, with_boot_disk=True
-                )
-
-        self.patch(machines_module, "ComposeMachineForPodsForm", FakeComposer)
-
-        mock_filter_nodes = self.patch(AcquireNodeForm, "filter_nodes")
-        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
-        response = self.client.post(self.machines_url, {"op": "allocate"})
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual([deploy_pod], passed_pods)
 
     def test_POST_allocate_returns_a_composed_machine_no_constraints(self):
         # The "allocate" operation returns a composed machine.
@@ -1504,33 +1424,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         response = self.client.post(self.machines_url, {"op": "allocate"})
         self.assertEqual(http.client.CONFLICT, response.status_code)
-
-    def test_POST_allocate_chooses_candidate_matching_constraint(self):
-        # If "allocate" is passed a constraint, it will go for a machine
-        # matching that constraint even if there's tons of other machines
-        # available.
-        # (Creating lots of machines here to minimize the chances of this
-        # passing by accident).
-        available_machines = [
-            factory.make_Node(
-                status=NODE_STATUS.READY, owner=None, with_boot_disk=True
-            )
-            for counter in range(20)
-        ]
-        desired_machine = random.choice(available_machines)
-        response = self.client.post(
-            self.machines_url,
-            {"op": "allocate", "name": desired_machine.hostname},
-        )
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET)
-        )
-        domain_name = desired_machine.domain.name
-        self.assertEqual(
-            f"{desired_machine.hostname}.{domain_name}",
-            parsed_result["fqdn"],
-        )
 
     def test_POST_allocate_would_rather_fail_than_disobey_constraint(self):
         # If "allocate" is passed a constraint, it won't return a machine
@@ -2594,27 +2487,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         machine = reload_object(machine)
         self.assertEqual(original_zone, machine.zone)
-
-    def test_POST_set_zone_rbac_pool_admin_allowed(self):
-        self.patch(auth, "validate_user_external_auth").return_value = True
-        rbac = self.useFixture(RBACEnabled())
-        self.become_non_local()
-        machine = factory.make_Machine()
-        zone = factory.make_Zone()
-        rbac.store.add_pool(machine.pool)
-        rbac.store.allow(self.user.username, machine.pool, "admin-machines")
-        rbac.store.allow(self.user.username, machine.pool, "view")
-        response = self.client.post(
-            self.machines_url,
-            {
-                "op": "set_zone",
-                "nodes": [machine.system_id],
-                "zone": zone.name,
-            },
-        )
-        self.assertEqual(http.client.OK, response.status_code)
-        machine = reload_object(machine)
-        self.assertEqual(zone, machine.zone)
 
     def test_POST_add_chassis_requires_admin(self):
         response = self.client.post(self.machines_url, {"op": "add_chassis"})

@@ -126,7 +126,7 @@ class VMClusterHandler(TimestampedModelHandler):
     async def list(self, params):
         @transactional
         def get_objects(params):
-            # Clear rbac/openfga cache before check (this is in its own thread).
+            # Clear openfga cache before check (this is in its own thread).
             clear_caches()
 
             return VMCluster.objects.get_clusters(
@@ -199,7 +199,7 @@ class VMClusterHandler(TimestampedModelHandler):
 
         @transactional
         def get_vmcluster(params):
-            # Clear rbac/openfga cache before check (this is in its own thread).
+            # Clear openfga cache before check (this is in its own thread).
             clear_caches()
 
             return VMCluster.objects.get_cluster_or_404(
@@ -215,7 +215,7 @@ class VMClusterHandler(TimestampedModelHandler):
 
         @transactional
         def update_obj(params):
-            # Clear rbac cache before check (this is in its own thread).
+            # Clear openfga cache before check (this is in its own thread).
             clear_caches()
 
             obj = self.get_object(params)

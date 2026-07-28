@@ -17,7 +17,6 @@ from maascommon.logging.security import (
 )
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
-from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
@@ -32,7 +31,6 @@ class TestLogin(MAASServerTestCase):
             json_load_bytes(response.content),
             {
                 "authenticated": False,
-                "external_auth_url": None,
                 "no_users": True,
             },
         )
@@ -46,7 +44,6 @@ class TestLogin(MAASServerTestCase):
             json_load_bytes(response.content),
             {
                 "authenticated": False,
-                "external_auth_url": None,
                 "no_users": False,
             },
         )
@@ -62,24 +59,7 @@ class TestLogin(MAASServerTestCase):
             json_load_bytes(response.content),
             {
                 "authenticated": True,
-                "external_auth_url": None,
                 "no_users": False,
-            },
-        )
-
-    def test_login_GET_returns_external_auth_url(self):
-        auth_url = "http://candid.example.com"
-        SecretManager().set_composite_secret(
-            "external-auth", {"url": auth_url}
-        )
-        response = self.client.get(reverse("login"))
-        self.assertEqual(response.status_code, http.client.OK)
-        self.assertEqual(
-            json_load_bytes(response.content),
-            {
-                "authenticated": False,
-                "external_auth_url": auth_url,
-                "no_users": True,
             },
         )
 

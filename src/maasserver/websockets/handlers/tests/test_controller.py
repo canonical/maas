@@ -10,7 +10,6 @@ from maasserver.forms import ControllerForm
 from maasserver.models import Controller, ControllerInfo, VLAN
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.websockets.base import (
@@ -100,8 +99,6 @@ class TestControllerHandler(MAASServerTestCase):
         )
 
     def test_list_num_queries_is_the_expected_number(self):
-        self.useFixture(RBACForceOffFixture())
-
         owner = factory.make_admin()
         for _ in range(10):
             node = factory.make_RegionRackController(owner=owner)

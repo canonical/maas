@@ -1,7 +1,6 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime
 from enum import IntEnum
 
 from pydantic import BaseModel
@@ -10,10 +9,6 @@ from maasservicelayer.models.base import (
     generate_builder,
     MaasTimestampedBaseModel,
 )
-
-
-class RootKey(MaasTimestampedBaseModel):
-    expiration: datetime
 
 
 class ProviderMetadata(BaseModel):

@@ -1945,15 +1945,6 @@ ResourcePoolTable = Table(
 )
 
 
-RootKeyTable = Table(
-    "maasserver_rootkey",
-    METADATA,
-    Column("id", BigInteger, Identity(), primary_key=True),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-    Column("expiration", DateTime(timezone=True), nullable=False),
-)
-
 ScriptResultTable = Table(
     "maasserver_scriptresult",
     METADATA,

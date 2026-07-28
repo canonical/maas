@@ -227,10 +227,6 @@ class TestCmdInit(MAASTestCase):
         self.cmd = cli.cmd_init(self.parser)
         self.maas_region_path = init.get_maas_region_bin_path()
         self.call_mock = self.patch(init.subprocess, "call")
-        self.check_output_mock = self.patch(init.subprocess, "check_output")
-        self.check_output_mock.return_value = json.dumps(
-            {"external_auth_url": ""}
-        )
         # avoid printouts
         self.mock_stdout = self.patch(init.sys, "stdout", StringIO())
         self.mock_stderr = self.patch(init.sys, "stderr", StringIO())
@@ -242,19 +238,14 @@ class TestCmdInit(MAASTestCase):
         self.assertIsNone(options.admin_password)
         self.assertIsNone(options.admin_email)
         self.assertIsNone(options.admin_ssh_import)
-        self.assertIsNone(options.candid_agent_file)
-        self.assertIsNone(options.rbac_url)
 
     def test_init_maas_calls_subcommands(self):
         options = self.parser.parse_args([])
         self.cmd(options)
-        configauth_call, createadmin_call = self.call_mock.mock_calls
-        _, args1, kwargs1 = configauth_call
-        _, args2, kwargs2 = createadmin_call
-        self.assertEqual(([self.maas_region_path, "configauth"],), args1)
-        self.assertEqual({}, kwargs1)
-        self.assertEqual(([self.maas_region_path, "createadmin"],), args2)
-        self.assertEqual({}, kwargs2)
+        [createadmin_call] = self.call_mock.mock_calls
+        _, args, kwargs = createadmin_call
+        self.assertEqual(([self.maas_region_path, "createadmin"],), args)
+        self.assertEqual({}, kwargs)
 
 
 class TestLogout(MAASTestCase):

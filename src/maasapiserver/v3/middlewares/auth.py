@@ -2,24 +2,16 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
-from datetime import timedelta
-import json
 from typing import Awaitable, Callable, Dict, Sequence
 
 from fastapi import Request, Response
-from macaroonbakery import bakery
-import macaroonbakery._utils as utils
-from pymacaroons import Macaroon
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 import structlog
 
-from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.auth.cookie_manager import (
     EncryptedCookieManager,
-    MAASDjangoCookie,
     MAASLocalCookie,
-    MAASMacaroonCookie,
     MAASOAuth2Cookie,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -34,44 +26,20 @@ from maascommon.logging.security import (
     SECURITY,
 )
 from maascommon.utils.jwt import decode_unverified_jwt, JWTDecodeError
-from maasserver.macaroons import _get_macaroon_caveats_ops
-from maasservicelayer.auth.external_auth import (
-    ExternalAuthConfig,
-    ExternalAuthType,
-)
 from maasservicelayer.auth.external_oauth import OAuthRefreshData
 from maasservicelayer.auth.jwt import InvalidToken, JWT
-from maasservicelayer.auth.macaroons.macaroon_client import (
-    CandidAsyncClient,
-    RbacAsyncClient,
-)
-from maasservicelayer.auth.macaroons.models.exceptions import (
-    MacaroonApiException,
-)
-from maasservicelayer.auth.macaroons.models.responses import (
-    ValidateUserResponse,
-)
-from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
-from maasservicelayer.constants import SYSTEM_USERS
-from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
-    DischargeRequiredException,
     ForbiddenException,
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
     INVALID_TOKEN_VIOLATION_TYPE,
-    MISSING_PERMISSIONS_VIOLATION_TYPE,
     NOT_AUTHENTICATED_VIOLATION_TYPE,
-    USER_EXTERNAL_VALIDATION_FAILED,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
-from maasservicelayer.utils.date import utcnow
-
-EXTERNAL_USER_CHECK_INTERVAL = timedelta(hours=1)
 
 logger = structlog.getLogger()
 
@@ -182,239 +150,6 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
     @classmethod
     def get_issuer(cls):
         return JWT.ISSUER
-
-
-class MacaroonAuthenticationProvider:
-    async def authenticate(
-        self, request: Request, macaroons: list[list[Macaroon]]
-    ) -> AuthenticatedUser:
-        """
-        Returns the authenticated user. Raises an exception if the macaroon is invalid or expired.
-        """
-        try:
-            user = await request.state.services.external_auth.login(
-                macaroons=macaroons,
-                request_absolute_uri=extract_absolute_uri(request),
-            )
-        except bakery.DischargeRequiredError as err:
-            await self._raise_discharge_exception(
-                request, err.cavs(), err.ops()
-            )
-        except bakery.VerificationError:
-            external_auth_info = (
-                await request.state.services.external_auth.get_external_auth()
-            )
-            caveats, ops = _get_macaroon_caveats_ops(
-                external_auth_info.url, external_auth_info.domain
-            )
-            await self._raise_discharge_exception(request, caveats, ops)
-        except bakery.PermissionDenied:
-            raise ForbiddenException(  # noqa: B904
-                details=[
-                    BaseExceptionDetail(
-                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
-                        message="Missing permissions in the macaroons provided.",
-                    )
-                ]
-            )
-
-        user = await self.validate_user_external_auth(request, user)
-        if user is None or user.is_active is False:
-            raise ForbiddenException(
-                details=[
-                    BaseExceptionDetail(
-                        type=USER_EXTERNAL_VALIDATION_FAILED,
-                        message="External auth user validation failed.",
-                    )
-                ]
-            )
-
-        return AuthenticatedUser(
-            id=user.id,
-            username=user.username,
-        )
-
-    async def _clear_cookies(self, request: Request) -> None:
-        """Clears Django and Macaroon cookies.
-
-        When Candid/RBAC is enabled, the authorization relies exclusively on the
-        macaroon. When this expires, the user has to login again through the UI
-        and so we delete the Django related-cookies and the Macaroon.
-        This method is called whenever a macaroon discharge required exception is
-        raised, which could mean that either the macaroon has expired or that the
-        macaroon is invalid.
-        """
-        cookie_manager = request.state.cookie_manager
-        session_id = cookie_manager.get_unsafe_cookie(
-            MAASDjangoCookie.SESSION_ID
-        )
-        if session_id:
-            await request.state.services.django_session.delete_session(
-                session_id
-            )
-        for key in (
-            MAASDjangoCookie.SESSION_ID,
-            MAASDjangoCookie.CSRF_TOKEN,
-            MAASMacaroonCookie.MACAROON_MAAS,
-        ):
-            cookie_manager.clear_cookie(key)
-
-    async def _raise_discharge_exception(self, request, caveats, ops):
-        macaroon_bakery = (
-            await request.state.services.external_auth.get_bakery(
-                extract_absolute_uri(request)
-            )
-        )
-        discharge_macaroon = await request.state.services.external_auth.generate_discharge_macaroon(
-            macaroon_bakery=macaroon_bakery,
-            caveats=caveats,
-            ops=ops,
-            req_headers=request.headers,
-        )
-        await self._clear_cookies(request)
-        raise DischargeRequiredException(macaroon=discharge_macaroon)
-
-    def extract_macaroons(self, request: Request) -> list[list[Macaroon]]:
-        def decode_macaroon(data) -> list[Macaroon] | None:
-            try:
-                data = utils.b64decode(data)
-                data_as_objs = json.loads(data.decode("utf-8"))
-            except ValueError:
-                return
-            return [utils.macaroon_from_dict(x) for x in data_as_objs]
-
-        mss = []
-        for cookie, value in request.cookies.items():
-            if cookie.lower().startswith("macaroon-"):
-                mss.append(decode_macaroon(value))
-
-        macaroon_header = request.headers.get("Macaroons", None)
-        if macaroon_header:
-            for h in macaroon_header.split(","):
-                mss.append(decode_macaroon(h))
-        return mss
-
-    async def validate_user_external_auth(
-        self,
-        request: Request,
-        user: User,
-        force_check: bool = False,
-    ) -> User | None:
-        """
-        Check if the user is valid through Candid or Rbac.
-
-        Returns:
-            User: if the check was successfull
-            None: otherwise
-        """
-        auth_config: ExternalAuthConfig = (
-            await request.state.services.external_auth.get_external_auth()
-        )
-        user_profile = await request.state.services.users.get_user_profile(
-            user.username
-        )
-
-        now = utcnow()
-
-        if user.username in SYSTEM_USERS:
-            # Don't perform the check for system users
-            return user
-        no_check = (
-            user_profile.auth_last_check
-            and (user_profile.auth_last_check + EXTERNAL_USER_CHECK_INTERVAL)
-            > now
-        )
-        if no_check and not force_check:
-            return user
-
-        validate_user_response = None
-
-        try:
-            match auth_config.type:
-                case ExternalAuthType.CANDID:
-                    client = await request.state.services.external_auth.get_candid_client()
-                    validate_user_response = await self._validate_user_candid(
-                        client, auth_config, user.username
-                    )
-
-                case ExternalAuthType.RBAC:
-                    client = await request.state.services.external_auth.get_rbac_client()
-                    validate_user_response = await self._validate_user_rbac(
-                        client, user.username
-                    )
-        except MacaroonApiException:
-            return None
-
-        # pyright doesn't understand that this variable is always bound
-        assert validate_user_response is not None
-
-        user_builder = UserBuilder()
-        if validate_user_response.active ^ user.is_active:
-            user_builder.is_active = validate_user_response.active
-        if validate_user_response.fullname is not None:
-            user_builder.last_name = validate_user_response.fullname
-        if validate_user_response.email is not None:
-            user_builder.email = validate_user_response.email
-
-        user_builder.is_superuser = validate_user_response.superuser
-        user = await request.state.services.users.update_by_id(
-            user.id, user_builder
-        )
-
-        profile_builder = UserProfileBuilder()
-        profile_builder.auth_last_check = now
-        await request.state.services.users.update_profile(
-            user.id, profile_builder
-        )
-        return user
-
-    async def _validate_user_candid(
-        self,
-        client: CandidAsyncClient,
-        auth_config: ExternalAuthConfig,
-        username: str,
-    ) -> ValidateUserResponse:
-        try:
-            groups_response = await client.get_groups(username)
-            user_details = await client.get_user_details(username)
-        except MacaroonApiException:
-            raise
-
-        if auth_config.admin_group:
-            superuser = auth_config.admin_group in groups_response.groups
-        else:
-            superuser = True
-        return ValidateUserResponse(
-            **user_details.model_dump(), active=True, superuser=superuser
-        )
-
-    async def _validate_user_rbac(
-        self,
-        client: RbacAsyncClient,
-        username: str,
-    ) -> ValidateUserResponse:
-        try:
-            superuser = await client.is_user_admin(username)
-            pools_response = await client.get_resource_pool_ids(
-                username,
-                {
-                    RbacPermission.VIEW,
-                    RbacPermission.VIEW_ALL,
-                    RbacPermission.DEPLOY_MACHINES,
-                    RbacPermission.ADMIN_MACHINES,
-                },
-            )
-            access_to_pools = any(
-                [r.resources or r.access_all for r in pools_response]
-            )
-            user_details = await client.get_user_details(username)
-        except MacaroonApiException:
-            raise
-        return ValidateUserResponse(
-            **user_details.model_dump(),
-            active=(superuser or access_to_pools),
-            superuser=superuser,
-        )
 
 
 class OIDCAuthenticationProvider(AuthenticationProvider):
@@ -538,14 +273,13 @@ class OIDCAuthenticationProvider(AuthenticationProvider):
 
 
 class AuthenticationProvidersCache:
-    # All the 3 auth provider will never be None at runtime (see src/maasapiserver/main.py:87)
+    # All the auth providers will never be None at runtime (see src/maasapiserver/main.py:87)
     # We default them to None to easily use this in tests.
     def __init__(
         self,
         jwt_authentication_providers: Sequence[
             JWTAuthenticationProvider
         ] = None,  # pyright: ignore [reportArgumentType]
-        macaroon_authentication_provider: MacaroonAuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
         oidc_authentication_provider: OIDCAuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
     ):
         self.jwt_authentication_providers_cache: Dict[
@@ -558,16 +292,10 @@ class AuthenticationProvidersCache:
                 for jwt_authentication_provider in jwt_authentication_providers
             }
         )
-        self.macaroon_authentication_provider = (
-            macaroon_authentication_provider
-        )
         self.oidc_authentication_provider = oidc_authentication_provider
 
     def get(self, key: str) -> JWTAuthenticationProvider | None:
         return self.jwt_authentication_providers_cache.get(key, None)
-
-    def get_macaroon_provider(self) -> MacaroonAuthenticationProvider:
-        return self.macaroon_authentication_provider
 
     def get_oidc_provider(self) -> OIDCAuthenticationProvider:
         return self.oidc_authentication_provider
@@ -615,19 +343,12 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
         )
 
         user = None
-        # If no OIDC token, auth_header or macaroon is specified then the request is unauthenticated and we let the handler
+        # If no OIDC token or auth_header is specified then the request is unauthenticated and we let the handler
         # decide wether or not to serve it.
         if access_token:
             user = await self._oidc_authentication(request, access_token)
         elif auth_header and auth_header.lower().startswith("bearer "):
             user = await self._jwt_authentication(request, auth_header)
-        elif (
-            macaroons
-            := self.providers_cache.get_macaroon_provider().extract_macaroons(
-                request
-            )
-        ):
-            user = await self._macaroon_authentication(request, macaroons)
 
         request.state.authenticated_user = user
 
@@ -675,12 +396,6 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
             )
 
         return await provider.authenticate(request, token)
-
-    async def _macaroon_authentication(
-        self, request: Request, macaroons: list[list[Macaroon]]
-    ) -> AuthenticatedUser:
-        macaroon_provider = self.providers_cache.get_macaroon_provider()
-        return await macaroon_provider.authenticate(request, macaroons)
 
     async def _oidc_authentication(
         self, request: Request, token: str

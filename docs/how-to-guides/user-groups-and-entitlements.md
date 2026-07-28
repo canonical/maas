@@ -1,6 +1,6 @@
 # User groups and entitlements
 
-MAAS 3.8 introduces a new relationship-based access control (ReBAC) system for managing users, groups, and permissions. This replaces the previous Canonical RBAC integration, which is deprecated in 3.8 and removed in MAAS 4.0.
+MAAS 3.8 introduces a relationship-based access control (ReBAC) system for managing users, groups, and permissions.
 
 This guide explains how the access control model works and how to use user groups and entitlements to control access to MAAS resources. For full CLI command syntax, see the [user-group CLI reference](/reference/cli-reference/user-group.md).
 

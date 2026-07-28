@@ -10,7 +10,6 @@ from maasserver.models.virtualmachine import MB
 from maasserver.models.vmcluster import VMCluster
 from maasserver.permissions import VMClusterPermission
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -24,10 +23,6 @@ wait_for_reactor = wait_for()
 
 
 class TestVMClusterManager(MAASServerTestCase):
-    def enable_rbac(self):
-        rbac = self.useFixture(RBACEnabled())
-        self.store = rbac.store
-
     def test_group_by_physical_cluster(self):
         user = factory.make_User()
         cluster_groups = [
@@ -53,50 +48,6 @@ class TestVMClusterManager(MAASServerTestCase):
         )
         self.assertCountEqual(results, cluster_groups)
 
-    def test_group_by_physical_cluster_with_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        view_pool = factory.make_ResourcePool()
-        self.store.add_pool(view_pool)
-        self.store.allow(user.username, view_pool, "view")
-        view_all_pool = factory.make_ResourcePool()
-        self.store.add_pool(view_all_pool)
-        self.store.allow(user.username, view_all_pool, "view-all")
-        view_cluster_group = [
-            factory.make_VMCluster(pool=view_pool, pods=0) for _ in range(3)
-        ]
-        view_all_cluster_group = [
-            factory.make_VMCluster(pool=view_all_pool, pods=0)
-            for _ in range(3)
-        ]
-        other_cluster_group = [
-            factory.make_VMCluster(pods=0) for _ in range(3)
-        ]
-        cluster_groups = [
-            view_cluster_group,
-            view_all_cluster_group,
-            other_cluster_group,
-        ]
-        for i, cluster_group in enumerate(cluster_groups):  # noqa: B007
-            address_group = [factory.make_StaticIPAddress() for _ in range(3)]
-            for cluster in cluster_group:
-                for address in address_group:
-                    factory.make_Pod(
-                        cluster=cluster,
-                        parameters={
-                            "project": cluster.project,
-                            "power_address": "%s:8443" % address,
-                        },
-                        pod_type="lxd",
-                    )
-
-        results = VMCluster.objects.group_by_physical_cluster(
-            user, VMClusterPermission.view
-        )
-        self.assertCountEqual(
-            results, [view_cluster_group, view_all_cluster_group]
-        )
-
     def test_get_cluster_or_404_returns_cluster(self):
         username = factory.make_name("name")
         user = factory.make_User(username=username)
@@ -115,26 +66,6 @@ class TestVMClusterManager(MAASServerTestCase):
             -1,
             user,
             VMClusterPermission.view,
-        )
-
-    def test_get_clusters_returns_view_rights(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        view_pool = factory.make_ResourcePool()
-        view_cluster = factory.make_VMCluster(pool=view_pool)
-        self.store.add_pool(view_pool)
-        self.store.allow(user.username, view_pool, "view")
-        view_all_pool = factory.make_ResourcePool()
-        view_all_cluster = factory.make_VMCluster(pool=view_all_pool)
-        self.store.add_pool(view_all_pool)
-        self.store.allow(user.username, view_all_pool, "view-all")
-
-        for _ in range(3):
-            factory.make_VMCluster()
-
-        self.assertCountEqual(
-            [view_cluster, view_all_cluster],
-            VMCluster.objects.get_clusters(user, VMClusterPermission.view),
         )
 
 

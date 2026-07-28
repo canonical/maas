@@ -48,6 +48,3 @@ address_allocation = DatabaseLock(8)
 
 # Lock to prevent concurrent network scanning.
 try_active_discovery = DatabaseLock(10).TRY
-
-# Lock to sync information to RBAC.
-rbac_sync = DatabaseLock(11)

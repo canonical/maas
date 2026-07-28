@@ -50,7 +50,6 @@ from maasservicelayer.db.repositories.events import (
     EventTypesRepository,
 )
 from maasservicelayer.db.repositories.external_auth import (
-    ExternalAuthRepository,
     ExternalOAuthRepository,
 )
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
@@ -161,10 +160,7 @@ from maasservicelayer.services.dnsresourcerecordsets import (
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.services.events import EventsService
-from maasservicelayer.services.external_auth import (
-    ExternalAuthService,
-    ExternalOAuthService,
-)
+from maasservicelayer.services.external_auth import ExternalOAuthService
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.hooked_configurations import (
@@ -281,7 +277,6 @@ class ServiceCollectionV3:
     dnsresources: DNSResourcesService
     domains: DomainsService
     events: EventsService
-    external_auth: ExternalAuthService
     external_oauth: ExternalOAuthService
     fabrics: FabricsService
     filestorage: FileStorageService
@@ -677,16 +672,6 @@ class ServiceCollectionV3:
             secrets_service=services.secrets,
             users_service=services.users,
             refresh_tokens_service=services.refresh_tokens,
-        )
-        services.external_auth = ExternalAuthService(
-            context=context,
-            secrets_service=services.secrets,
-            users_service=services.users,
-            external_auth_repository=ExternalAuthRepository(context),
-            cache=cache.get(
-                ExternalAuthService.__name__,
-                ExternalAuthService.build_cache_object,
-            ),  # type: ignore
         )
         services.external_oauth = ExternalOAuthService(
             context=context,

@@ -13,7 +13,6 @@ from maasapiserver.common.api.models.responses.errors import (
     BadGatewayErrorResponse,
     BadRequestResponse,
     ConflictResponse,
-    DischargeRequiredErrorResponse,
     ForbiddenResponse,
     InsufficientStorageErrorResponse,
     InternalServerErrorResponse,
@@ -30,7 +29,6 @@ from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
     ConflictException,
-    DischargeRequiredException,
     ForbiddenException,
     InsufficientStorageException,
     NotFoundException,
@@ -120,9 +118,6 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
                 type=SECURITY,
             )
             return UnauthorizedResponse(e.details)
-        except DischargeRequiredException as e:
-            logger.debug(e)
-            return DischargeRequiredErrorResponse(e.macaroon)
         except ForbiddenException as e:
             logger.debug(e)
             logger.warn(AUTHZ_FAIL, type=SECURITY)

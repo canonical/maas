@@ -1,9 +1,6 @@
-import json
 from typing import Optional
 
 from fastapi.encoders import jsonable_encoder
-from macaroonbakery import httpbakery
-from macaroonbakery.bakery import Macaroon
 from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
@@ -171,16 +168,4 @@ class BadGatewayErrorResponse(JSONResponse):
                 BadGatewayErrorBodyResponse(details=details)
             ),
             status_code=status.HTTP_502_BAD_GATEWAY,
-        )
-
-
-class DischargeRequiredErrorResponse(JSONResponse):
-    def __init__(self, macaroon: Macaroon):
-        content, headers = httpbakery.discharge_required_response(
-            macaroon=macaroon, path="/", cookie_suffix_name="maas"
-        )
-        super().__init__(
-            content=json.loads(content.decode("utf-8")),
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            headers=headers,
         )

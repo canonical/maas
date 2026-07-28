@@ -90,15 +90,6 @@ class ResourcePoolManager(Manager, ResourcePoolQueriesMixin):
            #django.contrib.auth.models.User
 
         """
-        # Circular imports.
-        from maasserver.rbac import rbac
-
-        if rbac.is_enabled():
-            fetched = rbac.get_resource_pool_ids(
-                user.username, "view", "view-all"
-            )
-            pool_ids = set(fetched["view"] + fetched["view-all"])
-            return self.filter(id__in=pool_ids)
         return self.all()
 
 

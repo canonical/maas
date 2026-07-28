@@ -6,7 +6,6 @@
 from dataclasses import dataclass
 from enum import Enum
 from itertools import chain
-from operator import xor
 from typing import Literal, Optional
 
 from django.test.client import WSGIRequest
@@ -15,10 +14,6 @@ from piston3.oauth import OAuthError, OAuthMissingParam
 from piston3.utils import rc
 
 from maasserver.exceptions import MAASAPIBadRequest, Unauthorized
-from maasserver.macaroon_auth import (
-    MacaroonAPIAuthentication,
-    validate_user_external_auth,
-)
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.sqlalchemy import service_layer
 
@@ -177,11 +172,7 @@ class MAASAPIAuthentication(OAuthAuthentication):
     def is_authenticated(self, request):
         user = request.user
         if user.is_authenticated:
-            # only authenticate if user is local and external auth is disabled
-            # or viceversa
-            return xor(
-                bool(request.external_auth_info), user.userprofile.is_local
-            )
+            return user.userprofile.is_local
 
         # The following is much the same as is_authenticated from Piston's
         # OAuthAuthentication, with the difference that an OAuth request that
@@ -198,16 +189,8 @@ class MAASAPIAuthentication(OAuthAuthentication):
             if consumer and token:
                 user = token.user
                 if user.username not in SYSTEM_USERS:
-                    external_auth_info = request.external_auth_info
                     is_local_user = user.userprofile.is_local
-                    if external_auth_info:
-                        if is_local_user:
-                            return False
-                        if not validate_user_external_auth(
-                            user, external_auth_info
-                        ):
-                            return False
-                    elif not is_local_user:
+                    if not is_local_user:
                         # Verify this is an OIDC user and is still
                         # active at the OIDC provider before granting access.
                         if not service_layer.services.external_oauth.is_active_oidc_user(
@@ -324,8 +307,5 @@ def get_problematic_params(params: dict[str, str]) -> dict[str, ParamIssue]:
     return problems
 
 
-# OAuth and macaroon-based authentication for the APIs.
-api_auth = (
-    MAASAPIAuthentication(realm="MAAS API"),
-    MacaroonAPIAuthentication(),
-)
+# OAuth authentication for the APIs.
+api_auth = (MAASAPIAuthentication(realm="MAAS API"),)

@@ -4,15 +4,9 @@
 """Methods related to initializing a MAAS deployment."""
 
 import argparse
-import json
 import os
 import subprocess
 import sys
-from textwrap import dedent
-
-from macaroonbakery import httpbakery
-
-from maascli.configfile import MAASConfiguration
 
 
 def deprecated_for(new_option):
@@ -52,59 +46,6 @@ def deprecated_for(new_option):
             )
 
     return DeprecatedAction
-
-
-def add_candid_options(parser, suppress_help=False):
-    parser.add_argument(
-        "--candid-agent-file",
-        help=(
-            argparse.SUPPRESS
-            if suppress_help
-            else "Agent file containing Candid authentication information"
-        ),
-    )
-    parser.add_argument(
-        "--candid-domain",
-        default=None,
-        help=(
-            argparse.SUPPRESS
-            if suppress_help
-            else "The authentication domain to look up users in for the external "
-            "Candid server."
-        ),
-    )
-    parser.add_argument(
-        "--candid-admin-group",
-        default=None,
-        help=(
-            argparse.SUPPRESS
-            if suppress_help
-            else "Group of users whose members are made admins in MAAS"
-        ),
-    )
-
-
-def add_rbac_options(parser, suppress_help=False):
-    parser.add_argument(
-        "--rbac-url",
-        default=None,
-        help=(
-            argparse.SUPPRESS
-            if suppress_help
-            else "The URL for the Canonical RBAC service to use."
-        ),
-    )
-    parser.add_argument(
-        "--rbac-service-name",
-        default=None,
-        help=(
-            argparse.SUPPRESS
-            if suppress_help
-            else "Optionally, the name of the RBAC service to register this MAAS "
-            "as.  If not provided, a list with services that the user can "
-            "register will be displayed, to choose from."
-        ),
-    )
 
 
 def add_create_admin_options(parser, suppress_help=False):
@@ -170,79 +111,11 @@ def create_admin_account(options):
     subprocess.call(cmd)
 
 
-def create_account_external_auth(auth_config, maas_config, bakery_client=None):
-    """Make the user login via external auth to create the first admin."""
-    print_msg("Please login with MAAS to ensure authentication is set up")
-    if bakery_client is None:
-        bakery_client = httpbakery.Client()
-
-    maas_url = maas_config["maas_url"].strip("/")
-
-    failed_msg = ""
-    try:
-        resp = bakery_client.request(
-            "GET", f"{maas_url}/accounts/discharge-request/"
-        )
-        if resp.status_code != 200:
-            failed_msg = f"request failed with code {resp.status_code}"
-    except Exception as e:
-        failed_msg = str(e)
-
-    if failed_msg:
-        print_msg(
-            "An error occurred while waiting for the first user creation: "
-            + failed_msg
-        )
-        return
-
-    result = resp.json()
-    username = result["username"]
-    if auth_config["rbac_url"]:
-        message = "Authentication is working."
-        if result["is_superuser"]:
-            message += f" User '{username}' is an Administrator"
-    else:
-        if result["is_superuser"]:
-            message = f"Administrator user '{username}' created"
-        else:
-            admin_group = auth_config["external_auth_admin_group"]
-            message = dedent(
-                """\
-                A user with username '{username}' has been created, but it's
-                not a superuser. Please log in to MAAS with a user that
-                belongs to the '{admin_group}' group to create an
-                administrator user.
-                """
-            ).format(username=username, admin_group=admin_group)
-    print_msg(message)
-
-
-def configure_authentication(options):
-    cmd = [get_maas_region_bin_path(), "configauth"]
-    if options.rbac_url is not None:
-        cmd.extend(["--rbac-url", options.rbac_url])
-    if options.rbac_service_name is not None:
-        cmd.extend(["--rbac-service-name", options.rbac_service_name])
-    if options.candid_domain is not None:
-        cmd.extend(["--candid-domain", options.candid_domain])
-    if options.candid_agent_file is not None:
-        cmd.extend(["--candid-agent-file", options.candid_agent_file])
-    if options.candid_admin_group is not None:
-        cmd.extend(["--candid-admin-group", options.candid_admin_group])
-    subprocess.call(cmd)
-
-
 def get_maas_region_bin_path():
     maas_region = "maas-region"
     if "SNAP" in os.environ:
         maas_region = os.path.join(os.environ["SNAP"], "bin", maas_region)
     return maas_region
-
-
-def get_current_auth_config():
-    cmd = [get_maas_region_bin_path(), "configauth", "--json"]
-    output = subprocess.check_output(cmd)
-    return json.loads(output)
 
 
 def print_msg(msg="", newline=True, stderr=False):
@@ -255,15 +128,8 @@ def print_msg(msg="", newline=True, stderr=False):
 
 
 def init_maas(options):
-    print_msg("Configuring authentication")
-    configure_authentication(options)
     if not options.skip_admin:
-        auth_config = get_current_auth_config()
-        if auth_config["external_auth_url"]:
-            maas_config = MAASConfiguration().get()
-            create_account_external_auth(auth_config, maas_config)
-        else:
-            create_admin_account(options)
+        create_admin_account(options)
 
 
 def read_input(prompt):

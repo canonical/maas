@@ -14,7 +14,6 @@ from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import systemd_interval_to_calendar
 from maasserver.utils.orm import post_commit_hooks
@@ -693,56 +692,6 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
                 },
             ],
         )
-
-    def test_returns_vcenter_yaml_if_rbac_admin(self):
-        rbac = self.useFixture(RBACEnabled())
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING,
-            osystem="esxi",
-            owner=factory.make_User(),
-        )
-        node.nodemetadata_set.create(key="vcenter_registration", value="True")
-        rbac.store.add_pool(node.pool)
-        rbac.store.allow(node.owner.username, node.pool, "admin-machines")
-        vcenter = {
-            "vcenter_datacenter": factory.make_name("vcenter_datacenter"),
-            "vcenter_server": factory.make_name("vcenter_server"),
-            "vcenter_password": factory.make_name("vcenter_password"),
-            "vcenter_username": factory.make_name("vcenter_username"),
-        }
-        for key, value in vcenter.items():
-            Config.objects.set_config(key, value)
-        config = get_vendor_data(node, None)
-        self.assertEqual(
-            config["write_files"],
-            [
-                {
-                    "content": yaml.safe_dump(vcenter),
-                    "path": "/altbootbank/maas/vcenter.yaml",
-                },
-            ],
-        )
-
-    def test_returns_nothing_if_rbac_user(self):
-        rbac = self.useFixture(RBACEnabled())
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING,
-            osystem="esxi",
-            owner=factory.make_User(),
-        )
-        node.nodemetadata_set.create(key="vcenter_registration", value="True")
-        rbac.store.add_pool(node.pool)
-        rbac.store.allow(node.owner.username, node.pool, "deploy-machines")
-        vcenter = {
-            "vcenter_datacenter": factory.make_name("vcenter_datacenter"),
-            "vcenter_password": factory.make_name("vcenter_password"),
-            "vcenter_server": factory.make_name("vcenter_server"),
-            "vcenter_username": factory.make_name("vcenter_username"),
-        }
-        for key, value in vcenter.items():
-            Config.objects.set_config(key, value)
-        config = get_vendor_data(node, None)
-        self.assertNotIn("write_files", config)
 
     def test_returns_nothing_if_no_user(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING, osystem="esxi")
