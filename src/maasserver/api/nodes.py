@@ -737,18 +737,6 @@ class NodesHandler(OperationsHandler):
         @param (string) "status" [required=false] Only nodes with specified
         status will be returned.
 
-        @param (string) "pod": [required=false] Only nodes that belong to a
-        specified pod will be returned.
-
-        @param (string) "not_pod": [required=false] Only nodes that don't
-        belong to a specified pod will be returned.
-
-        @param (string) "pod_type": [required=false] Only nodes that belong to
-        a pod of the specified type will be returned.
-
-        @param (string) "not_pod_type": [required=false] Only nodes that don't
-        belong to a pod of the specified type will be returned.
-
         @param (string) "devices": [required=false] Only return nodes which
         have one or more devices containing the following constraints in the
         format key=value[,key2=value2[,...]]

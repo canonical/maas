@@ -446,11 +446,6 @@
       "resource_uri": "/MAAS/api/2.0/machines/c7ebw8/",
       "__incomplete__": true
     },
-    "pod": {
-      "id": 5,
-      "name": "sacred-hen",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "swap_size": null,
     "status_message": "desc-eqGqfo",
     "status_name": "Failed to exit rescue mode",
@@ -1451,7 +1446,6 @@
     "address_ttl": null,
     "node_type": 0,
     "volume_groups": [],
-    "pod": null,
     "storage": 13700.646912,
     "raids": [],
     "status_action": "action-3rkEpa",
@@ -1788,11 +1782,6 @@
     "current_installation_result_id": 8,
     "swap_size": null,
     "memory": 1024,
-    "pod": {
-      "id": 1,
-      "name": "MyPodName",
-      "resource_uri": "/MAAS/api/2.0/pods/1/"
-    },
     "current_commissioning_result_id": 6,
     "hardware_info": {
       "system_vendor": "QEMU",
@@ -2184,11 +2173,6 @@
     "current_installation_result_id": 8,
     "swap_size": null,
     "memory": 1024,
-    "pod": {
-      "id": 1,
-      "name": "MyPodName",
-      "resource_uri": "/MAAS/api/2.0/pods/1/"
-    },
     "current_commissioning_result_id": 6,
     "hardware_info": {
       "system_vendor": "QEMU",
@@ -2424,11 +2408,6 @@
       "interface_speed": 1000,
       "link_speed": 1000,
       "resource_uri": "/MAAS/api/2.0/nodes/e8xa8m/interfaces/5/"
-    },
-    "pod": {
-      "id": 1,
-      "name": "MyPodName",
-      "resource_uri": "/MAAS/api/2.0/pods/1/"
     },
     "storage_test_status": 0,
     "architecture": "amd64/generic",
