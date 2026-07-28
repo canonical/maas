@@ -20,8 +20,6 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.urls import reverse
 from netaddr import IPNetwork
-from twisted.internet.defer import succeed
-import yaml
 
 from maasserver.api import support
 from maasserver.enum import NODE_STATUS, NODE_TYPE, NODE_TYPE_CHOICES
