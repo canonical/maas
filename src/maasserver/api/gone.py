@@ -1,5 +1,5 @@
-#  Copyright 2026 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handler for permanently removed endpoints (HTTP 410 Gone).
 
