@@ -309,24 +309,6 @@ maas $PROFILE tag rebuild $TAG_NAME
 - UI only: Edit the tag, change kernel options, and save.
 - Options apply at boot; redeploy machines for changes to take effect.
 
-### VM host tags
-
-**UI**
-*KVM* > [VM host type] > [VM host] > *KVM host settings* > *Tags* > *Add* / *Edit* / *Delete*
-
-**CLI**
-
-```
-maas $PROFILE vmhosts read | jq -r '(["vm_host_name","id"]
-|(.,map(length*"-"))),(.[]|[.name,.id]) | @tsv' | column -t
-
-maas $PROFILE vmhost add-tag $VMHOST_ID tag=$TAG_NAME
-maas $PROFILE vmhost remove-tag $VMHOST_ID tag=$TAG_NAME
-
-maas $PROFILE vmhost read $VMHOST_ID | jq -r '(["name","id","tags"]
-|(.,map(length*"-"))),([.name,.id,.tags[]]) | @tsv' | column -t
-```
-
 ### Find tagged machines
 
 **UI**

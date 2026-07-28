@@ -9,7 +9,6 @@ To keep MAAS fast, we run continuous performance tests that mimic real-world dat
 - Reference environment:
   - 5 rack controllers
   - 48 machines per fabric
-  - 5 VMs per LXD host
   - Machines with varied hardware features
 
 - Test runs: Daily simulations at 10, 100, and 1000 machines.

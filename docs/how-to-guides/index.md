@@ -136,7 +136,6 @@ deploy-a-real-time-kernel
 deploy-a-fips-kernel
 set-up-air-gapped-maas
 script-maas-with-python
-deploy-vms-on-ibm-z
 deploy-dpus
 deploy-dpus-without-bmc
 deploy-a-dpu-host-pair

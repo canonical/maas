@@ -46,9 +46,9 @@ MAAS monitors network traffic to find connected devices (machines, switches, bri
 Use MAAS search syntax:
 
 | Type     | Example              |
-| Exact    | `pod:=able-cattle`   |
-| Partial  | `pod:able,cattle`    |
-| Negation | `pod:!cattle`        |
+| Exact    | `hostname:=able-cattle`   |
+| Partial  | `hostname:able,cattle`    |
+| Negation | `hostname:!cattle`        |
 
 - **UI**: *Hardware* > *Machines* > use the search bar
 - **CLI**:
@@ -100,41 +100,6 @@ Duplicate configuration.
   ```bash
   maas $PROFILE machine clone $SOURCE_SYSTEM_ID new_hostname=$NEW_HOSTNAME
   ```
-
-### Use LXD VMs
-
-Provision VMs with LXD.
-
-1. Set up LXD
-   - Remove old versions, install, initialize, and disable DHCP on bridges.
-   - **CLI only**:
-
-     ```bash
-     sudo apt-get purge -y *lxd* *lxc*
-     sudo apt-get autoremove -y
-     sudo snap install lxd
-     sudo lxd init
-     lxc network set lxdbr0 dns.mode=none
-     lxc network set lxdbr0 ipv4.dhcp=false
-     lxc network set lxdbr0 ipv6.dhcp=false
-     ```
-
-2. Add a VM host:
-   - **UI**: *KVM* > *LXD* > *Add LXD host* > enter details > run trust command > *Save LXD host*
-   - **CLI**:
-
-     ```bash
-     maas $PROFILE vm-hosts create type=lxd power_address=$LXD_ADDRESS project=$PROJECT_NAME
-     ```
-
-3. Move or delete VMs:
-   - **UI**: *Machines* > *[VM]* > *Take action* > *Delete*
-   - **CLI**:
-
-     ```bash
-     lxc move $VM_NAME $VM_NAME --project default --target-project $PROJECT_NAME
-     maas $PROFILE machine delete $SYSTEM_ID
-     ```
 
 ## Control machine power
 

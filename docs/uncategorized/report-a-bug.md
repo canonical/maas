@@ -9,7 +9,7 @@ This page shows you how to prepare bug information, gather logs, and submit a La
 Before you open Launchpad, collect the essentials:
 
 * Bug summary – One line, specific.
-  Example: `MAAS PXE boot fails on IBM LPAR as KVM host`
+  Example: `MAAS PXE boot fails on IBM LPAR`
 * Version and build –
 
   * Snap: `snap list maas`
