@@ -104,7 +104,7 @@ def add_power_driver_parameters(
     """Add new power type parameters to the given parameters_set if it
     does not already exist.
 
-    :param driver_type: Type of driver. Must be `power`.
+    :param driver_type: Type of driver.
     :type driver_type: string
     :param name: The name of the power type for which to add parameters.
     :type name: string

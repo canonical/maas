@@ -8,8 +8,8 @@ order to provide more informative messages for clients that might still try
 to call them.
 """
 
+from maasserver.api.gone import vmhost_gone as _gone
 from maasserver.api.support import OperationsHandler
-from maasserver.api.vmhost_removed import vmhost_gone as _gone
 
 
 class VmClusterHandler(OperationsHandler):

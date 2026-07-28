@@ -5,7 +5,12 @@ from enum import IntEnum
 
 
 class BmcType(IntEnum):
-    """Valid BMC types."""
+    """Valid BMC types.
+
+    POD is retained only so that leftover rows from deployments that used
+    KVM/VM host (Pod) support before its removal can still be read and
+    migrated. New BMCs are never created with this type.
+    """
 
     DEFAULT = 0
     BMC = 0

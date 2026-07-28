@@ -18,39 +18,77 @@ class TestVmHostEndpointsGone(APITestCase.ForUser):
     scenarios = (
         (
             "pods",
-            {"uri_name": "pods_handler", "args": []},
+            {
+                "uri_name": "pods_handler",
+                "args": [],
+                "gone_methods": ["get", "post"],
+            },
         ),
         (
             "pod",
-            {"uri_name": "pod_handler", "args": ["1"]},
+            {
+                "uri_name": "pod_handler",
+                "args": ["1"],
+                "gone_methods": ["get", "put", "delete"],
+            },
         ),
         (
             "vm_hosts",
-            {"uri_name": "vm_hosts_handler", "args": []},
+            {
+                "uri_name": "vm_hosts_handler",
+                "args": [],
+                "gone_methods": ["get", "post"],
+            },
         ),
         (
             "vm_host",
-            {"uri_name": "vm_host_handler", "args": ["1"]},
+            {
+                "uri_name": "vm_host_handler",
+                "args": ["1"],
+                "gone_methods": ["get", "put", "delete"],
+            },
         ),
         (
             "vm_clusters",
-            {"uri_name": "vm_clusters_handler", "args": []},
+            {
+                "uri_name": "vm_clusters_handler",
+                "args": [],
+                "gone_methods": ["get"],
+            },
         ),
         (
             "vm_cluster",
-            {"uri_name": "vm_cluster_handler", "args": ["1"]},
+            {
+                "uri_name": "vm_cluster_handler",
+                "args": ["1"],
+                "gone_methods": ["get", "put", "delete"],
+            },
         ),
         (
             "virtual_machines",
-            {"uri_name": "virtual_machines_handler", "args": []},
+            {
+                "uri_name": "virtual_machines_handler",
+                "args": [],
+                "gone_methods": ["get"],
+            },
         ),
         (
             "virtual_machine",
-            {"uri_name": "virtual_machine_handler", "args": ["1"]},
+            {
+                "uri_name": "virtual_machine_handler",
+                "args": ["1"],
+                "gone_methods": ["get"],
+            },
         ),
     )
 
-    def test_read_returns_gone(self):
-        response = self.client.get(reverse(self.uri_name, args=self.args))
-        self.assertEqual(http.client.GONE, response.status_code)
-        self.assertIn(b"removed", response.content)
+    def test_endpoints_return_gone(self):
+        uri = reverse(self.uri_name, args=self.args)
+        for method in self.gone_methods:
+            response = getattr(self.client, method)(uri)
+            self.assertEqual(
+                http.client.GONE,
+                response.status_code,
+                f"{method.upper()} {uri} did not return 410 Gone",
+            )
+            self.assertIn(b"removed", response.content)

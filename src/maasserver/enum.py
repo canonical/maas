@@ -272,6 +272,8 @@ class BMC_TYPE:
 
     DEFAULT = BmcType.DEFAULT.value
     BMC = BmcType.BMC.value
+    # POD is retained only for upgrade-leftover rows from deployments that
+    # used KVM/VM host support before its removal. New BMCs never use it.
     POD = BmcType.POD.value
 
 

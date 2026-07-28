@@ -2210,9 +2210,7 @@ class Node(CleanSave, TimestampedModel):
     def _remove_orphaned_bmcs(self):
         from maasserver.models.bmc import BMC
 
-        BMC.objects.filter(node__isnull=True).exclude(
-            bmc_type=BMC_TYPE.POD
-        ).delete()
+        BMC.objects.filter(node__isnull=True).delete()
 
     def display_status(self):
         """Return status text as displayed to the user."""
