@@ -274,6 +274,7 @@ class TestIPAddressesReadPrefetch(APITestCase.ForAdmin):
         count_5, nodes_5 = count_queries(access_nodes)
         self.assertEqual(2, len(nodes_2))
         self.assertEqual(5, len(nodes_5))
+        self.assertEqual(2, count_2)
         self.assertEqual(count_2, count_5)
 
 

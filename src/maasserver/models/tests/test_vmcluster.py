@@ -165,6 +165,7 @@ class TestVMCluster(MAASServerTestCase):
         count_5, machines_5 = count_queries(read_machines)
         self.assertEqual(2, len(machines_2))
         self.assertEqual(5, len(machines_5))
+        self.assertEqual(1, count_2)
         self.assertEqual(count_2, count_5)
 
     def test_hosts(self):

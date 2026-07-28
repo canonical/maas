@@ -241,7 +241,10 @@ class TestFabric(MAASServerTestCase):
             count, _ = count_queries(do_delete)
             return count
 
-        self.assertEqual(attempt_delete(2), attempt_delete(4))
+        count_2 = attempt_delete(2)
+        count_4 = attempt_delete(4)
+        self.assertEqual(3, count_2)
+        self.assertEqual(count_2, count_4)
 
     def test_cant_delete_fabric_if_connected_to_subnet(self):
         fabric = factory.make_Fabric()
