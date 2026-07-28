@@ -12,16 +12,14 @@ from django.db.models import (
     CASCADE,
     CharField,
     ForeignKey,
-    IntegerField,
     JSONField,
     Manager,
     ManyToManyField,
     SET_NULL,
 )
-from django.db.models.query import QuerySet
 from netaddr import AddrFormatError, IPAddress
 
-from maasserver.enum import BMC_TYPE, BMC_TYPE_CHOICES, IPADDRESS_TYPE
+from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
@@ -78,22 +76,6 @@ def get_or_create_bmc(**kwargs):
     return bmc, created
 
 
-class BaseBMCManager(Manager):
-    """A utility to manage the collection of BMCs."""
-
-    extra_filters = {}
-
-    def get_queryset(self):
-        queryset = QuerySet(self.model, using=self._db)
-        return queryset.filter(**self.extra_filters)
-
-
-class BMCManager(BaseBMCManager):
-    """Manager for `BMC`."""
-
-    extra_filters = {"bmc_type": BMC_TYPE.BMC}
-
-
 class BMC(CleanSave, TimestampedModel):
     """A `BMC` represents an existing 'baseboard management controller'.  For
     practical purposes in MAAS, this is any addressable device that can control
@@ -121,12 +103,6 @@ class BMC(CleanSave, TimestampedModel):
         indexes = [HashIndex(fields=["power_parameters"])]
 
     objects = Manager()
-
-    bmcs = BMCManager()
-
-    bmc_type = IntegerField(
-        choices=BMC_TYPE_CHOICES, editable=False, default=BMC_TYPE.DEFAULT
-    )
 
     ip_address = ForeignKey(
         StaticIPAddress,

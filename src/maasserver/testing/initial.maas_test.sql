@@ -4614,7 +4614,6 @@ CREATE TABLE public.maasserver_bmc (
     updated timestamp with time zone NOT NULL,
     power_type character varying(10) NOT NULL,
     ip_address_id bigint,
-    bmc_type integer NOT NULL,
     power_parameters jsonb NOT NULL,
     created_by_commissioning boolean
 );
@@ -10108,7 +10107,7 @@ COPY public.maasserver_blockdevice (id, created, updated, name, id_path, size, b
 -- Data for Name: maasserver_bmc; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_bmc (id, created, updated, power_type, ip_address_id, bmc_type, power_parameters, created_by_commissioning) FROM stdin;
+COPY public.maasserver_bmc (id, created, updated, power_type, ip_address_id, power_parameters, created_by_commissioning) FROM stdin;
 \.
 
 

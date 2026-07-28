@@ -115,7 +115,6 @@ BMCTable = Table(
         ),
         nullable=True,
     ),
-    Column("bmc_type", Integer, nullable=False),
     Column("power_parameters", JSONB, nullable=False),
     Column("created_by_commissioning", Boolean, nullable=True),
     Index("maasserver__power_p_511df2_hash", "power_parameters"),

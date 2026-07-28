@@ -46,7 +46,6 @@ __all__ = [
 from collections import OrderedDict
 from typing import Callable, cast
 
-from maascommon.enums.bmc import BmcType
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
@@ -265,19 +264,6 @@ NODE_TYPE_CHOICES = (
 )
 
 NODE_TYPE_CHOICES_DICT = OrderedDict(NODE_TYPE_CHOICES)
-
-
-class BMC_TYPE:
-    """Valid BMC types."""
-
-    DEFAULT = BmcType.DEFAULT.value
-    BMC = BmcType.BMC.value
-    # POD is retained only for upgrade-leftover rows from deployments that
-    # used KVM/VM host support before its removal. New BMCs never use it.
-    POD = BmcType.POD.value
-
-
-BMC_TYPE_CHOICES = ((BMC_TYPE.BMC, "BMC"), (BMC_TYPE.POD, "POD"))
 
 
 class NODE_ACTION_TYPE:

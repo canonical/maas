@@ -39,6 +39,7 @@ VMHOST_TRIGGER_FUNCTIONS = (
 
 # Pod-only columns on the shared maasserver_bmc table.
 BMC_VMHOST_COLUMNS = (
+    "bmc_type",
     "default_storage_pool_id",
     "pool_id",
     "zone_id",
