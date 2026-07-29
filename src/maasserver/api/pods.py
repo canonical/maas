@@ -21,6 +21,7 @@ class VmHostHandler(OperationsHandler):
     """
 
     api_doc_section_name = "vm host"
+    hidden = True
 
     create = None
     read = update = delete = _gone
@@ -78,6 +79,7 @@ class PodHandler(VmHostHandler):
     """
 
     api_doc_section_name = "Pod"
+    hidden = True
 
     @classmethod
     def resource_uri(cls, pod=None):
@@ -94,6 +96,7 @@ class VmHostsHandler(OperationsHandler):
     """
 
     api_doc_section_name = "vm hosts"
+    hidden = True
     update = delete = None
 
     read = create = _gone
@@ -115,6 +118,7 @@ class PodsHandler(VmHostsHandler):
     """
 
     api_doc_section_name = "Pods"
+    hidden = True
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

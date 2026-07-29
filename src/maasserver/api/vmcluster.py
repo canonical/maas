@@ -21,6 +21,7 @@ class VmClusterHandler(OperationsHandler):
     """
 
     api_doc_section_name = "Virtual Machine Cluster"
+    hidden = True
     create = None
     read = update = delete = _gone
 
@@ -39,6 +40,7 @@ class VmClustersHandler(OperationsHandler):
     """
 
     api_doc_section_name = "Virtual Machine Clusters"
+    hidden = True
     create = update = delete = None
     read = _gone
 
