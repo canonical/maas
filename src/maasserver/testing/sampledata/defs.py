@@ -4,7 +4,6 @@ from .common import make_weighted_item_getter
 
 MACHINES_PER_FABRIC = 48  # Each ToR switch is its own fabric
 VLAN_PER_FABRIC_COUNT = 4  # in addition to the default one
-VMHOST_COUNT = 5
 OWNERDATA_PER_MACHINE_COUNT = 5
 TAG_COUNT = 100
 EVENT_TYPE_COUNT = 50

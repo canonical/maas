@@ -580,10 +580,6 @@ This action releases a machine from a locked state.
 
 A VLAN interface can be used to connect to a tagged VLAN, if the node is connected to an authorised port.
 
-#### VM hosts
-
-VM hosts, also called composable hardware, allow for the dynamic composition of machines from a pool of available hardware resources (e.g. disk space, memory, cores).
-
 ### W
 
 #### WAN

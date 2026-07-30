@@ -1,4 +1,4 @@
-# Copyright 2017-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Load all power drivers."""
@@ -6,7 +6,6 @@
 from jsonschema import validate
 
 from maascommon.utils.registry import Registry
-from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.drivers.power.amt import AMTPowerDriver
 from provisioningserver.drivers.power.apc import APCPowerDriver
@@ -15,6 +14,7 @@ from provisioningserver.drivers.power.eaton import EatonPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.hmcz import HMCZPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
+from provisioningserver.drivers.power.lxd import LXDPowerDriver
 from provisioningserver.drivers.power.manual import ManualPowerDriver
 from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
@@ -26,6 +26,7 @@ from provisioningserver.drivers.power.recs import RECSPowerDriver
 from provisioningserver.drivers.power.redfish import RedfishPowerDriver
 from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
 from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
+from provisioningserver.drivers.power.virsh import VirshPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 from provisioningserver.drivers.power.webhook import WebhookPowerDriver
 from provisioningserver.drivers.power.wedge import WedgePowerDriver
@@ -37,9 +38,6 @@ class PowerDriverRegistry(Registry):
     @classmethod
     def get_schema(cls, detect_missing_packages=True):
         """Returns the full schema for the registry."""
-        # Pod drivers are not included in the schema because they should
-        # be used through `PodDriverRegistry`, except when a power action
-        # is to be performed.
         schemas = [
             driver.get_schema(detect_missing_packages=detect_missing_packages)
             for _, driver in cls
@@ -57,6 +55,7 @@ power_drivers = [
     HMCPowerDriver(),
     HMCZPowerDriver(),
     IPMIPowerDriver(),
+    LXDPowerDriver(),
     ManualPowerDriver(),
     MoonshotIPMIPowerDriver(),
     MSCMPowerDriver(),
@@ -68,17 +67,13 @@ power_drivers = [
     RedfishPowerDriver(),
     SeaMicroPowerDriver(),
     UCSMPowerDriver(),
+    VirshPowerDriver(),
     VMwarePowerDriver(),
     WebhookPowerDriver(),
     WedgePowerDriver(),
 ]
 for driver in power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)
-
-
-# Pod drivers are also power drivers.
-for driver_name, driver in PodDriverRegistry:
-    PowerDriverRegistry.register_item(driver_name, driver)
 
 
 def sanitise_power_parameters(power_type, power_parameters):

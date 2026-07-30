@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from unittest.mock import Mock
 
@@ -23,11 +23,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.zones import Zone
-from maasservicelayer.services import (
-    NodesService,
-    VmClustersService,
-    ZonesService,
-)
+from maasservicelayer.services import NodesService, ZonesService
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.utils.date import utcnow
 from tests.maasservicelayer.services.base import ServiceCommonTests
@@ -57,7 +53,6 @@ class TestCommonZonesService(ServiceCommonTests):
             context=Context(),
             zones_repository=Mock(ZonesRepository),
             nodes_service=Mock(NodesService),
-            vmcluster_service=Mock(VmClustersService),
         )
 
     @pytest.fixture
@@ -79,7 +74,6 @@ class TestZonesService:
             context=Context(),
             zones_repository=zones_repository,
             nodes_service=Mock(NodesService),
-            vmcluster_service=Mock(VmClustersService),
         )
 
         await zones_service.list_with_statistics(1, 1)
@@ -95,7 +89,6 @@ class TestZonesService:
             context=Context(),
             zones_repository=zones_repository,
             nodes_service=Mock(NodesService),
-            vmcluster_service=Mock(VmClustersService),
         )
 
         await zones_service.delete_one(
@@ -111,7 +104,6 @@ class TestZonesService:
             context=Context(),
             zones_repository=zones_repository,
             nodes_service=Mock(NodesService),
-            vmcluster_service=Mock(VmClustersService),
         )
 
         await zones_service.delete_by_id(TEST_ZONE.id)
@@ -128,7 +120,6 @@ class TestZonesService:
             context=Context(),
             zones_repository=zones_repository,
             nodes_service=Mock(NodesService),
-            vmcluster_service=Mock(VmClustersService),
         )
 
         mocker.patch(
@@ -148,7 +139,6 @@ class TestZonesService:
             context=Context(),
             zones_repository=zones_repository,
             nodes_service=Mock(NodesService),
-            vmcluster_service=Mock(VmClustersService),
         )
 
         mocker.patch(
@@ -170,7 +160,6 @@ class TestZonesService:
             context=Context(),
             zones_repository=zones_repository,
             nodes_service=Mock(NodesService),
-            vmcluster_service=Mock(VmClustersService),
         )
 
         with pytest.raises(BadRequestException) as excinfo:
@@ -185,7 +174,6 @@ class TestZonesService:
         self,
     ) -> None:
         nodes_service_mock = Mock(NodesService)
-        vmclusters_service_mock = Mock(VmClustersService)
         zones_repository = Mock(ZonesRepository)
         zones_repository.get_by_id.return_value = TEST_ZONE
         zones_repository.get_default_zone.return_value = DEFAULT_ZONE
@@ -195,18 +183,11 @@ class TestZonesService:
             context=Context(),
             zones_repository=zones_repository,
             nodes_service=nodes_service_mock,
-            vmcluster_service=vmclusters_service_mock,
         )
 
         await zones_service.delete_by_id(TEST_ZONE.id)
 
         nodes_service_mock.move_to_zone.assert_called_once_with(
-            TEST_ZONE.id, DEFAULT_ZONE.id
-        )
-        nodes_service_mock.move_bmcs_to_zone.assert_called_once_with(
-            TEST_ZONE.id, DEFAULT_ZONE.id
-        )
-        vmclusters_service_mock.move_to_zone.assert_called_once_with(
             TEST_ZONE.id, DEFAULT_ZONE.id
         )
 
@@ -218,7 +199,6 @@ class TestZonesService:
         zones_service = ZonesService(
             context=Context(),
             nodes_service=Mock(NodesService),
-            vmcluster_service=Mock(VmClustersService),
             zones_repository=zones_repository,
             cache=cache,
         )

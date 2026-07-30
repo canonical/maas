@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -72,19 +72,9 @@ class TestPrometheusHandler(MAASServerTestCase):
             "maas_machines_total_storage",
             "maas_machines_avg_deployment_time",
             "maas_service_availability",
-            "maas_kvm_pods",
-            "maas_kvm_machines",
-            "maas_kvm_cores",
-            "maas_kvm_memory",
-            "maas_kvm_storage",
-            "maas_kvm_overcommit_cores",
-            "maas_kvm_overcommit_memory",
             "maas_machine_arches",
             "maas_custom_static_images_uploaded",
             "maas_custom_static_images_deployed",
-            "maas_vmcluster_projects",
-            "maas_vmcluster_hosts",
-            "maas_vmcluster_vms",
             "site_manager_connection",
         )
         for metric in metrics:
@@ -122,24 +112,6 @@ class TestPrometheus(MAASServerTestCase):
         arches = {"amd64": 0, "i386": 0}
         mock_arches = self.patch(stats, "get_machines_by_architecture")
         mock_arches.return_value = arches
-        vm_hosts = {
-            "vm_hosts": 0,
-            "vms": 0,
-            "available_resources": {
-                "cores": 10,
-                "memory": 20,
-                "storage": 30,
-                "over_cores": 100,
-                "over_memory": 200,
-            },
-            "utilized_resources": {
-                "cores": 5,
-                "memory": 10,
-                "storage": 15,
-            },
-        }
-        mock_vm_hosts = self.patch(stats, "get_vm_hosts_stats")
-        mock_vm_hosts.return_value = vm_hosts
         subnet_stats = {
             "1.2.0.0/16": {
                 "available": 2**16 - 3,
@@ -168,7 +140,6 @@ class TestPrometheus(MAASServerTestCase):
         update_prometheus_stats(metrics)
         self.assertEqual(1, len(mock.mock_calls))
         self.assertEqual(1, len(mock_arches.mock_calls))
-        self.assertEqual(1, len(mock_vm_hosts.mock_calls))
         self.assertEqual(1, len(mock_subnet_stats.mock_calls))
 
     def test_push_stats_to_prometheus(self):

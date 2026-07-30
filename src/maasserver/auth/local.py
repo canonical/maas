@@ -10,7 +10,6 @@ from maasserver.authorization import (
 )
 from maasserver.enum import NODE_TYPE
 from maasserver.models.blockdevice import BlockDevice
-from maasserver.models.bmc import Pod
 from maasserver.models.discovery import Discovery
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
@@ -25,14 +24,8 @@ from maasserver.models.staticroute import StaticRoute
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.vlan import VLAN
-from maasserver.models.vmcluster import VMCluster
 from maasserver.openfga import get_openfga_client
-from maasserver.permissions import (
-    NodePermission,
-    PodPermission,
-    ResourcePoolPermission,
-    VMClusterPermission,
-)
+from maasserver.permissions import NodePermission, ResourcePoolPermission
 from provisioningserver.utils import is_instance_or_subclass
 
 UNRESTRICTED_READ_MODELS = (
@@ -160,16 +153,16 @@ class MAASAuthorizationBackend(ModelBackend):
                 "against a `ResourcePoolPermission`."
             )
 
-        if (
-            obj is not None
-            and isinstance(obj, Pod)
-            and not isinstance(perm, PodPermission)
-        ):
-            raise TypeError(
-                "obj type of Pod must be checked against `PodPermission`."
-            )
-
-    def _can_view(self, user, machine):
+    def _can_view(
+        self,
+        rbac_enabled,
+        user,
+        machine,
+        visible_pools,
+        view_all_pools,
+        deploy_pools,
+        admin_pools,
+    ):
         if machine.pool_id is None:
             return True
         return (
@@ -214,47 +207,3 @@ class MAASAuthorizationBackend(ModelBackend):
             )
 
         raise ValueError("unknown ResourcePoolPermission value: %s" % perm)
-
-    def _perm_pod(self, user, perm, obj=None):
-        if perm == PodPermission.create:
-            return get_openfga_client().can_edit_machines(user)
-
-        if not isinstance(obj, Pod):
-            raise ValueError(
-                "only `PodPermission.create` can be used without an `obj`."
-            )
-
-        if perm == PodPermission.edit or perm == PodPermission.compose:
-            return get_openfga_client().can_edit_machines_in_pool(
-                user, obj.pool_id
-            )
-        elif perm == PodPermission.dynamic_compose:
-            return get_openfga_client().can_deploy_machines_in_pool(
-                user, obj.pool_id
-            ) or get_openfga_client().can_edit_machines_in_pool(
-                user, obj.pool_id
-            )
-        elif perm == PodPermission.view:
-            return get_openfga_client().can_view_available_machines_in_pool(
-                user, obj.pool_id
-            )
-
-        raise ValueError("unknown PodPermission value: %s" % perm)
-
-    def _perm_vmcluster(self, user, perm, obj=None):
-        if not isinstance(obj, VMCluster):
-            raise ValueError(
-                "`VMClusterPermission` requires an `obj` of type `VMCluster`"
-            )
-
-        if perm == VMClusterPermission.view:
-            return get_openfga_client().can_view_available_machines_in_pool(
-                user, obj.pool_id
-            )
-
-        if perm in (VMClusterPermission.edit, VMClusterPermission.delete):
-            return get_openfga_client().can_edit_machines_in_pool(
-                user, obj.pool_id
-            )
-
-        raise ValueError("unknown VMClusterPermission value: %s" % perm)

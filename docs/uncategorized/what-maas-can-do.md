@@ -46,14 +46,6 @@ MAAS is built API-first – everything in the UI can also be done via a RESTful 
 
 The API allows querying hardware state, acquiring or releasing machines, tagging resources, and more, enabling DevOps teams to script bare-metal operations just like cloud VM operations. This API-driven approach also facilitates integration into CI/CD pipelines and custom portals. In short, MAAS exposes a powerful programmatic interface for integrating bare-metal provisioning into automation ecosystems.
 
-### KVM virtualization (micro-clouds)
-
-In addition to physical machines, MAAS can also manage virtual machines via KVM on the bare-metal hosts. MAAS offers the ability to create lean, on-demand VMsc, effectively treating a big bare-metal server as a mini-cloud hypervisor and carving it into VMs as needed. Through MAAS, you can allocate a portion of a machine’s CPU, RAM, and storage to create VMs, which then appear as manageable nodes in MAAS. Networking for these VMs is also configured by MAAS (bridged onto the host or separate subnets). This is useful for scenarios where you want to mix virtual and physical deployments or maximize utilization of a few powerful servers.
-
-For example, a branch office or lab could use one server to host a handful of VMs for light workloads via MAAS. The KVM pod feature simplifies hypervisor setup – admins can add an existing Ubuntu server as a MAAS KVM host, then spin up/down VMs on it through MAAS’s UI/API.
-
-These VMs can run any OS image just like a normal machine deployment. Essentially, MAAS extends its management to include VM provisioning, providing a unified way to handle both bare metal and VM instances on-premises. This micro-cloud support lets you deploy a small cloud at the edge or in a small environment without a full OpenStack. MAAS itself orchestrates the VMs.
-
 ### High availability and scalability
 
 MAAS is built to scale from a handful of machines to many thousands. It has a two-tier architecture: a region controller (central service/API and database) and one or more rack controllers (proxy services for DHCP/TFTP, power control, etc., usually one per rack or site). This design allows MAAS to manage multiple sites or racks under one region. In fact, MAAS can coordinate across multiple data centers or “regions” of infrastructure, managing thousands of servers while maintaining snappy performance.

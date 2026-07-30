@@ -528,7 +528,6 @@ MAAS also provides optional stats about resources registered with the MAAS serve
 1. The number of nodes by type, arch, ...
 2. Number of networks, spaces, fabrics, VLANs and subnets
 3. Total counts for machines CPU cores, memory and storage
-4. Counters for VM host resources
 
 After installing the `python3-prometheus-client` library as describe above, run the following to enable stats:
 

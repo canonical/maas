@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -642,8 +642,6 @@ GROUPABLE_FIELDS = (
     "arch",
     "domain",
     "owner",
-    "pod_type",
-    "pod",
     "pool",
     "power_state",
     "status",
@@ -897,28 +895,6 @@ class FilterNodeForm(forms.Form):
         },
     )
 
-    pod = UnconstrainedMultipleChoiceField(
-        label="The name of the desired pod", required=False, coerce=str_or_none
-    )
-
-    not_pod = UnconstrainedMultipleChoiceField(
-        label="The name of the undesired pod",
-        required=False,
-        coerce=str_or_none,
-    )
-
-    pod_type = UnconstrainedMultipleChoiceField(
-        label="The power_type of the desired pod",
-        required=False,
-        coerce=str_or_none,
-    )
-
-    not_pod_type = UnconstrainedMultipleChoiceField(
-        label="The power_type of the undesired pod",
-        required=False,
-        coerce=str_or_none,
-    )
-
     owner = UnconstrainedMultipleChoiceField(
         label="Owner", required=False, coerce=str_or_none
     )
@@ -981,8 +957,6 @@ class FilterNodeForm(forms.Form):
             "current_config__interface__ip_addresses__subnet",
             _match_all,
         ),
-        "pod": ("bmc__name", _match_any),
-        "pod_type": ("bmc__power_type", _match_any),
         "owner": ("owner__username", _match_any),
         "power_state": ("power_state", _match_any),
     }
@@ -1007,8 +981,6 @@ class FilterNodeForm(forms.Form):
             _match_any,
         ),
         "not_system_id": ("system_id", _match_any),
-        "not_pod": ("bmc__name", _match_any),
-        "not_pod_type": ("bmc__power_type", _match_any),
         "not_owner": ("owner__username", _match_any),
         "not_power_state": ("power_state", _match_any),
     }
@@ -1674,8 +1646,6 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         "arch": ("architecture", _match_substring),
         "tags": ("tags__name", _match_substring),
         "vlans": ("current_config__interface__vlan__name", _match_substring),
-        "pod": ("bmc__name", _match_substring),
-        "pod_type": ("bmc__power_type", _match_substring),
         "owner": ("owner__username", _match_substring),
         "subnets": (
             "current_config__interface__ip_addresses__subnet__cidr",
@@ -1723,8 +1693,6 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         "not_arch": ("architecture", _match_substring),
         "not_tags": ("tags__name", _match_substring),
         "not_system_id": ("system_id", _match_substring),
-        "not_pod": ("bmc__name", _match_substring),
-        "not_pod_type": ("bmc__power_type", _match_substring),
         "not_owner": ("owner__username", _match_substring),
         "not_subnets": (
             "current_config__interface__ip_addresses__subnet__cidr",
@@ -1946,8 +1914,6 @@ class FreeTextFilterNodeForm(ReadNodesForm):
                 "fqdn",
                 "osystem",
                 "owner",
-                "pod_type",
-                "pod",
                 "spaces",
                 "pool",
                 "pxe_mac",

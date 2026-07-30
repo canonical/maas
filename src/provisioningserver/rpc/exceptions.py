@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Errors arising from the RPC system."""
@@ -91,19 +91,6 @@ class PowerActionFail(Exception):
 
 class UnknownPowerType(Exception):
     """Raised when trying to process an unknown power type."""
-
-
-class UnknownPodType(Exception):
-    """Raised when trying to process an unknown pod type."""
-
-
-class PodActionFail(Exception):
-    """Raised when performing a pod action."""
-
-
-class PodInvalidResources(Exception):
-    """Raised when a pod cannot compose a machine because of
-    invalid resources."""
 
 
 class CannotRegisterCluster(Exception):

@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model definition for a `Discovery` (a discovered network device)."""
@@ -171,8 +171,7 @@ class Discovery(Model):
     that MAAS believes has been discovered.
 
     Note that this class is backed by the `maasserver_discovery` view. Any
-    updates to this model must be reflected in `maasserver/dbviews.py` under
-    the `maasserver_discovery` view.
+    updates to this model must be reflected in an alembic database migration.
     """
 
     class Meta:

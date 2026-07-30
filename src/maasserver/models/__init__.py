@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model export and helpers for maasserver."""
@@ -61,9 +61,6 @@ __all__ = [
     "PartitionTable",
     "PhysicalBlockDevice",
     "PhysicalInterface",
-    "Pod",
-    "PodHints",
-    "PodStoragePool",
     "RackController",
     "RAID",
     "RDNS",
@@ -92,11 +89,9 @@ __all__ = [
     "VaultSecret",
     "VersionedTextFile",
     "VirtualBlockDevice",
-    "VirtualMachine",
     "VLAN",
     "VLANInterface",
     "VolumeGroup",
-    "VMCluster",
     "VMFS",
     "Zone",
 ]
@@ -108,11 +103,7 @@ from django.urls import get_callable, get_resolver, get_script_prefix
 from piston3.doc import HandlerDocumentation
 
 from maasserver.models.blockdevice import BlockDevice
-from maasserver.models.bmc import (
-    BMC,
-    BMCRoutableRackControllerRelationship,
-    Pod,
-)
+from maasserver.models.bmc import BMC, BMCRoutableRackControllerRelationship
 from maasserver.models.bootresource import BootResource
 from maasserver.models.bootresourcefile import (
     BootResourceFile,
@@ -183,8 +174,6 @@ from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
-from maasserver.models.podhints import PodHints
-from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.models.rdns import RDNS
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
@@ -210,9 +199,7 @@ from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
-from maasserver.models.virtualmachine import VirtualMachine
 from maasserver.models.vlan import VLAN
-from maasserver.models.vmcluster import VMCluster
 from maasserver.models.zone import Zone
 
 # Connect post-creation methods for models.

@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Prometheus integration"""
@@ -20,8 +20,6 @@ from maasserver.stats import (
     get_maas_stats,
     get_machines_by_architecture,
     get_subnets_utilisation_stats,
-    get_vm_hosts_stats,
-    get_vmcluster_stats,
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -100,29 +98,6 @@ STATS_DEFINITIONS = [
         "maas_machines_avg_deployment_time",
         "Average time in seconds of the last successful deployment of all machines",
     ),
-    MetricDefinition("Gauge", "maas_kvm_pods", "Number of KVM pods"),
-    MetricDefinition(
-        "Gauge", "maas_kvm_machines", "Number of KVM virtual machines"
-    ),
-    MetricDefinition(
-        "Gauge", "maas_kvm_cores", "Number of KVM cores", ["status"]
-    ),
-    MetricDefinition(
-        "Gauge", "maas_kvm_memory", "Memory for KVM pods", ["status"]
-    ),
-    MetricDefinition(
-        "Gauge", "maas_kvm_storage", "Size of storage for KVM pods", ["status"]
-    ),
-    MetricDefinition(
-        "Gauge",
-        "maas_kvm_overcommit_cores",
-        "Number of KVM cores with overcommit",
-    ),
-    MetricDefinition(
-        "Gauge",
-        "maas_kvm_overcommit_memory",
-        "KVM memory size with overcommit",
-    ),
     MetricDefinition(
         "Gauge",
         "maas_machine_arches",
@@ -139,21 +114,6 @@ STATS_DEFINITIONS = [
         "Gauge",
         "maas_custom_static_images_deployed",
         "Number of custom static OS images deployed",
-    ),
-    MetricDefinition(
-        "Gauge",
-        "maas_vmcluster_projects",
-        "Number of cluster projects",
-    ),
-    MetricDefinition(
-        "Gauge",
-        "maas_vmcluster_hosts",
-        "Number of VM hosts in a cluster",
-    ),
-    MetricDefinition(
-        "Gauge",
-        "maas_vmcluster_vms",
-        "Number of machines in a cluster",
     ),
     MetricDefinition(
         "Gauge",
@@ -188,8 +148,6 @@ def update_prometheus_stats(metrics: PrometheusMetrics) -> PrometheusMetrics:
     """Update metrics in a PrometheusMetrics based on database values."""
     stats = get_maas_stats()
     architectures = get_machines_by_architecture()
-    vm_hosts = get_vm_hosts_stats()
-    vmcluster = get_vmcluster_stats()
 
     # Gather counter for machines per status
     for status, machines in stats["machine_status"].items():
@@ -301,33 +259,6 @@ def update_prometheus_stats(metrics: PrometheusMetrics) -> PrometheusMetrics:
         value=avg_deployment_time,
     )
 
-    # Gather all stats for vm_hosts
-    metrics.update("maas_kvm_pods", "set", value=vm_hosts["vm_hosts"])
-    metrics.update("maas_kvm_machines", "set", value=vm_hosts["vms"])
-    for metric in ("cores", "memory", "storage"):
-        metrics.update(
-            f"maas_kvm_{metric}",
-            "set",
-            value=vm_hosts["available_resources"][metric],
-            labels={"status": "available"},
-        )
-        metrics.update(
-            f"maas_kvm_{metric}",
-            "set",
-            value=vm_hosts["utilized_resources"][metric],
-            labels={"status": "used"},
-        )
-    metrics.update(
-        "maas_kvm_overcommit_cores",
-        "set",
-        value=vm_hosts["available_resources"]["over_cores"],
-    )
-    metrics.update(
-        "maas_kvm_overcommit_memory",
-        "set",
-        value=vm_hosts["available_resources"]["over_memory"],
-    )
-
     # Gather statistics for architectures
     if len(architectures.keys()) > 0:
         for arch, machines in architectures.items():
@@ -378,12 +309,6 @@ def update_prometheus_stats(metrics: PrometheusMetrics) -> PrometheusMetrics:
         "set",
         value=get_custom_images_deployed_stats(),
     )
-
-    metrics.update(
-        "maas_vmcluster_projects", "set", value=vmcluster["projects"]
-    )
-    metrics.update("maas_vmcluster_hosts", "set", value=vmcluster["vm_hosts"])
-    metrics.update("maas_vmcluster_vms", "set", value=vmcluster["vms"])
 
     return metrics
 

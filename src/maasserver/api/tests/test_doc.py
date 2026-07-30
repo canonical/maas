@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from inspect import getdoc
@@ -22,7 +22,6 @@ from maasserver.api.doc import (
     _hash_canonical,
     find_api_resources,
     generate_api_docs,
-    generate_pod_types_doc,
     generate_power_types_doc,
     get_api_description,
 )
@@ -35,7 +34,6 @@ from maasserver.api.support import (
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
 
@@ -424,21 +422,6 @@ class TestGeneratePowerTypesDoc(MAASTestCase):
         self.assertIn(power_driver.description, doc)
         self.assertIn(power_driver.settings[0]["name"], doc)
         self.assertIn(power_driver.settings[0]["label"], doc)
-
-
-class TestGeneratePodTypesDoc(MAASTestCase):
-    """Tests for `generate_pod_types_doc`."""
-
-    def test_generate_pod_types_doc_generates_doc(self):
-        doc = generate_pod_types_doc()
-        for needle in ["Pod types", "virsh"]:
-            self.assertIn(needle, doc)
-
-    def test_generate_pod_types_doc_generates_describes_types(self):
-        pod_driver = random.choice([driver for _, driver in PodDriverRegistry])
-        doc = generate_pod_types_doc()
-        self.assertIn(pod_driver.name, doc)
-        self.assertIn(pod_driver.description, doc)
 
 
 class TestDescribeCanonical(MAASTestCase):

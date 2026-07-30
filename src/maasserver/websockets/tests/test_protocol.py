@@ -731,7 +731,6 @@ ALL_NOTIFIERS = {
     "notification",
     "notificationdismissal",
     "packagerepository",
-    "pod",
     "script",
     "scriptresult",
     "service",
@@ -741,7 +740,6 @@ ALL_NOTIFIERS = {
     "tag",
     "token",
     "vlan",
-    "vmcluster",
 }
 
 ALL_HANDLERS = {
@@ -761,7 +759,6 @@ ALL_HANDLERS = {
     "noderesult",
     "notification",
     "packagerepository",
-    "pod",
     "reservedip",
     "script",
     "service",
@@ -771,7 +768,6 @@ ALL_HANDLERS = {
     "tag",
     "token",
     "vlan",
-    "vmcluster",
 }
 
 

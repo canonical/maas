@@ -1,5 +1,5 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC
 from typing import Any, Type, TypeVar
@@ -66,16 +66,6 @@ class AbstractNodesRepository(BaseRepository[T], ABC):
 
         result = (await self.execute_stmt(stmt)).one()
         return Bmc(**result._asdict())
-
-    async def move_bmcs_to_zone(
-        self, old_zone_id: int, new_zone_id: int
-    ) -> None:
-        stmt = (
-            update(BMCTable)
-            .where(eq(BMCTable.c.zone_id, old_zone_id))
-            .values(zone_id=new_zone_id)
-        )
-        await self.execute_stmt(stmt)
 
     def _bmc_select_all_statement(self) -> Select[Any]:
         # TODO: add other fields

@@ -14,13 +14,11 @@ from maasserver import eventloop
 from maasserver.api import machines as machines_module
 from maasserver.api.machines import AllocationOptions, get_allocation_options
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
-from maasserver.enum import BMC_TYPE, BRIDGE_TYPE, INTERFACE_TYPE, NODE_STATUS
-import maasserver.forms as forms_module
-from maasserver.forms.pods import ComposeMachineForm, ComposeMachineForPodsForm
+from maasserver.enum import BRIDGE_TYPE, INTERFACE_TYPE, NODE_STATUS
+from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.models import Config, Domain, Machine, Node, ScriptSet
 from maasserver.models import node as node_module
 from maasserver.models.node import RELEASABLE_STATUSES
-from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import (
@@ -123,21 +121,6 @@ class TestMachinesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual("/MAAS/api/2.0/machines/", self.machines_url)
-
-    def test_GET_includes_virtualmachine_id(self):
-        vmhost = factory.make_BMC(bmc_type=BMC_TYPE.POD)
-        machine1 = factory.make_Node(bmc=vmhost)
-        vm1 = factory.make_VirtualMachine(machine=machine1, bmc=vmhost)
-        machine2 = factory.make_Node()
-        parsed_result = self.get_json()
-        result = list(
-            (entry["system_id"], entry["virtualmachine_id"])
-            for entry in parsed_result
-        )
-        self.assertCountEqual(
-            result,
-            [(machine1.system_id, vm1.id), (machine2.system_id, None)],
-        )
 
     def test_GET_includes_error_description(self):
         factory.make_Node(
@@ -486,31 +469,6 @@ class TestMachinesAPI(APITestCase.ForUser):
             ],
         )
 
-    def test_GET_returns_pod_for_machine_in_pod(self):
-        pod = factory.make_Pod()
-        machine = factory.make_Node()
-        machine.bmc = pod
-        machine.save()
-        parsed_result = self.get_json()
-        self.assertEqual(
-            {
-                "id": pod.id,
-                "name": pod.name,
-                "resource_uri": reverse("pod_handler", kwargs={"id": pod.id}),
-            },
-            parsed_result[0]["pod"],
-        )
-
-    def test_GET_doesnt_return_pod_for_machine_without_bmc(self):
-        factory.make_Node()
-        parsed_result = self.get_json()
-        self.assertIsNone(parsed_result[0]["pod"])
-
-    def test_GET_doesnt_return_pod_for_machine_without_pod(self):
-        factory.make_Node(bmc=factory.make_BMC())
-        parsed_result = self.get_json()
-        self.assertIsNone(parsed_result[0]["pod"])
-
     def test_GET_machines_issues_linear_number_of_queries(self):
         queries_count = []
         machines_count = []
@@ -538,7 +496,7 @@ class TestMachinesAPI(APITestCase.ForUser):
 
         expected_counts = [1, 2, 3]
         self.assertEqual(machines_count, expected_counts)
-        base_count = 92
+        base_count = 84
         for idx, machine_count in enumerate(machines_count):
             self.assertEqual(
                 queries_count[idx], base_count + (machine_count * 7)
@@ -1634,32 +1592,6 @@ class TestMachinesAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET)
         )
         self.assertCountEqual(machine_tag_names, response_json["tag_names"])
-
-    def test_POST_allocate_does_not_compose_machine_by_tags(self):
-        pod = factory.make_Pod()
-        pod.architectures = [
-            random.choice(
-                [
-                    "amd64/generic",
-                    "i386/generic",
-                    "armhf/generic",
-                    "arm64/generic",
-                ]
-            )
-        ]
-        pod.save()
-        mock_filter_nodes = self.patch(AcquireNodeForm, "filter_nodes")
-        mock_filter_nodes.return_value = Node.objects.none(), {}, {}
-        mock_compose = self.patch(ComposeMachineForPodsForm, "compose")
-        factory.make_Tag("fast")
-        factory.make_Tag("stable")
-        # Legacy call using comma-separated tags.
-        response = self.client.post(
-            self.machines_url,
-            {"op": "allocate", "tags": ["fast", "stable"]},
-        )
-        self.assertEqual(response.status_code, http.client.CONFLICT)
-        mock_compose.assert_not_called()
 
     def test_POST_allocate_allocates_machine_by_negated_tags(self):
         tagged_machine = factory.make_Node(
@@ -3486,60 +3418,21 @@ class TestGetAllocationOptions(MAASTestCase):
             bridge_fd=0,
             bridge_stp=False,
             comment=None,
-            install_kvm=False,
-            register_vmhost=False,
             ephemeral_deploy=False,
             enable_hw_sync=False,
         )
         self.assertEqual(expected_options, options)
 
-    def test_sets_bridge_all_if_install_kvm(self):
+    def test_install_kvm_raises_bad_request(self):
         request = factory.make_fake_request(
             method="POST", data=dict(install_kvm="true")
         )
-        options = get_allocation_options(request)
-        expected_options = AllocationOptions(
-            agent_name="",
-            bridge_all=True,
-            bridge_type=BRIDGE_TYPE.STANDARD,
-            bridge_fd=0,
-            bridge_stp=False,
-            comment=None,
-            install_kvm=True,
-            register_vmhost=False,
-            ephemeral_deploy=False,
-            enable_hw_sync=False,
-        )
-        self.assertEqual(expected_options, options)
-
-    def test_sets_bridge_all_if_register_vmhost(self):
-        request = factory.make_fake_request(
-            method="POST",
-            data={"register_vmhost": True},
-        )
-        options = get_allocation_options(request)
-        self.assertEqual(
-            options,
-            AllocationOptions(
-                agent_name="",
-                bridge_all=True,
-                bridge_type=BRIDGE_TYPE.STANDARD,
-                bridge_fd=0,
-                bridge_stp=False,
-                comment=None,
-                install_kvm=False,
-                register_vmhost=True,
-                ephemeral_deploy=False,
-                enable_hw_sync=False,
-            ),
-        )
+        self.assertRaises(MAASAPIBadRequest, get_allocation_options, request)
 
     def test_non_defaults(self):
         request = factory.make_fake_request(
             method="POST",
             data=dict(
-                install_kvm="true",
-                register_vmhost="true",
                 bridge_all="true",
                 bridge_type=BRIDGE_TYPE.OVS,
                 bridge_stp="true",
@@ -3558,8 +3451,6 @@ class TestGetAllocationOptions(MAASTestCase):
             bridge_fd=42,
             bridge_stp=True,
             comment="don't panic",
-            install_kvm=True,
-            register_vmhost=True,
             ephemeral_deploy=True,
             enable_hw_sync=True,
         )

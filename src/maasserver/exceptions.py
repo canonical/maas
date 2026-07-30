@@ -66,6 +66,16 @@ class MAASAPIForbidden(MAASAPIException):
     api_error = int(http.client.FORBIDDEN)
 
 
+class MAASAPIGone(MAASAPIException):
+    """HTTP error 410: Gone.
+
+    The requested resource is no longer available and will not be available
+    again. Used for endpoints whose feature has been removed.
+    """
+
+    api_error = int(http.client.GONE)
+
+
 class MAASAPIValidationError(MAASAPIBadRequest, ValidationError):
     """A validation error raised during a MAAS API request."""
 
@@ -222,17 +232,6 @@ class PowerProblem(MAASAPIException):
     """Raised when there's a problem with a power operation.
 
     This could be a problem with parameters, a problem with the power
-    controller, or something else.  The exception text will contain more
-    information.
-    """
-
-    api_error = int(http.client.SERVICE_UNAVAILABLE)
-
-
-class PodProblem(MAASAPIException):
-    """Raised when there's a problem with a pod operation.
-
-    This could be a problem with parameters, a problem with the pod's
     controller, or something else.  The exception text will contain more
     information.
     """

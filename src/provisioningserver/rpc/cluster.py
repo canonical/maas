@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC declarations for clusters.
@@ -21,9 +21,7 @@ from twisted.protocols import amp
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
     AmpList,
-    AttrsClassArgument,
     IPNetwork,
-    ParsedURL,
     StructureAsJSON,
 )
 from provisioningserver.rpc.common import Authenticate, Identify
@@ -144,166 +142,6 @@ class AddChassis(amp.Command):
         (b"verify_ssl", amp.Boolean(optional=True)),
     ]
     errors = {}
-
-
-class DiscoverPodProjects(amp.Command):
-    """Discover pod projects names.
-
-    :since: 2.10
-    """
-
-    arguments = [
-        (b"type", amp.Unicode()),
-        # We can't define a tighter schema here because this is a highly
-        # variable bag of arguments from a variety of sources.
-        (b"context", StructureAsJSON()),
-    ]
-    response = [
-        (
-            b"projects",
-            amp.ListOf(
-                AttrsClassArgument(
-                    "provisioningserver.drivers.pod.DiscoveredPodProject"
-                )
-            ),
-        )
-    ]
-    errors = {
-        exceptions.UnknownPodType: b"UnknownPodType",
-        NotImplementedError: b"NotImplementedError",
-        exceptions.PodActionFail: b"PodActionFail",
-    }
-
-
-class DiscoverPod(amp.Command):
-    """Discover all the pod information.
-
-    :since: 2.2
-    """
-
-    arguments = [
-        (b"pod_id", amp.Integer(optional=True)),
-        (b"name", amp.Unicode(optional=True)),
-        (b"type", amp.Unicode()),
-        # We can't define a tighter schema here because this is a highly
-        # variable bag of arguments from a variety of sources.
-        (b"context", StructureAsJSON()),
-    ]
-    response = [
-        (
-            b"pod",
-            AttrsClassArgument(
-                "provisioningserver.drivers.pod.DiscoveredPod", optional=True
-            ),
-        ),
-        (
-            b"cluster",
-            AttrsClassArgument(
-                "provisioningserver.drivers.pod.DiscoveredCluster",
-                optional=True,
-            ),
-        ),
-    ]
-    errors = {
-        exceptions.UnknownPodType: b"UnknownPodType",
-        NotImplementedError: b"NotImplementedError",
-        exceptions.PodActionFail: b"PodActionFail",
-    }
-
-
-class SendPodCommissioningResults(amp.Command):
-    """Send commissioning results from the Pod.
-
-    :since: 2.8
-    """
-
-    arguments = [
-        (b"pod_id", amp.Integer()),
-        (b"name", amp.Unicode()),
-        (b"type", amp.Unicode()),
-        (b"system_id", amp.Unicode()),
-        (b"context", StructureAsJSON()),
-        (b"consumer_key", amp.Unicode()),
-        (b"token_key", amp.Unicode()),
-        (b"token_secret", amp.Unicode()),
-        (b"metadata_url", ParsedURL()),
-    ]
-    errors = {
-        exceptions.UnknownPodType: b"UnknownPodType",
-        NotImplementedError: b"NotImplementedError",
-        exceptions.PodActionFail: b"PodActionFail",
-    }
-
-
-class ComposeMachine(amp.Command):
-    """Compose a machine in a pod.
-
-    :since: 2.2
-    """
-
-    arguments = [
-        (b"pod_id", amp.Integer()),
-        (b"name", amp.Unicode()),
-        (b"type", amp.Unicode()),
-        # We can't define a tighter schema here because this is a highly
-        # variable bag of arguments from a variety of sources.
-        (b"context", StructureAsJSON()),
-        (
-            b"request",
-            AttrsClassArgument(
-                "provisioningserver.drivers.pod.RequestedMachine"
-            ),
-        ),
-    ]
-    response = [
-        (
-            b"machine",
-            AttrsClassArgument(
-                "provisioningserver.drivers.pod.DiscoveredMachine"
-            ),
-        ),
-        (
-            b"hints",
-            AttrsClassArgument(
-                "provisioningserver.drivers.pod.DiscoveredPodHints"
-            ),
-        ),
-    ]
-    errors = {
-        exceptions.UnknownPodType: b"UnknownPodType",
-        NotImplementedError: b"NotImplementedError",
-        exceptions.PodActionFail: b"PodActionFail",
-        exceptions.PodInvalidResources: b"PodInvalidResources",
-    }
-
-
-class DecomposeMachine(amp.Command):
-    """Decompose a machine in a pod.
-
-    :since: 2.2
-    """
-
-    arguments = [
-        (b"pod_id", amp.Integer()),
-        (b"name", amp.Unicode()),
-        (b"type", amp.Unicode()),
-        # We can't define a tighter schema here because this is a highly
-        # variable bag of arguments from a variety of sources.
-        (b"context", StructureAsJSON()),
-    ]
-    response = [
-        (
-            b"hints",
-            AttrsClassArgument(
-                "provisioningserver.drivers.pod.DiscoveredPodHints"
-            ),
-        )
-    ]
-    errors = {
-        exceptions.UnknownPodType: b"UnknownPodType",
-        NotImplementedError: b"NotImplementedError",
-        exceptions.PodActionFail: b"PodActionFail",
-    }
 
 
 class ScanNetworks(amp.Command):

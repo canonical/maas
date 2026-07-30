@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from functools import partial
@@ -1535,10 +1535,6 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             "not_in_zone": [factory.make_Zone().name],
             "pool": factory.make_ResourcePool(),
             "not_in_pool": [factory.make_ResourcePool().name],
-            "pod": factory.make_name(),
-            "not_pod": factory.make_name(),
-            "pod_type": factory.make_name(),
-            "not_pod_type": factory.make_name(),
             "storage": "0(ssd),10(ssd)",
             "interfaces": "label:fabric=fabric-0",
             "fabrics": [factory.make_Fabric().name],
@@ -1693,13 +1689,6 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
             "not_in_pool": [pool.name[len("resourcepool-") + 1 :]],
         }
         self.assertConstrainedNodes([other], constraints)
-
-    def test_substring_pod_filter(self):
-        pod = factory.make_Pod(name=factory.make_name(prefix="pod"))
-        node1 = factory.make_Node(bmc=pod.as_bmc())
-        factory.make_Node()
-        constraints = {"pod": pod.name[len("pod-") + 1 :]}
-        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_fabrics_filter(self):
         fabric = factory.make_Fabric()
@@ -1972,7 +1961,6 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         space = factory.make_Space()
         subnet = factory.make_Subnet(space=space)
         zone = factory.make_Zone()
-        pod = factory.make_Pod()
         fabric_class = factory.make_name()
         fabric = factory.make_Fabric(class_type=fabric_class)
         vlan1 = factory.make_VLAN(fabric=fabric)
@@ -1980,7 +1968,6 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         key = factory.make_string(prefix="key")
         val = factory.make_string(prefix="value")
         node1 = factory.make_Node_with_Interface_on_Subnet(
-            bmc=pod.as_bmc(),
             hostname=hostname,
             agent_name=agent_name,
             osystem=osystem,
@@ -2009,7 +1996,6 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
             val,
             space.name,
             zone.name,
-            pod.name,
             tags[1].name,
             node1.get_boot_interface().vlan.fabric.name,
         ]:
@@ -2116,10 +2102,6 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             "not_in_zone": [factory.make_Zone().name],
             "pool": factory.make_ResourcePool(),
             "not_in_pool": [factory.make_ResourcePool().name],
-            "pod": factory.make_name(),
-            "not_pod": factory.make_name(),
-            "pod_type": factory.make_name(),
-            "not_pod_type": factory.make_name(),
             "storage": "0(ssd),10(ssd)",
             "interfaces": "label:fabric=fabric-0",
             "fabrics": [factory.make_Fabric().name],
@@ -2148,96 +2130,6 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             for constraint in form.describe_constraints().split()
         }
         self.assertCountEqual(constraints.keys(), described_constraints)
-
-    def test_pod_not_pod_pod_type_or_not_pod_type_for_pod(self):
-        node1 = factory.make_Node(
-            power_type="virsh",
-            power_parameters={"power_address": factory.make_ip_address()},
-        )
-        pod1 = factory.make_Pod(pod_type=node1.power_type, name="pod1")
-        node2 = factory.make_Node(
-            power_type="lxd",
-            power_parameters={"power_address": factory.make_ip_address()},
-        )
-        pod2 = factory.make_Pod(pod_type=node2.power_type, name="pod2")
-
-        with post_commit_hooks:
-            node1.bmc = pod1
-            node1.save()
-            node2.bmc = pod2
-            node2.save()
-        self.assertConstrainedNodes([node1], {"pod": pod1.name})
-        self.assertConstrainedNodes([node2], {"pod": pod2.name})
-        self.assertConstrainedNodes([], {"pod": factory.make_name("pod")})
-
-    def test_pod_not_pod_pod_type_or_not_pod_type_for_not_pod(self):
-        node1 = factory.make_Node(
-            power_type="virsh",
-            power_parameters={"power_address": factory.make_ip_address()},
-        )
-        pod1 = factory.make_Pod(pod_type=node1.power_type, name="pod1")
-        node2 = factory.make_Node(
-            power_type="lxd",
-            power_parameters={"power_address": factory.make_ip_address()},
-        )
-        pod2 = factory.make_Pod(pod_type=node2.power_type, name="pod2")
-
-        with post_commit_hooks:
-            node1.bmc = pod1
-            node1.save()
-            node2.bmc = pod2
-            node2.save()
-        self.assertConstrainedNodes([node2], {"not_pod": pod1.name})
-        self.assertConstrainedNodes([node1], {"not_pod": pod2.name})
-        self.assertConstrainedNodes(
-            [node1, node2], {"not_pod": factory.make_name("not_pod")}
-        )
-
-    def test_pod_not_pod_pod_type_or_not_pod_type_for_pod_type(self):
-        node1 = factory.make_Node(
-            power_type="virsh",
-            power_parameters={"power_address": factory.make_ip_address()},
-        )
-        pod1 = factory.make_Pod(pod_type=node1.power_type)
-        node2 = factory.make_Node(
-            power_type="lxd",
-            power_parameters={"power_address": factory.make_ip_address()},
-        )
-        pod2 = factory.make_Pod(pod_type=node2.power_type)
-
-        with post_commit_hooks:
-            node1.bmc = pod1
-            node1.save()
-            node2.bmc = pod2
-            node2.save()
-        self.assertConstrainedNodes([node1], {"pod_type": pod1.power_type})
-        self.assertConstrainedNodes([node2], {"pod_type": pod2.power_type})
-        self.assertConstrainedNodes(
-            [], {"pod_type": factory.make_name("pod_type")}
-        )
-
-    def test_pod_not_pod_pod_type_or_not_pod_type_for_not_pod_type(self):
-        node1 = factory.make_Node(
-            power_type="virsh",
-            power_parameters={"power_address": factory.make_ip_address()},
-        )
-        pod1 = factory.make_Pod(pod_type=node1.power_type)
-        node2 = factory.make_Node(
-            power_type="lxd",
-            power_parameters={"power_address": factory.make_ip_address()},
-        )
-        pod2 = factory.make_Pod(pod_type=node2.power_type)
-
-        with post_commit_hooks:
-            node1.bmc = pod1
-            node1.save()
-            node2.bmc = pod2
-            node2.save()
-        self.assertConstrainedNodes([node2], {"not_pod_type": pod1.power_type})
-        self.assertConstrainedNodes([node1], {"not_pod_type": pod2.power_type})
-        self.assertConstrainedNodes(
-            [node1, node2], {"not_pod_type": factory.make_name("not_pod_type")}
-        )
 
     def test_device_filter_by_vendor_id(self):
         node = random.choice([factory.make_Node() for _ in range(3)])

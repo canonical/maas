@@ -16,7 +16,6 @@ from .defs import (
     TAG_COUNT,
     USER_COUNT,
     VLAN_PER_FABRIC_COUNT,
-    VMHOST_COUNT,
 )
 
 
@@ -46,7 +45,6 @@ def generate(
     from .storage import make_storage_setup
     from .tag import make_tags
     from .user import make_users
-    from .vmhost import make_vmhosts
 
     if not hostname_prefix:
         hostname_prefix = make_name()
@@ -74,9 +72,6 @@ def generate(
     LOGGER.info(f"creating {TAG_COUNT} tags")
     tags = make_tags(TAG_COUNT, tag_prefix)
 
-    LOGGER.info(f"creating {VMHOST_COUNT} VM hosts")
-    vmhosts = make_vmhosts(VMHOST_COUNT)
-
     LOGGER.info("creating builtin scripts")
     load_builtin_scripts()
 
@@ -103,7 +98,7 @@ def generate(
     LOGGER.info(f"creating {machine_count} machines")
     make_storage_setup(machine_infos)
     machines = make_machines(
-        machine_infos, vmhosts, tags, users, redfish_address, resourcepools
+        machine_infos, tags, users, redfish_address, resourcepools
     )
 
     LOGGER.info("creating 5 pci devices per machine")

@@ -18,7 +18,6 @@ from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone, ZoneWithStatistics
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
 from maasservicelayer.services.nodes import NodesService
-from maasservicelayer.services.vmcluster import VmClustersService
 
 
 @dataclass(slots=True)
@@ -33,13 +32,11 @@ class ZonesService(BaseService[Zone, ZonesRepository, ZoneBuilder]):
         self,
         context: Context,
         nodes_service: NodesService,
-        vmcluster_service: VmClustersService,
         zones_repository: ZonesRepository,
         cache: ZonesServiceCache | None = None,
     ):
         super().__init__(context, zones_repository, cache)
         self.nodes_service = nodes_service
-        self.vmcluster_service = vmcluster_service
 
     @staticmethod
     def build_cache_object() -> ZonesServiceCache:
@@ -68,10 +65,6 @@ class ZonesService(BaseService[Zone, ZonesRepository, ZoneBuilder]):
         default_zone = await self.get_default_zone()
         # Cascade deletion to the related models and move the resources from the deleted zone to the default zone
         await self.nodes_service.move_to_zone(resource.id, default_zone.id)
-        await self.nodes_service.move_bmcs_to_zone(
-            resource.id, default_zone.id
-        )
-        await self.vmcluster_service.move_to_zone(resource.id, default_zone.id)
 
     async def list_with_statistics(
         self, page: int, size: int, query: QuerySpec | None = None

@@ -145,8 +145,6 @@ class DeviceHandler(NodeHandler):
             "url",
             "last_image_sync",
             "default_user",
-            "install_kvm",
-            "register_vmhost",
             "hardware_uuid",
             "current_config",
             "enable_hw_sync",
