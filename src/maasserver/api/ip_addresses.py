@@ -3,6 +3,7 @@
 
 """API handler: `StaticIPAddress`."""
 
+from django.db.models import Prefetch
 from django.http import Http404
 from django.http.response import HttpResponseBadRequest, HttpResponseForbidden
 from formencode.validators import StringBool
@@ -406,4 +407,12 @@ class IPAddressesHandler(OperationsHandler):
         if ip is not None:
             query = query.filter(ip=ip)
         query = query.order_by("id")
-        return query
+        # Serializing the interface_set field reads each interface's node
+        # (system_id/resource_uri call get_node()); preload the nodes so
+        # that does not run a query per IP.
+        return query.prefetch_related(
+            Prefetch(
+                "interface_set",
+                queryset=Interface.objects.select_related("node_config__node"),
+            )
+        )
