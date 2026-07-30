@@ -6,10 +6,12 @@ from django.core.exceptions import PermissionDenied, ValidationError
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.fabric import Fabric
+from maasserver.models.interface import Interface
 from maasserver.models.vlan import DEFAULT_VID, DEFAULT_VLAN_NAME, VLAN
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.djangotestcase import count_queries
 
 
 class TestFabricManagerGetFabricOr404(MAASServerTestCase):
@@ -223,6 +225,135 @@ class TestFabric(MAASServerTestCase):
 
         with self.assertRaisesRegex(ValidationError, msg):
             fabric.delete()
+
+    def _assert_delete_interface_query_count_constant(self, make_interfaces):
+        def attempt_delete(interface_count):
+            fabric = factory.make_Fabric()
+            make_interfaces(fabric, interface_count)
+
+            def do_delete():
+                self.assertRaises(ValidationError, fabric.delete)
+
+            count, _ = count_queries(do_delete)
+            return count
+
+        count_2 = attempt_delete(2)
+        count_4 = attempt_delete(4)
+        self.assertEqual(3, count_2)
+        self.assertEqual(count_2, count_4)
+
+    def _make_orphan_interfaces(self, fabric, interface_count):
+        parent = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=fabric.get_default_vlan()
+        )
+        interfaces = [
+            factory.make_Interface(
+                INTERFACE_TYPE.VLAN,
+                parents=[parent],
+                vlan=factory.make_VLAN(fabric=fabric),
+            )
+            for _ in range(interface_count)
+        ]
+        # Bypass post-save handling to reproduce orphan interfaces.
+        Interface.objects.filter(
+            id__in=[interface.id for interface in interfaces]
+        ).update(node_config=None)
+        return parent, interfaces
+
+    def test_delete_interface_listing_query_count_is_constant(self):
+        def make_interfaces(fabric, interface_count):
+            for _ in range(interface_count):
+                factory.make_Interface(
+                    INTERFACE_TYPE.PHYSICAL, vlan=fabric.get_default_vlan()
+                )
+
+        self._assert_delete_interface_query_count_constant(make_interfaces)
+
+    def test_delete_interface_listing_query_count_is_constant_for_orphans(
+        self,
+    ):
+        self._assert_delete_interface_query_count_constant(
+            self._make_orphan_interfaces
+        )
+
+    def test_delete_interface_listing_uses_parent_hostname_for_orphan(self):
+        fabric = factory.make_Fabric()
+        parent, interfaces = self._make_orphan_interfaces(fabric, 1)
+
+        error = self.assertRaises(ValidationError, fabric.delete)
+
+        self.assertIn(
+            f"{interfaces[0].name} (vlan) on {parent.get_node().hostname}",
+            error.message,
+        )
+
+    def test_delete_interface_listing_matches_get_node_for_orphan(self):
+        fabric = factory.make_Fabric()
+        oldest_node = factory.make_Node(
+            hostname="oldest-parent", interface=False
+        )
+        newer_node = factory.make_Node(
+            hostname="newer-parent", interface=False
+        )
+        parents = [
+            factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL,
+                name=name,
+                node=oldest_node,
+                vlan=fabric.get_default_vlan(),
+            )
+            for name in ("eth0", "eth1")
+        ]
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            name="bond0",
+            parents=list(reversed(parents)),
+            vlan=fabric.get_default_vlan(),
+        )
+        Interface.objects.filter(id=parents[1].id).update(
+            node_config=newer_node.current_config
+        )
+        Interface.objects.filter(id=interface.id).update(node_config=None)
+        orphan = Interface.objects.get(id=interface.id)
+
+        error = self.assertRaises(ValidationError, fabric.delete)
+
+        self.assertEqual("oldest-parent", orphan.get_node().hostname)
+        self.assertEqual(1, error.message.count("bond0 (bond) on "))
+        self.assertIn("bond0 (bond) on oldest-parent", error.message)
+        self.assertNotIn("bond0 (bond) on newer-parent", error.message)
+
+    def test_delete_interface_listing_deduplicates_multi_parent_interface(
+        self,
+    ):
+        fabric = factory.make_Fabric()
+        node = factory.make_Node(interface=False)
+        parents = [
+            factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL,
+                name=name,
+                node=node,
+                vlan=fabric.get_default_vlan(),
+            )
+            for name in ("eth0", "eth1")
+        ]
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            name="bond0",
+            node=node,
+            parents=parents,
+            vlan=fabric.get_default_vlan(),
+        )
+
+        error = self.assertRaises(ValidationError, fabric.delete)
+
+        self.assertEqual(
+            "Can't delete fabric; the following interfaces are still "
+            f"connected: bond0 (bond) on {node.hostname}, "
+            f"eth0 (physical) on {node.hostname}, "
+            f"eth1 (physical) on {node.hostname}",
+            error.message,
+        )
 
     def test_cant_delete_fabric_if_connected_to_subnet(self):
         fabric = factory.make_Fabric()
