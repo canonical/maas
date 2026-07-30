@@ -202,7 +202,13 @@ class VMCluster(CleanSave, TimestampedModel):
 
     def tracked_virtual_machines(self):
         """VirtualMachines that are part of this project."""
-        return self.virtual_machines().filter(project=self.project)
+        # select_related("machine") so the handler reading vm.machine
+        # (system_id/hostname) does not query the node per VM.
+        return (
+            self.virtual_machines()
+            .filter(project=self.project)
+            .select_related("machine")
+        )
 
     def storage_pools(self):
         from maasserver.models.virtualmachine import get_vm_host_storage_pools
