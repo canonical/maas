@@ -135,7 +135,7 @@ class TestKernelOpts(MAASTestCase):
             "root=squash:http://",
             "overlayroot=tmpfs",
             "ip6=off",
-            f"ip=::::{params.hostname}:BOOTIF",
+            f"ip=::::{params.hostname}:BOOTIF:dhcp",
         ]:
             self.assertIn(needle, cmdline)
 
@@ -163,7 +163,7 @@ class TestKernelOpts(MAASTestCase):
         for needle in [
             f"root=tar:http://10.0.2.254:5248/images/{params.xinstall_path}",
             "ip6=off",
-            f"ip=::::{params.hostname}:BOOTIF",
+            f"ip=::::{params.hostname}:BOOTIF:dhcp",
             "nvme-core.multipath=0",
         ]:
             self.assertIn(needle, cmdline)
@@ -214,7 +214,7 @@ class TestKernelOpts(MAASTestCase):
             "root=squash:http://",
             "overlayroot=tmpfs",
             "ip6=off",
-            f"ip=::::{params.hostname}:BOOTIF",
+            f"ip=::::{params.hostname}:BOOTIF:dhcp",
         ]:
             self.assertIn(needle, cmdline)
 
@@ -257,7 +257,7 @@ class TestKernelOpts(MAASTestCase):
             "root=squash:http://",
             "overlayroot=tmpfs",
             "ip6=off",
-            "ip=::::%s:BOOTIF" % params.hostname,
+            "ip=::::%s:BOOTIF:dhcp" % params.hostname,
         ]:
             self.assertIn(needle, cmdline)
 
