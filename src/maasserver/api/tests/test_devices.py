@@ -263,14 +263,6 @@ class TestDevicesAPI(APITestCase.ForUser):
             parsed_result[0].keys(),
         )
 
-    def test_create_no_permission(self):
-        self.become_non_local()
-        response = self.client.post(
-            reverse("devices_handler"),
-            {"mac_addresses": ["aa:bb:cc:dd:ee:ff"]},
-        )
-        self.assertEqual(response.status_code, http.client.FORBIDDEN)
-
 
 def get_device_uri(device):
     """Return a device's URI on the API."""

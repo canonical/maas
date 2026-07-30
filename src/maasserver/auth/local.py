@@ -28,6 +28,10 @@ from maasserver.openfga import get_openfga_client
 from maasserver.permissions import NodePermission, ResourcePoolPermission
 from provisioningserver.utils import is_instance_or_subclass
 
+# Some actions are applied to model object types global to MAAS; not
+# necessarily a particular object. The following objects cannot be created or
+# changed by non-administrative users, but superusers can always create, read
+# write, or delete them.
 UNRESTRICTED_READ_MODELS = (
     DNSData,
     DNSResource,
@@ -41,8 +45,13 @@ UNRESTRICTED_READ_MODELS = (
     VLAN,
 )
 
+# The following model objects are restricted from non-administrative users.
+# They cannot be seen (or created, or modified, or deleted) by "normal" users.
 ADMIN_RESTRICTED_MODELS = (Discovery,)
 
+# ADMIN_PERMISSIONS applies to the model objects in ADMIN_RESTRICTED_MODELS.
+# These model objects are restricted to administrators only; permission checks
+# will return True for administrators given any of the following permissions:
 ADMIN_PERMISSIONS = (
     NodePermission.view,
     NodePermission.edit,

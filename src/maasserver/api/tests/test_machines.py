@@ -1383,6 +1383,33 @@ class TestMachinesAPI(APITestCase.ForUser):
         response = self.client.post(self.machines_url, {"op": "allocate"})
         self.assertEqual(http.client.CONFLICT, response.status_code)
 
+    def test_POST_allocate_chooses_candidate_matching_constraint(self):
+        # If "allocate" is passed a constraint, it will go for a machine
+        # matching that constraint even if there's tons of other machines
+        # available.
+        # (Creating lots of machines here to minimize the chances of this
+        # passing by accident).
+        available_machines = [
+            factory.make_Node(
+                status=NODE_STATUS.READY, owner=None, with_boot_disk=True
+            )
+            for counter in range(20)
+        ]
+        desired_machine = random.choice(available_machines)
+        response = self.client.post(
+            self.machines_url,
+            {"op": "allocate", "name": desired_machine.hostname},
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
+        domain_name = desired_machine.domain.name
+        self.assertEqual(
+            f"{desired_machine.hostname}.{domain_name}",
+            parsed_result["fqdn"],
+        )
+
     def test_POST_allocate_would_rather_fail_than_disobey_constraint(self):
         # If "allocate" is passed a constraint, it won't return a machine
         # that does not meet that constraint.  Even if it means that it

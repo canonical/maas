@@ -57,6 +57,7 @@ We are happy to announce that MAAS 3.7.1 has been released, with the following b
 - [2129772](https://launchpad.net/maas/+bug/2129772):  TFTP server reports intermittent "Error code 1: File not found"
 - [2130621](https://launchpad.net/maas/+bug/2130621):  DGX H200 commissioning failed randomly due to a password policy mismatch
 - [2132282](https://launchpad.net/maas/+bug/2132282):  20-maas-03-machine-resources fails for uint64 counters
+- [2137254](https://launchpad.net/maas/+bug/2137254):  "Add Hardware" fails with 500 error when Candid is enabled and RBAC is disabled (UI calls service-layer endpoint that does not exist)
 - [2137017](https://launchpad.net/maas/+bug/2137017):  maas-run-scripts failing with 'NoneType' object is not iterable
 - [2137724](https://launchpad.net/maas/+bug/2137724):  Temporal worker pool configuration failure on NULL IP
 - [2135830](https://launchpad.net/maas/+bug/2135830):  Virsh VM cannot use storage type ZFS
