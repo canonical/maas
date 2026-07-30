@@ -30,15 +30,17 @@ Are compabtible with ailover semantics: In Juju or OpenStack, zones act like hig
 
 In MAAS alone, an AZ is just a label. You can repurpose them any way you like, but they’re most valuable if you also run tools that respect fault domains.
 
-## Resource pools: designed for organization
+## Resource pools: designed for access-control
 
 Resource pools are another single-assignment label.  They are:
 
 Assigned one to a machine: Like AZs, each machine belongs to one pool.
 
+Designed for access control: Pools are the unit of scope for MAAS's built-in fine-grained authorization. You can grant a user group per-pool entitlements -- such as `can_view_machines`, `can_deploy_machines`, or `can_edit_machines` -- giving that group access to just the machines in that pool. See [User groups and entitlements](/how-to-guides/user-groups-and-entitlements.md) for details.
+
 Easy to customize: The pool name can be anything -- finance, HPC, staging, or “arm64-nodes." It’s entirely up to you.
 
-MAAS treats pools as labels for subdividing your machines. Often this is useful when you have a limited number of machines per corporate function.
+Even without any entitlements assigned, pools are still a useful way to subdivide your machines. Often this is useful when you have a limited number of machines per corporate function.
 
 For example, if you run the IT department of a large hospital, you may want to reserve so many machines for nursing stations, so many for physicians, so many for pharamacy, and so on.  This helps make sure that one or two failed machines won't mean pulling capacity from another department.
 

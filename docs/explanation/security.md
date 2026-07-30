@@ -55,6 +55,16 @@ MAAS configuration files should be set to have permission `640`: readable by log
 
 Snaps are fully confined or 'sandboxed,' offering inherent security for the enclosed application. For more detailed information, see [this snap blog](https://snapcraft.io/blog/where-eagles-snap-a-closer-look).
 
+## Fine-grained authorization
+
+MAAS 3.8 introduces a built-in relationship-based access control (ReBAC) system for fine-grained authorization. Access follows the chain **user → group → entitlement → resource**: users belong to groups, and groups are granted entitlements (permissions) on resources.
+
+Entitlements are scoped either globally (the `maas` resource) or per resource pool (the `pool` resource). Resource pools are therefore the unit of access control: you can grant a group per-pool entitlements such as `can_view_machines`, `can_deploy_machines`, or `can_edit_machines`, restricting that group to just the machines in the pool. Global machine permissions cascade to every pool, while per-pool entitlements grant additional access to specific pools only.
+
+MAAS enforces these entitlements on every request, so users cannot access machines they are not entitled to, even if they know the system ID. Hiding machines is not security—proper authorization is required.
+
+For the full permission model, the list of available entitlements, and CLI examples, see [User groups and entitlements](/how-to-guides/user-groups-and-entitlements.md).
+
 ## Security consulting
 
 If you need help implementing MAAS security, please [contact us](/uncategorized/contact-us.md). We will be happy to assist you in arranging security consulting appropriate to your needs.
