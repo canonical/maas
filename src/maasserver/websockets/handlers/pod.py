@@ -6,6 +6,7 @@
 import dataclasses
 
 import attr
+from django.db.models import Prefetch
 from django.http import HttpRequest
 
 from maasserver.authorization import can_view_configurations, clear_caches
@@ -16,6 +17,7 @@ from maasserver.clusterrpc.pods import (
 from maasserver.exceptions import PodProblem
 from maasserver.forms.pods import ComposeMachineForm, PodForm
 from maasserver.models.bmc import Pod
+from maasserver.models.node import Node
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.virtualmachine import get_vm_host_resources
 from maasserver.models.zone import Zone
@@ -75,9 +77,15 @@ class PodHandler(TimestampedModelHandler):
 
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""
-        return Pod.objects.get_pods(
-            self.user, PodPermission.view
-        ).select_related("hints")
+        return (
+            Pod.objects.get_pods(self.user, PodPermission.view)
+            .select_related("hints")
+            .prefetch_related(
+                # Order the prefetch so Pod.host picks the same node .first()
+                # would (Node has no ordering) while reusing this cache.
+                Prefetch("hints__nodes", queryset=Node.objects.order_by("id"))
+            )
+        )
 
     def preprocess_form(self, action, params):
         """Process the `params` before passing the data to the form."""

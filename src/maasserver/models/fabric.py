@@ -7,7 +7,15 @@ from operator import attrgetter
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import AutoField, CharField, Manager, TextField
+from django.db.models import (
+    AutoField,
+    CharField,
+    Manager,
+    OuterRef,
+    Subquery,
+    TextField,
+)
+from django.db.models.functions import Coalesce
 from django.db.models.query import QuerySet
 
 from maasserver.fields import MODEL_NAME_VALIDATOR
@@ -177,10 +185,28 @@ class Fabric(CleanSave, TimestampedModel):
                 "still present: %s" % (", ".join(descriptions))
             )
         if Interface.objects.filter(vlan__fabric=self).exists():
-            interfaces = Interface.objects.filter(vlan__fabric=self).order_by(
-                "node_config__node", "name"
+            # Avoid duplicating orphan interfaces with multiple parents while
+            # preserving get_node_config()'s first-parent fallback.
+            parent_hostname = (
+                Interface.objects.filter(children=OuterRef("pk"))
+                .order_by("created")
+                .values("node_config__node__hostname")[:1]
             )
-            descriptions = [iface.get_log_string() for iface in interfaces]
+            interface_rows = (
+                Interface.objects.filter(vlan__fabric=self)
+                .annotate(
+                    resolved_hostname=Coalesce(
+                        "node_config__node__hostname",
+                        Subquery(parent_hostname),
+                    )
+                )
+                .order_by("node_config__node", "name")
+                .values_list("name", "type", "resolved_hostname")
+            )
+            descriptions = [
+                f"{name} ({interface_type}) on {hostname or '<unknown-node>'}"
+                for name, interface_type, hostname in interface_rows
+            ]
             raise ValidationError(
                 "Can't delete fabric; the following interfaces are "
                 "still connected: %s" % (", ".join(descriptions))
