@@ -87,12 +87,6 @@ class MAASAuthorizationBackend(ModelBackend):
         if isinstance(perm, ResourcePoolPermission):
             return self._perm_resource_pool(user, perm, obj)
 
-        if isinstance(perm, PodPermission):
-            return self._perm_pod(user, perm, obj)
-
-        if isinstance(perm, VMClusterPermission):
-            return self._perm_vmcluster(user, perm, obj)
-
         if isinstance(obj, (Node, BlockDevice, FilesystemGroup)):
             if isinstance(obj, (BlockDevice, FilesystemGroup)):
                 obj = obj.get_node()
@@ -162,16 +156,7 @@ class MAASAuthorizationBackend(ModelBackend):
                 "against a `ResourcePoolPermission`."
             )
 
-    def _can_view(
-        self,
-        rbac_enabled,
-        user,
-        machine,
-        visible_pools,
-        view_all_pools,
-        deploy_pools,
-        admin_pools,
-    ):
+    def _can_view(self, user, machine):
         if machine.pool_id is None:
             return True
         return (
