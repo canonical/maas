@@ -1,4 +1,4 @@
-# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Helper class for all tests using the `PostgresListenerService` under
@@ -12,7 +12,7 @@ from maasserver.enum import INTERFACE_TYPE, NODE_TYPE
 from maasserver.listener import PostgresListenerService
 from maasserver.models import Script, ScriptSet
 from maasserver.models.blockdevice import BlockDevice
-from maasserver.models.bmc import BMC, Pod
+from maasserver.models.bmc import BMC
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
 from maasserver.models.dhcpsnippet import DHCPSnippet
@@ -233,33 +233,6 @@ class TransactionalHelpersMixin:
     def delete_bmc(self, id):
         bmc = BMC.objects.get(id=id)
         bmc.delete()
-
-    @transactional
-    def create_pod(self, params=None):
-        if params is None:
-            params = {}
-        return factory.make_Pod(**params)
-
-    @transactional
-    def create_pod_with_host(self, params=None):
-        if params is None:
-            params = {}
-        subnet = factory.make_Subnet()
-        machine = factory.make_Machine_with_Interface_on_Subnet(subnet=subnet)
-        ip = factory.make_StaticIPAddress(
-            subnet=subnet, interface=machine.boot_interface
-        )
-        pod = factory.make_Pod(ip_address=ip, **params)
-        return pod, machine
-
-    @transactional
-    def update_pod(self, id, params, **kwargs):
-        return apply_update_to_model(Pod, id, params, **kwargs)
-
-    @transactional
-    def delete_pod(self, id):
-        pod = Pod.objects.get(id=id)
-        pod.as_bmc().delete()
 
     @transactional
     def create_space(self, params=None):

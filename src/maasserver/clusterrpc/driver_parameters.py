@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -9,16 +9,15 @@ specific 'parameters' which will be used when controlling the node in
 question.  These 'parameters' will be stored as a JSON object in the
 Node's power parameter field and its related BMC.  Even if we want
 to allow arbitrary parameters to be set using the API for maximum
-flexibility, each value of power or pod type is associated with a set of
+flexibility, each value of power type is associated with a set of
 'sensible' parameters.  That is used to validate data (but again, it is
 possible to bypass that validation step and store arbitrary parameters) and by
 the UI to display the right parameter fields that correspond to the
-selected power or pod type.  The classes in this module are used to
-associate each power or pod type with a set of parameters.
+selected power type.  The classes in this module are used to
+associate each power type with a set of parameters.
 
-The power and pod types are retrieved from the PowerDriverRegistry using
-the json schema provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA and
-provisioningserver.drivers.pod.JSON_POD_DRIVERS_SCHEMA respectively.
+The power types are retrieved from the PowerDriverRegistry using
+the json schema provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA.
 To add new parameters requires changes to drivers that run in the rack
 controllers.
 """
@@ -105,7 +104,7 @@ def add_power_driver_parameters(
     """Add new power type parameters to the given parameters_set if it
     does not already exist.
 
-    :param driver_type: Type of driver. Either `power` or `pod`.
+    :param driver_type: Type of driver.
     :type driver_type: string
     :param name: The name of the power type for which to add parameters.
     :type name: string
@@ -151,20 +150,6 @@ def add_power_driver_parameters(
     }
     if queryable is not None:
         params["queryable"] = queryable
-    # Add default values if the BMC is also a Pod.
-    if driver_type == "pod":
-        # Avoid circular dependencies
-        from maasserver.forms.pods import (
-            DEFAULT_COMPOSED_CORES,
-            DEFAULT_COMPOSED_MEMORY,
-            DEFAULT_COMPOSED_STORAGE,
-        )
-
-        params["defaults"] = {
-            "cores": DEFAULT_COMPOSED_CORES,
-            "memory": DEFAULT_COMPOSED_MEMORY,
-            "storage": DEFAULT_COMPOSED_STORAGE,
-        }
     parameters_set.append(params)
 
 
@@ -245,8 +230,7 @@ def get_all_power_types():
     """Query the PowerDriverRegistry and obtain all known power driver types.
 
     :return: a list of power types matching the schema
-        provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA or
-        provisioningserver.drivers.pod.JSON_POD_DRIVERS_SCHEMA
+        provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA
     """
     merged_types = []
     for power_type_orig in PowerDriverRegistry.get_schema(

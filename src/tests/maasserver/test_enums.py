@@ -1,9 +1,8 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
 
-from maascommon.enums.bmc import BmcType
 from maascommon.enums.interface import InterfaceLinkType
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.node import (
@@ -14,7 +13,6 @@ from maascommon.enums.node import (
 )
 from maascommon.enums.subnet import RdnsMode
 from maasserver.enum import (
-    BMC_TYPE,
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -32,7 +30,6 @@ class TestEnumsSync:
         "legacy_class, enum_class",
         [
             # When you migrate an enum, you MUST add it here!
-            (BMC_TYPE, BmcType),
             (INTERFACE_LINK_TYPE, InterfaceLinkType),
             (INTERFACE_TYPE, InterfaceType),
             (IPADDRESS_TYPE, IpAddressType),

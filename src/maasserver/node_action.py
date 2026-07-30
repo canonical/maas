@@ -22,7 +22,6 @@ from django.http.request import HttpRequest
 from maascommon.osystem import LINUX_OSYSTEMS
 from maasserver import locks
 from maasserver.audit import create_audit_event
-from maasserver.authorization import can_edit_machines
 from maasserver.enum import (
     ENDPOINT,
     NODE_ACTION_TYPE,
@@ -508,24 +507,12 @@ class Deploy(NodeAction):
         osystem=None,
         distro_series=None,
         hwe_kernel=None,
-        install_kvm=False,
-        register_vmhost=False,
         user_data=None,
         enable_hw_sync=False,
         ephemeral_deploy=False,
         enable_kernel_crash_dump=None,
     ):
         """See `NodeAction.execute`."""
-        if install_kvm or register_vmhost:
-            if not can_edit_machines(self.user):
-                raise NodeActionError(
-                    "You must be a MAAS administrator to deploy a machine "
-                    "as a MAAS-managed VM host."
-                )
-        if (install_kvm or register_vmhost) and ephemeral_deploy:
-            raise NodeActionError(
-                "A machine can not be a VM host if it is deployed to memory."
-            )
         if self.node.is_diskless and not ephemeral_deploy:
             raise NodeActionError(
                 "Can’t deploy to disk in a diskless machine. Deploy to memory must be used instead."
@@ -607,8 +594,6 @@ class Deploy(NodeAction):
             self.node.start(
                 self.user,
                 user_data=user_data,
-                install_kvm=install_kvm,
-                register_vmhost=register_vmhost,
                 enable_hw_sync=enable_hw_sync,
             )
         except StaticIPAddressExhaustion:

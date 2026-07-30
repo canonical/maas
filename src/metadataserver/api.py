@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API."""
@@ -1138,20 +1138,14 @@ class UserDataHandler(MetadataViewHandler):
             # for user-data is when MAAS hands the node
             # off to a user.
             if node.status == NODE_STATUS.DEPLOYING:
-                if node.install_kvm or node.register_vmhost:
-                    # Rather than ending deployment here, note that we're
-                    # deploying a VM host.
-                    node.agent_name = "maas-kvm-pod"
-                    node.save()
-                else:
-                    # MAAS currently considers a machine "Deployed" when the
-                    # cloud-init user data is requested. Note that this doesn't
-                    # mean the machine is ready for use yet; cloud-init will
-                    # also send a 'finish' event for the 'modules-final'
-                    # activity name. However, that check is ambiguous because
-                    # it occurs both when curtin is installing, and when
-                    # the machine reboots to finish its deployment.
-                    node.end_deployment()
+                # MAAS currently considers a machine "Deployed" when the
+                # cloud-init user data is requested. Note that this doesn't
+                # mean the machine is ready for use yet; cloud-init will
+                # also send a 'finish' event for the 'modules-final'
+                # activity name. However, that check is ambiguous because
+                # it occurs both when curtin is installing, and when
+                # the machine reboots to finish its deployment.
+                node.end_deployment()
             # If this node is supposed to be powered off, serve the
             # 'poweroff' userdata.
             if node.get_boot_purpose() == "poweroff":

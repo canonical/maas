@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The node handler for the WebSocket connection."""
@@ -37,7 +37,6 @@ from maasserver.forms.interface import (
 )
 from maasserver.models import (
     BlockDevice,
-    BMC,
     CacheSet,
     Config,
     Domain,
@@ -206,9 +205,6 @@ class NodeHandler(TimestampedModelHandler):
         if pool is None:
             return None
         return {"id": pool.id, "name": pool.name}
-
-    def dehydrate_pod(self, pod):
-        return {"id": pod.id, "name": pod.name}
 
     def dehydrate_numanode(self, numa_node):
         details = {
@@ -1300,11 +1296,7 @@ class NodeHandler(TimestampedModelHandler):
 
     def _get_group_expr(self, key):
         """Get grouping expression for key"""
-        if key == "pod":
-            expr = "bmc__name"
-        elif key == "pod_type":
-            expr = "bmc__power_type"
-        elif key == "pool":
+        if key == "pool":
             expr = "pool__name"
         elif key == "domain":
             expr = "domain__name"
@@ -1474,20 +1466,6 @@ class NodeHandler(TimestampedModelHandler):
                 {"key": str(val), "label": str(val).upper()}
                 for val in Interface.objects.order_by("mac_address")
                 .values_list("mac_address", flat=True)
-                .distinct()
-            ]
-        elif key == "pod_type":
-            results += [
-                {"key": value, "label": value}
-                for value in BMC.objects.order_by("power_type")
-                .values_list("power_type", flat=True)
-                .distinct()
-            ]
-        elif key == "pod":
-            results += [
-                {"key": pod, "label": pod}
-                for pod in BMC.objects.order_by("name")
-                .values_list("name", flat=True)
                 .distinct()
             ]
         elif key == "zone":

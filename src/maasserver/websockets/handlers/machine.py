@@ -25,7 +25,6 @@ from django.db.models import (
 from django.db.models.functions import Concat
 
 from maasserver.enum import (
-    BMC_TYPE,
     INTERFACE_LINK_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -301,8 +300,6 @@ class MachineHandler(NodeHandler):
             "dns_process",
             "managing_process",
             "last_image_sync",
-            "install_kvm",
-            "register_vmhost",
             "current_config",
         ]
         list_fields = [
@@ -405,11 +402,6 @@ class MachineHandler(NodeHandler):
             if data["pxe_mac"] != "":
                 data["ip_addresses"] = self.dehydrate_all_ip_addresses(obj)
             data["is_dpu"] = obj.is_dpu
-
-        # Needed for machines to show up in the Pod details page.
-        data["pod"] = None
-        if obj.bmc is not None and obj.bmc.bmc_type == BMC_TYPE.POD:
-            data["pod"] = self.dehydrate_pod(obj.bmc)
 
         if not for_list:
             cpu_script_results = [

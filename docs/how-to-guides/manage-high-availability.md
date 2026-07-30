@@ -27,7 +27,7 @@ Rack controllers manage networks and connected machines.
 maas $PROFILE rack-controllers read | grep hostname | cut -d '"' -f 4
 ```
 
-Multiple racks are required for HA. Ensure VM hosts can reach each rack controller.
+Multiple racks are required for HA.
 
 ### Delete a rack controller
 
@@ -58,7 +58,6 @@ Moving between MAAS instances or versions is not supported and risks data loss. 
 
 ### Common pitfalls
 
-- Don’t run a rack and VM host on the same machine (resource contention).
 - Don’t move rack controllers between MAAS versions.
 - Don’t connect a rack controller to multiple MAAS instances.
 

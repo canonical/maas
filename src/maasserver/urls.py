@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL routing configuration."""
@@ -14,7 +14,6 @@ from maasserver.prometheus.service import prometheus_discovery_handler
 from maasserver.prometheus.stats import prometheus_stats_handler
 from maasserver.views.account import authenticate, csrf, login, logout
 from maasserver.views.rpc import info
-from maasserver.views.vmhost import vmhost_certificate_handler
 
 # Anonymous views.
 urlpatterns = [
@@ -45,11 +44,6 @@ urlpatterns = [
             template_name="robots.txt", content_type="text/plain"
         ),
         name="robots",
-    ),
-    path(
-        "vmhost-certificate/<str:name>",
-        vmhost_certificate_handler,
-        name="vmhost-certificate",
     ),
 ]
 

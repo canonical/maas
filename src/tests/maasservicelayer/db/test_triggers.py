@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
@@ -28,9 +28,6 @@ class TestTriggersUsed:
         "blockdevice_nd_blockdevice_unlink_notify",
         "blockdevice_nd_blockdevice_update_notify",
         "bmc_bmc_machine_update_notify",
-        "bmc_pod_delete_notify",
-        "bmc_pod_insert_notify",
-        "bmc_pod_update_notify",
         "cacheset_nd_cacheset_link_notify",
         "cacheset_nd_cacheset_unlink_notify",
         "cacheset_nd_cacheset_update_notify",
@@ -66,7 +63,6 @@ class TestTriggersUsed:
         "filesystemgroup_nd_filesystemgroup_link_notify",
         "filesystemgroup_nd_filesystemgroup_unlink_notify",
         "filesystemgroup_nd_filesystemgroup_update_notify",
-        "interface_interface_pod_notify",
         "interface_ip_addresses_nd_sipaddress_dns_link_notify",
         "interface_ip_addresses_nd_sipaddress_dns_unlink_notify",
         "interface_ip_addresses_nd_sipaddress_link_notify",
@@ -100,13 +96,7 @@ class TestTriggersUsed:
         "node_machine_create_notify",
         "node_machine_delete_notify",
         "node_machine_update_notify",
-        "node_node_pod_delete_notify",
-        "node_node_pod_insert_notify",
-        "node_node_pod_update_notify",
         "node_node_type_change_notify",
-        "node_node_vmcluster_insert_notify",
-        "node_node_vmcluster_update_notify",
-        "node_node_vmcluster_delete_notify",
         "node_rack_controller_create_notify",
         "node_rack_controller_delete_notify",
         "node_rack_controller_update_notify",
@@ -175,9 +165,6 @@ class TestTriggersUsed:
         "vlan_vlan_machine_update_notify",
         "vlan_vlan_subnet_update_notify",
         "vlan_vlan_update_notify",
-        "vmcluster_vmcluster_insert_notify",
-        "vmcluster_vmcluster_update_notify",
-        "vmcluster_vmcluster_delete_notify",
     }
 
     triggers_all = triggers_system | triggers_websocket

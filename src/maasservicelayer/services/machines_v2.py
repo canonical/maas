@@ -1,5 +1,5 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 import logging
 
 from pydantic import BaseModel
@@ -7,7 +7,6 @@ from sqlalchemy import case, desc, distinct, or_, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql.expression import ColumnOperators, func
 
-from maascommon.enums.bmc import BmcType
 from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.node import SimplifiedNodeStatusEnum
@@ -101,7 +100,6 @@ class Machine(BaseModel):
     hostname: str
     description: str
     pool: ModelRef
-    pod: ModelRef | None = None
     domain: ModelRef
     owner: str
     parent: str | None = None
@@ -229,11 +227,6 @@ class MachinesV2Service(Service, Repository):
                 fabric_name=record["boot_fabric_name"],
             )
 
-        pod = None
-
-        if record["pod_id"] or record["pod_name"]:
-            pod = ModelRef(id=record["pod_id"], name=record["pod_name"])
-
         ip_addresses = []
         if record["ips"] and record["is_boot_ips"]:
             for i in range(len(record["ips"])):
@@ -253,7 +246,6 @@ class MachinesV2Service(Service, Repository):
             hostname=record["hostname"],
             description=record["description"],
             pool=ModelRef(id=record["pool_id"], name=record["pool_name"]),
-            pod=pod,
             domain=ModelRef(
                 id=record["domain_id"], name=record["domain_name"]
             ),
@@ -1512,20 +1504,6 @@ class MachinesV2Service(Service, Repository):
                 ),
                 func.coalesce(pxe_mac_cte.c.pxe_mac, "").label("pxe_mac"),
                 BMCTable.c.power_type,
-                case(
-                    (
-                        BMCTable.c.bmc_type == BmcType.POD,
-                        BMCTable.c.id,
-                    ),
-                    else_=None,
-                ).label("pod_id"),
-                case(
-                    (
-                        BMCTable.c.bmc_type == BmcType.POD,
-                        BMCTable.c.name,
-                    ),
-                    else_=None,
-                ).label("pod_name"),
                 status_message_subquery.label("status_message"),
                 BootVlan.c.id.label("boot_vlan_id"),
                 func.coalesce(BootVlan.c.name, "").label("boot_vlan_name"),

@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resources."""
@@ -32,16 +32,13 @@ from maasserver.models import (
     Machine,
     Node,
     OwnerData,
-    Pod,
     Space,
     StaticIPAddress,
     Subnet,
     Tag,
     VLAN,
-    VMCluster,
 )
 from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
-from maasserver.models.virtualmachine import get_vm_host_used_resources
 from maasserver.sqlalchemy import service_layer
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import NotNullSum, transactional
@@ -108,98 +105,8 @@ def get_machines_by_architecture():
     return Counter(node_arches)
 
 
-def get_vm_hosts_stats(**filter_params):
-    vm_hosts = Pod.objects.filter(**filter_params)
-    # Calculate available physical resources
-    # total_mem is in MB
-    # local_storage is in bytes
-    available_resources = vm_hosts.aggregate(
-        cores=NotNullSum("cores"),
-        memory=NotNullSum("memory"),
-        storage=NotNullSum("local_storage"),
-    )
-
-    # available resources with overcommit
-    over_cores = over_memory = 0
-    for vm_host in vm_hosts:
-        over_cores += vm_host.cores * vm_host.cpu_over_commit_ratio
-        over_memory += vm_host.memory * vm_host.memory_over_commit_ratio
-    available_resources["over_cores"] = over_cores
-    available_resources["over_memory"] = over_memory
-
-    # Calculate utilization
-    vms = cores = memory = storage = 0
-    for vm_host in vm_hosts:
-        vms += Node.objects.filter(bmc__id=vm_host.id).count()
-        used_resources = get_vm_host_used_resources(vm_host)
-        cores += used_resources.cores
-        memory += used_resources.total_memory
-        storage += used_resources.storage
-
-    return {
-        "vm_hosts": len(vm_hosts),
-        "vms": vms,
-        "available_resources": available_resources,
-        "utilized_resources": {
-            "cores": cores,
-            "memory": memory,
-            "storage": storage,
-        },
-    }
-
-
 def count_of(**filters):
     return Count(Case(When(**filters, then=1)))
-
-
-def get_lxd_initial_auth_stats():
-    stats = Pod.objects.filter(power_type="lxd").aggregate(
-        trust_password=count_of(created_with_trust_password=True),
-        no_trust_password=count_of(created_with_trust_password=False),
-        maas_generated_cert=count_of(created_with_maas_generated_cert=True),
-        user_provided_cert=count_of(created_with_maas_generated_cert=False),
-        expires_in_10_days=count_of(
-            created_with_cert_expiration_days__gte=0,
-            created_with_cert_expiration_days__lt=10,
-        ),
-        expires_in_1_month=count_of(
-            created_with_cert_expiration_days__gte=10,
-            created_with_cert_expiration_days__lt=31,
-        ),
-        expires_in_3_months=count_of(
-            created_with_cert_expiration_days__gte=31,
-            created_with_cert_expiration_days__lt=92,
-        ),
-        expires_in_1_year=count_of(
-            created_with_cert_expiration_days__gte=92,
-            created_with_cert_expiration_days__lt=366,
-        ),
-        expires_in_2_years=count_of(
-            created_with_cert_expiration_days__gte=366,
-            created_with_cert_expiration_days__lt=731,
-        ),
-        expires_in_3_years=count_of(
-            created_with_cert_expiration_days__gte=731,
-            created_with_cert_expiration_days__lt=1096,
-        ),
-        expires_in_10_years=count_of(
-            created_with_cert_expiration_days__gte=1096,
-            created_with_cert_expiration_days__lt=3653,
-        ),
-        expires_in_more_than_10_years=count_of(
-            created_with_cert_expiration_days__gte=3653,
-        ),
-    )
-    cert_expiration_days = {}
-    for key, value in stats.items():
-        if not key.startswith("expires_in_"):
-            continue
-        cert_expiration_days[key[len("expires_in_") :]] = value
-    for key in cert_expiration_days:
-        del stats["expires_in_" + key]
-
-    stats["cert_expiration_days"] = cert_expiration_days
-    return stats
 
 
 def get_subnets_stats():
@@ -292,52 +199,6 @@ def get_custom_images_uploaded_stats():
             base_image=F("resource_set__resource__base_image"),
         )
     )
-
-
-def get_vmcluster_stats(**filter_params):
-    clusters = VMCluster.objects.filter(**filter_params)
-    stats = {
-        "projects": len(clusters),
-        "vm_hosts": 0,
-        "vms": 0,
-        "available_resources": {
-            "cores": 0,
-            "memory": 0,
-            "over_cores": 0,
-            "over_memory": 0,
-            "storage_local": 0,
-            "storage_shared": 0,
-        },
-        "utilized_resources": {
-            "cores": 0,
-            "memory": 0,
-            "storage_local": 0,
-            "storage_shared": 0,
-        },
-    }
-
-    for cluster in clusters:
-        res = cluster.total_resources()
-        stats["vm_hosts"] += res.vmhost_count
-        stats["vms"] += res.vm_count.total
-        stats["available_resources"]["cores"] += res.cores.total
-        stats["available_resources"]["over_cores"] += res.cores.overcommited
-        stats["available_resources"]["memory"] += res.memory.general.total
-        stats["available_resources"]["over_memory"] += (
-            res.memory.general.overcommited
-        )
-        stats["utilized_resources"]["cores"] += res.cores.allocated
-        stats["utilized_resources"]["memory"] += res.memory.general.allocated
-
-        for pool in res.storage_pools.values():
-            if pool.shared:
-                stats["available_resources"]["storage_shared"] += pool.total
-                stats["utilized_resources"]["storage_shared"] += pool.allocated
-            else:
-                stats["available_resources"]["storage_local"] += pool.total
-                stats["utilized_resources"]["storage_local"] += pool.allocated
-
-    return stats
 
 
 def get_custom_images_deployed_stats():
@@ -478,7 +339,6 @@ def get_maas_stats():
     # TODO
     # - architectures
     # - resource pools
-    # - pods
     # Get all node types to get count values
     node_types = Node.objects.values_list("node_type", flat=True)
     node_types = Counter(node_types)
@@ -487,8 +347,6 @@ def get_maas_stats():
     machine_status = get_machine_state_stats()
     # get summary of network objects
     netstats = get_subnets_stats()
-    lxd_vm_hosts_stats = get_vm_hosts_stats(power_type="lxd")
-    lxd_vm_hosts_stats["initial_auth"] = get_lxd_initial_auth_stats()
     # custom images
     custom_images = get_custom_images_uploaded_stats()
 
@@ -508,10 +366,6 @@ def get_maas_stats():
         "machine_stats": stats,  # count of cpus, mem, storage
         "machine_status": machine_status,  # machines by status
         "network_stats": netstats,  # network status
-        "vm_hosts": {
-            "lxd": lxd_vm_hosts_stats,
-            "virsh": get_vm_hosts_stats(power_type="virsh"),
-        },
         "workload_annotations": get_workload_annotations_stats(),
         "brownfield": get_brownfield_stats(),
         "custom_images": {
@@ -521,7 +375,6 @@ def get_maas_stats():
                 for img in custom_images
             },
         },
-        "vmcluster": get_vmcluster_stats(),
         "storage_layouts": get_storage_layouts_stats(),
         "tls_configuration": get_tls_configuration_stats(),
         "bmcs": get_bmc_stats(),

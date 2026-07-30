@@ -18,7 +18,6 @@ from testtools.content import text_content
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver.enum import (
-    BMC_TYPE,
     BOND_MODE,
     BRIDGE_TYPE,
     BRIDGE_TYPE_CHOICES,
@@ -382,11 +381,6 @@ class TestMachineHandlerUtils:
             data["power_type"] = node.power_type
             data["ip_addresses"] = handler.dehydrate_all_ip_addresses(node)
 
-        bmc = node.bmc
-        data["pod"] = None
-        if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
-            data["pod"] = {"id": bmc.id, "name": bmc.name}
-
         if for_list:
             if node.node_type == NODE_TYPE.MACHINE:
                 data["numa_nodes_count"] = len(data["numa_nodes"])
@@ -414,7 +408,6 @@ class TestMachineHandlerUtils:
                     "osystem",
                     "permissions",
                     "physical_disk_count",
-                    "pod",
                     "power_type",
                     "pxe_mac",
                     "pxe_mac_vendor",
@@ -606,7 +599,6 @@ class TestMachineHandler(MAASServerTestCase):
             "dehydrate_numanode",
             "dehydrate_owner",
             "dehydrate_partitions",
-            "dehydrate_pod",
             "dehydrate_pool",
             "dehydrate_power_parameters",
             "dehydrate_script_set_status",
@@ -852,24 +844,6 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(
             handler.dehydrate_pool(pool), {"id": pool.id, "name": pool.name}
         )
-
-    def test_dehydrate_pod(self):
-        owner = factory.make_User()
-        handler = MachineHandler(owner, {}, None)
-        pod = factory.make_Pod()
-        self.assertEqual(
-            handler.dehydrate_pod(pod), {"id": pod.id, "name": pod.name}
-        )
-
-    def test_dehydrate_node_with_pod(self):
-        owner = factory.make_User()
-        handler = MachineHandler(owner, {}, None)
-        pod = factory.make_Pod()
-        node = factory.make_Node()
-        node.bmc = pod
-        data = {}
-        handler.dehydrate(node, data)
-        self.assertEqual(data["pod"], {"id": pod.id, "name": pod.name})
 
     def test_dehydrate_node_with_parent(self):
         owner = factory.make_User()
@@ -5897,34 +5871,6 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "for_grouping": False,
                 },
                 {
-                    "key": "pod",
-                    "label": "The name of the desired pod",
-                    "dynamic": True,
-                    "type": "list[str]",
-                    "for_grouping": True,
-                },
-                {
-                    "key": "not_pod",
-                    "label": "The name of the undesired pod",
-                    "dynamic": True,
-                    "type": "list[str]",
-                    "for_grouping": False,
-                },
-                {
-                    "key": "pod_type",
-                    "label": "The power_type of the desired pod",
-                    "dynamic": True,
-                    "type": "list[str]",
-                    "for_grouping": True,
-                },
-                {
-                    "key": "not_pod_type",
-                    "label": "The power_type of the undesired pod",
-                    "dynamic": True,
-                    "type": "list[str]",
-                    "for_grouping": False,
-                },
-                {
                     "key": "mac_address",
                     "label": "MAC addresses to filter on",
                     "dynamic": True,
@@ -6233,7 +6179,12 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             factory.make_Machine_with_Interface_on_Subnet(
                 architecture=architectures[i % len(architectures)],
                 owner=user,
-                bmc=factory.make_Pod(pod_type=random.choice(["lxd", "virsh"])),
+                bmc=factory.make_BMC(
+                    power_type=random.choice(["lxd", "virsh"]),
+                    power_parameters={
+                        "power_address": factory.make_ip_address()
+                    },
+                ),
             )
             for i in range(5)
         ]
@@ -6377,11 +6328,6 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             )
             _assert_value_in(machine.domain.name, "domain")
             _assert_value_in(machine.agent_name, "agent_name")
-            if machine.bmc.power_type == "lxd":
-                _assert_value_in(machine.bmc.power_type, "pod_type")
-                _assert_value_in(machine.bmc.power_type, "not_pod_type")
-                _assert_value_in(machine.bmc.name, "pod")
-                _assert_value_in(machine.bmc.name, "not_pod")
 
     def test_filter_options_labels(self):
         user = factory.make_User()

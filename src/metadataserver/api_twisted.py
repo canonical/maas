@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API that runs in the Twisted reactor."""
@@ -9,7 +9,6 @@ from collections import defaultdict
 from datetime import datetime, timezone
 import json
 
-from django.db.utils import DatabaseError
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.web.resource import Resource
@@ -17,26 +16,18 @@ from twisted.web.server import NOT_DONE_YET
 
 from maasserver.api.utils import extract_oauth_key_from_auth_header
 from maasserver.enum import NODE_STATUS, NODE_TYPE
-from maasserver.forms.pods import PodForm
-from maasserver.models import Interface, Node, NodeKey
+from maasserver.models import Node, NodeKey
 from maasserver.preseed import CURTIN_INSTALL_LOG
-from maasserver.secrets import SecretManager
 from maasserver.utils.orm import (
     in_transaction,
     transactional,
     TransactionManagementError,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.vmhost import discover_and_sync_vmhost
 from maasserver.workflow import signal_workflow
 from metadataserver import logger
 from metadataserver.api import add_event_to_node_event_log, process_file
 from metadataserver.enum import SCRIPT_STATUS
-from metadataserver.vendor_data import (
-    DEPLOY_SECRETS_LXD_KEY,
-    DEPLOY_SECRETS_VIRSH_KEY,
-)
-from provisioningserver.certificates import Certificate
 from provisioningserver.events import EVENT_STATUS_MESSAGES
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import deferred
@@ -187,120 +178,6 @@ class StatusHandlerResource(Resource):
         d.addCallback(_finish, request)
         d.addErrback(_check_connection_closed)
         return NOT_DONE_YET
-
-
-POD_CREATION_ERROR = (
-    "Internal error while creating VM host. (See regiond.log for details.)"
-)
-
-
-def _create_vmhost_for_deployment(node):
-    node = node.as_node()  # ensure a Node instance is passed
-    secret_manager = SecretManager()
-    deploy_secrets = secret_manager.get_composite_secret(
-        "deploy-metadata",
-        obj=node,
-        default={},
-    )
-    secret_manager.delete_secret("deploy-metadata", obj=node)
-
-    # ensure only specified VM host types are registered
-    if not node.register_vmhost:
-        deploy_secrets.pop(DEPLOY_SECRETS_LXD_KEY, None)
-    if not node.install_kvm:
-        deploy_secrets.pop(DEPLOY_SECRETS_VIRSH_KEY, None)
-
-    if not deploy_secrets:
-        node.mark_failed(
-            comment="Failed to deploy VM host: Credentials not found.",
-            commit=False,
-        )
-        return
-
-    # the IP is associated to the bridge the boot interface is in, not the
-    # interface itself
-    ip = _get_ip_address_for_vmhost(node)
-
-    for secret_key, secret_value in deploy_secrets.items():
-        is_lxd = secret_key == DEPLOY_SECRETS_LXD_KEY
-
-        name = node.hostname
-        if len(deploy_secrets) > 1:
-            # make VM host names unique
-            name += "-lxd" if is_lxd else "-virsh"
-
-        form_data = {
-            "name": name,
-            "zone": node.zone.name,
-            "pool": node.pool.name,
-        }
-        if is_lxd:
-            certificate = Certificate.from_pem(secret_value)
-            form_data.update(
-                {
-                    "type": "lxd",
-                    "power_address": ip,
-                    "certificate": certificate.certificate_pem(),
-                    "key": certificate.private_key_pem(),
-                    "project": "maas",
-                }
-            )
-        else:
-            form_data.update(
-                {
-                    "type": "virsh",
-                    "power_address": f"qemu+ssh://virsh@{ip}/system",
-                    "power_pass": secret_value,
-                }
-            )
-        pod_form = PodForm(data=form_data, user=node.owner)
-        if pod_form.is_valid():
-            try:
-                pod = pod_form.save()
-            except DatabaseError:
-                # Re-raise database errors, since we want it to be
-                # retried if possible. If it's not retriable, we
-                # couldn't mark the node as failed anyway, since the
-                # transaction will be broken.
-                # XXX: We should refactor the processing of messages so
-                # that the node is marked failed/deployed in a seperate
-                # transaction than the one doing the processing.
-                raise
-            except Exception as e:
-                node.mark_failed(comment=POD_CREATION_ERROR, commit=False)
-                log.err(None, f"Error saving VM host: {e}")
-                return
-            else:
-                discover_and_sync_vmhost(pod, node.owner)
-
-        else:
-            node.mark_failed(comment=POD_CREATION_ERROR, commit=False)
-            log.msg("Error while creating VM host: %s" % dict(pod_form.errors))
-            return
-
-    node.update_status(NODE_STATUS.DEPLOYED)
-
-
-def _get_ip_address_for_vmhost(node):
-    boot_interface = node.get_boot_interface()
-    interface_ids = {boot_interface.id}
-
-    # recursively find all children interface IDs
-    new_ids = {boot_interface.id}
-    while new_ids:
-        new_ids = set(
-            Interface.objects.filter(parents__in=new_ids).values_list(
-                "id", flat=True
-            )
-        )
-        interface_ids |= new_ids
-
-    ip = node.ip_addresses(
-        ifaces=Interface.objects.filter(id__in=interface_ids)
-    )[0]
-    if ":" in ip:
-        ip = f"[{ip}]"
-    return ip
 
 
 class StatusWorkerService(TimerService):
@@ -487,28 +364,13 @@ class StatusWorkerService(TimerService):
                         )
                         save_node = True
             elif node.status == NODE_STATUS.DEPLOYING:
-                # XXX: when activity_name == moudles-config, this currently
-                # /always/ fails, since MAAS passes two different versions
-                # for the apt configuration. The only reason why we don't
-                # see additional issues because of this is due to the node
-                # already being marked "Deployed". Right now this is prevented
-                # only in the VM host deploy case, but we should make this check
-                # more general when time allows.
-                if failed and not (node.install_kvm or node.register_vmhost):
+                if failed:
                     node.mark_failed(
                         comment="Installation failed (refer to the "
                         "installation log for more information).",
                         commit=False,
                     )
                     save_node = True
-                elif (
-                    not failed
-                    and activity_name == "modules-final"
-                    and (node.install_kvm or node.register_vmhost)
-                    and node.agent_name == "maas-kvm-pod"
-                ):
-                    save_node = True
-                    _create_vmhost_for_deployment(node)
 
                 if not failed and activity_name == "modules-final":
                     signal_workflow(

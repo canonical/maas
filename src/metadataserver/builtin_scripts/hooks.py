@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin script hooks, run upon receipt of ScriptResult"""
@@ -1262,9 +1262,6 @@ def process_lxd_results(node, output, exit_status):
                 },
                 execution_timeout=timedelta(seconds=120),
             )
-
-    for pod in node.get_hosted_pods():
-        pod.sync_hints_from_nodes()
 
 
 def create_metadata_by_modalias(node, output: bytes, exit_status):

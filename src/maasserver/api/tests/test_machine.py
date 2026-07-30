@@ -47,7 +47,6 @@ from maasserver.models import (
 )
 from maasserver.models import node as node_module
 from maasserver.models import staticipaddress as staticipaddress_module
-from maasserver.models.bmc import Pod
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.storage_layouts import (
@@ -305,14 +304,6 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(machine.owner.username, parsed_result["owner"])
-
-    def test_GET_returns_virtualmachine(self):
-        machine = factory.make_Node()
-        vm = factory.make_VirtualMachine(machine=machine)
-        response = self.client.get(self.get_machine_uri(machine))
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(parsed_result["virtualmachine_id"], vm.id)
 
     def test_GET_permission_denied_when_allocated_to_other_user(self):
         machine = factory.make_Node(
@@ -616,7 +607,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(response_info["osystem"], osystem)
         self.assertEqual(response_info["distro_series"], distro_series)
 
-    def test_POST_deploy_fails_when_install_kvm_set_for_diskless(self):
+    def test_POST_deploy_fails_when_install_kvm_is_true(self):
         self.become_admin()
         osystem = Config.objects.get_config("default_osystem")
         distro_series = Config.objects.get_config("default_distro_series")
@@ -634,11 +625,11 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         response = self.client.post(
             self.get_machine_uri(machine),
-            {"op": "deploy", "install_kvm": True, "ephemeral_deploy": True},
+            {"op": "deploy", "install_kvm": True},
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            b"A machine can not be a VM host if it is deployed to memory.",
+            b"Support for install_kvm allocation parameter has been removed.",
             response.content,
         )
 
@@ -697,94 +688,6 @@ class TestMachineAPI(APITestCase.ForUser):
         response_info = json_load_bytes(response.content)
         assert response.status_code == http.client.OK
         assert response_info["ephemeral_deploy"] is True
-
-    def test_POST_deploy_fails_when_install_kvm_set_for_ephemeral_deploy(self):
-        self.become_admin()
-        osystem = Config.objects.get_config("default_osystem")
-        distro_series = Config.objects.get_config("default_distro_series")
-        make_usable_osystem(
-            self, osystem_name=osystem, releases=[distro_series]
-        )
-        machine = factory.make_Node(
-            owner=self.user,
-            interface=True,
-            status=NODE_STATUS.ALLOCATED,
-            power_type="manual",
-            distro_series=distro_series,
-            osystem=osystem,
-            architecture=make_usable_architecture(self),
-        )
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {"op": "deploy", "install_kvm": True, "ephemeral_deploy": True},
-        )
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            b"A machine can not be a VM host if it is deployed to memory.",
-            response.content,
-        )
-
-    def test_POST_deploy_fails_when_register_vmhost_set_for_diskless(self):
-        self.become_admin()
-        osystem = Config.objects.get_config("default_osystem")
-        distro_series = Config.objects.get_config("default_distro_series")
-        make_usable_osystem(
-            self, osystem_name=osystem, releases=[distro_series]
-        )
-        machine = factory.make_Node(
-            owner=self.user,
-            interface=True,
-            status=NODE_STATUS.ALLOCATED,
-            power_type="manual",
-            distro_series=distro_series,
-            osystem=osystem,
-            architecture=make_usable_architecture(self),
-        )
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {
-                "op": "deploy",
-                "register_vmhost": True,
-                "ephemeral_deploy": True,
-            },
-        )
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            b"A machine can not be a VM host if it is deployed to memory.",
-            response.content,
-        )
-
-    def test_POST_deploy_fails_when_register_vmhost_set_for_ephemeral_deploy(
-        self,
-    ):
-        self.become_admin()
-        osystem = Config.objects.get_config("default_osystem")
-        distro_series = Config.objects.get_config("default_distro_series")
-        make_usable_osystem(
-            self, osystem_name=osystem, releases=[distro_series]
-        )
-        machine = factory.make_Node(
-            owner=self.user,
-            interface=True,
-            status=NODE_STATUS.ALLOCATED,
-            power_type="manual",
-            distro_series=distro_series,
-            osystem=osystem,
-            architecture=make_usable_architecture(self),
-        )
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {
-                "op": "deploy",
-                "register_vmhost": True,
-                "ephemeral_deploy": True,
-            },
-        )
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            b"A machine can not be a VM host if it is deployed to memory.",
-            response.content,
-        )
 
     def test_POST_deploy_sets_ephemeral_deploy(self):
         self.patch(node_module.Node, "_start")
@@ -1043,11 +946,6 @@ class TestMachineAPI(APITestCase.ForUser):
             self.user,
             user_data=ANY,
             comment=comment,
-            install_kvm=ANY,
-            register_vmhost=ANY,
-            bridge_type=ANY,
-            bridge_stp=ANY,
-            bridge_fd=ANY,
         )
 
     def test_POST_deploy_handles_missing_comment(self):
@@ -1071,11 +969,6 @@ class TestMachineAPI(APITestCase.ForUser):
             self.user,
             user_data=ANY,
             comment=None,
-            install_kvm=ANY,
-            register_vmhost=ANY,
-            bridge_type=ANY,
-            bridge_stp=ANY,
-            bridge_fd=ANY,
         )
 
     def test_POST_deploy_doesnt_reset_power_options_bug_1569102(self):
@@ -2989,9 +2882,6 @@ class TestMachineAPI(APITestCase.ForUser):
         machine = factory.make_Machine_with_Interface_on_Subnet(
             vlan=vlan, subnet=subnet
         )
-        ip = factory.make_StaticIPAddress(interface=machine.boot_interface)
-        factory.make_Pod(ip_address=ip)
-        mock_async_delete = self.patch(Pod, "async_delete")
         response = self.client.delete(
             self.get_machine_uri(machine),
             QUERY_STRING=urlencode({"force": "true"}, doseq=True),
@@ -3001,25 +2891,6 @@ class TestMachineAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.NO_CONTENT, response),
         )
-        mock_async_delete.assert_called_once_with()
-
-    def test_pod_DELETE_delete_without_force(self):
-        self.become_admin()
-        vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan)
-        machine = factory.make_Machine_with_Interface_on_Subnet(
-            vlan=vlan, subnet=subnet
-        )
-        ip = factory.make_StaticIPAddress(interface=machine.boot_interface)
-        factory.make_Pod(ip_address=ip)
-        mock_async_delete = self.patch(Pod, "async_delete")
-        response = self.client.delete(self.get_machine_uri(machine))
-        self.assertEqual(
-            http.client.BAD_REQUEST,
-            response.status_code,
-            explain_unexpected_response(http.client.BAD_REQUEST, response),
-        )
-        mock_async_delete.assert_not_called()
 
 
 class TestMachineAPITransactional(APITransactionTestCase.ForUser):

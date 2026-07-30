@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -2252,29 +2252,6 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual("8", node.distro_series)
         self.assertEqual(hostname, node.hostname)
 
-    def test_does_not_initialize_node_network_information_if_pod(self):
-        pod = factory.make_Pod()
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
-        )
-        pod.hints.nodes.add(node)
-        mock_set_initial_net_config = self.patch(
-            node_module.Node, "set_initial_networking_configuration"
-        )
-
-        with post_commit_hooks:
-            process_lxd_results(node, make_lxd_output_json(), 0)
-
-        mock_set_initial_net_config.assert_not_called()
-        # Verify network device information was collected
-        self.assertEqual(
-            ["Intel Corporation", "Intel Corporation", "Intel Corporation"],
-            [
-                iface.vendor
-                for iface in node.current_config.interface_set.all()
-            ],
-        )
-
     def test_updates_memory(self):
         node = factory.make_Node()
         node.memory = random.randint(4096, 8192)
@@ -3215,19 +3192,6 @@ class TestProcessLXDResults(MAASServerTestCase):
                 node, make_lxd_output_json(virt_type="physical"), 0
             )
         self.assertFalse(node.tags.filter(name="virtual").exists())
-
-    def test_syncs_pods(self):
-        pod = factory.make_Pod()
-        node = factory.make_Node()
-        pod.hints.nodes.add(node)
-
-        with post_commit_hooks:
-            process_lxd_results(node, make_lxd_output_json(), 0)
-        pod.hints.refresh_from_db()
-
-        self.assertEqual(8, pod.hints.cores)
-        self.assertEqual(2400, pod.hints.cpu_speed)
-        self.assertEqual(15918, pod.hints.memory)
 
     def test_link_nodes_with_dpu(self):
         pci_device_vpd = LXDPCIDeviceVPD(entries={"SN": factory.make_string()})
@@ -4792,61 +4756,6 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertEqual(nic1.tags, ["sriov"])
         self.assertEqual(nic2.tags, [])
         self.assertEqual(nic3.tags, [])
-
-    def test_skip_ifaces_under_sriov_if_deployed_pod(self):
-        pod = factory.make_Pod()
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        pod.hints.nodes.add(node)
-        # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_config=node.current_config).delete()
-
-        data = make_lxd_output()
-        data["resources"]["network"]["cards"].append(
-            {
-                "driver": "thunder-nic",
-                "driver_version": "1.0",
-                "sriov": {
-                    "current_vfs": 30,
-                    "maximum_vfs": 128,
-                    "vfs": [
-                        {
-                            "driver": "thunder-nicvf",
-                            "driver_version": "1.0",
-                            "ports": [
-                                {
-                                    "id": "enP2p1s0f1",
-                                    "address": "01:01:01:01:01:01",
-                                    "port": 0,
-                                    "protocol": "ethernet",
-                                    "auto_negotiation": False,
-                                    "link_detected": False,
-                                }
-                            ],
-                            "numa_node": 0,
-                            "vendor": "Cavium, Inc.",
-                            "vendor_id": "177d",
-                            "product": "THUNDERX Network Interface Controller virtual function",
-                            "product_id": "a034",
-                        }
-                    ],
-                },
-                "numa_node": 0,
-                "pci_address": "0002:01:00.0",
-                "vendor": "Cavium, Inc.",
-                "vendor_id": "177d",
-                "product": "THUNDERX Network Interface Controller",
-                "product_id": "a01e",
-            }
-        )
-
-        with post_commit_hooks:
-            update_node_network_information(
-                node, data, create_numa_nodes(node)
-            )
-
-        self.assertFalse(
-            Interface.objects.filter(mac_address="01:01:01:01:01:01").exists()
-        )
 
     def test_adds_ifaces_under_sriov_if_not_deployed(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)

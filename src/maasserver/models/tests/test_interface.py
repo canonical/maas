@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections.abc import Iterable
@@ -375,7 +375,7 @@ class TestInterfaceManager(MAASServerTestCase):
     def test_resolve_missing_mac_address(self):
         iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
-            node=factory.make_Node(bmc=factory.make_Pod()),
+            node=factory.make_Node(bmc=factory.make_BMC(power_type="virsh")),
         )
         iface.mac_address = None
         with post_commit_hooks:
@@ -390,7 +390,7 @@ class TestInterfaceManager(MAASServerTestCase):
     ):
         iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
-            node=factory.make_Node(bmc=factory.make_Pod()),
+            node=factory.make_Node(bmc=factory.make_BMC(power_type="virsh")),
         )
         iface.mac_address = None
         with post_commit_hooks:
@@ -1672,41 +1672,6 @@ class TestPhysicalInterface(MAASServerTestCase):
             {"mac_address": ["This field cannot be blank."]},
             error.message_dict,
         )
-
-    def test_virtual_machine_does_not_require_mac_address(self):
-        interface = PhysicalInterface(
-            name=factory.make_name("eth"),
-            node_config=factory.make_Node(
-                bmc=factory.make_Pod()
-            ).current_config,
-        )
-        interface.save()
-        self.assertIsNone(interface.mac_address)
-
-    def test_virtual_machine_with_no_mac_sets_node_broken(self):
-        interface = PhysicalInterface(
-            name=factory.make_name("eth"),
-            node_config=factory.make_Node(
-                bmc=factory.make_Pod()
-            ).current_config,
-        )
-        interface.save()
-        self.assertEqual(interface.node_config.node.status, NODE_STATUS.BROKEN)
-
-    def test_virtual_machine_with_no_mac_can_set_node_to_fixed_when_mac_is_provided(
-        self,
-    ):
-        interface = PhysicalInterface(
-            name=factory.make_name("eth"),
-            node_config=factory.make_Node(
-                bmc=factory.make_Pod()
-            ).current_config,
-        )
-        interface.save()
-        self.assertEqual(interface.node_config.node.status, NODE_STATUS.BROKEN)
-        interface.mac_address = factory.make_mac_address()
-        interface.save()
-        self.assertEqual(interface.node_config.node.status, NODE_STATUS.READY)
 
     def test_mac_address_must_be_unique_for_nodeconfig(self):
         node_config = factory.make_NodeConfig()

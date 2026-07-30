@@ -769,11 +769,6 @@
         "mainboard_firmware_version": "Unknown",
         "mainboard_firmware_date": "Unknown"
       },
-      "pod": {
-        "id": 5,
-        "name": "normal-trout",
-        "resource_uri": "/MAAS/api/2.0/pods/5/"
-      },
       "cache_sets": [],
       "testing_status_name": "Failed",
       "disable_ipv4": false,
@@ -1784,11 +1779,6 @@
         "mainboard_product": "Unknown",
         "mainboard_firmware_version": "Unknown",
         "mainboard_firmware_date": "Unknown"
-      },
-      "pod": {
-        "id": 5,
-        "name": "normal-trout",
-        "resource_uri": "/MAAS/api/2.0/pods/5/"
       },
       "cache_sets": [],
       "testing_status_name": "Failed",

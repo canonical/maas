@@ -11,9 +11,7 @@ from itertools import chain
 
 import bson
 from django.db.models import Prefetch
-from django.db.models.functions import Coalesce
 from django.http import HttpResponse
-from formencode.validators import Int, StringBool
 from piston3.utils import rc
 
 from maascommon.fields import MAC_FIELD_RE, normalise_macaddress
@@ -30,13 +28,7 @@ from maasserver.api.utils import (
     get_optional_list,
     get_optional_param,
 )
-from maasserver.enum import (
-    BRIDGE_TYPE_CHOICES,
-    BRIDGE_TYPE_CHOICES_DICT,
-    NODE_STATUS,
-    NODE_TYPE,
-    NODE_TYPE_CHOICES,
-)
+from maasserver.enum import NODE_STATUS, NODE_TYPE, NODE_TYPE_CHOICES
 from maasserver.exceptions import (
     MAASAPIValidationError,
     NodeStateViolation,
@@ -50,7 +42,6 @@ from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.models.scriptset import get_status_from_qs
 from maasserver.node_constraint_filter_forms import ReadNodesForm
 from maasserver.permissions import NodePermission
-from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.orm import prefetch_queryset
 from metadataserver.enum import (
     HARDWARE_TYPE,
@@ -68,7 +59,6 @@ NODES_SELECT_RELATED = (
     "pool",
     "current_config",
     "boot_interface__node_config__node",
-    "virtualmachine",
 )
 
 
@@ -89,7 +79,6 @@ def blockdev_prefetch(expression):
                     "filesystem_group",
                 ),
             )
-        yield f"{device}__vmdisk__backing_pool"
 
     yield f"{expression}__physicalblockdevice__numa_node"
 
@@ -748,18 +737,6 @@ class NodesHandler(OperationsHandler):
         @param (string) "status" [required=false] Only nodes with specified
         status will be returned.
 
-        @param (string) "pod": [required=false] Only nodes that belong to a
-        specified pod will be returned.
-
-        @param (string) "not_pod": [required=false] Only nodes that don't
-        belong to a specified pod will be returned.
-
-        @param (string) "pod_type": [required=false] Only nodes that belong to
-        a pod of the specified type will be returned.
-
-        @param (string) "not_pod_type": [required=false] Only nodes that don't
-        belong to a pod of the specified type will be returned.
-
         @param (string) "devices": [required=false] Only return nodes which
         have one or more devices containing the following constraints in the
         format key=value[,key2=value2[,...]]
@@ -888,9 +865,6 @@ class NodesHandler(OperationsHandler):
             nodes, _, _ = form.filter_nodes(nodes)
             nodes = nodes.select_related(*NODES_SELECT_RELATED)
             nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
-            nodes = nodes.annotate(
-                virtualmachine_id=Coalesce("virtualmachine__id", None)
-            )
         # Assign the correct domain to each node. Manually setting the domain
         # object avoids extra work by Piston when serializing the nodes.
         for node in nodes:
@@ -1085,50 +1059,10 @@ class PowerMixin:
         if isinstance(user_data, str):
             user_data = user_data.encode()
         try:
-            # These parameters are passed in the request from
-            # maasserver.api.machines.deploy when powering on
-            # the node for deployment.
-            install_kvm = get_optional_param(
-                request.POST,
-                "install_kvm",
-                default=False,
-                validator=StringBool,
-            )
-            register_vmhost = get_optional_param(
-                request.POST,
-                "register_vmhost",
-                default=False,
-                validator=StringBool,
-            )
-            bridge_type = get_optional_param(
-                request.POST, "bridge_type", default=None
-            )
-            if (
-                bridge_type is not None
-                and bridge_type not in BRIDGE_TYPE_CHOICES_DICT
-            ):
-                raise MAASAPIValidationError(
-                    {
-                        "bridge_type": compose_invalid_choice_text(
-                            "bridge_type", BRIDGE_TYPE_CHOICES
-                        )
-                    }
-                )
-            bridge_stp = get_optional_param(
-                request.POST, "bridge_stp", default=None, validator=StringBool
-            )
-            bridge_fd = get_optional_param(
-                request.POST, "bridge_fd", default=None, validator=Int
-            )
             node.start(
                 request.user,
                 user_data=user_data,
                 comment=comment,
-                install_kvm=install_kvm,
-                register_vmhost=register_vmhost,
-                bridge_type=bridge_type,
-                bridge_stp=bridge_stp,
-                bridge_fd=bridge_fd,
             )
         except StaticIPAddressExhaustion:
             # The API response should contain error text with the

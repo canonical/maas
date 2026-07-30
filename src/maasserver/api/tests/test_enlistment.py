@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -688,7 +688,6 @@ class TestSimpleUserLoggedInEnlistmentAPI(APITestCase.ForUser):
                 "node_type_name",
                 "numanode_set",
                 "parent",
-                "pod",
                 "power_type",
                 "power_state",
                 "resource_uri",
@@ -738,7 +737,6 @@ class TestSimpleUserLoggedInEnlistmentAPI(APITestCase.ForUser):
                 "hardware_info",
                 "interface_test_status",
                 "interface_test_status_name",
-                "virtualmachine_id",
                 "workload_annotations",
                 "last_sync",
                 "sync_interval",
@@ -912,7 +910,6 @@ class TestAdminLoggedInEnlistmentAPI(APITestCase.ForAdmin):
                 "node_type",
                 "node_type_name",
                 "parent",
-                "pod",
                 "power_type",
                 "power_state",
                 "resource_uri",
@@ -963,7 +960,6 @@ class TestAdminLoggedInEnlistmentAPI(APITestCase.ForAdmin):
                 "hardware_info",
                 "interface_test_status",
                 "interface_test_status_name",
-                "virtualmachine_id",
                 "workload_annotations",
                 "last_sync",
                 "sync_interval",

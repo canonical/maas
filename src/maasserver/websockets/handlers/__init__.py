@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Handlers for the WebSocket connections."""
@@ -22,7 +22,6 @@ __all__ = [
     "NodeResultHandler",
     "NotificationHandler",
     "PackageRepositoryHandler",
-    "PodHandler",
     "ReservedIPHandler",
     "ScriptHandler",
     "ServiceHandler",
@@ -32,7 +31,6 @@ __all__ = [
     "TagHandler",
     "TokenHandler",
     "VLANHandler",
-    "VMClusterHandler",
 ]
 
 from maasserver.websockets.handlers.config import ConfigHandler
@@ -53,7 +51,6 @@ from maasserver.websockets.handlers.notification import NotificationHandler
 from maasserver.websockets.handlers.packagerepository import (
     PackageRepositoryHandler,
 )
-from maasserver.websockets.handlers.pod import PodHandler
 from maasserver.websockets.handlers.reservedip import ReservedIPHandler
 from maasserver.websockets.handlers.script import ScriptHandler
 from maasserver.websockets.handlers.service import ServiceHandler
@@ -63,4 +60,3 @@ from maasserver.websockets.handlers.subnet import SubnetHandler
 from maasserver.websockets.handlers.tag import TagHandler
 from maasserver.websockets.handlers.token import TokenHandler
 from maasserver.websockets.handlers.vlan import VLANHandler
-from maasserver.websockets.handlers.vmcluster import VMClusterHandler

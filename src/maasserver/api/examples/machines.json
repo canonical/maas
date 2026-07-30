@@ -11,7 +11,6 @@
       "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
     },
     "status": 10,
-    "pod": null,
     "tag_names": [],
     "interface_set": [
       {
@@ -477,7 +476,6 @@
       "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
     },
     "status": 10,
-    "pod": null,
     "tag_names": [],
     "interface_set": [
       {
@@ -1840,11 +1838,6 @@
     "hostname": "pretty-jackal",
     "description": "Optional description for the machine.",
     "power_state": "on",
-    "pod": {
-      "id": 5,
-      "name": "lucky-mantis",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "default_gateways": {
       "ipv4": {
         "gateway_ip": "172.16.2.1",
@@ -2080,11 +2073,6 @@
     "virtualblockdevice_set": [],
     "cache_sets": [],
     "ip_addresses": [],
-    "pod": {
-      "id": 1,
-      "name": "LXCPod",
-      "resource_uri": "/MAAS/api/2.0/pods/1/"
-    },
     "disable_ipv4": false,
     "bcaches": [],
     "node_type_name": "Machine",
@@ -2340,11 +2328,6 @@
     "virtualblockdevice_set": [],
     "cache_sets": [],
     "ip_addresses": [],
-    "pod": {
-      "id": 1,
-      "name": "LXCPod",
-      "resource_uri": "/MAAS/api/2.0/pods/1/"
-    },
     "disable_ipv4": false,
     "bcaches": [],
     "node_type_name": "Machine",
@@ -3043,11 +3026,6 @@
     "other_test_status": 2,
     "owner": null,
     "min_hwe_kernel": null,
-    "pod": {
-      "id": 5,
-      "name": "poetic-snipe",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "tag_names": [],
     "memory_test_status": 2,
     "testing_status": 2,
@@ -3979,11 +3957,6 @@
     "other_test_status": 2,
     "owner": null,
     "min_hwe_kernel": null,
-    "pod": {
-      "id": 5,
-      "name": "poetic-snipe",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "tag_names": [],
     "memory_test_status": 2,
     "testing_status": 2,
@@ -4969,11 +4942,6 @@
       }
     ],
     "virtualblockdevice_set": [],
-    "pod": {
-      "id": 5,
-      "name": "poetic-snipe",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "domain": {
       "authoritative": true,
       "ttl": null,
@@ -5521,11 +5489,6 @@
     },
     "storage": 9204.621312000001,
     "current_installation_result_id": null,
-    "pod": {
-      "id": 5,
-      "name": "poetic-snipe",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "address_ttl": null,
     "pool": {
       "name": "default",
@@ -5602,11 +5565,6 @@
     "min_hwe_kernel": null,
     "distro_series": "",
     "swap_size": null,
-    "pod": {
-      "id": 5,
-      "name": "poetic-snipe",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "interface_set": [],
     "owner_data": {},
     "current_testing_result_id": 22,
@@ -6144,11 +6102,6 @@
       "id": 0,
       "resource_uri": "/MAAS/api/2.0/resourcepool/0/"
     },
-    "pod": {
-      "id": 5,
-      "name": "poetic-snipe",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "cpu_count": 3,
     "memory": 8192,
     "ip_addresses": [],
@@ -6603,11 +6556,6 @@
     "commissioning_status_name": "Passed",
     "memory": 8192,
     "testing_status": 2,
-    "pod": {
-      "id": 5,
-      "name": "poetic-snipe",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "fqdn": "above-robin.sample",
     "hwe_kernel": null,
     "other_test_status": 2,
@@ -6723,11 +6671,6 @@
     "commissioning_status_name": "Passed",
     "testing_status_name": "Passed",
     "distro_series": "",
-    "pod": {
-      "id": 5,
-      "name": "poetic-snipe",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "power_state": "on",
     "owner": null,
     "current_installation_result_id": null,
@@ -7195,11 +7138,6 @@
     "virtualblockdevice_set": [],
     "cache_sets": [],
     "ip_addresses": [],
-    "pod": {
-      "id": 1,
-      "name": "LXCPod",
-      "resource_uri": "/MAAS/api/2.0/pods/1/"
-    },
     "disable_ipv4": false,
     "bcaches": [],
     "node_type_name": "Machine",
@@ -7455,11 +7393,6 @@
     "virtualblockdevice_set": [],
     "cache_sets": [],
     "ip_addresses": [],
-    "pod": {
-      "id": 1,
-      "name": "LXCPod",
-      "resource_uri": "/MAAS/api/2.0/pods/1/"
-    },
     "disable_ipv4": false,
     "bcaches": [],
     "node_type_name": "Machine",
@@ -8117,11 +8050,6 @@
     "status": 6,
     "node_type": 0,
     "netboot": true,
-    "pod": {
-      "id": 4,
-      "name": "crisp-lab",
-      "resource_uri": "/MAAS/api/2.0/pods/4/"
-    },
     "cpu_test_status_name": "Passed",
     "storage_test_status_name": "Passed",
     "domain": {
@@ -9127,11 +9055,6 @@
     ],
     "owner": "admin",
     "disable_ipv4": false,
-    "pod": {
-      "id": 4,
-      "name": "crisp-lab",
-      "resource_uri": "/MAAS/api/2.0/pods/4/"
-    },
     "cpu_test_status_name": "Passed",
     "bcaches": [],
     "cpu_count": 6,
@@ -9391,7 +9314,6 @@
       "is_default": true,
       "resource_uri": "/MAAS/api/2.0/domains/0/"
     },
-    "pod": null,
     "testing_status": 0,
     "status_action": "",
     "min_hwe_kernel": "",
@@ -10430,11 +10352,6 @@
     "raids": [],
     "node_type_name": "Machine",
     "power_type": "virsh",
-    "pod": {
-      "id": 5,
-      "name": "well-hen",
-      "resource_uri": "/MAAS/api/2.0/pods/5/"
-    },
     "testing_status_name": "Passed",
     "domain": {
       "authoritative": true,

@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maascommon.enums.dns import DnsUpdateAction
@@ -54,16 +54,6 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
         Move all the Nodes from 'old_zone_id' to 'new_zone_id'.
         """
         return await self.repository.move_to_zone(old_zone_id, new_zone_id)
-
-    async def move_bmcs_to_zone(
-        self, old_zone_id: int, new_zone_id: int
-    ) -> None:
-        """
-        Move all the BMC from 'old_zone_id' to 'new_zone_id'.
-        """
-        return await self.repository.move_bmcs_to_zone(
-            old_zone_id, new_zone_id
-        )
 
     async def get_bmc(self, system_id: str) -> Bmc | None:
         bmc = await self.repository.get_node_bmc(system_id)

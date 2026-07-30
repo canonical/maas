@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
@@ -14,7 +14,7 @@ from maasservicelayer.db.repositories.nodes import (
     NodeClauseFactory,
     NodesRepository,
 )
-from maasservicelayer.db.tables import BMCTable, NodeTable, ZoneTable
+from maasservicelayer.db.tables import NodeTable, ZoneTable
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.zones import Zone
@@ -93,40 +93,6 @@ class TestNodesRepository:
         )
         assert updated_node_a["zone_id"] == default_zone.id
         assert updated_node_b["zone_id"] == default_zone.id
-
-    async def test_move_bmcs_to_zone(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        [default_zone] = await fixture.get_typed(
-            ZoneTable.name, Zone, eq(ZoneTable.c.name, DEFAULT_ZONE_NAME)
-        )
-
-        zone_a = await create_test_zone(fixture, name="A")
-        zone_b = await create_test_zone(fixture, name="B")
-
-        bmc_a = await create_test_bmc(
-            fixture, zone_id=zone_a.id, power_parameters={"a": "a"}
-        )
-        bmc_b = await create_test_bmc(
-            fixture, zone_id=zone_b.id, power_parameters={"b": "b"}
-        )
-        nodes_repository = NodesRepository(Context(connection=db_connection))
-        await nodes_repository.move_bmcs_to_zone(zone_b.id, zone_a.id)
-
-        [updated_bmc_b] = await fixture.get(
-            BMCTable.name, eq(BMCTable.c.id, bmc_b.id)
-        )
-        assert updated_bmc_b["zone_id"] == zone_a.id
-
-        await nodes_repository.move_bmcs_to_zone(zone_a.id, default_zone.id)
-        [updated_bmc_a] = await fixture.get(
-            BMCTable.name, eq(BMCTable.c.id, bmc_a.id)
-        )
-        [updated_bmc_b] = await fixture.get(
-            BMCTable.name, eq(BMCTable.c.id, bmc_b.id)
-        )
-        assert updated_bmc_a["zone_id"] == default_zone.id
-        assert updated_bmc_b["zone_id"] == default_zone.id
 
     async def test_get_node_bmc(
         self, db_connection: AsyncConnection, fixture: Fixture

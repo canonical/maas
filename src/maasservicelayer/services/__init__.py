@@ -125,7 +125,6 @@ from maasservicelayer.db.repositories.usergroups_members import (
 )
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
-from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
 from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
@@ -225,7 +224,6 @@ from maasservicelayer.services.ui_subnets import UISubnetsService
 from maasservicelayer.services.usergroups import UserGroupsService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.services.vlans import VlansService
-from maasservicelayer.services.vmcluster import VmClustersService
 from maasservicelayer.services.zones import ZonesService
 
 
@@ -328,7 +326,6 @@ class ServiceCollectionV3:
     v3dnsrrsets: V3DNSResourceRecordSetsService
     v3subnet_utilization: V3SubnetUtilizationService
     vlans: VlansService
-    vmclusters: VmClustersService
     ui_subnets: UISubnetsService
     zones: ZonesService
 
@@ -498,13 +495,9 @@ class ServiceCollectionV3:
             notifications_service=services.notifications,
             msm_service=services.msm,
         )
-        services.vmclusters = VmClustersService(
-            context=context, vmcluster_repository=VmClustersRepository(context)
-        )
         services.zones = ZonesService(
             context=context,
             nodes_service=services.nodes,
-            vmcluster_service=services.vmclusters,
             zones_repository=ZonesRepository(context),
             cache=cache.get(
                 ZonesService.__name__, ZonesService.build_cache_object

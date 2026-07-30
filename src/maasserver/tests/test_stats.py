@@ -1,11 +1,10 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
 import base64
 import json
 from pathlib import Path
-from random import randrange
 
 from django.db import transaction
 import requests as requests_module
@@ -42,7 +41,6 @@ from maasserver.stats import (
     get_custom_images_deployed_stats,
     get_custom_images_uploaded_stats,
     get_dhcp_snippets_stats,
-    get_lxd_initial_auth_stats,
     get_maas_stats,
     get_machine_stats,
     get_machines_by_architecture,
@@ -51,8 +49,6 @@ from maasserver.stats import (
     get_tags_stats,
     get_tls_configuration_stats,
     get_vault_stats,
-    get_vm_hosts_stats,
-    get_vmcluster_stats,
     get_workload_annotations_stats,
     make_maas_user_agent_request,
 )
@@ -69,7 +65,6 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
-from provisioningserver.drivers.pod import DiscoveredPod
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
@@ -80,33 +75,6 @@ TIMEOUT = get_testing_timeout()
 
 
 class TestMAASStats(MAASServerTestCase):
-    def make_pod(
-        self,
-        cpu=0,
-        mem=0,
-        cpu_over_commit=1,
-        mem_over_commit=1,
-        pod_type="virsh",
-    ):
-        # Make one pod
-        zone = factory.make_Zone()
-        pool = factory.make_ResourcePool()
-        ip = factory.make_ipv4_address()
-        power_parameters = {
-            "power_address": "qemu+ssh://%s/system" % ip,
-            "power_pass": "pass",
-        }
-        return factory.make_Pod(
-            pod_type=pod_type,
-            zone=zone,
-            pool=pool,
-            cores=cpu,
-            memory=mem,
-            cpu_over_commit_ratio=cpu_over_commit,
-            memory_over_commit_ratio=mem_over_commit,
-            parameters=power_parameters,
-        )
-
     def test_get_machines_by_architecture(self):
         arches = [
             "amd64/generic",
@@ -120,188 +88,6 @@ class TestMAASStats(MAASServerTestCase):
         stats = get_machines_by_architecture()
         compare = {"amd64": 1, "i386": 1, "arm64": 1, "ppc64el": 1, "s390x": 1}
         self.assertEqual(stats, compare)
-
-    def test_get_vm_hosts_stats(self):
-        pod1 = self.make_pod(
-            cpu=10, mem=100, cpu_over_commit=2, mem_over_commit=3
-        )
-        pod2 = self.make_pod(
-            cpu=20, mem=200, cpu_over_commit=3, mem_over_commit=2
-        )
-
-        total_cores = pod1.cores + pod2.cores
-        total_memory = pod1.memory + pod2.memory
-        over_cores = (
-            pod1.cores * pod1.cpu_over_commit_ratio
-            + pod2.cores * pod2.cpu_over_commit_ratio
-        )
-        over_memory = (
-            pod1.memory * pod1.memory_over_commit_ratio
-            + pod2.memory * pod2.memory_over_commit_ratio
-        )
-
-        stats = get_vm_hosts_stats()
-        compare = {
-            "vm_hosts": 2,
-            "vms": 0,
-            "available_resources": {
-                "cores": total_cores,
-                "memory": total_memory,
-                "over_cores": over_cores,
-                "over_memory": over_memory,
-                "storage": 0,
-            },
-            "utilized_resources": {"cores": 0, "memory": 0, "storage": 0},
-        }
-        self.assertEqual(compare, stats)
-
-    def test_get_vm_hosts_stats_filtered(self):
-        self.make_pod(cpu=10, mem=100, pod_type="lxd")
-        self.make_pod(cpu=20, mem=200, pod_type="virsh")
-
-        stats = get_vm_hosts_stats(power_type="lxd")
-        compare = {
-            "vm_hosts": 1,
-            "vms": 0,
-            "available_resources": {
-                "cores": 10,
-                "memory": 100,
-                "over_cores": 10.0,
-                "over_memory": 100.0,
-                "storage": 0,
-            },
-            "utilized_resources": {"cores": 0, "memory": 0, "storage": 0},
-        }
-        self.assertEqual(compare, stats)
-
-    def test_get_vm_hosts_stats_machine_usage(self):
-        lxd_vm_host = self.make_pod(cpu=10, mem=100, pod_type="lxd")
-        lxd_machine = factory.make_Machine(
-            bmc=lxd_vm_host, cpu_count=1, memory=10
-        )
-        factory.make_VirtualMachine(bmc=lxd_vm_host, machine=lxd_machine)
-        virsh_vm_host = self.make_pod(cpu=20, mem=200, pod_type="virsh")
-        virsh_machine = factory.make_Machine(
-            bmc=virsh_vm_host, cpu_count=2, memory=20
-        )
-        factory.make_VirtualMachine(bmc=virsh_vm_host, machine=virsh_machine)
-
-        stats = get_vm_hosts_stats(power_type="lxd")
-        compare = {
-            "vm_hosts": 1,
-            "vms": 1,
-            "available_resources": {
-                "cores": 10,
-                "memory": 100,
-                "over_cores": 10.0,
-                "over_memory": 100.0,
-                "storage": 0,
-            },
-            "utilized_resources": {"cores": 1, "memory": 10, "storage": 0},
-        }
-        self.assertEqual(compare, stats)
-
-    def test_get_vm_hosts_stats_no_pod(self):
-        self.assertEqual(
-            get_vm_hosts_stats(),
-            {
-                "vm_hosts": 0,
-                "vms": 0,
-                "available_resources": {
-                    "cores": 0,
-                    "memory": 0,
-                    "storage": 0,
-                    "over_cores": 0,
-                    "over_memory": 0,
-                },
-                "utilized_resources": {
-                    "cores": 0,
-                    "memory": 0,
-                    "storage": 0,
-                },
-            },
-        )
-
-    def test_get_lxd_initial_auth_stats_empty(self):
-        self.assertEqual(
-            get_lxd_initial_auth_stats(),
-            {
-                "trust_password": 0,
-                "no_trust_password": 0,
-                "maas_generated_cert": 0,
-                "user_provided_cert": 0,
-                "cert_expiration_days": {
-                    "10_days": 0,
-                    "1_month": 0,
-                    "3_months": 0,
-                    "1_year": 0,
-                    "2_years": 0,
-                    "3_years": 0,
-                    "10_years": 0,
-                    "more_than_10_years": 0,
-                },
-            },
-        )
-
-    def test_get_lxd_initial_auth_stats_trust_password(self):
-        factory.make_Pod(pod_type="virsh", created_with_trust_password=True)
-        factory.make_Pod(pod_type="lxd", created_with_trust_password=None)
-        for _ in range(3):
-            factory.make_Pod(pod_type="lxd", created_with_trust_password=False)
-        for _ in range(5):
-            factory.make_Pod(pod_type="lxd", created_with_trust_password=True)
-        stats = get_lxd_initial_auth_stats()
-        self.assertEqual(5, stats["trust_password"])
-        self.assertEqual(3, stats["no_trust_password"])
-
-    def test_get_lxd_initial_auth_stats_maas_generated_cert(self):
-        factory.make_Pod(
-            pod_type="virsh", created_with_maas_generated_cert=True
-        )
-        factory.make_Pod(pod_type="lxd", created_with_maas_generated_cert=None)
-        for _ in range(3):
-            factory.make_Pod(
-                pod_type="lxd", created_with_maas_generated_cert=False
-            )
-        for _ in range(5):
-            factory.make_Pod(
-                pod_type="lxd", created_with_maas_generated_cert=True
-            )
-        stats = get_lxd_initial_auth_stats()
-        self.assertEqual(5, stats["maas_generated_cert"])
-        self.assertEqual(3, stats["user_provided_cert"])
-
-    def test_get_lxd_initial_auth_stats_cert_expiration(self):
-        factory.make_Pod(pod_type="virsh", created_with_cert_expiration_days=1)
-        factory.make_Pod(
-            pod_type="lxd", created_with_cert_expiration_days=None
-        )
-        expected = {
-            "10 days": (3, (0, 10)),
-            "1 month": (5, (10, 31)),
-            "3 months": (7, (31, 92)),
-            "1 year": (9, (92, 366)),
-            "2 years": (11, (366, 731)),
-            "3 years": (13, (731, 1096)),
-            "10 years": (17, (1096, 3653)),
-            "more than 10 years": (31, (3653, 100000)),
-        }
-        for count, days_range in expected.values():
-            for _ in range(count):
-                factory.make_Pod(
-                    pod_type="lxd",
-                    created_with_cert_expiration_days=randrange(*days_range),
-                )
-        stats = get_lxd_initial_auth_stats()
-        expirations = stats["cert_expiration_days"]
-        self.assertEqual(3, expirations["10_days"])
-        self.assertEqual(5, expirations["1_month"])
-        self.assertEqual(7, expirations["3_months"])
-        self.assertEqual(9, expirations["1_year"])
-        self.assertEqual(11, expirations["2_years"])
-        self.assertEqual(13, expirations["3_years"])
-        self.assertEqual(17, expirations["10_years"])
-        self.assertEqual(31, expirations["more_than_10_years"])
 
     def test_get_maas_stats(self):
         # Make one component of everything
@@ -321,9 +107,6 @@ class TestMAASStats(MAASServerTestCase):
         OwnerData.objects.set_owner_data(deployed_machine, {"foo": "bar"})
         factory.make_Device()
         factory.make_Device()
-        self.make_pod(cpu=10, mem=100, pod_type="lxd")
-        self.make_pod(cpu=20, mem=200, pod_type="virsh")
-
         arch = make_usable_architecture(self)
         osname = factory.make_name()
         factory.make_Machine(
@@ -376,56 +159,6 @@ class TestMAASStats(MAASServerTestCase):
                 "subnets_v4": len(v4),
                 "subnets_v6": len(v6),
             },
-            "vm_hosts": {
-                "lxd": {
-                    "vm_hosts": 1,
-                    "vms": 0,
-                    "available_resources": {
-                        "cores": 10,
-                        "memory": 100,
-                        "over_cores": 10.0,
-                        "over_memory": 100.0,
-                        "storage": 0,
-                    },
-                    "utilized_resources": {
-                        "cores": 0,
-                        "memory": 0,
-                        "storage": 0,
-                    },
-                    "initial_auth": {
-                        "trust_password": 0,
-                        "no_trust_password": 0,
-                        "maas_generated_cert": 0,
-                        "user_provided_cert": 0,
-                        "cert_expiration_days": {
-                            "10_days": 0,
-                            "1_month": 0,
-                            "3_months": 0,
-                            "1_year": 0,
-                            "2_years": 0,
-                            "3_years": 0,
-                            "10_years": 0,
-                            "more_than_10_years": 0,
-                        },
-                    },
-                },
-                "virsh": {
-                    "vm_hosts": 1,
-                    "vms": 0,
-                    "available_resources": {
-                        "cores": 20,
-                        "memory": 200,
-                        "over_cores": 20.0,
-                        "over_memory": 200.0,
-                        "storage": 0,
-                    },
-                    "utilized_resources": {
-                        "cores": 0,
-                        "memory": 0,
-                        "storage": 0,
-                    },
-                },
-            },
             "workload_annotations": {
                 "annotated_machines": 1,
                 "total_annotations": 1,
@@ -444,25 +177,6 @@ class TestMAASStats(MAASServerTestCase):
                     f"{resource.base_image}__{BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW}": 1
                 },
             },
-            "vmcluster": {
-                "available_resources": {
-                    "cores": 0,
-                    "memory": 0,
-                    "over_cores": 0,
-                    "over_memory": 0,
-                    "storage_local": 0,
-                    "storage_shared": 0,
-                },
-                "projects": 0,
-                "utilized_resources": {
-                    "cores": 0,
-                    "memory": 0,
-                    "storage_local": 0,
-                    "storage_shared": 0,
-                },
-                "vm_hosts": 0,
-                "vms": 0,
-            },
             "storage_layouts": {},
             "tls_configuration": {
                 "tls_cert_validity_days": None,
@@ -470,7 +184,7 @@ class TestMAASStats(MAASServerTestCase):
             },
             "bmcs": {
                 "auto_detected": {},
-                "user_created": {"lxd": 1, "virsh": 2},
+                "user_created": {"virsh": 1},
                 "unknown": {},
             },
             "vault": {
@@ -575,56 +289,6 @@ class TestMAASStats(MAASServerTestCase):
                 "subnets_v4": 0,
                 "subnets_v6": 0,
             },
-            "vm_hosts": {
-                "lxd": {
-                    "vm_hosts": 0,
-                    "vms": 0,
-                    "available_resources": {
-                        "cores": 0,
-                        "memory": 0,
-                        "over_cores": 0.0,
-                        "over_memory": 0.0,
-                        "storage": 0,
-                    },
-                    "utilized_resources": {
-                        "cores": 0,
-                        "memory": 0,
-                        "storage": 0,
-                    },
-                    "initial_auth": {
-                        "trust_password": 0,
-                        "no_trust_password": 0,
-                        "maas_generated_cert": 0,
-                        "user_provided_cert": 0,
-                        "cert_expiration_days": {
-                            "10_days": 0,
-                            "1_month": 0,
-                            "3_months": 0,
-                            "1_year": 0,
-                            "2_years": 0,
-                            "3_years": 0,
-                            "10_years": 0,
-                            "more_than_10_years": 0,
-                        },
-                    },
-                },
-                "virsh": {
-                    "vm_hosts": 0,
-                    "vms": 0,
-                    "available_resources": {
-                        "cores": 0,
-                        "memory": 0,
-                        "over_cores": 0.0,
-                        "over_memory": 0.0,
-                        "storage": 0,
-                    },
-                    "utilized_resources": {
-                        "cores": 0,
-                        "memory": 0,
-                        "storage": 0,
-                    },
-                },
-            },
             "workload_annotations": {
                 "annotated_machines": 0,
                 "total_annotations": 0,
@@ -640,25 +304,6 @@ class TestMAASStats(MAASServerTestCase):
             "custom_images": {
                 "deployed": 0,
                 "uploaded": {},
-            },
-            "vmcluster": {
-                "available_resources": {
-                    "cores": 0,
-                    "memory": 0,
-                    "over_cores": 0,
-                    "over_memory": 0,
-                    "storage_local": 0,
-                    "storage_shared": 0,
-                },
-                "projects": 0,
-                "utilized_resources": {
-                    "cores": 0,
-                    "memory": 0,
-                    "storage_local": 0,
-                    "storage_shared": 0,
-                },
-                "vm_hosts": 0,
-                "vms": 0,
             },
             "storage_layouts": {},
             "tls_configuration": {
@@ -742,65 +387,6 @@ class TestMAASStats(MAASServerTestCase):
             machine.distro_series = factory.make_name("name")
             machine.save()
         self.assertEqual(get_custom_images_deployed_stats(), 2)
-
-    def test_vmcluster_stats(self):
-        GiB = 2**30
-        GB = 10**9
-
-        # create clusters
-        factory.make_VMCluster(
-            pods=1,
-            vms=2,
-            memory=4096,
-            cores=8,
-            vm_memory=512,
-            storage=100 * GB,
-            disk_size=10 * GB,
-        )
-        factory.make_VMCluster(
-            pods=2,
-            vms=2,
-            memory=4096,
-            cores=8,
-            vm_memory=512,
-            storage=100 * GB,
-            disk_size=10 * GB,
-        )
-        # create VMHost and VM not part of a cluster
-        pod = factory.make_Pod()
-        factory.make_VirtualMachine(bmc=pod)
-
-        # only cluster elements should be counted
-        cluster_stats = get_vmcluster_stats()
-        self.assertEqual(cluster_stats["projects"], 2)
-        self.assertEqual(cluster_stats["vm_hosts"], 3)
-        self.assertEqual(cluster_stats["vms"], 6)
-        self.assertEqual(cluster_stats["available_resources"]["cores"], 24)
-        self.assertEqual(
-            cluster_stats["available_resources"]["memory"], 12 * GiB
-        )
-        self.assertEqual(
-            cluster_stats["available_resources"]["over_cores"], 24
-        )
-        self.assertEqual(
-            cluster_stats["available_resources"]["over_memory"], 12 * GiB
-        )
-        self.assertEqual(
-            cluster_stats["available_resources"]["storage_local"], 300 * GB
-        )
-        self.assertEqual(
-            cluster_stats["available_resources"]["storage_shared"], 0
-        )
-        self.assertEqual(cluster_stats["utilized_resources"]["cores"], 12)
-        self.assertEqual(
-            cluster_stats["utilized_resources"]["memory"], 3 * GiB
-        )
-        self.assertEqual(
-            cluster_stats["utilized_resources"]["storage_local"], 60 * GB
-        )
-        self.assertEqual(
-            cluster_stats["utilized_resources"]["storage_shared"], 0
-        )
 
     def test_get_storage_layouts_stats(self):
         counts = {
@@ -942,18 +528,6 @@ class TestGetBrownfieldStats(MAASServerTestCase):
         machine.save()
         return machine
 
-    def _make_pod_machine(self):
-        factory.make_usable_boot_resource(architecture="amd64/generic")
-        pod = factory.make_Pod()
-        mac_addresses = [factory.make_mac_address() for _ in range(3)]
-        sync_user = factory.make_User()
-        return pod.sync(
-            DiscoveredPod(
-                architectures=["amd64/generic"], mac_addresses=mac_addresses
-            ),
-            sync_user,
-        )
-
     def _update_commissioning(self, machine):
         commissioning_result = ScriptResult.objects.get(
             script_set=machine.current_commissioning_script_set,
@@ -974,11 +548,6 @@ class TestGetBrownfieldStats(MAASServerTestCase):
                 machine.save()
         normal = self._make_normal_deployed_machine()
         factory.make_Machine(status=NODE_STATUS.READY)
-        # If pods and controllers are registered in MAAS, that don't
-        # have a corresponding machine already, MAAS will basically
-        # create them as brownfield nodes. We don't want those included
-        # in the stats.
-        pod = self._make_pod_machine()
         controller = factory.make_Controller()
         brownfield_machines = Machine.objects.filter(
             current_installation_script_set__isnull=True,
@@ -986,7 +555,6 @@ class TestGetBrownfieldStats(MAASServerTestCase):
         ).all()
         self.assertNotIn(normal, brownfield_machines)
         self.assertNotIn(controller, brownfield_machines)
-        self.assertNotIn(pod, brownfield_machines)
         stats = get_brownfield_stats()
         self.assertEqual(1, stats["machines_added_deployed_with_bmc"])
         self.assertEqual(2, stats["machines_added_deployed_without_bmc"])
@@ -998,11 +566,6 @@ class TestGetBrownfieldStats(MAASServerTestCase):
         for _ in range(2):
             self._update_commissioning(self._make_normal_deployed_machine())
         self._make_normal_deployed_machine()
-        # If pods and controllers are registered in MAAS, that don't
-        # have a corresponding machine already, MAAS will basically
-        # create them as brownfield nodes. We don't want those included
-        # in the stats.
-        self._make_pod_machine()
         factory.make_Controller()
         stats = get_brownfield_stats()
         self.assertEqual(1, stats["commissioned_after_deploy_brownfield"])

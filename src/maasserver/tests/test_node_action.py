@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import json
@@ -708,8 +708,6 @@ class TestDeployAction(MAASServerTestCase):
         mock_node_start.assert_called_once_with(
             user,
             user_data=None,
-            install_kvm=False,
-            register_vmhost=False,
             enable_hw_sync=False,
         )
         audit_event = Event.objects.get(type__level=AUDIT)
@@ -740,8 +738,6 @@ class TestDeployAction(MAASServerTestCase):
         mock_node_start.assert_called_once_with(
             user,
             user_data=expected,
-            install_kvm=False,
-            register_vmhost=False,
             enable_hw_sync=False,
         )
 
@@ -789,46 +785,6 @@ class TestDeployAction(MAASServerTestCase):
         self.assertEqual(
             f"{os_name} is not a supported operating system.",
             str(error),
-        )
-
-    def test_Deploy_raises_NodeActionError_invalid_ephemeral_conditions(self):
-        admin = factory.make_admin()
-        request = factory.make_fake_request("/")
-        request.user = admin
-        node = factory.make_Node(
-            interface=True,
-            status=NODE_STATUS.ALLOCATED,
-            power_type="manual",
-            owner=admin,
-        )
-        osystem, releases = make_usable_osystem(self)
-        os_name = osystem
-        release_name = releases[0]
-
-        extra = {
-            "osystem": os_name,
-            "distro_series": release_name,
-            "install_kvm": True,
-            "ephemeral_deploy": True,
-        }
-        with pytest.raises(NodeActionError) as exception:
-            Deploy(node, admin, request).execute(**extra)
-        assert (
-            str(exception.value)
-            == "A machine can not be a VM host if it is deployed to memory."
-        )
-
-        extra = {
-            "osystem": os_name,
-            "distro_series": release_name,
-            "register_vmhost": True,
-            "ephemeral_deploy": True,
-        }
-        with pytest.raises(NodeActionError) as exception:
-            Deploy(node, admin, request).execute(**extra)
-        assert (
-            str(exception.value)
-            == "A machine can not be a VM host if it is deployed to memory."
         )
 
     def test_Deploy_sets_osystem_and_series_and_ephemeral_deploy(self):
@@ -911,103 +867,6 @@ class TestDeployAction(MAASServerTestCase):
         assert node.osystem == os_name
         assert node.distro_series == release_name
         assert node.ephemeral_deploy is False
-
-    def test_Deploy_passes_install_kvm_if_specified(self):
-        user = factory.make_admin()
-        request = factory.make_fake_request("/")
-        request.user = user
-        node = factory.make_Node(
-            interface=True,
-            status=NODE_STATUS.ALLOCATED,
-            power_type="manual",
-            owner=user,
-        )
-        self.patch(node_action_module, "get_curtin_config")
-        mock_node_start = self.patch(node, "start")
-        osystem, releases = make_usable_osystem(self)
-        os_name = osystem
-        release_name = releases[0]
-        extra = {
-            "osystem": os_name,
-            "distro_series": release_name,
-            "install_kvm": True,
-        }
-        Deploy(node, user, request).execute(**extra)
-        self.assertEqual(node.osystem, os_name)
-        self.assertEqual(node.distro_series, release_name)
-        mock_node_start.assert_called_once_with(
-            user,
-            user_data=None,
-            install_kvm=True,
-            register_vmhost=False,
-            enable_hw_sync=False,
-        )
-
-    def test_Deploy_raises_NodeActionError_on_install_kvm_if_os_missing(self):
-        user = factory.make_admin()
-        request = factory.make_fake_request("/")
-        request.user = user
-        node = factory.make_Node(
-            interface=True,
-            status=NODE_STATUS.ALLOCATED,
-            power_type="manual",
-            owner=user,
-        )
-        self.patch(node, "start")
-        extra = {"install_kvm": True}
-        self.assertRaises(
-            NodeActionError, Deploy(node, user, request).execute, **extra
-        )
-
-    def test_Deploy_raises_NodeActionError_if_non_admin_install_kvm(self):
-        user = factory.make_User()
-        request = factory.make_fake_request("/")
-        request.user = user
-        node = factory.make_Node(
-            interface=True,
-            status=NODE_STATUS.ALLOCATED,
-            power_type="manual",
-            owner=user,
-        )
-        self.patch(node, "start")
-        extra = {"install_kvm": True}
-        self.assertRaises(
-            NodeActionError, Deploy(node, user, request).execute, **extra
-        )
-
-    def test_Deploy_raises_NodeActionError_on_register_vmhost_if_os_missing(
-        self,
-    ):
-        user = factory.make_admin()
-        request = factory.make_fake_request("/")
-        request.user = user
-        node = factory.make_Node(
-            interface=True,
-            status=NODE_STATUS.ALLOCATED,
-            power_type="manual",
-            owner=user,
-        )
-        self.patch(node, "start")
-        extra = {"register_vmhost": True}
-        self.assertRaises(
-            NodeActionError, Deploy(node, user, request).execute, **extra
-        )
-
-    def test_Deploy_raises_NodeActionError_if_non_admin_register_vmhost(self):
-        user = factory.make_User()
-        request = factory.make_fake_request("/")
-        request.user = user
-        node = factory.make_Node(
-            interface=True,
-            status=NODE_STATUS.ALLOCATED,
-            power_type="manual",
-            owner=user,
-        )
-        self.patch(node, "start")
-        extra = {"register_vmhost": True}
-        self.assertRaises(
-            NodeActionError, Deploy(node, user, request).execute, **extra
-        )
 
     def test_Deploy_sets_osystem_and_series_strips_license_key_token(self):
         user = factory.make_User()

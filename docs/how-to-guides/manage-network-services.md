@@ -19,7 +19,7 @@ Generally, only use this when MAAS is the only DHCP provider for the VLAN.  You 
 maas $PROFILE vlan update $FABRIC_ID $VLAN_ID dhcp_on=True primary_rack=$PRIMARY_RACK
 ```
 
-Enabling MAAS DHCP on a VLAN already served by another DHCP server (like your router or a VM host) can lead to conflicts and failed deployments.
+Enabling MAAS DHCP on a VLAN already served by another DHCP server (like your router or a hypervisor) can lead to conflicts and failed deployments.
 
 ### An example
 
