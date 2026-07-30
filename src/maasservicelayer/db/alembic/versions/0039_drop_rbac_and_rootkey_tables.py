@@ -5,9 +5,9 @@ the ``maasserver_rbacsync``, ``maasserver_rbaclastsync`` and
 ``maasserver_rootkey`` tables together with the RBAC sync triggers and
 procedures.
 
-Revision ID: 0035
-Revises: 0034
-Create Date: 2026-07-28 09:57:54.000000+00:00
+Revision ID: 0039
+Revises: 0038
+Create Date: 2026-07-30 09:57:54.000000+00:00
 
 """
 
@@ -16,8 +16,8 @@ from typing import Sequence
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0035"
-down_revision: str | None = "0034"
+revision: str = "0039"
+down_revision: str | None = "0038"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

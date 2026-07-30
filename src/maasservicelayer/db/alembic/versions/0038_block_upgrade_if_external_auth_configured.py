@@ -20,9 +20,9 @@ The ``maasserver_vaultsecret`` reference table is intentionally NOT used: it is
 only maintained by the legacy code path and is not populated when secrets are
 managed through the v3 stack, so it cannot be relied upon.
 
-Revision ID: 0034
-Revises: 0033
-Create Date: 2026-07-28 09:50:00.000000+00:00
+Revision ID: 0038
+Revises: 0037
+Create Date: 2026-07-30 09:50:00.000000+00:00
 
 """
 
@@ -32,8 +32,8 @@ from alembic import op
 from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
-revision: str = "0034"
-down_revision: str | None = "0033"
+revision: str = "0038"
+down_revision: str | None = "0037"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
