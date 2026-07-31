@@ -116,8 +116,6 @@ class TestRegionControllerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    @wait_for_reactor
-    @inlineCallbacks
     def test_process_stops_processing(self):
         service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsDNSUpdate = False
@@ -140,8 +138,6 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_proxy_update_config.assert_called_once_with(reload_proxy=True)
         mock_msg.assert_called_once_with("Successfully configured proxy.")
 
-    @wait_for_reactor
-    @inlineCallbacks
     @wait_for_reactor
     @inlineCallbacks
     def test_process_updates_proxy_logs_failure(self):

@@ -27,11 +27,6 @@ def get_user_uri(user):
 
 
 class TestUsers(APITestCase.ForUser):
-    def setUp(self):
-        self.mock_validate = self.patch()
-        self.mock_validate.return_value = True
-        super().setUp()
-
     def test_handler_path(self):
         self.assertEqual("/MAAS/api/2.0/users/", reverse("users_handler"))
 

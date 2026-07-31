@@ -777,7 +777,7 @@ class TestMachineHandler(MAASServerTestCase):
         queries, _ = count_queries(handler.get, {"system_id": node.system_id})
         self.assertEqual(
             queries,
-            60,
+            59,
             "Number of queries has changed; make sure this is expected.",
         )
 
