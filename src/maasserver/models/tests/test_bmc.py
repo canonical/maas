@@ -11,10 +11,6 @@ from maasserver.models.bmc import BMC, BMCRoutableRackControllerRelationship
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.crochet import wait_for

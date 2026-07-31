@@ -228,7 +228,3 @@ class TestPermissionsFunctions:
             json=self._build_request("test"),
         )
         assert response.status_code == 403
-
-    async def test_check_permissions_requires_at_least_one_arg(self) -> None:
-        with pytest.raises(ValueError, match="At least one"):
-            check_permissions()

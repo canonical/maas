@@ -53,6 +53,7 @@ from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
 from maasservicelayer.services import CacheForServices
 from maasservicelayer.services.auth import AuthService
+from maasservicelayer.services.external_auth import ExternalOAuthService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.user import create_test_user
@@ -461,7 +462,7 @@ class TestLocalAuthenticationProvider:
 class TestOIDCAuthenticationProvider:
     def mock_request(self) -> Mock:
         request = Mock(Request)
-        request.state.services.external_oauth = Mock()
+        request.state.services.external_oauth = Mock(ExternalOAuthService)
         request.state.cookie_manager = Mock(EncryptedCookieManager)
         request.state.cookie_manager.get_cookie = Mock()
         request.state.cookie_manager.get_cookie.side_effect = [
