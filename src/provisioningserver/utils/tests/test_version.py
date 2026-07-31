@@ -206,8 +206,6 @@ class TestGetRunningVersion(TestVersionTestCase):
 
     def test_falls_back_to_distribution_version_when_not_in_snap(self):
         self.patch(snap, "get_snap_version").return_value = None
-        # DISTRIBUTION.version is a read-only property, so patch the whole
-        # module attribute instead.
         distribution = self.patch(version, "DISTRIBUTION")
         distribution.version = "3.6.0-1-g.deadbeef"
         maas_version = get_running_version()
