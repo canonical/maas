@@ -128,8 +128,7 @@ class TestSystemdIntervalToCalendar(MAASTestCase):
         )
 
     def test_minutes_overflow_is_converted_to_hours(self):
-        # Regression test for LP:2077276 - intervals above 59 minutes must
-        # not generate invalid systemd calendar specifications.
+        # LP:2077276 - intervals above 59 minutes must not generate invalid systemd calendar specifications.
         self.assertEqual(
             "*-*-* 00/2:00:00", systemd_interval_to_calendar("120m")
         )
