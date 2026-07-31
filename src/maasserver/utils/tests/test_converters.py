@@ -127,6 +127,41 @@ class TestSystemdIntervalToCalendar(MAASTestCase):
             "*-*-* *:00/30:00/5", systemd_interval_to_calendar(interval)
         )
 
+    def test_minutes_overflow_is_converted_to_hours(self):
+        # Regression test for LP:2077276 - intervals above 59 minutes must
+        # not generate invalid systemd calendar specifications.
+        self.assertEqual(
+            "*-*-* 00/2:00:00", systemd_interval_to_calendar("120m")
+        )
+        self.assertEqual(
+            "*-*-* *:00:00", systemd_interval_to_calendar("60m")
+        )
+        self.assertEqual(
+            "*-*-* *:00/10:00", systemd_interval_to_calendar("70m")
+        )
+
+    def test_hours_overflow_is_converted_to_days(self):
+        # 6000 minutes = 100 hours = 4 days + 4 hours.
+        self.assertEqual(
+            "*-*-01/4 00/4:00:00", systemd_interval_to_calendar("6000m")
+        )
+        self.assertEqual(
+            "*-*-01/2 00:00:00", systemd_interval_to_calendar("48h")
+        )
+        self.assertEqual(
+            "*-*-* 00:00:00", systemd_interval_to_calendar("24h")
+        )
+
+    def test_too_large_interval_raises_error(self):
+        self.assertRaises(
+            ValueError, systemd_interval_to_calendar, "768h"  # 32 days
+        )
+
+    def test_seconds_overflow_is_converted_to_minutes(self):
+        self.assertEqual(
+            "*-*-* *:00/1:00/30", systemd_interval_to_calendar("90s")
+        )
+
     def test_every_15_seconds(self):
         interval = "15s"
         self.assertEqual(

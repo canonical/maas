@@ -131,10 +131,24 @@ def systemd_interval_to_calendar(interval):
     if not duration.group():
         raise ValueError("value is not a valid interval")
     duration = duration.groupdict()
-    hours = duration.get("hours")
-    minutes = duration.get("minutes")
-    seconds = duration.get("seconds")
-    hour_interval = f"00/{hours}" if hours and hours != "1" else "*"
+    hours = int(duration.get("hours") or 0)
+    minutes = int(duration.get("minutes") or 0)
+    seconds = int(duration.get("seconds") or 0)
+
+    # Normalise overflowing values, otherwise the generated calendar
+    # specification is invalid (systemd minutes/seconds only go up to 59,
+    # hours up to 23). For example, "120 minutes" must become "00/2"
+    # hours. See LP:2077276.
+    minutes, seconds = divmod(minutes * 60 + seconds, 60)
+    hours, minutes = divmod(hours * 60 + minutes, 60)
+    days, hours = divmod(hours, 24)
+    if days > 31:
+        raise ValueError("interval is too large to be expressed as a calendar event")
+
+    day_interval = f"01/{days}" if days and days != 1 else "*"
+    hour_interval = (
+        f"00/{hours}" if hours and hours != 1 else "00" if days else "*"
+    )
     second_interval = f"00/{seconds}" if seconds else "00"
     minute_interval = (
         f"00/{minutes}"
@@ -144,4 +158,4 @@ def systemd_interval_to_calendar(interval):
         else "*"
     )
 
-    return f"*-*-* {hour_interval}:{minute_interval}:{second_interval}"
+    return f"*-*-{day_interval} {hour_interval}:{minute_interval}:{second_interval}"
