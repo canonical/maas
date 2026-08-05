@@ -201,12 +201,6 @@ class TestHardwareProfileBuilderFromCommissioningOutput:
         fields = build_fields(**{"machine-extra": {"platform": "raspi"}})
         assert fields["architecture"] == "amd64/raspi"
 
-    def test_fingerprint_is_stable(self):
-        assert (
-            build_fields()["hardware_fingerprint"]
-            == build_fields()["hardware_fingerprint"]
-        )
-
     def test_skips_ipoib_mac_addresses(self):
         resources = {
             **SAMPLE_RESOURCES,

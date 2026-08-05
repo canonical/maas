@@ -5,20 +5,12 @@
 
 These models mirror the JSON produced by the `machine-resources` binary
 (`src/host-info/cmd/machine-resources`), which is emitted by the
-`50-maas-01-commissioning` script. The structures come from the vendored
-LXD API code (`shared/api/resource.go` and `shared/api/network.go`) plus
-a small MAAS-specific host info envelope defined in `src/host-info/pkg/info/info.go`.
-
-Fields are intentionally lenient (optional with sensible defaults) so that
-output from older LXD versions, which may omit fields controlled by API
-extensions, can still be parsed. Field names match the JSON keys emitted by
-LXD; aliases are only used where the JSON key is not a valid Python
-identifier (e.g. the MAAS-injected `machine-extra`/`storage-extra` keys).
+`50-maas-01-commissioning` script. The structures come from the LXD API
+plus a small MAAS-specific host info envelope defined in
+`src/host-info/pkg/info/info.go`.
 """
 
 from __future__ import annotations
-
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -30,11 +22,9 @@ class _LXDModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _treat_null_as_missing(cls, data: Any) -> Any:
-        # Different producers (LXD versions, test generators) emit explicit
-        # ``null`` for absent values. Drop those keys so the field default is
-        # used instead, matching how the commissioning hooks treat missing and
-        # None values uniformly.
+    def _treat_null_as_missing(cls, data):
+        # LXD emits explicit null for absent values.
+        # Drop those keys so the field default is used instead.
         if isinstance(data, dict):
             return {
                 key: value for key, value in data.items() if value is not None
@@ -42,9 +32,7 @@ class _LXDModel(BaseModel):
         return data
 
 
-# ---------------------------------------------------------------------------
-# CPU (ResourcesCPU)
-# ---------------------------------------------------------------------------
+# CPU-related models
 
 
 class LXDCPUCache(_LXDModel):
@@ -80,14 +68,14 @@ class LXDCPUSocket(_LXDModel):
 
 
 class LXDCPU(_LXDModel):
+    """`ResourcesCPU` LXD API model."""
+
     architecture: str = ""
     sockets: list[LXDCPUSocket] = Field(default_factory=list)
     total: int = 0
 
 
-# ---------------------------------------------------------------------------
-# Memory (ResourcesMemory)
-# ---------------------------------------------------------------------------
+# Memory-related models.
 
 
 class LXDMemoryNode(_LXDModel):
@@ -99,6 +87,8 @@ class LXDMemoryNode(_LXDModel):
 
 
 class LXDMemory(_LXDModel):
+    """`ResourcesMemory` LXD API model."""
+
     nodes: list[LXDMemoryNode] = Field(default_factory=list)
     hugepages_total: int = 0
     hugepages_used: int = 0
@@ -107,71 +97,37 @@ class LXDMemory(_LXDModel):
     total: int = 0
 
 
-# ---------------------------------------------------------------------------
-# GPU (ResourcesGPU)
-# ---------------------------------------------------------------------------
-
-
-class LXDGPUCardDRM(_LXDModel):
-    id: int = 0
-    card_name: str = ""
-    card_device: str = ""
-    control_name: str = ""
-    control_device: str = ""
-    render_name: str = ""
-    render_device: str = ""
+# GPU-related models.
 
 
 class LXDGPUCardSRIOV(_LXDModel):
     current_vfs: int = 0
     maximum_vfs: int = 0
-    # LXD emits null when the card exposes no VFs.
-    vfs: list[LXDGPUCard] | None = Field(default_factory=list)
-
-
-class LXDGPUCardNvidia(_LXDModel):
-    cuda_version: str = ""
-    nvrm_version: str = ""
-    brand: str = ""
-    model: str = ""
-    uuid: str = ""
-    architecture: str = ""
-    card_name: str = ""
-    card_device: str = ""
-
-
-class LXDGPUCardMdev(_LXDModel):
-    api: str = ""
-    available: int = 0
-    name: str = ""
-    description: str = ""
-    devices: list[str] = Field(default_factory=list)
+    vfs: list[LXDGPUCard] | None = None
 
 
 class LXDGPUCard(_LXDModel):
-    driver: str = ""
-    driver_version: str = ""
-    drm: LXDGPUCardDRM | None = None
+    drm: dict | None = None
     sriov: LXDGPUCardSRIOV | None = None
-    nvidia: LXDGPUCardNvidia | None = None
-    mdev: dict[str, LXDGPUCardMdev] = Field(default_factory=dict)
+    nvidia: dict | None = None
+    mdev: dict | None = None
     numa_node: int = 0
     pci_address: str = ""
+    usb_address: str = ""
     vendor: str = ""
     vendor_id: str = ""
     product: str = ""
     product_id: str = ""
-    usb_address: str = ""
 
 
 class LXDGPU(_LXDModel):
+    """ResourcesGpu LXD API model."""
+
     cards: list[LXDGPUCard] = Field(default_factory=list)
     total: int = 0
 
 
-# ---------------------------------------------------------------------------
-# Network (ResourcesNetwork)
-# ---------------------------------------------------------------------------
+# Network-related models.
 
 
 class LXDNetworkCardPortInfiniband(_LXDModel):
@@ -202,8 +158,7 @@ class LXDNetworkCardPort(_LXDModel):
 class LXDNetworkCardSRIOV(_LXDModel):
     current_vfs: int = 0
     maximum_vfs: int = 0
-    # LXD emits null when the card exposes no VFs.
-    vfs: list[LXDNetworkCard] | None = Field(default_factory=list)
+    vfs: list[LXDNetworkCard] | None = None
 
 
 class LXDNetworkCardVDPA(_LXDModel):
@@ -223,18 +178,18 @@ class LXDNetworkCard(_LXDModel):
     vendor_id: str = ""
     product: str = ""
     product_id: str = ""
-    firmware_version: str = ""
+    firmware_version: str | None = Field(default="")
     usb_address: str = ""
 
 
 class LXDNetwork(_LXDModel):
+    """`ResourcesNetwork` LXD API model."""
+
     cards: list[LXDNetworkCard] = Field(default_factory=list)
     total: int = 0
 
 
-# ---------------------------------------------------------------------------
-# Storage (ResourcesStorage)
-# ---------------------------------------------------------------------------
+# Storage-related models.
 
 
 class LXDStorageDiskPartition(_LXDModel):
@@ -272,13 +227,13 @@ class LXDStorageDisk(_LXDModel):
 
 
 class LXDStorage(_LXDModel):
+    """`ResourcesStorage` LXD API model."""
+
     disks: list[LXDStorageDisk] = Field(default_factory=list)
     total: int = 0
 
 
-# ---------------------------------------------------------------------------
-# USB (ResourcesUSB)
-# ---------------------------------------------------------------------------
+# USB-related models.
 
 
 class LXDUSBDeviceInterface(_LXDModel):
@@ -304,13 +259,13 @@ class LXDUSBDevice(_LXDModel):
 
 
 class LXDUSB(_LXDModel):
+    """`ResourcesUSB` LXD API model."""
+
     devices: list[LXDUSBDevice] = Field(default_factory=list)
     total: int = 0
 
 
-# ---------------------------------------------------------------------------
-# PCI (ResourcesPCI)
-# ---------------------------------------------------------------------------
+# PCI-related models.
 
 
 class LXDPCIVPD(_LXDModel):
@@ -332,13 +287,13 @@ class LXDPCIDevice(_LXDModel):
 
 
 class LXDPCI(_LXDModel):
+    """`ResourcesPCI` LXD API model."""
+
     devices: list[LXDPCIDevice] = Field(default_factory=list)
     total: int = 0
 
 
-# ---------------------------------------------------------------------------
-# System (ResourcesSystem)
-# ---------------------------------------------------------------------------
+# System-related models.
 
 
 class LXDSystemFirmware(_LXDModel):
@@ -362,6 +317,8 @@ class LXDSystemMotherboard(_LXDModel):
 
 
 class LXDSystem(_LXDModel):
+    """`ResourcesSystem` LXD API model."""
+
     uuid: str = ""
     vendor: str = ""
     product: str = ""
@@ -375,12 +332,9 @@ class LXDSystem(_LXDModel):
     motherboard: LXDSystemMotherboard | None = None
 
 
-# ---------------------------------------------------------------------------
-# Resources (top-level lxdapi.Resources)
-# ---------------------------------------------------------------------------
-
-
 class LXDResources(_LXDModel):
+    """Top-level `Resources` LXD API model."""
+
     cpu: LXDCPU = Field(default_factory=LXDCPU)
     memory: LXDMemory = Field(default_factory=LXDMemory)
     gpu: LXDGPU = Field(default_factory=LXDGPU)
@@ -391,9 +345,7 @@ class LXDResources(_LXDModel):
     system: LXDSystem = Field(default_factory=LXDSystem)
 
 
-# ---------------------------------------------------------------------------
-# Networks (map of interface name -> lxdapi.NetworkState)
-# ---------------------------------------------------------------------------
+# NetworkState models (map of interface name -> LXDNetworkState)
 
 
 class LXDNetworkStateAddress(_LXDModel):
@@ -417,7 +369,7 @@ class LXDNetworkStateBond(_LXDModel):
     down_delay: int = 0
     mii_frequency: int = 0
     mii_state: str = ""
-    lower_devices: list[str] | None = Field(default_factory=list)
+    lower_devices: list[str] | None = None
 
 
 class LXDNetworkStateBridge(_LXDModel):
@@ -426,7 +378,7 @@ class LXDNetworkStateBridge(_LXDModel):
     forward_delay: int = 0
     vlan_default: int = 0
     vlan_filtering: bool = False
-    upper_devices: list[str] | None = Field(default_factory=list)
+    upper_devices: list[str] | None = None
 
 
 class LXDNetworkStateVLAN(_LXDModel):
@@ -439,6 +391,8 @@ class LXDNetworkStateOVN(_LXDModel):
 
 
 class LXDNetworkState(_LXDModel):
+    """`NetworkState` LXD API model."""
+
     addresses: list[LXDNetworkStateAddress] = Field(default_factory=list)
     counters: LXDNetworkStateCounters = Field(
         default_factory=LXDNetworkStateCounters
@@ -451,11 +405,6 @@ class LXDNetworkState(_LXDModel):
     bridge: LXDNetworkStateBridge | None = None
     vlan: LXDNetworkStateVLAN | None = None
     ovn: LXDNetworkStateOVN | None = None
-
-
-# ---------------------------------------------------------------------------
-# Host info envelope (src/host-info/pkg/info/info.go)
-# ---------------------------------------------------------------------------
 
 
 class LXDServerEnvironment(_LXDModel):
@@ -476,12 +425,7 @@ class LXDMachineExtra(_LXDModel):
 
 
 class MachineResources(_LXDModel):
-    """Full output of the ``50-maas-01-commissioning`` script.
-
-    This is the ``AllInfo`` structure produced by the ``machine-resources``
-    binary, plus the ``machine-extra`` and ``storage-extra`` keys that MAAS
-    injects into the commissioning payload before processing.
-    """
+    """Full output of the ``50-maas-01-commissioning`` script."""
 
     api_version: str = ""
     api_extensions: list[str] = Field(default_factory=list)

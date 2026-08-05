@@ -784,6 +784,5 @@ class ServiceCollectionV3:
         services.hardware_profiles = HardwareProfileService(
             context=context,
             hardware_profile_repository=HardwareProfileRepository(context),
-            scriptresults_service=services.scriptresults,
         )
         return services

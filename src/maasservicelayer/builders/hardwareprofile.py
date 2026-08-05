@@ -1,8 +1,9 @@
-#  Copyright 2026 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
 import hashlib
+from typing import Self
 
 from pydantic import Field
 
@@ -21,32 +22,6 @@ from maasservicelayer.utils.lxd_parsing import (
     parse_network,
     parse_storage,
 )
-
-
-def _hardware_fingerprint(
-    architecture: str,
-    cpu_cores: int,
-    memory_mb: int,
-    storage: list[HardwareStorageGroup],
-    network: list[HardwareNetworkGroup],
-    accelerators: list[HardwareAcceleratorGroup],
-) -> str:
-    """Return a stable hash identifying this hardware configuration."""
-    parts = [architecture, str(cpu_cores), str(memory_mb)]
-    parts += sorted(
-        f"{item.serial}:{item.size_bytes}"
-        for group in storage
-        for item in group.items
-    )
-    parts += sorted(
-        item.mac_address for group in network for item in group.items
-    )
-    parts += sorted(
-        f"{item.vendor_id}:{item.product_id}:{item.pci_address}"
-        for group in accelerators
-        for item in group.items
-    )
-    return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
 
 class HardwareProfileBuilder(ResourceBuilder):
@@ -74,15 +49,37 @@ class HardwareProfileBuilder(ResourceBuilder):
     total_storage_bytes: int | Unset = Field(default=UNSET)
     updated: datetime | Unset = Field(default=UNSET)
 
-    @classmethod
-    def from_commissioning_output(
-        cls, output: dict, node_id: int
-    ) -> "HardwareProfileBuilder":
-        """Build a hardware profile from the commissioning script output.
+    @staticmethod
+    def _hardware_fingerprint(
+        architecture: str,
+        cpu_cores: int,
+        memory_mb: int,
+        storage: list[HardwareStorageGroup],
+        network: list[HardwareNetworkGroup],
+        accelerators: list[HardwareAcceleratorGroup],
+    ) -> str:
+        """Return an hash identifying this hardware configuration.
 
-        `output` is the JSON produced by the ``50-maas-01-commissioning``
-        script (the ``machine-resources`` binary output).
+        FIXME: Temporary implementation.
         """
+        parts = [architecture, str(cpu_cores), str(memory_mb)]
+        parts += sorted(
+            f"{group.disk_type}:{group.size_bytes}:{group.count}"
+            for group in storage
+        )
+        parts += sorted(
+            f"{group.vendor_id}:{group.product_id}:{group.speed_mbps}:{group.count}"
+            for group in network
+        )
+        parts += sorted(
+            f"{group.vendor_id}:{group.product_id}:{group.count}"
+            for group in accelerators
+        )
+        return hashlib.sha256("|".join(parts).encode()).hexdigest()
+
+    @classmethod
+    def from_commissioning_output(cls, output: dict, node_id: int) -> Self:
+        """Build a hardware profile from the commissioning script output."""
         machine_resources = MachineResources(**output)
         resources = machine_resources.resources
 
@@ -108,7 +105,7 @@ class HardwareProfileBuilder(ResourceBuilder):
             cpu_speed_mhz=cpu_speed_mhz,
             disk_count=disk_count,
             gpu_count=len(resources.gpu.cards),
-            hardware_fingerprint=_hardware_fingerprint(
+            hardware_fingerprint=cls._hardware_fingerprint(
                 architecture,
                 cpu_cores,
                 memory_mb,

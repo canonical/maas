@@ -44,18 +44,21 @@ class HardwareNetworkItem(BaseModel):
 
 class HardwareNetworkGroup(HardwareGroup[HardwareNetworkItem]):
     speed_mbps: int
+    vendor_id: str
+    product_id: str
     vendor: str
     product: str
 
 
 class HardwareAcceleratorItem(BaseModel):
-    vendor_id: str
-    product_id: str
     pci_address: str
     numa_node: int
+    sriov_max_vfs: int
 
 
 class HardwareAcceleratorGroup(HardwareGroup[HardwareAcceleratorItem]):
+    vendor_id: str
+    product_id: str
     vendor: str
     product: str
 

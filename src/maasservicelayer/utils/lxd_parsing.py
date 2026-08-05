@@ -129,7 +129,7 @@ def parse_storage(storage: LXDStorage) -> list[HardwareStorageGroup]:
 
 
 def parse_network(network: LXDNetwork) -> list[HardwareNetworkGroup]:
-    groups: dict[tuple[str, str, int], list[HardwareNetworkItem]] = (
+    groups: dict[tuple[str, str, str, str, int], list[HardwareNetworkItem]] = (
         defaultdict(list)
     )
     for card in network.cards:
@@ -145,41 +145,63 @@ def parse_network(network: LXDNetwork) -> list[HardwareNetworkGroup]:
                 sriov_max_vf=sriov_max_vf,
                 numa_node=card.numa_node,
             )
-            key = (card.vendor, card.product, interface_speed(port))
+            key = (
+                card.vendor_id,
+                card.product_id,
+                card.vendor,
+                card.product,
+                interface_speed(port),
+            )
             groups[key].append(item)
     return [
         HardwareNetworkGroup(
             speed_mbps=speed_mbps,
+            vendor_id=vendor_id,
+            product_id=product_id,
             vendor=vendor,
             product=product,
             count=len(items),
             items=items,
         )
-        for (vendor, product, speed_mbps), items in groups.items()
+        for (
+            vendor_id,
+            product_id,
+            vendor,
+            product,
+            speed_mbps,
+        ), items in groups.items()
     ]
 
 
 def parse_accelerators(gpu: LXDGPU) -> list[HardwareAcceleratorGroup]:
-    groups: dict[tuple[str, str], list[HardwareAcceleratorItem]] = defaultdict(
-        list
+    groups: dict[tuple[str, str, str, str], list[HardwareAcceleratorItem]] = (
+        defaultdict(list)
     )
     for card in gpu.cards:
-        groups[(card.vendor, card.product)].append(
+        if card.drm or card.mdev:
+            # Don't include drm and mdev as they are more tied to the software
+            # rather than the hardware
+            continue
+        sriov_max_vfs = card.sriov.maximum_vfs if card.sriov else 0
+        groups[
+            (card.vendor_id, card.product_id, card.vendor, card.product)
+        ].append(
             HardwareAcceleratorItem(
-                vendor_id=card.vendor_id,
-                product_id=card.product_id,
                 pci_address=card.pci_address,
                 numa_node=card.numa_node,
+                sriov_max_vfs=sriov_max_vfs,
             )
         )
     return [
         HardwareAcceleratorGroup(
+            vendor_id=vendor_id,
+            product_id=product_id,
             vendor=vendor,
             product=product,
             count=len(items),
             items=items,
         )
-        for (vendor, product), items in groups.items()
+        for (vendor_id, product_id, vendor, product), items in groups.items()
     ]
 
 

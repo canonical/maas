@@ -3551,7 +3551,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         mock_start_workflow = self.patch(hooks_module, "start_workflow")
 
         lxd_output = make_lxd_output()
-        lxd_output["resources"]["network"]["cards"] = {}
+        lxd_output["resources"]["network"]["cards"] = []
 
         with post_commit_hooks:
             process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
@@ -3562,7 +3562,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         mock_start_workflow = self.patch(hooks_module, "start_workflow")
 
         lxd_output = make_lxd_output()
-        lxd_output["resources"]["network"]["cards"] = {}
+        lxd_output["resources"]["network"]["cards"] = []
 
         with post_commit_hooks:
             process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
@@ -3587,7 +3587,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         mock_start_workflow = self.patch(hooks_module, "start_workflow")
 
         lxd_output = make_lxd_output()
-        lxd_output["resources"]["network"]["cards"] = {}
+        lxd_output["resources"]["network"]["cards"] = []
 
         with post_commit_hooks:
             process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
