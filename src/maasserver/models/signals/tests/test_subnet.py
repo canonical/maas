@@ -296,3 +296,48 @@ class TestSubnetDHCPSignal(MAASServerTestCase):
         subnet.vlan = new_vlan
         subnet.save()
         subnet_start_workflow_mock.assert_not_called()
+
+    def test_save_calls_configure_dhcp_workflow_when_dns_servers_change(self):
+        self.patch(vlan_signals_module, "start_workflow")
+        subnet_start_workflow_mock = self.patch(
+            subnet_signals_module, "start_workflow"
+        )
+
+        with post_commit_hooks:
+            rack_controller = factory.make_RackController()
+            vlan = factory.make_VLAN(
+                dhcp_on=True, primary_rack=rack_controller
+            )
+            subnet = factory.make_Subnet(vlan=vlan, dns_servers=[])
+            subnet_start_workflow_mock.reset_mock()
+            subnet.dns_servers = ["10.0.0.53"]
+            subnet.save()
+
+        subnet_start_workflow_mock.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(vlan_ids=[vlan.id]),
+            task_queue="region",
+        )
+
+    def test_save_calls_configure_dhcp_workflow_on_dns_change_when_relay(self):
+        self.patch(vlan_signals_module, "start_workflow")
+        subnet_start_workflow_mock = self.patch(
+            subnet_signals_module, "start_workflow"
+        )
+
+        with post_commit_hooks:
+            rack_controller = factory.make_RackController()
+            relay_vlan = factory.make_VLAN(
+                dhcp_on=True, primary_rack=rack_controller
+            )
+            vlan = factory.make_VLAN(relay_vlan=relay_vlan)
+            subnet = factory.make_Subnet(vlan=vlan, dns_servers=[])
+            subnet_start_workflow_mock.reset_mock()
+            subnet.dns_servers = ["10.0.0.53"]
+            subnet.save()
+
+        subnet_start_workflow_mock.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(vlan_ids=[vlan.id]),
+            task_queue="region",
+        )
