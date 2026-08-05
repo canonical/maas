@@ -1,15 +1,12 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-import json
-from json import dumps as _dumps
 from typing import Callable
-from unittest.mock import call, Mock, patch
+from unittest.mock import call, Mock
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
-from macaroonbakery.bakery import Macaroon
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
@@ -35,7 +32,6 @@ from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
     BaseExceptionDetail,
-    DischargeRequiredException,
     NotFoundException,
     PreconditionFailedException,
 )
@@ -50,7 +46,6 @@ from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroups import UserGroup, UserGroupsByUser
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 from maasservicelayer.services.usergroups import (
     UserGroupNotFound,
@@ -221,31 +216,6 @@ class TestUsersApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 401
-
-    async def test_get_user_info_discharge_required(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_rbac: AsyncClient,
-    ) -> None:
-        """If external auth is enabled make sure we receive a discharge required response"""
-        services_mock.external_auth = Mock(ExternalAuthService)
-        services_mock.external_auth.raise_discharge_required_exception.side_effect = DischargeRequiredException(
-            macaroon=Mock(Macaroon)
-        )
-
-        # we have to mock json.dumps as it doesn't know how to deal with Mock objects
-        def custom_json_dumps(*args, **kwargs):
-            return _dumps(*args, **(kwargs | {"default": lambda obj: "mock"}))
-
-        with patch("json.dumps", custom_json_dumps):
-            response = await mocked_api_client_rbac.get(f"{self.BASE_PATH}/me")
-
-        assert response.status_code == 401
-        discharge_response = json.loads(response.content.decode("utf-8"))
-        assert discharge_response["Code"] == "macaroon discharge required"
-        assert discharge_response["Info"]["Macaroon"] is not None
-        assert discharge_response["Info"]["MacaroonPath"] == "/"
-        assert discharge_response["Info"]["CookieNameSuffix"] == "maas"
 
     # GET /users/me:get_entitlements
     async def test_get_user_entitlements(

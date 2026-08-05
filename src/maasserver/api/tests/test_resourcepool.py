@@ -1,4 +1,4 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for resource pool API."""
@@ -9,13 +9,10 @@ import json
 from django.conf import settings
 from django.urls import reverse
 
-from maasserver.api import auth
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models import ResourcePool
-from maasserver.rbac import ALL_RESOURCES
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACEnabled
 from maasserver.utils.orm import reload_object
 
 
@@ -136,92 +133,6 @@ class TestResourcePoolAPI(APITestCase.ForUser):
         )
         self.assertEqual(response.status_code, http.client.NO_CONTENT)
         self.assertIsNone(reload_object(pool))
-
-
-class TestResourcePoolAPIWithRBAC(APITestCase.ForUser):
-    def setUp(self):
-        super().setUp()
-        self.patch(auth, "validate_user_external_auth").return_value = True
-        rbac = self.useFixture(RBACEnabled())
-        self.store = rbac.store
-        self.become_non_local()
-
-    def test_GET_returns_pool(self):
-        pool = factory.make_ResourcePool()
-        self.store.add_pool(pool)
-        self.store.allow(self.user.username, pool, "view")
-        response = self.client.get(
-            reverse("resourcepool_handler", args=[pool.id]), {}
-        )
-        self.assertEqual(response.status_code, http.client.OK)
-        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual(result["name"], pool.name)
-        self.assertEqual(result["description"], pool.description)
-        self.assertEqual(
-            result["resource_uri"],
-            f"/MAAS/api/2.0/resourcepool/{pool.id}/",
-        )
-
-    def test_GET_returns_forbidden(self):
-        pool = factory.make_ResourcePool()
-        self.store.add_pool(pool)
-        response = self.client.get(
-            reverse("resourcepool_handler", args=[pool.id]), {}
-        )
-        self.assertEqual(response.status_code, http.client.FORBIDDEN)
-
-    def test_PUT_updates_pool(self):
-        pool = factory.make_ResourcePool()
-        self.store.add_pool(pool)
-        self.store.allow(self.user.username, pool, "edit")
-        new_name = factory.make_name("name")
-        new_description = factory.make_name("description")
-        response = self.client.put(
-            reverse("resourcepool_handler", args=[pool.id]),
-            {"name": new_name, "description": new_description},
-        )
-        self.assertEqual(response.status_code, http.client.OK)
-        pool = reload_object(pool)
-        self.assertEqual(pool.name, new_name)
-        self.assertEqual(pool.description, new_description)
-
-    def test_PUT_forbidden(self):
-        pool = factory.make_ResourcePool()
-        self.store.add_pool(pool)
-        self.store.allow(self.user.username, pool, "view")
-        new_name = factory.make_name("name")
-        new_description = factory.make_name("description")
-        response = self.client.put(
-            reverse("resourcepool_handler", args=[pool.id]),
-            {"name": new_name, "description": new_description},
-        )
-        self.assertEqual(response.status_code, http.client.FORBIDDEN)
-
-    def test_DELETE_removes_pool(self):
-        pool = factory.make_ResourcePool()
-        self.store.allow(self.user.username, ALL_RESOURCES, "edit")
-        response = self.client.delete(
-            reverse("resourcepool_handler", args=[pool.id])
-        )
-        self.assertEqual(response.status_code, http.client.NO_CONTENT)
-
-    def test_DELETE_forbidden_edit_on_pool_only(self):
-        pool = factory.make_ResourcePool()
-        self.store.add_pool(pool)
-        self.store.allow(self.user.username, pool, "edit")
-        response = self.client.delete(
-            reverse("resourcepool_handler", args=[pool.id])
-        )
-        self.assertEqual(response.status_code, http.client.FORBIDDEN)
-
-    def test_DELETE_forbidden(self):
-        pool = factory.make_ResourcePool()
-        self.store.add_pool(pool)
-        self.store.allow(self.user.username, pool, "view")
-        response = self.client.delete(
-            reverse("resourcepool_handler", args=[pool.name]), {}
-        )
-        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
 
 class TestResourcePoolAPIOpenFGAIntegration(

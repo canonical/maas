@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -19,7 +19,6 @@ from maasserver.api.tests.test_nodes import RequestFixture
 from maasserver.enum import NODE_TYPE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
@@ -648,9 +647,6 @@ class TestEventsAPI(APITestCase.ForUser):
             make_events(number_events, node=node)
 
     def test_query_num_queries_is_independent_of_num_nodes_and_events(self):
-        # Prevent RBAC from making a query.
-        self.useFixture(RBACForceOffFixture())
-
         expected_queries = 1
         events_per_node = 5
         num_nodes_per_group = 5
