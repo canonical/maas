@@ -47,3 +47,24 @@ class TesthardwareprofilesServiceCommon(ServiceCommonTests):
     @pytest.fixture
     def builder_model(self) -> type[HardwareProfileBuilder]:
         return HardwareProfileBuilder
+
+
+@pytest.mark.asyncio
+class TestHardwareProfileService:
+    @pytest.fixture
+    def mock_repository(self):
+        return Mock(HardwareProfileRepository)
+
+    @pytest.fixture
+    def service(self, mock_repository) -> HardwareProfileService:
+        return HardwareProfileService(
+            context=Context(), hardware_profile_repository=mock_repository
+        )
+
+    async def test_create_or_update(
+        self, service: HardwareProfileService, mock_repository: Mock
+    ):
+        builder = HardwareProfileBuilder()
+        await service.create_or_update(builder)
+
+        mock_repository.create_or_update.assert_called_once_with(builder)

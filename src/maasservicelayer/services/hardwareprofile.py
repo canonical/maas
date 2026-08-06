@@ -23,3 +23,8 @@ class HardwareProfileService(
         hardware_profile_repository: HardwareProfileRepository,
     ):
         super().__init__(context, hardware_profile_repository)
+
+    async def create_or_update(
+        self, builder: HardwareProfileBuilder
+    ) -> HardwareProfile:
+        return await self.repository.create_or_update(builder)

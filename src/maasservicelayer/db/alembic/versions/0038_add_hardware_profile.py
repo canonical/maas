@@ -1,7 +1,7 @@
 """add hardware profile
 
-Revision ID: 0025
-Revises: 0024
+Revision ID: 0038
+Revises: 0037
 Create Date: 2026-07-15 12:50:27.092841+00:00
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "0025"
-down_revision: str | None = "0024"
+revision: str = "0038"
+down_revision: str | None = "0037"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
