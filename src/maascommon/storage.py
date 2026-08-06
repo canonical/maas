@@ -30,7 +30,7 @@ _MULTIPATH_LUN_RES = {
     ],
 }
 
-_DEVICE_PATH_RE = re.compile(
+_DEVICE_PATH_RE: re.Pattern[str] = re.compile(
     r"^(?P<bus>\w+)-(?P<bus_addr>[\da-fA-F:\.]+)-(?P<proto>\w+)-(?P<device>.*)$"
 )
 

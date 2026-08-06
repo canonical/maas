@@ -48,10 +48,12 @@ def parse_cpu(cpu: LXDCPU) -> tuple[int, int]:
 
     cpu_speed = 0
     # Only trust the model name speed when all sockets are the same model.
-    if socket_names and all(name == socket_names[0] for name in socket_names):
-        match = CPU_MODEL_SPEED_RE.search(socket_names[0])
-        if match:
-            cpu_speed = int(float(match.group("ghz")) * 1000)
+    if (
+        socket_names
+        and all(name == socket_names[0] for name in socket_names)
+        and (match := CPU_MODEL_SPEED_RE.search(socket_names[0]))
+    ):
+        cpu_speed = int(float(match.group("ghz")) * 1000)
 
     # The model name doesn't always include the speed. Fall back to the max
     # turbo frequency, then to the average current frequency (which may be
@@ -73,7 +75,7 @@ def parse_cpu(cpu: LXDCPU) -> tuple[int, int]:
 
 
 def parse_memory_mb(memory: LXDMemory) -> int:
-    return int(memory.total / 1024**2)
+    return memory.total // (1024**2)
 
 
 def interface_speed(port: LXDNetworkCardPort) -> int:
@@ -85,10 +87,11 @@ def interface_speed(port: LXDNetworkCardPort) -> int:
 
 def disk_id_path(device_id: str, serial: str, disk_id: str) -> str:
     """Return a stable device path, preferring the by-id link."""
-    id_path = f"/dev/disk/by-id/{device_id}" if device_id else ""
-    # No by-id link or no serial is a strong indicator of a virtual disk, so
-    # fall back to the plain device path.
-    if not device_id or not serial:
+    if device_id and serial:
+        id_path = f"/dev/disk/by-id/{device_id}"
+    else:
+        # No by-id link or no serial is a strong indicator of a virtual disk, so
+        # fall back to the plain device path.
         id_path = f"/dev/{disk_id}"
     return id_path
 
