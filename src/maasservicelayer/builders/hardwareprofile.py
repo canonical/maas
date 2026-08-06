@@ -58,7 +58,7 @@ class HardwareProfileBuilder(ResourceBuilder):
         network: list[HardwareNetworkGroup],
         accelerators: list[HardwareAcceleratorGroup],
     ) -> str:
-        """Return an hash identifying this hardware configuration.
+        """Return a hash identifying this hardware configuration.
 
         FIXME: Temporary implementation.
         """

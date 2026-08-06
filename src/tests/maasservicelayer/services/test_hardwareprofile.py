@@ -49,6 +49,7 @@ class TesthardwareprofilesServiceCommon(ServiceCommonTests):
         return HardwareProfileBuilder
 
 
+@pytest.mark.asyncio
 class TestHardwareProfileService:
     @pytest.fixture
     def mock_repository(self):
