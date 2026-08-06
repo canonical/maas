@@ -53,7 +53,7 @@ class HardwareNetworkGroup(HardwareGroup[HardwareNetworkItem]):
 class HardwareAcceleratorItem(BaseModel):
     pci_address: str
     numa_node: int
-    sriov_max_vfs: int
+    sriov_max_vf: int
 
 
 class HardwareAcceleratorGroup(HardwareGroup[HardwareAcceleratorItem]):

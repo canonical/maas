@@ -96,6 +96,7 @@ class HardwareProfileBuilder(ResourceBuilder):
         )
         disk_count = sum(group.count for group in storage)
         nic_count = sum(group.count for group in network)
+        gpu_count = sum(group.count for group in accelerators)
 
         return cls(
             node_id=node_id,
@@ -104,7 +105,7 @@ class HardwareProfileBuilder(ResourceBuilder):
             cpu_cores=cpu_cores,
             cpu_speed_mhz=cpu_speed_mhz,
             disk_count=disk_count,
-            gpu_count=len(resources.gpu.cards),
+            gpu_count=gpu_count,
             hardware_fingerprint=cls._hardware_fingerprint(
                 architecture,
                 cpu_cores,

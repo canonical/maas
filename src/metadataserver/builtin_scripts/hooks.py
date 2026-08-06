@@ -21,6 +21,11 @@ from django.db.models import Q
 from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.fields import normalise_macaddress
+from maascommon.storage import (
+    is_virtual_bcache_holder,
+    multipath_lun,
+    parse_device_path,
+)
 from maascommon.workflows.configure import CONFIGURE_AGENT_WORKFLOW_NAME
 from maasserver.enum import (
     NODE_DEVICE_BUS,
@@ -788,42 +793,8 @@ def _get_matching_block_device(block_devices, serial=None, id_path=None):
     return None
 
 
-_MP_PATH_ID = {
-    "fc": [re.compile(r"^(?P<port>\w+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$")],
-    "vmbus": [re.compile(r"^(?P<guid>\w+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$")],
-    "sas": [
-        re.compile(
-            r"^(?P<sas_addr>0x[\da-fA-F]+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$"
-        ),
-        re.compile(
-            r"^exp0x[\da-fA-F]+-phy(?P<phy_id>(0x)?[\da-fA-F]+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$"
-        ),
-        re.compile(
-            r"^phy(?P<phy_id>(0x)?[\da-fA-F]+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$"
-        ),
-    ],
-    "ip": [
-        re.compile(
-            r"^[\.\-\w:]+-iscsi-(?P<target>[\.\-\w:]+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$"
-        )
-    ],
-}
-
-_DEV_PATH = re.compile(
-    r"^(?P<bus>\w+)-(?P<bus_addr>[\da-fA-F:\.]+)-(?P<proto>\w+)-(?P<device>.*)$"
-)
-
-
-# bcache virtual holder devices are always named "bcacheN" by the kernel
-# (e.g. /dev/bcache0). This name comes from the "id" LXD reports for a
-# disk, which is just the /sys/class/block/<name> directory name assigned
-# by the originating kernel driver at registration time. It cannot be
-# overridden by users. LXD reports bcache holders alongside physical
-# disks in the "storage.disks" list, but they are stacked virtual devices
-# backed by other disks that are already present in this same list, so
-# they must not be imported as `PhysicalBlockDevice`s.
 def _is_virtual_bcache_holder(block_info):
-    return block_info.get("id", "").startswith("bcache")
+    return is_virtual_bcache_holder(block_info.get("id", ""))
 
 
 def _condense_luns(disks):
@@ -838,28 +809,21 @@ def _condense_luns(disks):
     serial_lun_map = defaultdict(list)
     processed_disks = []
     for disk in disks:
-        dev_match = _DEV_PATH.match(disk.get("device_path", ""))
-        if dev_match is None or dev_match["proto"] == "usb":
+        device_path = parse_device_path(disk.get("device_path", ""))
+        if device_path is None or device_path.protocol == "usb":
             processed_disks.append(disk)
             continue
 
-        proto = dev_match["proto"]
-        device = dev_match["device"]
+        if device_path.bus == "pci" and "pci_address" not in disk:
+            disk["pci_address"] = device_path.bus_address
 
-        if dev_match["bus"] == "pci" and "pci_address" not in disk:
-            disk["pci_address"] = dev_match["bus_addr"]
-
-        if disk.get("serial") and (rexp_list := _MP_PATH_ID.get(proto)):
-            for r in rexp_list:
-                if m := r.match(device):
-                    serial_lun_map[(disk["serial"], m["lun"])].append(disk)
-                    break
-            else:
-                processed_disks.append(disk)
+        lun = multipath_lun(device_path)
+        if lun and disk.get("serial"):
+            serial_lun_map[(disk["serial"], lun)].append(disk)
         else:
             processed_disks.append(disk)
 
-    for (serial, lun), paths in serial_lun_map.items():  # noqa: B007
+    for paths in serial_lun_map.values():
         mpaths = sorted(paths, key=itemgetter("id"))
         condensed_disk = mpaths[0]
         if len(mpaths) > 1:

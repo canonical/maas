@@ -7,6 +7,11 @@ from collections import defaultdict
 import re
 
 from maascommon.fields import normalise_macaddress
+from maascommon.storage import (
+    is_virtual_bcache_holder,
+    multipath_lun,
+    parse_device_path,
+)
 from maasservicelayer.models.hardwareprofile import (
     HardwareAcceleratorGroup,
     HardwareAcceleratorItem,
@@ -93,16 +98,54 @@ def is_modelled_disk(disk: LXDStorageDisk) -> bool:
         return False
     if disk.size <= MIN_BLOCK_DEVICE_SIZE:
         return False
+    # bcache holders are stacked on disks already reported in the same list.
+    if is_virtual_bcache_holder(disk.id):
+        return False
     id_path = disk_id_path(disk.device_id, disk.serial, disk.id)
     # Loopback devices won't be available on the next boot.
     return not id_path.startswith("/dev/loop")
+
+
+def condense_luns(disks: list[LXDStorageDisk]) -> list[LXDStorageDisk]:
+    """Return one disk per LUN, dropping the redundant multipath paths.
+
+    A multipath LUN is a single storage source reachable through several
+    paths, and LXD reports one disk per path. MAAS models the source only,
+    since curtin sets multipath up at deployment time.
+    """
+    lun_paths: dict[tuple[str, str], list[LXDStorageDisk]] = defaultdict(list)
+    condensed = []
+    for disk in disks:
+        device_path = parse_device_path(disk.device_path)
+        lun = multipath_lun(device_path) if device_path else None
+        if lun and disk.serial:
+            lun_paths[(disk.serial, lun)].append(disk)
+        else:
+            condensed.append(disk)
+
+    for paths in lun_paths.values():
+        paths.sort(key=lambda disk: disk.id)
+        source = paths[0]
+        if not source.device_id:
+            # Only some of the paths may expose a by-id link.
+            source = source.model_copy(
+                update={
+                    "device_id": next(
+                        (path.device_id for path in paths if path.device_id),
+                        "",
+                    )
+                }
+            )
+        condensed.append(source)
+
+    return sorted(condensed, key=lambda disk: disk.id)
 
 
 def parse_storage(storage: LXDStorage) -> list[HardwareStorageGroup]:
     groups: dict[tuple[str, int], list[HardwareStorageItem]] = defaultdict(
         list
     )
-    for disk in storage.disks:
+    for disk in condense_luns(storage.disks):
         if not is_modelled_disk(disk):
             continue
         groups[(disk.type, disk.size)].append(
@@ -178,18 +221,14 @@ def parse_accelerators(gpu: LXDGPU) -> list[HardwareAcceleratorGroup]:
         defaultdict(list)
     )
     for card in gpu.cards:
-        if card.drm or card.mdev:
-            # Don't include drm and mdev as they are more tied to the software
-            # rather than the hardware
-            continue
-        sriov_max_vfs = card.sriov.maximum_vfs if card.sriov else 0
+        sriov_max_vf = card.sriov.maximum_vfs if card.sriov else 0
         groups[
             (card.vendor_id, card.product_id, card.vendor, card.product)
         ].append(
             HardwareAcceleratorItem(
                 pci_address=card.pci_address,
                 numa_node=card.numa_node,
-                sriov_max_vfs=sriov_max_vfs,
+                sriov_max_vf=sriov_max_vf,
             )
         )
     return [

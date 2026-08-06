@@ -32,6 +32,8 @@ SAMPLE_RESOURCES = {
     "gpu": {
         "cards": [
             {
+                "driver": "i915",
+                "drm": {"id": 0, "card_name": "card0"},
                 "numa_node": 0,
                 "pci_address": "0000:00:02.0",
                 "vendor": "Intel Corporation",
@@ -138,6 +140,83 @@ class TestHardwareProfileBuilderFromCommissioningOutput:
         assert group["size_bytes"] == 512110190592
         assert group["items"][0]["id_path"] == "/dev/disk/by-id/wwn-0x12345"
 
+    def test_condenses_multipath_luns(self):
+        def path(disk_id, expander, device_id):
+            return {
+                "id": disk_id,
+                "type": "scsi",
+                "read_only": False,
+                "size": 500_000_000_000,
+                "block_size": 512,
+                "numa_node": 0,
+                "serial": "SN123",
+                "device_id": device_id,
+                "device_path": f"pci-0000:81:00.0-sas-{expander}-phy2-lun-0",
+            }
+
+        resources = {
+            **SAMPLE_RESOURCES,
+            "storage": {
+                "disks": [
+                    path("sda", "exp0x500", ""),
+                    path("sdb", "exp0x501", "wwn-0xLUN1"),
+                ],
+                "total": 2,
+            },
+        }
+        fields = build_fields(resources)
+        assert fields["disk_count"] == 1
+        assert fields["total_storage_bytes"] == 500_000_000_000
+        [group] = fields["storage"]
+        [item] = group["items"]
+        assert item["name"] == "sda"
+        # The by-id link is only reported on the second path.
+        assert item["id_path"] == "/dev/disk/by-id/wwn-0xLUN1"
+
+    def test_keeps_luns_with_different_serials(self):
+        def lun(disk_id, serial):
+            return {
+                "id": disk_id,
+                "type": "scsi",
+                "read_only": False,
+                "size": 500_000_000_000,
+                "block_size": 512,
+                "numa_node": 0,
+                "serial": serial,
+                "device_path": "pci-0000:81:00.0-sas-exp0x500-phy2-lun-0",
+            }
+
+        resources = {
+            **SAMPLE_RESOURCES,
+            "storage": {
+                "disks": [lun("sda", "SN123"), lun("sdb", "SN456")],
+                "total": 2,
+            },
+        }
+        assert build_fields(resources)["disk_count"] == 2
+
+    def test_skips_virtual_bcache_holders(self):
+        resources = {
+            **SAMPLE_RESOURCES,
+            "storage": {
+                "disks": [
+                    *SAMPLE_RESOURCES["storage"]["disks"],
+                    {
+                        "id": "bcache0",
+                        "type": "scsi",
+                        "read_only": False,
+                        "size": 512110190592,
+                        "block_size": 512,
+                        "numa_node": 0,
+                    },
+                ],
+                "total": 3,
+            },
+        }
+        fields = build_fields(resources)
+        assert fields["disk_count"] == 1
+        assert fields["total_storage_bytes"] == 512110190592
+
     def test_groups_storage_by_type_and_size(self):
         resources = {
             **SAMPLE_RESOURCES,
@@ -196,6 +275,30 @@ class TestHardwareProfileBuilderFromCommissioningOutput:
         [group] = fields["accelerators"]
         assert group["vendor"] == "Intel Corporation"
         assert group["items"][0]["pci_address"] == "0000:00:02.0"
+
+    def test_gpu_count_matches_accelerators(self):
+        resources = {
+            **SAMPLE_RESOURCES,
+            "gpu": {
+                "cards": [
+                    *SAMPLE_RESOURCES["gpu"]["cards"],
+                    {
+                        "drm": {"id": 1, "card_name": "card1"},
+                        "mdev": {"nvidia-256": {"name": "GRID A100-1-5C"}},
+                        "numa_node": 0,
+                        "pci_address": "0000:81:00.0",
+                        "vendor": "NVIDIA Corporation",
+                        "vendor_id": "10de",
+                        "product": "GA100",
+                        "product_id": "20b0",
+                    },
+                ],
+                "total": 2,
+            },
+        }
+        fields = build_fields(resources)
+        assert fields["gpu_count"] == 2
+        assert sum(g["count"] for g in fields["accelerators"]) == 2
 
     def test_platform_overrides_architecture_subarch(self):
         fields = build_fields(**{"machine-extra": {"platform": "raspi"}})
