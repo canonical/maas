@@ -351,7 +351,7 @@ class LXDResources(_LXDModel):
 class LXDNetworkStateAddress(_LXDModel):
     family: str = ""
     address: str = ""
-    netmask: str = ""
+    netmask: int = 0
     scope: str = ""
 
 
