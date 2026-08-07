@@ -71,6 +71,7 @@ from maastemporalworker.workflow.msm import (
     MSMTokenRefreshWorkflow,
 )
 from maastemporalworker.workflow.operation import (
+    BulkOperationWorkflow,
     OperationActivity,
     ReconcileOperationsWorkflow,
 )
@@ -246,6 +247,8 @@ async def main() -> None:
                 TagEvaluationWorkflow,
                 # Operation reconciliation workflows
                 ReconcileOperationsWorkflow,
+                # Bulk operation workflows
+                BulkOperationWorkflow,
             ],
             activities=[
                 # Boot resources activities
@@ -306,6 +309,9 @@ async def main() -> None:
                 # Operation reconciliation activities
                 operation_activity.reconcile_stuck_accepted_operations,
                 operation_activity.reconcile_in_progress_operations,
+                # Bulk operation activities
+                operation_activity.create_child_operation,
+                operation_activity.rollup_bulk_operation_status,
             ],
         ),
         # Individual region controller worker

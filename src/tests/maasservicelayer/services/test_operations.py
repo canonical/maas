@@ -359,6 +359,61 @@ class TestOperationsService:
                 op_type=OperationType.SELECTION_SYNC,
             )
 
+    async def test_create_accepted_bulk_operation(self) -> None:
+        repository = Mock(OperationsRepository)
+        repository.create.return_value = TEST_OPERATION.model_copy(
+            update={
+                "op_type": OperationType.MACHINE_BULKDEPLOY,
+                "is_bulk": True,
+            }
+        )
+        temporal_service = Mock(TemporalService)
+        service = self._service(repository, temporal_service=temporal_service)
+        children = [
+            {
+                "op_type": OperationType.MACHINE_COMMISSION,
+                "resource_id": 1,
+                "resource_type": "machine",
+            },
+            {
+                "op_type": OperationType.MACHINE_COMMISSION,
+                "resource_id": 2,
+                "resource_type": "machine",
+            },
+        ]
+
+        operation = await service.create_accepted_bulk_operation(
+            op_type=OperationType.MACHINE_BULKDEPLOY,
+            children=children,
+            user_id=1,
+        )
+
+        assert operation.is_bulk is True
+        parent_builder = repository.create.call_args.kwargs["builder"]
+        parent_populated = parent_builder.populated_fields()
+        assert parent_populated["op_type"] == OperationType.MACHINE_BULKDEPLOY
+        assert parent_populated["status"] == OperationStatus.ACCEPTED
+        assert parent_populated["is_bulk"] is True
+        assert parent_populated["parameters"] == {"children": children}
+        assert parent_populated["user_id"] == 1
+
+        assert repository.create.call_count == 1
+
+        registration = temporal_service.register_workflow_call.call_args
+        assert registration.kwargs["workflow_name"] == "bulk-operation"
+        assert registration.kwargs["workflow_id"] == TEST_OPERATION.uuid
+
+    async def test_create_accepted_bulk_operation_unmapped_op_type_raises(
+        self,
+    ) -> None:
+        service = self._service(Mock(OperationsRepository))
+
+        with pytest.raises(ValueError):
+            await service.create_accepted_bulk_operation(
+                op_type=OperationType.SELECTION_SYNC,
+                children=[],
+            )
+
     async def test_list_stuck_accepted_operations(self) -> None:
         repository = Mock(OperationsRepository)
         repository.get_many.return_value = [TEST_OPERATION]
@@ -378,6 +433,7 @@ class TestOperationsService:
                         OperationStatus.ACCEPTED
                     ),
                     OperationsClauseFactory.created_before(cutoff),
+                    OperationsClauseFactory.without_parent_id(),
                 ]
             )
         )
@@ -396,6 +452,85 @@ class TestOperationsService:
                 [OperationStatus.RUNNING, OperationStatus.CANCELLING]
             )
         )
+
+    async def test_list_child_operations(self) -> None:
+        repository = Mock(OperationsRepository)
+        repository.get_many.return_value = [TEST_OPERATION]
+        service = self._service(repository)
+
+        operations = await service.list_child_operations("parent-uuid")
+
+        assert operations == [TEST_OPERATION]
+        query = repository.get_many.call_args.kwargs["query"]
+        assert query == QuerySpec(
+            where=OperationsClauseFactory.with_parent_id("parent-uuid")
+        )
+
+    async def test_create_child_operation_row(self) -> None:
+        repository = Mock(OperationsRepository)
+        repository.get_by_uuid.return_value = TEST_OPERATION.model_copy(
+            update={"user_id": 1}
+        )
+        repository.create.return_value = TEST_OPERATION.model_copy(
+            update={"parent_id": "parent-uuid", "is_bulk": False}
+        )
+        service = self._service(repository)
+
+        result_uuid = await service.create_child_operation_row(
+            op_type=OperationType.MACHINE_COMMISSION,
+            parent_uuid="parent-uuid",
+            resource_id=1,
+            resource_type="machine",
+        )
+
+        assert result_uuid == TEST_OPERATION.uuid
+        repository.get_by_uuid.assert_awaited_once_with("parent-uuid")
+        builder = repository.create.call_args.kwargs["builder"]
+        populated = builder.populated_fields()
+        assert populated["op_type"] == OperationType.MACHINE_COMMISSION
+        assert populated["parent_id"] == "parent-uuid"
+        assert populated["is_bulk"] is False
+        assert populated["status"] == OperationStatus.ACCEPTED
+        assert populated["user_id"] == 1
+
+    @pytest.mark.parametrize(
+        "child_statuses, expected_status",
+        [
+            (
+                [],
+                OperationStatus.FAILED,
+            ),
+            (
+                [OperationStatus.COMPLETED, OperationStatus.COMPLETED],
+                OperationStatus.COMPLETED,
+            ),
+            (
+                [OperationStatus.FAILED, OperationStatus.CANCELLED],
+                OperationStatus.FAILED,
+            ),
+            (
+                [OperationStatus.COMPLETED, OperationStatus.FAILED],
+                OperationStatus.COMPLETED_WITH_ERRORS,
+            ),
+        ],
+    )
+    async def test_update_bulk_status_from_children(
+        self, child_statuses, expected_status
+    ) -> None:
+        children = [
+            TEST_OPERATION.model_copy(update={"status": status})
+            for status in child_statuses
+        ]
+        repository = Mock(OperationsRepository)
+        repository.get_many.return_value = children
+        repository.get_one.return_value = TEST_OPERATION
+        repository.update_by_id.return_value = TEST_OPERATION
+        service = self._service(repository)
+
+        await service.update_bulk_status_from_children("parent-uuid")
+
+        builder = repository.update_by_id.call_args.kwargs["builder"]
+        assert builder.populated_fields()["status"] == expected_status
 
     async def test_update_status_running_sets_started(self) -> None:
         repository = Mock(OperationsRepository)
@@ -475,6 +610,26 @@ class TestOperationsService:
         builder = repository.update_by_id.call_args.kwargs["builder"]
         populated = builder.populated_fields()
         assert populated["status"] == OperationStatus.CANCELLED
+        assert "finished" in populated
+        assert "started" not in populated
+
+    async def test_update_status_completed_with_errors_sets_finished(
+        self,
+    ) -> None:
+        repository = Mock(OperationsRepository)
+        repository.get_one.return_value = TEST_OPERATION
+        repository.update_by_id.return_value = TEST_OPERATION.model_copy(
+            update={"status": OperationStatus.COMPLETED_WITH_ERRORS}
+        )
+        service = self._service(repository)
+
+        await service.update_status(
+            "op-uuid", OperationStatus.COMPLETED_WITH_ERRORS
+        )
+
+        builder = repository.update_by_id.call_args.kwargs["builder"]
+        populated = builder.populated_fields()
+        assert populated["status"] == OperationStatus.COMPLETED_WITH_ERRORS
         assert "finished" in populated
         assert "started" not in populated
 
@@ -637,6 +792,7 @@ class TestOperationsService:
             OperationStatus.CANCELLED,
             OperationStatus.COMPLETED,
             OperationStatus.FAILED,
+            OperationStatus.COMPLETED_WITH_ERRORS,
         ],
     )
     async def test_cancel_for_user_raises_conflict_for_terminal_status(
