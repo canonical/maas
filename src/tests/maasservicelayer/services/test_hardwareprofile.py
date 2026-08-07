@@ -116,7 +116,7 @@ class TestHardwareProfileService:
 
         mock_repository.exists.assert_awaited_once_with(query=QuerySpec())
         mock_scriptresults_service.get_latest_for_nodes.assert_not_called()
-        mock_repository.create.assert_not_called()
+        mock_repository.create_many.assert_not_called()
 
     async def test_populate_all_creates_a_profile_for_every_node(
         self,
@@ -148,7 +148,9 @@ class TestHardwareProfileService:
         mock_from_commissioning_output.assert_called_once_with(
             {"foo": "bar"}, 1
         )
-        mock_repository.create.assert_awaited_once_with(builder=builder)
+        mock_repository.create_many.assert_awaited_once_with(
+            builders=[builder]
+        )
 
     async def test_populate_all_skips_node_with_unparsable_output(
         self,
@@ -172,4 +174,22 @@ class TestHardwareProfileService:
         ):
             await service.populate_all()
 
-        mock_repository.create.assert_awaited_once_with(builder=builder)
+        mock_repository.create_many.assert_awaited_once_with(
+            builders=[builder]
+        )
+
+    async def test_populate_all_does_not_call_create_many_when_no_profile_could_be_built(
+        self,
+        service: HardwareProfileService,
+        mock_repository: Mock,
+        mock_scriptresults_service: Mock,
+    ):
+        mock_repository.exists.return_value = False
+        bad_script_result = _make_script_result("not-valid-json")
+        mock_scriptresults_service.get_latest_for_nodes.return_value = [
+            (1, bad_script_result)
+        ]
+
+        await service.populate_all()
+
+        mock_repository.create_many.assert_not_called()

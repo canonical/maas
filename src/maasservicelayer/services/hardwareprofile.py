@@ -55,6 +55,8 @@ class HardwareProfileService(
         """
         if await self.exists(QuerySpec()):
             return
+
+        builders = []
         for (
             node_id,
             script_result,
@@ -67,10 +69,9 @@ class HardwareProfileService(
         ):
             try:
                 output = json.loads(script_result.output)
-                builder = HardwareProfileBuilder.from_commissioning_output(
+                builders.append(HardwareProfileBuilder.from_commissioning_output(
                     output, node_id
-                )
-                await self.create(builder)
+                ))
             except Exception:
                 # Avoid blocking MAAS start_up if there is a not parsable
                 # commissioning script output
@@ -79,3 +80,6 @@ class HardwareProfileService(
                     f"'{node_id}', skipping it.",
                     exc_info=True,
                 )
+
+        if builders:
+            await self.create_many(builders)
