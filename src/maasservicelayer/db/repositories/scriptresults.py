@@ -1,13 +1,13 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
 from typing import Type
 
-from sqlalchemy import join, Table
+from sqlalchemy import join, select, Table
 
 from maascommon.enums.scriptresult import ScriptStatus
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import ScriptResultTable, ScriptSetTable
 from maasservicelayer.models.scriptresult import ScriptResult
@@ -41,6 +41,12 @@ class ScriptResultClauseFactory(ClauseFactory):
         )
 
     @classmethod
+    def with_script_name(cls, script_name: str) -> Clause:
+        return Clause(
+            condition=eq(ScriptResultTable.c.script_name, script_name)
+        )
+
+    @classmethod
     def with_status(cls, status: ScriptStatus) -> Clause:
         return Clause(condition=eq(ScriptResultTable.c.status, status))
 
@@ -68,3 +74,20 @@ class ScriptResultsRepository(BaseRepository[ScriptResult]):
 
     def get_model_factory(self) -> Type[ScriptResult]:
         return ScriptResult
+
+    async def get_latest_for_nodes(
+        self, query: QuerySpec
+    ) -> list[tuple[int, ScriptResult]]:
+        stmt = (
+            select(ScriptSetTable.c.node_id, ScriptResultTable)
+            .select_from(ScriptResultTable)
+            .join(ScriptSetTable)
+            .where(eq(ScriptResultTable.c.status, ScriptStatus.PASSED))
+            .order_by(ScriptSetTable.c.node_id, ScriptResultTable.c.id.desc())
+            .distinct(ScriptSetTable.c.node_id)
+        )
+
+        stmt = query.enrich_stmt(stmt)
+
+        result = (await self.execute_stmt(stmt)).all()
+        return [(row.node_id, ScriptResult(**row._asdict())) for row in result]

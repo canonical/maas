@@ -1,5 +1,5 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
-#  GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime, timezone
 from typing import Any
@@ -14,7 +14,7 @@ async def create_test_scriptresult_entry(
     fixture: Fixture,
     script_set_id: int,
     **extra_details: Any,
-) -> dict[str, Any]:
+) -> ScriptResult:
     """
     Create an entry in the ScriptResultTable. This function must be used only
     for testing.
