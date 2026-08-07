@@ -27,6 +27,7 @@ from maasserver.models import (
 from maasserver.models.config import ensure_uuid_in_config
 from maasserver.models.domain import dns_kms_setting_changed
 from maasserver.secrets import SecretManager, SecretNotFound
+from maasserver.sqlalchemy import service_layer
 from maasserver.utils import synchronised
 from maasserver.utils.certificates import (
     generate_ca_certificate,
@@ -333,3 +334,8 @@ def inner_start_up(master=False):
 
         # initialize the image storage
         initialize_image_storage(node)
+
+        # Populate the hardware profiles of all nodes the first time MAAS
+        # starts with this feature available. This is a no-op on every
+        # subsequent start-up.
+        service_layer.services.hardware_profiles.populate_all()
