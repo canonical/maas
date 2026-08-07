@@ -14,7 +14,7 @@ async def create_test_scriptresult_entry(
     fixture: Fixture,
     script_set_id: int,
     **extra_details: Any,
-) -> dict[str, Any]:
+) -> ScriptResult:
     """
     Create an entry in the ScriptResultTable. This function must be used only
     for testing.

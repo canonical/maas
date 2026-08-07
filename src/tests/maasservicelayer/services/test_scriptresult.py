@@ -7,6 +7,7 @@ import pytest
 
 from maascommon.enums.scriptresult import ScriptStatus
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.scriptresults import (
     ScriptResultsRepository,
 )
@@ -67,4 +68,13 @@ class TestScriptResultsService:
         assert (
             query
             == "maasserver_scriptresult.status IN (0, 1) AND maasserver_scriptresult.script_set_id IN (1, 2, 3)"
+        )
+
+    async def test_get_latest_for_nodes(
+        self, scriptresults_service, scriptresults_repository_mock
+    ):
+        await scriptresults_service.get_latest_for_nodes(QuerySpec())
+
+        scriptresults_repository_mock.get_latest_for_nodes.assert_called_once_with(
+            QuerySpec()
         )

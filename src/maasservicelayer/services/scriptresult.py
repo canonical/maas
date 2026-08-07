@@ -1,3 +1,6 @@
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from maascommon.enums.scriptresult import ScriptStatus
 from maasservicelayer.builders.scriptresult import ScriptResultBuilder
 from maasservicelayer.context import Context
@@ -38,3 +41,9 @@ class ScriptResultsService(
             ),
             builder=ScriptResultBuilder(status=new_status),
         )
+
+    async def get_latest_for_nodes(
+        self, query: QuerySpec
+    ) -> list[tuple[int, ScriptResult]]:
+        """Return the latest successful script for every node."""
+        return await self.repository.get_latest_for_nodes(query)
