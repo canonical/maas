@@ -80,6 +80,7 @@ class ScriptResultsRepository(BaseRepository[ScriptResult]):
     ) -> list[tuple[int, ScriptResult]]:
         stmt = (
             select(ScriptSetTable.c.node_id, ScriptResultTable)
+            .select_from(ScriptResultTable)
             .join(ScriptSetTable)
             .where(eq(ScriptResultTable.c.status, ScriptStatus.PASSED))
             .order_by(ScriptSetTable.c.node_id, ScriptResultTable.c.id.desc())
