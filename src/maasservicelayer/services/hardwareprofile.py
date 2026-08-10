@@ -69,12 +69,14 @@ class HardwareProfileService(
         ):
             try:
                 output = json.loads(script_result.output)
-                builders.append(HardwareProfileBuilder.from_commissioning_output(
-                    output, node_id
-                ))
+                builders.append(
+                    HardwareProfileBuilder.from_commissioning_output(
+                        output, node_id
+                    )
+                )
             except Exception:
-                # Avoid blocking MAAS start_up if there is a not parsable
-                # commissioning script output
+                # Avoid blocking MAAS start_up if the commissioning script output
+                # is not parseable.
                 logger.warning(
                     "Failed to populate hardware profile for node "
                     f"'{node_id}', skipping it.",
