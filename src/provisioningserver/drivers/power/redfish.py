@@ -28,7 +28,11 @@ from provisioningserver.drivers import (
     make_setting_field,
     SETTING_SCOPE,
 )
-from provisioningserver.drivers.power import PowerActionError, PowerDriver
+from provisioningserver.drivers.power import (
+    PowerActionError,
+    PowerDriver,
+    PowerFatalError,
+)
 from provisioningserver.drivers.power.utils import WebClientContextFactory
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.logger import get_maas_logger
