@@ -996,9 +996,9 @@ class TestRedfishPowerDriver(MAASTestCase):
         self.patch(driver, "get_etag").return_value = None
 
         # Force get_boot_endpoint to return our targeted Settings URL
-        self.patch(
-            driver, "get_boot_endpoint"
-        ).return_value = b"redfish/v1/Systems/1/Settings"
+        self.patch(driver, "get_boot_endpoint").return_value = (
+            b"redfish/v1/Systems/1/Settings"
+        )
 
         mock_redfish_request = self.patch(driver, "redfish_request")
         mock_redfish_request.return_value = (b"", {})
