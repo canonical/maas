@@ -67,3 +67,8 @@ MISSING_FILE_CONTENT_VIOLATION_TYPE = "MissingFileContentViolationType"
 
 # User groups
 USER_ALREADY_IN_GROUP = "UserAlreadyInGroup"
+# FIPS
+FIPS_VIOLATION_TYPE = "FipsViolation"
+
+# Service
+SERVICE_UNAVAILABLE_VIOLATION_TYPE = "ServiceUnavailableViolation"

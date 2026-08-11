@@ -352,7 +352,13 @@ class TestDNSConfigModifications(TestDNSServer):
         )
         dns_update_all_zones(reload_retry=RELOAD_TIMEOUT)
         bind_write_options.assert_called_once_with(
-            dnssec_validation="auto", upstream_dns=[random_ip]
+            dnssec_validation="auto",
+            upstream_dns=[random_ip],
+            dns_bind="",
+            dns_allow_transfer="",
+            dns_fetches_per_zone=0,
+            dns_fetches_per_server=0,
+            hardening=False,
         )
 
     def test_dns_update_all_zones_writes_trusted_networks_parameter(self):

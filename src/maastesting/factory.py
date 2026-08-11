@@ -245,8 +245,11 @@ class Factory:
         else:
             return "%s" % str(ip_addr)
 
-    def make_ipv4_address(self):
+    def make_ipv4_address(self, skip_link_local=False):
         octets = list(islice(self.random_octets, 4))
+        if skip_link_local:
+            while octets[0] == 169 and octets[1] == 254:
+                octets = list(islice(self.random_octets, 4))
         if octets[0] == 0:
             octets[0] = 1
         return "%d.%d.%d.%d" % tuple(octets)

@@ -126,24 +126,29 @@ class Command(BaseCommand):
             if dbname is None:
                 dbname = conn_params.get("database")  # Django 3.x
 
-            cmd = (
-                [
-                    get_path("/usr/bin/temporal-sql-tool"),
-                    "--plugin",
-                    "postgres12",
-                    "--endpoint",
-                    endpoint,
-                    "--port",
-                    port,
-                    "--database",
-                    dbname,
-                    "--ca",
-                    "&".join(attributes),
-                ]
-                + user
-                + password
-                + args
-            )
+            sslmode = conn_params.get("sslmode", "prefer")
+            cmd = [
+                get_path("/usr/bin/temporal-sql-tool"),
+                "--plugin",
+                "postgres12",
+                "--endpoint",
+                endpoint,
+                "--port",
+                port,
+                "--database",
+                dbname,
+            ]
+            if sslmode in ("require", "verify-ca", "verify-full"):
+                cmd += ["--tls"]
+                if sslmode == "require":
+                    cmd += ["--tls-disable-host-verification"]
+                if conn_params.get("sslcert"):
+                    cmd += ["--tls-cert-file", conn_params["sslcert"]]
+                    cmd += ["--tls-key-file", conn_params["sslkey"]]
+                    if conn_params.get("sslrootcert"):
+                        cmd += ["--tls-ca-file", conn_params["sslrootcert"]]
+            cmd += ["--ca", "&".join(attributes)]
+            cmd += user + password + args
 
             try:
                 subprocess.check_output(cmd, stderr=subprocess.PIPE)
@@ -225,9 +230,18 @@ class Command(BaseCommand):
                 connstring = f"{connstring}&search_path={search_path}"
         else:
             port_part = f":{port}" if port else ""
-            connstring = f"{driver}://{auth}{host}{port_part}/{dbname}"
+            sslmode = conn_params.get("sslmode") or "prefer"
+            # asyncpg spells the SSL mode "ssl", libpq/pgx use "sslmode".
+            ssl_key = "ssl" if "asyncpg" in driver else "sslmode"
+            params = [f"{ssl_key}={sslmode}"]
+            if sslcert := conn_params.get("sslcert"):
+                params.append(f"sslcert={sslcert}")
+                params.append(f"sslkey={conn_params.get('sslkey', '')}")
+            if sslrootcert := conn_params.get("sslrootcert"):
+                params.append(f"sslrootcert={sslrootcert}")
             if search_path:
-                connstring = f"{connstring}?search_path={search_path}"
+                params.append(f"search_path={search_path}")
+            connstring = f"{driver}://{auth}{host}{port_part}/{dbname}?{'&'.join(params)}"
         return connstring
 
     @classmethod

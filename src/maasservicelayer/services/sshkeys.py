@@ -16,6 +16,7 @@ from maascommon.enums.sshkeys import (
     OPENSSH_PROTOCOL2_KEY_TYPES,
     SshKeysProtocolType,
 )
+from maascommon.fips import is_fips_enabled, validate_fips_ssh_public_key
 from maasservicelayer.builders.sshkeys import SshKeyBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -26,9 +27,11 @@ from maasservicelayer.db.repositories.sshkeys import (
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    FIPSViolationException,
     ValidationException,
 )
 from maasservicelayer.exceptions.constants import (
+    FIPS_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.sshkeys import SshKey
@@ -71,6 +74,18 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
     async def pre_create_hook(self, builder: SshKeyBuilder) -> None:
         # TODO: remove type ignore after implementing safe get for builders
         builder.key = await self.normalize_openssh_public_key(builder.key)  # type: ignore
+
+        if is_fips_enabled():
+            violation = validate_fips_ssh_public_key(builder.key)  # type: ignore
+            if violation is not None:
+                raise FIPSViolationException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=FIPS_VIOLATION_TYPE,
+                            message=violation,
+                        )
+                    ]
+                )
 
         # skip the validation if it's a key imported by LP or GH.
         if builder.protocol is not None:

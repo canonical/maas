@@ -107,8 +107,12 @@ class TestConfigurationSet(MAASTestCase):
             "database_keepalive_count",
             "database_keepalive_interval",
             "database_keepalive_idle",
+            "api_conn_limit",
+            "api_rate_limit_burst",
+            "dns_fetches_per_zone",
+            "dns_fetches_per_server",
         ):
-            value = random.randint(0, 60)
+            value = random.randint(1, 60)
         elif self.option == "num_workers":
             value = random.randint(1, 16)
         elif self.option in [

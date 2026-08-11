@@ -94,6 +94,11 @@ class InsufficientStorageException(BaseException):
         super().__init__("Insufficient space on storage.", details)
 
 
+class FIPSViolationException(ValidationException):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
+        super().__init__(details)
+
+
 class ServiceUnavailableException(BaseException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__("The service is not available.", details)
