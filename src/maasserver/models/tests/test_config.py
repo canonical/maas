@@ -249,3 +249,38 @@ class TestEnsureUUIDInConfig(MAASServerTestCase):
         stored_uuid = ensure_uuid_in_config()
         self.assertEqual(stored_uuid, config_uuid)
         self.assertEqual(created_uuid, stored_uuid)
+
+
+class TestReadHardeningEnabledFromDb(MAASServerTestCase):
+    """Tests for read_hardening_enabled_from_db().
+
+    The function returns the raw DB value when a row exists, or None when
+    no row is present, so that callers can distinguish "not set" from
+    "explicitly set to auto".
+    """
+
+    def setUp(self):
+        super().setUp()
+        from maasserver.models.config import read_hardening_enabled_from_db
+
+        self.read_fn = read_hardening_enabled_from_db
+
+    def test_returns_none_when_no_row_set(self):
+        # No CLI write → no row in the Config table → None.
+        result = self.read_fn()
+        self.assertIsNone(result)
+
+    def test_returns_on_when_explicitly_set(self):
+        Config.objects.set_config("hardening_enabled", "on")
+        result = self.read_fn()
+        self.assertEqual("on", result)
+
+    def test_returns_off_when_explicitly_set(self):
+        Config.objects.set_config("hardening_enabled", "off")
+        result = self.read_fn()
+        self.assertEqual("off", result)
+
+    def test_returns_auto_when_explicitly_set_to_auto(self):
+        Config.objects.set_config("hardening_enabled", "auto")
+        result = self.read_fn()
+        self.assertEqual("auto", result)

@@ -170,6 +170,17 @@ class TestConfigHelpers(MAASTestCase):
         self.assertIsNone(snap.get_rpc_secret())
         self.assertFalse(self.secret_file.exists())
 
+    def test_clear_certificates_dir(self):
+        maas_data = self.make_dir()
+        certificates_dir = Path(maas_data) / "certificates"
+        certificates_dir.mkdir()
+        self.useFixture(EnvironmentVariableFixture("MAAS_ROOT", maas_data))
+        fake_cert = certificates_dir / "test.pem"
+        fake_cert.write_text("test")
+        self.assertTrue(fake_cert.exists())
+        snap.clear_certificates_dir()
+        self.assertFalse(fake_cert.exists())
+
 
 class TestCmdInit(MAASTestCase):
     def setUp(self):
@@ -207,6 +218,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "db",
                 "database_user": "maas",
                 "database_pass": "pwd",
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             }
         )
 
@@ -265,6 +280,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "dbname",
                 "database_user": "dbuser",
                 "database_pass": "pwd",
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -281,6 +300,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "dbname",
                 "database_user": "dbuser",
                 "database_pass": "pwd",
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -296,6 +319,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "maasdb",
                 "database_user": "maas",
                 "database_pass": None,
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -310,6 +337,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "foo",
                 "database_user": "foo",
                 "database_pass": None,
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -325,6 +356,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "maasdb",
                 "database_user": "maas",
                 "database_pass": None,
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -340,6 +375,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "myuser",
                 "database_user": "myuser",
                 "database_pass": None,
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -359,6 +398,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "mydb",
                 "database_user": "myuser",
                 "database_pass": "pwd",
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
                 "database_port": 1234,
             },
             settings,
@@ -437,171 +480,111 @@ class TestCmdInit(MAASTestCase):
             str(error),
         )
 
-    def test_get_vault_settings_returns_empty_dict_with_no_vault_uri(self):
+
+class TestGetVaultSettings(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        self.parser = ArgumentParser()
+        snap.cmd_init(self.parser)
+        self.patch(os, "environ", {"SNAP_COMMON": self.make_dir()})
+        self.url = "http://vault:8200"
+        self.approle_id = factory.make_name("uuid")
+        self.wrapped_token = factory.make_name("uuid")
+        self.secrets_path = "path"
+
+    def _base_vault_options(self, secrets_mount=None):
+        args = [
+            "region+rack",
+            "--database-uri",
+            "maas-test-db:///",
+            "--vault-uri",
+            self.url,
+            "--vault-approle-id",
+            self.approle_id,
+            "--vault-wrapped-token",
+            self.wrapped_token,
+            "--vault-secrets-path",
+            self.secrets_path,
+        ]
+        if secrets_mount is not None:
+            args += ["--vault-secrets-mount", secrets_mount]
+        return self.parser.parse_args(args)
+
+    def test_returns_empty_dict_with_no_vault_uri(self):
         options = self.parser.parse_args(
             ["region+rack", "--database-uri", "maas-test-db:///"]
         )
         self.assertEqual(snap.get_vault_settings(options), {})
 
-    def test_get_vault_settings_requires_args_when_vault_uri_provided(self):
+    def test_requires_args_when_vault_uri_provided(self):
         options = self.parser.parse_args(
             [
                 "region+rack",
                 "--database-uri",
                 "maas-test-db:///",
                 "--vault-uri",
-                "http://vault:8200",
+                self.url,
             ]
         )
         self.assertRaises(CommandError, snap.get_vault_settings, options)
 
-    def test_get_vault_settings_returns_default_mount_when_not_specified(self):
-        url = "http://vault:8200"
-        approle_id = factory.make_name("uuid")
-        wrapped_token = factory.make_name("uuid")
+    def test_returns_default_mount_when_not_specified(self):
         secret_id = factory.make_name("uuid")
-        secrets_path = "path"
-        options = self.parser.parse_args(
-            [
-                "region+rack",
-                "--database-uri",
-                "maas-test-db:///",
-                "--vault-uri",
-                url,
-                "--vault-approle-id",
-                approle_id,
-                "--vault-wrapped-token",
-                wrapped_token,
-                "--vault-secrets-path",
-                secrets_path,
-            ]
-        )
-
         prepare_mock = self.patch(maasserver.vault, "prepare_wrapped_approle")
         prepare_mock.return_value = secret_id
 
-        assert snap.get_vault_settings(options) == {
-            "vault_url": url,
-            "vault_approle_id": approle_id,
+        assert snap.get_vault_settings(self._base_vault_options()) == {
+            "vault_url": self.url,
+            "vault_approle_id": self.approle_id,
             "vault_secret_id": secret_id,
             "vault_secrets_mount": "secret",
-            "vault_secrets_path": secrets_path,
+            "vault_secrets_path": self.secrets_path,
         }
         prepare_mock.assert_called_once_with(
-            url=url,
-            role_id=approle_id,
-            wrapped_token=wrapped_token,
-            secrets_path=secrets_path,
+            url=self.url,
+            role_id=self.approle_id,
+            wrapped_token=self.wrapped_token,
+            secrets_path=self.secrets_path,
             secrets_mount="secret",
         )
 
-    def test_get_vault_settings_returns_mount_when_specified(self):
-        url = "http://vault:8200"
-        approle_id = factory.make_name("uuid")
-        wrapped_token = factory.make_name("uuid")
+    def test_returns_mount_when_specified(self):
         secret_id = factory.make_name("uuid")
-        secrets_path = "path"
         secrets_mount = "test_mount"
-        options = self.parser.parse_args(
-            [
-                "region+rack",
-                "--database-uri",
-                "maas-test-db:///",
-                "--vault-uri",
-                url,
-                "--vault-approle-id",
-                approle_id,
-                "--vault-wrapped-token",
-                wrapped_token,
-                "--vault-secrets-path",
-                secrets_path,
-                "--vault-secrets-mount",
-                secrets_mount,
-            ]
-        )
-
         prepare_mock = self.patch(maasserver.vault, "prepare_wrapped_approle")
         prepare_mock.return_value = secret_id
 
-        assert snap.get_vault_settings(options) == {
-            "vault_url": url,
-            "vault_approle_id": approle_id,
+        assert snap.get_vault_settings(
+            self._base_vault_options(secrets_mount=secrets_mount)
+        ) == {
+            "vault_url": self.url,
+            "vault_approle_id": self.approle_id,
             "vault_secret_id": secret_id,
             "vault_secrets_mount": secrets_mount,
-            "vault_secrets_path": secrets_path,
+            "vault_secrets_path": self.secrets_path,
         }
         prepare_mock.assert_called_once_with(
-            url=url,
-            role_id=approle_id,
-            wrapped_token=wrapped_token,
-            secrets_path=secrets_path,
+            url=self.url,
+            role_id=self.approle_id,
+            wrapped_token=self.wrapped_token,
+            secrets_path=self.secrets_path,
             secrets_mount=secrets_mount,
         )
 
-    def test_get_vault_settings_raises_command_error_for_vault_issues(self):
-        url = "http://vault:8200"
-        approle_id = factory.make_name("uuid")
-        wrapped_token = factory.make_name("uuid")
-        secrets_path = "path"
-        options = self.parser.parse_args(
-            [
-                "region+rack",
-                "--database-uri",
-                "maas-test-db:///",
-                "--vault-uri",
-                url,
-                "--vault-approle-id",
-                approle_id,
-                "--vault-wrapped-token",
-                wrapped_token,
-                "--vault-secrets-path",
-                secrets_path,
-            ]
-        )
-
+    def test_raises_command_error_for_vault_issues(self):
         prepare_mock = self.patch(maasserver.vault, "prepare_wrapped_approle")
         prepare_mock.side_effect = [VaultError()]
-
-        self.assertRaises(CommandError, snap.get_vault_settings, options)
-
-    def test_get_vault_settings_reraises_unknown_error(self):
-        url = "http://vault:8200"
-        approle_id = factory.make_name("uuid")
-        wrapped_token = factory.make_name("uuid")
-        secrets_path = "path"
-        options = self.parser.parse_args(
-            [
-                "region+rack",
-                "--database-uri",
-                "maas-test-db:///",
-                "--vault-uri",
-                url,
-                "--vault-approle-id",
-                approle_id,
-                "--vault-wrapped-token",
-                wrapped_token,
-                "--vault-secrets-path",
-                secrets_path,
-            ]
+        self.assertRaises(
+            CommandError, snap.get_vault_settings, self._base_vault_options()
         )
 
+    def test_reraises_unknown_error(self):
         prepare_mock = self.patch(maasserver.vault, "prepare_wrapped_approle")
         exc = factory.make_exception()
         prepare_mock.side_effect = [exc]
-        self.assertRaises(type(exc), snap.get_vault_settings, options)
-
-    def test_clear_certificates_dir(self):
-        maas_data = self.make_dir()
-        self.certificates_dir = Path(maas_data) / "certificates"
-        self.certificates_dir.mkdir()
-        self.useFixture(EnvironmentVariableFixture("MAAS_ROOT", maas_data))
-
-        fake_cert = self.certificates_dir / "test.pem"
-        fake_cert.write_text("test")
-
-        self.assertTrue(fake_cert.exists())
-        snap.clear_certificates_dir()
-        self.assertFalse(fake_cert.exists())
+        self.assertRaises(
+            type(exc), snap.get_vault_settings, self._base_vault_options()
+        )
 
 
 class TestCmdStatus(MAASTestCase):
@@ -665,6 +648,145 @@ class TestCmdConfig(MAASTestCase):
         config_manager.update.assert_not_called()
         self.assertEqual(stdout.getvalue(), "")
         mock_restart_pebble.assert_not_called()
+
+
+class TestGetDatabaseSettingsSslmode(MAASTestCase):
+    """Tests for sslmode handling in get_database_settings()."""
+
+    def setUp(self):
+        super().setUp()
+        self.parser = ArgumentParser()
+        snap.cmd_init(self.parser)
+        self.patch(os, "environ", {"SNAP_COMMON": self.make_dir()})
+
+    def _parse(self, uri):
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", uri]
+        )
+        return snap.get_database_settings(options)
+
+    def test_missing_sslmode_defaults_to_prefer(self):
+        settings = self._parse("postgres://myuser@myhost/")
+        self.assertEqual("prefer", settings["database_sslmode"])
+
+    def test_sslmode_is_included_in_returned_dict(self):
+        # Regression: sslmode was previously treated as an unsupported parameter.
+        settings = self._parse("postgres://myuser@myhost/?sslmode=require")
+        self.assertEqual("require", settings["database_sslmode"])
+
+    def test_all_valid_sslmodes_accepted(self):
+        valid_modes = [
+            "disable",
+            "allow",
+            "prefer",
+            "require",
+            "verify-ca",
+            "verify-full",
+        ]
+        for mode in valid_modes:
+            settings = self._parse(f"postgres://myuser@myhost/?sslmode={mode}")
+            self.assertEqual(
+                mode,
+                settings["database_sslmode"],
+                f"Expected sslmode={mode!r} to be accepted",
+            )
+
+    def test_invalid_sslmode_raises_error(self):
+        error = self.assertRaises(
+            snap.DatabaseSettingsError,
+            self._parse,
+            "postgres://myuser@myhost/?sslmode=bogus",
+        )
+        self.assertEqual("Invalid sslmode: bogus", str(error))
+
+
+class TestPrintConfig(MAASTestCase):
+    """print_config() emits SSL settings for region modes."""
+
+    def _run_print_config(self, config_data):
+        self.patch(snap, "get_current_mode").return_value = "region+rack"
+        mock_config = self.patch(snap, "MAASConfiguration").return_value
+        mock_config.get.return_value = config_data
+        out = io.StringIO()
+        self.patch(snap, "print_msg", lambda msg: out.write(msg + "\n"))
+        snap.print_config()
+        return out.getvalue()
+
+    def test_database_sslmode_printed_in_region_mode(self):
+        output = self._run_print_config(
+            {
+                "maas_url": "http://localhost:5240/MAAS",
+                "database_host": "localhost",
+                "database_port": 5432,
+                "database_name": "maasdb",
+                "database_sslmode": "verify-full",
+                "database_user": "maas",
+                "database_pass": "secret",
+            }
+        )
+        self.assertIn("database_sslmode=verify-full", output)
+
+    def test_cert_paths_printed_in_region_mode(self):
+        output = self._run_print_config(
+            {
+                "maas_url": "http://localhost:5240/MAAS",
+                "database_host": "localhost",
+                "database_port": 5432,
+                "database_name": "maasdb",
+                "database_sslmode": "verify-full",
+                "database_sslcert": "/etc/maas/db.crt",
+                "database_sslkey": "/etc/maas/db.key",
+                "database_sslrootcert": "/etc/maas/ca.crt",
+                "database_user": "maas",
+                "database_pass": "secret",
+            }
+        )
+        self.assertIn("database_sslcert=/etc/maas/db.crt", output)
+        self.assertIn("database_sslkey=/etc/maas/db.key", output)
+        self.assertIn("database_sslrootcert=/etc/maas/ca.crt", output)
+
+
+class TestGetDatabaseSettingsCerts(MAASTestCase):
+    """Tests for sslcert/sslkey/sslrootcert handling in get_database_settings()."""
+
+    def setUp(self):
+        super().setUp()
+        self.parser = ArgumentParser()
+        snap.cmd_init(self.parser)
+        self.patch(os, "environ", {"SNAP_COMMON": self.make_dir()})
+
+    def _parse(self, uri):
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", uri]
+        )
+        return snap.get_database_settings(options)
+
+    def test_cert_params_absent_default_to_empty_string(self):
+        settings = self._parse("postgres://myuser@myhost/")
+        self.assertEqual("", settings["database_sslcert"])
+        self.assertEqual("", settings["database_sslkey"])
+        self.assertEqual("", settings["database_sslrootcert"])
+
+    def test_cert_params_extracted_from_uri(self):
+        settings = self._parse(
+            "postgres://myuser@myhost/"
+            "?sslmode=verify-full"
+            "&sslcert=/etc/maas/db.crt"
+            "&sslkey=/etc/maas/db.key"
+            "&sslrootcert=/etc/maas/ca.crt"
+        )
+        self.assertEqual("/etc/maas/db.crt", settings["database_sslcert"])
+        self.assertEqual("/etc/maas/db.key", settings["database_sslkey"])
+        self.assertEqual("/etc/maas/ca.crt", settings["database_sslrootcert"])
+
+    def test_rootcert_only_without_client_cert(self):
+        """sslrootcert alone is valid (server-verification without mTLS)."""
+        settings = self._parse(
+            "postgres://myuser@myhost/?sslmode=verify-ca&sslrootcert=/etc/maas/ca.crt"
+        )
+        self.assertEqual("", settings["database_sslcert"])
+        self.assertEqual("", settings["database_sslkey"])
+        self.assertEqual("/etc/maas/ca.crt", settings["database_sslrootcert"])
 
 
 class TestDBNeedInit(MAASTestCase):

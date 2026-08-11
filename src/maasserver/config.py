@@ -156,3 +156,129 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         "Enable HTTP debugging. Logs all HTTP requests and HTTP responses.",
         OneWayStringBool(if_missing=False),
     )
+
+    # Security hardening options.
+    hardening_enabled = ConfigurationOption(
+        "hardening_enabled",
+        "Security hardening activation: 'auto' (on when the host is in FIPS "
+        "mode), 'on' (force on), or 'off'.",
+        UnicodeString(if_missing="auto"),
+    )
+
+    api_bind = ConfigurationOption(
+        "api_bind",
+        "IPv4 address the public API server binds to; empty means all "
+        "interfaces. A specific address is required when hardening is active.",
+        UnicodeString(if_missing=""),
+    )
+    api_bind6 = ConfigurationOption(
+        "api_bind6",
+        "IPv6 address the public API server binds to; empty means all "
+        "interfaces. A specific address is required when hardening is active.",
+        UnicodeString(if_missing=""),
+    )
+    api_int_bind = ConfigurationOption(
+        "api_int_bind",
+        "IPv4 address the internal (rack-facing) plain HTTP service binds to "
+        "when TLS is enabled; empty means all interfaces.",
+        UnicodeString(if_missing=""),
+    )
+    api_int_bind6 = ConfigurationOption(
+        "api_int_bind6",
+        "IPv6 address the internal (rack-facing) plain HTTP service binds to "
+        "when TLS is enabled; empty means all interfaces.",
+        UnicodeString(if_missing=""),
+    )
+    prometheus_bind = ConfigurationOption(
+        "prometheus_bind",
+        "Address the Prometheus metrics endpoint binds to.",
+        UnicodeString(if_missing=""),
+    )
+    temporal_bind = ConfigurationOption(
+        "temporal_bind",
+        "Address the Temporal services bind to.",
+        UnicodeString(if_missing=""),
+    )
+    rpc_bind = ConfigurationOption(
+        "rpc_bind",
+        "Address the region RPC listener binds to.",
+        UnicodeString(if_missing=""),
+    )
+    dns_bind = ConfigurationOption(
+        "dns_bind",
+        "Address the DNS (Bind9) service binds to when hardening is active.",
+        UnicodeString(if_missing=""),
+    )
+    dns_allow_transfer = ConfigurationOption(
+        "dns_allow_transfer",
+        "BIND9 allow-transfer ACL value (e.g. 'none', 'trusted').  "
+        "Empty string means: use the hardening default ('none') when "
+        "hardening is active, otherwise omit the directive.",
+        UnicodeString(if_missing=""),
+    )
+    dns_fetches_per_zone = ConfigurationOption(
+        "dns_fetches_per_zone",
+        "BIND9 fetches-per-zone limit.  "
+        "0 means: use the hardening default (100) when hardening is "
+        "active, otherwise omit the directive.",
+        Int(min=0, if_missing=0),
+    )
+    dns_fetches_per_server = ConfigurationOption(
+        "dns_fetches_per_server",
+        "BIND9 fetches-per-server limit.  "
+        "0 means: use the hardening default (100) when hardening is "
+        "active, otherwise omit the directive.",
+        Int(min=0, if_missing=0),
+    )
+
+    database_sslmode = ConfigurationOption(
+        "database_sslmode",
+        "SSL mode for the PostgreSQL connection (e.g. verify-full, verify-ca).",
+        UnicodeString(if_missing="prefer"),
+    )
+    database_sslcert = ConfigurationOption(
+        "database_sslcert",
+        "Path to the client TLS certificate for PostgreSQL mTLS.",
+        UnicodeString(if_missing=""),
+    )
+    database_sslkey = ConfigurationOption(
+        "database_sslkey",
+        "Path to the client TLS key for PostgreSQL mTLS.",
+        UnicodeString(if_missing=""),
+    )
+    database_sslrootcert = ConfigurationOption(
+        "database_sslrootcert",
+        "Path to the CA certificate for verifying the PostgreSQL server.",
+        UnicodeString(if_missing=""),
+    )
+
+    api_tls_cert = ConfigurationOption(
+        "api_tls_cert",
+        "Path to the TLS certificate for the public API endpoint.",
+        UnicodeString(if_missing=""),
+    )
+    api_tls_key = ConfigurationOption(
+        "api_tls_key",
+        "Path to the TLS private key for the public API endpoint.",
+        UnicodeString(if_missing=""),
+    )
+    api_tls_dhparam = ConfigurationOption(
+        "api_tls_dhparam",
+        "Path to the DH parameters file for NGINX TLS (optional).",
+        UnicodeString(if_missing=""),
+    )
+    api_rate_limit_rate = ConfigurationOption(
+        "api_rate_limit_rate",
+        "NGINX rate limit (e.g. '10r/s') applied per client IP.",
+        UnicodeString(if_missing="10r/s"),
+    )
+    api_rate_limit_burst = ConfigurationOption(
+        "api_rate_limit_burst",
+        "NGINX rate limit burst size.",
+        Int(if_missing=20, accept_python=False, min=1),
+    )
+    api_conn_limit = ConfigurationOption(
+        "api_conn_limit",
+        "NGINX concurrent connection limit per client IP.",
+        Int(if_missing=100, accept_python=False, min=1),
+    )

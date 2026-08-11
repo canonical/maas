@@ -127,5 +127,5 @@ def get_ssl_certificate(url, timeout=10):
     pem_cert = ssl.DER_cert_to_PEM_cert(der_cert)
     return (
         crypto.load_certificate(crypto.FILETYPE_PEM, pem_cert),
-        hashlib.sha1(der_cert).hexdigest(),
+        hashlib.sha1(der_cert, usedforsecurity=False).hexdigest(),
     )

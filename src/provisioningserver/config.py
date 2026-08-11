@@ -822,6 +822,93 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         Number(min=1, if_missing=20 * 1000**3),
     )
 
+    # Security hardening options.
+    hardening_enabled = ConfigurationOption(
+        "hardening_enabled",
+        "Security hardening activation: 'auto' (on when the host is in FIPS "
+        "mode), 'on' (force on), or 'off'.",
+        UnicodeString(if_missing="auto"),
+    )
+
+    # Service binding options.
+    api_bind = ConfigurationOption(
+        "api_bind",
+        "IPv4 address the rack HTTP server binds to; empty means all "
+        "interfaces. A specific address is required when hardening is active.",
+        UnicodeString(if_missing=""),
+    )
+    api_bind6 = ConfigurationOption(
+        "api_bind6",
+        "IPv6 address the rack HTTP server binds to; empty means all "
+        "interfaces. A specific address is required when hardening is active.",
+        UnicodeString(if_missing=""),
+    )
+    dns_bind = ConfigurationOption(
+        "dns_bind",
+        "Address the DNS (Bind9) service binds to.",
+        UnicodeString(if_missing=""),
+    )
+    dns_allow_transfer = ConfigurationOption(
+        "dns_allow_transfer",
+        "BIND9 allow-transfer ACL value (e.g. 'none', 'trusted').  "
+        "Empty string means: use the hardening default ('none') when "
+        "hardening is active, otherwise omit the directive.",
+        UnicodeString(if_missing=""),
+    )
+    dns_fetches_per_zone = ConfigurationOption(
+        "dns_fetches_per_zone",
+        "BIND9 fetches-per-zone limit.  "
+        "0 means: use the hardening default (100) when hardening is "
+        "active, otherwise omit the directive.",
+        Number(min=0, if_missing=0),
+    )
+    dns_fetches_per_server = ConfigurationOption(
+        "dns_fetches_per_server",
+        "BIND9 fetches-per-server limit.  "
+        "0 means: use the hardening default (100) when hardening is "
+        "active, otherwise omit the directive.",
+        Number(min=0, if_missing=0),
+    )
+    tftp_bind = ConfigurationOption(
+        "tftp_bind",
+        "Address the TFTP service binds to.",
+        UnicodeString(if_missing=""),
+    )
+    squid_bind = ConfigurationOption(
+        "squid_bind",
+        "Address the Squid HTTP proxy service binds to; empty means all "
+        "interfaces. A specific address is required when hardening is active.",
+        UnicodeString(if_missing=""),
+    )
+    rpc_bind = ConfigurationOption(
+        "rpc_bind",
+        "Address the rack RPC client listener binds to; empty means all "
+        "interfaces. A specific address is required when hardening is active.",
+        UnicodeString(if_missing=""),
+    )
+
+    # Upstream region API port proxied by the rack HTTP server.
+    api_upstream_port = ConfigurationOption(
+        "api_upstream_port",
+        "Port of the upstream region API that the rack HTTP server proxies.",
+        Number(min=1, max=65535, if_missing=5240),
+    )
+    api_rate_limit_rate = ConfigurationOption(
+        "api_rate_limit_rate",
+        "NGINX rate limit (e.g. '10r/s') applied per client IP.",
+        UnicodeString(if_missing="10r/s"),
+    )
+    api_rate_limit_burst = ConfigurationOption(
+        "api_rate_limit_burst",
+        "NGINX rate limit burst size.",
+        Number(min=1, if_missing=20),
+    )
+    api_conn_limit = ConfigurationOption(
+        "api_conn_limit",
+        "NGINX concurrent connection limit per client IP.",
+        Number(min=1, if_missing=100),
+    )
+
 
 def is_dev_environment():
     """Is this the development environment, or production?"""

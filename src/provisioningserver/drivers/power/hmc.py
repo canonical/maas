@@ -9,7 +9,7 @@ This module provides support for interacting with IBM's HMC via SSH.
 
 from socket import error as SOCKETError
 
-from paramiko import AutoAddPolicy, SSHClient, SSHException
+from paramiko import SSHException
 
 from provisioningserver.drivers import (
     make_ip_extractor,
@@ -21,6 +21,10 @@ from provisioningserver.drivers.power import (
     PowerConnError,
     PowerDriver,
     PowerFatalError,
+)
+from provisioningserver.drivers.power.ssh_utils import (
+    connect_ssh_client,
+    make_ssh_client,
 )
 
 
@@ -70,10 +74,9 @@ class HMCPowerDriver(PowerDriver):
     ):
         """Run a single command on HMC via SSH and return output."""
         try:
-            ssh_client = SSHClient()
-            ssh_client.set_missing_host_key_policy(AutoAddPolicy())
-            ssh_client.connect(
-                power_address, username=power_user, password=power_pass
+            ssh_client = make_ssh_client()
+            connect_ssh_client(
+                ssh_client, power_address, power_user, power_pass
             )
             _, stdout, _ = ssh_client.exec_command(command)
             output = stdout.read().decode("utf-8").strip()
