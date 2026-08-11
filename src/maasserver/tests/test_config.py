@@ -76,6 +76,7 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         "database_name": "maasdb",
         "database_user": "maas",
         "database_pass": "",
+        "database_sslmode": "prefer",
         "database_conn_max_age": 5 * 60,
         "database_keepalive": True,
         "database_keepalive_idle": 15,

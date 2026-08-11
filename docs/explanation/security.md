@@ -14,6 +14,26 @@ A certificate expiration check runs every twelve hours. When the certificate has
 
 > Note that MAAS does not auto-renew certificates.
 
+## Security hardening
+
+MAAS security hardening enforces STIG/CIS transport-security controls on the region controller. Hardening is a posture, not a gate: MAAS validates its prerequisites at startup but never refuses to start over an unmet one. A single missing setting on a compliance host is a visible, fixable signal rather than a boot failure that takes a controller offline.
+
+### Activation
+
+Hardening is controlled by the `hardening_enabled` setting. The default value, `auto`, activates hardening when the host is in FIPS mode. An administrator can also activate hardening explicitly on any host with `maas config-hardening enable`, or disable it with `maas config-hardening disable`. On a FIPS host, hardening cannot be turned off. For the relationship between FIPS mode and MAAS, see [FIPS mode](/explanation/fips.md).
+
+### Violations as notifications
+
+When hardening is active, startup validation checks the public-API TLS certificate, DH parameters, service bind addresses, and the PostgreSQL SSL mode. Each unmet prerequisite is posted as an admin-targeted, non-dismissable `error` notification keyed by a stable identifier — the same mechanism the [certificate-expiration check](#certificate-expiration) uses. Because the notifications are non-dismissable, a compliance violation cannot be hidden; it can only be resolved. When the underlying setting is corrected, the notification clears on the next startup. Administrators can also run `maas config-hardening validate` for the same result on demand, which is useful as audit evidence.
+
+This differs from the certificate-expiration notification, which is dismissable — an expiring certificate is a reminder, whereas an active hardening violation is a compliance finding that must be fixed rather than acknowledged.
+
+### Region and rack scope
+
+The notification model and the validator live on the region controller. A rack-only controller applies its own hardening controls locally but has no region-facing channel for posting notifications, so rack-local configuration violations are not surfaced cross-host. The region database is the single source of compliance notifications. To audit a rack-only controller's hardening posture, run `maas config-hardening validate` on the region host.
+
+See [Security hardening reference](/reference/configuration-guides/security-hardening.md) for the parameters, stores, and violation codes, and [Activate MAAS hardening](/how-to-guides/enhance-maas-security.md#activate-maas-hardening) for setup steps.
+
 ## Shared secrets
 
 When you add a new rack or region controller, MAAS asks for a shared secret it will use to communicate with the rest of MAAS. This secret is also exposed in the web UI when you click the 'Add rack controller' button on the Controllers page. MAAS automatically generates this secret when your first region controller installed, and stores the secret in a plain text file. This file is automatically protected with the correct permissions, so there is no need for any action on your part.

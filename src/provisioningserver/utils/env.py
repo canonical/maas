@@ -103,6 +103,7 @@ class GlobalValue:
 
     def __init__(self):
         self._value = None
+        self._on_change: list = []
 
     def get(self):
         """Return the value."""
@@ -111,6 +112,12 @@ class GlobalValue:
     def set(self, value):
         """Set the value."""
         self._value = value
+        for cb in self._on_change:
+            cb()
+
+    def on_change(self, callback):
+        """Register *callback* to be called after every :meth:`set`."""
+        self._on_change.append(callback)
 
 
 MAAS_SECRET = GlobalValue()

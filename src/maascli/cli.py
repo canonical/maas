@@ -261,6 +261,7 @@ COMMANDS = {
 REGIOND_COMMANDS = (
     ("apikey", "maasserver"),
     ("configauth", "maasserver"),
+    ("config-hardening", "maasserver"),
     ("config-tls", "maasserver"),
     ("config-vault", "maasserver"),
     ("msm", "maasserver"),

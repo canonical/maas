@@ -79,13 +79,22 @@ class ProvisioningServiceMaker:
         self, tftp_root, tftp_port, tftp_max_blksize, rpc_service
     ):
         """Create the dynamic TFTP service."""
+        from provisioningserver.config import ClusterConfiguration
         from provisioningserver.rackdservices.tftp import TFTPService
+
+        tftp_bind = ""
+        try:
+            with ClusterConfiguration.open() as cfg:
+                tftp_bind = str(cfg.tftp_bind)
+        except Exception:
+            pass
 
         tftp_service = TFTPService(
             resource_root=tftp_root,
             port=tftp_port,
             max_blksize=tftp_max_blksize,
             client_service=rpc_service,
+            bind_address=tftp_bind,
         )
         tftp_service.setName("tftp")
 

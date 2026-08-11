@@ -26,8 +26,7 @@ epoch: 5*
 
 package-repositories:
   - type: apt
-    ppa: maas/3.8-next
-
+    ppa: alexsander-souza/maas-3.7-fips # TODO: update with new 3.8 PPA
 environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages
   LD_PRELOAD: $SNAP/usr/lib/snap-preload.so
@@ -121,8 +120,14 @@ parts:
 
   pebble:
     plugin: go
+<<<<<<< HEAD
     build-packages:
       - golang-go
+=======
+    after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
+>>>>>>> 734313cca (feat(security): FIPS 140-2/140-3 and STIG/CIS compliance (#463))
     source-type: git
     source: https://github.com/canonical/pebble
     source-tag: v1.10.2
@@ -218,6 +223,7 @@ parts:
       - python3-temporalio
       - python3-twisted
       - python3-txtftp
+      - python3-typing-extensions
       - python3-tz
       - python3-ulid
       - python3-uvicorn
@@ -351,18 +357,41 @@ parts:
   host-info:
     plugin: make
     source: src/host-info
+<<<<<<< HEAD
     build-packages:
       - golang-go
+=======
+    after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
+
+  maas-netmon:
+    plugin: make
+    source: src/maasagent
+    after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
+    organize:
+      bin/maas-netmon: usr/sbin/maas-netmon
+>>>>>>> 734313cca (feat(security): FIPS 140-2/140-3 and STIG/CIS compliance (#463))
     prime:
       - usr/share/maas/machine-resources
 
   maas-agent:
     plugin: make
     source: src/maasagent
+<<<<<<< HEAD
     build-packages:
       - golang-go
     build-environment:
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
+=======
+    after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
+    organize:
+      bin/maas-agent: usr/sbin/maas-agent
+>>>>>>> 734313cca (feat(security): FIPS 140-2/140-3 and STIG/CIS compliance (#463))
     prime:
       - usr/sbin/
 

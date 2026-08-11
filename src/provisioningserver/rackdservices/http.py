@@ -56,6 +56,29 @@ def compose_http_config_path(filename):
     return os.path.join(get_http_config_dir(), filename)
 
 
+def compose_listen_addresses(port, bind4="", bind6=""):
+    """Return the list of addresses for nginx ``listen`` directives.
+
+    When neither ``bind4`` nor ``bind6`` is set, returns the IPv6 and IPv4
+    wildcard addresses so nginx listens on all interfaces. When either is set,
+    returns only the specified address(es).
+
+    Templates render the result with a ``for`` loop::
+
+        {{for addr in main_listen}}
+        listen {{addr}};
+        {{endfor}}
+    """
+    if bind4 or bind6:
+        addresses = []
+        if bind4:
+            addresses.append(f"{bind4}:{port}")
+        if bind6:
+            addresses.append(f"[{bind6}]:{port}")
+        return addresses
+    return [f"[::]:{port}", str(port)]
+
+
 class HTTPConfigFail(Exception):
     """Raised if there's a problem with a HTTP config."""
 
@@ -176,15 +199,46 @@ class RackHTTPService(TimerService):
         )
         agent_http_socket_path = str(get_maas_run_path() / "agent-http.sock")
 
+        from maascommon.hardening import is_hardening_enabled
+        from provisioningserver.config import ClusterConfiguration
+
+        hardening_active = is_hardening_enabled()
+        api_bind = ""
+        api_bind6 = ""
+        api_upstream_port = 5240
+        api_rate_limit_rate = "10r/s"
+        api_rate_limit_burst = 20
+        api_conn_limit = 100
+        try:
+            with ClusterConfiguration.open() as cluster_config:
+                api_bind = cluster_config.api_bind
+                api_bind6 = cluster_config.api_bind6
+                api_upstream_port = cluster_config.api_upstream_port
+                api_rate_limit_rate = cluster_config.api_rate_limit_rate
+                api_rate_limit_burst = cluster_config.api_rate_limit_burst
+                api_conn_limit = cluster_config.api_conn_limit
+        except Exception:
+            log.err(
+                _why="Could not read ClusterConfiguration; using defaults for "
+                "bind, rate-limit, and upstream-port settings."
+            )
+
         try:
             rendered = template.substitute(
                 {
                     "upstream_http": list(sorted(upstream_http)),
-                    "resource_root": self._resource_root,
                     "machine_resources": str(root_prefix / "usr/share/maas"),
                     "maas_agent_httpproxy_socket_path": httpproxy_socket_path,
                     "maas_agent_http_socket_path": agent_http_socket_path,
                     "boot_resources_dir": get_maas_data_path("image-storage"),
+                    "hardening": hardening_active,
+                    "api_listen": compose_listen_addresses(
+                        5248, api_bind, api_bind6
+                    ),
+                    "api_upstream_port": api_upstream_port,
+                    "api_rate_limit_rate": api_rate_limit_rate,
+                    "api_rate_limit_burst": api_rate_limit_burst,
+                    "api_conn_limit": api_conn_limit,
                 }
             )
         except NameError as error:

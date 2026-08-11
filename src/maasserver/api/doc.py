@@ -550,7 +550,7 @@ def _hash_canonical(description):
     """
     description = _describe_canonical(description)
     description_as_json = json.dumps(description).encode("ascii")
-    return hashlib.sha1(description_as_json)
+    return hashlib.sha1(description_as_json, usedforsecurity=False)
 
 
 def _get_api_description_hash(description):

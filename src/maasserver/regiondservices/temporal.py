@@ -14,6 +14,7 @@ from django.db import connection as django_connection
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
+import maascommon.hardening as _hardening
 from maasserver.config import RegionConfiguration
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
@@ -58,14 +59,27 @@ class RegionTemporalService(Service):
 
         with RegionConfiguration.open() as config:
             broadcast_address = config.broadcast_address
+            temporal_bind = self._resolve_bind(
+                str(config.temporal_bind),
+                hardening_active=_hardening.is_hardening_enabled(),
+            )
+            database_sslcert = config.database_sslcert
+            database_sslkey = config.database_sslkey
+            database_sslrootcert = config.database_sslrootcert
+            maas_url = config.maas_url
+
+        sslmode = dbconf.get("OPTIONS", {}).get("sslmode", "prefer")
+        tls_enabled = sslmode in ("require", "verify-ca", "verify-full")
+        enable_host_verification = sslmode in ("verify-ca", "verify-full")
 
         if not broadcast_address:
             try:
-                broadcast_address = self.get_broadcast_address(config.maas_url)
+                broadcast_address = self.get_broadcast_address(maas_url)
             except Exception as e:
                 maaslog.error(
-                    f"Failed to identify broadcast address due to: {e}"
-                    f"Please consider setting it manually using regiond.conf"
+                    "Failed to identify broadcast address due to: %s. "
+                    "Please consider setting it manually using regiond.conf",
+                    e,
                 )
 
         temporal_config_dir = Path(
@@ -88,6 +102,14 @@ class RegionTemporalService(Service):
             "cert_file": cert_file,
             "key_file": key_file,
             "cacert_file": cacert_file,
+            "temporal_bind": temporal_bind,
+            "tls_enabled": "true" if tls_enabled else "false",
+            "enable_host_verification": "true"
+            if enable_host_verification
+            else "false",
+            "database_sslcert": database_sslcert,
+            "database_sslkey": database_sslkey,
+            "database_sslrootcert": database_sslrootcert,
         }
 
         rendered_template = template.substitute(environ).encode()
@@ -125,3 +147,16 @@ class RegionTemporalService(Service):
         # local 10.0.0.37 dev lo src 10.0.0.37 uid 0
         # cache <local>
         return output.split("src ")[1].split()[0]
+
+    @staticmethod
+    def _resolve_bind(
+        configured: str, *, hardening_active: bool = False
+    ) -> str:
+        """Return the configured bind address.
+
+        Falls back to loopback when hardening is active, or all-interfaces
+        otherwise.
+        """
+        if configured:
+            return configured
+        return "127.0.0.1" if hardening_active else "0.0.0.0"

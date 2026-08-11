@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for regions."""
@@ -324,6 +324,24 @@ class Region(SecuredRPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.ReportNeighbours`.
         """
+
+        def _suppress_retryable(failure):
+            # After all retries are exhausted the @transactional decorator
+            # lets the final OperationalError propagate.  ReportNeighbours is
+            # a best-effort observation; losing one update under extreme ARP
+            # contention is acceptable.  Log at warning level so the noise
+            # doesn't fill syslog as [critical].
+            if failure.check(DatabaseError) and is_retryable_failure(
+                failure.value
+            ):
+                log.info(
+                    "Discarding retryable DB failure in ReportNeighbours "
+                    "after exhausting retries: {err}",
+                    err=failure.value,
+                )
+                return {}
+            return failure
+
         d = deferToDatabase(
             rackcontrollers.report_neighbours, system_id, neighbours
         )
@@ -470,6 +488,25 @@ class Region(SecuredRPCProtocol):
             rackcontrollers.update_state, system_id, scope, state
         )
         return d.addCallback(lambda _: {})
+
+    @region.VerifyTrustedSshHostKey.responder
+    def verify_trusted_ssh_host_key(self, host, key_type, public_key):
+        """verify_trusted_ssh_host_key()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.VerifyTrustedSshHostKey`.
+        """
+
+        @transactional
+        def verify():
+            from maasserver.models.trustedsshhostkey import TrustedSshHostKey
+
+            verified = TrustedSshHostKey.objects.filter(
+                host=host, key_type=key_type, public_key=public_key
+            ).exists()
+            return {"verified": verified}
+
+        return deferToDatabase(verify)
 
 
 @inlineCallbacks
@@ -814,11 +851,14 @@ class RegionService(service.Service):
     connections = None
     starting = None
 
-    def __init__(self, ipcWorker):
+    def __init__(self, ipcWorker, rpc_bind=""):
         super().__init__()
         self.ipcWorker = ipcWorker
         self.endpoints = [
-            [TCP6ServerEndpoint(reactor, port) for port in range(5250, 5260)]
+            [
+                TCP6ServerEndpoint(reactor, port, interface=rpc_bind)
+                for port in range(5250, 5260)
+            ]
         ]
         self.connections = defaultdict(set)
         self.connectionsCache = defaultdict(dict)
