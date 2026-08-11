@@ -4,7 +4,12 @@
 """Configuration items."""
 
 from collections import namedtuple
+import logging
+from typing import TYPE_CHECKING
 import uuid
+
+if TYPE_CHECKING:
+    from maascommon.hardening import HardeningMode
 
 from django.db.models import CharField, JSONField, Manager, Model
 
@@ -205,3 +210,51 @@ def ensure_uuid_in_config() -> str:
         maas_uuid = str(uuid.uuid4())
         Config.objects.set_config("uuid", maas_uuid)
     return maas_uuid
+
+
+def read_hardening_enabled_from_db() -> "HardeningMode | None":
+    """Return the stored ``hardening_enabled`` value, or None if not set.
+
+    Returns ``None`` when no row exists in the DB or on read errors.
+    Returns ``HardeningMode.AUTO`` only when the value was explicitly written as such.
+    """
+    from maascommon.hardening import HardeningMode
+    from maasserver.sqlalchemy import ServiceLayerAdapter
+
+    try:
+        with ServiceLayerAdapter() as svc:
+            value = svc.services.database_configurations.get(
+                "hardening_enabled"
+            )
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "Could not read hardening_enabled from DB; defaulting to None.",
+        )
+        return None
+    if value is None:
+        return None
+    try:
+        return HardeningMode(str(value))
+    except ValueError:
+        logging.getLogger(__name__).warning(
+            "Unrecognised hardening_enabled value %r in DB; defaulting to None.",
+            value,
+        )
+        return None
+
+
+def read_fips_declared_from_db() -> bool | None:
+    """Return the stored ``fips_enabled`` value, or None if absent/unreadable.
+
+    The value is always a bool — sanitized at write time.
+    """
+    from maasserver.sqlalchemy import ServiceLayerAdapter
+
+    try:
+        with ServiceLayerAdapter() as svc:
+            return svc.services.database_configurations.get("fips_enabled")
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "Could not read fips_enabled from DB; defaulting to None.",
+        )
+        return None

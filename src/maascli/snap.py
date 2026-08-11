@@ -271,6 +271,10 @@ def print_config(
             print_config_value(config, "database_host")
             print_config_value(config, "database_port")
             print_config_value(config, "database_name")
+            print_config_value(config, "database_sslmode")
+            print_config_value(config, "database_sslcert")
+            print_config_value(config, "database_sslkey")
+            print_config_value(config, "database_sslrootcert")
             print_config_value(config, "database_user")
             print_config_value(
                 config, "database_pass", hidden=(not show_database_password)
@@ -481,7 +485,17 @@ def get_database_settings(options):
             "Error parsing database URI: " + str(error).strip()
         )
     unsupported_params = set(parsed_dsn.keys()).difference(
-        ["user", "password", "host", "dbname", "port"]
+        [
+            "user",
+            "password",
+            "host",
+            "dbname",
+            "port",
+            "sslmode",
+            "sslcert",
+            "sslkey",
+            "sslrootcert",
+        ]
     )
     if unsupported_params:
         raise DatabaseSettingsError(
@@ -494,11 +508,30 @@ def get_database_settings(options):
         parsed_dsn["host"] = "localhost"
     if "dbname" not in parsed_dsn:
         parsed_dsn["dbname"] = parsed_dsn["user"]
+    _VALID_SSLMODES = {
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full",
+    }
+    if (
+        "sslmode" in parsed_dsn
+        and parsed_dsn["sslmode"] not in _VALID_SSLMODES
+    ):
+        raise DatabaseSettingsError(
+            f"Invalid sslmode: {parsed_dsn['sslmode']}"
+        )
     database_settings = {
         "database_host": parsed_dsn["host"],
         "database_name": parsed_dsn["dbname"],
         "database_user": parsed_dsn.get("user", ""),
         "database_pass": parsed_dsn.get("password"),
+        "database_sslmode": parsed_dsn.get("sslmode", "prefer"),
+        "database_sslcert": parsed_dsn.get("sslcert", ""),
+        "database_sslkey": parsed_dsn.get("sslkey", ""),
+        "database_sslrootcert": parsed_dsn.get("sslrootcert", ""),
     }
     if "port" in parsed_dsn:
         database_settings["database_port"] = int(parsed_dsn["port"])

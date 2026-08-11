@@ -27,6 +27,7 @@ from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
     DischargeRequiredException,
+    FIPSViolationException,
     ForbiddenException,
     NotFoundException,
     PreconditionFailedException,
@@ -77,6 +78,9 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except ForbiddenException as e:
             logger.debug(e)
             return ForbiddenResponse(e.details)
+        except FIPSViolationException as e:
+            logger.debug(e)
+            return ValidationErrorResponse(e.details, fips_violation=True)
         except ValidationException as e:
             logger.debug(e)
             return ValidationErrorResponse(e.details)

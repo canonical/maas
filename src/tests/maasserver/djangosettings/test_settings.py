@@ -55,8 +55,8 @@ class TestDatabaseConfiguration:
         # ATOMIC_REQUESTS *must* be set for the default connection.
         assert connections.databases["default"]["ATOMIC_REQUESTS"] is True
 
-    def test_isolation_level_is_serializable(self):
-        # Transactions *must* be SERIALIZABLE for the default connection.
+    def test_isolation_level_is_repeatable_read(self):
+        # Default connection isolation level must be REPEATABLE READ.
         assert (
             connections.databases["default"]["OPTIONS"]["isolation_level"]
             == ISOLATION_LEVEL_REPEATABLE_READ
@@ -77,7 +77,7 @@ class TestTimezoneSettings:
             os.path.join("/", "usr", "share", "zoneinfo", timezone)
         )
 
-    def get_local_timezone_falls_back_to_utc(self):
+    def test_local_timezone_falls_back_to_utc(self):
         # Force the file open to fail by passing an empty filename.
         timezone = _get_local_timezone(tzfilename="")
         assert timezone == "UTC"
@@ -208,3 +208,81 @@ class TestGetDefaultDbConfig:
         observed = _get_default_db_config(RegionConfiguration({}))
         assert "application_name" in observed["OPTIONS"]
         assert observed["OPTIONS"]["application_name"] == "maas-regiond-NO_ID"
+
+    def test_sslmode_in_options(self, mocker):
+        """sslmode must appear in the Django OPTIONS dict."""
+        mocker.patch.object(
+            settings, "get_region_vault_client"
+        ).return_value = None
+        config = RegionConfiguration({"database_sslmode": "verify-full"})
+        observed = _get_default_db_config(config)
+        assert "sslmode" in observed["OPTIONS"]
+        assert observed["OPTIONS"]["sslmode"] == "verify-full"
+
+    def test_sslmode_defaults_to_prefer(self, mocker):
+        """When database_sslmode is absent from config, OPTIONS.sslmode is 'prefer'."""
+        mocker.patch.object(
+            settings, "get_region_vault_client"
+        ).return_value = None
+        observed = _get_default_db_config(RegionConfiguration({}))
+        assert observed["OPTIONS"].get("sslmode") == "prefer"
+
+    def test_sslmode_sourced_from_region_configuration(self, mocker):
+        """Each valid sslmode value from RegionConfiguration propagates to OPTIONS."""
+        mocker.patch.object(
+            settings, "get_region_vault_client"
+        ).return_value = None
+        for mode in (
+            "disable",
+            "allow",
+            "prefer",
+            "require",
+            "verify-ca",
+            "verify-full",
+        ):
+            config = RegionConfiguration({"database_sslmode": mode})
+            observed = _get_default_db_config(config)
+            assert observed["OPTIONS"]["sslmode"] == mode, (
+                f"Expected OPTIONS.sslmode={mode!r}, "
+                f"got {observed['OPTIONS'].get('sslmode')!r}"
+            )
+
+    def test_cert_fields_in_options_when_set(self, mocker):
+        """Non-empty sslcert/sslkey/sslrootcert appear in OPTIONS."""
+        mocker.patch.object(
+            settings, "get_region_vault_client"
+        ).return_value = None
+        config = RegionConfiguration(
+            {
+                "database_sslcert": "/etc/maas/db.crt",
+                "database_sslkey": "/etc/maas/db.key",
+                "database_sslrootcert": "/etc/maas/ca.crt",
+            }
+        )
+        observed = _get_default_db_config(config)
+        assert observed["OPTIONS"]["sslcert"] == "/etc/maas/db.crt"
+        assert observed["OPTIONS"]["sslkey"] == "/etc/maas/db.key"
+        assert observed["OPTIONS"]["sslrootcert"] == "/etc/maas/ca.crt"
+
+    def test_cert_fields_absent_from_options_when_empty(self, mocker):
+        """Empty cert paths must not appear in OPTIONS (avoids psycopg2 open-file error)."""
+        mocker.patch.object(
+            settings, "get_region_vault_client"
+        ).return_value = None
+        observed = _get_default_db_config(RegionConfiguration({}))
+        assert "sslcert" not in observed["OPTIONS"]
+        assert "sslkey" not in observed["OPTIONS"]
+        assert "sslrootcert" not in observed["OPTIONS"]
+
+    def test_rootcert_only_without_client_cert(self, mocker):
+        """sslrootcert alone (server verification, no mTLS) is permitted."""
+        mocker.patch.object(
+            settings, "get_region_vault_client"
+        ).return_value = None
+        config = RegionConfiguration(
+            {"database_sslrootcert": "/etc/maas/ca.crt"}
+        )
+        observed = _get_default_db_config(config)
+        assert observed["OPTIONS"]["sslrootcert"] == "/etc/maas/ca.crt"
+        assert "sslcert" not in observed["OPTIONS"]
+        assert "sslkey" not in observed["OPTIONS"]

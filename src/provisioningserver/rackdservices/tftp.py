@@ -514,16 +514,21 @@ class TFTPService(MultiService):
 
     """
 
-    def __init__(self, resource_root, port, max_blksize, client_service):
+    def __init__(
+        self, resource_root, port, max_blksize, client_service, bind_address=""
+    ):
         """
         :param resource_root: The root directory for this TFTP server.
         :param port: The port on which each server should be started.
         :param client_service: The RPC client service for the rack controller.
+        :param bind_address: When non-empty, listen only on this address
+            instead of every interface.
         """
         super().__init__()
         self.backend = TFTPBackend(resource_root, client_service)
         self.port = port
         self.max_blksize = max_blksize
+        self.bind_address = bind_address
         # Establish a periodic call to self.updateServers() every 45
         # seconds, so that this service eventually converges on truth.
         # TimerService ensures that a call is made to it's target
@@ -541,25 +546,31 @@ class TFTPService(MultiService):
         return {service for service in self if service is not self.refresher}
 
     def updateServers(self):
-        """Run a server on every interface.
+        """Run a server on every interface (or the configured bind address).
 
-        For each configured network interface this will start a TFTP
-        server. If called later it will bring up servers on newly
-        configured interfaces and bring down servers on deconfigured
-        interfaces.
+        When ``bind_address`` is set, binds only to that address instead of
+        enumerating all interfaces.  Otherwise retains the original behaviour
+        of starting one server per discovered address.
         """
         addrs_established = {service.name for service in self.getServers()}
-        addrs_desired = set(get_all_interface_addresses())
+
+        if self.bind_address:
+            addrs_desired = {self.bind_address}
+        else:
+            addrs_desired = {
+                a
+                for a in get_all_interface_addresses()
+                if not IPAddress(a).is_link_local()
+            }
 
         for address in addrs_desired - addrs_established:
-            if not IPAddress(address).is_link_local():
-                tftp_service = UDPServer(
-                    self.port,
-                    TransferTimeTrackingTFTP(self.backend, self.max_blksize),
-                    interface=address,
-                )
-                tftp_service.setName(address)
-                tftp_service.setServiceParent(self)
+            tftp_service = UDPServer(
+                self.port,
+                TransferTimeTrackingTFTP(self.backend, self.max_blksize),
+                interface=address,
+            )
+            tftp_service.setName(address)
+            tftp_service.setServiceParent(self)
 
         for address in addrs_established - addrs_desired:
             tftp_service = self.getServiceNamed(address)

@@ -709,7 +709,10 @@ class TestTFTPBackend(MAASTestCase):
 class TestTFTPService(MAASTestCase):
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.
-        interfaces = [factory.make_ipv4_address(), factory.make_ipv6_address()]
+        interfaces = [
+            factory.make_ipv4_address(skip_link_local=True),
+            factory.make_ipv6_address(),
+        ]
         self.patch(
             tftp_module, "get_all_interface_addresses", lambda: interfaces
         )

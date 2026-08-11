@@ -8,6 +8,7 @@ from collections import defaultdict
 from django.conf import settings
 from netaddr import IPAddress, IPNetwork
 
+from maascommon.hardening import is_hardening_enabled
 from maasserver.dns.zonegenerator import (
     InternalDomain,
     InternalDomainResourse,
@@ -138,9 +139,27 @@ def dns_update_all_zones(
     # expect this side-effect from calling dns_update_all_zones_now(), and
     # some that call it for this side-effect alone. At present all it does is
     # set the upstream DNS servers, nothing to do with serving zones at all!
+    try:
+        from maasserver.config import RegionConfiguration
+
+        with RegionConfiguration.open() as _region_cfg:
+            _dns_bind = _region_cfg.dns_bind
+            _dns_allow_transfer = _region_cfg.dns_allow_transfer
+            _dns_fetches_per_zone = int(_region_cfg.dns_fetches_per_zone)
+            _dns_fetches_per_server = int(_region_cfg.dns_fetches_per_server)
+    except Exception:
+        _dns_bind = ""
+        _dns_allow_transfer = ""
+        _dns_fetches_per_zone = 0
+        _dns_fetches_per_server = 0
     bind_write_options(
         upstream_dns=get_upstream_dns(),
         dnssec_validation=get_dnssec_validation(),
+        dns_bind=_dns_bind,
+        dns_allow_transfer=_dns_allow_transfer,
+        dns_fetches_per_zone=_dns_fetches_per_zone,
+        dns_fetches_per_server=_dns_fetches_per_server,
+        hardening=is_hardening_enabled(),
     )
 
     # Nor should we be rewriting ACLs that are related only to allowing

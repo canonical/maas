@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
+from unittest.mock import MagicMock
 
 from django.core.exceptions import ValidationError
 
@@ -80,6 +81,52 @@ class TestSSHKeyValidator(MAASServerTestCase):
     def test_does_not_validate_dsa_private_key(self):
         key_string = get_data("data/test_dsa")
         self.assertRaises(ValidationError, validate_ssh_public_key, key_string)
+
+
+class TestValidateSSHPublicKeyFIPS(MAASServerTestCase):
+    """Tests for FIPS-conditional validation in validate_ssh_public_key."""
+
+    def _mock_normalize(self, key_string):
+        """Patch service_layer so normalize returns the key unchanged."""
+        mock_sl = MagicMock()
+        mock_sl.services.sshkeys.normalize_openssh_public_key.side_effect = (
+            lambda key: key
+        )
+        self.patch(sshkey, "service_layer", mock_sl)
+
+    def test_fips_rejects_dsa_key(self):
+        key_string = "ssh-dss AAAA test@host"
+        self._mock_normalize(key_string)
+        self.patch(sshkey, "is_fips_enabled").return_value = True
+        error = self.assertRaises(
+            ValidationError, validate_ssh_public_key, key_string
+        )
+        self.assertEqual("fips_violation", error.code)
+
+    def test_fips_rejects_ed25519_key(self):
+        key_string = "ssh-ed25519 AAAA test@host"
+        self._mock_normalize(key_string)
+        self.patch(sshkey, "is_fips_enabled").return_value = True
+        error = self.assertRaises(
+            ValidationError, validate_ssh_public_key, key_string
+        )
+        self.assertEqual("fips_violation", error.code)
+
+    def test_fips_accepts_ecdsa_key(self):
+        key_string = "ecdsa-sha2-nistp256 AAAA test@host"
+        self._mock_normalize(key_string)
+        self.patch(sshkey, "is_fips_enabled").return_value = True
+        # No exception should be raised.
+        result = validate_ssh_public_key(key_string)
+        self.assertEqual(key_string, result)
+
+    def test_no_fips_check_when_disabled(self):
+        key_string = "ssh-dss AAAA test@host"
+        self._mock_normalize(key_string)
+        self.patch(sshkey, "is_fips_enabled").return_value = False
+        # DSA key accepted when FIPS is disabled.
+        result = validate_ssh_public_key(key_string)
+        self.assertEqual(key_string, result)
 
 
 class TestSSHKey(MAASServerTestCase):
