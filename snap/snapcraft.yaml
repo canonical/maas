@@ -20,8 +20,7 @@ epoch: 4*
 
 package-repositories:
   - type: apt
-    ppa: maas/3.7-next
-
+    ppa: alexsander-souza/maas-3.7-fips
 environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages
   LD_PRELOAD: $SNAP/usr/lib/snap-preload.so
@@ -87,6 +86,8 @@ parts:
   pebble:
     plugin: go
     after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
     source-type: git
     source: https://github.com/canonical/pebble
     source-tag: v1.10.2
@@ -192,6 +193,7 @@ parts:
       - python3-temporalio
       - python3-twisted
       - python3-txtftp
+      - python3-typing-extensions
       - python3-tz
       - python3-urllib3 # for macaroonbakery
       - python3-uvicorn
@@ -312,11 +314,15 @@ parts:
     plugin: make
     source: src/host-info
     after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
 
   maas-netmon:
     plugin: make
     source: src/maasagent
     after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
     organize:
       bin/maas-netmon: usr/sbin/maas-netmon
     prime:
@@ -326,6 +332,8 @@ parts:
     plugin: make
     source: src/maasagent
     after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
     organize:
       bin/maas-agent: usr/sbin/maas-agent
     prime:

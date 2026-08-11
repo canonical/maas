@@ -272,6 +272,14 @@ def get_all_power_types():
             merged_types,
             queryable=queryable,
         )
+    from provisioningserver.drivers.power.fips import (
+        get_fips_status_for_driver,
+    )
+
+    for pt in merged_types:
+        fips_supported, fips_reason = get_fips_status_for_driver(pt["name"])
+        pt["fips_supported"] = fips_supported
+        pt["fips_unsupported_reason"] = fips_reason
     return sorted(merged_types, key=itemgetter("description"))
 
 

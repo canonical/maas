@@ -175,11 +175,33 @@ def bind_write_configuration(
     )
 
 
-def bind_write_options(upstream_dns, dnssec_validation):
+def bind_write_options(
+    upstream_dns,
+    dnssec_validation,
+    dns_bind="",
+    hardening: bool = False,
+    dns_allow_transfer="",
+    dns_fetches_per_zone=0,
+    dns_fetches_per_server=0,
+):
     """Write BIND options.
 
     :param upstream_dns: A sequence of upstream DNS servers.
     :param dnssec_validation: Whether to enable DNSSec.
+    :param dns_bind: Address BIND listens on.  When non-empty, a
+        ``listen-on { <dns_bind>; 127.0.0.1; };`` directive is emitted.
+        Defaults to empty (no listen-on directive).
+    :param hardening: When True, emit version hiding and apply safe defaults
+        for transfer/fetch limits when none are explicitly configured.
+        Defaults to False.
+    :param dns_allow_transfer: ACL value for ``allow-transfer``
+        (e.g. ``"none"``, ``"trusted"``).  Empty string suppresses the
+        directive entirely; when *hardening* is True and this is empty,
+        ``"none"`` is used automatically.
+    :param dns_fetches_per_zone: Value for ``fetches-per-zone``; 0 suppresses
+        the directive (when *hardening* is True and this is 0, 100 is used).
+    :param dns_fetches_per_server: Value for ``fetches-per-server``; same
+        semantics as *dns_fetches_per_zone*.
     """
     # upstream_dns was formerly specified as a single IP address. These
     # assertions are here to prevent code that assumes that slipping through.
@@ -187,7 +209,13 @@ def bind_write_options(upstream_dns, dnssec_validation):
     assert isinstance(upstream_dns, Sequence)
 
     set_up_options_conf(
-        upstream_dns=upstream_dns, dnssec_validation=dnssec_validation
+        upstream_dns=upstream_dns,
+        dnssec_validation=dnssec_validation,
+        dns_bind=dns_bind,
+        hardening=hardening,
+        dns_allow_transfer=dns_allow_transfer,
+        dns_fetches_per_zone=dns_fetches_per_zone,
+        dns_fetches_per_server=dns_fetches_per_server,
     )
 
 

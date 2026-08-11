@@ -42,6 +42,7 @@ from maasservicelayer.db.repositories.notifications import (
 from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
 )
+from maasservicelayer.db.repositories.power_types import PowerTypeRepository
 from maasservicelayer.db.repositories.rdns import RDNSRepository
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
 from maasservicelayer.db.repositories.resource_pools import (
@@ -111,6 +112,7 @@ from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.package_repositories import (
     PackageRepositoriesService,
 )
+from maasservicelayer.services.power_types import PowerTypesService
 from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
@@ -192,6 +194,7 @@ class ServiceCollectionV3:
     nodes: NodesService
     notifications: NotificationsService
     package_repositories: PackageRepositoriesService
+    power_types: PowerTypesService
     rdns: RDNSService
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
@@ -509,5 +512,9 @@ class ServiceCollectionV3:
             context=context,
             repository=PackageRepositoriesRepository(context),
             events_service=services.events,
+        )
+        services.power_types = PowerTypesService(
+            context=context,
+            repository=PowerTypeRepository(),
         )
         return services
