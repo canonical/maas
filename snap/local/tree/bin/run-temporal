@@ -5,5 +5,13 @@
 mkdir -p \
       "$SNAP_DATA/temporal"
 
+# Set GODEBUG=fips140=on when the host kernel has FIPS mode enabled, so Go's
+# crypto stack activates its FIPS-140-2 approved algorithms.  On
+# non-FIPS hosts the variable is left unset and the binary behaves normally.
+if [ -f /proc/sys/crypto/fips_enabled ] && \
+   [ "$(cat /proc/sys/crypto/fips_enabled)" = "1" ]; then
+    export GODEBUG="fips140=on"
+fi
+
 # XXX: this is an experimental Temporal integration, for now using --allow-no-auth
 exec "$SNAP/usr/sbin/temporal-server" -e production -r "$SNAP_DATA/temporal/" -c "" --allow-no-auth start

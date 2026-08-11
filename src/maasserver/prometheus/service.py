@@ -94,13 +94,13 @@ def prometheus_discovery_handler(request):
     return PrometheusDiscoveryResource().handle_GET(request)
 
 
-def create_prometheus_exporter_service(reactor, port):
+def create_prometheus_exporter_service(reactor, port, bind_address=""):
     """Return a service exposing prometheus metrics on the specified port."""
     root = Resource()
     root.putChild(b"metrics", PrometheusMetricsResource(PROMETHEUS_METRICS))
     root.putChild(b"metrics_endpoints", PrometheusDiscoveryResource())
     site = Site(root, logFormatter=reducedWebLogFormatter)
-    endpoint = TCP6ServerEndpoint(reactor, port)
+    endpoint = TCP6ServerEndpoint(reactor, port, interface=bind_address)
     service = StreamServerEndpointService(endpoint, site)
     service.setName("prometheus-exporter")
     return service

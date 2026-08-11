@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC declarations for the region.
@@ -28,6 +28,7 @@ __all__ = [
     "SendEventMACAddress",
     "UpdateControllerState",
     "UpdateNodePowerState",
+    "VerifyTrustedSshHostKey",
 ]
 
 from twisted.protocols import amp
@@ -505,3 +506,20 @@ class UpdateControllerState(amp.Command):
     ]
     response = []
     errors = {NoSuchNode: b"NoSuchNode", NoSuchScope: b"NoSuchScope"}
+
+
+class VerifyTrustedSshHostKey(amp.Command):
+    """Verify whether a given SSH host key is in the trusted key store.
+
+    :since: 3.7
+    """
+
+    arguments = [
+        (b"host", amp.Unicode()),
+        (b"key_type", amp.Unicode()),
+        (b"public_key", amp.Unicode()),
+    ]
+    response = [
+        (b"verified", amp.Boolean()),
+    ]
+    errors = []

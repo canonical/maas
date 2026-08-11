@@ -57,6 +57,7 @@ import (
 	"maas.io/core/src/maasagent/internal/apiclient"
 	"maas.io/core/src/maasagent/internal/cache"
 	"maas.io/core/src/maasagent/internal/dhcp"
+	"maas.io/core/src/maasagent/internal/fips"
 	"maas.io/core/src/maasagent/internal/httpproxy"
 	"maas.io/core/src/maasagent/internal/power"
 	"maas.io/core/src/maasagent/internal/resolver"
@@ -400,6 +401,11 @@ func Run() int {
 	}
 
 	setupLogger(cfg.LogLevel)
+
+	// Detect and log host FIPS state once at startup. Native FIPS enforcement
+	// is driven by GODEBUG=fips140 set by the snap wrapper; this records the
+	// detected state for operators and audit tooling.
+	fips.IsEnabled()
 
 	var meterProvider metric.MeterProvider
 

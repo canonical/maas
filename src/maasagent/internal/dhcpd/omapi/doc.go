@@ -15,11 +15,8 @@
 
 // This package provides a client implementation of the OMAPI protocol
 // used for configuring ISC DHCP. It implements a BinaryMarshaler and
-// BinaryUnmarshaler for OMAPI messages, HMAC-MD5 authentication and
-// a client following the behaviour found in
-// github.com/CygnusNetworks/pypureomapi, which is the library
-// the previous rackd implementation relied on for OMAPI calls. All
-// Messages are sent via TCP.
+// BinaryUnmarshaler for OMAPI messages, HMAC-SHA256 authentication and
+// a client that communicates via TCP.
 //
 // The OMAPI message structure is as follows:
 // Auth ID          [4]byte (uint32) -
@@ -56,9 +53,8 @@
 // Every OMAPI transaction starts with an Open Op code message,
 // its contents varying for the following operations. When a client
 // first sends an Open message, it needs to sign the message with an
-// authenticator. This package specifically implements a HMAC-MD5 authenticator,
-// as this is what has been used historically in MAAS. The Authenticator takes
-// the unsigned bytes, computes the hash, and provides it at the end of the message.
+// authenticator. This package specifically implements an HMAC-SHA256
+// authenticator, as this is what is used in MAAS.
 //
 // Each correct response from the server should be of Op Update. If it is not,
 // it should be considered an error response. When a transaction

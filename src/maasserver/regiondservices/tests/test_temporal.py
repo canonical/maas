@@ -17,3 +17,23 @@ class TestRegionTemporalServer(MAASTestCase):
 
         address = service.get_broadcast_address("http://127.0.0.1:5240/MAAS")
         self.assertEqual(address, "127.0.0.1")
+
+
+class TestResolveBindAddress(MAASTestCase):
+    def test_explicit_address_returned_unchanged(self):
+        result = temporal.RegionTemporalService._resolve_bind(
+            "10.0.0.1", hardening_active=True
+        )
+        self.assertEqual(result, "10.0.0.1")
+
+    def test_empty_hardening_active_returns_loopback(self):
+        result = temporal.RegionTemporalService._resolve_bind(
+            "", hardening_active=True
+        )
+        self.assertEqual(result, "127.0.0.1")
+
+    def test_empty_hardening_inactive_returns_any(self):
+        result = temporal.RegionTemporalService._resolve_bind(
+            "", hardening_active=False
+        )
+        self.assertEqual(result, "0.0.0.0")
