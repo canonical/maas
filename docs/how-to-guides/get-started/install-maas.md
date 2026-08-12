@@ -105,7 +105,7 @@ Log in with the administrator credentials you created in the previous steps.
 An alternative to installing the MAAS snap is to install the MAAS deb package. Install it with the following commands:
 
 ```bash
-sudo apt-add-repository ppa:maas/3.7
+sudo apt-add-repository ppa:maas/3.8
 sudo apt update
 sudo apt -y install maas
 ```
