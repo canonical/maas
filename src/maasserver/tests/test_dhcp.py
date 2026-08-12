@@ -2220,6 +2220,80 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
 
         self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
 
+    def test_consolidates_hosts_with_same_mac_for_vlan_interfaces(self):
+        """VLAN interfaces sharing a parent MAC must produce a single host
+        declaration with comma-separated fixed-addresses (LP: #2134816)."""
+        rack_controller = factory.make_RackController(interface=False)
+        node = factory.make_Node(interface=False)
+
+        # Physical parent interface.
+        vlan_untagged = factory.make_VLAN()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan_untagged, node=rack_controller
+        )
+        physical = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan_untagged, node=node
+        )
+
+        # Three VLANs on the same physical interface.
+        vlan30 = factory.make_VLAN(vid=30, fabric=vlan_untagged.fabric)
+        vlan80 = factory.make_VLAN(vid=80, fabric=vlan_untagged.fabric)
+        vlan90 = factory.make_VLAN(vid=90, fabric=vlan_untagged.fabric)
+
+        vlan_if_30 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, vlan=vlan30, parents=[physical], node=node
+        )
+        vlan_if_80 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, vlan=vlan80, parents=[physical], node=node
+        )
+        vlan_if_90 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, vlan=vlan90, parents=[physical], node=node
+        )
+
+        subnet30 = factory.make_Subnet(vlan=vlan30)
+        subnet80 = factory.make_Subnet(vlan=vlan80)
+        subnet90 = factory.make_Subnet(vlan=vlan90)
+
+        ip30 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet30,
+            interface=vlan_if_30,
+        )
+        ip80 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet80,
+            interface=vlan_if_80,
+        )
+        ip90 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet90,
+            interface=vlan_if_90,
+        )
+
+        # All VLAN interfaces share the parent's MAC.
+        self.assertEqual(vlan_if_30.mac_address, physical.mac_address)
+        self.assertEqual(vlan_if_80.mac_address, physical.mac_address)
+        self.assertEqual(vlan_if_90.mac_address, physical.mac_address)
+
+        hosts = dhcp.make_hosts_for_subnets([subnet30, subnet80, subnet90])
+
+        # Should produce exactly one consolidated host entry.
+        self.assertEqual(1, len(hosts))
+        self.assertEqual(str(physical.mac_address), hosts[0]["mac"])
+        # All three IPs should be present, comma-separated.
+        returned_ips = set(hosts[0]["ip"].split(", "))
+        self.assertEqual(
+            {str(ip30.ip), str(ip80.ip), str(ip90.ip)}, returned_ips
+        )
+        # The host comment should list all interface hostnames.
+        returned_hostnames = set(hosts[0]["host"].split(", "))
+        expected_hostnames = {
+            f"{node.hostname}-{vlan_if_30.name.replace('.', '-')}",
+            f"{node.hostname}-{vlan_if_80.name.replace('.', '-')}",
+            f"{node.hostname}-{vlan_if_90.name.replace('.', '-')}",
+        }
+        self.assertEqual(expected_hostnames, returned_hostnames)
+
 
 class TestMakeFailoverPeerConfig(MAASServerTestCase):
     """Tests for `make_failover_peer_config`."""

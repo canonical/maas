@@ -322,6 +322,42 @@ def make_dhcp_snippet(dhcp_snippet):
     }
 
 
+def consolidate_hosts(hosts: list[dict]) -> list[dict]:
+    """Consolidate host entries sharing the same MAC address into a single
+    entry with comma-separated fixed-addresses.
+
+    Per dhcpd.conf(5), when multiple addresses are provided in a
+    fixed-address directive, dhcpd assigns the one matching the network on
+    which the client is booting. This is required for multi-homed clients
+    (e.g. VLAN interfaces inheriting a parent MAC).
+    """
+    consolidated = {}
+    for host in hosts:
+        mac = host["mac"]
+        if mac in consolidated:
+            existing = consolidated[mac]
+            # Append the IP if not already present.
+            existing_ips = existing["ip"].split(", ")
+            if host["ip"] not in existing_ips:
+                existing["ip"] += ", " + host["ip"]
+            # Append hostname to the comment if different.
+            if host["host"] and host["host"] not in existing["host"].split(
+                ", "
+            ):
+                existing["host"] += ", " + host["host"]
+            # Merge DHCP snippets (avoid duplicates by name).
+            existing_snippet_names = {
+                s["name"] for s in existing["dhcp_snippets"]
+            }
+            for snippet in host["dhcp_snippets"]:
+                if snippet["name"] not in existing_snippet_names:
+                    existing["dhcp_snippets"].append(snippet)
+                    existing_snippet_names.add(snippet["name"])
+        else:
+            consolidated[mac] = host.copy()
+    return list(consolidated.values())
+
+
 def make_hosts_for_subnets(
     subnets: list[Subnet], nodes_dhcp_snippets: list | None = None
 ) -> list[dict]:
@@ -446,7 +482,7 @@ def make_hosts_for_subnets(
                 }
             )
 
-    return hosts
+    return consolidate_hosts(hosts)
 
 
 def make_pools_for_subnet(subnet, dhcp_snippets, failover_peer=None):
@@ -852,6 +888,10 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
         shared_networks_v4 = {}
     if len(interfaces_v6) == 0:
         shared_networks_v6 = {}
+    # Consolidate hosts across VLANs: VLAN interfaces on different VLANs
+    # may share the same MAC address and need a single host declaration.
+    hosts_v4 = consolidate_hosts(hosts_v4)
+    hosts_v6 = consolidate_hosts(hosts_v6)
     return DHCPConfigurationForRack(
         failover_peers_v4,
         shared_networks_v4,
