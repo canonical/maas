@@ -336,15 +336,19 @@ def consolidate_hosts(hosts: list[dict]) -> list[dict]:
         mac = host["mac"]
         if mac in consolidated:
             existing = consolidated[mac]
-            # Append the IP if not already present.
-            existing_ips = existing["ip"].split(", ")
-            if host["ip"] not in existing_ips:
-                existing["ip"] += ", " + host["ip"]
-            # Append hostname to the comment if different.
-            if host["host"] and host["host"] not in existing["host"].split(
-                ", "
-            ):
-                existing["host"] += ", " + host["host"]
+            # Merge IPs, handling already-consolidated comma-separated values.
+            existing_ips = [ip for ip in existing["ip"].split(", ") if ip]
+            for ip in host["ip"].split(", "):
+                if ip and ip not in existing_ips:
+                    existing_ips.append(ip)
+            existing["ip"] = ", ".join(existing_ips)
+            # Merge hostnames for the comment, handling comma-separated values
+            # and empty strings (e.g. from ReservedIP entries).
+            existing_hosts = [h for h in existing["host"].split(", ") if h]
+            for h in host["host"].split(", "):
+                if h and h not in existing_hosts:
+                    existing_hosts.append(h)
+            existing["host"] = ", ".join(existing_hosts)
             # Merge DHCP snippets (avoid duplicates by name).
             existing_snippet_names = {
                 s["name"] for s in existing["dhcp_snippets"]
@@ -355,6 +359,7 @@ def consolidate_hosts(hosts: list[dict]) -> list[dict]:
                     existing_snippet_names.add(snippet["name"])
         else:
             consolidated[mac] = host.copy()
+            consolidated[mac]["dhcp_snippets"] = list(host["dhcp_snippets"])
     return list(consolidated.values())
 
 
