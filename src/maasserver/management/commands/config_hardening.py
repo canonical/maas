@@ -192,14 +192,27 @@ class Command(BaseCommandWithConnection):
             fips_declared = None
 
         try:
+            from maasserver.certificates import get_maas_certificate
+
+            tls = get_maas_certificate()
+            cert_pem = tls.certificate_pem().encode() if tls else None
+            key_pem = tls.private_key_pem().encode() if tls else None
+        except Exception:
+            cert_pem = None
+            key_pem = None
+
+        try:
             with RegionConfiguration.open() as cfg:
                 violations = configure_and_validate_hardening(
+                    api_tls_cert_pem=cert_pem,
+                    api_tls_key_pem=key_pem,
                     api_tls_dhparam=str(cfg.api_tls_dhparam),
                     api_bind=str(cfg.api_bind),
                     api_bind6=str(cfg.api_bind6),
                     prometheus_bind=str(cfg.prometheus_bind),
                     temporal_bind=str(cfg.temporal_bind),
                     rpc_bind=str(cfg.rpc_bind),
+                    dns_bind=str(cfg.dns_bind),
                     database_sslmode=str(cfg.database_sslmode),
                     fips_declared=fips_declared,
                 )
@@ -287,6 +300,7 @@ class Command(BaseCommandWithConnection):
                     "prometheus_bind": str(cfg.prometheus_bind),
                     "temporal_bind": str(cfg.temporal_bind),
                     "rpc_bind": str(cfg.rpc_bind),
+                    "dns_bind": str(cfg.dns_bind),
                     "database_sslmode": str(cfg.database_sslmode),
                     "database_sslcert": str(cfg.database_sslcert),
                     "database_sslkey": str(cfg.database_sslkey),
