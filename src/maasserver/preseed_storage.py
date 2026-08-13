@@ -794,10 +794,9 @@ def get_disks_needing_path_fallback(
     disambiguate it unambiguously via its `path` key (which resolves
     via `os.path.realpath()`, bypassing serial/wwn lookup entirely), as
     long as its `id_path` is set and is itself unique among the
-    colliding set. Disks meeting that condition are recorded in
-    `self.disks_needing_path_fallback` so `_generate_disk_operation` can
-    use `path` instead of `model`/`serial` for them. If a colliding disk
-    has no usable, unique `id_path` either, we consider
+    colliding set. The ids of such disks are returned by this function.
+
+    If a colliding disk has no usable, unique `id_path` either, we consider
     there's no way to safely resolve it, so generation is aborted
     with a `PreseedError`.
     """
