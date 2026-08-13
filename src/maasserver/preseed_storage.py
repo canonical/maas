@@ -814,7 +814,7 @@ def get_disks_needing_path_fallback(
         model, serial = identity
         id_paths = [bd.id_path for bd in block_devices]
         if not all(id_paths) or len(set(id_paths)) != len(id_paths):
-            names = ", ".join(bd.get_name() for bd in block_devices)
+            names = ", ".join(sorted(bd.get_name() for bd in block_devices))
             raise PreseedError(
                 f"Disks {names} have the same model/serial ({model}/{serial}) and no "
                 "distinct id_path to disambiguate them; curtin cannot "
