@@ -1693,12 +1693,31 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         }
         self.assertConstrainedNodes([other], constraints)
 
-    def test_substring_pod_filter(self):
-        pod = factory.make_Pod(name=factory.make_name(prefix="pod"))
-        node1 = factory.make_Node(bmc=pod.as_bmc())
+    def test_pod_filter_matches_exact_name(self):
+        pod = factory.make_Pod(name="maas01")
+        other_pod = factory.make_Pod(name="DC2-maas01")
+        node = factory.make_Node(bmc=pod.as_bmc())
+        factory.make_Node(bmc=other_pod.as_bmc())
+
+        self.assertConstrainedNodes([node], {"pod": pod.name})
+
+    def test_not_pod_filter_matches_exact_name(self):
+        pod = factory.make_Pod(name="maas01")
+        other_pod = factory.make_Pod(name="DC2-maas01")
+        factory.make_Node(bmc=pod.as_bmc())
+        other_node = factory.make_Node(bmc=other_pod.as_bmc())
+
+        self.assertConstrainedNodes(
+            [other_node],
+            {"not_pod": pod.name},
+        )
+
+    def test_free_text_filter_matches_pod_name_substring(self):
+        pod = factory.make_Pod(name="DC2-maas01")
+        node = factory.make_Node(bmc=pod.as_bmc())
         factory.make_Node()
-        constraints = {"pod": pod.name[len("pod-") + 1 :]}
-        self.assertConstrainedNodes([node1], constraints)
+
+        self.assertConstrainedNodes([node], {"free_text": "maas01"})
 
     def test_substring_fabrics_filter(self):
         fabric = factory.make_Fabric()
