@@ -2443,7 +2443,9 @@ class TestDuplicateDiskIdentity(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, with_boot_disk=False
         )
-        sda = factory.make_PhysicalBlockDevice(node=node, name="sda")
+        sda = factory.make_PhysicalBlockDevice(
+            node=node, name="sda", bootable=True
+        )
         sdb = factory.make_PhysicalBlockDevice(node=node, name="sdb")
         PhysicalBlockDevice.objects.filter(id=sda.id).update(
             model="vendor",
@@ -2473,7 +2475,9 @@ class TestDuplicateDiskIdentity(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, with_boot_disk=False
         )
-        sda = factory.make_PhysicalBlockDevice(node=node, name="sda")
+        sda = factory.make_PhysicalBlockDevice(
+            node=node, name="sda", bootable=True
+        )
         sdb = factory.make_PhysicalBlockDevice(node=node, name="sdb")
         PhysicalBlockDevice.objects.filter(id=sda.id).update(
             model="vendor",
@@ -2498,7 +2502,11 @@ class TestDuplicateDiskIdentity(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, with_boot_disk=False
         )
         factory.make_PhysicalBlockDevice(
-            node=node, name="sda", model="vendor", serial="serial-a"
+            node=node,
+            name="sda",
+            model="vendor",
+            serial="serial-a",
+            bootable=True,
         )
         factory.make_PhysicalBlockDevice(
             node=node, name="sdb", model="vendor", serial="serial-b"
