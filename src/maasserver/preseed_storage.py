@@ -785,14 +785,16 @@ def get_disks_needing_path_fallback(
     same model/serial, curtin cannot tell them apart: both storage-config
     disk IDs resolve to the same underlying device, silently producing
     an overlapping storage graph (e.g. two bcache backing devices
-    stacked on one another) instead of a clear failure. This can happen
-    when the hardware/controller firmware reports a duplicate serial
-    across distinct LUNs (as opposed to true multipath, where the same
-    LUN is reachable via more than one path).
+    stacked on one another) instead of a clear failure.
+
+    The above can happen when the hardware/controller firmware reports
+    a duplicate serial across distinct LUNs (as opposed to true
+    multipath, where the same LUN is reachable via more than one path).
+    This was observed, for example, for the case of HPE GEN9 machines
+    using disks in pass-through mode.
 
     For any disk affected by such a collision, curtin can still
-    disambiguate it unambiguously via its `path` key (which resolves
-    via `os.path.realpath()`, bypassing serial/wwn lookup entirely), as
+    disambiguate it unambiguously via its `path` key, as
     long as its `id_path` is set and is itself unique among the
     colliding set. The ids of such disks are returned by this function.
 
