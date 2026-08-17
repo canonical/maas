@@ -100,6 +100,8 @@ curl -k -u $BMC_USER:$BMC_PASS -H 'Content-Type: application/json' \
 
 Subsequent commissioning and deployments will automatically configure PXE boot.
 
+**Note on OOB and BMC network sharing**: The OOB management interface and the BMC share one physical RJ-45 port but present as two different MAC addresses. Your network switch must allow traffic from both. If needed, you can use DHCP Option 60 (Vendor Class Identifier) to differentiate them — the DPU PXE boot sends `PXE` in Option 60, while the BMC sends its own identifier. A common setup is to configure a static DHCP reservation for the BMC MAC in MAAS (required for Redfish power management) and leave the OOB interface on the dynamic pool.
+
 ### Configuring Boot Order (Optional)
 
 To set a persistent PXE boot order, update the boot device configuration from the BMC console. See [NVIDIA's boot order configuration guide](https://docs.nvidia.com/networking/display/bluefieldbmcv2309/boot+order+configuration).
@@ -209,13 +211,32 @@ You have two main deployment strategies:
 1. **Standard Ubuntu images** (Jammy HWE or Noble)  
 2. **Custom packer-maas images** with DOCA packages pre-installed
 
-For production deployments, consider using [packer-maas](https://github.com/canonical/packer-maas) to build custom Ubuntu images that include the BlueField kernel, DOCA runtime, and required NVIDIA packages. The repository includes example customization scripts for DOCA 2.9 LTS and DOCA 3.2.0 that handle package installation and configuration. Build on an ARM64 machine using
+For production deployments, consider using [packer-maas](https://github.com/canonical/packer-maas) to build custom Ubuntu images that include the BlueField kernel, DOCA runtime, and required NVIDIA packages. The repository includes example customization scripts for DOCA 2.9.3, DOCA 3.2.1, and DOCA 3.3.0 that handle package installation and configuration. Build on an ARM64 machine using one of the available scripts, for example:
 
 ```shell
-make custom-cloudimg.tar.gz SERIES=jammy ARCH=arm64 CUSTOMIZE=scripts/examples/bluefield-doca-2-9-lts.sh
+# build command
+make custom-cloudimg.tar.gz SERIES=<series> ARCH=arm64 CUSTOMIZE=scripts/examples/<script>
+
+# DOCA 2.9 LTS on Jammy
+make custom-cloudimg.tar.gz SERIES=jammy ARCH=arm64 CUSTOMIZE=scripts/examples/bluefield-doca-2-9-3.sh
+
+# DOCA 3.2.1 on Noble
+make custom-cloudimg.tar.gz SERIES=noble ARCH=arm64 CUSTOMIZE=scripts/examples/bluefield-doca-3-2-1.sh
+
+# DOCA 3.3.0 on Noble
+make custom-cloudimg.tar.gz SERIES=noble ARCH=arm64 CUSTOMIZE=scripts/examples/bluefield-doca-3-3-0.sh
 ```
 
 Then upload the resulting image to MAAS. See the [Ubuntu image build documentation](https://github.com/canonical/packer-maas/tree/main/ubuntu) for details.
+
+**Tips for building packer-maas images:**
+
+- `packer-maas`'s `cleanup.sh` runs `apt-get autoremove --purge`, which strips BlueField kernel modules unless you explicitly `apt-mark hold` them. The DOCA 3.3.0 script includes holds for both the meta packages and the specific kernel image, modules, and headers.
+- If you hit build errors, run `make clean` before retrying — stale state from previous builds can cause non-obvious failures.
+- If you get KVM permission errors, add yourself to the `kvm` group:
+  ```shell
+  sudo usermod -aG kvm $USER && newgrp kvm
+  ```
 
 ### Prerequisites
 

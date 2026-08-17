@@ -1,6 +1,11 @@
 name: Test coverage and TiCS Report
 on:
   workflow_dispatch:
+    inputs:
+      nosanity:
+        description: "Skip TiCS sanity check (-nosanity)"
+        type: boolean
+        default: false
   schedule:
     # At 00:30 on Saturday
     - cron: "30 0 * * 6"
@@ -175,3 +180,4 @@ jobs:
           ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
           installTics: true
           tmpdir: /tmp/tics
+          additionalFlags: ${{ inputs.nosanity && '-nosanity' || '' }}
