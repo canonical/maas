@@ -97,6 +97,12 @@ class IPRange(CleanSave, TimestampedModel):
     """Represents a range of IP addresses used for a particular purpose in
     MAAS, such as a DHCP range or a range of reserved addresses."""
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        instance._loaded_values = dict(zip(field_names, values))
+        return instance
+
     objects = IPRangeManager()
 
     subnet = ForeignKey(
@@ -274,18 +280,96 @@ class IPRange(CleanSave, TimestampedModel):
         else:
             message += "IP address or range."
 
-        # Find unused range for start_ip
+        start_ip = IPAddress(self.start_ip)
+        end_ip = IPAddress(self.end_ip)
+
+        # Success when start and end are in the same unused range.
         for unused_range in unused:
-            if IPAddress(self.start_ip) in unused_range:
-                if IPAddress(self.end_ip) in unused_range:
-                    # Success, start and end IP are in an unused range.
-                    return
-                else:
-                    self._raise_validation_error(message)
+            if start_ip in unused_range and end_ip in unused_range:
+                return
+
+        if self._is_existing_dynamic_range_resize_allowed(
+            start_ip, end_ip, unused
+        ):
+            return
+
         self._raise_validation_error(message)
+
+    def _is_existing_dynamic_range_resize_allowed(
+        self, start_ip: IPAddress, end_ip: IPAddress, unused
+    ) -> bool:
+        """Allow resizing an existing dynamic range without re-querying the DB.
+
+        Uses cached original state (loaded_values) to compare the current
+        range against the persisted range, identifying only the newly added
+        segments (left/right expansion). Returns True if the range is merely
+        shrinking (no added segments) or if all newly added segments fit
+        within available unused ranges. Returns False if the original range
+        was not dynamic, the range moved to a different subnet, or any added
+        segment would overlap allocated IPs or other ranges.
+        """
+        if self.id is None or self.type != IPRANGE_TYPE.DYNAMIC:
+            return False
+
+        loaded_values = getattr(self, "_loaded_values", None)
+        if not loaded_values:
+            return False
+
+        if loaded_values.get("type") != IPRANGE_TYPE.DYNAMIC:
+            return False
+
+        if loaded_values.get("subnet_id") != self.subnet_id:
+            return False
+
+        existing_start_ip = loaded_values.get("start_ip")
+        existing_end_ip = loaded_values.get("end_ip")
+        if existing_start_ip is None or existing_end_ip is None:
+            return False
+
+        existing_start_ip = IPAddress(existing_start_ip)
+        existing_end_ip = IPAddress(existing_end_ip)
+
+        start = int(start_ip)
+        end = int(end_ip)
+        existing_start = int(existing_start_ip)
+        existing_end = int(existing_end_ip)
+
+        added_segments = []
+
+        left_end = min(end, existing_start - 1)
+        if start <= left_end:
+            added_segments.append((start, left_end))
+
+        right_start = max(start, existing_end + 1)
+        if right_start <= end:
+            added_segments.append((right_start, end))
+
+        if not added_segments:
+            return True
+
+        version = start_ip.version
+        for segment_start, segment_end in added_segments:
+            added_start_ip = IPAddress(segment_start, version=version)
+            added_end_ip = IPAddress(segment_end, version=version)
+            if not any(
+                added_start_ip in unused_range and added_end_ip in unused_range
+                for unused_range in unused
+            ):
+                return False
+
+        return True
+
+    def _cache_loaded_values(self):
+        self._loaded_values = {
+            "type": self.type,
+            "subnet_id": self.subnet_id,
+            "start_ip": self.start_ip,
+            "end_ip": self.end_ip,
+        }
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+        self._cache_loaded_values()
 
         if self.subnet.vlan.dhcp_on:
             post_commit_do(
