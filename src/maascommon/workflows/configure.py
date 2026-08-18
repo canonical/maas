@@ -9,15 +9,9 @@ CONFIGURE_AGENT_WORKFLOW_NAME = "configure-agent"
 # Defined in maasagent
 CONFIGURE_POWER_SERVICE_WORKFLOW_NAME = "configure-power-service"
 CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME = "configure-httpproxy-service"
-CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME = "configure-dhcp-service"
 
 
 # Workflows parameters
 @dataclass
 class ConfigureAgentParam:
     system_id: str
-
-
-@dataclass
-class ConfigureDHCPServiceParam:
-    enabled: bool
