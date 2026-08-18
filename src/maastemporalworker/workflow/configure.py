@@ -7,16 +7,14 @@ from typing import List
 
 from netaddr import IPAddress
 from temporalio import workflow
-from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
+from temporalio.common import RetryPolicy
 
 from maascommon.enums.node import NodeTypeEnum
 from maascommon.workflows.configure import (
     CONFIGURE_AGENT_WORKFLOW_NAME,
-    CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
     CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME,
     CONFIGURE_POWER_SERVICE_WORKFLOW_NAME,
     ConfigureAgentParam,
-    ConfigureDHCPServiceParam,
 )
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
@@ -158,12 +156,12 @@ class ConfigureAgentWorkflow:
             task_queue=f"{param.system_id}@agent:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
-
-        await workflow.execute_child_workflow(
-            CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
-            ConfigureDHCPServiceParam(enabled=True),
-            id=f"configure-dhcp-service:{param.system_id}",
-            task_queue=f"{param.system_id}@agent:main",
-            retry_policy=RetryPolicy(maximum_attempts=1),
-            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-        )
+        # Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
+        # await workflow.execute_child_workflow(
+        #     CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
+        #     ConfigureDHCPServiceParam(enabled=True),
+        #     id=f"configure-dhcp-service:{param.system_id}",
+        #     task_queue=f"{param.system_id}@agent:main",
+        #     retry_policy=RetryPolicy(maximum_attempts=1),
+        #     id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+        # )

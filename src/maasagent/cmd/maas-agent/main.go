@@ -54,12 +54,13 @@ import (
 	"go.temporal.io/sdk/interceptor"
 	"gopkg.in/yaml.v3"
 
-	"maas.io/core/src/maasagent/internal/apiclient"
+	// "maas.io/core/src/maasagent/internal/apiclient"
 	"maas.io/core/src/maasagent/internal/cache"
-	"maas.io/core/src/maasagent/internal/dhcp"
+	// "maas.io/core/src/maasagent/internal/dhcp"
 	"maas.io/core/src/maasagent/internal/httpproxy"
 	"maas.io/core/src/maasagent/internal/power"
-	"maas.io/core/src/maasagent/internal/servicecontroller"
+
+	// "maas.io/core/src/maasagent/internal/servicecontroller"
 	wflog "maas.io/core/src/maasagent/internal/workflow/log"
 	"maas.io/core/src/maasagent/internal/workflow/worker"
 	"maas.io/core/src/maasagent/pkg/workflow/codec"
@@ -322,26 +323,26 @@ func setupHTTP(mux *http.ServeMux) error {
 	return server.Serve(listener)
 }
 
-func setupHTTPClient(cert tls.Certificate, ca *x509.CertPool) http.Client {
-	tlsConfig := &tls.Config{
-		MinVersion:   tls.VersionTLS12,
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      ca,
-		// NOTE: this should be configurable.
-		// Right now it is hardcoded because we use MAAS self-signed
-		// certificate for mTLS. But that needs to be refactored once
-		// we start supporting custom certificates for mTLS.
-		ServerName: "maas",
-	}
-
-	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-
-	return http.Client{
-		Transport: transport,
-	}
-}
+// func setupHTTPClient(cert tls.Certificate, ca *x509.CertPool) http.Client {
+// 	tlsConfig := &tls.Config{
+// 		MinVersion:   tls.VersionTLS12,
+// 		Certificates: []tls.Certificate{cert},
+// 		RootCAs:      ca,
+// 		// NOTE: this should be configurable.
+// 		// Right now it is hardcoded because we use MAAS self-signed
+// 		// certificate for mTLS. But that needs to be refactored once
+// 		// we start supporting custom certificates for mTLS.
+// 		ServerName: "maas",
+// 	}
+//
+// 	transport := &http.Transport{
+// 		TLSClientConfig: tlsConfig,
+// 	}
+//
+// 	return http.Client{
+// 		Transport: transport,
+// 	}
+// }
 
 func setupTracer(tracerProvider *trace.TracerProvider, endpoint string) error {
 	ctx := context.TODO()
@@ -450,9 +451,10 @@ func Run() int {
 
 	u.RawPath = u.EscapedPath()
 
-	httpClient := setupHTTPClient(cert, ca)
+	// Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
+	// httpClient := setupHTTPClient(cert, ca)
 
-	apiClient := apiclient.NewAPIClient(u, &httpClient)
+	// apiClient := apiclient.NewAPIClient(u, &httpClient)
 
 	var workerPool worker.WorkerPool
 
@@ -466,31 +468,33 @@ func Run() int {
 		return 1
 	}
 
-	serviceV4 := servicecontroller.GetServiceName(servicecontroller.DHCPv4)
+	// Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
+	// serviceV4 := servicecontroller.GetServiceName(servicecontroller.DHCPv4)
 
-	controllerV4, err := servicecontroller.NewController(serviceV4)
-	if err != nil {
-		log.Error().Err(err).Msg("DHCP V4 controller initialisation error")
-		return 1
-	}
+	// controllerV4, err := servicecontroller.NewController(serviceV4)
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("DHCP V4 controller initialisation error")
+	// 	return 1
+	// }
 
-	serviceV6 := servicecontroller.GetServiceName(servicecontroller.DHCPv6)
+	// serviceV6 := servicecontroller.GetServiceName(servicecontroller.DHCPv6)
 
-	controllerV6, err := servicecontroller.NewController(serviceV6)
-	if err != nil {
-		log.Error().Err(err).Msg("DHCP V6 controller initialisation error")
-		return 1
-	}
+	// controllerV6, err := servicecontroller.NewController(serviceV6)
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("DHCP V6 controller initialisation error")
+	// 	return 1
+	// }
 
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
 	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
-	dhcpService := dhcp.NewDHCPService(cfg.SystemID, controllerV4, controllerV6, dhcp.WithAPIClient(apiClient))
+	// Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
+	// dhcpService := dhcp.NewDHCPService(cfg.SystemID, controllerV4, controllerV6, dhcp.WithAPIClient(apiClient))
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
 		worker.WithConfigurator(powerService),
 		worker.WithConfigurator(httpProxyService),
-		worker.WithConfigurator(dhcpService),
+		// worker.WithConfigurator(dhcpService),
 	)
 
 	workerPoolBackoff := backoff.NewExponentialBackOff()
