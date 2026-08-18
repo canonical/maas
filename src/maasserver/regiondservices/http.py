@@ -12,6 +12,7 @@ from typing import Optional
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
+from maascommon.fips import is_fips_enabled
 from maascommon.hardening import is_hardening_enabled
 from maascommon.worker import worker_socket_paths
 from maasserver.certificates import get_maas_certificate
@@ -124,6 +125,7 @@ class RegionHTTPService(Service):
             "static_dir": str(get_root_path() / "usr/share/maas"),
             "boot_resources_dir": str(get_bootresource_store_path()),
             "hardening": configuration.hardening_active,
+            "fips_enabled": is_fips_enabled(),
             "api_rate_limit_rate": configuration.api_rate_limit_rate,
             "api_rate_limit_burst": configuration.api_rate_limit_burst,
             "api_conn_limit": configuration.api_conn_limit,
