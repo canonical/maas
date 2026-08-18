@@ -204,6 +204,14 @@ class TestGetRunningVersion(TestVersionTestCase):
         self.assertEqual(maas_version.short_version, "2.10.0")
         self.assertEqual(maas_version.extended_info, "456-g.deadbeef")
 
+    def test_falls_back_to_distribution_version_when_not_in_snap(self):
+        self.patch(snap, "get_snap_version").return_value = None
+        distribution = self.patch(version, "DISTRIBUTION")
+        distribution.version = "3.6.0-1-g.deadbeef"
+        maas_version = get_running_version()
+        self.assertEqual(maas_version.short_version, "3.6.0")
+        self.assertEqual(maas_version.extended_info, "1-g.deadbeef")
+
     def test_method_is_cached(self):
         mock_get_snap_versions = self.patch(snap, "get_snap_version")
         mock_get_snap_versions.return_value = snap.SnapVersion(
