@@ -59,6 +59,7 @@ import (
 	// "maas.io/core/src/maasagent/internal/dhcp"
 	"maas.io/core/src/maasagent/internal/httpproxy"
 	"maas.io/core/src/maasagent/internal/power"
+
 	// "maas.io/core/src/maasagent/internal/servicecontroller"
 	wflog "maas.io/core/src/maasagent/internal/workflow/log"
 	"maas.io/core/src/maasagent/internal/workflow/worker"
@@ -322,26 +323,26 @@ func setupHTTP(mux *http.ServeMux) error {
 	return server.Serve(listener)
 }
 
-func setupHTTPClient(cert tls.Certificate, ca *x509.CertPool) http.Client {
-	tlsConfig := &tls.Config{
-		MinVersion:   tls.VersionTLS12,
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      ca,
-		// NOTE: this should be configurable.
-		// Right now it is hardcoded because we use MAAS self-signed
-		// certificate for mTLS. But that needs to be refactored once
-		// we start supporting custom certificates for mTLS.
-		ServerName: "maas",
-	}
-
-	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-
-	return http.Client{
-		Transport: transport,
-	}
-}
+// func setupHTTPClient(cert tls.Certificate, ca *x509.CertPool) http.Client {
+// 	tlsConfig := &tls.Config{
+// 		MinVersion:   tls.VersionTLS12,
+// 		Certificates: []tls.Certificate{cert},
+// 		RootCAs:      ca,
+// 		// NOTE: this should be configurable.
+// 		// Right now it is hardcoded because we use MAAS self-signed
+// 		// certificate for mTLS. But that needs to be refactored once
+// 		// we start supporting custom certificates for mTLS.
+// 		ServerName: "maas",
+// 	}
+//
+// 	transport := &http.Transport{
+// 		TLSClientConfig: tlsConfig,
+// 	}
+//
+// 	return http.Client{
+// 		Transport: transport,
+// 	}
+// }
 
 func setupTracer(tracerProvider *trace.TracerProvider, endpoint string) error {
 	ctx := context.TODO()
@@ -450,7 +451,7 @@ func Run() int {
 
 	u.RawPath = u.EscapedPath()
 
-    // Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
+	// Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
 	// httpClient := setupHTTPClient(cert, ca)
 
 	// apiClient := apiclient.NewAPIClient(u, &httpClient)
@@ -467,7 +468,7 @@ func Run() int {
 		return 1
 	}
 
-    // Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
+	// Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
 	// serviceV4 := servicecontroller.GetServiceName(servicecontroller.DHCPv4)
 
 	// controllerV4, err := servicecontroller.NewController(serviceV4)
@@ -486,7 +487,7 @@ func Run() int {
 
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
 	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
-    // Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
+	// Special patch for 3.6 https://bugs.launchpad.net/maas/+bug/2134485
 	// dhcpService := dhcp.NewDHCPService(cfg.SystemID, controllerV4, controllerV6, dhcp.WithAPIClient(apiClient))
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
