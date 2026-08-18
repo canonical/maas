@@ -260,6 +260,7 @@ class TestRegionHTTPService(
         )
         self.assertIn("X25519:prime256v1:secp384r1", nginx_config)
         self.assertIn("CHACHA20-POLY1305", nginx_config)
+        self.assertNotIn("ssl_conf_command", nginx_config)
 
     def test_ssl_fips_omits_x25519_and_chacha20(self):
         """FIPS mode: X25519 and ChaCha20-Poly1305 must not appear in nginx SSL config."""
@@ -274,6 +275,10 @@ class TestRegionHTTPService(
         self.assertNotIn("CHACHA20-POLY1305", nginx_config)
         self.assertIn("prime256v1:secp384r1", nginx_config)
         self.assertIn("ECDHE-RSA-AES256-GCM-SHA384", nginx_config)
+        self.assertIn(
+            "ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256;",
+            nginx_config,
+        )
 
     def test_create_cert_files_writes_full_chain(self):
         cert = get_sample_cert_with_cacerts()
