@@ -195,6 +195,8 @@ class HostReservationData:
 @dataclass
 class SubnetData:
     id: int
+    rack_system_id: str
+    secondary_rack_system_id: str | None
     ip_version: int
     cidr: str
     gateway_ip: str
@@ -213,6 +215,14 @@ class SubnetData:
 
 
 @dataclass
+class KeaHAConfig:
+    primary_rack_system_id: str
+    secondary_rack_system_id: str
+    primary_rack_ip: str
+    secondary_rack_ip: str
+
+
+@dataclass
 class InterfaceData:
     id: int
     vlan_id: int
@@ -227,6 +237,7 @@ class DHCPDataForAgent:
     interfaces: list[InterfaceData]
     default_dns_servers: list[str]
     ntp_servers: list[str]
+    ha_data: list[KeaHAConfig]
 
 
 @dataclass
@@ -1115,6 +1126,7 @@ class DHCPConfigActivity(ActivityBase):
         self, param: GetDHCPDataForAgentParam
     ) -> DHCPDataForAgent:
         async with self.start_transaction() as svc:
+            ha_data = set()
             vlans = await self._get_active_vlans_for_agent(
                 svc, param.system_id
             )
@@ -1263,9 +1275,66 @@ class DHCPConfigActivity(ActivityBase):
 
                 hosts = await self.get_dhcp_host_reservations(svc, subnet.id)
 
+                secondary_system_id = None
+                if vlan.secondary_rack_id:
+                    secondary_node = await svc.nodes.get_by_id(
+                        vlan.secondary_rack_id
+                    )
+                    if secondary_node and secondary_node.current_config_id:
+                        secondary_system_id = secondary_node.system_id
+                        secondary_ifaces = await svc.interfaces.get_many(
+                            query=QuerySpec(
+                                where=InterfaceClauseFactory.and_clauses(
+                                    clauses=[
+                                        InterfaceClauseFactory.with_node_config_id(
+                                            secondary_node.current_config_id
+                                        ),
+                                        InterfaceClauseFactory.with_vlan_id_in(
+                                            [vlan.id for vlan in vlans]
+                                        ),
+                                    ]
+                                )
+                            )
+                        )
+                        (
+                            _,
+                            secondary_iface_ips,
+                        ) = await self._get_best_interface_with_ip_on_vlan(
+                            svc, subnet, vlan, secondary_ifaces
+                        )
+                        ips = (
+                            [
+                                ip
+                                for ip in secondary_iface_ips
+                                if ip.ip
+                                and ip.ip.version == subnet.cidr.version
+                            ]
+                            if secondary_iface_ips
+                            else []
+                        )
+
+                        secondary_ip = next(
+                            (
+                                str(i.ip)
+                                for i in ips
+                                if i.ip and i.ip in subnet.cidr
+                            ),
+                            str(ips[0].ip) if (ips and ips[0].ip) else "",
+                        )
+                        ha_data.add(
+                            KeaHAConfig(
+                                primary_rack_system_id=node.system_id,
+                                primary_rack_ip=next_server,
+                                secondary_rack_system_id=secondary_node.system_id,
+                                secondary_rack_ip=secondary_ip,
+                            )
+                        )
+
                 subnet_data.append(
                     SubnetData(
                         id=subnet.id,
+                        rack_system_id=param.system_id,
+                        secondary_rack_system_id=secondary_system_id,
                         ip_version=subnet.cidr.version,
                         cidr=str(subnet.cidr),
                         vlan_id=subnet.vlan_id,
@@ -1339,10 +1408,24 @@ class DHCPConfigActivity(ActivityBase):
                 ],
                 ntp_servers=global_ntp_servers,
                 default_dns_servers=default_dns_servers,
+                ha_data=list(ha_data),
             )
 
-    def get_kea_hooks_libraries(self) -> dict[str, Any]:
-        return {"hooks-libraries": [self._get_kea_run_scripts_hook_config()]}
+    def get_kea_hooks_libraries(
+        self, ha_config: list[KeaHAConfig]
+    ) -> dict[str, Any]:
+        hooks = {
+            "hooks-libraries": [
+                self._get_kea_run_scripts_hook_config(),
+            ]
+        }
+        if ha_config:
+            hooks["hook-libraries"].extend((
+                {"library": "libdhcp_lease_cmds.so"},
+                self._get_kea_ha_hook_config(ha_config)
+            ))
+
+        return hooks
 
     def _get_kea_run_scripts_hook_config(
         self,
@@ -1352,6 +1435,40 @@ class DHCPConfigActivity(ActivityBase):
             "library": "libdhcp_run_script.so",
             "parameters": {"name": helper_path, "sync": False},
         }
+
+    def _get_kea_ha_hook_config(
+        self, ha_config: list[KeaHAConfig]
+    ) -> dict[str, Any]:
+        ha_setups = [
+            {
+                "this-server-name": ha.primary_rack_system_id,
+                "mode": "hot-standby",
+                "heartbeat-delay": 10000,
+                "max-response-delay": 60000,
+                "max-ack-delay": 10000,
+                "max-unacked-clients": 0,
+                "peers": [
+                    {
+                        "name": ha.primary_rack_system_id,
+                        "url": f"http://{ha.primary_rack_ip}:{9000 + i}/",
+                        "role": "primary",
+                        "auto-failover": True,
+                    },
+                    {
+                        "name": ha.secondary_rack_system_id,
+                        "url": f"http://{ha.secondary_rack_ip}:{9000 + i}/",
+                        "role": "standby",
+                        "auto-failover": True,
+                    },
+                ],
+            }
+            for i, ha in enumerate(ha_config)
+        ]
+        cfg = {
+            "library": "libdhcp_ha.so",
+            "parameters": {"high_availability": ha_setups},
+        }
+        return cfg
 
     async def get_kea_shared_networks_config(
         self, data: DHCPDataForAgent, ip_version: int
@@ -1818,7 +1935,7 @@ class DHCPConfigActivity(ActivityBase):
             }
         }
         config[f"Dhcp{param.ip_version}"].update(
-            self.get_kea_hooks_libraries()
+            self.get_kea_hooks_libraries(param.dhcp_data.ha_data)
         )
         config[f"Dhcp{param.ip_version}"].update(shared_network_cfg)
         return config
