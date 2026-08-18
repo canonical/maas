@@ -12,12 +12,8 @@ class TestTriggersUsed:
     """Tests relating to those triggers the MAAS application uses."""
 
     triggers_system = {
-        "rbacsync_sys_rbac_sync",
         "regionrackrpcconnection_sys_core_rpc_delete",
         "regionrackrpcconnection_sys_core_rpc_insert",
-        "resourcepool_sys_rbac_rpool_delete",
-        "resourcepool_sys_rbac_rpool_insert",
-        "resourcepool_sys_rbac_rpool_update",
         "subnet_sys_proxy_subnet_delete",
         "subnet_sys_proxy_subnet_insert",
         "subnet_sys_proxy_subnet_update",
@@ -207,9 +203,6 @@ class TestTriggers:
             "subnet_sys_proxy_subnet_insert",
             "subnet_sys_proxy_subnet_update",
             "subnet_sys_proxy_subnet_delete",
-            "resourcepool_sys_rbac_rpool_insert",
-            "resourcepool_sys_rbac_rpool_update",
-            "resourcepool_sys_rbac_rpool_delete",
         ]
 
         stmt = text("""

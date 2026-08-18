@@ -1,9 +1,8 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Self
 
-from macaroonbakery.bakery import Macaroon
 from pydantic import BaseModel
 
 from maasservicelayer.exceptions.constants import (
@@ -97,16 +96,6 @@ class InsufficientStorageException(BaseException):
 class ServiceUnavailableException(BaseException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__("The service is not available.", details)
-
-
-class DischargeRequiredException(BaseException):
-    def __init__(
-        self,
-        macaroon: Macaroon,
-        details: list[BaseExceptionDetail] | None = None,
-    ):
-        super().__init__("Macaroon discharge required.", details)
-        self.macaroon = macaroon
 
 
 class BadGatewayException(BaseException):
