@@ -7,6 +7,7 @@ from unittest.mock import Mock
 
 from twisted.internet.defer import inlineCallbacks
 
+import maascommon.fips as fips_module
 import maascommon.worker as worker_module
 from maascommon.worker import get_worker_ids
 from maasserver.listener import notify, PostgresListenerUnregistrationError
@@ -247,6 +248,37 @@ class TestRegionHTTPService(
             http._Configuration(cert=cert, port=5443)
         )
         self.assertNotIn("ssl_dhparam", nginx_config)
+
+    def test_ssl_non_fips_includes_x25519_and_chacha20(self):
+        """Non-FIPS mode: X25519 curve and ChaCha20-Poly1305 ciphers present."""
+        cert = get_sample_cert_with_cacerts()
+        self.patch(
+            fips_module, "get_fips_status"
+        ).return_value = fips_module.FIPSStatus(enabled=False)
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=cert, port=5443)
+        )
+        self.assertIn("X25519:prime256v1:secp384r1", nginx_config)
+        self.assertIn("CHACHA20-POLY1305", nginx_config)
+        self.assertNotIn("ssl_conf_command", nginx_config)
+
+    def test_ssl_fips_omits_x25519_and_chacha20(self):
+        """FIPS mode: X25519 and ChaCha20-Poly1305 must not appear in nginx SSL config."""
+        cert = get_sample_cert_with_cacerts()
+        self.patch(
+            fips_module, "get_fips_status"
+        ).return_value = fips_module.FIPSStatus(enabled=True)
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=cert, port=5443)
+        )
+        self.assertNotIn("X25519", nginx_config)
+        self.assertNotIn("CHACHA20-POLY1305", nginx_config)
+        self.assertIn("prime256v1:secp384r1", nginx_config)
+        self.assertIn("ECDHE-RSA-AES256-GCM-SHA384", nginx_config)
+        self.assertIn(
+            "ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256;",
+            nginx_config,
+        )
 
     def test_create_cert_files_writes_full_chain(self):
         cert = get_sample_cert_with_cacerts()
