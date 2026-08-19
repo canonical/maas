@@ -76,29 +76,29 @@ server {
 
     # static assets
 
-    location ~ ^/MAAS/machine-resources/(.*)$ {
+    location ~ ^/MAAS/machine-resources/(?<arch>.*)$ {
         root {{static_dir}}/machine-resources;
-        try_files /$1 =404;
+        try_files /$arch =404;
     }
 
     location = /MAAS/docs {
         return 301 /MAAS/docs/;
     }
 
-    location ~ ^/MAAS/docs/(.*)$ {
+    location ~ ^/MAAS/docs/(?<path>.*)$ {
         root {{static_dir}}/web/static/docs;
         # redirect to the UI version if the page is not found by default
-        try_files /$1 /$1.html /ui/$1 ui/$1.html /$1/index.html =404;
+        try_files /$path /$path.html /ui/$path ui/$path.html /$path/index.html =404;
     }
 
-    location ~ ^/MAAS/assets/(.*)$ {
+    location ~ ^/MAAS/assets/(?<path>.*)$ {
         root {{static_dir}}/web/static/assets;
-        try_files /$1 =404;
+        try_files /$path =404;
     }
 
-    location ~ ^/MAAS/r/(.*)$ {
+    location ~ ^/MAAS/r/(?<path>.*)$ {
         root {{static_dir}}/web/static;
-        try_files /$1 /index.html =404;
+        try_files /$path /index.html =404;
     }
 
     location /favicon.ico {
@@ -110,12 +110,12 @@ server {
         proxy_pass http://temporal-metrics/metrics;
     }
 
-    location ~ ^/MAAS/boot-resources/([^/]+)/?(.*)$ {
+    location ~ ^/MAAS/boot-resources/(?<hash>[^/]+)/?(?<labels>.*)$ {
         # /MAAS/boot-resources/$hash/$labels -> {{boot_resources_dir}}/$hash (labels ignored)
         # /MAAS/boot-resources/$dir/.../$file -> {{boot_resources_dir}}/$dir/.../$file (full path)
         autoindex off;
         root {{boot_resources_dir}};
-        try_files /$1 /$1/$2 =404;
+        try_files /$hash /$hash/$labels =404;
     }
 
     location /MAAS/a/v3/boot_resources {
@@ -152,9 +152,9 @@ server {
         proxy_pass http://regiond-webapp;
     }
 
-    location ~ ^/MAAS/machine-resources/(.*)$ {
+    location ~ ^/MAAS/machine-resources/(?<arch>.*)$ {
         root {{static_dir}}/machine-resources;
-        try_files /$1 =404;
+        try_files /$arch =404;
     }
 
     # required for rackd to get images
@@ -162,12 +162,12 @@ server {
         proxy_pass http://regiond-webapp;
     }
 
-    location ~ ^/MAAS/boot-resources/([^/]+)/?(.*)$ {
+    location ~ ^/MAAS/boot-resources/(?<hash>[^/]+)/?(?<labels>.*)$ {
         # /MAAS/boot-resources/$hash/$labels -> {{boot_resources_dir}}/$hash (labels ignored)
         # /MAAS/boot-resources/$dir/.../$file -> {{boot_resources_dir}}/$dir/.../$file (full path)
         autoindex off;
         root {{boot_resources_dir}};
-        try_files /$1 /$1/$2 =404;
+        try_files /$hash /$hash/$labels =404;
     }
 
     location /MAAS {
