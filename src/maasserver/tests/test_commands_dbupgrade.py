@@ -3,12 +3,12 @@
 
 """Tests for the `dbupgrade` management command."""
 
-import pytest
 from django.core.management import call_command
+import pytest
 
-from maasservicelayer import db as db_module
 from maasserver.management.commands.dbupgrade import Command
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasservicelayer import db as db_module
 
 
 class FakeSSLContext:
@@ -55,14 +55,12 @@ class TestDBUpgradeAlembicConfig:
         self, sslmode, expected
     ):
         connect_args = Command._build_alembic_connect_args(
-            {"dbname": "maasdb", "sslmode": sslmode}
+            {"database": "maasdb", "sslmode": sslmode}
         )
 
         assert connect_args == {"ssl": expected}
 
-    def test_build_alembic_connect_args_builds_ssl_context(
-        self, monkeypatch
-    ):
+    def test_build_alembic_connect_args_builds_ssl_context(self, monkeypatch):
         monkeypatch.setattr(db_module.ssl, "SSLContext", FakeSSLContext)
 
         connect_args = Command._build_alembic_connect_args(
@@ -80,6 +78,7 @@ class TestDBUpgradeAlembicConfig:
         )
 
         context = connect_args["ssl"]
+        assert isinstance(context, FakeSSLContext)
         assert context.verify_mode == db_module.ssl.CERT_REQUIRED
         assert context.check_hostname is True
         assert context.verify_locations == ["/etc/maas/ca.crt"]

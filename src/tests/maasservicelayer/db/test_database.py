@@ -98,11 +98,15 @@ class TestDatabaseConfigBuildSSLParam:
         cfg = DatabaseConfig(name="maas", host="localhost", sslmode="allow")
         assert cfg.build_ssl_param() == "allow"
 
-    def test_sslmode_require_without_client_cert_uses_tls_without_context(
+    def test_sslmode_require_without_client_cert_uses_unverified_context(
         self,
     ) -> None:
         cfg = DatabaseConfig(name="maas", host="localhost", sslmode="require")
-        assert cfg.build_ssl_param() is True
+        context = cfg.build_ssl_param()
+        assert context.verify_mode == db_module.ssl.CERT_NONE
+        assert context.check_hostname is False
+        assert context.cert_chains == []
+        assert context.verify_locations == []
 
     def test_sslmode_require_with_client_cert_uses_unverified_context(
         self,

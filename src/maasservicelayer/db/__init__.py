@@ -44,8 +44,6 @@ class DatabaseConfig:
             return False
         if self.sslmode == "allow":
             return "allow"
-        if self.sslmode == "require" and not self.sslcert:
-            return True
 
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         if self.sslmode == "require":

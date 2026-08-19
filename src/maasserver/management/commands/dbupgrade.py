@@ -16,8 +16,8 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import connections, DEFAULT_DB_ALIAS
 
-from maasservicelayer.db import DatabaseConfig
 from maasserver.plugin import PGSQL_MIN_VERSION, UnsupportedDBException
+from maasservicelayer.db import DatabaseConfig
 from provisioningserver.path import get_path
 
 
@@ -207,12 +207,12 @@ class Command(BaseCommand):
         print("  Applied all migrations.")
 
     @classmethod
-    def _build_alembic_postgres_dsn(self, conn_params):
+    def _build_alembic_postgres_dsn(cls, conn_params):
         user = conn_params.get("user") or ""
         password = conn_params.get("password") or ""
         host = conn_params.get("host") or "localhost"
         port = conn_params.get("port")
-        dbname = conn_params["dbname"]
+        dbname = conn_params.get("dbname") or conn_params.get("database")
 
         auth = f"{user}:{password}@" if password else f"{user}@"
 
@@ -223,10 +223,11 @@ class Command(BaseCommand):
             return f"postgresql+asyncpg://{auth}{host}{port_part}/{dbname}"
 
     @classmethod
-    def _build_alembic_connect_args(self, conn_params):
+    def _build_alembic_connect_args(cls, conn_params):
+        dbname = conn_params.get("dbname") or conn_params.get("database")
         return {
             "ssl": DatabaseConfig(
-                name=conn_params["dbname"],
+                name=dbname,
                 host=conn_params.get("host") or "localhost",
                 port=conn_params.get("port"),
                 username=conn_params.get("user") or "",
