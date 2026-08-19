@@ -16,6 +16,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import connections, DEFAULT_DB_ALIAS
 
+from maasservicelayer.db import DatabaseConfig
 from maasserver.plugin import PGSQL_MIN_VERSION, UnsupportedDBException
 from provisioningserver.path import get_path
 
@@ -219,14 +220,23 @@ class Command(BaseCommand):
             return f"postgresql+asyncpg://{auth}localhost/{dbname}?host={host}"
         else:
             port_part = f":{port}" if port else ""
-            sslmode = conn_params.get("sslmode") or "prefer"
-            params = [f"ssl={sslmode}"]
-            if sslcert := conn_params.get("sslcert"):
-                params.append(f"sslcert={sslcert}")
-                params.append(f"sslkey={conn_params.get('sslkey', '')}")
-            if sslrootcert := conn_params.get("sslrootcert"):
-                params.append(f"sslrootcert={sslrootcert}")
-            return f"postgresql+asyncpg://{auth}{host}{port_part}/{dbname}?{'&'.join(params)}"
+            return f"postgresql+asyncpg://{auth}{host}{port_part}/{dbname}"
+
+    @classmethod
+    def _build_alembic_connect_args(self, conn_params):
+        return {
+            "ssl": DatabaseConfig(
+                name=conn_params["dbname"],
+                host=conn_params.get("host") or "localhost",
+                port=conn_params.get("port"),
+                username=conn_params.get("user") or "",
+                password=conn_params.get("password") or "",
+                sslmode=conn_params.get("sslmode") or "prefer",
+                sslcert=conn_params.get("sslcert") or "",
+                sslkey=conn_params.get("sslkey") or "",
+                sslrootcert=conn_params.get("sslrootcert") or "",
+            ).build_ssl_param()
+        }
 
     @classmethod
     def _should_run_django_migrations(cls, database) -> bool:
@@ -286,8 +296,12 @@ class Command(BaseCommand):
         )
         alembic_cfg = config.Config(alembic_ini_path)
         alembic_cfg.set_main_option("run_migrations", "true")
-        dsn = self._build_alembic_postgres_dsn(conn.get_connection_params())
+        conn_params = conn.get_connection_params()
+        dsn = self._build_alembic_postgres_dsn(conn_params)
         alembic_cfg.set_main_option("sqlalchemy.url", dsn)
+        alembic_cfg.attributes["connect_args"] = (
+            self._build_alembic_connect_args(conn_params)
+        )
         command.upgrade(alembic_cfg, "head")
 
         # Make sure we're going to see the same database as the migrations
