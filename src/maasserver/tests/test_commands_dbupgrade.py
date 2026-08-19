@@ -4,11 +4,11 @@
 """Tests for the `dbupgrade` management command."""
 
 from django.core.management import call_command
-import pytest
 
 from maasserver.management.commands.dbupgrade import Command
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasservicelayer import db as db_module
+from maastesting.testcase import MAASTestCase
 
 
 class FakeSSLContext:
@@ -26,7 +26,7 @@ class FakeSSLContext:
         self.cert_chains.append((certfile, keyfile))
 
 
-class TestDBUpgradeAlembicConfig:
+class TestDBUpgradeAlembicConfig(MAASTestCase):
     def test_build_alembic_postgres_dsn_omits_ssl_params(self):
         dsn = Command._build_alembic_postgres_dsn(
             {
@@ -42,26 +42,24 @@ class TestDBUpgradeAlembicConfig:
             }
         )
 
-        assert (
-            dsn
-            == "postgresql+asyncpg://maas:secret@db.example.com:5432/maasdb"
+        self.assertEqual(
+            dsn,
+            "postgresql+asyncpg://maas:secret@db.example.com:5432/maasdb",
         )
 
-    @pytest.mark.parametrize(
-        ("sslmode", "expected"),
-        (("prefer", None), ("disable", False), ("allow", "allow")),
-    )
-    def test_build_alembic_connect_args_for_non_context_modes(
-        self, sslmode, expected
-    ):
-        connect_args = Command._build_alembic_connect_args(
-            {"database": "maasdb", "sslmode": sslmode}
-        )
+    def test_build_alembic_connect_args_for_non_context_modes(self):
+        for sslmode, expected in (
+            ("prefer", None),
+            ("disable", False),
+            ("allow", "allow"),
+        ):
+            connect_args = Command._build_alembic_connect_args(
+                {"database": "maasdb", "sslmode": sslmode}
+            )
+            self.assertEqual(connect_args, {"ssl": expected})
 
-        assert connect_args == {"ssl": expected}
-
-    def test_build_alembic_connect_args_builds_ssl_context(self, monkeypatch):
-        monkeypatch.setattr(db_module.ssl, "SSLContext", FakeSSLContext)
+    def test_build_alembic_connect_args_builds_ssl_context(self):
+        self.patch(db_module.ssl, "SSLContext", FakeSSLContext)
 
         connect_args = Command._build_alembic_connect_args(
             {
@@ -78,13 +76,14 @@ class TestDBUpgradeAlembicConfig:
         )
 
         context = connect_args["ssl"]
-        assert isinstance(context, FakeSSLContext)
-        assert context.verify_mode == db_module.ssl.CERT_REQUIRED
-        assert context.check_hostname is True
-        assert context.verify_locations == ["/etc/maas/ca.crt"]
-        assert context.cert_chains == [
-            ("/etc/maas/db.crt", "/etc/maas/db.key")
-        ]
+        self.assertIsInstance(context, FakeSSLContext)
+        self.assertEqual(context.verify_mode, db_module.ssl.CERT_REQUIRED)
+        self.assertTrue(context.check_hostname)
+        self.assertEqual(context.verify_locations, ["/etc/maas/ca.crt"])
+        self.assertEqual(
+            context.cert_chains,
+            [("/etc/maas/db.crt", "/etc/maas/db.key")],
+        )
 
 
 class TestDBUpgrade(MAASTransactionServerTestCase):
