@@ -156,7 +156,7 @@ def test_temporal_migration_no_cert_flags_when_certs_absent(
 
 
 @pytest.mark.parametrize("sslmode", ["require", "verify-full"])
-def test_build_alembic_postgres_dsn_sslmode_propagated_verbatim(sslmode):
+def test_build_alembic_postgres_dsn_omits_sslmode(sslmode):
     params = {
         "host": "dbhost.example.com",
         "port": "5432",
@@ -166,7 +166,7 @@ def test_build_alembic_postgres_dsn_sslmode_propagated_verbatim(sslmode):
         "sslmode": sslmode,
     }
     dsn = Command._build_alembic_postgres_dsn(params)
-    assert f"ssl={sslmode}" in dsn
+    assert "ssl=" not in dsn
 
 
 def test_build_alembic_postgres_dsn_tcp_defaults_ssl_to_prefer():
@@ -179,7 +179,7 @@ def test_build_alembic_postgres_dsn_tcp_defaults_ssl_to_prefer():
         # no sslmode key
     }
     dsn = Command._build_alembic_postgres_dsn(params)
-    assert "ssl=prefer" in dsn
+    assert "ssl=" not in dsn
 
 
 def test_build_alembic_postgres_dsn_unix_socket_excludes_ssl_param():
@@ -196,7 +196,7 @@ def test_build_alembic_postgres_dsn_unix_socket_excludes_ssl_param():
     assert "host=/var/run/postgresql" in dsn
 
 
-def test_build_alembic_postgres_dsn_includes_cert_params():
+def test_build_alembic_postgres_dsn_omits_cert_params():
     params = {
         "host": "pg.internal",
         "port": "5432",
@@ -209,13 +209,12 @@ def test_build_alembic_postgres_dsn_includes_cert_params():
         "sslrootcert": "/etc/maas/ca.crt",
     }
     dsn = Command._build_alembic_postgres_dsn(params)
-    assert "sslcert=/etc/maas/db.crt" in dsn
-    assert "sslkey=/etc/maas/db.key" in dsn
-    assert "sslrootcert=/etc/maas/ca.crt" in dsn
+    assert "sslcert=" not in dsn
+    assert "sslkey=" not in dsn
+    assert "sslrootcert=" not in dsn
 
 
-def test_build_alembic_postgres_dsn_rootcert_only():
-    """CA cert present without client cert → sslrootcert in DSN, no sslcert/sslkey."""
+def test_build_alembic_postgres_dsn_rootcert_only_omits_ssl_params():
     params = {
         "host": "pg.internal",
         "port": "5432",
@@ -226,9 +225,19 @@ def test_build_alembic_postgres_dsn_rootcert_only():
         "sslrootcert": "/etc/maas/ca.crt",
     }
     dsn = Command._build_alembic_postgres_dsn(params)
-    assert "sslrootcert=/etc/maas/ca.crt" in dsn
+    assert "sslrootcert=" not in dsn
     assert "sslcert=" not in dsn
     assert "sslkey=" not in dsn
+
+
+@pytest.mark.parametrize(
+    ("sslmode", "expected"),
+    (("prefer", None), ("disable", False), ("allow", "allow")),
+)
+def test_build_alembic_connect_args_for_non_context_modes(sslmode, expected):
+    params = {"database": "maasdb", "sslmode": sslmode}
+    connect_args = Command._build_alembic_connect_args(params)
+    assert connect_args == {"ssl": expected}
 
 
 def test_build_alembic_postgres_dsn_no_certs_no_cert_params():
