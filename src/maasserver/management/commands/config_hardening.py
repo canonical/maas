@@ -31,8 +31,12 @@ _CONF_KEYS = frozenset(
     }
 )
 
-# Seeded to loopback by `enable`; network-facing binds are not auto-seeded.
-_LOOPBACK_SEED_KEYS = frozenset({"prometheus_bind", "temporal_bind"})
+# Seeded to loopback by `enable`; network-facing binds are not
+# auto-seeded. `temporal_bind` is excluded for the same reason it's
+# excluded from `maasservicelayer.services.hardening._AUTO_DERIVED_BIND_KEYS`:
+# it's derived from `maas_url` at runtime when unset, so seeding it here
+# would only pin a stale value.
+_LOOPBACK_SEED_KEYS = frozenset({"prometheus_bind"})
 
 _ALL_KNOWN_KEYS = _CONFIG_KEYS | _CONF_KEYS
 

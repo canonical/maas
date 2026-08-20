@@ -22,6 +22,7 @@ from socket import (
 )
 import struct
 from typing import Iterable, List, Optional, TypeVar
+from urllib.parse import urlparse
 from zlib import crc32
 
 from netaddr import EUI, IPAddress, IPNetwork, IPRange
@@ -1057,6 +1058,66 @@ def get_source_address_for_ipaddress(destination_ip: IPAddress):
             # configured. Could also happen if a network or broadcast address
             # is passed in, or we otherwise cannot route to the destination.
             return None
+
+
+def get_source_address_for_url(url: str) -> Optional[str]:
+    """Returns the local source address used to reach `url`'s host.
+
+    Resolves the hostname in `url` and returns the local address the
+    kernel would use to reach it (see `get_source_address_for_ipaddress`).
+
+    :param url: A URL such as ``http://10.0.0.1:5240/MAAS``.
+    :return: the string representation of the local IP address, or None
+        if the hostname cannot be resolved or there is no route to it.
+    """
+    hostname = urlparse(url).hostname
+    if not hostname:
+        return None
+    try:
+        destination_ip = socket.gethostbyname(hostname)
+    except (gaierror, UnicodeError):
+        return None
+    return get_source_address_for_ipaddress(IPAddress(destination_ip))
+
+
+def resolve_bind_address(
+    configured: str, maas_url: str, *, hardening_active: bool = False
+) -> str:
+    """Return the address a co-located service should bind to.
+
+    Resolution order:
+
+    1. the explicit ``configured`` value, if set;
+    2. the local address used to reach ``maas_url`` -- this keeps a
+       service's bind address, its cluster-membership broadcast address
+       (if any), and every client's dial target in agreement, since they
+       all derive from the same ``maas_url``;
+    3. a last-resort default: loopback under hardening (a wildcard bind
+       is not allowed), otherwise all-interfaces.
+    """
+    if configured:
+        return configured
+    derived = get_source_address_for_url(maas_url)
+    if derived:
+        return derived
+    return "127.0.0.1" if hardening_active else "0.0.0.0"
+
+
+def resolve_connect_address(
+    configured: str, maas_url: str, *, hardening_active: bool = False
+) -> str:
+    """Return the address a same-host client should dial to reach a
+    co-located service's frontend, given the same inputs used to compute
+    its bind address.
+    """
+    address = resolve_bind_address(
+        configured, maas_url, hardening_active=hardening_active
+    )
+    if address == "::":
+        return "::1"
+    if address == "0.0.0.0":
+        return "127.0.0.1"
+    return address
 
 
 def generate_mac_address():

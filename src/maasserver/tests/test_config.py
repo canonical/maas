@@ -4,10 +4,11 @@
 """Tests for `maasserver.config`."""
 
 import random
+from unittest.mock import patch
 
 import formencode.api
 
-from maasserver.config import RegionConfiguration
+from maasserver.config import get_temporal_connect_address, RegionConfiguration
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 
@@ -153,3 +154,39 @@ class TestRegionConfigurationDebugOptions(MAASTestCase):
         self.assertTrue(getattr(config, self.option))
         # It's also stored in the configuration database.
         self.assertEqual({self.option: True}, config.store)
+
+
+class TestGetTemporalConnectAddress(MAASTestCase):
+    """Tests for `get_temporal_connect_address`."""
+
+    def _patch_region_config(self, *, temporal_bind, maas_url):
+        mock_open = self.patch(RegionConfiguration, "open")
+        ctx = mock_open.return_value.__enter__.return_value
+        ctx.temporal_bind = temporal_bind
+        ctx.maas_url = maas_url
+        return ctx
+
+    def test_explicit_bind_returned_unchanged(self):
+        self._patch_region_config(
+            temporal_bind="10.0.0.1", maas_url="http://10.0.0.1:5240/MAAS"
+        )
+        with patch(
+            "maasserver.config.is_hardening_enabled", return_value=True
+        ):
+            self.assertEqual("10.0.0.1", get_temporal_connect_address())
+
+    def test_unset_wildcard_bind_maps_to_loopback(self):
+        self._patch_region_config(
+            temporal_bind="", maas_url="http://unreachable:5240/MAAS"
+        )
+        with (
+            patch(
+                "maasserver.config.is_hardening_enabled",
+                return_value=False,
+            ),
+            patch(
+                "provisioningserver.utils.network.get_source_address_for_url",
+                return_value=None,
+            ),
+        ):
+            self.assertEqual("127.0.0.1", get_temporal_connect_address())

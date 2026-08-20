@@ -60,6 +60,7 @@ from provisioningserver.utils.network import (
     get_interface_children,
     get_mac_organization,
     get_source_address,
+    get_source_address_for_url,
     has_ipv4_address,
     hex_str_to_bytes,
     interface_children,
@@ -73,6 +74,8 @@ from provisioningserver.utils.network import (
     make_network,
     parse_integer,
     preferred_hostnames_sort_key,
+    resolve_bind_address,
+    resolve_connect_address,
     resolve_host_to_addrinfo,
     resolve_hostname,
     resolves_to_loopback_address,
@@ -2298,6 +2301,93 @@ class TestGetSourceAddress(MAASTestCase):
 
     def test_returns_appropriate_address_for_global_ip(self):
         self.assertIsNotNone(get_source_address("8.8.8.8"))
+
+
+class TestGetSourceAddressForUrl(MAASTestCase):
+    def test_returns_source_address_for_url_host(self):
+        mock_gethostbyname = self.patch(socket, "gethostbyname")
+        mock_gethostbyname.return_value = "10.0.0.5"
+        mock_get_source = self.patch(
+            network_module, "get_source_address_for_ipaddress"
+        )
+        mock_get_source.return_value = "10.0.0.1"
+
+        result = get_source_address_for_url("http://maas.example:5240/MAAS")
+
+        mock_gethostbyname.assert_called_once_with("maas.example")
+        mock_get_source.assert_called_once_with(IPAddress("10.0.0.5"))
+        self.assertEqual("10.0.0.1", result)
+
+    def test_returns_none_when_url_has_no_hostname(self):
+        self.assertIsNone(get_source_address_for_url("not-a-url"))
+
+    def test_returns_none_when_hostname_does_not_resolve(self):
+        self.patch(socket, "gethostbyname").side_effect = gaierror()
+        self.assertIsNone(
+            get_source_address_for_url("http://nonexistent.invalid/MAAS")
+        )
+
+
+class TestResolveBindAddress(MAASTestCase):
+    def test_explicit_address_returned_unchanged(self):
+        result = resolve_bind_address(
+            "10.0.0.1", "http://10.0.0.1:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual("10.0.0.1", result)
+
+    def test_empty_derives_from_maas_url(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.5"
+
+        result = resolve_bind_address(
+            "", "http://10.0.0.5:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual("10.0.0.5", result)
+
+    def test_empty_hardening_active_falls_back_to_loopback(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_bind_address(
+            "", "http://unreachable:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual("127.0.0.1", result)
+
+    def test_empty_hardening_inactive_falls_back_to_any(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_bind_address(
+            "", "http://unreachable:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual("0.0.0.0", result)
+
+
+class TestResolveConnectAddress(MAASTestCase):
+    def test_specific_bind_returned_unchanged(self):
+        result = resolve_connect_address(
+            "10.0.0.1", "http://10.0.0.1:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual("10.0.0.1", result)
+
+    def test_wildcard_bind_maps_to_loopback(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_connect_address(
+            "", "http://unreachable:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual("127.0.0.1", result)
+
+    def test_ipv6_wildcard_bind_maps_to_ipv6_loopback(self):
+        result = resolve_connect_address(
+            "::", "http://unreachable:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual("::1", result)
 
 
 class TestGenerateMACAddress(TestCase):

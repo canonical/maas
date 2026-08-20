@@ -5,9 +5,6 @@
 
 import os
 from pathlib import Path
-import socket
-import subprocess
-from urllib.parse import urlparse
 
 from django.conf import settings
 from django.db import connection as django_connection
@@ -23,6 +20,10 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.fs import atomic_write, snap
+from provisioningserver.utils.network import (
+    get_source_address_for_url,
+    resolve_bind_address,
+)
 
 maaslog = get_maas_logger()
 
@@ -59,10 +60,7 @@ class RegionTemporalService(Service):
 
         with RegionConfiguration.open() as config:
             broadcast_address = config.broadcast_address
-            temporal_bind = self._resolve_bind(
-                str(config.temporal_bind),
-                hardening_active=_hardening.is_hardening_enabled(),
-            )
+            configured_temporal_bind = str(config.temporal_bind)
             database_sslcert = config.database_sslcert
             database_sslkey = config.database_sslkey
             database_sslrootcert = config.database_sslrootcert
@@ -72,14 +70,30 @@ class RegionTemporalService(Service):
         tls_enabled = sslmode in ("require", "verify-ca", "verify-full")
         enable_host_verification = sslmode in ("verify-ca", "verify-full")
 
+        hardening_active = _hardening.is_hardening_enabled()
+        temporal_bind = resolve_bind_address(
+            configured_temporal_bind,
+            maas_url,
+            hardening_active=hardening_active,
+        )
+
         if not broadcast_address:
-            try:
-                broadcast_address = self.get_broadcast_address(maas_url)
-            except Exception as e:
+            # Ringpop membership gossip needs an address the process's own
+            # services can dial each other on, so it must agree with
+            # whatever `temporal_bind` actually resolved to. A wildcard
+            # bind isn't dialable as a destination, so fall back to the
+            # local address used to reach `maas_url` in that case.
+            broadcast_address = (
+                temporal_bind
+                if temporal_bind not in ("0.0.0.0", "::")
+                else get_source_address_for_url(maas_url)
+            )
+            if not broadcast_address:
                 maaslog.error(
-                    "Failed to identify broadcast address due to: %s. "
-                    "Please consider setting it manually using regiond.conf",
-                    e,
+                    "Failed to identify broadcast address for maas_url "
+                    "%r. Please consider setting it manually using "
+                    "regiond.conf",
+                    maas_url,
                 )
 
         temporal_config_dir = Path(
@@ -137,26 +151,3 @@ class RegionTemporalService(Service):
             yield service_monitor.restartService("temporal")
         else:
             yield service_monitor.reloadService("temporal")
-
-    def get_broadcast_address(self, maas_url):
-        parsed = urlparse(maas_url)
-        maas_ip = socket.gethostbyname(parsed.hostname)
-
-        output = subprocess.getoutput(f"ip route get {maas_ip}")
-        # root@maas:~# ip route get 10.0.0.37
-        # local 10.0.0.37 dev lo src 10.0.0.37 uid 0
-        # cache <local>
-        return output.split("src ")[1].split()[0]
-
-    @staticmethod
-    def _resolve_bind(
-        configured: str, *, hardening_active: bool = False
-    ) -> str:
-        """Return the configured bind address.
-
-        Falls back to loopback when hardening is active, or all-interfaces
-        otherwise.
-        """
-        if configured:
-            return configured
-        return "127.0.0.1" if hardening_active else "0.0.0.0"
