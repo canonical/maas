@@ -62,6 +62,12 @@ logger = structlog.getLogger()
 DEFAULT_DEPLOY_ACTIVITY_TIMEOUT = timedelta(seconds=30)
 DEFAULT_DEPLOY_RETRY_TIMEOUT = timedelta(seconds=60)
 
+# _switch_to_local_boot()'s power-on is fire-and-forget, so poll afterwards
+# to persist the real state. Some drivers (e.g. IBM Z HMC/DPM) can take
+# minutes to settle.
+CONFIRM_POWERED_ON_POLL_INTERVAL = timedelta(seconds=15)
+CONFIRM_POWERED_ON_MAX_ATTEMPTS = 20  # ~5 minutes total
+
 # Activities names
 GET_BOOT_ORDER_ACTIVITY_NAME = "get-boot-order"
 SET_NODE_STATUS_ACTIVITY_NAME = "set-node-status"
@@ -502,6 +508,54 @@ class DeployWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
 
+    async def _confirm_powered_on(self, params: DeployParam) -> None:
+        """Poll and persist the node's power state until it reads "on".
+
+        The preceding power-on is fire-and-forget, so query the state on a
+        bounded poll and persist changes as they settle, reusing the
+        query-then-persist pattern from _start_deployment(). A reading is
+        only acted on once seen on two consecutive polls, to ignore
+        transient flaky reports from the BMC/HMC.
+        """
+        persisted_state = None
+        candidate_state = None
+        for _ in range(CONFIRM_POWERED_ON_MAX_ATTEMPTS):
+            result = await workflow.execute_activity(
+                POWER_QUERY_ACTIVITY_NAME,
+                PowerQueryParam(
+                    system_id=params.power_params.system_id,
+                    driver_type=params.power_params.driver_type,
+                    driver_opts=params.power_params.driver_opts,
+                    task_queue=params.power_params.task_queue,
+                    is_dpu=params.power_params.is_dpu,
+                ),
+                task_queue=params.power_params.task_queue,
+                start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
+                retry_policy=RetryPolicy(maximum_attempts=3),
+            )
+            state = result["state"]
+            if state != candidate_state:
+                candidate_state = state
+            elif state != persisted_state:
+                await workflow.execute_activity(
+                    SET_POWER_STATE_ACTIVITY_NAME,
+                    SetPowerStateParam(
+                        system_id=params.power_params.system_id,
+                        state=PowerState(state),
+                    ),
+                    task_queue="region",
+                    start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
+                    retry_policy=RetryPolicy(
+                        maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
+                    ),
+                )
+                persisted_state = state
+            if persisted_state == PowerState.ON:
+                return
+            await asyncio.sleep(
+                CONFIRM_POWERED_ON_POLL_INTERVAL.total_seconds()
+            )
+
     async def _switch_to_local_boot(self, params: DeployParam) -> None:
         """Point a boot-order-capable machine at its local disk to boot.
 
@@ -522,6 +576,7 @@ class DeployWorkflow:
         await self._power(params, POWER_OFF_ACTIVITY_NAME)
         await self._set_boot_order(params, netboot=False)
         await self._power(params, POWER_ON_ACTIVITY_NAME)
+        await self._confirm_powered_on(params)
 
     @workflow_run_with_context
     async def run(self, params: DeployParam) -> DeployResult:
