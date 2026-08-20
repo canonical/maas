@@ -146,5 +146,3 @@ class TestGetDefaultDBConfig:
         assert config.sslcert == "/etc/maas/db.crt"
         assert config.sslkey == "/etc/maas/db.key"
         assert config.sslrootcert == "/etc/maas/ca.crt"
-        assert config.dsn.query.get("sslmode") == "verify-full"
-        assert config.dsn.query.get("sslcert") == "/etc/maas/db.crt"

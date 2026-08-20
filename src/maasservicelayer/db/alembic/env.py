@@ -91,10 +91,12 @@ async def run_async_migrations() -> None:
     if url := context.get_x_argument(as_dictionary=True).get("db_url"):
         alembic_config["sqlalchemy.url"] = url
 
+    connect_args = config.attributes.get("connect_args", {})
     connectable = async_engine_from_config(
         alembic_config,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:

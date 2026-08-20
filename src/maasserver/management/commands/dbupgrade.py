@@ -18,6 +18,7 @@ from django.core.management.base import BaseCommand
 from django.db import connections, DEFAULT_DB_ALIAS
 
 from maasserver.plugin import PGSQL_MIN_VERSION, UnsupportedDBException
+from maasservicelayer.db import DatabaseConfig
 from provisioningserver.path import get_path
 
 
@@ -214,13 +215,13 @@ class Command(BaseCommand):
         print("  All temporal migrations applied.")
 
     @classmethod
-    def _build_postgres_dsn(self, conn_params, driver, search_path=None):
+    def _build_postgres_dsn(cls, conn_params, driver, search_path=None):
         # If the user is not set, use the current system user. Otherwise some drivers might crash https://github.com/jackc/pgx/issues/2495
         user = conn_params.get("user") or getpass.getuser()
         password = conn_params.get("password") or ""
         host = conn_params.get("host") or "localhost"
         port = conn_params.get("port")
-        dbname = conn_params["dbname"]
+        dbname = conn_params.get("dbname") or conn_params.get("database")
 
         auth = f"{user}:{password}@" if password else f"{user}@"
 
@@ -230,19 +231,39 @@ class Command(BaseCommand):
                 connstring = f"{connstring}&search_path={search_path}"
         else:
             port_part = f":{port}" if port else ""
-            sslmode = conn_params.get("sslmode") or "prefer"
-            # asyncpg spells the SSL mode "ssl", libpq/pgx use "sslmode".
-            ssl_key = "ssl" if "asyncpg" in driver else "sslmode"
-            params = [f"{ssl_key}={sslmode}"]
-            if sslcert := conn_params.get("sslcert"):
-                params.append(f"sslcert={sslcert}")
-                params.append(f"sslkey={conn_params.get('sslkey', '')}")
-            if sslrootcert := conn_params.get("sslrootcert"):
-                params.append(f"sslrootcert={sslrootcert}")
+            params = []
+            if "asyncpg" not in driver:
+                params.append(
+                    f"sslmode={conn_params.get('sslmode') or 'prefer'}"
+                )
+                if sslcert := conn_params.get("sslcert"):
+                    params.append(f"sslcert={sslcert}")
+                    params.append(f"sslkey={conn_params.get('sslkey', '')}")
+                if sslrootcert := conn_params.get("sslrootcert"):
+                    params.append(f"sslrootcert={sslrootcert}")
             if search_path:
                 params.append(f"search_path={search_path}")
-            connstring = f"{driver}://{auth}{host}{port_part}/{dbname}?{'&'.join(params)}"
+            connstring = f"{driver}://{auth}{host}{port_part}/{dbname}"
+            if params:
+                connstring = f"{connstring}?{'&'.join(params)}"
         return connstring
+
+    @classmethod
+    def _build_alembic_connect_args(cls, conn_params):
+        dbname = conn_params.get("dbname") or conn_params.get("database")
+        return {
+            "ssl": DatabaseConfig(
+                name=dbname,
+                host=conn_params.get("host") or "localhost",
+                port=conn_params.get("port"),
+                username=conn_params.get("user") or "",
+                password=conn_params.get("password") or "",
+                sslmode=conn_params.get("sslmode") or "prefer",
+                sslcert=conn_params.get("sslcert") or "",
+                sslkey=conn_params.get("sslkey") or "",
+                sslrootcert=conn_params.get("sslrootcert") or "",
+            ).build_ssl_param()
+        }
 
     @classmethod
     def _should_run_django_migrations(cls, database) -> bool:
@@ -344,10 +365,12 @@ class Command(BaseCommand):
         )
         alembic_cfg = config.Config(alembic_ini_path)
         alembic_cfg.set_main_option("run_migrations", "true")
-        dsn = self._build_postgres_dsn(
-            conn.get_connection_params(), "postgresql+asyncpg"
-        )
+        conn_params = conn.get_connection_params()
+        dsn = self._build_postgres_dsn(conn_params, "postgresql+asyncpg")
         alembic_cfg.set_main_option("sqlalchemy.url", dsn)
+        alembic_cfg.attributes["connect_args"] = (
+            self._build_alembic_connect_args(conn_params)
+        )
         command.upgrade(alembic_cfg, "head")
 
         # Make sure we're going to see the same database as the migrations
