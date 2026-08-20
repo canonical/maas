@@ -17,13 +17,13 @@ import temporalio.converter
 from temporalio.service import RPCError, RPCStatusCode
 from temporalio.worker import Worker as TemporalWorker
 
+from maasserver.config import get_temporal_connect_address
 from maastemporalworker.encryptor import EncryptionCodec
 from maastemporalworker.workflow.utils import async_retry
 from provisioningserver.certificates import get_maas_cluster_cert_paths
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 
 REGION_TASK_QUEUE = "region"
-TEMPORAL_HOST = "localhost"
 TEMPORAL_PORT = 5271
 TEMPORAL_WORKFLOW_RETENTION = "259200s"  # tctl's default retention in seconds
 TEMPORAL_NAMESPACE = "default"
@@ -43,7 +43,7 @@ async def get_client_async() -> Client:
         cacert = f.read()
 
     return await Client.connect(
-        f"{TEMPORAL_HOST}:{TEMPORAL_PORT}",
+        f"{get_temporal_connect_address()}:{TEMPORAL_PORT}",
         identity=f"{maas_id}@region:{pid}",
         data_converter=dataclasses.replace(
             temporalio.converter.default(),
