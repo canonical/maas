@@ -49,7 +49,8 @@ func MockConfigureDHCPForAgent(ctx tworkflow.Context, args map[string]any) error
 
 type mockOMAPIClient struct {
 	omapi.OMAPI
-	assertAddHost func(net.IP, net.HardwareAddr) error
+	assertAddHost    func(net.IP, net.HardwareAddr) error
+	assertDeleteHost func(net.HardwareAddr) error
 }
 
 func (m *mockOMAPIClient) Close() error {
@@ -58,6 +59,14 @@ func (m *mockOMAPIClient) Close() error {
 
 func (m *mockOMAPIClient) AddHost(ip net.IP, mac net.HardwareAddr) error {
 	return m.assertAddHost(ip, mac)
+}
+
+func (m *mockOMAPIClient) DeleteHost(mac net.HardwareAddr) error {
+	if m.assertDeleteHost == nil {
+		return nil
+	}
+
+	return m.assertDeleteHost(mac)
 }
 
 type MockDHCPController struct {
@@ -89,14 +98,15 @@ var writeConfigFileTest = writeConfigFileSnap
 
 type DHCPServiceTestSuite struct {
 	suite.Suite
-	workflowEnv            *testsuite.TestWorkflowEnvironment
-	activityEnv            *testsuite.TestActivityEnvironment
-	svc                    *DHCPService
-	configureViaOMAPICalls [][]any
-	configureViaFileCalls  [][]any
-	omapiPipe              net.Conn
-	configHTTPServer       *httptest.Server
-	configAPIResponse      []byte
+	workflowEnv              *testsuite.TestWorkflowEnvironment
+	activityEnv              *testsuite.TestActivityEnvironment
+	svc                      *DHCPService
+	configureViaOMAPICalls   [][]any
+	configureViaOMAPIDeletes []net.HardwareAddr
+	configureViaFileCalls    [][]any
+	omapiPipe                net.Conn
+	configHTTPServer         *httptest.Server
+	configAPIResponse        []byte
 	testsuite.WorkflowTestSuite
 }
 
@@ -111,6 +121,7 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 	s.omapiPipe = server
 
 	s.configureViaOMAPICalls = [][]any{}
+	s.configureViaOMAPIDeletes = []net.HardwareAddr{}
 	s.configureViaFileCalls = [][]any{}
 
 	s.configHTTPServer = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter,
@@ -149,6 +160,10 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 			return &mockOMAPIClient{
 				assertAddHost: func(ip net.IP, mac net.HardwareAddr) error {
 					s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
+					return nil
+				},
+				assertDeleteHost: func(mac net.HardwareAddr) error {
+					s.configureViaOMAPIDeletes = append(s.configureViaOMAPIDeletes, mac)
 					return nil
 				},
 			}, nil
@@ -336,7 +351,53 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPINotRunningV6() {
 	s.Equal(errors.Unwrap(err).Error(), ErrV6NotActive.Error())
 }
 
-func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4NoErrorHostAlreadyExisting() {
+// TestConfigureViaOMAPIV4ReplacesExistingHost ensures that a host whose
+// binding already exists is deleted and re-added, so that an address change
+// actually reaches the running dhcpd instead of being silently dropped.
+func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4ReplacesExistingHost() {
+	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
+
+	hosts := []Host{
+		{
+			IP:  net.ParseIP("10.0.0.1"),
+			MAC: net.HardwareAddr{0x00, 0x01, 0x02, 0x03, 0x04, 0x05},
+		},
+	}
+
+	s.svc.runningV4.Store(true)
+	s.svc.omapiClientFactory = func(_ net.Conn, _ omapi.Authenticator) (omapi.OMAPI, error) {
+		return &mockOMAPIClient{
+			assertAddHost: func(ip net.IP, mac net.HardwareAddr) error {
+				s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
+				if len(s.configureViaOMAPICalls) == 1 {
+					return omapi.ErrHostAlreadyExists
+				}
+
+				return nil
+			},
+			assertDeleteHost: func(mac net.HardwareAddr) error {
+				s.configureViaOMAPIDeletes = append(s.configureViaOMAPIDeletes, mac)
+				return nil
+			},
+		}, nil
+	}
+	_, err := s.activityEnv.ExecuteActivity(
+		"configure-dhcp-via-omapi",
+		ApplyConfigViaOMAPIParam{
+			Secret: secret,
+			Hosts:  hosts,
+		},
+	)
+
+	s.NoError(err)
+	s.Equal([]net.HardwareAddr{hosts[0].MAC}, s.configureViaOMAPIDeletes)
+	s.Len(s.configureViaOMAPICalls, 2)
+}
+
+// TestConfigureViaOMAPIV4ExistingHostReAddFails ensures a failure to restore
+// the host is fatal. Swallowing it would leave dhcpd serving a stale binding
+// that disagrees with the config file, with nothing to reconcile it.
+func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4ExistingHostReAddFails() {
 	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
 
 	hosts := []Host{
@@ -353,6 +414,10 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4NoErrorHostAlreadyExisting
 				s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
 				return omapi.ErrHostAlreadyExists
 			},
+			assertDeleteHost: func(mac net.HardwareAddr) error {
+				s.configureViaOMAPIDeletes = append(s.configureViaOMAPIDeletes, mac)
+				return nil
+			},
 		}, nil
 	}
 	_, err := s.activityEnv.ExecuteActivity(
@@ -363,10 +428,48 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4NoErrorHostAlreadyExisting
 		},
 	)
 
-	s.NoError(err)
+	s.Error(err)
 }
 
-func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6NoErrorHostAlreadyExisting() {
+// TestConfigureViaOMAPIV4ExistingHostDeleteFails ensures a failed delete is
+// fatal. The host is known to exist, so a delete failure is a real fault.
+func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4ExistingHostDeleteFails() {
+	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
+
+	hosts := []Host{
+		{
+			IP:  net.ParseIP("10.0.0.1"),
+			MAC: net.HardwareAddr{0x00, 0x01, 0x02, 0x03, 0x04, 0x05},
+		},
+	}
+
+	s.svc.runningV4.Store(true)
+	s.svc.omapiClientFactory = func(_ net.Conn, _ omapi.Authenticator) (omapi.OMAPI, error) {
+		return &mockOMAPIClient{
+			assertAddHost: func(ip net.IP, mac net.HardwareAddr) error {
+				s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
+				return omapi.ErrHostAlreadyExists
+			},
+			assertDeleteHost: func(mac net.HardwareAddr) error {
+				return errors.New("no such object")
+			},
+		}, nil
+	}
+	_, err := s.activityEnv.ExecuteActivity(
+		"configure-dhcp-via-omapi",
+		ApplyConfigViaOMAPIParam{
+			Secret: secret,
+			Hosts:  hosts,
+		},
+	)
+
+	s.Error(err)
+	s.Len(s.configureViaOMAPICalls, 1)
+}
+
+// TestConfigureViaOMAPIV6ReplacesExistingHost is the IPv6 counterpart of
+// TestConfigureViaOMAPIV4ReplacesExistingHost.
+func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6ReplacesExistingHost() {
 	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
 
 	hosts := []Host{
@@ -381,7 +484,15 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6NoErrorHostAlreadyExisting
 		return &mockOMAPIClient{
 			assertAddHost: func(ip net.IP, mac net.HardwareAddr) error {
 				s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
-				return omapi.ErrHostAlreadyExists
+				if len(s.configureViaOMAPICalls) == 1 {
+					return omapi.ErrHostAlreadyExists
+				}
+
+				return nil
+			},
+			assertDeleteHost: func(mac net.HardwareAddr) error {
+				s.configureViaOMAPIDeletes = append(s.configureViaOMAPIDeletes, mac)
+				return nil
 			},
 		}, nil
 	}
@@ -394,6 +505,8 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6NoErrorHostAlreadyExisting
 	)
 
 	s.NoError(err)
+	s.Equal([]net.HardwareAddr{hosts[0].MAC}, s.configureViaOMAPIDeletes)
+	s.Len(s.configureViaOMAPICalls, 2)
 }
 
 // TestConfigureViaFile ensures that provided JSON decoded and written

@@ -489,7 +489,17 @@ func (s *DHCPService) configureViaOMAPI(ctx context.Context, param ApplyConfigVi
 					return err
 				}
 
-				log.Warn(fmt.Sprintf("Ignoring already existing host: %s", host.MAC))
+				// Delete and add the host again if it already exists,
+				// since the binding could have been changed.
+				err = clientV4.DeleteHost(host.MAC)
+				if err != nil {
+					return err
+				}
+
+				err = clientV4.AddHost(host.IP, host.MAC)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			if !runningV6 {
@@ -502,7 +512,17 @@ func (s *DHCPService) configureViaOMAPI(ctx context.Context, param ApplyConfigVi
 					return err
 				}
 
-				log.Warn(fmt.Sprintf("Ignoring already existing host: %s", host.MAC))
+				// Delete and add the host again if it already exists,
+				// since the binding could have been changed.
+				err = clientV6.DeleteHost(host.MAC)
+				if err != nil {
+					return err
+				}
+
+				err = clientV6.AddHost(host.IP, host.MAC)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

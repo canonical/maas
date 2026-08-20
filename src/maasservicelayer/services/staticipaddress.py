@@ -56,9 +56,32 @@ class StaticIPAddressService(
         self, old_resource: StaticIPAddress, updated_resource: StaticIPAddress
     ) -> None:
         if updated_resource.alloc_type != IpAddressType.DISCOVERED:
+            if old_resource.subnet_id != updated_resource.subnet_id:
+                non_null_subnet_ids = [
+                    id
+                    for id in (
+                        old_resource.subnet_id,
+                        updated_resource.subnet_id,
+                    )
+                    if id is not None
+                ]
+                param = ConfigureDHCPParam(subnet_ids=non_null_subnet_ids)
+            elif (
+                updated_resource.ip is None
+                and updated_resource.subnet_id is not None
+            ):
+                # Use the subnet_id when the IP is set to None
+                param = ConfigureDHCPParam(
+                    subnet_ids=[updated_resource.subnet_id]
+                )
+            else:
+                param = ConfigureDHCPParam(
+                    static_ip_addr_ids=[updated_resource.id]
+                )
+
             self.temporal_service.register_or_update_workflow_call(
                 CONFIGURE_DHCP_WORKFLOW_NAME,
-                ConfigureDHCPParam(static_ip_addr_ids=[updated_resource.id]),
+                param,
                 parameter_merge_func=merge_configure_dhcp_param,
                 wait=False,
             )
