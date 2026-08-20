@@ -31,6 +31,34 @@ We support two releases of MAAS plus one Beta release (when available).  The two
 
 ## Version 3.7 release notes
 
+### MAAS 3.7.3 has been released
+
+We are happy to announce that MAAS 3.7.3 has been released, with the following bug fixes:
+
+- [2141600](https://launchpad.net/maas/+bug/2141600): Redfish power driver may set node_id to manager_id rather than system_id
+- [2137492](https://launchpad.net/maas/+bug/2137492): Problematic MAC address normalization
+- [2138223](https://launchpad.net/maas/+bug/2138223): MAAS allows subnet deletion even when it has IPs in use by nodes
+- [2074122](https://launchpad.net/maas/+bug/2074122): MAAS rack is scaling up the number of connections without limit due to a race condition
+- [2146799](https://launchpad.net/maas/+bug/2146799): maas-agent: HTTP response body leak in queueFlush causes unbounded goroutine growth
+- [2146882](https://launchpad.net/maas/+bug/2146882): Redfish URLs might redirect and this is breaking MAAS power commands
+- [2147037](https://launchpad.net/maas/+bug/2147037): Deploy workflow power-on activity times out after 1hr but the machine status remains in Deploying for infinite amount
+- [2147445](https://launchpad.net/maas/+bug/2147445): hmcz deployment fails since maas.power is missing set-boot-order
+- [2148224](https://launchpad.net/maas/+bug/2148224): Can't configure DHCP on MAAS 3.7 if TLS is enabled
+- [2148485](https://launchpad.net/maas/+bug/2148485): User unable to see their information in the UI
+- [2147570](https://launchpad.net/maas/+bug/2147570): Errors creating non-authoritative domain with DNS forwarding
+- [2148598](https://launchpad.net/maas/+bug/2148598): Deployment of custom image for DPU by Juju fails because hwe_kernel used is lower than min required
+- [2148683](https://launchpad.net/maas/+bug/2148683): MAAS fails to perform machine operations that involve cancelling the Temporal deploy workflow
+- [2093303](https://launchpad.net/maas/+bug/2093303): Repositories are configured multiple times
+- [2150892](https://launchpad.net/maas/+bug/2150892): Power Address no longer accepts DNS names
+- [2153152](https://launchpad.net/maas/+bug/2153152): The temporal deploy workflow is trying to make power calls to BMC with power type manual
+- [2152681](https://launchpad.net/maas/+bug/2152681): MAAS discovery of IP address prevents its assignment to the same machine
+- [2155055](https://launchpad.net/maas/+bug/2155055): current_installation_result_id is cleared (null)
+- [2156012](https://launchpad.net/maas/+bug/2156012): Transaction retry after dropped connection executes without re-acquiring advisory lock, causing race conditions in critical section.
+- [2109694](https://launchpad.net/maas/+bug/2109694): MAAS 3.6 snap still uses default Ubuntu archive repositories despite configuring custom repositories
+- [2161952](https://launchpad.net/maas/+bug/2161952): Several MAAS code paths perform N+1 node queries on large deployments
+- [2147514](https://launchpad.net/maas/+bug/2147514): Power state not refreshed when a node transitions from COMMISSIONING to NEW (enlistment commissioning)
+- [2156073](https://launchpad.net/maas/+bug/2156073): DHCP configuration files created with incorrect permissions (-r----xrw-) due to octal/decimal formatting bug in Go agent
+
 ### MAAS 3.7.2 has been released
 
 We are happy to announce that MAAS 3.7.2 has been released, with the following bug fixes:
