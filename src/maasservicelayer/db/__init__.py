@@ -3,6 +3,7 @@
 
 from dataclasses import dataclass
 import json
+import ssl
 
 from pydantic_core import to_jsonable_python
 from sqlalchemy import URL
@@ -28,15 +29,6 @@ class DatabaseConfig:
 
     @property
     def dsn(self) -> URL:
-        query: dict[str, str] = {}
-        if self.sslmode and self.sslmode != "prefer":
-            query["sslmode"] = self.sslmode
-        if self.sslcert:
-            query["sslcert"] = self.sslcert
-        if self.sslkey:
-            query["sslkey"] = self.sslkey
-        if self.sslrootcert:
-            query["sslrootcert"] = self.sslrootcert
         return URL.create(
             "postgresql+asyncpg",
             host=self.host,
@@ -44,8 +36,35 @@ class DatabaseConfig:
             database=self.name,
             username=self.username,
             password=self.password,
-            query=query,
+            query={},
         )
+
+    def build_ssl_param(self) -> ssl.SSLContext | bool | str | None:
+        if self.sslmode == "prefer":
+            return None
+        if self.sslmode == "disable":
+            return False
+        if self.sslmode == "allow":
+            return "allow"
+
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        if self.sslmode == "require":
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+        elif self.sslmode == "verify-ca":
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_REQUIRED
+        elif self.sslmode == "verify-full":
+            context.check_hostname = True
+            context.verify_mode = ssl.CERT_REQUIRED
+        else:
+            return self.sslmode
+
+        if self.sslmode in {"verify-ca", "verify-full"} and self.sslrootcert:
+            context.load_verify_locations(self.sslrootcert)
+        if self.sslcert:
+            context.load_cert_chain(self.sslcert, self.sslkey or None)
+        return context
 
 
 def custom_json_serializer(obj, *args, **kwargs):
@@ -99,6 +118,7 @@ class Database:
             config.dsn,
             echo=echo,
             isolation_level="REPEATABLE READ",
+            connect_args={"ssl": config.build_ssl_param()},
             # Limit the connection pool size to 3 for the time being.
             pool_size=3,
             # Custom json serializer to handle pydantic models
