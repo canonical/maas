@@ -113,6 +113,9 @@ class Command(BaseCommandWithConnection):
         if _is_conf_only_operation(
             options.get("command", ""), options.get("key", "")
         ):
+            options.setdefault("force_color", False)
+            options.setdefault("no_color", False)
+            options.setdefault("skip_checks", True)
             return BaseCommand.execute(self, *args, **options)
         return super().execute(*args, **options)
 
