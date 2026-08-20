@@ -175,12 +175,16 @@ class TestConfigHardeningEnable(_Base):
             mock_mgr = MagicMock()
             MockConfig.objects.db_manager.return_value = mock_mgr
             mock_cfg = self._mock_region_cfg(
-                MockRegionCfg, prometheus_bind="", temporal_bind=""
+                MockRegionCfg,
+                prometheus_bind="",
+                temporal_bind="",
+                rpc_bind="",
             )
             self._cmd(command="enable")
 
         self.assertEqual("127.0.0.1", mock_cfg.prometheus_bind)
         self.assertEqual("127.0.0.1", mock_cfg.temporal_bind)
+        self.assertEqual("127.0.0.1", mock_cfg.rpc_bind)
 
     def test_skips_seeding_when_binds_already_set(self):
         with (
@@ -193,6 +197,7 @@ class TestConfigHardeningEnable(_Base):
                 MockRegionCfg,
                 prometheus_bind="10.0.0.1",
                 temporal_bind="10.0.0.2",
+                rpc_bind="10.0.0.3",
             )
             cmd = self._cmd(command="enable")
         self.assertIn("already set", cmd.stdout.getvalue())

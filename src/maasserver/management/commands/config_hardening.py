@@ -31,7 +31,9 @@ _CONF_KEYS = frozenset(
 )
 
 # Seeded to loopback by `enable`; network-facing binds are not auto-seeded.
-_LOOPBACK_SEED_KEYS = frozenset({"prometheus_bind", "temporal_bind"})
+_LOOPBACK_SEED_KEYS = frozenset(
+    {"prometheus_bind", "temporal_bind", "rpc_bind"}
+)
 
 _ALL_KNOWN_KEYS = _CONFIG_KEYS | _CONF_KEYS
 

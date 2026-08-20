@@ -233,8 +233,8 @@ A value of `1` means FIPS mode is active.
 ### Activate hardening on a non-FIPS host
 
 Run `maas config-hardening enable`. This sets `hardening_enabled=on` in the
-MAAS database and seeds `prometheus_bind` and `temporal_bind` to `127.0.0.1`
-in `regiond.conf` if they are not already set:
+MAAS database and seeds `prometheus_bind`, `temporal_bind`, and `rpc_bind`
+to `127.0.0.1` in `regiond.conf` if they are not already set:
 
 ```text
 sudo maas config-hardening enable

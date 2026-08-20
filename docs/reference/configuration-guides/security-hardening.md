@@ -44,7 +44,7 @@ subcommands:
                       non-zero if any exist.
   enable              Set hardening_enabled=on and seed loopback defaults for
                       unset region-internal bind addresses (prometheus_bind,
-                      temporal_bind).
+                      temporal_bind, rpc_bind).
   disable             Set hardening_enabled=off; refused on FIPS hosts.
 ```
 
@@ -60,7 +60,7 @@ are written to `regiond.conf` on the local host. The `set` command handles
 YAML quoting automatically.
 
 `enable` is a convenience shortcut: it sets `hardening_enabled=on` and also
-seeds `prometheus_bind` and `temporal_bind` to `127.0.0.1` in `regiond.conf`
+seeds `prometheus_bind`, `temporal_bind`, and `rpc_bind` to `127.0.0.1` in `regiond.conf`
 if those keys are unset, saving a separate step on first activation.
 
 ## Parameters and stores
@@ -73,7 +73,7 @@ if those keys are unset, saving a separate step on first activation.
 | `api_bind6` | `regiond.conf` (per-host) | empty | IPv6 address the public API binds to. A specific (non-wildcard) address is required when hardening is active. |
 | `prometheus_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Prometheus metrics endpoint binds to. Seeded to `127.0.0.1` by `maas config-hardening enable` if unset. |
 | `temporal_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Temporal worker binds to. Seeded to `127.0.0.1` by `maas config-hardening enable` if unset. |
-| `rpc_bind` | `regiond.conf` (per-host) | empty | IPv4 address the region RPC service binds to. |
+| `rpc_bind` | `regiond.conf` (per-host) | empty | IPv4 address the region RPC service binds to. Seeded to `127.0.0.1` by `maas config-hardening enable` if unset. |
 | `api_tls_dhparam` | `regiond.conf` (per-host) | empty | Path to a DH parameters PEM file. When present, it must be at least 2048 bits. |
 | `database_sslmode` | `regiond.conf` (per-host) | `prefer` | PostgreSQL client SSL mode. Under hardening, use `verify-ca` or `verify-full`. |
 | `database_sslcert` | `regiond.conf` (per-host) | empty | Path to the PostgreSQL client certificate. Required when `database_sslmode` is `verify-full`. |
