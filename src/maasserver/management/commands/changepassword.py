@@ -73,6 +73,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         from django.contrib.auth import get_user_model
 
+        from maascommon.hardening import configure_hardening
+        from maasserver.models.config import read_hardening_enabled_from_db
+
+        configure_hardening(read_hardening_enabled_from_db())
+
         UserModel = get_user_model()
 
         if options["username"]:
