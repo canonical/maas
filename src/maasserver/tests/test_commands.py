@@ -17,7 +17,6 @@ from apiclient.creds import convert_tuple_to_string
 import maascommon.hardening as H
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.management.commands import changepasswords, createadmin
-from maasserver.models import Config
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.user import get_creds_tuple
 from maasserver.secrets import SecretManager
