@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 """Manage local changes as bind mounts for locally installed MAAS snap.
 
-It check the git status for src/maasserver, src/provisioningserver and
-src/metadataserver. If any file is modified, it will create a bind mount in
-/snap/maas/current/lib/python3.8/site-packages/ for that.
+It checks the git status for src/maasserver, src/maasapiserver, src/maascli,
+src/maascommon, src/maasservicelayer, src/maastemporalworker,
+src/metadataserver and src/provisioningserver. If any file is modified, it
+will create a bind mount in the snap's dist-packages directory for that.
 
 You should check out the commit of MAAS that the snap is based on. For
 example, if the local installed snap is 2.9.2-9165-g.c3e7848d1, checkout
@@ -27,13 +28,24 @@ import yaml
 
 GIT_BASE_PATHS = [
     Path("src/maasserver"),
-    Path("src/provisioningserver"),
+    Path("src/maasapiserver"),
+    Path("src/maascli"),
+    Path("src/maascommon"),
+    Path("src/maasservicelayer"),
+    Path("src/maastemporalworker"),
     Path("src/metadataserver"),
+    Path("src/provisioningserver"),
 ]
 
 
 def get_snap_base_path():
-    return Path("/snap/maas/current/lib/python3.12/site-packages").resolve()
+    base_dir = Path("/snap/maas/current/usr/lib")
+    try:
+        return next(base_dir.glob("python3.*/dist-packages")).resolve()
+    except StopIteration:
+        raise RuntimeError(
+            "Could not find python dist-packages in snap"
+        ) from None
 
 
 def get_installed_revision():
@@ -79,6 +91,18 @@ def get_files_to_mount(modified_files):
     return files_to_mount
 
 
+def _is_mounted(target):
+    """Check if a path is a mount point via /proc/mounts."""
+    target_str = str(target)
+    for mount_line in Path("/proc/mounts").read_text().splitlines():
+        mounted_dir = mount_line.split(" ")[1]
+        # Spaces are escaped with \040
+        mounted_dir = mounted_dir.replace(r"\040", " ")
+        if mounted_dir == target_str:
+            return True
+    return False
+
+
 def unmount(target):
     print(f"Umounting {target}")
     subprocess.run(["sudo", "umount", str(target)], check=True)
@@ -86,7 +110,7 @@ def unmount(target):
 
 def mount(source, target):
     print(f"Mounting {source}")
-    subprocess.run(
+    proc = subprocess.run(
         [
             "sudo",
             "mount",
@@ -95,8 +119,19 @@ def mount(source, target):
             str(Path(source).resolve()),
             str(target),
         ],
-        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
+    # On FUSE-backed snap mounts, mount(8) may return non-zero even when
+    # the bind mount succeeds (e.g. "filesystem was mounted, but any
+    # subsequent operation failed"). Verify by checking /proc/mounts.
+    if proc.returncode != 0 and not _is_mounted(target):
+        raise subprocess.CalledProcessError(
+            proc.returncode, proc.args, proc.stdout, proc.stderr
+        )
+    if proc.returncode != 0:
+        print(f"  (mount returned warning: {proc.stderr.strip()})")
 
 
 def show_status():
