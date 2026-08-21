@@ -58,12 +58,12 @@ class StaticIPAddressService(
         if updated_resource.alloc_type != IpAddressType.DISCOVERED:
             if old_resource.subnet_id != updated_resource.subnet_id:
                 non_null_subnet_ids = [
-                    id
-                    for id in (
+                    subnet_id
+                    for subnet_id in (
                         old_resource.subnet_id,
                         updated_resource.subnet_id,
                     )
-                    if id is not None
+                    if subnet_id is not None
                 ]
                 param = ConfigureDHCPParam(subnet_ids=non_null_subnet_ids)
             elif (
