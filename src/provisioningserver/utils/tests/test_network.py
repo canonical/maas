@@ -2305,8 +2305,10 @@ class TestGetSourceAddress(MAASTestCase):
 
 class TestGetSourceAddressForUrl(MAASTestCase):
     def test_returns_source_address_for_url_host(self):
-        mock_gethostbyname = self.patch(socket, "gethostbyname")
-        mock_gethostbyname.return_value = "10.0.0.5"
+        mock_getaddrinfo = self.patch(network_module, "getaddrinfo")
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.5", 0))
+        ]
         mock_get_source = self.patch(
             network_module, "get_source_address_for_ipaddress"
         )
@@ -2314,15 +2316,40 @@ class TestGetSourceAddressForUrl(MAASTestCase):
 
         result = get_source_address_for_url("http://maas.example:5240/MAAS")
 
-        mock_gethostbyname.assert_called_once_with("maas.example")
+        mock_getaddrinfo.assert_called_once_with(
+            "maas.example", None, proto=socket.IPPROTO_TCP
+        )
         mock_get_source.assert_called_once_with(IPAddress("10.0.0.5"))
         self.assertEqual("10.0.0.1", result)
+
+    def test_returns_source_address_for_ipv6_url_host(self):
+        """An IPv6-only hostname resolves via getaddrinfo, unlike the
+        IPv4-only socket.gethostbyname this used to call."""
+        mock_getaddrinfo = self.patch(network_module, "getaddrinfo")
+        mock_getaddrinfo.return_value = [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                0,
+                "",
+                ("fd00::1", 0, 0, 0),
+            )
+        ]
+        mock_get_source = self.patch(
+            network_module, "get_source_address_for_ipaddress"
+        )
+        mock_get_source.return_value = "fd00::5"
+
+        result = get_source_address_for_url("http://maas.example:5240/MAAS")
+
+        mock_get_source.assert_called_once_with(IPAddress("fd00::1"))
+        self.assertEqual("fd00::5", result)
 
     def test_returns_none_when_url_has_no_hostname(self):
         self.assertIsNone(get_source_address_for_url("not-a-url"))
 
     def test_returns_none_when_hostname_does_not_resolve(self):
-        self.patch(socket, "gethostbyname").side_effect = gaierror()
+        self.patch(network_module, "getaddrinfo").side_effect = gaierror()
         self.assertIsNone(
             get_source_address_for_url("http://nonexistent.invalid/MAAS")
         )

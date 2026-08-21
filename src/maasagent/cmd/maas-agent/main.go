@@ -158,10 +158,15 @@ func getClusterCert() (tls.Certificate, *x509.CertPool, error) {
 
 // temporalHost returns the address MAAS Agent should dial to reach
 // Temporal, preferring the explicit TemporalServer config over the
-// first region controller endpoint.
+// first region controller endpoint. Returns an empty string if neither
+// is available.
 func temporalHost(cfg *config) string {
 	if cfg.TemporalServer != "" {
 		return cfg.TemporalServer
+	}
+
+	if len(cfg.Controllers) == 0 {
+		return ""
 	}
 
 	return cfg.Controllers[0]

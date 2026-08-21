@@ -261,7 +261,7 @@ def test_broadcast_address_falls_back_when_temporal_bind_is_wildcard(
         source_address_for_url=None,
     )
     assert environ["temporal_bind"] == "0.0.0.0"
-    assert environ["broadcast_address"] is None
+    assert environ["broadcast_address"] == ""
     # The broadcast-address fallback consults maas_url directly, on top
     # of resolve_bind_address's own internal (separately mocked) lookup.
     assert get_source_address_calls == 1

@@ -1074,8 +1074,9 @@ def get_source_address_for_url(url: str) -> Optional[str]:
     if not hostname:
         return None
     try:
-        destination_ip = socket.gethostbyname(hostname)
-    except (gaierror, UnicodeError):
+        addrinfo = getaddrinfo(hostname, None, proto=IPPROTO_TCP)
+        destination_ip = addrinfo[0][4][0]
+    except (gaierror, UnicodeError, IndexError):
         return None
     return get_source_address_for_ipaddress(IPAddress(destination_ip))
 
