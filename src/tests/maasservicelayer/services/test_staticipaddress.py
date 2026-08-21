@@ -359,6 +359,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
+            dnsresources_service=Mock(DNSResourcesService),
         )
 
         await staticipaddress_service.update_by_id(
@@ -400,6 +401,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
+            dnsresources_service=Mock(DNSResourcesService),
         )
 
         await staticipaddress_service.update_by_id(
@@ -438,6 +440,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
+            dnsresources_service=Mock(DNSResourcesService),
         )
 
         await staticipaddress_service.update_by_id(
@@ -475,6 +478,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
+            dnsresources_service=Mock(DNSResourcesService),
         )
 
         await staticipaddress_service.update_by_id(
@@ -514,6 +518,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
+            dnsresources_service=Mock(DNSResourcesService),
         )
 
         await staticipaddress_service.update_by_id(

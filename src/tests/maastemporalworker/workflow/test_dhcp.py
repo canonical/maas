@@ -245,7 +245,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
         )
 
         result = await activities._get_rack_id(
@@ -306,7 +309,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
         )
 
         result = await activities._get_hosts_for_static_ip_addresses(
@@ -335,7 +341,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
         )
 
         result = await activities._get_hosts_for_static_ip_addresses(
@@ -361,7 +370,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
         )
 
         result = await activities._get_hosts_for_static_ip_addresses(
@@ -472,7 +484,10 @@ class TestDHCPConfigActivity:
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
-            db, services_cache, connection=db_connection
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
         )
 
         result = await env.run(
