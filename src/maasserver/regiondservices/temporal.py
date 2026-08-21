@@ -86,7 +86,7 @@ class RegionTemporalService(Service):
             broadcast_address = (
                 temporal_bind
                 if temporal_bind not in ("0.0.0.0", "::")
-                else get_source_address_for_url(maas_url)
+                else get_source_address_for_url(maas_url) or ""
             )
             if not broadcast_address:
                 maaslog.error(

@@ -99,6 +99,10 @@ func TestTemporalHost(t *testing.T) {
 			},
 			out: "10.0.0.5",
 		},
+		"returns empty string when neither is available": {
+			in:  &config{},
+			out: "",
+		},
 	}
 
 	for name, tc := range testcases {
