@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Django management command: config-hardening."""
 
+from django.core.management.base import BaseCommand
 from django.db import DEFAULT_DB_ALIAS
 
 from maascommon.fips import is_fips_enabled
@@ -34,6 +35,11 @@ _CONF_KEYS = frozenset(
 _LOOPBACK_SEED_KEYS = frozenset({"prometheus_bind", "temporal_bind"})
 
 _ALL_KNOWN_KEYS = _CONFIG_KEYS | _CONF_KEYS
+
+
+def _is_conf_only_operation(command: str, key: str) -> bool:
+    """True when the operation only touches regiond.conf (no DB needed)."""
+    return command in ("set", "get") and _store_for(key) == "conf"
 
 
 _HARDENING_ENABLED_VALUES = frozenset({"auto", "on", "off"})
@@ -103,12 +109,30 @@ class Command(BaseCommandWithConnection):
             help="Disable hardening; refused on FIPS hosts.",
         )
 
+    def execute(self, *args, **options):
+        if _is_conf_only_operation(
+            options.get("command", ""), options.get("key", "")
+        ):
+            options.setdefault("force_color", False)
+            options.setdefault("no_color", False)
+            options.setdefault("skip_checks", True)
+            return BaseCommand.execute(self, *args, **options)
+        return super().execute(*args, **options)
+
     def handle(self, *args, **options):
+        command = options["command"]
+
+        if _is_conf_only_operation(command, options.get("key", "")):
+            if command == "set":
+                self._cmd_set(options["key"], options["value"])
+            elif command == "get":
+                self._cmd_get(options["key"])
+            return
+
         from maasserver.models.config import read_hardening_enabled_from_db
 
         configure_hardening(read_hardening_enabled_from_db())
 
-        command = options["command"]
         if command == "set":
             self._cmd_set(options["key"], options["value"])
         elif command == "get":

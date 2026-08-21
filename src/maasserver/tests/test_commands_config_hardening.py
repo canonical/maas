@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
+from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.management.commands.config_hardening import Command
 
 _PATCH_CONFIGURE = patch(
@@ -34,15 +35,125 @@ class TestConfigHardeningSet(_Base):
             self._cmd(command="set", key="hardening_enabled", value="on")
         mock_mgr.set_config.assert_called_once_with("hardening_enabled", "on")
 
-    def test_set_conf_key_exits_with_error(self):
-        with self.assertRaises(SystemExit) as ctx:
-            self._cmd(command="set", key="api_bind", value="10.0.0.1")
-        self.assertEqual(1, ctx.exception.code)
+    def test_set_conf_key_writes_to_regiond_conf(self):
+        with patch(
+            "maasserver.management.commands.config_hardening.RegionConfiguration"
+        ) as MockRegionCfg:
+            mock_cfg = MagicMock()
+            MockRegionCfg.open_for_update.return_value.__enter__ = MagicMock(
+                return_value=mock_cfg
+            )
+            MockRegionCfg.open_for_update.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
+            cmd = self._cmd(
+                command="set", key="database_sslmode", value="prefer"
+            )
+        self.assertEqual("prefer", mock_cfg.database_sslmode)
+        self.assertIn("database_sslmode", cmd.stdout.getvalue())
+
+    def test_set_conf_key_works_without_db(self):
+        with (
+            patch(
+                "maasserver.utils.orm.with_connection",
+                side_effect=Exception("DB connection refused"),
+            ),
+            patch(
+                "maasserver.management.commands.config_hardening.RegionConfiguration"
+            ) as MockRegionCfg,
+        ):
+            mock_cfg = MagicMock()
+            MockRegionCfg.open_for_update.return_value.__enter__ = MagicMock(
+                return_value=mock_cfg
+            )
+            MockRegionCfg.open_for_update.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
+            cmd = Command(stdout=StringIO(), stderr=StringIO())
+            cmd.execute(command="set", key="database_sslmode", value="prefer")
+        self.assertIn("database_sslmode", cmd.stdout.getvalue())
+
+    def test_set_config_key_requires_db_connection(self):
+        with patch.object(
+            BaseCommandWithConnection, "execute", autospec=True
+        ) as mock_execute:
+            mock_execute.return_value = None
+            cmd = Command(stdout=StringIO(), stderr=StringIO())
+            cmd.execute(command="set", key="hardening_enabled", value="on")
+        mock_execute.assert_called_once()
 
     def test_set_unknown_key_exits_with_error(self):
         with self.assertRaises(SystemExit) as ctx:
             self._cmd(command="set", key="nonexistent_key", value="val")
         self.assertEqual(1, ctx.exception.code)
+
+
+class TestConfigHardeningGet(_Base):
+    def test_get_conf_key_reads_from_regiond_conf(self):
+        with patch(
+            "maasserver.management.commands.config_hardening.RegionConfiguration"
+        ) as MockRegionCfg:
+            mock_cfg = MagicMock()
+            mock_cfg.api_bind = "10.0.0.1"
+            mock_cfg.api_bind6 = ""
+            mock_cfg.api_tls_dhparam = ""
+            mock_cfg.prometheus_bind = "127.0.0.1"
+            mock_cfg.temporal_bind = "127.0.0.1"
+            mock_cfg.rpc_bind = "127.0.0.1"
+            mock_cfg.dns_bind = ""
+            mock_cfg.database_sslmode = "prefer"
+            mock_cfg.database_sslcert = ""
+            mock_cfg.database_sslkey = ""
+            mock_cfg.database_sslrootcert = ""
+            MockRegionCfg.open.return_value.__enter__ = MagicMock(
+                return_value=mock_cfg
+            )
+            MockRegionCfg.open.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
+            cmd = self._cmd(command="get", key="api_bind")
+        self.assertIn("10.0.0.1", cmd.stdout.getvalue())
+
+    def test_get_conf_key_works_without_db(self):
+        with (
+            patch(
+                "maasserver.utils.orm.with_connection",
+                side_effect=Exception("DB connection refused"),
+            ),
+            patch(
+                "maasserver.management.commands.config_hardening.RegionConfiguration"
+            ) as MockRegionCfg,
+        ):
+            mock_cfg = MagicMock()
+            mock_cfg.prometheus_bind = "127.0.0.1"
+            mock_cfg.api_bind = ""
+            mock_cfg.api_bind6 = ""
+            mock_cfg.api_tls_dhparam = ""
+            mock_cfg.temporal_bind = ""
+            mock_cfg.rpc_bind = ""
+            mock_cfg.dns_bind = ""
+            mock_cfg.database_sslmode = ""
+            mock_cfg.database_sslcert = ""
+            mock_cfg.database_sslkey = ""
+            mock_cfg.database_sslrootcert = ""
+            MockRegionCfg.open.return_value.__enter__ = MagicMock(
+                return_value=mock_cfg
+            )
+            MockRegionCfg.open.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
+            cmd = Command(stdout=StringIO(), stderr=StringIO())
+            cmd.execute(command="get", key="prometheus_bind")
+        self.assertIn("127.0.0.1", cmd.stdout.getvalue())
+
+    def test_get_config_key_requires_db_connection(self):
+        with patch.object(
+            BaseCommandWithConnection, "execute", autospec=True
+        ) as mock_execute:
+            mock_execute.return_value = None
+            cmd = Command(stdout=StringIO(), stderr=StringIO())
+            cmd.execute(command="get", key="hardening_enabled")
+        mock_execute.assert_called_once()
 
 
 class TestConfigHardeningValidate(_Base):
