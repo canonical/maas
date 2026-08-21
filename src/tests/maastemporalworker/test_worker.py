@@ -13,8 +13,8 @@ from temporalio.api.workflowservice.v1 import (
 )
 from temporalio.worker import Worker as TemporalWorker
 
-from maastemporalworker.worker import Worker
-from provisioningserver.utils.env import MAAS_SHARED_SECRET
+from maastemporalworker.worker import get_client_async, Worker
+from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 
 
 @workflow.defn(name="DummyWorkflow", sandboxed=False)
@@ -77,3 +77,38 @@ class TestWorker:
 
         assert isinstance(wrkr._worker, TemporalWorker)
         mock_worker_run.assert_called_once()
+
+
+class TestGetClientAsync:
+    @pytest.mark.asyncio
+    async def test_brackets_ipv6_connect_address(
+        self, mocker, tmp_path, mock_temporal_client
+    ):
+        """The host:port string passed to Client.connect() must bracket
+        IPv6 addresses (e.g. `[fd00::1]:5271`), or the Temporal SDK fails
+        to parse it."""
+        for name in ("cert.pem", "key.pem", "cacert.pem"):
+            (tmp_path / name).write_bytes(b"dummy")
+        mocker.patch(
+            "maastemporalworker.worker.get_maas_cluster_cert_paths",
+            return_value=(
+                str(tmp_path / "cert.pem"),
+                str(tmp_path / "key.pem"),
+                str(tmp_path / "cacert.pem"),
+            ),
+        )
+        mocker.patch(
+            "maastemporalworker.worker.get_temporal_connect_address",
+            return_value="fd00::1",
+        )
+        mock_connect = mocker.patch(
+            "temporalio.client.Client.connect",
+            return_value=mock_temporal_client,
+        )
+        MAAS_ID.set("system-id")
+        MAAS_SHARED_SECRET.set("x" * 32)
+
+        await get_client_async()
+
+        target_host_port = mock_connect.call_args[0][0]
+        assert target_host_port == "[fd00::1]:5271"
