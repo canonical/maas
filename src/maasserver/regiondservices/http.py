@@ -7,6 +7,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 import os
 from pathlib import Path
+from socket import AF_INET, AF_INET6
 from typing import Optional
 
 from twisted.application.service import Service
@@ -36,6 +37,7 @@ from provisioningserver.rackdservices.http import (
     get_http_config_dir,
 )
 from provisioningserver.utils.fs import atomic_write, get_root_path
+from provisioningserver.utils.network import resolve_bind_addresses
 
 log = LegacyLogger()
 
@@ -78,11 +80,12 @@ class RegionHTTPService(Service):
                     region_config.api_rate_limit_burst
                 )
                 configuration.api_conn_limit = region_config.api_conn_limit
-                configuration.api_bind = region_config.api_bind
-                configuration.api_bind6 = region_config.api_bind6
+                configuration.api_bind = list(region_config.api_bind)
+                configuration.api_bind6 = list(region_config.api_bind6)
                 configuration.api_int_bind = region_config.api_int_bind
                 configuration.api_int_bind6 = region_config.api_int_bind6
                 configuration.api_tls_dhparam = region_config.api_tls_dhparam
+                configuration.maas_url = str(region_config.maas_url)
         except Exception:
             log.err(
                 _why="Could not read RegionConfiguration; using defaults for "
@@ -102,18 +105,34 @@ class RegionHTTPService(Service):
             key_path, cert_path = self._create_cert_files(configuration.cert)
         else:
             key_path, cert_path = "", ""
+        api_bind = resolve_bind_addresses(
+            configuration.api_bind,
+            configuration.maas_url,
+            hardening_active=configuration.hardening_active,
+            family=AF_INET,
+        )
+        api_bind6 = resolve_bind_addresses(
+            configuration.api_bind6,
+            configuration.maas_url,
+            hardening_active=configuration.hardening_active,
+            family=AF_INET6,
+        )
         if configuration.tls_enabled:
             main_listen = compose_listen_addresses(
-                configuration.port,
-                configuration.api_bind,
-                configuration.api_bind6,
+                configuration.port, api_bind, api_bind6
             )
         else:
-            main_listen = compose_listen_addresses(
-                5240, configuration.api_bind, configuration.api_bind6
-            )
+            main_listen = compose_listen_addresses(5240, api_bind, api_bind6)
+        internal_bind = (
+            [configuration.api_int_bind] if configuration.api_int_bind else []
+        )
+        internal_bind6 = (
+            [configuration.api_int_bind6]
+            if configuration.api_int_bind6
+            else []
+        )
         internal_listen = compose_listen_addresses(
-            5240, configuration.api_int_bind, configuration.api_int_bind6
+            5240, internal_bind, internal_bind6
         )
         environ = {
             "tls_enabled": configuration.tls_enabled,
@@ -198,11 +217,18 @@ class _Configuration:
     api_rate_limit_rate: str = "20r/s"
     api_rate_limit_burst: int = 60
     api_conn_limit: int = 100
-    api_bind: str = ""
-    api_bind6: str = ""
+    api_bind: list = None
+    api_bind6: list = None
     api_int_bind: str = ""
     api_int_bind6: str = ""
     api_tls_dhparam: str = ""
+    maas_url: str = ""
+
+    def __post_init__(self):
+        if self.api_bind is None:
+            self.api_bind = []
+        if self.api_bind6 is None:
+            self.api_bind6 = []
 
     @property
     def tls_enabled(self) -> bool:

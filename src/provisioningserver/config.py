@@ -839,20 +839,34 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     # Service binding options.
     api_bind = ConfigurationOption(
         "api_bind",
-        "IPv4 address the rack HTTP server binds to; empty means all "
-        "interfaces. A specific address is required when hardening is active.",
-        UnicodeString(if_missing=""),
+        "IPv4 address(es) the rack HTTP server binds to; empty means all "
+        "interfaces. A specific address is required when hardening is "
+        "active (derived from maas_url if unset). May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
     )
     api_bind6 = ConfigurationOption(
         "api_bind6",
-        "IPv6 address the rack HTTP server binds to; empty means all "
-        "interfaces. A specific address is required when hardening is active.",
-        UnicodeString(if_missing=""),
+        "IPv6 address(es) the rack HTTP server binds to; empty means all "
+        "interfaces. A specific address is required when hardening is "
+        "active (derived from maas_url if unset). May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
     )
     dns_bind = ConfigurationOption(
         "dns_bind",
-        "Address the DNS (Bind9) service binds to.",
-        UnicodeString(if_missing=""),
+        "Address(es) the DNS (Bind9) service binds to. May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
     )
     dns_allow_transfer = ConfigurationOption(
         "dns_allow_transfer",

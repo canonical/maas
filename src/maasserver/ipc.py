@@ -303,7 +303,24 @@ class IPCMasterService(service.Service):
 
     def _getListenAddresses(self, port):
         """Return list of tuple (address, port) for the addresses the worker
-        is listening on."""
+        is listening on.
+
+        When `rpc_bind` is explicitly configured, rack controllers must
+        dial exactly those addresses -- they're what `RegionService`
+        actually bound to. Otherwise, fall back to discovering this
+        host's routable addresses, as before.
+        """
+        from maasserver.config import RegionConfiguration
+
+        rpc_bind = []
+        try:
+            with RegionConfiguration.open() as config:
+                rpc_bind = list(config.rpc_bind)
+        except Exception:
+            pass
+        if rpc_bind:
+            return {(addr, port) for addr in rpc_bind}
+
         addresses = get_all_interface_source_addresses()
         if addresses:
             return {(addr, port) for addr in addresses}

@@ -75,6 +75,7 @@ from provisioningserver.utils.network import (
     parse_integer,
     preferred_hostnames_sort_key,
     resolve_bind_address,
+    resolve_bind_addresses,
     resolve_connect_address,
     resolve_host_to_addrinfo,
     resolve_hostname,
@@ -2391,6 +2392,93 @@ class TestResolveBindAddress(MAASTestCase):
             "", "http://unreachable:5240/MAAS", hardening_active=False
         )
         self.assertEqual("0.0.0.0", result)
+
+    def test_empty_ipv6_hardening_active_falls_back_to_ipv6_loopback(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_bind_address(
+            "",
+            "http://unreachable:5240/MAAS",
+            hardening_active=True,
+            family=socket.AF_INET6,
+        )
+        self.assertEqual("::1", result)
+
+    def test_empty_ipv6_hardening_inactive_falls_back_to_any(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_bind_address(
+            "",
+            "http://unreachable:5240/MAAS",
+            hardening_active=False,
+            family=socket.AF_INET6,
+        )
+        self.assertEqual("::", result)
+
+    def test_empty_ipv6_derives_from_maas_url(self):
+        mock_derive = self.patch(network_module, "get_source_address_for_url")
+        mock_derive.return_value = "fd00::5"
+
+        result = resolve_bind_address(
+            "",
+            "http://[fd00::5]:5240/MAAS",
+            hardening_active=True,
+            family=socket.AF_INET6,
+        )
+        self.assertEqual("fd00::5", result)
+        mock_derive.assert_called_once_with(
+            "http://[fd00::5]:5240/MAAS", family=socket.AF_INET6
+        )
+
+
+class TestResolveBindAddresses(MAASTestCase):
+    def test_explicit_list_returned_unchanged(self):
+        result = resolve_bind_addresses(
+            ["10.0.0.1", "10.0.0.2"],
+            "http://10.0.0.1:5240/MAAS",
+            hardening_active=True,
+        )
+        self.assertEqual(["10.0.0.1", "10.0.0.2"], result)
+
+    def test_empty_hardening_inactive_stays_empty(self):
+        result = resolve_bind_addresses(
+            [], "http://10.0.0.1:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual([], result)
+
+    def test_empty_hardening_active_derives_single_address(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.5"
+
+        result = resolve_bind_addresses(
+            [], "http://10.0.0.5:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.5"], result)
+
+    def test_empty_hardening_active_unresolvable_falls_back_to_loopback(
+        self,
+    ):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_bind_addresses(
+            [], "http://unreachable:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual(["127.0.0.1"], result)
+
+    def test_filters_out_blank_entries(self):
+        result = resolve_bind_addresses(
+            ["10.0.0.1", ""],
+            "http://10.0.0.1:5240/MAAS",
+            hardening_active=True,
+        )
+        self.assertEqual(["10.0.0.1"], result)
 
 
 class TestResolveConnectAddress(MAASTestCase):

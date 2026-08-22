@@ -387,7 +387,7 @@ class TestRNDCUtilities(MAASTestCase):
 
     def test_set_up_options_conf_with_hardening_and_dns_bind(self):
         dns_conf_dir = patch_dns_config_path(self)
-        set_up_options_conf(hardening=True, dns_bind="10.0.0.1")
+        set_up_options_conf(hardening=True, dns_bind=["10.0.0.1"])
         target_file = os.path.join(
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
@@ -408,7 +408,7 @@ class TestRNDCUtilities(MAASTestCase):
 
     def test_set_up_options_conf_without_hardening_with_dns_bind(self):
         dns_conf_dir = patch_dns_config_path(self)
-        set_up_options_conf(hardening=False, dns_bind="10.0.0.1")
+        set_up_options_conf(hardening=False, dns_bind=["10.0.0.1"])
         target_file = os.path.join(
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
@@ -416,6 +416,16 @@ class TestRNDCUtilities(MAASTestCase):
             contents = fh.read()
         self.assertIn("listen-on { 10.0.0.1; 127.0.0.1; }", contents)
         self.assertIn("listen-on-v6 { ::1; }", contents)
+
+    def test_set_up_options_conf_with_multiple_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True, dns_bind=["10.0.0.1", "10.0.0.2"])
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("listen-on { 10.0.0.1; 10.0.0.2; 127.0.0.1; }", contents)
 
     def test_set_up_options_conf_without_hardening_no_dns_bind(self):
         dns_conf_dir = patch_dns_config_path(self)

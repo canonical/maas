@@ -75,22 +75,15 @@ def make_RegionControllerService(postgresListener, dbtasks):
 
 
 def make_RegionService(ipcWorker):
-    # Import here to avoid a circular import.
-    import maascommon.hardening as _hardening
     from maasserver.config import RegionConfiguration
     from maasserver.rpc import regionservice
 
-    rpc_bind = ""
+    rpc_bind = []
     try:
         with RegionConfiguration.open() as config:
-            rpc_bind = str(config.rpc_bind)
+            rpc_bind = list(config.rpc_bind)
     except Exception:
         pass
-
-    if not rpc_bind:
-        rpc_bind = (
-            "127.0.0.1" if _hardening.is_hardening_enabled() else "0.0.0.0"
-        )
 
     return regionservice.RegionService(ipcWorker, rpc_bind=rpc_bind)
 

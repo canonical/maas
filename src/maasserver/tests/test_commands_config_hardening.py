@@ -157,6 +157,19 @@ class TestConfigHardeningGet(_Base):
 
 
 class TestConfigHardeningValidate(_Base):
+    @staticmethod
+    def _mock_cfg():
+        return MagicMock(
+            api_tls_dhparam="",
+            api_bind=[],
+            api_bind6=[],
+            prometheus_bind="",
+            temporal_bind="",
+            rpc_bind=[],
+            dns_bind=[],
+            database_sslmode="",
+        )
+
     def _run_validate(self, violations, hardening_active=True):
         with (
             patch(
@@ -174,7 +187,7 @@ class TestConfigHardeningValidate(_Base):
             ) as MockCfg,
         ):
             MockCfg.open.return_value.__enter__ = MagicMock(
-                return_value=MagicMock()
+                return_value=self._mock_cfg()
             )
             MockCfg.open.return_value.__exit__ = MagicMock(return_value=False)
             return self._cmd(command="validate")
@@ -227,7 +240,7 @@ class TestConfigHardeningValidate(_Base):
                 ) as MockCfg,
             ):
                 MockCfg.open.return_value.__enter__ = MagicMock(
-                    return_value=MagicMock()
+                    return_value=self._mock_cfg()
                 )
                 MockCfg.open.return_value.__exit__ = MagicMock(
                     return_value=False

@@ -194,13 +194,17 @@ class TestValidateBindings:
     """Per-key wildcard/empty binding violations."""
 
     _ALL_SPECIFIC = {
-        "api_bind": "10.0.0.1",
-        "api_bind6": "fd00::1",
+        "api_bind": ["10.0.0.1"],
+        "api_bind6": ["fd00::1"],
         "prometheus_bind": "127.0.0.1",
         "temporal_bind": "127.0.0.1",
-        "rpc_bind": "10.0.0.2",
-        "dns_bind": "10.0.0.3",
+        "rpc_bind": ["10.0.0.2"],
+        "dns_bind": ["10.0.0.3"],
     }
+
+    # Keys where an empty/unset value derives a real address at runtime
+    # (see `_AUTO_DERIVED_BIND_KEYS`), so it's never a wildcard violation.
+    _AUTO_DERIVED = ("api_bind", "api_bind6", "temporal_bind")
 
     def _validator(self, **overrides) -> HardeningValidator:
         kwargs = {**self._ALL_SPECIFIC, **overrides}
@@ -211,7 +215,7 @@ class TestValidateBindings:
 
     def test_each_key_unset_produces_its_own_violation(self) -> None:
         for key in self._ALL_SPECIFIC:
-            if key == "temporal_bind":
+            if key in self._AUTO_DERIVED:
                 continue
             v_list = self._validator(**{key: None})._validate_bindings()
             assert len(v_list) == 1, f"expected 1 violation for {key}"
@@ -222,28 +226,30 @@ class TestValidateBindings:
                 == f"hardening-wildcard-bind-{key.replace('_', '-')}"
             )
 
-    def test_temporal_bind_unset_produces_no_violation(self) -> None:
-        # temporal_bind is auto-derived from maas_url at runtime when
-        # unset (see resolve_bind_address), so an empty value
-        # is not a wildcard violation.
-        v_list = self._validator(temporal_bind=None)._validate_bindings()
-        assert v_list == []
+    def test_auto_derived_keys_unset_produce_no_violation(self) -> None:
+        # api_bind/api_bind6/temporal_bind are auto-derived from maas_url
+        # at runtime when unset (see resolve_bind_address/
+        # resolve_bind_addresses), so an empty value is not a wildcard
+        # violation.
+        for key in self._AUTO_DERIVED:
+            v_list = self._validator(**{key: None})._validate_bindings()
+            assert v_list == [], f"expected no violation for {key}"
 
     def test_each_key_ipv4_wildcard_produces_its_own_violation(self) -> None:
-        for key in (
-            "api_bind",
-            "prometheus_bind",
-            "rpc_bind",
-            "temporal_bind",
+        for key, wildcard in (
+            ("api_bind", ["0.0.0.0"]),
+            ("prometheus_bind", "0.0.0.0"),
+            ("rpc_bind", ["0.0.0.0"]),
+            ("temporal_bind", "0.0.0.0"),
         ):
-            v_list = self._validator(**{key: "0.0.0.0"})._validate_bindings()
+            v_list = self._validator(**{key: wildcard})._validate_bindings()
             assert any(
                 v.code == "WILDCARD_BIND_NOT_ALLOWED" and v.config_key == key
                 for v in v_list
             ), f"expected WILDCARD violation for {key}"
 
     def test_each_key_ipv6_wildcard_produces_its_own_violation(self) -> None:
-        v_list = self._validator(api_bind6="::")._validate_bindings()
+        v_list = self._validator(api_bind6=["::"])._validate_bindings()
         assert any(
             v.code == "WILDCARD_BIND_NOT_ALLOWED"
             and v.config_key == "api_bind6"
@@ -251,7 +257,7 @@ class TestValidateBindings:
         )
 
     def test_invalid_ip_returns_invalid_bind_violation(self) -> None:
-        v_list = self._validator(api_bind="not-an-ip")._validate_bindings()
+        v_list = self._validator(api_bind=["not-an-ip"])._validate_bindings()
         assert len(v_list) == 1
         assert v_list[0].code == "INVALID_BIND_ADDRESS"
         assert v_list[0].config_key == "api_bind"
@@ -422,11 +428,11 @@ class TestConfigureAndValidateHardening:
             return_value=True,
         )
         result = configure_and_validate_hardening(
-            api_bind="10.0.0.1",
-            api_bind6="fd00::1",
+            api_bind=["10.0.0.1"],
+            api_bind6=["fd00::1"],
             prometheus_bind="127.0.0.1",
             temporal_bind="127.0.0.1",
-            rpc_bind="10.0.0.2",
+            rpc_bind=["10.0.0.2"],
             fips_declared=None,
         )
         assert any(v.code == "MISSING_TLS_CERT" for v in result)

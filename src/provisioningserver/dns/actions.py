@@ -178,7 +178,7 @@ def bind_write_configuration(
 def bind_write_options(
     upstream_dns,
     dnssec_validation,
-    dns_bind="",
+    dns_bind=(),
     hardening: bool = False,
     dns_allow_transfer="",
     dns_fetches_per_zone=0,
@@ -188,9 +188,10 @@ def bind_write_options(
 
     :param upstream_dns: A sequence of upstream DNS servers.
     :param dnssec_validation: Whether to enable DNSSec.
-    :param dns_bind: Address BIND listens on.  When non-empty, a
-        ``listen-on { <dns_bind>; 127.0.0.1; };`` directive is emitted.
-        Defaults to empty (no listen-on directive).
+    :param dns_bind: Address(es) BIND listens on.  When non-empty, a
+        ``listen-on { <addr>; ...; 127.0.0.1; };`` directive is emitted
+        with one entry per address.  Defaults to empty (no listen-on
+        directive).
     :param hardening: When True, emit version hiding and apply safe defaults
         for transfer/fetch limits when none are explicitly configured.
         Defaults to False.

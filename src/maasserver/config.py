@@ -3,6 +3,7 @@
 
 """Configuration for the MAAS region."""
 
+from formencode import ForEach
 from formencode.validators import Int
 
 from maascommon.hardening import is_hardening_enabled
@@ -169,15 +170,25 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
 
     api_bind = ConfigurationOption(
         "api_bind",
-        "IPv4 address the public API server binds to; empty means all "
-        "interfaces. A specific address is required when hardening is active.",
-        UnicodeString(if_missing=""),
+        "IPv4 address(es) the public API server binds to; empty means "
+        "all interfaces. A specific address is required when hardening "
+        "is active (derived from maas_url if unset). May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
     )
     api_bind6 = ConfigurationOption(
         "api_bind6",
-        "IPv6 address the public API server binds to; empty means all "
-        "interfaces. A specific address is required when hardening is active.",
-        UnicodeString(if_missing=""),
+        "IPv6 address(es) the public API server binds to; empty means "
+        "all interfaces. A specific address is required when hardening "
+        "is active (derived from maas_url if unset). May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
     )
     api_int_bind = ConfigurationOption(
         "api_int_bind",
@@ -203,13 +214,25 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     rpc_bind = ConfigurationOption(
         "rpc_bind",
-        "Address the region RPC listener binds to.",
-        UnicodeString(if_missing=""),
+        "Address(es) the region RPC listener binds to; empty means all "
+        "interfaces. May be a list. Rack controllers dial these "
+        "addresses when set, and fall back to discovering the region's "
+        "local addresses otherwise.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
     )
     dns_bind = ConfigurationOption(
         "dns_bind",
-        "Address the DNS (Bind9) service binds to when hardening is active.",
-        UnicodeString(if_missing=""),
+        "Address(es) the DNS (Bind9) service binds to when hardening is "
+        "active. May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
     )
     dns_allow_transfer = ConfigurationOption(
         "dns_allow_transfer",

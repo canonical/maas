@@ -31,6 +31,6 @@ fetches-per-zone {{dns_fetches_per_zone}};
 fetches-per-server {{dns_fetches_per_server}};
 {{endif}}
 {{if dns_bind}}
-listen-on { {{dns_bind}}; 127.0.0.1; };
+listen-on { {{for addr in dns_bind}}{{addr}}; {{endfor}}127.0.0.1; };
 listen-on-v6 { ::1; };
 {{endif}}

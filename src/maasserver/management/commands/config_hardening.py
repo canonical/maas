@@ -35,6 +35,11 @@ _CONF_KEYS = frozenset(
 # network-facing binds are not auto-seeded.
 _LOOPBACK_SEED_KEYS = frozenset({"prometheus_bind"})
 
+# Keys backed by a comma-separated list in regiond.conf (see
+# `ForEach` in `maasserver.config`). Every other conf-backed key is a
+# plain scalar string.
+_LIST_KEYS = frozenset({"api_bind", "api_bind6", "rpc_bind", "dns_bind"})
+
 _ALL_KNOWN_KEYS = _CONFIG_KEYS | _CONF_KEYS
 
 
@@ -46,6 +51,18 @@ def _is_conf_only_operation(command: str, key: str) -> bool:
 _HARDENING_ENABLED_VALUES = frozenset({"auto", "on", "off"})
 _FIPS_ENABLED_TRUE = frozenset({"true", "on", "1", "yes"})
 _FIPS_ENABLED_FALSE = frozenset({"false", "off", "0", "no"})
+
+
+def _format_conf_value(key: str, value) -> str:
+    if key in _LIST_KEYS:
+        return ",".join(value)
+    return str(value)
+
+
+def _parse_conf_value(key: str, value: str):
+    if key in _LIST_KEYS:
+        return [addr.strip() for addr in value.split(",") if addr.strip()]
+    return value
 
 
 def _sanitize_hardening_enabled(value: str) -> str:
@@ -232,12 +249,12 @@ class Command(BaseCommandWithConnection):
                     api_tls_cert_pem=cert_pem,
                     api_tls_key_pem=key_pem,
                     api_tls_dhparam=str(cfg.api_tls_dhparam),
-                    api_bind=str(cfg.api_bind),
-                    api_bind6=str(cfg.api_bind6),
+                    api_bind=list(cfg.api_bind),
+                    api_bind6=list(cfg.api_bind6),
                     prometheus_bind=str(cfg.prometheus_bind),
                     temporal_bind=str(cfg.temporal_bind),
-                    rpc_bind=str(cfg.rpc_bind),
-                    dns_bind=str(cfg.dns_bind),
+                    rpc_bind=list(cfg.rpc_bind),
+                    dns_bind=list(cfg.dns_bind),
                     database_sslmode=str(cfg.database_sslmode),
                     fips_declared=fips_declared,
                 )
@@ -308,7 +325,7 @@ class Command(BaseCommandWithConnection):
     def _write_conf_key(self, key: str, value: str) -> None:
         try:
             with RegionConfiguration.open_for_update() as cfg:
-                setattr(cfg, key, value)
+                setattr(cfg, key, _parse_conf_value(key, value))
         except Exception as exc:
             self.stderr.write(
                 f"Could not write '{key}' to regiond.conf: {exc}\n"
@@ -319,17 +336,8 @@ class Command(BaseCommandWithConnection):
         try:
             with RegionConfiguration.open() as cfg:
                 return {
-                    "api_tls_dhparam": str(cfg.api_tls_dhparam),
-                    "api_bind": str(cfg.api_bind),
-                    "api_bind6": str(cfg.api_bind6),
-                    "prometheus_bind": str(cfg.prometheus_bind),
-                    "temporal_bind": str(cfg.temporal_bind),
-                    "rpc_bind": str(cfg.rpc_bind),
-                    "dns_bind": str(cfg.dns_bind),
-                    "database_sslmode": str(cfg.database_sslmode),
-                    "database_sslcert": str(cfg.database_sslcert),
-                    "database_sslkey": str(cfg.database_sslkey),
-                    "database_sslrootcert": str(cfg.database_sslrootcert),
+                    key: _format_conf_value(key, getattr(cfg, key))
+                    for key in _CONF_KEYS
                 }
         except Exception:
             return {}

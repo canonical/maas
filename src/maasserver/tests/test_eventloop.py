@@ -404,50 +404,49 @@ class TestFactories(MAASServerTestCase):
             ["ipc-worker"], eventloop.loop.factories["rpc"]["requires"]
         )
 
-    def test_make_RegionService_hardening_off_binds_any(self):
-        import maascommon.hardening as _hardening
+    def test_make_RegionService_unset_binds_any(self):
+        # Unlike api_bind/prometheus_bind, an unset rpc_bind is never
+        # forced to loopback under hardening: rack controllers dial the
+        # region's discovered addresses when rpc_bind isn't pinned (see
+        # IPCMasterService._getListenAddresses), so silently restricting
+        # the actual bind to loopback would just break connectivity.
         from maasserver.config import RegionConfiguration
 
         mock_open = self.patch(RegionConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
-        mock_cfg.rpc_bind = ""
-        mock_cfg.hardening_enabled = "auto"
+        mock_cfg.rpc_bind = []
         mock_open.return_value.__exit__.return_value = False
-        self.patch(_hardening, "is_hardening_enabled").return_value = False
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
-        self.assertEqual(service.endpoints[0][0]._interface, "0.0.0.0")
+        self.assertEqual(service.endpoints[0][0]._interface, "")
 
-    def test_make_RegionService_hardening_on_binds_loopback(self):
-        import maascommon.hardening as _hardening
+    def test_make_RegionService_explicit_bind(self):
         from maasserver.config import RegionConfiguration
 
         mock_open = self.patch(RegionConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
-        mock_cfg.rpc_bind = ""
-        mock_cfg.hardening_enabled = "on"
+        mock_cfg.rpc_bind = ["10.0.0.1"]
         mock_open.return_value.__exit__.return_value = False
-        self.patch(_hardening, "is_hardening_enabled").return_value = True
-
-        service = eventloop.make_RegionService(sentinel.ipcWorker)
-
-        self.assertEqual(service.endpoints[0][0]._interface, "127.0.0.1")
-
-    def test_make_RegionService_explicit_bind_overrides_hardening(self):
-        import maascommon.hardening as _hardening
-        from maasserver.config import RegionConfiguration
-
-        mock_open = self.patch(RegionConfiguration, "open")
-        mock_cfg = mock_open.return_value.__enter__.return_value
-        mock_cfg.rpc_bind = "10.0.0.1"
-        mock_cfg.hardening_enabled = "on"
-        mock_open.return_value.__exit__.return_value = False
-        self.patch(_hardening, "is_hardening_enabled").return_value = True
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
         self.assertEqual(service.endpoints[0][0]._interface, "10.0.0.1")
+
+    def test_make_RegionService_multiple_explicit_binds(self):
+        from maasserver.config import RegionConfiguration
+
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.rpc_bind = ["10.0.0.1", "10.0.0.2"]
+        mock_open.return_value.__exit__.return_value = False
+
+        service = eventloop.make_RegionService(sentinel.ipcWorker)
+
+        self.assertEqual(
+            ["10.0.0.1", "10.0.0.2"],
+            [endpoint._interface for endpoint in service.endpoints[0]],
+        )
 
     def test_make_NonceCleanupService(self):
         service = eventloop.make_NonceCleanupService()

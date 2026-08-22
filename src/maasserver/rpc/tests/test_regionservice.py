@@ -726,7 +726,7 @@ class TestRegionService(MAASTestCase):
         endpoint_1.listen.return_value = succeed(sentinel.port1)
         endpoint_2 = Mock()
         endpoint_2.listen.return_value = succeed(sentinel.port2)
-        service.endpoints = [[endpoint_1, endpoint_2]]
+        service.endpoints = [[endpoint_1], [endpoint_2]]
 
         yield service.startService()
 
@@ -745,7 +745,7 @@ class TestRegionService(MAASTestCase):
         # root, but we'll check the port number later too to be sure.
         endpoint_2 = TCP4ServerEndpoint(reactor, 1)
 
-        service.endpoints = [[endpoint_1, endpoint_2]]
+        service.endpoints = [[endpoint_1], [endpoint_2]]
 
         yield service.startService()
         self.addCleanup(wait_for_reactor(service.stopService))
@@ -768,7 +768,7 @@ class TestRegionService(MAASTestCase):
         endpoint_broken.listen.return_value = fail(factory.make_exception())
         endpoint_okay = Mock()
         endpoint_okay.listen.return_value = succeed(sentinel.port)
-        service.endpoints = [[endpoint_broken, endpoint_okay]]
+        service.endpoints = [[endpoint_broken], [endpoint_okay]]
 
         yield service.startService()
 
@@ -787,7 +787,7 @@ class TestRegionService(MAASTestCase):
         endpoint_1.listen.return_value = fail(error_1())
         endpoint_2 = Mock()
         endpoint_2.listen.return_value = fail(error_2())
-        service.endpoints = [[endpoint_1, endpoint_2]]
+        service.endpoints = [[endpoint_1], [endpoint_2]]
 
         with TwistedLoggerFixture() as logger:
             yield service.startService()

@@ -1060,21 +1060,29 @@ def get_source_address_for_ipaddress(destination_ip: IPAddress):
             return None
 
 
-def get_source_address_for_url(url: str) -> Optional[str]:
+def get_source_address_for_url(
+    url: str, family: Optional[int] = None
+) -> Optional[str]:
     """Returns the local source address used to reach `url`'s host.
 
     Resolves the hostname in `url` and returns the local address the
     kernel would use to reach it (see `get_source_address_for_ipaddress`).
 
     :param url: A URL such as ``http://10.0.0.1:5240/MAAS``.
+    :param family: Restrict resolution to `socket.AF_INET` or
+        `socket.AF_INET6`. Defaults to `socket.AF_UNSPEC`, i.e. whichever
+        family the hostname resolves to first.
     :return: the string representation of the local IP address, or None
-        if the hostname cannot be resolved or there is no route to it.
+        if the hostname cannot be resolved, has no address of the
+        requested family, or there is no route to it.
     """
     hostname = urlparse(url).hostname
     if not hostname:
         return None
     try:
-        addrinfo = getaddrinfo(hostname, None, proto=IPPROTO_TCP)
+        addrinfo = getaddrinfo(
+            hostname, None, family=family or 0, proto=IPPROTO_TCP
+        )
         destination_ip = addrinfo[0][4][0]
     except (gaierror, UnicodeError, IndexError):
         return None
@@ -1082,7 +1090,11 @@ def get_source_address_for_url(url: str) -> Optional[str]:
 
 
 def resolve_bind_address(
-    configured: str, maas_url: str, *, hardening_active: bool = False
+    configured: str,
+    maas_url: str,
+    *,
+    hardening_active: bool = False,
+    family: Optional[int] = None,
 ) -> str:
     """Return the address a co-located service should bind to.
 
@@ -1095,13 +1107,50 @@ def resolve_bind_address(
        all derive from the same ``maas_url``;
     3. a last-resort default: loopback under hardening (a wildcard bind
        is not allowed), otherwise all-interfaces.
+
+    :param family: `socket.AF_INET` or `socket.AF_INET6` to restrict the
+        derivation in (2) and pick the matching family's wildcard/loopback
+        default in (3). Defaults to IPv4.
     """
     if configured:
         return configured
-    derived = get_source_address_for_url(maas_url)
+    derived = get_source_address_for_url(maas_url, family=family)
     if derived:
         return derived
+    if family == AF_INET6:
+        return "::1" if hardening_active else "::"
     return "127.0.0.1" if hardening_active else "0.0.0.0"
+
+
+def resolve_bind_addresses(
+    configured: Iterable[str],
+    maas_url: str,
+    *,
+    hardening_active: bool = False,
+    family: Optional[int] = None,
+) -> List[str]:
+    """List-aware counterpart to `resolve_bind_address`.
+
+    For a service whose transport can bind more than one address at once
+    (e.g. nginx's several ``listen`` directives): an explicit, non-empty
+    ``configured`` list always wins verbatim -- no address is added or
+    removed. Otherwise, under hardening, derive a single non-wildcard
+    default from ``maas_url`` (see `resolve_bind_address`) so the service
+    doesn't require per-host configuration purely to move off a wildcard
+    bind. Outside hardening, an empty ``configured`` list means "all
+    interfaces": it is returned unchanged so callers keep their existing
+    wildcard-bind behaviour.
+    """
+    addrs = [addr for addr in configured if addr]
+    if addrs:
+        return addrs
+    if not hardening_active:
+        return []
+    return [
+        resolve_bind_address(
+            "", maas_url, hardening_active=True, family=family
+        )
+    ]
 
 
 def resolve_connect_address(

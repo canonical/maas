@@ -148,7 +148,7 @@ def dns_update_all_zones(
             _dns_fetches_per_zone = int(_region_cfg.dns_fetches_per_zone)
             _dns_fetches_per_server = int(_region_cfg.dns_fetches_per_server)
     except Exception:
-        _dns_bind = ""
+        _dns_bind = []
         _dns_allow_transfer = ""
         _dns_fetches_per_zone = 0
         _dns_fetches_per_server = 0

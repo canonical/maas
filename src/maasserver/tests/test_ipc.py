@@ -70,6 +70,46 @@ class TestGetIPCSocketPath(MAASTestCase):
         )
 
 
+class TestIPCMasterServiceGetListenAddresses(MAASTestCase):
+    """`_getListenAddresses` prefers a configured `rpc_bind` over
+    discovering this host's routable addresses."""
+
+    def test_prefers_configured_rpc_bind(self):
+        from maasserver.config import RegionConfiguration
+
+        master = IPCMasterService(
+            reactor, socket_path=os.path.join(self.make_dir(), "ipc.sock")
+        )
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.rpc_bind = ["10.0.0.1", "10.0.0.2"]
+        mock_open.return_value.__exit__.return_value = False
+
+        self.assertEqual(
+            {("10.0.0.1", 5250), ("10.0.0.2", 5250)},
+            master._getListenAddresses(5250),
+        )
+
+    def test_falls_back_to_discovery_when_unset(self):
+        from maasserver.config import RegionConfiguration
+
+        master = IPCMasterService(
+            reactor, socket_path=os.path.join(self.make_dir(), "ipc.sock")
+        )
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.rpc_bind = []
+        mock_open.return_value.__exit__.return_value = False
+        self.patch(ipc, "get_all_interface_source_addresses").return_value = {
+            "10.0.0.9"
+        }
+
+        self.assertEqual(
+            {("10.0.0.9", 5250)},
+            master._getListenAddresses(5250),
+        )
+
+
 class TestIPCCommunication(MAASTransactionServerTestCase):
     run_tests_with = MAASCrochetRunTest
 
