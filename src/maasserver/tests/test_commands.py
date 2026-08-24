@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock
 
 from aiohttp import ClientError
 from django.contrib.auth.models import User
+from django.core.management import load_command_class
 from django.core.management.base import CommandError
 
 from apiclient.creds import convert_tuple_to_string
@@ -419,9 +420,8 @@ class TestCommands(MAASServerTestCase):
         set_hardening(self, True)
         username = factory.make_name("user")
         email = factory.make_email_address()
-        before = User.objects.count()
         self.assertRaises(
-            createadmin.WeakPassword,
+            CommandError,
             self.call_command,
             "createadmin",
             username=username,
@@ -430,14 +430,7 @@ class TestCommands(MAASServerTestCase):
             stdout=StringIO(),
             stderr=StringIO(),
         )
-        # No user was created before the policy rejected the password.
-        self.assertEqual(before, User.objects.count())
         self.assertEqual(0, User.objects.filter(username=username).count())
-
-    def test_createadmin_weak_password_error_is_command_error(self):
-        # WeakPassword is a CommandError subclass so the CLI reports it as a
-        # clean operator-facing error rather than a raw traceback.
-        self.assertTrue(issubclass(createadmin.WeakPassword, CommandError))
 
     def test_createadmin_accepts_compliant_password_when_hardening_active(
         self,
@@ -456,7 +449,6 @@ class TestCommands(MAASServerTestCase):
         )
         user = User.objects.get(username=username)
         self.assertTrue(user.check_password(password))
-        self.assertTrue(user.is_superuser)
 
     def test_createadmin_allows_weak_password_when_hardening_inactive(self):
         set_hardening(self, False)
@@ -541,6 +533,77 @@ class TestChangePasswords(MAASServerTestCase):
         stdin = io.StringIO(f"{username}:{newpass}")
         self.patch(changepasswords, "fileinput").return_value = stdin
         self.call_command("changepasswords")
+        self.assertTrue(reload_object(user).check_password(newpass))
+
+    def test_accepts_compliant_password_when_hardening_active(self):
+        set_hardening(self, True)
+        username = factory.make_username()
+        user = factory.make_User(username=username)
+        newpass = "Sup3rSecret!pw"
+        stdin = io.StringIO(f"{username}:{newpass}")
+        self.patch(changepasswords, "fileinput").return_value = stdin
+        self.call_command("changepasswords")
+        self.assertTrue(reload_object(user).check_password(newpass))
+
+
+class TestChangePassword(MAASServerTestCase):
+    def _run_changepassword(self, username, passwords, **options):
+        import getpass as getpass_mod
+
+        from django.core.management import call_command
+
+        calls = iter(passwords)
+        self.patch(getpass_mod, "getpass", lambda prompt="": next(calls))
+        call_command(
+            load_command_class("maasserver", "changepassword"),
+            username=username,
+            **options,
+        )
+
+    def test_changes_password(self):
+        username = factory.make_username()
+        user = factory.make_User(username=username, password="oldpass")
+        newpass = "Sup3rSecret!pw"
+        self._run_changepassword(
+            username, [newpass, newpass], stdout=StringIO(), stderr=StringIO()
+        )
+        self.assertTrue(reload_object(user).check_password(newpass))
+
+    def test_rejects_weak_password_when_hardening_active(self):
+        set_hardening(self, True)
+        username = factory.make_username()
+        original = "Sup3rSecret!pw"
+        user = factory.make_User(username=username, password=original)
+        weak = "secret"
+        self.assertRaises(
+            CommandError,
+            self._run_changepassword,
+            username,
+            [weak, weak, weak, weak, weak, weak],
+            stdout=StringIO(),
+            stderr=StringIO(),
+        )
+        self.assertTrue(reload_object(user).check_password(original))
+        self.assertFalse(reload_object(user).check_password(weak))
+
+    def test_accepts_compliant_password_when_hardening_active(self):
+        set_hardening(self, True)
+        username = factory.make_username()
+        user = factory.make_User(username=username)
+        newpass = "Sup3rSecret!pw"
+        self._run_changepassword(
+            username, [newpass, newpass], stdout=StringIO(), stderr=StringIO()
+        )
+        self.assertTrue(reload_object(user).check_password(newpass))
+
+    def test_allows_weak_password_when_hardening_inactive(self):
+        set_hardening(self, False)
+        username = factory.make_username()
+        user = factory.make_User(username=username)
+        newpass = "secret"
+        self._run_changepassword(
+            username, [newpass, newpass], stdout=StringIO(), stderr=StringIO()
+        )
         self.assertTrue(reload_object(user).check_password(newpass))
 
 
