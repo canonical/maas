@@ -1963,30 +1963,6 @@ class TestNode(MAASServerTestCase):
             node._get_boot_order(),
         )
 
-    def test_set_boot_order(self):
-        node = factory.make_Node(interface=True, power_type="hmcz")
-        mock_power_control_node = self.patch(node, "_power_control_node")
-        mock_power_control_node.return_value = defer.succeed(None)
-        network_boot = factory.pick_bool()
-
-        node.set_boot_order(network_boot)
-
-        mock_power_control_node.assert_called_with(
-            ANY,
-            None,
-            node.get_effective_power_info(),
-            node._get_boot_order(network_boot),
-        )
-        self.assertTrue(mock_power_control_node.return_value.called)
-
-    def test_set_boot_order_does_nothing_if_unsupported(self):
-        node = factory.make_Node(interface=True, power_type="manual")
-        mock_power_control_node = self.patch(node, "_power_control_node")
-
-        node.set_boot_order(factory.pick_bool())
-
-        mock_power_control_node.assert_not_called()
-
     def test_get_effective_kernel_options_with_nothing_set(self):
         node = factory.make_Node()
         self.assertEqual(node.get_effective_kernel_options(), "")
@@ -10985,8 +10961,10 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         )
         mock_confirm_power_driver.return_value = defer.succeed(None)
 
-        mock_set_boot_order = self.patch(node_module, "set_boot_order")
-        mock_set_boot_order.return_value = defer.succeed(client)
+        mock_convert = self.patch(
+            node_module, "convert_power_action_to_power_workflow"
+        )
+        mock_convert.return_value = ("power-on", Mock())
 
         # Testing only allows one thread at a time, but the way we are testing
         # this would actually require multiple to be started at once. To
@@ -10999,9 +10977,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
             "state": "on",
         }
 
-        yield node._power_control_node(
-            d, "power_query", power_info, boot_order
-        )
+        yield node._power_control_node(d, "power_on", power_info, boot_order)
 
         mock_getClientFromIdentifiers.assert_called_with(
             [rack_controller.system_id]
@@ -11009,58 +10985,8 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         mock_confirm_power_driver.assert_called_with(
             client, power_info.power_type, client.ident
         )
-        mock_set_boot_order.assert_called_with(
-            client, node.system_id, node.hostname, power_info, boot_order
-        )
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_sets_boot_order_if_given_with_no_power_method(self):
-        d = self.patch_post_commit()
-        rack_controller = yield deferToDatabase(self.make_rack_controller)
-        node, power_info = yield deferToDatabase(
-            self.make_node,
-            layer2_rack=rack_controller,
-        )
-        boot_order = yield deferToDatabase(node._get_boot_order)
-
-        client = Mock()
-        client.ident = rack_controller.system_id
-        mock_getClientFromIdentifiers = self.patch(
-            node_module, "getClientFromIdentifiers"
-        )
-        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
-
-        # Add the client to getAllClients in so that its considered a to be a
-        # valid connection.
-        self.patch(node_module, "getAllClients").return_value = [client]
-
-        # Mock the confirm power driver check, we check in the test to make
-        # sure it gets called.
-        mock_confirm_power_driver = self.patch(
-            Node, "confirm_power_driver_operable"
-        )
-        mock_confirm_power_driver.return_value = defer.succeed(None)
-
-        mock_set_boot_order = self.patch(node_module, "set_boot_order")
-        mock_set_boot_order.return_value = defer.succeed(client)
-
-        # Testing only allows one thread at a time, but the way we are testing
-        # this would actually require multiple to be started at once. To
-        # by-pass this issue we mock `is_accessible` on the BMC model to return
-        # the value we are expecting.
-        self.patch(node.bmc, "is_accessible").return_value = True
-
-        yield node._power_control_node(d, None, power_info, boot_order)
-
-        mock_getClientFromIdentifiers.assert_called_with(
-            [rack_controller.system_id]
-        )
-        mock_confirm_power_driver.assert_called_with(
-            client, power_info.power_type, client.ident
-        )
-        mock_set_boot_order.assert_called_with(
-            client, node.system_id, node.hostname, power_info, boot_order
+        mock_convert.assert_called_once_with(
+            "power-on", node, power_info, node.is_dpu, boot_order
         )
 
 

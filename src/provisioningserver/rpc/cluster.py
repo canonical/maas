@@ -12,7 +12,6 @@ __all__ = [
     "Identify",
     "PowerDriverCheck",
     "PowerQuery",
-    "SetBootOrder",
     "ScanNetworks",
 ]
 
@@ -83,39 +82,6 @@ class PowerQuery(_Power):
     response = [
         (b"state", amp.Unicode()),
         (b"error_msg", amp.Unicode(optional=True)),
-    ]
-
-
-class SetBootOrder(_Power):
-    """Remotely configure a BMC's boot order
-
-    :since: 2.10
-    """
-
-    arguments = [
-        (b"system_id", amp.Unicode()),
-        (b"hostname", amp.Unicode()),
-        (b"power_type", amp.Unicode()),
-        # We can't define a tighter schema here because this is a highly
-        # variable bag of arguments from a variety of sources.
-        (b"context", StructureAsJSON()),
-        (
-            b"order",
-            AmpList(
-                [
-                    (b"id", amp.Integer()),
-                    (b"name", amp.Unicode()),
-                    # Fields used with Interfaces
-                    (b"mac_address", amp.Unicode(optional=True)),
-                    (b"vendor", amp.Unicode(optional=True)),
-                    (b"product", amp.Unicode(optional=True)),
-                    # Fields used with Blockdevices
-                    (b"id_path", amp.Unicode(optional=True)),
-                    (b"model", amp.Unicode(optional=True)),
-                    (b"serial", amp.Unicode(optional=True)),
-                ]
-            ),
-        ),
     ]
 
 

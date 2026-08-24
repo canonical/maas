@@ -935,7 +935,6 @@ class VersionIndexHandler(MetadataViewHandler):
         """
         node = get_queried_node(request, for_mac=mac)
         node.set_netboot(False)
-        node.set_boot_order(False)
         return rc.ALL_OK
 
     @operation(idempotent=False)
@@ -943,7 +942,6 @@ class VersionIndexHandler(MetadataViewHandler):
         """Turn on netboot on the node."""
         node = get_queried_node(request, for_mac=mac)
         node.set_netboot(True)
-        node.set_boot_order(True)
         return rc.ALL_OK
 
 
@@ -1591,7 +1589,6 @@ class AnonMetaDataHandler(VersionIndexHandler):
         """
         node = get_object_or_404(Node, system_id=system_id)
         node.set_netboot(False)
-        node.set_boot_order(False)
 
         # Build and register an event for "node installation finished".
         # This is a best-guess. At the moment, netboot_off() only gets
