@@ -707,6 +707,23 @@ class TestRackAgent(MAASTestCase):
         self.assertEqual(observed.controller, "https://127.0.0.1:5242")
         self.assertEqual(observed.observability.logging.level, "info")
         self.assertTrue(observed.observability.metrics.enabled)
+        self.assertEqual(observed.temporal.host, "127.0.0.1")
+
+    def test_getConfiguration_forwards_temporal_server(self):
+        self.useFixture(MAASUUIDFixture(factory.make_UUID()))
+        self.useFixture(MAASIDFixture(factory.make_name("system-id")))
+        self.useFixture(
+            ClusterConfigurationFixture(
+                debug=False,
+                maas_url=["http://127.0.0.1:5240/MAAS"],
+                temporal_server="10.0.0.9",
+            )
+        )
+
+        agent = external.RackAgent()
+        observed = agent._getConfiguration()
+
+        self.assertEqual(observed.temporal.host, "10.0.0.9")
 
     @inlineCallbacks
     def test_maybeApplyConfiguration_only_restarts_when_new_config(self):

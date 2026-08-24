@@ -22,16 +22,17 @@ from temporalio.worker.workflow_sandbox import (
 )
 
 from maascommon.workflows.interceptors import ContextPropagationInterceptor
+from maasserver.config import get_temporal_connect_address
 from maastemporalworker.encryptor import EncryptionCodec
 from maastemporalworker.workflow.utils import async_retry
 from provisioningserver.certificates import get_maas_cluster_cert_paths
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
+from provisioningserver.utils.network import convert_host_to_uri_str
 
 with workflow.unsafe.imports_passed_through():
     from temporalio.contrib.pydantic import pydantic_data_converter
 
 REGION_TASK_QUEUE = "region"
-TEMPORAL_HOST = "localhost"
 TEMPORAL_PORT = 5271
 TEMPORAL_WORKFLOW_RETENTION = "259200s"  # tctl's default retention in seconds
 TEMPORAL_NAMESPACE = "default"
@@ -53,10 +54,11 @@ async def get_client_async() -> Client:
     with open(cacert_file, "rb") as f:
         cacert = f.read()
 
+    connect_address = convert_host_to_uri_str(get_temporal_connect_address())
     shared_secret = MAAS_SHARED_SECRET.get()
     assert shared_secret is not None
     return await Client.connect(
-        f"{TEMPORAL_HOST}:{TEMPORAL_PORT}",
+        f"{connect_address}:{TEMPORAL_PORT}",
         identity=f"{maas_id}@region:{pid}",
         data_converter=dataclasses.replace(
             pydantic_data_converter,

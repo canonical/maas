@@ -22,6 +22,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -42,6 +43,10 @@ import (
 	"maas.io/core/src/maasagent/internal/temporal"
 	"maas.io/core/src/maasagent/internal/workflow/worker"
 )
+
+// defaultTemporalPort is the port the Temporal frontend listens on next to
+// each controller when it is not configured explicitly.
+const defaultTemporalPort = 5271
 
 type powerSvcConfig struct {
 	pool      *worker.WorkerPool
@@ -228,7 +233,7 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 	temporalClient, err := temporal.NewClient(ctx, temporal.ClientConfig{
 		SystemID:  d.dynCfg.SystemID,
 		Secret:    d.dynCfg.Temporal.EncryptionKey,
-		Endpoint:  net.JoinHostPort(d.cfg.ControllerURL.Hostname(), "5271"),
+		Endpoint:  net.JoinHostPort(d.temporalHost(), d.temporalPort()),
 		TLSConfig: client.NewTLSConfigWithCAValidationOnly(d.cert, caPool),
 		Logger:    d.logger,
 		Meter:     d.meterProvider.Meter("temporal"),
@@ -280,4 +285,23 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 	}
 
 	return nil
+}
+
+// temporalHost returns the host the agent should dial to reach Temporal,
+// preferring the explicit configuration over the controller URL host.
+func (d *Daemon) temporalHost() string {
+	if d.cfg.Temporal.Host != "" {
+		return d.cfg.Temporal.Host
+	}
+
+	return d.cfg.ControllerURL.Hostname()
+}
+
+// temporalPort returns the configured Temporal port, or the default.
+func (d *Daemon) temporalPort() string {
+	if d.cfg.Temporal.Port != 0 {
+		return strconv.Itoa(d.cfg.Temporal.Port)
+	}
+
+	return strconv.Itoa(defaultTemporalPort)
 }
