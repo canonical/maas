@@ -832,7 +832,7 @@ class ConfigureDHCPForAgentWorkflow:
             # TODO call get_active_interfaces_for_agent and set config
             # directly on the agent
         else:
-            hosts_for_update = await workflow.execute_activity(
+            hosts = await workflow.execute_activity(
                 FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME,
                 FetchHostsForUpdateParam(
                     system_id=param.system_id,
@@ -840,20 +840,18 @@ class ConfigureDHCPForAgentWorkflow:
                     reserved_ip_ids=param.reserved_ip_ids,
                 ),
                 start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
-                result_type=HostsForUpdateResult,
             )
 
             omapi_key = await workflow.execute_activity(
                 GET_OMAPI_KEY_ACTIVITY_NAME,
                 start_to_close_timeout=GET_OMAPI_KEY_TIMEOUT,
-                result_type=OMAPIKeyResult,
             )
 
             await workflow.execute_activity(
                 APPLY_DHCP_CONFIG_VIA_OMAPI_ACTIVITY_NAME,
                 ApplyConfigViaOmapiParam(
-                    hosts=hosts_for_update.hosts,
-                    secret=omapi_key.key,
+                    hosts=hosts["hosts"],
+                    secret=omapi_key["key"],
                 ),
                 task_queue=f"{param.system_id}@agent:main",
                 start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT,
