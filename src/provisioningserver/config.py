@@ -821,6 +821,12 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         "The size of a cache used by HTTP proxy",
         Number(min=1, if_missing=20 * 1000**3),
     )
+    temporal_server = ConfigurationOption(
+        "temporal_server",
+        "Address MAAS Agent dials to reach Temporal; empty derives it "
+        "from maas_url.",
+        UnicodeString(if_missing=""),
+    )
 
     # Security hardening options.
     hardening_enabled = ConfigurationOption(

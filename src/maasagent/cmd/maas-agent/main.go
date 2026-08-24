@@ -83,8 +83,9 @@ type config struct {
 		CacheDir  string `yaml:"cache_dir"`
 		CacheSize int64  `yaml:"cache_size"`
 	} `yaml:"httpproxy"`
-	Controllers []string `yaml:"controllers,flow"`
-	Tracing     struct {
+	Controllers    []string `yaml:"controllers,flow"`
+	TemporalServer string   `yaml:"temporal_server"`
+	Tracing        struct {
 		OTLPHTTPEndpoint string `yaml:"otlp_http_endpoint"`
 		Enabled          bool   `yaml:"enabled"`
 	} `yaml:"tracing"`
@@ -155,13 +156,29 @@ func getClusterCert() (tls.Certificate, *x509.CertPool, error) {
 	return cert, ca, nil
 }
 
+// temporalHost returns the address MAAS Agent should dial to reach
+// Temporal, preferring the explicit TemporalServer config over the
+// first region controller endpoint. Returns an empty string if neither
+// is available.
+func temporalHost(cfg *config) string {
+	if cfg.TemporalServer != "" {
+		return cfg.TemporalServer
+	}
+
+	if len(cfg.Controllers) == 0 {
+		return ""
+	}
+
+	return cfg.Controllers[0]
+}
+
 // getTemporalClient returns Temporal Client that is used to communicate
 // to MAAS Temporal server (running next to the Region Controller).
 //
 // secret is used for EncryptionCodec (AES) to encrypt input/output (payloads)
 // cert, ca are used to setup mTLS
 func getTemporalClient(systemID string, secret []byte, cert tls.Certificate,
-	ca *x509.CertPool, endpoints []string,
+	ca *x509.CertPool, host string,
 	metrics temporalotel.MetricsHandler, tracer trace.Tracer) (client.Client, error) {
 	// Encryption Codec required for Temporal Workflow's payload encoding
 	codec, err := codec.NewEncryptionCodec([]byte(secret))
@@ -183,8 +200,8 @@ func getTemporalClient(systemID string, secret []byte, cert tls.Certificate,
 	return backoff.RetryWithData(
 		func() (client.Client, error) {
 			return client.Dial(client.Options{
-				// TODO: fallback retry if Controllers[0] is unavailable
-				HostPort:     net.JoinHostPort(endpoints[0], strconv.Itoa(defaultTemporalPort)),
+				// TODO: fallback retry if host is unavailable
+				HostPort:     net.JoinHostPort(host, strconv.Itoa(defaultTemporalPort)),
 				Identity:     fmt.Sprintf("%s@agent:%d", systemID, os.Getpid()),
 				Logger:       wflog.NewZerologAdapter(log.Logger),
 				Interceptors: []interceptor.ClientInterceptor{tracingInterceptor},
@@ -443,7 +460,7 @@ func Run() int {
 	}
 
 	temporalClient, err := getTemporalClient(cfg.SystemID, []byte(cfg.Secret),
-		cert, ca, cfg.Controllers,
+		cert, ca, temporalHost(cfg),
 		temporalotel.NewMetricsHandler(
 			temporalotel.MetricsHandlerOptions{
 				Meter: meterProvider.Meter("temporal")},

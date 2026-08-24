@@ -42,9 +42,10 @@ subcommands:
   list                List all hardening parameters with values and stores.
   validate            Run hardening validation; print violations; exit
                       non-zero if any exist.
-  enable              Set hardening_enabled=on and seed loopback defaults for
-                      unset region-internal bind addresses (prometheus_bind,
-                      temporal_bind).
+  enable              Set hardening_enabled=on and seed a loopback default
+                      for unset prometheus_bind. temporal_bind is left
+                      unset so MAAS can derive a specific address from
+                      maas_url at startup.
   disable             Set hardening_enabled=off; refused on FIPS hosts.
 ```
 
@@ -60,8 +61,10 @@ are written to `regiond.conf` on the local host. The `set` command handles
 YAML quoting automatically.
 
 `enable` is a convenience shortcut: it sets `hardening_enabled=on` and also
-seeds `prometheus_bind` and `temporal_bind` to `127.0.0.1` in `regiond.conf`
-if those keys are unset, saving a separate step on first activation.
+seeds `prometheus_bind` to `127.0.0.1` in `regiond.conf` if unset, saving a
+separate step on first activation. `temporal_bind` is not seeded: MAAS
+derives a specific, non-wildcard address for it from `maas_url` at startup
+(see the parameter table below).
 
 ## Parameters and stores
 
@@ -72,7 +75,8 @@ if those keys are unset, saving a separate step on first activation.
 | `api_bind` | `regiond.conf` (per-host) | empty | IPv4 address the public API binds to. A specific (non-wildcard) address is required when hardening is active. |
 | `api_bind6` | `regiond.conf` (per-host) | empty | IPv6 address the public API binds to. A specific (non-wildcard) address is required when hardening is active. |
 | `prometheus_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Prometheus metrics endpoint binds to. Seeded to `127.0.0.1` by `maas config-hardening enable` if unset. |
-| `temporal_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Temporal worker binds to. Seeded to `127.0.0.1` by `maas config-hardening enable` if unset. |
+| `temporal_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Temporal services bind to. Left unset by default: derived from `maas_url` at startup, on every install mode (region, rack+region, all-in-one). Set explicitly to pin it elsewhere. |
+| `temporal_server` | `rackd.conf` (per-host) | empty | Address MAAS Agent dials to reach Temporal; not a hardening key. Left unset by default: derived from `maas_url` at startup, the same as `temporal_bind`. Set explicitly to pin it elsewhere. |
 | `rpc_bind` | `regiond.conf` (per-host) | empty | IPv4 address the region RPC service binds to. |
 | `api_tls_dhparam` | `regiond.conf` (per-host) | empty | Path to a DH parameters PEM file. When present, it must be at least 2048 bits. |
 | `database_sslmode` | `regiond.conf` (per-host) | `prefer` | PostgreSQL client SSL mode. Under hardening, use `verify-ca` or `verify-full`. |
@@ -103,7 +107,7 @@ it. A violation clears automatically once the underlying setting is corrected.
 | `WEAK_DH_PARAMS` | `api_tls_dhparam` file is under 2048 bits | See commands below. |
 | `DH_PARAMS_PARSE_ERROR` | `api_tls_dhparam` file is not valid PEM DH parameters | See commands below. |
 | `INVALID_BIND_ADDRESS` | A bind key (`api_bind`, `api_bind6`, `prometheus_bind`, `temporal_bind`, `rpc_bind`) contains a value that is not a valid IP address | `maas config-hardening set <key> <specific-ip-address>` |
-| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is unset or set to an all-interfaces address (`0.0.0.0` / `::`) | `maas config-hardening set <key> <specific-ip-address>` |
+| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or is unset (except `temporal_bind`, which is derived automatically from `maas_url` when unset) | `maas config-hardening set <key> <specific-ip-address>` |
 | `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, or `prefer` | See commands below. |
 | `FIPS_CONFIG_STATUS_MISMATCH` | The declared `fips_enabled` value in the DB does not match the host kernel's FIPS state | `maas config-hardening set fips_enabled <true\|false>` to match the actual host state, or correct the host FIPS configuration |
 

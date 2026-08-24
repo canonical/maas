@@ -211,6 +211,8 @@ class TestValidateBindings:
 
     def test_each_key_unset_produces_its_own_violation(self) -> None:
         for key in self._ALL_SPECIFIC:
+            if key == "temporal_bind":
+                continue
             v_list = self._validator(**{key: None})._validate_bindings()
             assert len(v_list) == 1, f"expected 1 violation for {key}"
             assert v_list[0].code == "WILDCARD_BIND_NOT_ALLOWED"
@@ -220,8 +222,20 @@ class TestValidateBindings:
                 == f"hardening-wildcard-bind-{key.replace('_', '-')}"
             )
 
+    def test_temporal_bind_unset_produces_no_violation(self) -> None:
+        # temporal_bind is auto-derived from maas_url at runtime when
+        # unset (see resolve_bind_address), so an empty value
+        # is not a wildcard violation.
+        v_list = self._validator(temporal_bind=None)._validate_bindings()
+        assert v_list == []
+
     def test_each_key_ipv4_wildcard_produces_its_own_violation(self) -> None:
-        for key in ("api_bind", "prometheus_bind", "rpc_bind"):
+        for key in (
+            "api_bind",
+            "prometheus_bind",
+            "rpc_bind",
+            "temporal_bind",
+        ):
             v_list = self._validator(**{key: "0.0.0.0"})._validate_bindings()
             assert any(
                 v.code == "WILDCARD_BIND_NOT_ALLOWED" and v.config_key == key
@@ -247,11 +261,11 @@ class TestValidateBindings:
         self,
     ) -> None:
         v_list = self._validator(
-            prometheus_bind=None, temporal_bind=None
+            prometheus_bind=None, dns_bind=None
         )._validate_bindings()
         codes = [v.config_key for v in v_list]
         assert "prometheus_bind" in codes
-        assert "temporal_bind" in codes
+        assert "dns_bind" in codes
         # Other keys are specific — no other violations.
         assert len(v_list) == 2
 

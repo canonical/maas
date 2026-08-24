@@ -349,6 +349,7 @@ class RackAgent(RackOnlyExternalService):
             controllers = [urlparse(url).hostname for url in config.maas_url]
             debug_enabled = config.debug
             httpproxy_cache_size = config.httpproxy_cache_size
+            temporal_server = config.temporal_server
 
         return agent_config.Configuration(
             maas_uuid=MAAS_UUID.get(),
@@ -360,6 +361,7 @@ class RackAgent(RackOnlyExternalService):
                 cache_size=httpproxy_cache_size,
                 cache_dir=get_maas_cache_path("httpproxy"),
             ),
+            temporal_server=temporal_server,
         )
 
     def _applyConfiguration(

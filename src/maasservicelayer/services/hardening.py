@@ -26,6 +26,12 @@ _log = logging.getLogger("maas.hardening")
 
 _INSECURE_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
 
+# Keys where an empty value is not a wildcard violation: the consuming
+# service derives a specific, non-wildcard address at runtime when unset
+# (see `RegionTemporalService`/`resolve_bind_address`). An
+# explicit wildcard value (e.g. `0.0.0.0`) is still flagged below.
+_AUTO_DERIVED_BIND_KEYS = frozenset({"temporal_bind"})
+
 
 def _ident(code: str) -> str:
     slug = code.lower().replace("_", "-")[:29]
@@ -226,6 +232,8 @@ class HardeningValidator:
 
         for key, value in self._binds.items():
             if not value:
+                if key in _AUTO_DERIVED_BIND_KEYS:
+                    continue
                 violations.append(
                     self._wildcard_bind_violation(
                         key,

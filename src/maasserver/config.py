@@ -5,6 +5,7 @@
 
 from formencode.validators import Int
 
+from maascommon.hardening import is_hardening_enabled
 from provisioningserver.config import (
     Configuration,
     ConfigurationFile,
@@ -17,6 +18,7 @@ from provisioningserver.utils.config import (
     UnicodeString,
 )
 from provisioningserver.utils.env import MAAS_ID
+from provisioningserver.utils.network import resolve_connect_address
 
 
 def get_db_creds_vault_path():
@@ -281,4 +283,23 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         "api_conn_limit",
         "NGINX concurrent connection limit per client IP.",
         Int(if_missing=100, accept_python=False, min=1),
+    )
+
+
+def get_temporal_connect_address() -> str:
+    """Return the address this host's Temporal frontend can be reached at.
+
+    Mirrors the resolution `RegionTemporalService` uses to pick Temporal's
+    bind address, so callers always dial whatever address the co-located
+    Temporal server actually bound to instead of assuming `localhost`,
+    which is wrong whenever `temporal_bind` is a specific non-loopback
+    address.
+    """
+    with RegionConfiguration.open() as config:
+        temporal_bind = str(config.temporal_bind)
+        maas_url = str(config.maas_url)
+    return resolve_connect_address(
+        temporal_bind,
+        maas_url,
+        hardening_active=is_hardening_enabled(),
     )
