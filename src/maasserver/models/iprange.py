@@ -267,6 +267,7 @@ class IPRange(CleanSave, TimestampedModel):
             message += "IP address or range."
 
         # Find unused range for start_ip
+        # DNM: test
         for unused_range in unused:
             if IPAddress(self.start_ip) in unused_range:
                 if IPAddress(self.end_ip) in unused_range:
