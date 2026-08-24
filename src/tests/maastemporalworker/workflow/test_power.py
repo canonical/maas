@@ -1,7 +1,7 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from typing import Any
 from unittest.mock import Mock
 import uuid
@@ -31,10 +31,15 @@ from maastemporalworker.workflow import power as power_workflow
 from maastemporalworker.workflow.power import (
     convert_power_action_to_power_workflow,
     get_temporal_task_queue_for_bmc,
+    POWER_ON_ACTIVITY_NAME,
     POWER_RESET_ACTIVITY_NAME,
     PowerActivity,
+    PowerOnResult,
+    PowerOnWorkflow,
     PowerResetResult,
     PowerResetWorkflow,
+    SET_BOOT_ORDER_ACTIVITY_NAME,
+    SetBootOrderParam,
     SetPowerStateParam,
     UnknownPowerActionException,
     UnroutablePowerWorkflowException,
@@ -256,6 +261,33 @@ class TestGetTemporalQueueForMachine:
                 power_action, machine, params
             )
 
+    def test_convert_power_action_to_power_workflow_passes_boot_order(
+        self, factory, mocker
+    ):
+        machine = factory.make_Machine()
+        params = namedtuple("params", ["power_type", "power_parameters"])(
+            {}, {}
+        )
+        mocker.patch.object(
+            power_workflow,
+            "get_temporal_task_queue_for_bmc",
+            return_value="agent:power@vlan-1",
+        )
+        order = [{"id": 1, "mac_address": "00:11:22:33:44:55"}]
+
+        # on/off/cycle carry the boot order to the workflow params.
+        for action in ["power-on", "power-off", "power-cycle"]:
+            _, workflow_param = convert_power_action_to_power_workflow(
+                action, machine, params, boot_order=order
+            )
+            assert workflow_param.boot_order == order
+
+        # power-query never applies a boot order.
+        _, query_param = convert_power_action_to_power_workflow(
+            "power-query", machine, params, boot_order=order
+        )
+        assert query_param.boot_order is None
+
 
 @pytest.mark.asyncio
 class TestPowerActivity:
@@ -362,3 +394,67 @@ class TestPowerResetWorkflow:
             calls[POWER_RESET_ACTIVITY_NAME]["driver_type"]
             == param.driver_type
         )
+
+
+@pytest.mark.asyncio
+class TestPowerOnWorkflowBootOrder:
+    async def _run_power_on(self, boot_order):
+        power_task_queue = "def456@agent:power"
+        calls = defaultdict(list)
+
+        param = PowerOnParam(
+            system_id="abc123",
+            task_queue=power_task_queue,
+            driver_type="hmcz",
+            driver_opts={
+                "power_address": "0.0.0.0",
+                "power_user": "maas",
+                "power_pass": "maas",
+            },
+            is_dpu=False,
+            boot_order=boot_order,
+        )
+
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
+        async def mock_power_on(param: dict[str, Any]) -> PowerOnResult:
+            calls[POWER_ON_ACTIVITY_NAME].append(param)
+            return PowerOnResult(state="on")
+
+        @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
+        async def mock_set_boot_order(param: SetBootOrderParam) -> None:
+            calls[SET_BOOT_ORDER_ACTIVITY_NAME].append(param)
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue=power_task_queue,
+                workflows=[PowerOnWorkflow],
+                activities=[mock_power_on, mock_set_boot_order],
+            ) as worker:
+                result = await env.client.execute_workflow(
+                    workflow=PowerOnWorkflow.run,
+                    arg=param,
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+        return calls, result
+
+    async def test_applies_boot_order_before_power_on_when_supplied(self):
+        order = [{"id": 1, "mac_address": "00:11:22:33:44:55"}]
+
+        calls, result = await self._run_power_on(order)
+
+        assert result.state == "on"
+        assert len(calls[SET_BOOT_ORDER_ACTIVITY_NAME]) == 1
+        set_boot_order_param = calls[SET_BOOT_ORDER_ACTIVITY_NAME][0]
+        assert set_boot_order_param.system_id == "abc123"
+        assert set_boot_order_param.order == order
+        assert len(calls[POWER_ON_ACTIVITY_NAME]) == 1
+
+    async def test_skips_boot_order_when_not_supplied(self):
+        calls, result = await self._run_power_on(None)
+
+        assert result.state == "on"
+        assert len(calls[SET_BOOT_ORDER_ACTIVITY_NAME]) == 0
+        assert len(calls[POWER_ON_ACTIVITY_NAME]) == 1
