@@ -233,8 +233,9 @@ A value of `1` means FIPS mode is active.
 ### Activate hardening on a non-FIPS host
 
 Run `maas config-hardening enable`. This sets `hardening_enabled=on` in the
-MAAS database and seeds `prometheus_bind` and `temporal_bind` to `127.0.0.1`
-in `regiond.conf` if they are not already set:
+MAAS database and seeds `prometheus_bind` to `127.0.0.1` in `regiond.conf`
+if it is not already set. `temporal_bind` is left unset: MAAS derives a
+specific, non-wildcard address for it from `maas_url` at startup.
 
 ```text
 sudo maas config-hardening enable
@@ -261,11 +262,16 @@ startup. Use `maas config-hardening set` to configure each parameter:
 sudo maas config-hardening set api_bind 10.0.0.5
 sudo maas config-hardening set api_bind6 fd00::5
 
-# Bind region-internal services to loopback (already seeded by
+# Bind Prometheus metrics to loopback (already seeded by
 # maas config-hardening enable; only needed if you skipped that step).
 sudo maas config-hardening set prometheus_bind 127.0.0.1
-sudo maas config-hardening set temporal_bind 127.0.0.1
-sudo maas config-hardening set rpc_bind 127.0.0.1
+
+# temporal_bind is left unset by default: MAAS derives it from maas_url.
+# Only set it explicitly to pin Temporal to a different interface.
+sudo maas config-hardening set temporal_bind 10.0.0.5
+
+# Bind the region RPC service to a specific interface.
+sudo maas config-hardening set rpc_bind 10.0.0.5
 
 # Verify the PostgreSQL server certificate.
 sudo maas config-hardening set database_sslmode verify-full

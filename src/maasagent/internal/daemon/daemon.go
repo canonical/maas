@@ -261,6 +261,7 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 
 		d.dynCfg = &DynamicConfig{
 			Temporal: TemporalConfig{
+				Host:          dynCfg.Host,
 				EncryptionKey: dynCfg.RPCSecret,
 			},
 			SystemID:  dynCfg.SystemID,
@@ -588,6 +589,7 @@ func runAll(cmds ...*exec.Cmd) error {
 // TODO: Remove once Python based rackd is obsolete
 func (d *Daemon) readLegacyConfig(path string) error {
 	type temporalConfig struct {
+		Host          string `yaml:"host"`
 		EncryptionKey string `yaml:"encryption_key"`
 	}
 
@@ -608,6 +610,7 @@ func (d *Daemon) readLegacyConfig(path string) error {
 
 	d.dynCfg = &DynamicConfig{
 		Temporal: TemporalConfig{
+			Host:          cfg.Temporal.Host,
 			EncryptionKey: cfg.Temporal.EncryptionKey,
 		},
 		SystemID: cfg.SystemID,

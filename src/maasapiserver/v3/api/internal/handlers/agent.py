@@ -56,6 +56,7 @@ from maasservicelayer.models.secrets import (
 )
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.certificates import Certificate, CertificateRequest
 
 logger = structlog.get_logger()
@@ -178,12 +179,16 @@ class AgentHandler(Handler):
             if node:
                 system_id = node.system_id
 
+        temporal_host = ""
+        with ClusterConfiguration.open() as cfg:
+            temporal_host = cfg.temporal_server
+
         response.headers["ETag"] = agent.etag()
         return AgentConfigResponse.from_model(
             maas_url=maas_url,
             rpc_secret=rpc_secret,
             system_id=system_id,
-            temporal={"encryption_key": rpc_secret},
+            temporal={"encryption_key": rpc_secret, "host": temporal_host},
             self_base_hyperlink=f"{V3_INTERNAL_API_PREFIX}/agents/{uuid}/config",
         )
 

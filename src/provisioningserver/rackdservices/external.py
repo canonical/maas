@@ -353,6 +353,7 @@ class RackAgent(RackOnlyExternalService):
             ]
             debug_enabled = config.debug
             httpproxy_cache_size = config.httpproxy_cache_size
+            temporal_server = config.temporal_server if config.temporal_server else urlparse(controllers[0]).hostname
 
         cert_file, key_file, ca_file = ("", "", "")
 
@@ -365,7 +366,7 @@ class RackAgent(RackOnlyExternalService):
             system_id=MAAS_ID.get(),
             controller=controllers[0],
             temporal=agent_config.AgentTemporalConfig(
-                host=urlparse(controllers[0]).hostname,
+                host=temporal_server,
                 port=5271,
                 encryption_key=MAAS_SHARED_SECRET.get(),
             ),

@@ -221,6 +221,12 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 	for _, svc := range services {
 		workerPoolOptions = append(workerPoolOptions, worker.WithConfigurator(svc))
 	}
+
+	var temporalHost str = d.cfg.ControllerURL.Hostname()
+	if d.dynCfg.Temporal.Host != "" {
+		temporalHost = d.dynCfg.Temporal.Host
+	}
+
 	// XXX: MAAS has Temporal Server running next to each controller, hence
 	// the endpoint is the controller endpoint host, but different port.
 	// In theory it can be running elsewhere, but it is not supported.
@@ -228,7 +234,7 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 	temporalClient, err := temporal.NewClient(ctx, temporal.ClientConfig{
 		SystemID:  d.dynCfg.SystemID,
 		Secret:    d.dynCfg.Temporal.EncryptionKey,
-		Endpoint:  net.JoinHostPort(d.cfg.ControllerURL.Hostname(), "5271"),
+		Endpoint:  net.JoinHostPort(temporalHost, "5271"),
 		TLSConfig: client.NewTLSConfigWithCAValidationOnly(d.cert, caPool),
 		Logger:    d.logger,
 		Meter:     d.meterProvider.Meter("temporal"),

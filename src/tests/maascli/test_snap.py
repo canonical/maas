@@ -225,6 +225,54 @@ class TestCmdInit(MAASTestCase):
             }
         )
 
+    def test_init_snap_rack_mode_does_not_set_temporal_settings(self):
+        self.mock_maas_configuration = self.patch(snap, "MAASConfiguration")
+        self.patch(snap, "set_rpc_secret")
+        self.patch(snap.cmd_init, "_finalize_init")
+
+        self.mock_read_input.side_effect = ["asdf"]
+        options = self.parser.parse_args(
+            ["rack", "--maas-url", "http://10.0.0.5:5240/MAAS"]
+        )
+        self.cmd(options)
+        settings = self.mock_maas_configuration().update.call_args[0][0]
+        self.assertNotIn("temporal_bind", settings)
+        self.assertNotIn("temporal_server", settings)
+
+    def test_init_snap_region_rack_mode_does_not_set_temporal_settings(self):
+        self.mock_maas_configuration = self.patch(snap, "MAASConfiguration")
+        self.patch(snap, "set_rpc_secret")
+        self.patch(snap.cmd_init, "_finalize_init")
+
+        self.mock_read_input.side_effect = [
+            "postgres://maas:pwd@localhost/db",
+            "http://localhost:5240/MAAS",
+        ]
+        options = self.parser.parse_args(["region+rack"])
+        self.cmd(options)
+        settings = self.mock_maas_configuration().update.call_args[0][0]
+        self.assertNotIn("temporal_bind", settings)
+        self.assertNotIn("temporal_server", settings)
+
+    def test_init_snap_region_mode_does_not_set_temporal_settings(self):
+        self.mock_maas_configuration = self.patch(snap, "MAASConfiguration")
+        self.patch(snap, "set_rpc_secret")
+        self.patch(snap.cmd_init, "_finalize_init")
+
+        options = self.parser.parse_args(
+            [
+                "region",
+                "--maas-url",
+                "http://10.0.0.5:5240/MAAS",
+                "--database-uri",
+                "postgres://maas:pwd@localhost/db",
+            ]
+        )
+        self.cmd(options)
+        settings = self.mock_maas_configuration().update.call_args[0][0]
+        self.assertNotIn("temporal_bind", settings)
+        self.assertNotIn("temporal_server", settings)
+
     def test_init_snap_clears_certificates_dir(self):
         self.mock_maas_configuration = self.patch(snap, "MAASConfiguration")
         self.patch(snap, "set_rpc_secret")

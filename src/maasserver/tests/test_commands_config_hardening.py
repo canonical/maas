@@ -276,7 +276,7 @@ class TestConfigHardeningEnable(_Base):
         )
         return mock_cfg
 
-    def test_sets_config_and_seeds_unset_binds(self):
+    def test_sets_config_and_seeds_unset_prometheus_bind(self):
         with (
             patch("maasserver.models.Config") as MockConfig,
             patch(
@@ -291,7 +291,6 @@ class TestConfigHardeningEnable(_Base):
             self._cmd(command="enable")
 
         self.assertEqual("127.0.0.1", mock_cfg.prometheus_bind)
-        self.assertEqual("127.0.0.1", mock_cfg.temporal_bind)
 
     def test_skips_seeding_when_binds_already_set(self):
         with (

@@ -214,6 +214,7 @@ APIServerRule = Rule(
     Allow("OpenSSL|OpenSSL.**"),
     Allow("prometheus_client|prometheus_client.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
+    Allow("provisioningserver.config.*"),
     Allow("provisioningserver.certificates.*"),
     Allow("provisioningserver.drivers.**"),
     Allow("provisioningserver.path.get_maas_data_path"),
@@ -424,6 +425,7 @@ RegionControllerWorkerRule = Rule(
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasapiserver.**"),
     Allow("apiclient.maas_client.MAASOAuth"),
+    Allow("maasserver.config.get_temporal_connect_address"),
     Allow("maasserver.rpc.getAllClients"),
     Allow("maasserver.workflow.**"),
     Allow("maasserver.utils.**"),
