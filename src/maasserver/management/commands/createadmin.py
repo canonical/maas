@@ -144,10 +144,14 @@ class Command(BaseCommandWithConnection):
     def handle(self, *args, **options):
         from django.contrib.auth.models import User
 
+        from maascommon.hardening import configure_hardening
         from maascommon.password_policy import enforce_password_complexity
         from maasserver.macaroon_auth import external_auth_enabled
         from maasserver.models import SSHKey
+        from maasserver.models.config import read_hardening_enabled_from_db
         from maasserver.models.sshkey import ImportSSHKeysError
+
+        configure_hardening(read_hardening_enabled_from_db())
 
         username = options.get("username")
         password = options.get("password")
