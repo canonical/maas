@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import argparse
+import json
 import sys
 from textwrap import dedent
 
@@ -88,6 +89,19 @@ def add_arguments(parser):
     for name, driver in PowerDriverRegistry:
         sub = subparsers.add_parser(name, help=driver.description)
         _create_subparser(driver.settings, sub)
+        if driver.can_set_boot_order:
+            # Registered on the driver subparser (not the top-level parser)
+            # because the subparser consumes all trailing arguments, and the
+            # agent appends --order after the driver options.
+            sub.add_argument(
+                "--order",
+                dest="order",
+                default=None,
+                help=(
+                    "JSON-encoded ordered list of boot devices, used with "
+                    "the set-boot-order command."
+                ),
+            )
 
 
 def _parse_args(argv):
@@ -103,8 +117,8 @@ async def _run(reactor, args, driver_registry=PowerDriverRegistry):
 
     if command == "set-boot-order" and driver.can_set_boot_order:
         order = []
-        if hasattr(args, "order"):
-            order = args.order.split(",")
+        if getattr(args, "order", None):
+            order = json.loads(args.order)
         await driver.set_boot_order(None, context, order)
     elif args.is_dpu:
         if command in ["on", "cycle", "reset"]:

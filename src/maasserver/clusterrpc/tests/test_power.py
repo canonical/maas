@@ -14,7 +14,6 @@ from maasserver.clusterrpc.power import (
     power_driver_check,
     power_query,
     power_query_all,
-    set_boot_order,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -25,11 +24,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from provisioningserver.enum import POWER_STATE
-from provisioningserver.rpc.cluster import (
-    PowerDriverCheck,
-    PowerQuery,
-    SetBootOrder,
-)
+from provisioningserver.rpc.cluster import PowerDriverCheck, PowerQuery
 
 wait_for_reactor = wait_for()
 
@@ -144,39 +139,3 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
         self.assertEqual(POWER_STATE.UNKNOWN, power_state)
         self.assertEqual(set(), success_racks)
         self.assertEqual({rack_id}, failed_racks)
-
-
-class TestSetBootOrder(MAASTransactionServerTestCase):
-    """Tests for `set_boot_order`."""
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_set_boot_order(self):
-        client = Mock()
-        node, power_info = yield deferToDatabase(make_node_with_power_info)
-        order = list(range(5))
-
-        yield set_boot_order(
-            client, node.system_id, node.hostname, power_info, order
-        )
-
-        client.assert_called_once_with(
-            SetBootOrder,
-            system_id=node.system_id,
-            hostname=node.hostname,
-            power_type=power_info.power_type,
-            context=power_info.power_parameters,
-            order=order,
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_set_boot_order_does_nothing(self):
-        client = Mock()
-        node, power_info = yield deferToDatabase(make_node_with_power_info)
-
-        yield set_boot_order(
-            client, node.system_id, node.hostname, power_info, []
-        )
-
-        client.assert_not_called()

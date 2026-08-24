@@ -22,8 +22,11 @@ from maascommon.workflows.power import (
     PowerManyParam,
     PowerOffParam,
     PowerOnParam,
+    PowerParam,
     PowerQueryParam,
     PowerResetParam,
+    SET_BOOT_ORDER_ACTIVITY_NAME,
+    SetBootOrderParam,
 )
 from maasserver.rpc import getAllClients
 from maasservicelayer.builders.nodes import NodeBuilder
@@ -118,6 +121,29 @@ class PowerActivity(ActivityBase):
             await services.nodes.update_by_system_id(params.system_id, builder)
 
 
+async def _apply_boot_order(param: PowerParam) -> None:
+    """Apply a boot order via the agent 'set-boot-order' activity, if supplied.
+
+    Lets the non-deploy power workflows (on/off/cycle) configure boot order on
+    the same Temporal path as the power action, replacing the legacy region RPC
+    SetBootOrder call. No-op when the driver doesn't support ordering
+    (``boot_order`` is None/empty).
+    """
+    if not param.boot_order:
+        return
+    await workflow.execute_activity(
+        SET_BOOT_ORDER_ACTIVITY_NAME,
+        SetBootOrderParam(
+            system_id=param.system_id,
+            power_params=param,
+            order=param.boot_order,
+        ),
+        task_queue=param.task_queue,
+        retry_policy=RetryPolicy(maximum_attempts=3),
+        start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
+    )
+
+
 @workflow.defn(name=POWER_ON_WORKFLOW_NAME, sandboxed=False)
 class PowerOnWorkflow:
     """
@@ -126,6 +152,7 @@ class PowerOnWorkflow:
 
     @workflow_run_with_context
     async def run(self, param: PowerOnParam) -> PowerOnResult:
+        await _apply_boot_order(param)
         result = await workflow.execute_activity(
             POWER_ON_ACTIVITY_NAME,
             {
@@ -149,6 +176,7 @@ class PowerOffWorkflow:
 
     @workflow_run_with_context
     async def run(self, param: PowerOffParam) -> PowerOffResult:
+        await _apply_boot_order(param)
         result = await workflow.execute_activity(
             POWER_OFF_ACTIVITY_NAME,
             {
@@ -172,6 +200,7 @@ class PowerCycleWorkflow:
 
     @workflow_run_with_context
     async def run(self, param: PowerCycleParam) -> PowerCycleResult:
+        await _apply_boot_order(param)
         result = await workflow.execute_activity(
             POWER_CYCLE_ACTIVITY_NAME,
             {
@@ -308,6 +337,7 @@ def convert_power_action_to_power_workflow(
     machine: Any,
     extra_params: Optional[Any] = None,
     is_dpu: bool = False,
+    boot_order: Optional[list[dict[str, Any]]] = None,
 ) -> tuple[str, Any]:
     """
     This function converts power action and power parameters into Power
@@ -315,6 +345,10 @@ def convert_power_action_to_power_workflow(
 
     Power is an 'umbrella' workflow that allows execution of multiple Power
     commands at once.
+
+    ``boot_order`` (when the driver supports ordering) is attached to the
+    on/off/cycle params so the workflow applies it via the agent set-boot-order
+    activity, replacing the legacy region RPC SetBootOrder call.
     """
     assert extra_params is not None
 
@@ -328,6 +362,7 @@ def convert_power_action_to_power_workflow(
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
                     is_dpu=is_dpu,
+                    boot_order=boot_order,
                 ),
             )
         case PowerAction.POWER_OFF.value:
@@ -339,6 +374,7 @@ def convert_power_action_to_power_workflow(
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
                     is_dpu=is_dpu,
+                    boot_order=boot_order,
                 ),
             )
         case PowerAction.POWER_CYCLE.value:
@@ -350,6 +386,7 @@ def convert_power_action_to_power_workflow(
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
                     is_dpu=is_dpu,
+                    boot_order=boot_order,
                 ),
             )
         case PowerAction.POWER_QUERY.value:
