@@ -8076,6 +8076,50 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         )
         self.assertEqual(expected_gateways, node.get_default_gateways())
 
+    def test_get_default_gateways_ignores_unconfigured_gateway_link(self):
+        # LP#2162993. An interface set as the default
+        # gateway that is later changed to "Unconfigured" (LINK_UP) should not
+        # be used as the default gateway
+        node = factory.make_Node()
+        nic0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet_a = factory.make_Subnet(
+            cidr="192.168.0.0/24", gateway_ip="192.168.0.1"
+        )
+        subnet_b = factory.make_Subnet(
+            cidr="192.168.1.0/24", gateway_ip="192.168.1.1"
+        )
+        gateway_link = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            interface=nic0,
+            subnet=subnet_a,
+        )
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            interface=nic1,
+            subnet=subnet_b,
+        )
+        node.gateway_link_ipv4 = gateway_link
+        node.save()
+
+        # Simulate setting nic0 to "Unconfigured": the same row is reused
+        # with no IP, which turns it into a LINK_UP link.
+        gateway_link.ip = None
+        with post_commit_hooks:
+            gateway_link.save()
+
+        node = reload_object(node)
+        nic1_gw = GatewayDefinition(
+            interface_id=nic1.id,
+            subnet_id=subnet_b.id,
+            gateway_ip=subnet_b.gateway_ip,
+        )
+        gateways = node.get_default_gateways()
+        self.assertEqual(nic1_gw, gateways.ipv4)
+        self.assertNotIn(
+            nic0.id, [gateway.interface_id for gateway in gateways.all]
+        )
+
     def test_set_initial_net_config_does_nothing_if_skip_networking(self):
         node = factory.make_Node_with_Interface_on_Subnet(skip_networking=True)
         boot_interface = node.get_boot_interface()
