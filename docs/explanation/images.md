@@ -28,7 +28,7 @@ Multiple streams are useful when you:
 - Operate a custom mirror alongside the official Canonical streams
 - Need flexibility to switch between different image sources based on your deployment requirements
 
-Priority values determine precedence: higher values take priority. As a consequence, two streams can't have the same priority.
+Priority values determine precedence: higher values take precedence. As a consequence, two streams can't have the same priority.
 
 You can also disable a boot source to prevent MAAS from downloading images from it. Disabled sources are ignored during image synchronization and won't be considered when multiple streams provide the same image.
 

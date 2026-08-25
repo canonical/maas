@@ -35,7 +35,7 @@ Starting from version 3.8, MAAS supports multiple boot image streams. You can co
 
 #### UI
 
-- *Setting* > *Images* > *Sources*
+- *Settings* > *Images* > *Sources*
 - Add multiple boot sources
 - For each source, set a *Priority* value (higher values have higher priority)
 - Save your configuration
@@ -74,7 +74,7 @@ maas admin boot-sources create \
   priority=50
 ```
 
-When both streams have the same image, MAAS downloads from the stable stream (priority 100) first.
+When both streams have the same image, MAAS downloads it from the stable stream (priority 100).
 
 ### Disable a boot source
 
