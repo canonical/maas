@@ -53,4 +53,4 @@ jobs:
           git config user.name ${{ vars.LANDER_USERNAME }}
           git config user.email ${{ vars.LANDER_EMAIL }}
           ./utilities/version-bump.sh ${{ github.event.inputs.maas_version}} ${{ github.event.inputs.ubuntu_distro }}
-          git push origin HEAD:${GITHUB_REF_NAME} --tags
+          git push origin HEAD:${GITHUB_REF_NAME}
