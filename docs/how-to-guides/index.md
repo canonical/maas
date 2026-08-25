@@ -32,6 +32,7 @@ This section covers how to enlist machines into MAAS, test and commission them, 
   * [Custom images: building, using, and maintaining](/how-to-guides/build-custom-images.md)
   * [Ephemeral deployments](/how-to-guides/manage-machines.md#deploy-machines)
   * DPU deployments
+    * [Prepare a DPU](/how-to-guides/prepare-a-dpu.md)
     * [Deploy DPUs with BMC (BlueField 3)](/how-to-guides/deploy-dpus.md)
     * [Deploy DPUs without BMC (BlueField 2)](/how-to-guides/deploy-dpus-without-bmc.md)
     * [Deploy a host-DPU pair using Terraform](/how-to-guides/deploy-a-dpu-host-pair.md)
@@ -136,6 +137,7 @@ deploy-a-real-time-kernel
 deploy-a-fips-kernel
 set-up-air-gapped-maas
 script-maas-with-python
+prepare-a-dpu
 deploy-dpus
 deploy-dpus-without-bmc
 deploy-a-dpu-host-pair
