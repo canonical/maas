@@ -27,6 +27,76 @@ CLI
 BOOT_SOURCE_ID=$(maas $PROFILE boot-sources read)
 ```
 
+## Multiple image streams support
+
+Starting from version 3.8, MAAS supports multiple boot image streams. You can configure multiple SimpleStreams sources simultaneously, each with a priority value. When the same image is available in multiple streams, MAAS downloads it from the one with the highest priority.
+
+### Configure multiple boot sources
+
+#### UI
+
+- *Setting* > *Images* > *Sources*
+- Add multiple boot sources
+- For each source, set a *Priority* value (higher values have higher priority)
+- Save your configuration
+
+#### CLI
+
+```text
+# List current boot sources and their priorities
+maas $PROFILE boot-sources read
+
+# Add a new boot source with a priority value
+maas $PROFILE boot-sources create \
+  url=$URL \
+  keyring_filename=$KEYRING_FILE \
+  priority=$PRIORITY_VALUE
+
+# Update an existing boot source priority
+maas $PROFILE boot-source update $SOURCE_ID priority=$PRIORITY_VALUE
+```
+
+Replace `$URL` with your SimpleStreams URL, `$KEYRING_FILE` with the keyring path, and `$PRIORITY_VALUE` with an integer (higher values take precedence).
+
+### Example: Stable with candidate fallback
+
+```text
+# Add stable stream with high priority
+maas admin boot-sources create \
+  url=http://images.maas.io/ephemeral-v3/stable \
+  keyring_filename=/snap/maas/current/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg \
+  priority=100
+
+# Add candidate stream with lower priority
+maas admin boot-sources create \
+  url=http://images.maas.io/ephemeral-v3/candidate \
+  keyring_filename=/snap/maas/current/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg \
+  priority=50
+```
+
+When both streams have the same image, MAAS downloads from the stable stream (priority 100) first.
+
+### Disable a boot source
+
+You can disable a boot source to prevent MAAS from downloading images from it. Disabled sources are excluded from image synchronization.
+
+#### UI
+
+- *Settings* > *Images* > *Sources*
+- Find the boot source you want to disable
+- Toggle the *Enabled* switch to off
+- Save your configuration
+
+#### CLI
+
+```text
+# Disable a boot source
+maas $PROFILE boot-source update $SOURCE_ID enabled=false
+
+# Re-enable a boot source
+maas $PROFILE boot-source update $SOURCE_ID enabled=true
+```
+
 ## Manage images
 
 Images must be downloaded before deployment. Choose which ones to keep locally.
