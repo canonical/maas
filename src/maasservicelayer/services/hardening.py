@@ -29,14 +29,15 @@ _INSECURE_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
 
 # Keys where an empty value is not a wildcard violation: the consuming
 # service derives a specific, non-wildcard address at runtime when unset
-# (see `RegionTemporalService`/`RegionHTTPService`/`resolve_bind_address`/
-# `resolve_bind_addresses`). An explicit wildcard value (e.g. `0.0.0.0`) is
-# still flagged below. `rpc_bind` and `dns_bind` are deliberately excluded:
-# left unset, they don't get a maas_url-derived default (rack controllers
-# fall back to discovering the region's addresses for `rpc_bind`; `dns_bind`
-# must be explicitly picked since it has to serve every managed subnet, not
-# just the one that reaches `maas_url`).
-_AUTO_DERIVED_BIND_KEYS = frozenset({"temporal_bind", "api_bind", "api_bind6"})
+# (see `RegionTemporalService`/`RegionHTTPService`/`eventloop.
+# resolve_rpc_bind_addresses`/`resolve_bind_address`/`resolve_bind_addresses`).
+# An explicit wildcard value (e.g. `0.0.0.0`) is still flagged below.
+# `dns_bind` is deliberately excluded: it has no maas_url-derived default,
+# since it must be explicitly picked to serve every managed subnet, not
+# just the one that reaches `maas_url`.
+_AUTO_DERIVED_BIND_KEYS = frozenset(
+    {"temporal_bind", "api_bind", "api_bind6", "rpc_bind"}
+)
 
 
 def _ident(code: str) -> str:

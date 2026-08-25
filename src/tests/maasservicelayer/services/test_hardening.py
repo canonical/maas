@@ -204,7 +204,7 @@ class TestValidateBindings:
 
     # Keys where an empty/unset value derives a real address at runtime
     # (see `_AUTO_DERIVED_BIND_KEYS`), so it's never a wildcard violation.
-    _AUTO_DERIVED = ("api_bind", "api_bind6", "temporal_bind")
+    _AUTO_DERIVED = ("api_bind", "api_bind6", "temporal_bind", "rpc_bind")
 
     def _validator(self, **overrides) -> HardeningValidator:
         kwargs = {**self._ALL_SPECIFIC, **overrides}
@@ -227,8 +227,9 @@ class TestValidateBindings:
             )
 
     def test_auto_derived_keys_unset_produce_no_violation(self) -> None:
-        # api_bind/api_bind6/temporal_bind are auto-derived from maas_url
-        # at runtime when unset (see resolve_bind_address/
+        # api_bind/api_bind6/temporal_bind/rpc_bind are auto-derived from
+        # maas_url at runtime when unset (see
+        # eventloop.resolve_rpc_bind_addresses/resolve_bind_address/
         # resolve_bind_addresses), so an empty value is not a wildcard
         # violation.
         for key in self._AUTO_DERIVED:

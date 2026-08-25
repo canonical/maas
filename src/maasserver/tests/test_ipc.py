@@ -71,8 +71,9 @@ class TestGetIPCSocketPath(MAASTestCase):
 
 
 class TestIPCMasterServiceGetListenAddresses(MAASTestCase):
-    """`_getListenAddresses` prefers a configured `rpc_bind` over
-    discovering this host's routable addresses."""
+    """`_getListenAddresses` mirrors `eventloop.resolve_rpc_bind_addresses`,
+    the same resolution `RegionService` uses to bind, so what's advertised
+    to rack controllers always matches what's actually listening."""
 
     def test_prefers_configured_rpc_bind(self):
         from maasserver.config import RegionConfiguration
@@ -90,8 +91,9 @@ class TestIPCMasterServiceGetListenAddresses(MAASTestCase):
             master._getListenAddresses(5250),
         )
 
-    def test_falls_back_to_discovery_when_unset(self):
+    def test_derives_from_maas_url_when_unset(self):
         from maasserver.config import RegionConfiguration
+        import provisioningserver.utils.network as network_module
 
         master = IPCMasterService(
             reactor, socket_path=os.path.join(self.make_dir(), "ipc.sock")
@@ -99,7 +101,32 @@ class TestIPCMasterServiceGetListenAddresses(MAASTestCase):
         mock_open = self.patch(RegionConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
         mock_cfg.rpc_bind = []
+        mock_cfg.maas_url = "http://10.0.0.9:5240/MAAS"
         mock_open.return_value.__exit__.return_value = False
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.9"
+
+        self.assertEqual(
+            {("10.0.0.9", 5250)},
+            master._getListenAddresses(5250),
+        )
+
+    def test_falls_back_to_discovery_when_maas_url_unresolvable(self):
+        from maasserver.config import RegionConfiguration
+        import provisioningserver.utils.network as network_module
+
+        master = IPCMasterService(
+            reactor, socket_path=os.path.join(self.make_dir(), "ipc.sock")
+        )
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.rpc_bind = []
+        mock_cfg.maas_url = "http://unreachable.invalid:5240/MAAS"
+        mock_open.return_value.__exit__.return_value = False
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
         self.patch(ipc, "get_all_interface_source_addresses").return_value = {
             "10.0.0.9"
         }

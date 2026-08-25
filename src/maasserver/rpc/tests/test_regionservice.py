@@ -774,6 +774,50 @@ class TestRegionService(MAASTestCase):
 
         self.assertEqual([sentinel.port], service.ports)
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_start_up_binds_every_address_in_a_successful_group(self):
+        # A group models one candidate port shared across every
+        # configured rpc_bind address; all endpoints in the group must
+        # bind for the group to count as a success.
+        service = RegionService(sentinel.ipcWorker)
+
+        endpoint_1 = Mock()
+        endpoint_1.listen.return_value = succeed(sentinel.port1)
+        endpoint_2 = Mock()
+        endpoint_2.listen.return_value = succeed(sentinel.port2)
+        service.endpoints = [[endpoint_1, endpoint_2]]
+
+        yield service.startService()
+
+        self.assertEqual([sentinel.port1, sentinel.port2], service.ports)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_start_up_closes_partial_group_before_trying_next_port(self):
+        # If any address in a group fails to bind, every port already
+        # opened for that candidate port is closed again before the next
+        # candidate port is tried.
+        service = RegionService(sentinel.ipcWorker)
+
+        opened_port = Mock()
+        opened_port.stopListening.return_value = succeed(None)
+        endpoint_okay = Mock()
+        endpoint_okay.listen.return_value = succeed(opened_port)
+        endpoint_broken = Mock()
+        endpoint_broken.listen.return_value = fail(factory.make_exception())
+        endpoint_next = Mock()
+        endpoint_next.listen.return_value = succeed(sentinel.port2)
+        service.endpoints = [
+            [endpoint_okay, endpoint_broken],
+            [endpoint_next],
+        ]
+
+        yield service.startService()
+
+        opened_port.stopListening.assert_called_once_with()
+        self.assertEqual([sentinel.port2], service.ports)
+
     @skip("XXX test fails far too often; bug #1582944")
     @wait_for_reactor
     @inlineCallbacks

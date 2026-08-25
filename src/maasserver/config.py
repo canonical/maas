@@ -214,10 +214,10 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     rpc_bind = ConfigurationOption(
         "rpc_bind",
-        "Address(es) the region RPC listener binds to; empty means all "
-        "interfaces. May be a list. Rack controllers dial these "
-        "addresses when set, and fall back to discovering the region's "
-        "local addresses otherwise.",
+        "Address(es) the region RPC listener binds to; empty derives a "
+        "specific address from maas_url. May be a list. Rack "
+        "controllers dial these addresses when set, and the maas_url-"
+        "derived address otherwise.",
         ForEach(
             UnicodeString(accept_python=False),
             convert_to_list=True,

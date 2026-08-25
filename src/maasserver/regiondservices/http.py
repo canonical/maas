@@ -4,7 +4,7 @@
 """HTTP proxy service for the region controller."""
 
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from pathlib import Path
 from socket import AF_INET, AF_INET6
@@ -217,18 +217,12 @@ class _Configuration:
     api_rate_limit_rate: str = "20r/s"
     api_rate_limit_burst: int = 60
     api_conn_limit: int = 100
-    api_bind: list = None
-    api_bind6: list = None
+    api_bind: list = field(default_factory=list)
+    api_bind6: list = field(default_factory=list)
     api_int_bind: str = ""
     api_int_bind6: str = ""
     api_tls_dhparam: str = ""
     maas_url: str = ""
-
-    def __post_init__(self):
-        if self.api_bind is None:
-            self.api_bind = []
-        if self.api_bind6 is None:
-            self.api_bind6 = []
 
     @property
     def tls_enabled(self) -> bool:

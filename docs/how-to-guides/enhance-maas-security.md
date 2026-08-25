@@ -236,10 +236,9 @@ Run `maas config-hardening enable`. This sets `hardening_enabled=on` in the
 MAAS database and seeds `prometheus_bind` to `127.0.0.1` in `regiond.conf`
 if it is not already set — the only key that keeps a loopback default,
 since it's scraped locally by a co-located agent (e.g. grafana-agent).
-`api_bind`, `api_bind6`, and `temporal_bind` are left unset: MAAS derives
-a specific, non-wildcard address for each from `maas_url` at startup.
-`rpc_bind` is also left unset: rack controllers discover the region's
-addresses dynamically instead of dialing a pinned one.
+`api_bind`, `api_bind6`, `temporal_bind`, and `rpc_bind` are left unset:
+MAAS derives a specific, non-wildcard address for each from `maas_url`
+at startup.
 
 ```text
 sudo maas config-hardening enable
@@ -278,8 +277,8 @@ sudo maas config-hardening set prometheus_bind 127.0.0.1
 # Only set it explicitly to pin Temporal to a different interface.
 sudo maas config-hardening set temporal_bind 10.0.0.5
 
-# rpc_bind is left unset by default: rack controllers discover the
-# region's addresses dynamically. Set it explicitly (optionally as a
+# rpc_bind is left unset by default: MAAS derives it from maas_url, the
+# same as api_bind/temporal_bind. Set it explicitly (optionally as a
 # comma-separated list) to pin exactly which address(es) racks dial.
 sudo maas config-hardening set rpc_bind 10.0.0.5
 
