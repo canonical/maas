@@ -28,6 +28,19 @@ from maasservicelayer.db.tables import NodeTable
 from maasservicelayer.services import CacheForServices
 from maasservicelayer.utils.date import utcnow
 from maastemporalworker.workflow import power as power_workflow
+from maastemporalworker.workflow.power import (
+    convert_power_action_to_power_workflow,
+    get_temporal_task_queue_for_bmc,
+    POWER_RESET_ACTIVITY_NAME,
+    PowerActivity,
+    PowerResetResult,
+    PowerResetWorkflow,
+    SetPowerStateParam,
+    UnknownPowerActionException,
+    UnroutablePowerWorkflowException,
+)
+from tests.fixtures.factories.node import create_test_machine_entry
+from tests.maasapiserver.fixtures.db import Fixture
 
 
 class TestFetchTrustedSshHostKeys:
@@ -91,21 +104,6 @@ class TestFetchTrustedSshHostKeys:
             host="10.0.0.1", key_type="ssh-ed25519", public_key="BBBB"
         )
         mocked_manager.objects.filter.assert_called_once_with(host="10.0.0.1")
-
-
-from maastemporalworker.workflow.power import (
-    convert_power_action_to_power_workflow,
-    get_temporal_task_queue_for_bmc,
-    POWER_RESET_ACTIVITY_NAME,
-    PowerActivity,
-    PowerResetResult,
-    PowerResetWorkflow,
-    SetPowerStateParam,
-    UnknownPowerActionException,
-    UnroutablePowerWorkflowException,
-)
-from tests.fixtures.factories.node import create_test_machine_entry
-from tests.maasapiserver.fixtures.db import Fixture
 
 
 @pytest.mark.usefixtures("maasdb")
