@@ -369,7 +369,7 @@ SSH_POWER_DRIVERS = frozenset({"hmc", "mscm", "wedge"})
 def _fetch_trusted_ssh_host_keys(
     driver_type: str, driver_opts: dict
 ) -> list[TrustedSshHostKeyEntry] | None:
-    if driver_type not in SSH_POWER_DRIVERS:
+    if not isinstance(driver_type, str) or driver_type not in SSH_POWER_DRIVERS:
         return None
     power_address = driver_opts.get("power_address")
     if not power_address:
