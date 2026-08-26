@@ -909,11 +909,27 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         "Address the TFTP service binds to.",
         UnicodeString(if_missing=""),
     )
-    squid_bind = ConfigurationOption(
-        "squid_bind",
-        "Address the Squid HTTP proxy service binds to; empty means all "
-        "interfaces. A specific address is required when hardening is active.",
-        UnicodeString(if_missing=""),
+    http_proxy_bind = ConfigurationOption(
+        "http_proxy_bind",
+        "IPv4 address(es) the HTTP proxy service binds to; empty means "
+        "all interfaces. A specific address is required when hardening "
+        "is active. May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    http_proxy_bind6 = ConfigurationOption(
+        "http_proxy_bind6",
+        "IPv6 address(es) the HTTP proxy service binds to; empty means "
+        "all interfaces. A specific address is required when hardening "
+        "is active. May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
     )
     syslog_bind = ConfigurationOption(
         "syslog_bind",

@@ -204,7 +204,8 @@ class TestValidateBindings:
         "dns_bind": ["10.0.0.3"],
         "dns_bind6": ["fd00::3"],
         "syslog_bind": ["10.0.0.5"],
-        "squid_bind": "10.0.0.6",
+        "http_proxy_bind": ["10.0.0.6"],
+        "http_proxy_bind6": ["fd00::6"],
     }
 
     # Keys where an empty/unset value derives a real address at runtime

@@ -254,15 +254,18 @@ class RackProxy(RackOnlyExternalService):
         )
         try:
             with ClusterConfiguration.open() as cluster_config:
-                squid_bind = str(cluster_config.squid_bind)
+                http_proxy_bind = list(cluster_config.http_proxy_bind)
+                http_proxy_bind6 = list(cluster_config.http_proxy_bind6)
         except Exception:
-            squid_bind = ""
+            http_proxy_bind = []
+            http_proxy_bind6 = []
         proxy_config.write_config(
             configuration.allowed_cidrs,
             peer_proxies=peers,
             prefer_v4_proxy=configuration.prefer_v4_proxy,
             maas_proxy_port=configuration.port,
-            squid_bind=squid_bind,
+            http_proxy_bind=http_proxy_bind,
+            http_proxy_bind6=http_proxy_bind6,
         )
 
 

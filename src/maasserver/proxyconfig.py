@@ -51,8 +51,14 @@ def proxy_update_config(reload_proxy=True):
         }
         try:
             with RegionConfiguration.open() as region_config:
-                if region_config.squid_bind:
-                    kwargs["squid_bind"] = str(region_config.squid_bind)
+                if region_config.http_proxy_bind:
+                    kwargs["http_proxy_bind"] = list(
+                        region_config.http_proxy_bind
+                    )
+                if region_config.http_proxy_bind6:
+                    kwargs["http_proxy_bind6"] = list(
+                        region_config.http_proxy_bind6
+                    )
         except Exception:
             pass
         if (

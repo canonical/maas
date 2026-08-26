@@ -107,7 +107,8 @@ class HardeningValidator:
         dns_bind: Sequence[str] | None = None,
         dns_bind6: Sequence[str] | None = None,
         syslog_bind: Sequence[str] | None = None,
-        squid_bind: str | None = None,
+        http_proxy_bind: Sequence[str] | None = None,
+        http_proxy_bind6: Sequence[str] | None = None,
         database_sslmode: str | None = None,
         fips_declared: bool | None = None,
         fips_active: bool = False,
@@ -131,7 +132,12 @@ class HardeningValidator:
                 list(internal_api_bind6) if internal_api_bind6 else []
             ),
             "syslog_bind": list(syslog_bind) if syslog_bind else [],
-            "squid_bind": [squid_bind] if squid_bind else [],
+            "http_proxy_bind": (
+                list(http_proxy_bind) if http_proxy_bind else []
+            ),
+            "http_proxy_bind6": (
+                list(http_proxy_bind6) if http_proxy_bind6 else []
+            ),
         }
         # dns_bind/dns_bind6 are only meaningful in snap deployments: MAAS
         # owns the whole named.conf there. On Debian-packaged installs MAAS
@@ -377,7 +383,8 @@ def configure_and_validate_hardening(
     dns_bind: Sequence[str] = (),
     dns_bind6: Sequence[str] = (),
     syslog_bind: Sequence[str] = (),
-    squid_bind: str = "",
+    http_proxy_bind: Sequence[str] = (),
+    http_proxy_bind6: Sequence[str] = (),
     database_sslmode: str = "",
     fips_declared: bool | None = None,
     snap_deployment: bool = False,
@@ -405,7 +412,8 @@ def configure_and_validate_hardening(
         dns_bind=dns_bind,
         dns_bind6=dns_bind6,
         syslog_bind=syslog_bind,
-        squid_bind=squid_bind or None,
+        http_proxy_bind=http_proxy_bind,
+        http_proxy_bind6=http_proxy_bind6,
         database_sslmode=database_sslmode or None,
         fips_declared=fips_declared,
         fips_active=is_fips_enabled(),

@@ -46,13 +46,18 @@ def write_config(
     peer_proxies=None,
     prefer_v4_proxy=False,
     maas_proxy_port=8000,
-    squid_bind="",
+    http_proxy_bind=(),
+    http_proxy_bind6=(),
 ):
     """Write the proxy configuration."""
     if peer_proxies is None:
         peer_proxies = []
 
     snap_paths = snap.SnapPaths.from_environ()
+    http_proxy_binds = [
+        *http_proxy_bind,
+        *(f"[{a}]" for a in http_proxy_bind6),
+    ]
     context = {
         "modified": str(datetime.date.today()),
         "fqdn": socket.getfqdn(),
@@ -63,7 +68,7 @@ def write_config(
         "snap_common_path": snap_paths.common,
         "dns_v4_first": prefer_v4_proxy,
         "maas_proxy_port": maas_proxy_port,
-        "squid_bind": squid_bind,
+        "http_proxy_binds": http_proxy_binds,
     }
 
     formatted_peers = []

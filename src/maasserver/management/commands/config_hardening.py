@@ -29,7 +29,8 @@ _CONF_KEYS = frozenset(
         "dns_bind",
         "dns_bind6",
         "syslog_bind",
-        "squid_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
         "database_sslmode",
         "database_sslcert",
         "database_sslkey",
@@ -54,6 +55,8 @@ _LIST_KEYS = frozenset(
         "dns_bind",
         "dns_bind6",
         "syslog_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
     }
 )
 
@@ -286,8 +289,13 @@ class Command(BaseCommandWithConnection):
                     prometheus_bind=str(cfg.prometheus_bind),
                     temporal_bind=str(cfg.temporal_bind),
                     rpc_bind=list(cfg.rpc_bind),
+                    internal_api_bind=list(cfg.internal_api_bind),
+                    internal_api_bind6=list(cfg.internal_api_bind6),
                     dns_bind=list(cfg.dns_bind),
                     dns_bind6=list(cfg.dns_bind6),
+                    syslog_bind=list(cfg.syslog_bind),
+                    http_proxy_bind=list(cfg.http_proxy_bind),
+                    http_proxy_bind6=list(cfg.http_proxy_bind6),
                     database_sslmode=str(cfg.database_sslmode),
                     fips_declared=fips_declared,
                     snap_deployment=running_in_snap(),
