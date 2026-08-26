@@ -21,6 +21,7 @@ from maascommon.workflows.power import (
     PowerOnParam,
     PowerQueryParam,
     PowerResetParam,
+    TrustedSshHostKeyEntry,
 )
 from maasservicelayer.db import Database
 from maasservicelayer.db.tables import NodeTable
@@ -208,7 +209,7 @@ class TestGetTemporalQueueForMachine:
         }
         machine = factory.make_Machine()
         params = namedtuple("params", ["power_type", "power_parameters"])(
-            {}, {}
+            "redfish", {"power_address": "0.0.0.0"}
         )
 
         mocked_get_temporal_task_queue_for_bmc = mocker.patch.object(
@@ -216,6 +217,10 @@ class TestGetTemporalQueueForMachine:
         )
         mocked_get_temporal_task_queue_for_bmc.return_value = (
             "agent:power@vlan-1"
+        )
+
+        mocker.patch.object(
+            power_workflow, "_fetch_trusted_ssh_host_keys", return_value=None
         )
 
         for power_action, param in power_actions.items():  # noqa: B007
@@ -233,7 +238,41 @@ class TestGetTemporalQueueForMachine:
                 driver_type=params.power_type,
                 driver_opts=params.power_parameters,
                 is_dpu=False,
+                trusted_ssh_host_keys=None,
             )
+
+    def test_convert_power_action_to_power_workflow_with_ssh_driver(
+        self, factory, mocker
+    ):
+        machine = factory.make_Machine()
+        params = namedtuple("params", ["power_type", "power_parameters"])(
+            "wedge", {"power_address": "10.0.0.1"}
+        )
+
+        mocked_get_temporal_task_queue_for_bmc = mocker.patch.object(
+            power_workflow, "get_temporal_task_queue_for_bmc"
+        )
+        mocked_get_temporal_task_queue_for_bmc.return_value = (
+            "agent:power@vlan-1"
+        )
+
+        trusted_keys = [
+            TrustedSshHostKeyEntry(
+                host="10.0.0.1", key_type="ssh-rsa", public_key="AAAA"
+            )
+        ]
+        mocker.patch.object(
+            power_workflow,
+            "_fetch_trusted_ssh_host_keys",
+            return_value=trusted_keys,
+        )
+
+        workflow_type, workflow_param = convert_power_action_to_power_workflow(
+            "power-on", machine, params
+        )
+
+        assert workflow_type == "power-on"
+        assert workflow_param.trusted_ssh_host_keys == trusted_keys
 
     def test_convert_power_action_to_power_workflow_fail_unknown(
         self, factory, mocker

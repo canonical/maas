@@ -4,7 +4,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from typing import Any, Callable
 
 from paramiko import (
@@ -22,6 +24,8 @@ from maascommon.logging.security import (
 )
 
 log = logging.getLogger("maas.fips")
+
+MAAS_TRUSTED_SSH_HOST_KEYS_ENV = "MAAS_TRUSTED_SSH_HOST_KEYS"
 
 # Lazy-resolved so tests can override before first RPC, and so this
 # module doesn't pull paramiko transitively via ``provisioningserver.rpc``.
@@ -91,13 +95,34 @@ class TrustedHostKeyPolicy(MissingHostKeyPolicy):
     ) -> bool:
         """Return True iff the host key is trusted per the MAAS region.
 
+        Tries RPC first (available when running in rackd). Falls back to
+        the ``MAAS_TRUSTED_SSH_HOST_KEYS`` environment variable (available
+        when running in the ``maas-power`` subprocess spawned by the agent).
         Called synchronously inside paramiko's SSH handshake (a
         ``deferToThread`` thread), so the Twisted RPC is dispatched via
-        ``blockingCallFromThread``. Any RPC failure returns False (fail-secure);
-        ``fail_open`` returns True without RPC.
+        ``blockingCallFromThread``. Any RPC failure falls back to env var;
+        ``fail_open`` returns True without any lookup.
         """
         if self._fail_open:
             return True
+        try:
+            return self._lookup_trusted_key_via_rpc(
+                hostname, key_type, key_b64
+            )
+        except Exception as exc:
+            log.debug(
+                "TrustedHostKeyPolicy: RPC lookup failed for %s (%s); "
+                "falling back to env var. Error: %s",
+                hostname,
+                key_type,
+                exc,
+            )
+        return self._lookup_trusted_key_via_env(hostname, key_type, key_b64)
+
+    def _lookup_trusted_key_via_rpc(
+        self, hostname: str, key_type: str, key_b64: str
+    ) -> bool:
+        """Return True iff the host key is trusted via the MAAS region RPC."""
         global _rpc_client_factory, _rpc_command
         if _rpc_client_factory is None:
             from provisioningserver.rpc import getRegionClient
@@ -105,28 +130,58 @@ class TrustedHostKeyPolicy(MissingHostKeyPolicy):
 
             _rpc_client_factory = getRegionClient
             _rpc_command = VerifyTrustedSshHostKey
-        try:
-            from twisted.internet import reactor
+        from twisted.internet import reactor
 
-            rpc_client = _rpc_client_factory()
-            result = blockingCallFromThread(
-                reactor,
-                rpc_client,
-                _rpc_command,
-                host=hostname,
-                key_type=key_type,
-                public_key=key_b64,
-            )
-            return bool(result.get("verified", False))
-        except Exception as exc:
+        rpc_client = _rpc_client_factory()
+        result = blockingCallFromThread(
+            reactor,
+            rpc_client,
+            _rpc_command,
+            host=hostname,
+            key_type=key_type,
+            public_key=key_b64,
+        )
+        return bool(result.get("verified", False))
+
+    @staticmethod
+    def _lookup_trusted_key_via_env(
+        hostname: str, key_type: str, key_b64: str
+    ) -> bool:
+        """Return True iff the host key matches one in the env var."""
+        raw = os.environ.get(MAAS_TRUSTED_SSH_HOST_KEYS_ENV)
+        if not raw:
             log.warning(
-                "TrustedHostKeyPolicy: RPC lookup failed for %s (%s); "
-                "rejecting key (fail-secure). Error: %s",
+                "TrustedHostKeyPolicy: no RPC and no %s env var; "
+                "rejecting key for %s (fail-secure).",
+                MAAS_TRUSTED_SSH_HOST_KEYS_ENV,
                 hostname,
-                key_type,
-                exc,
             )
             return False
+        try:
+            keys = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            log.warning(
+                "TrustedHostKeyPolicy: failed to parse %s env var; "
+                "rejecting key for %s (fail-secure).",
+                MAAS_TRUSTED_SSH_HOST_KEYS_ENV,
+                hostname,
+            )
+            return False
+        for entry in keys:
+            if (
+                entry.get("host") == hostname
+                and entry.get("key_type") == key_type
+                and entry.get("public_key") == key_b64
+            ):
+                return True
+        log.warning(
+            "TrustedHostKeyPolicy: key for %s (%s) not found in %s; "
+            "rejecting (fail-secure).",
+            hostname,
+            key_type,
+            MAAS_TRUSTED_SSH_HOST_KEYS_ENV,
+        )
+        return False
 
 
 def make_ssh_client() -> SSHClient:

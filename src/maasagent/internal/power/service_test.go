@@ -29,6 +29,7 @@ const expectedMAASCLIName = "maas.power"
 type testPowerProc struct {
 	name string
 	arg  []string
+	env  []string
 }
 
 func (t testPowerProc) Run() error {
@@ -105,10 +106,11 @@ func TestPowerOn(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -166,10 +168,11 @@ func TestPowerOff(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("off")
@@ -227,10 +230,11 @@ func TestPowerCycle(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -288,10 +292,11 @@ func TestPowerQuery(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("off")
@@ -350,10 +355,11 @@ func TestPowerReset(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -412,10 +418,11 @@ func TestPowerOnDPU(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -474,10 +481,11 @@ func TestPowerCycleDPU(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -537,10 +545,11 @@ func TestPowerResetDPU(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -570,6 +579,125 @@ func TestPowerResetDPU(t *testing.T) {
 	assert.NoError(t, err)
 
 	var res PowerResetResult
+
+	assert.NoError(t, val.Get(&res))
+	assert.Equal(t, expectedResult.State, res.State)
+}
+
+func TestPowerOnWithTrustedSSHHostKeys(t *testing.T) {
+	trustedKeys := []TrustedSSHHostKeyEntry{
+		{Host: "10.0.0.1", KeyType: "ssh-rsa", PublicKey: "AAAA"},
+		{Host: "10.0.0.1", KeyType: "ssh-ed25519", PublicKey: "BBBB"},
+	}
+	param := PowerOnParam{
+		PowerParam: PowerParam{
+			DriverOpts: map[string]any{
+				"power_address": "10.0.0.1",
+				"power_user":    "maas",
+				"power_pass":    "maas",
+			},
+			DriverType:         "wedge",
+			TrustedSSHHostKeys: trustedKeys,
+		},
+	}
+
+	expectedArgs := append([]string{"on", param.DriverType}, fmtPowerOpts(param.DriverOpts)...)
+
+	expectedResult := PowerOnResult{
+		State: "on",
+	}
+
+	var mockedPowerProc testPowerProc
+
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
+		mockedPowerProc = testPowerProc{
+			name: name,
+			arg:  arg,
+			env:  cmdEnv,
+		}
+
+		stdout.WriteString("on")
+
+		return mockedPowerProc
+	}
+
+	pathFactory = func(_ string) (string, error) {
+		return expectedMAASCLIName, nil
+	}
+
+	ps := PowerService{}
+
+	testSuite := &testsuite.WorkflowTestSuite{}
+	env := testSuite.NewTestActivityEnvironment()
+	env.RegisterActivity(ps.PowerOn)
+
+	val, err := env.ExecuteActivity(ps.PowerOn, param)
+
+	assert.Equal(t, expectedMAASCLIName, mockedPowerProc.name)
+	assert.ElementsMatch(t, expectedArgs, mockedPowerProc.arg)
+	assert.Len(t, mockedPowerProc.env, 1)
+	assert.Contains(t, mockedPowerProc.env[0], "MAAS_TRUSTED_SSH_HOST_KEYS=")
+	assert.Contains(t, mockedPowerProc.env[0], "10.0.0.1")
+
+	assert.NoError(t, err)
+
+	var res PowerOnResult
+
+	assert.NoError(t, val.Get(&res))
+	assert.Equal(t, expectedResult.State, res.State)
+}
+
+func TestPowerOnWithoutTrustedSSHHostKeys(t *testing.T) {
+	param := PowerOnParam{
+		PowerParam: PowerParam{
+			DriverOpts: map[string]any{
+				"power_address": "0.0.0.0",
+				"power_user":    "maas",
+				"power_pass":    "maas",
+			},
+			DriverType: "Redfish",
+		},
+	}
+
+	expectedArgs := append([]string{"on", param.DriverType}, fmtPowerOpts(param.DriverOpts)...)
+
+	expectedResult := PowerOnResult{
+		State: "on",
+	}
+
+	var mockedPowerProc testPowerProc
+
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
+		mockedPowerProc = testPowerProc{
+			name: name,
+			arg:  arg,
+			env:  cmdEnv,
+		}
+
+		stdout.WriteString("on")
+
+		return mockedPowerProc
+	}
+
+	pathFactory = func(_ string) (string, error) {
+		return expectedMAASCLIName, nil
+	}
+
+	ps := PowerService{}
+
+	testSuite := &testsuite.WorkflowTestSuite{}
+	env := testSuite.NewTestActivityEnvironment()
+	env.RegisterActivity(ps.PowerOn)
+
+	val, err := env.ExecuteActivity(ps.PowerOn, param)
+
+	assert.Equal(t, expectedMAASCLIName, mockedPowerProc.name)
+	assert.ElementsMatch(t, expectedArgs, mockedPowerProc.arg)
+	assert.Empty(t, mockedPowerProc.env)
+
+	assert.NoError(t, err)
+
+	var res PowerOnResult
 
 	assert.NoError(t, val.Get(&res))
 	assert.Equal(t, expectedResult.State, res.State)
