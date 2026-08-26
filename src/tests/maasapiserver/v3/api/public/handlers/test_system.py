@@ -1,12 +1,11 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 from httpx import AsyncClient
 import pytest
 
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.services import ServiceCollectionV3
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
@@ -26,17 +25,17 @@ class TestSystemApi(ApiCommonTests):
 
     async def test_get_system_info(
         self,
-        services_mock: ServiceCollectionV3,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-        services_mock.configurations = Mock()
-        services_mock.configurations.get = AsyncMock(return_value="3.7.2")
-
         with patch(
             "maasapiserver.v3.api.public.handlers.system.get_fips_status"
         ) as mock_fips:
-            mock_fips.return_value = Mock(enabled=True)
-            response = await mocked_api_client_user.get(self.BASE_PATH)
+            with patch(
+                "maasapiserver.v3.api.public.handlers.system.get_running_version"
+            ) as mock_version:
+                mock_version.return_value = Mock(short_version="3.7.2")
+                mock_fips.return_value = Mock(enabled=True)
+                response = await mocked_api_client_user.get(self.BASE_PATH)
 
         assert response.status_code == 200
         body = response.json()
@@ -48,19 +47,3 @@ class TestSystemApi(ApiCommonTests):
     ) -> None:
         response = await mocked_api_client.get(self.BASE_PATH)
         assert response.status_code == 401
-
-    async def test_get_system_info_no_version_returns_500(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
-    ) -> None:
-        services_mock.configurations = Mock()
-        services_mock.configurations.get = AsyncMock(return_value=None)
-
-        with patch(
-            "maasapiserver.v3.api.public.handlers.system.get_fips_status"
-        ) as mock_fips:
-            mock_fips.return_value = Mock(enabled=False)
-            response = await mocked_api_client_user.get(self.BASE_PATH)
-
-        assert response.status_code == 500
