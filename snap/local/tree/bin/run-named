@@ -6,6 +6,10 @@
 mkdir -p "$SNAP_DATA/bind"
 cp -f "$SNAP"/etc/bind/* "$SNAP_DATA/bind/"
 
+# The stock named.conf.options shipped with the bind9 package is not
+# included by named.conf below, so remove it.
+rm -f "$SNAP_DATA/bind/named.conf.options"
+
 # Overwrite named.conf from the one shipped with the snap.
 cp -f "$SNAP/usr/share/maas/bind/named.conf" "$SNAP_DATA/bind/"
 

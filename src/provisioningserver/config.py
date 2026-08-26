@@ -861,7 +861,22 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     )
     dns_bind = ConfigurationOption(
         "dns_bind",
-        "Address(es) the DNS (Bind9) service binds to. May be a list.",
+        "IPv4 address(es) the DNS (Bind9) service binds to. May be a "
+        "list. Snap installs only: not available (nor validated) on "
+        "Debian-packaged installs, where MAAS does not own the base "
+        "named.conf.options.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    dns_bind6 = ConfigurationOption(
+        "dns_bind6",
+        "IPv6 address(es) the DNS (Bind9) service binds to. May be a "
+        "list. Snap installs only: not available (nor validated) on "
+        "Debian-packaged installs, where MAAS does not own the base "
+        "named.conf.options.",
         ForEach(
             UnicodeString(accept_python=False),
             convert_to_list=True,

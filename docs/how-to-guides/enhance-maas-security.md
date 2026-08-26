@@ -282,10 +282,14 @@ sudo maas config-hardening set temporal_bind 10.0.0.5
 # comma-separated list) to pin exactly which address(es) racks dial.
 sudo maas config-hardening set rpc_bind 10.0.0.5
 
-# dns_bind has no maas_url-derived default: DNS must serve every managed
-# subnet, not just the interface that reaches the API, so hardening
-# always requires picking an address explicitly.
+# dns_bind/dns_bind6 have no maas_url-derived default: DNS must serve
+# every managed subnet, not just the interface that reaches the API, so
+# hardening always requires picking address(es) explicitly. Snap installs
+# only: MAAS owns the whole named.conf there; on Debian-packaged installs
+# these keys are not available (nor validated), since MAAS does not own
+# the base named.conf.options.
 sudo maas config-hardening set dns_bind 10.0.0.5
+sudo maas config-hardening set dns_bind6 fd00::5
 
 # Verify the PostgreSQL server certificate.
 sudo maas config-hardening set database_sslmode verify-full

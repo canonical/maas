@@ -202,6 +202,7 @@ class TestValidateBindings:
         "internal_api_bind": ["10.0.0.4"],
         "internal_api_bind6": ["fd00::4"],
         "dns_bind": ["10.0.0.3"],
+        "dns_bind6": ["fd00::3"],
         "syslog_bind": ["10.0.0.5"],
         "squid_bind": "10.0.0.6",
     }
@@ -220,6 +221,11 @@ class TestValidateBindings:
 
     def _validator(self, **overrides) -> HardeningValidator:
         kwargs = {**self._ALL_SPECIFIC, **overrides}
+        # dns_bind/dns_bind6 are only validated in snap deployments; force
+        # it on here so these per-key tests exercise them like every other
+        # bind key. Snap-gating itself is covered by
+        # `TestValidateDnsBindSnapGating` below.
+        kwargs.setdefault("snap_deployment", True)
         return HardeningValidator(hardening_active=True, **kwargs)
 
     def test_all_specific_addresses_no_violations(self) -> None:
@@ -287,6 +293,47 @@ class TestValidateBindings:
         assert "dns_bind" in codes
         # Other keys are specific — no other violations.
         assert len(v_list) == 2
+
+
+class TestValidateDnsBindSnapGating:
+    """dns_bind/dns_bind6 are only validated in snap deployments."""
+
+    def test_unset_dns_bind_outside_snap_produces_no_violation(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, snap_deployment=False
+        )
+        violations = validator._validate_bindings()
+        assert all(
+            v.config_key not in ("dns_bind", "dns_bind6") for v in violations
+        )
+
+    def test_wildcard_dns_bind_outside_snap_produces_no_violation(
+        self,
+    ) -> None:
+        validator = HardeningValidator(
+            hardening_active=True,
+            dns_bind=["0.0.0.0"],
+            dns_bind6=["::"],
+            snap_deployment=False,
+        )
+        violations = validator._validate_bindings()
+        assert all(
+            v.config_key not in ("dns_bind", "dns_bind6") for v in violations
+        )
+
+    def test_unset_dns_bind_in_snap_produces_violations(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, snap_deployment=True
+        )
+        codes = {v.config_key for v in validator._validate_bindings()}
+        assert "dns_bind" in codes
+        assert "dns_bind6" in codes
+
+    def test_snap_deployment_defaults_to_false(self) -> None:
+        validator = HardeningValidator(hardening_active=True)
+        codes = {v.config_key for v in validator._validate_bindings()}
+        assert "dns_bind" not in codes
+        assert "dns_bind6" not in codes
 
 
 class TestValidateFipsDrift:

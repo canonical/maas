@@ -88,6 +88,104 @@ class TestConfigHardeningSet(_Base):
         self.assertEqual(1, ctx.exception.code)
 
 
+class TestConfigHardeningSnapOnlyKeys(_Base):
+    def test_set_dns_bind_refused_outside_snap(self):
+        with patch(
+            "maasserver.management.commands.config_hardening.running_in_snap",
+            return_value=False,
+        ):
+            with self.assertRaises(SystemExit) as ctx:
+                self._cmd(command="set", key="dns_bind", value="10.0.0.1")
+        self.assertEqual(1, ctx.exception.code)
+
+    def test_set_dns_bind6_refused_outside_snap(self):
+        with patch(
+            "maasserver.management.commands.config_hardening.running_in_snap",
+            return_value=False,
+        ):
+            with self.assertRaises(SystemExit) as ctx:
+                self._cmd(command="set", key="dns_bind6", value="fd00::1")
+        self.assertEqual(1, ctx.exception.code)
+
+    def test_set_dns_bind_allowed_in_snap(self):
+        with (
+            patch(
+                "maasserver.management.commands.config_hardening.running_in_snap",
+                return_value=True,
+            ),
+            patch(
+                "maasserver.management.commands.config_hardening.RegionConfiguration"
+            ) as MockRegionCfg,
+        ):
+            mock_cfg = MagicMock()
+            MockRegionCfg.open_for_update.return_value.__enter__ = MagicMock(
+                return_value=mock_cfg
+            )
+            MockRegionCfg.open_for_update.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
+            self._cmd(command="set", key="dns_bind", value="10.0.0.1")
+        self.assertEqual(["10.0.0.1"], mock_cfg.dns_bind)
+
+    def test_get_dns_bind_refused_outside_snap(self):
+        with patch(
+            "maasserver.management.commands.config_hardening.running_in_snap",
+            return_value=False,
+        ):
+            with self.assertRaises(SystemExit) as ctx:
+                self._cmd(command="get", key="dns_bind")
+        self.assertEqual(1, ctx.exception.code)
+
+    def test_list_excludes_dns_bind_outside_snap(self):
+        with (
+            patch(
+                "maasserver.management.commands.config_hardening.running_in_snap",
+                return_value=False,
+            ),
+            patch(
+                "maasserver.management.commands.config_hardening.RegionConfiguration"
+            ) as MockRegionCfg,
+            patch("maasserver.models.Config") as MockConfig,
+        ):
+            mock_cfg = MagicMock()
+            MockRegionCfg.open.return_value.__enter__ = MagicMock(
+                return_value=mock_cfg
+            )
+            MockRegionCfg.open.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
+            MockConfig.objects.db_manager.return_value.get_config.return_value = None
+            cmd = self._cmd(command="list")
+        self.assertNotIn("dns_bind ", cmd.stdout.getvalue())
+        self.assertNotIn("dns_bind6", cmd.stdout.getvalue())
+
+    def test_list_includes_dns_bind_in_snap(self):
+        with (
+            patch(
+                "maasserver.management.commands.config_hardening.running_in_snap",
+                return_value=True,
+            ),
+            patch(
+                "maasserver.management.commands.config_hardening.RegionConfiguration"
+            ) as MockRegionCfg,
+            patch(
+                "maasserver.certificates.get_maas_certificate",
+                return_value=None,
+            ),
+            patch("maasserver.models.Config") as MockConfig,
+        ):
+            mock_cfg = MagicMock()
+            MockRegionCfg.open.return_value.__enter__ = MagicMock(
+                return_value=mock_cfg
+            )
+            MockRegionCfg.open.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
+            MockConfig.objects.db_manager.return_value.get_config.return_value = None
+            cmd = self._cmd(command="list")
+        self.assertIn("dns_bind6", cmd.stdout.getvalue())
+
+
 class TestConfigHardeningGet(_Base):
     def test_get_conf_key_reads_from_regiond_conf(self):
         with patch(
@@ -101,6 +199,7 @@ class TestConfigHardeningGet(_Base):
             mock_cfg.temporal_bind = "127.0.0.1"
             mock_cfg.rpc_bind = "127.0.0.1"
             mock_cfg.dns_bind = ""
+            mock_cfg.dns_bind6 = ""
             mock_cfg.database_sslmode = "prefer"
             mock_cfg.database_sslcert = ""
             mock_cfg.database_sslkey = ""
@@ -132,6 +231,7 @@ class TestConfigHardeningGet(_Base):
             mock_cfg.temporal_bind = ""
             mock_cfg.rpc_bind = ""
             mock_cfg.dns_bind = ""
+            mock_cfg.dns_bind6 = ""
             mock_cfg.database_sslmode = ""
             mock_cfg.database_sslcert = ""
             mock_cfg.database_sslkey = ""
@@ -167,6 +267,7 @@ class TestConfigHardeningValidate(_Base):
             temporal_bind="",
             rpc_bind=[],
             dns_bind=[],
+            dns_bind6=[],
             database_sslmode="",
         )
 

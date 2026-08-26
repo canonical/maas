@@ -69,6 +69,7 @@ from provisioningserver.utils.env import (
     MAAS_SHARED_SECRET,
     MAAS_UUID,
 )
+from provisioningserver.utils.snap import running_in_snap
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
 from provisioningserver.utils.version import get_versions_info
 
@@ -366,10 +367,12 @@ def inner_start_up(master=False):
                     internal_api_bind=list(_hcfg.internal_api_bind),
                     internal_api_bind6=list(_hcfg.internal_api_bind6),
                     dns_bind=list(_hcfg.dns_bind),
+                    dns_bind6=list(_hcfg.dns_bind6),
                     syslog_bind=list(_hcfg.syslog_bind),
                     squid_bind=str(_hcfg.squid_bind),
                     database_sslmode=str(_hcfg.database_sslmode),
                     fips_declared=read_fips_declared_from_db(),
+                    snap_deployment=running_in_snap(),
                 )
         except Exception:
             logger.error(

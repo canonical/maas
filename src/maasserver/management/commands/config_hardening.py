@@ -12,6 +12,7 @@ from maasserver.management.commands.base import BaseCommandWithConnection
 from maasservicelayer.services.hardening import (
     configure_and_validate_hardening,
 )
+from provisioningserver.utils.snap import running_in_snap
 
 _CONFIG_KEYS = frozenset({"hardening_enabled", "fips_enabled"})
 
@@ -26,6 +27,7 @@ _CONF_KEYS = frozenset(
         "internal_api_bind",
         "internal_api_bind6",
         "dns_bind",
+        "dns_bind6",
         "syslog_bind",
         "squid_bind",
         "database_sslmode",
@@ -50,9 +52,15 @@ _LIST_KEYS = frozenset(
         "internal_api_bind",
         "internal_api_bind6",
         "dns_bind",
+        "dns_bind6",
         "syslog_bind",
     }
 )
+
+# Only meaningful in snap deployments: MAAS owns the whole named.conf
+# there. On Debian-packaged installs MAAS does not own the base
+# named.conf.options, so these keys are refused entirely.
+_SNAP_ONLY_KEYS = frozenset({"dns_bind", "dns_bind6"})
 
 _ALL_KNOWN_KEYS = _CONFIG_KEYS | _CONF_KEYS
 
@@ -178,7 +186,14 @@ class Command(BaseCommandWithConnection):
         elif command == "disable":
             self._cmd_disable()
 
+    def _refuse_if_snap_only(self, key: str) -> None:
+        if key in _SNAP_ONLY_KEYS and not running_in_snap():
+            self.stderr.write(f"'{key}' is only available on snap installs.\n")
+            raise SystemExit(1)
+
     def _cmd_set(self, key: str, value: str) -> None:
+        self._refuse_if_snap_only(key)
+
         if key not in _ALL_KNOWN_KEYS:
             self.stderr.write(
                 f"Unknown hardening key '{key}'."
@@ -207,6 +222,7 @@ class Command(BaseCommandWithConnection):
         self.stdout.write(f"Set {key} in DB Config store\n")
 
     def _cmd_get(self, key: str) -> None:
+        self._refuse_if_snap_only(key)
         self.stdout.write(
             f"{key} [{_store_for(key)}] = {self._read_key(key)}\n"
         )
@@ -229,6 +245,8 @@ class Command(BaseCommandWithConnection):
         )
 
         for key in sorted(_ALL_KNOWN_KEYS):
+            if key in _SNAP_ONLY_KEYS and not running_in_snap():
+                continue
             store = _store_for(key)
             value = (
                 conf_values.get(key, "<not in conf>")
@@ -269,8 +287,10 @@ class Command(BaseCommandWithConnection):
                     temporal_bind=str(cfg.temporal_bind),
                     rpc_bind=list(cfg.rpc_bind),
                     dns_bind=list(cfg.dns_bind),
+                    dns_bind6=list(cfg.dns_bind6),
                     database_sslmode=str(cfg.database_sslmode),
                     fips_declared=fips_declared,
+                    snap_deployment=running_in_snap(),
                 )
         except Exception as exc:
             self.stderr.write(f"Could not read configuration: {exc}\n")

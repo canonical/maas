@@ -36,6 +36,7 @@ from provisioningserver.dns.zoneconfig import DNSReverseZoneConfig
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.utils.snap import running_in_snap
 
 maaslog = get_maas_logger("dns")
 log = LegacyLogger()
@@ -139,16 +140,27 @@ def dns_update_all_zones(
     # expect this side-effect from calling dns_update_all_zones_now(), and
     # some that call it for this side-effect alone. At present all it does is
     # set the upstream DNS servers, nothing to do with serving zones at all!
+    # dns_bind/dns_bind6 only take effect in snap installs: MAAS writes and
+    # owns the whole named.conf there, whereas on Debian-packaged installs
+    # the base named.conf.options belongs to the system's bind9 package
+    # (MAAS only appends an include line to it), so a listen-on/listen-on-v6
+    # directive from MAAS could not be relied on to take effect.
     try:
         from maasserver.config import RegionConfiguration
 
         with RegionConfiguration.open() as _region_cfg:
-            _dns_bind = _region_cfg.dns_bind
+            if running_in_snap():
+                _dns_bind = _region_cfg.dns_bind
+                _dns_bind6 = _region_cfg.dns_bind6
+            else:
+                _dns_bind = []
+                _dns_bind6 = []
             _dns_allow_transfer = _region_cfg.dns_allow_transfer
             _dns_fetches_per_zone = int(_region_cfg.dns_fetches_per_zone)
             _dns_fetches_per_server = int(_region_cfg.dns_fetches_per_server)
     except Exception:
         _dns_bind = []
+        _dns_bind6 = []
         _dns_allow_transfer = ""
         _dns_fetches_per_zone = 0
         _dns_fetches_per_server = 0
@@ -156,6 +168,7 @@ def dns_update_all_zones(
         upstream_dns=get_upstream_dns(),
         dnssec_validation=get_dnssec_validation(),
         dns_bind=_dns_bind,
+        dns_bind6=_dns_bind6,
         dns_allow_transfer=_dns_allow_transfer,
         dns_fetches_per_zone=_dns_fetches_per_zone,
         dns_fetches_per_server=_dns_fetches_per_server,

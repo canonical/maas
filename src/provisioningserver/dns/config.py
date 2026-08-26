@@ -360,6 +360,7 @@ def set_up_options_conf(overwrite=True, **kwargs):
     kwargs.setdefault("dnssec_validation", "auto")
     kwargs.setdefault("hardening", False)
     kwargs.setdefault("dns_bind", [])
+    kwargs.setdefault("dns_bind6", [])
     # When hardening is active and no explicit value was provided, fall back to
     # the safe hardening defaults.  An explicit falsy value (empty string / 0)
     # keeps the directive out of the config entirely.

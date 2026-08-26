@@ -266,8 +266,22 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     dns_bind = ConfigurationOption(
         "dns_bind",
-        "Address(es) the DNS (Bind9) service binds to when hardening is "
-        "active. May be a list.",
+        "IPv4 address(es) the DNS (Bind9) service binds to when hardening "
+        "is active. May be a list. Snap installs only: MAAS does not own "
+        "the base named.conf.options on Debian-packaged installs, so this "
+        "key is not available (nor validated) there.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    dns_bind6 = ConfigurationOption(
+        "dns_bind6",
+        "IPv6 address(es) the DNS (Bind9) service binds to when hardening "
+        "is active. May be a list. Snap installs only: MAAS does not own "
+        "the base named.conf.options on Debian-packaged installs, so this "
+        "key is not available (nor validated) there.",
         ForEach(
             UnicodeString(accept_python=False),
             convert_to_list=True,

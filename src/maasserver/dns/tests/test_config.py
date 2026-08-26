@@ -355,6 +355,7 @@ class TestDNSConfigModifications(TestDNSServer):
             dnssec_validation="auto",
             upstream_dns=[random_ip],
             dns_bind=[],
+            dns_bind6=[],
             dns_allow_transfer="",
             dns_fetches_per_zone=0,
             dns_fetches_per_server=0,
