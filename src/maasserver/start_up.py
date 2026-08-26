@@ -363,7 +363,11 @@ def inner_start_up(master=False):
                     prometheus_bind=str(_hcfg.prometheus_bind),
                     temporal_bind=str(_hcfg.temporal_bind),
                     rpc_bind=list(_hcfg.rpc_bind),
+                    internal_api_bind=list(_hcfg.internal_api_bind),
+                    internal_api_bind6=list(_hcfg.internal_api_bind6),
                     dns_bind=list(_hcfg.dns_bind),
+                    syslog_bind=list(_hcfg.syslog_bind),
+                    squid_bind=str(_hcfg.squid_bind),
                     database_sslmode=str(_hcfg.database_sslmode),
                     fips_declared=read_fips_declared_from_db(),
                 )

@@ -6,6 +6,7 @@
 from django.conf import settings
 from twisted.internet.defer import succeed
 
+from maasserver.config import RegionConfiguration
 from maasserver.models import Config
 from maasserver.models.subnet import Subnet
 from maasserver.service_monitor import service_monitor
@@ -48,6 +49,12 @@ def proxy_update_config(reload_proxy=True):
             "prefer_v4_proxy": config["prefer_v4_proxy"],
             "maas_proxy_port": config["maas_proxy_port"],
         }
+        try:
+            with RegionConfiguration.open() as region_config:
+                if region_config.squid_bind:
+                    kwargs["squid_bind"] = str(region_config.squid_bind)
+        except Exception:
+            pass
         if (
             config["enable_http_proxy"]
             and config["http_proxy"]

@@ -94,7 +94,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
         self.assertEqual(write_config.call_count, 1)
         self.assertEqual(
             write_config.call_args.kwargs,
-            {"port": port, "promtail_port": None},
+            {"port": port, "promtail_port": None, "bind": []},
         )
         write_local, called_peers = write_config.call_args.args
         self.assertTrue(write_local)

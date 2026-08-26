@@ -900,6 +900,17 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         "interfaces. A specific address is required when hardening is active.",
         UnicodeString(if_missing=""),
     )
+    syslog_bind = ConfigurationOption(
+        "syslog_bind",
+        "Address(es) the syslog service binds to; empty means all "
+        "interfaces. A specific address is required when hardening is "
+        "active. May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
     rpc_bind = ConfigurationOption(
         "rpc_bind",
         "Address the rack RPC client listener binds to; empty means all "

@@ -23,7 +23,11 @@ _CONF_KEYS = frozenset(
         "prometheus_bind",
         "temporal_bind",
         "rpc_bind",
+        "internal_api_bind",
+        "internal_api_bind6",
         "dns_bind",
+        "syslog_bind",
+        "squid_bind",
         "database_sslmode",
         "database_sslcert",
         "database_sslkey",
@@ -38,7 +42,17 @@ _LOOPBACK_SEED_KEYS = frozenset({"prometheus_bind"})
 # Keys backed by a comma-separated list in regiond.conf (see
 # `ForEach` in `maasserver.config`). Every other conf-backed key is a
 # plain scalar string.
-_LIST_KEYS = frozenset({"api_bind", "api_bind6", "rpc_bind", "dns_bind"})
+_LIST_KEYS = frozenset(
+    {
+        "api_bind",
+        "api_bind6",
+        "rpc_bind",
+        "internal_api_bind",
+        "internal_api_bind6",
+        "dns_bind",
+        "syslog_bind",
+    }
+)
 
 _ALL_KNOWN_KEYS = _CONFIG_KEYS | _CONF_KEYS
 

@@ -252,11 +252,17 @@ class RackProxy(RackOnlyExternalService):
             f"http://{upstream}:{configuration.port}"
             for upstream in configuration.upstream_proxies
         )
+        try:
+            with ClusterConfiguration.open() as cluster_config:
+                squid_bind = str(cluster_config.squid_bind)
+        except Exception:
+            squid_bind = ""
         proxy_config.write_config(
             configuration.allowed_cidrs,
             peer_proxies=peers,
             prefer_v4_proxy=configuration.prefer_v4_proxy,
             maas_proxy_port=configuration.port,
+            squid_bind=squid_bind,
         )
 
 
@@ -325,11 +331,17 @@ class RackSyslog(RackOnlyExternalService):
             {"name": name, "ip": ip}
             for name, ip in dict(configuration.forwarders).items()
         ]
+        try:
+            with ClusterConfiguration.open() as cluster_config:
+                bind = list(cluster_config.syslog_bind)
+        except Exception:
+            bind = []
         syslog_config.write_config(
             False,
             forwarders=forwarders,
             port=configuration.port,
             promtail_port=configuration.promtail_port,
+            bind=bind,
         )
 
 

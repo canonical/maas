@@ -224,6 +224,46 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
             if_missing=[],
         ),
     )
+    internal_api_bind = ConfigurationOption(
+        "internal_api_bind",
+        "IPv4 address the internal API server (dialed by maas-agent on "
+        "rack controllers, port 5242) binds to; empty derives a specific "
+        "address from maas_url. May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    internal_api_bind6 = ConfigurationOption(
+        "internal_api_bind6",
+        "IPv6 address the internal API server (dialed by maas-agent on "
+        "rack controllers, port 5242) binds to; empty derives a specific "
+        "address from maas_url. May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    syslog_bind = ConfigurationOption(
+        "syslog_bind",
+        "Address(es) the syslog service binds to; empty means all "
+        "interfaces. A specific address is required when hardening is "
+        "active. May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    squid_bind = ConfigurationOption(
+        "squid_bind",
+        "Address the Squid HTTP proxy service binds to; empty means all "
+        "interfaces. A specific address is required when hardening is "
+        "active.",
+        UnicodeString(if_missing=""),
+    )
     dns_bind = ConfigurationOption(
         "dns_bind",
         "Address(es) the DNS (Bind9) service binds to when hardening is "

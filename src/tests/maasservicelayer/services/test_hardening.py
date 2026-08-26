@@ -199,12 +199,24 @@ class TestValidateBindings:
         "prometheus_bind": "127.0.0.1",
         "temporal_bind": "127.0.0.1",
         "rpc_bind": ["10.0.0.2"],
+        "internal_api_bind": ["10.0.0.4"],
+        "internal_api_bind6": ["fd00::4"],
         "dns_bind": ["10.0.0.3"],
+        "syslog_bind": ["10.0.0.5"],
+        "squid_bind": "10.0.0.6",
     }
 
     # Keys where an empty/unset value derives a real address at runtime
     # (see `_AUTO_DERIVED_BIND_KEYS`), so it's never a wildcard violation.
-    _AUTO_DERIVED = ("api_bind", "api_bind6", "temporal_bind", "rpc_bind")
+    _AUTO_DERIVED = (
+        "api_bind",
+        "api_bind6",
+        "temporal_bind",
+        "rpc_bind",
+        "internal_api_bind",
+        "internal_api_bind6",
+        "prometheus_bind",
+    )
 
     def _validator(self, **overrides) -> HardeningValidator:
         kwargs = {**self._ALL_SPECIFIC, **overrides}
@@ -268,10 +280,10 @@ class TestValidateBindings:
         self,
     ) -> None:
         v_list = self._validator(
-            prometheus_bind=None, dns_bind=None
+            syslog_bind=None, dns_bind=None
         )._validate_bindings()
         codes = [v.config_key for v in v_list]
-        assert "prometheus_bind" in codes
+        assert "syslog_bind" in codes
         assert "dns_bind" in codes
         # Other keys are specific — no other violations.
         assert len(v_list) == 2

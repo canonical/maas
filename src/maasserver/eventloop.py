@@ -262,10 +262,12 @@ def make_PrometheusExporterService():
         REGION_PROMETHEUS_PORT,
     )
 
-    bind_address = ""
+    # Loopback by default; set prometheus_bind to scrape it directly.
+    bind_address = "127.0.0.1"
     try:
         with RegionConfiguration.open() as config:
-            bind_address = str(config.prometheus_bind)
+            if config.prometheus_bind:
+                bind_address = str(config.prometheus_bind)
     except Exception:
         pass
     return create_prometheus_exporter_service(

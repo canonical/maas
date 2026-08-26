@@ -491,6 +491,7 @@ class TestRackProxy(MAASTestCase):
             peer_proxies=expected_peers,
             prefer_v4_proxy=proxy_prefer_v4_proxy,
             maas_proxy_port=proxy_port,
+            squid_bind="",
         )
         service_monitor.reloadService.assert_called_once_with("proxy_rack")
         # If the configuration has not changed then a second call to
@@ -501,6 +502,7 @@ class TestRackProxy(MAASTestCase):
             peer_proxies=expected_peers,
             prefer_v4_proxy=proxy_prefer_v4_proxy,
             maas_proxy_port=proxy_port,
+            squid_bind="",
         )
         service_monitor.reloadService.assert_called_once_with("proxy_rack")
 
@@ -624,6 +626,7 @@ class TestRackSyslog(MAASTestCase):
             forwarders=expected_forwards,
             port=port,
             promtail_port=5555,
+            bind=[],
         )
         service_monitor.restartService.assert_called_once_with("syslog_rack")
         # If the configuration has not changed then a second call to
@@ -634,6 +637,7 @@ class TestRackSyslog(MAASTestCase):
             forwarders=expected_forwards,
             port=port,
             promtail_port=5555,
+            bind=[],
         )
         service_monitor.restartService.assert_called_once_with("syslog_rack")
 

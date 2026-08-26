@@ -30,13 +30,22 @@ _INSECURE_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
 # Keys where an empty value is not a wildcard violation: the consuming
 # service derives a specific, non-wildcard address at runtime when unset
 # (see `RegionTemporalService`/`RegionHTTPService`/`eventloop.
-# resolve_rpc_bind_addresses`/`resolve_bind_address`/`resolve_bind_addresses`).
+# make_PrometheusExporterService`/`resolve_bind_address`/
+# `resolve_bind_addresses`).
 # An explicit wildcard value (e.g. `0.0.0.0`) is still flagged below.
 # `dns_bind` is deliberately excluded: it has no maas_url-derived default,
 # since it must be explicitly picked to serve every managed subnet, not
 # just the one that reaches `maas_url`.
 _AUTO_DERIVED_BIND_KEYS = frozenset(
-    {"temporal_bind", "api_bind", "api_bind6", "rpc_bind"}
+    {
+        "temporal_bind",
+        "api_bind",
+        "api_bind6",
+        "rpc_bind",
+        "internal_api_bind",
+        "internal_api_bind6",
+        "prometheus_bind",
+    }
 )
 
 
@@ -89,7 +98,11 @@ class HardeningValidator:
         prometheus_bind: str | None = None,
         temporal_bind: str | None = None,
         rpc_bind: Sequence[str] | None = None,
+        internal_api_bind: Sequence[str] | None = None,
+        internal_api_bind6: Sequence[str] | None = None,
         dns_bind: Sequence[str] | None = None,
+        syslog_bind: Sequence[str] | None = None,
+        squid_bind: str | None = None,
         database_sslmode: str | None = None,
         fips_declared: bool | None = None,
         fips_active: bool = False,
@@ -104,7 +117,15 @@ class HardeningValidator:
             "prometheus_bind": [prometheus_bind] if prometheus_bind else [],
             "temporal_bind": [temporal_bind] if temporal_bind else [],
             "rpc_bind": list(rpc_bind) if rpc_bind else [],
+            "internal_api_bind": (
+                list(internal_api_bind) if internal_api_bind else []
+            ),
+            "internal_api_bind6": (
+                list(internal_api_bind6) if internal_api_bind6 else []
+            ),
             "dns_bind": list(dns_bind) if dns_bind else [],
+            "syslog_bind": list(syslog_bind) if syslog_bind else [],
+            "squid_bind": [squid_bind] if squid_bind else [],
         }
         self.database_sslmode = database_sslmode
         self.fips_declared = fips_declared
@@ -338,7 +359,11 @@ def configure_and_validate_hardening(
     prometheus_bind: str = "",
     temporal_bind: str = "",
     rpc_bind: Sequence[str] = (),
+    internal_api_bind: Sequence[str] = (),
+    internal_api_bind6: Sequence[str] = (),
     dns_bind: Sequence[str] = (),
+    syslog_bind: Sequence[str] = (),
+    squid_bind: str = "",
     database_sslmode: str = "",
     fips_declared: bool | None = None,
 ) -> list[HardeningViolation]:
@@ -358,7 +383,11 @@ def configure_and_validate_hardening(
         prometheus_bind=prometheus_bind or None,
         temporal_bind=temporal_bind or None,
         rpc_bind=rpc_bind,
+        internal_api_bind=internal_api_bind,
+        internal_api_bind6=internal_api_bind6,
         dns_bind=dns_bind,
+        syslog_bind=syslog_bind,
+        squid_bind=squid_bind or None,
         database_sslmode=database_sslmode or None,
         fips_declared=fips_declared,
         fips_active=is_fips_enabled(),
