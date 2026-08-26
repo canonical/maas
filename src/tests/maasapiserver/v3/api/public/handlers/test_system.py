@@ -1,12 +1,11 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 from httpx import AsyncClient
 import pytest
 
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.services import ServiceCollectionV3
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
@@ -28,7 +27,6 @@ class TestSystemApi(ApiCommonTests):
         self,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-
         with patch(
             "maasapiserver.v3.api.public.handlers.system.get_fips_status"
         ) as mock_fips:
