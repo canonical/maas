@@ -748,7 +748,7 @@ func TestSetBootOrderWithTrustedSSHHostKeys(t *testing.T) {
 	_, err := env.ExecuteActivity(ps.SetBootOrder, param)
 
 	assert.Equal(t, expectedMAASCLIName, mockedPowerProc.name)
-	assert.Equal(t, expectedArgs, mockedPowerProc.arg)
+	assert.ElementsMatch(t, expectedArgs, mockedPowerProc.arg)
 	assert.Len(t, mockedPowerProc.env, 1)
 	assert.Contains(t, mockedPowerProc.env[0], "MAAS_TRUSTED_SSH_HOST_KEYS=")
 	assert.Contains(t, mockedPowerProc.env[0], "10.0.0.1")

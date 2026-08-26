@@ -44,8 +44,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 class TestFetchTrustedSshHostKeys:
-    def test_non_ssh_driver_returns_none(self, mocker):
-        mocker.patch.object(power_workflow, "TrustedSshHostKey", create=True)
+    def test_non_ssh_driver_returns_none(self):
         result = power_workflow._fetch_trusted_ssh_host_keys(
             "redfish", {"power_address": "10.0.0.1"}
         )
@@ -57,7 +56,7 @@ class TestFetchTrustedSshHostKeys:
         )
         assert result is None
 
-    def test_ssh_driver_no_power_address_returns_none(self, mocker):
+    def test_ssh_driver_no_power_address_returns_none(self):
         result = power_workflow._fetch_trusted_ssh_host_keys("wedge", {})
         assert result is None
 
@@ -66,11 +65,9 @@ class TestFetchTrustedSshHostKeys:
         mocked_manager.objects.filter.return_value.values_list.return_value = (
             iter([])
         )
-        mocker.patch.object(
-            power_workflow,
-            "TrustedSshHostKey",
+        mocker.patch(
+            "maasserver.models.trustedsshhostkey.TrustedSshHostKey",
             mocked_manager,
-            create=True,
         )
         result = power_workflow._fetch_trusted_ssh_host_keys(
             "wedge", {"power_address": "10.0.0.1"}
@@ -87,11 +84,9 @@ class TestFetchTrustedSshHostKeys:
                 ]
             )
         )
-        mocker.patch.object(
-            power_workflow,
-            "TrustedSshHostKey",
+        mocker.patch(
+            "maasserver.models.trustedsshhostkey.TrustedSshHostKey",
             mocked_manager,
-            create=True,
         )
         result = power_workflow._fetch_trusted_ssh_host_keys(
             "wedge", {"power_address": "10.0.0.1"}
