@@ -361,6 +361,29 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         )
         client._host_keys.add.assert_not_called()
 
+    def test_env_var_json_object_rejects_host_key(self):
+        from paramiko import SSHException
+
+        policy = TrustedHostKeyPolicy()
+        client = Mock(spec=SSHClient)
+        client._host_keys = Mock()
+        key = make_key_mock()
+
+        self._patch_rpc(rpc_side_effect=RuntimeError("no rpc"))
+
+        self.patch(
+            os, "environ", {MAAS_TRUSTED_SSH_HOST_KEYS_ENV: '{"host":"x"}'}
+        )
+
+        self.assertRaises(
+            SSHException,
+            policy.missing_host_key,
+            client,
+            "host.example",
+            key,
+        )
+        client._host_keys.add.assert_not_called()
+
     def test_rpc_untrusted_rejects_host_key(self):
         from paramiko import SSHException
 

@@ -702,3 +702,56 @@ func TestPowerOnWithoutTrustedSSHHostKeys(t *testing.T) {
 	assert.NoError(t, val.Get(&res))
 	assert.Equal(t, expectedResult.State, res.State)
 }
+
+func TestSetBootOrderWithTrustedSSHHostKeys(t *testing.T) {
+	trustedKeys := []TrustedSSHHostKeyEntry{
+		{Host: "10.0.0.1", KeyType: "ssh-rsa", PublicKey: "AAAA"},
+	}
+	param := SetBootOrderParam{
+		SystemID: "abc123",
+		PowerParams: PowerParam{
+			DriverOpts: map[string]any{
+				"power_address": "10.0.0.1",
+				"power_user":    "maas",
+				"power_pass":    "maas",
+			},
+			DriverType:         "wedge",
+			TrustedSSHHostKeys: trustedKeys,
+		},
+		Order: []map[string]any{{"boot_type": "network", "device": "pxe"}},
+	}
+
+	expectedArgs := []string{"set-boot-order", "wedge", "--power-address", "10.0.0.1", "--power-pass", "maas", "--power-user", "maas", "--order", "''"}
+
+	var mockedPowerProc testPowerProc
+
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
+		mockedPowerProc = testPowerProc{
+			name: name,
+			arg:  arg,
+			env:  cmdEnv,
+		}
+
+		return mockedPowerProc
+	}
+
+	pathFactory = func(_ string) (string, error) {
+		return expectedMAASCLIName, nil
+	}
+
+	ps := PowerService{}
+
+	testSuite := &testsuite.WorkflowTestSuite{}
+	env := testSuite.NewTestActivityEnvironment()
+	env.RegisterActivity(ps.SetBootOrder)
+
+	_, err := env.ExecuteActivity(ps.SetBootOrder, param)
+
+	assert.Equal(t, expectedMAASCLIName, mockedPowerProc.name)
+	assert.Equal(t, expectedArgs, mockedPowerProc.arg)
+	assert.Len(t, mockedPowerProc.env, 1)
+	assert.Contains(t, mockedPowerProc.env[0], "MAAS_TRUSTED_SSH_HOST_KEYS=")
+	assert.Contains(t, mockedPowerProc.env[0], "10.0.0.1")
+
+	assert.NoError(t, err)
+}

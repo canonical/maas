@@ -28,6 +28,73 @@ from maasservicelayer.db.tables import NodeTable
 from maasservicelayer.services import CacheForServices
 from maasservicelayer.utils.date import utcnow
 from maastemporalworker.workflow import power as power_workflow
+
+
+class TestFetchTrustedSshHostKeys:
+    def test_non_ssh_driver_returns_none(self, mocker):
+        mocker.patch.object(
+            power_workflow, "TrustedSshHostKey", create=True
+        )
+        result = power_workflow._fetch_trusted_ssh_host_keys(
+            "redfish", {"power_address": "10.0.0.1"}
+        )
+        assert result is None
+
+    def test_non_string_driver_type_returns_none(self):
+        result = power_workflow._fetch_trusted_ssh_host_keys(
+            {}, {"power_address": "10.0.0.1"}
+        )
+        assert result is None
+
+    def test_ssh_driver_no_power_address_returns_none(self, mocker):
+        result = power_workflow._fetch_trusted_ssh_host_keys(
+            "wedge", {}
+        )
+        assert result is None
+
+    def test_ssh_driver_no_keys_in_db_returns_none(self, mocker):
+        mocked_manager = mocker.MagicMock()
+        mocked_manager.objects.filter.return_value.values_list.return_value = (
+            iter([])
+        )
+        mocker.patch.object(
+            power_workflow,
+            "TrustedSshHostKey",
+            mocked_manager,
+            create=True,
+        )
+        result = power_workflow._fetch_trusted_ssh_host_keys(
+            "wedge", {"power_address": "10.0.0.1"}
+        )
+        assert result is None
+
+    def test_ssh_driver_returns_keys_from_db(self, mocker):
+        mocked_manager = mocker.MagicMock()
+        mocked_manager.objects.filter.return_value.values_list.return_value = iter(
+            [
+                ("10.0.0.1", "ssh-rsa", "AAAA"),
+                ("10.0.0.1", "ssh-ed25519", "BBBB"),
+            ]
+        )
+        mocker.patch.object(
+            power_workflow,
+            "TrustedSshHostKey",
+            mocked_manager,
+            create=True,
+        )
+        result = power_workflow._fetch_trusted_ssh_host_keys(
+            "wedge", {"power_address": "10.0.0.1"}
+        )
+        assert len(result) == 2
+        assert result[0] == TrustedSshHostKeyEntry(
+            host="10.0.0.1", key_type="ssh-rsa", public_key="AAAA"
+        )
+        assert result[1] == TrustedSshHostKeyEntry(
+            host="10.0.0.1", key_type="ssh-ed25519", public_key="BBBB"
+        )
+        mocked_manager.objects.filter.assert_called_once_with(
+            host="10.0.0.1"
+        )
 from maastemporalworker.workflow.power import (
     convert_power_action_to_power_workflow,
     get_temporal_task_queue_for_bmc,

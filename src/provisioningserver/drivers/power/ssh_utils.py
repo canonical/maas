@@ -167,6 +167,14 @@ class TrustedHostKeyPolicy(MissingHostKeyPolicy):
                 hostname,
             )
             return False
+        if not isinstance(keys, list):
+            log.warning(
+                "TrustedHostKeyPolicy: %s env var is not a JSON list; "
+                "rejecting key for %s (fail-secure).",
+                MAAS_TRUSTED_SSH_HOST_KEYS_ENV,
+                hostname,
+            )
+            return False
         for entry in keys:
             if (
                 entry.get("host") == hostname
