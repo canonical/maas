@@ -195,8 +195,8 @@ class _Configuration:
     cert: Optional[Certificate] = None
     port: Optional[int] = None
     hardening_active: bool = False
-    api_rate_limit_rate: str = "10r/s"
-    api_rate_limit_burst: int = 20
+    api_rate_limit_rate: str = "20r/s"
+    api_rate_limit_burst: int = 60
     api_conn_limit: int = 100
     api_bind: str = ""
     api_bind6: str = ""
