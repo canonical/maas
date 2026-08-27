@@ -7,7 +7,6 @@ The preparation work runs on the DPU's host, which reaches the DPU through the `
 
 Today this is done by hand after the host is deployed; this guide describes how to use a deployment script to automate that work.
 
-
 ## Host-side preparation script
 
 A deployment script runs in the host's ephemeral environment, so anything it installs or writes on the host is thrown away on reboot.
