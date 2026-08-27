@@ -18,7 +18,9 @@ NODEJS_ARCH := $(shell \
 	else echo "unknown"; \
 	fi)
 
-UI_REVISION := $(shell git -C $(SRC_DIR) rev-parse HEAD)
+# maas-ui commit from the superproject gitlink ($(SRC_DIR) has no .git in the snap build,
+# so `git -C $(SRC_DIR) rev-parse HEAD` wrongly returns the parent maas repo HEAD).
+UI_REVISION := $(shell git -C $(BASE_DIR) rev-parse 'HEAD:./src' 2>/dev/null || git -C $(SRC_DIR) rev-parse HEAD)
 TARBALL_NAME := maas_ui_$(UI_REVISION).tgz
 
 .DEFAULT_GOAL := build
