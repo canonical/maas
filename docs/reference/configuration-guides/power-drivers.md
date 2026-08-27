@@ -1,6 +1,6 @@
 # Power drivers
 
-The following page catalogs the fields in the "create machine" dialogue for each supported power driver. Note that most of the multiple-choice fields have drop-down menus to assist with your choice.  In the next section we introduce configuring power drivers using the UI. In "CLI parameter expressions," you will find how to configure them using the CLI.
+The following page catalogs the fields in the `create machine` dialogue for each supported power driver. Note that most of the multiple-choice fields have drop-down menus to assist with your choice. In the next section we introduce configuring power drivers using the UI. In `CLI parameter expressions`, you will find how to configure them using the CLI.
 
 ## UI parameter expressions
 
@@ -48,7 +48,7 @@ The following page catalogs the fields in the "create machine" dialogue for each
 
 ### IPMI
 
-Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
+Some of the fields for this power type have fixed choices, indicated in the `Choices` column.
 
 | Form field | Description | Choices | Required |
 |:-----------|:------------|:--------|:---------|
@@ -73,7 +73,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 
 ### Manual power configuration
 
-Manual power configuration means exactly that -- manually configured at the unit -- hence there are no parameters to set in the "create machine" UI.
+Manual power configuration means exactly that -- manually configured at the unit -- hence there are no parameters to set in the `create machine` UI.
 
 ### HP Moonshot - iLO4 (IPMI)
 
@@ -123,10 +123,10 @@ Manual power configuration means exactly that -- manually configured at the unit
 | Host name or IP | Power address for the Proxmox driver | Required |
 | Username, including realm | Power user, along with realm (i.e., Username@Realm) | Required |
 | Password | Required if a token name and secret aren't given | Provisional |
-| API token name | Token name: must include Username without realm (i.e., Username!Token-name | Provisional |
+| API token name | Token name: must include Username without realm (i.e., Username!Token-name) | Provisional |
 | API token secret | Token secret | Provisional |
 | Node ID | VM name or ID | Optional |
-| Verify SSL connections... | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
+| Verify SSL connections… | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
 
 ### OpenBMC Power Driver
 
@@ -157,7 +157,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 
 ### SeaMicro 15000
 
-Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
+Some of the fields for this power type have fixed choices, indicated in the `Choices` column.
 
 | Form field | Description | Choices | Required |
 |:-----|:-----|:-----|:-----|
@@ -218,7 +218,7 @@ Consider a machine backed by VM. Below, a 'Power type' of `Virsh` has been selec
 
 It's important to understand that the Webhook power driver is more generic than other drivers, so it has some flexibility that the underlying power driver may not support. For example, Webhook doesn't require a username or password for the power driver, because not all power drivers work that way. Nevertheless, the power driver you're connecting to Webhook may actually require a username and/or password. Understanding and implementing these fields correctly for the chosen back-end power driver is the user's responsibility.
 
-To that end, the "Required" column for this driver refers only to whether Webhook requires a value in each field. Just because a field is optional for Webhook itself does not mean that the underlying power driver will ultimately allow that field to be unspecified.
+To that end, the `Required` column for this driver refers only to whether Webhook requires a value in each field. Just because a field is optional for Webhook itself does not mean that the underlying power driver will ultimately allow that field to be unspecified.
 
 | Form field | Description | Required (by Webhook) |
 |:-----|:-----|:-----|
@@ -231,7 +231,7 @@ To that end, the "Required" column for this driver refers only to whether Webhoo
 | Power user | Username to log into the power driver | Optional |
 | Power password | Password to access unit | Optional |
 | Power token | Power driver API token (used instead of user and password, if set) | Optional |
-| Verify SSL connections... | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
+| Verify SSL connections… | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
 
 ## CLI parameter expressions
 
@@ -307,7 +307,7 @@ All parameters are entered as `key=value`, e.g., `power_type=lxd`. The MAAS CLI 
 
 All parameters are entered as `key=value`, e.g., `power_type=ipmi`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded. Power driver specific parameters should be prefixed with `power_parameters_{key}`.
 
-Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
+Some of the fields for this power type have fixed choices, indicated in the `Choices` column.
 
 | Form field | Description | Choices | Required |
 |:-----------|:------------|:--------|:---------|
@@ -368,7 +368,7 @@ All parameters are entered as `key=value`, e.g., `power_type=msftocs`. The MAAS 
 |:-----|:-----|:-----|
 | `power_type` | `msftocs` | Required |
 | `power_address` | IP address of unit | Required |
-| `blade_id` | Blade ID (usu. 1-24) | Required |
+| `blade_id` | Blade ID (usually 1-24) | Required |
 | `power_port` | Port where unit is attached | Optional |
 | `power_user` | Username to login | Optional |
 | `power_pass` | Password to access unit | Optional |
@@ -426,7 +426,7 @@ All parameters are entered as `key=value`, e.g., `power_type=redfish`. The MAAS 
 
 All parameters are entered as `key=value`, e.g., `power_type=sm15k`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
-Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
+Some of the fields for this power type have fixed choices, indicated in the `Choices` column.
 
 | Parameter | Description | Choices | Required |
 |:-----|:-----|:-----|:-----|
@@ -507,7 +507,7 @@ If successful, this will return:
 Machine-readable output follows this announcement. The JSON generated by this command is shown in the detail block.
 
 <details><summary>MAAS command JSON response</summary>
-```
+```json
 {
     "storage": 0.0,
     "tag_names": [],
@@ -652,7 +652,7 @@ Machine-readable output follows this announcement. The JSON generated by this co
             "firmware_version": null,
             "parents": [],
             "discovered": null,
-            "params": ",
+            "params": "",
             "links": [],
             "sriov_max_vf": 0,
             "tags": [],
