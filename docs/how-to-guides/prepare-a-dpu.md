@@ -48,8 +48,8 @@ BFB_FILE="/tmp/${BFB_URL##*/}"
 
 echo "== Installing DOCA host tools (provides rshim + bfb-install)"
 curl -fsSL https://linux.mellanox.com/public/repo/doca/GPG-KEY-Mellanox.pub \
-  | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/GPG-KEY-Mellanox.pub >/dev/null
-echo "deb [signed-by=/etc/apt/trusted.gpg.d/GPG-KEY-Mellanox.pub] ${DOCA_URL} ./" \
+  | gpg --dearmor | sudo tee /usr/share/keyrings/mellanox-archive-keyring.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/mellanox-archive-keyring.gpg] ${DOCA_URL} ./" \
   | sudo tee /etc/apt/sources.list.d/doca.list
 sudo apt-get update
 sudo apt-get install -y pv doca-all
