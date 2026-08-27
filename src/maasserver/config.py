@@ -271,13 +271,13 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     api_rate_limit_rate = ConfigurationOption(
         "api_rate_limit_rate",
-        "NGINX rate limit (e.g. '10r/s') applied per client IP.",
-        UnicodeString(if_missing="10r/s"),
+        "NGINX rate limit (e.g. '20r/s') applied per client IP.",
+        UnicodeString(if_missing="20r/s"),
     )
     api_rate_limit_burst = ConfigurationOption(
         "api_rate_limit_burst",
         "NGINX rate limit burst size.",
-        Int(if_missing=20, accept_python=False, min=1),
+        Int(if_missing=60, accept_python=False, min=1),
     )
     api_conn_limit = ConfigurationOption(
         "api_conn_limit",
