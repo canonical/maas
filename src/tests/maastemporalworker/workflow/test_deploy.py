@@ -1826,9 +1826,7 @@ class TestConfirmPoweredOn:
             AsyncMock(side_effect=execute_activity),
         )
         sleep = AsyncMock()
-        mocker.patch(
-            "maastemporalworker.workflow.deploy.asyncio.sleep", sleep
-        )
+        mocker.patch("maastemporalworker.workflow.deploy.asyncio.sleep", sleep)
 
         await DeployWorkflow()._confirm_powered_on(self._params())
         return query_calls, persisted, sleep
@@ -1836,9 +1834,7 @@ class TestConfirmPoweredOn:
     async def test_settles_after_two_consecutive_on_readings(
         self, mocker: MockerFixture
     ) -> None:
-        query_calls, persisted, sleep = await self._drive(
-            mocker, ["on", "on"]
-        )
+        query_calls, persisted, sleep = await self._drive(mocker, ["on", "on"])
 
         assert query_calls == 2
         assert persisted == [PowerState.ON]

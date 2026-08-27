@@ -498,11 +498,7 @@ class DeployWorkflow:
         """Run a power activity (on/off) on the agent for this machine."""
         await workflow.execute_activity(
             activity_name,
-            {
-                "driver_type": params.power_params.driver_type,
-                "driver_opts": params.power_params.driver_opts,
-                "is_dpu": params.power_params.is_dpu,
-            },
+            params.power_params,
             task_queue=params.power_params.task_queue,
             start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
             retry_policy=RetryPolicy(maximum_attempts=3),
