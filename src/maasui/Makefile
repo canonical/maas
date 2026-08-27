@@ -37,7 +37,17 @@ clean: clean-build
 
 # fetch prebuilt UI
 
+# TEMPORARY debug block — remove before merging. Confirms which repo UI_REVISION resolves to.
 fetch-build:
+	@echo ">>> MAASUI-DEBUG BASE_DIR=$(BASE_DIR)"
+	@echo ">>> MAASUI-DEBUG SRC_DIR=$(SRC_DIR)"
+	@echo ">>> MAASUI-DEBUG UI_REVISION=$(UI_REVISION)"
+	@echo ">>> MAASUI-DEBUG TARBALL_NAME=$(TARBALL_NAME)"
+	@echo ">>> MAASUI-DEBUG SRC_DIR/.git exists: $$(test -e '$(SRC_DIR)/.git' && echo yes || echo NO)"
+	@echo ">>> MAASUI-DEBUG git toplevel(SRC_DIR): $$(git -C '$(SRC_DIR)' rev-parse --show-toplevel 2>&1)"
+	@echo ">>> MAASUI-DEBUG git superproject(SRC_DIR): $$(git -C '$(SRC_DIR)' rev-parse --show-superproject-working-tree 2>&1)"
+	@echo ">>> MAASUI-DEBUG git HEAD(SRC_DIR): $$(git -C '$(SRC_DIR)' rev-parse HEAD 2>&1)"
+	@echo ">>> MAASUI-DEBUG tarball HTTP status: $$(curl -sIL -o /dev/null -w '%{http_code}' 'https://assets.ubuntu.com/v1/$(TARBALL_NAME)' 2>&1)"
 	curl -sfL https://assets.ubuntu.com/v1/$(TARBALL_NAME) | tar --recursive-unlink --one-top-level=build --extract -z
 .PHONY: fetch-build
 
