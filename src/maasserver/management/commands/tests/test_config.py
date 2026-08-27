@@ -76,7 +76,10 @@ class TestConfigurationReset(MAASTestCase):
         self.useFixture(RegionConfigurationFixture())
         with RegionConfiguration.open_for_update() as configuration:
             # Give the option a random value.
-            if isinstance(getattr(configuration, self.option), str):
+            current = getattr(configuration, self.option)
+            if isinstance(current, list):
+                value = [factory.make_ipv4_address()]
+            elif isinstance(current, str):
                 value = factory.make_name("foobar")
             else:
                 value = factory.pick_port()

@@ -1080,9 +1080,10 @@ def get_source_address_for_url(
     if not hostname:
         return None
     try:
-        addrinfo = getaddrinfo(
-            hostname, None, family=family or 0, proto=IPPROTO_TCP
-        )
+        kwargs = {"proto": IPPROTO_TCP}
+        if family:
+            kwargs["family"] = family
+        addrinfo = getaddrinfo(hostname, None, **kwargs)
         destination_ip = addrinfo[0][4][0]
     except (gaierror, UnicodeError, IndexError):
         return None
