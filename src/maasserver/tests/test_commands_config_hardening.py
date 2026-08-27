@@ -192,14 +192,14 @@ class TestConfigHardeningGet(_Base):
             "maasserver.management.commands.config_hardening.RegionConfiguration"
         ) as MockRegionCfg:
             mock_cfg = MagicMock()
-            mock_cfg.api_bind = "10.0.0.1"
-            mock_cfg.api_bind6 = ""
+            mock_cfg.api_bind = ["10.0.0.1"]
+            mock_cfg.api_bind6 = []
             mock_cfg.api_tls_dhparam = ""
             mock_cfg.prometheus_bind = "127.0.0.1"
             mock_cfg.temporal_bind = "127.0.0.1"
-            mock_cfg.rpc_bind = "127.0.0.1"
-            mock_cfg.dns_bind = ""
-            mock_cfg.dns_bind6 = ""
+            mock_cfg.rpc_bind = ["127.0.0.1"]
+            mock_cfg.dns_bind = []
+            mock_cfg.dns_bind6 = []
             mock_cfg.database_sslmode = "prefer"
             mock_cfg.database_sslcert = ""
             mock_cfg.database_sslkey = ""
@@ -225,13 +225,13 @@ class TestConfigHardeningGet(_Base):
         ):
             mock_cfg = MagicMock()
             mock_cfg.prometheus_bind = "127.0.0.1"
-            mock_cfg.api_bind = ""
-            mock_cfg.api_bind6 = ""
+            mock_cfg.api_bind = []
+            mock_cfg.api_bind6 = []
             mock_cfg.api_tls_dhparam = ""
             mock_cfg.temporal_bind = ""
-            mock_cfg.rpc_bind = ""
-            mock_cfg.dns_bind = ""
-            mock_cfg.dns_bind6 = ""
+            mock_cfg.rpc_bind = []
+            mock_cfg.dns_bind = []
+            mock_cfg.dns_bind6 = []
             mock_cfg.database_sslmode = ""
             mock_cfg.database_sslcert = ""
             mock_cfg.database_sslkey = ""

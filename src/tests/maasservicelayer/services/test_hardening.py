@@ -218,6 +218,8 @@ class TestValidateBindings:
         "internal_api_bind",
         "internal_api_bind6",
         "prometheus_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
     )
 
     def _validator(self, **overrides) -> HardeningValidator:

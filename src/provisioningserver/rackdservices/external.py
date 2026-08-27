@@ -11,6 +11,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from datetime import timedelta
+from socket import AF_INET, AF_INET6
 from urllib.parse import urlparse
 
 import attr
@@ -44,6 +45,7 @@ from provisioningserver.service_monitor import service_monitor
 from provisioningserver.syslog import config as syslog_config
 from provisioningserver.utils import snap
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET, MAAS_UUID
+from provisioningserver.utils.network import resolve_bind_addresses
 from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
@@ -248,17 +250,39 @@ class RackProxy(RackOnlyExternalService):
 
     def _configure(self, configuration):
         """Update the proxy configuration for the rack."""
+        from maascommon.hardening import is_hardening_enabled
+
         peers = sorted(
             f"http://{upstream}:{configuration.port}"
             for upstream in configuration.upstream_proxies
         )
+        hardening_active = is_hardening_enabled()
+        http_proxy_bind = []
+        http_proxy_bind6 = []
+        maas_url = ""
         try:
             with ClusterConfiguration.open() as cluster_config:
                 http_proxy_bind = list(cluster_config.http_proxy_bind)
                 http_proxy_bind6 = list(cluster_config.http_proxy_bind6)
+                maas_url = (
+                    cluster_config.maas_url[0]
+                    if cluster_config.maas_url
+                    else ""
+                )
         except Exception:
-            http_proxy_bind = []
-            http_proxy_bind6 = []
+            pass
+        http_proxy_bind = resolve_bind_addresses(
+            http_proxy_bind,
+            maas_url,
+            hardening_active=hardening_active,
+            family=AF_INET,
+        )
+        http_proxy_bind6 = resolve_bind_addresses(
+            http_proxy_bind6,
+            maas_url,
+            hardening_active=hardening_active,
+            family=AF_INET6,
+        )
         proxy_config.write_config(
             configuration.allowed_cidrs,
             peer_proxies=peers,

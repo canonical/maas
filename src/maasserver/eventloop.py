@@ -84,13 +84,16 @@ def resolve_rpc_bind_addresses():
     and a bare wildcard bind is avoidable in the common case where
     ``maas_url`` already tells us which interface is reachable.
 
-    Falls back to an empty list -- meaning "bind every interface" -- only
-    if ``maas_url`` itself cannot be resolved to a local address.
+    If ``maas_url`` itself cannot be resolved to a local address, this
+    falls back to loopback under hardening (a wildcard bind is not
+    allowed) or an empty list -- meaning "bind every interface" --
+    otherwise, mirroring `resolve_bind_address`.
 
     :class:`~maasserver.ipc.IPCMasterService._getListenAddresses` calls
     this too, so whatever `RegionService` actually binds to is exactly
     what's advertised to rack controllers over IPC.
     """
+    from maascommon.hardening import is_hardening_enabled
     from maasserver.config import RegionConfiguration
     from provisioningserver.utils.network import get_source_address_for_url
 
@@ -105,7 +108,9 @@ def resolve_rpc_bind_addresses():
     if rpc_bind:
         return rpc_bind
     derived = get_source_address_for_url(maas_url)
-    return [derived] if derived else []
+    if derived:
+        return [derived]
+    return ["127.0.0.1"] if is_hardening_enabled() else []
 
 
 def make_RegionService(ipcWorker):
@@ -256,14 +261,18 @@ def make_IPCWorkerService():
 
 
 def make_PrometheusExporterService():
+    from maascommon.hardening import is_hardening_enabled
     from maasserver.config import RegionConfiguration
     from maasserver.prometheus.service import (
         create_prometheus_exporter_service,
         REGION_PROMETHEUS_PORT,
     )
 
-    # Loopback by default; set prometheus_bind to scrape it directly.
-    bind_address = "127.0.0.1"
+    # Outside hardening, keep the historical default of all interfaces.
+    # Under hardening, loopback is the safe last resort: `prometheus_bind`
+    # is also seeded to 127.0.0.1 by `maas config-hardening enable`, but
+    # this default holds even if that seeding step was skipped.
+    bind_address = "127.0.0.1" if is_hardening_enabled() else ""
     try:
         with RegionConfiguration.open() as config:
             if config.prometheus_bind:

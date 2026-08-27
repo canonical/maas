@@ -701,6 +701,29 @@ class TestRegionService(MAASTestCase):
         return service.starting.addCallback(check)
 
     @wait_for_reactor
+    def test_cancelling_start_up_does_not_try_next_group(self):
+        # A CancelledError from one candidate group must abort the whole
+        # retry loop, not be treated as an ordinary bind failure and
+        # trigger a fall-through attempt at the next candidate port.
+        service = RegionService(sentinel.ipcWorker)
+
+        endpoint_1 = Mock()
+        endpoint_1.listen.return_value = Deferred()
+        endpoint_2 = Mock()
+        endpoint_2.listen.return_value = succeed(sentinel.port2)
+        service.endpoints = [[endpoint_1], [endpoint_2]]
+
+        service.startService()
+        service.starting.cancel()
+
+        def check(port):
+            self.assertIsNone(port)
+            self.assertEqual([], service.ports)
+            endpoint_2.listen.assert_not_called()
+
+        return service.starting.addCallback(check)
+
+    @wait_for_reactor
     @inlineCallbacks
     def test_start_up_errors_are_logged(self):
         ipcWorker = MagicMock()

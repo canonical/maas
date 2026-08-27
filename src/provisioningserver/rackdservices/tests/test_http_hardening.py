@@ -206,4 +206,7 @@ class TestNginxTemplateLocations(MAASTestCase):
         for extra in (None, HARDENING_VARS):
             rendered = _render(extra)
             self.assertIn("location /machine-resources/", rendered)
-            self.assertIn("proxy_pass http://localhost:5249/boot/;", rendered)
+            # The rackd metadata/boot HTTP service (port 5249) binds to
+            # ::1 only (see `ProvisioningServiceMaker._makeHTTPService`),
+            # so nginx must dial it there rather than via "localhost".
+            self.assertIn("proxy_pass http://[::1]:5249/boot/;", rendered)

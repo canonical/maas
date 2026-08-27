@@ -29,7 +29,8 @@ _INSECURE_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
 
 # Keys where an empty value is not a wildcard violation: the consuming
 # service derives a specific, non-wildcard address at runtime when unset
-# (see `RegionTemporalService`/`RegionHTTPService`/`eventloop.
+# (see `RegionTemporalService`/`RegionHTTPService`/`RackProxy`/
+# `proxyconfig.proxy_update_config`/`eventloop.
 # make_PrometheusExporterService`/`resolve_bind_address`/
 # `resolve_bind_addresses`).
 # An explicit wildcard value (e.g. `0.0.0.0`) is still flagged below.
@@ -49,6 +50,8 @@ _AUTO_DERIVED_BIND_KEYS = frozenset(
         "internal_api_bind",
         "internal_api_bind6",
         "prometheus_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
     }
 )
 
@@ -139,10 +142,7 @@ class HardeningValidator:
                 list(http_proxy_bind6) if http_proxy_bind6 else []
             ),
         }
-        # dns_bind/dns_bind6 are only meaningful in snap deployments: MAAS
-        # owns the whole named.conf there. On Debian-packaged installs MAAS
-        # does not own the base named.conf.options, so neither key is
-        # validated (or otherwise available) there.
+        # Snap-only; see _AUTO_DERIVED_BIND_KEYS above for why.
         if self._snap_deployment:
             self._binds["dns_bind"] = list(dns_bind) if dns_bind else []
             self._binds["dns_bind6"] = list(dns_bind6) if dns_bind6 else []

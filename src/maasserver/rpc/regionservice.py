@@ -989,21 +989,25 @@ class RegionService(service.Service):
             up: groups are tried in order, and the failure from every
             group but the last is silently discarded, exactly as trying
             the next port in the range was before. If every group fails,
-            the last failure is logged (unless it is a cancellation) and
-            an empty list is returned so start-up still completes and
-            reports a (nonexistent) port to the IPC master, as before.
+            the last failure is logged and an empty list is returned so
+            start-up still completes and reports a (nonexistent) port to
+            the IPC master, as before. A `CancelledError` from any group
+            is never treated as "try the next port": it propagates
+            immediately, so cancelling `startService` aborts the retry
+            loop instead of silently continuing or swallowing the
+            cancellation on the last group.
         """
         last = len(groups) - 1
         for index, group in enumerate(groups):
             try:
                 ports = yield self._bindAll(group, factory)
+            except defer.CancelledError:
+                raise
             except Exception:
                 if index == last:
-                    failure = Failure()
-                    if not failure.check(defer.CancelledError):
-                        log.err(
-                            failure, "RegionServer endpoint failed to listen."
-                        )
+                    log.err(
+                        Failure(), "RegionServer endpoint failed to listen."
+                    )
             else:
                 returnValue(ports)
         returnValue([])
