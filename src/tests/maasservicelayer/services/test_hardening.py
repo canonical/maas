@@ -218,6 +218,7 @@ class TestValidateBindings:
         "internal_api_bind",
         "internal_api_bind6",
         "prometheus_bind",
+        "syslog_bind",
         "http_proxy_bind",
         "http_proxy_bind6",
     )
@@ -289,11 +290,11 @@ class TestValidateBindings:
         self,
     ) -> None:
         v_list = self._validator(
-            syslog_bind=None, dns_bind=None
+            dns_bind=None, dns_bind6=None
         )._validate_bindings()
         codes = [v.config_key for v in v_list]
-        assert "syslog_bind" in codes
         assert "dns_bind" in codes
+        assert "dns_bind6" in codes
         # Other keys are specific — no other violations.
         assert len(v_list) == 2
 

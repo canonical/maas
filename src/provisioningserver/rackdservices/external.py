@@ -351,6 +351,8 @@ class RackSyslog(RackOnlyExternalService):
 
     def _configure(self, configuration):
         """Update the syslog configuration for the rack."""
+        from maascommon.hardening import is_hardening_enabled
+
         # Convert the frozenset to a dictionary before constructing the
         # dictionary that `syslog_config.write_config` expects. This ensures
         # that only unique regions are included in the forwarders.
@@ -358,11 +360,21 @@ class RackSyslog(RackOnlyExternalService):
             {"name": name, "ip": ip}
             for name, ip in dict(configuration.forwarders).items()
         ]
+        bind = []
+        maas_url = ""
         try:
             with ClusterConfiguration.open() as cluster_config:
                 bind = list(cluster_config.syslog_bind)
+                maas_url = (
+                    cluster_config.maas_url[0]
+                    if cluster_config.maas_url
+                    else ""
+                )
         except Exception:
-            bind = []
+            pass
+        bind = resolve_bind_addresses(
+            bind, maas_url, hardening_active=is_hardening_enabled()
+        )
         syslog_config.write_config(
             False,
             forwarders=forwarders,

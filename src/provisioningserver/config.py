@@ -935,7 +935,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         "syslog_bind",
         "Address(es) the syslog service binds to; empty means all "
         "interfaces. A specific address is required when hardening is "
-        "active. May be a list.",
+        "active (derived from maas_url if unset). May be a list.",
         ForEach(
             UnicodeString(accept_python=False),
             convert_to_list=True,

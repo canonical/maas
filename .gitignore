@@ -44,3 +44,4 @@ __pycache__
 .#*
 *.*.swp
 /.dev-certificates
+.ai/

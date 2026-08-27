@@ -30,8 +30,8 @@ _INSECURE_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
 # Keys where an empty value is not a wildcard violation: the consuming
 # service derives a specific, non-wildcard address at runtime when unset
 # (see `RegionTemporalService`/`RegionHTTPService`/`RackProxy`/
-# `proxyconfig.proxy_update_config`/`eventloop.
-# make_PrometheusExporterService`/`resolve_bind_address`/
+# `RegionSyslogService`/`RackSyslog`/`proxyconfig.proxy_update_config`/
+# `eventloop.make_PrometheusExporterService`/`resolve_bind_address`/
 # `resolve_bind_addresses`).
 # An explicit wildcard value (e.g. `0.0.0.0`) is still flagged below.
 # `dns_bind`/`dns_bind6` are deliberately excluded from this set: they
@@ -50,6 +50,7 @@ _AUTO_DERIVED_BIND_KEYS = frozenset(
         "internal_api_bind",
         "internal_api_bind6",
         "prometheus_bind",
+        "syslog_bind",
         "http_proxy_bind",
         "http_proxy_bind6",
     }

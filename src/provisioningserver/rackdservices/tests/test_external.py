@@ -728,6 +728,81 @@ class TestRackSyslog(MAASTestCase):
         )
         service_monitor.restartService.assert_called_once_with("syslog_rack")
 
+    def _make_syslog_configuration(self, **overrides):
+        defaults = dict(
+            port=5247,
+            forwarders=frozenset(),
+            is_region=False,
+            is_rack=True,
+            promtail_port=None,
+        )
+        defaults.update(overrides)
+        return external._SyslogConfiguration(**defaults)
+
+    def test_configure_hardening_off_unset_stays_wildcard(self):
+        import maascommon.hardening as hardening_module
+        from provisioningserver.config import ClusterConfiguration
+
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = False
+        mock_open = self.patch(ClusterConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.syslog_bind = []
+        mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
+        mock_open.return_value.__exit__.return_value = False
+        write_config = self.patch_autospec(
+            external.syslog_config, "write_config"
+        )
+
+        external.RackSyslog()._configure(self._make_syslog_configuration())
+
+        self.assertEqual([], write_config.call_args.kwargs["bind"])
+
+    def test_configure_hardening_on_unset_derives_from_maas_url(self):
+        import maascommon.hardening as hardening_module
+        from provisioningserver.config import ClusterConfiguration
+        import provisioningserver.utils.network as network_module
+
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = True
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.9"
+        mock_open = self.patch(ClusterConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.syslog_bind = []
+        mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
+        mock_open.return_value.__exit__.return_value = False
+        write_config = self.patch_autospec(
+            external.syslog_config, "write_config"
+        )
+
+        external.RackSyslog()._configure(self._make_syslog_configuration())
+
+        self.assertEqual(["10.0.0.9"], write_config.call_args.kwargs["bind"])
+
+    def test_configure_explicit_bind_wins_over_derivation(self):
+        import maascommon.hardening as hardening_module
+        from provisioningserver.config import ClusterConfiguration
+
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = True
+        mock_open = self.patch(ClusterConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.syslog_bind = ["10.0.0.5"]
+        mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
+        mock_open.return_value.__exit__.return_value = False
+        write_config = self.patch_autospec(
+            external.syslog_config, "write_config"
+        )
+
+        external.RackSyslog()._configure(self._make_syslog_configuration())
+
+        self.assertEqual(["10.0.0.5"], write_config.call_args.kwargs["bind"])
+
     @inlineCallbacks
     def test_sets_syslog_rack_service_to_any_when_is_region(self):
         # Patch the logger in the clusterservice so no log messages are printed

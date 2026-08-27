@@ -282,6 +282,13 @@ sudo maas config-hardening set temporal_bind 10.0.0.5
 # comma-separated list) to pin exactly which address(es) racks dial.
 sudo maas config-hardening set rpc_bind 10.0.0.5
 
+# syslog_bind is left unset by default: MAAS derives it from maas_url, the
+# same as rpc_bind/temporal_bind. Set it explicitly (optionally as a
+# comma-separated list) to pin the syslog receiver to a different
+# interface, e.g. when enrolled machines reach MAAS over a subnet other
+# than the one maas_url resolves to.
+sudo maas config-hardening set syslog_bind 10.0.0.5
+
 # dns_bind/dns_bind6 have no maas_url-derived default: DNS must serve
 # every managed subnet, not just the interface that reaches the API, so
 # hardening always requires picking address(es) explicitly. Snap installs
