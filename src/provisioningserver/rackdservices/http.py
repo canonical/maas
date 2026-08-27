@@ -206,8 +206,8 @@ class RackHTTPService(TimerService):
         api_bind = ""
         api_bind6 = ""
         api_upstream_port = 5240
-        api_rate_limit_rate = "10r/s"
-        api_rate_limit_burst = 20
+        api_rate_limit_rate = "20r/s"
+        api_rate_limit_burst = 60
         api_conn_limit = 100
         try:
             with ClusterConfiguration.open() as cluster_config:
