@@ -435,3 +435,138 @@ class TestConfigHardeningEnable(_Base):
 
         self.assertIn("Warning", cmd.stderr.getvalue())
         mock_mgr.set_config.assert_called_once_with("hardening_enabled", "on")
+
+
+class TestConfigHardeningListEffectiveBinds(_Base):
+    @staticmethod
+    def _mock_cfg(**overrides):
+        defaults = dict(
+            api_tls_dhparam="",
+            api_bind=[],
+            api_bind6=[],
+            prometheus_bind="",
+            temporal_bind="",
+            rpc_bind=[],
+            internal_api_bind=[],
+            internal_api_bind6=[],
+            dns_bind=[],
+            dns_bind6=[],
+            syslog_bind=[],
+            http_proxy_bind=[],
+            http_proxy_bind6=[],
+            database_sslmode="prefer",
+            database_sslcert="",
+            database_sslkey="",
+            database_sslrootcert="",
+            maas_url="http://10.0.0.9:5240/MAAS",
+        )
+        defaults.update(overrides)
+        return MagicMock(**defaults)
+
+    def _run_list(self, mock_cfg, hardening_active):
+        with (
+            patch(
+                "maasserver.management.commands.config_hardening"
+                ".is_hardening_enabled",
+                return_value=hardening_active,
+            ),
+            patch(
+                "maasserver.management.commands.config_hardening.RegionConfiguration"
+            ) as MockRegionCfg,
+            patch(
+                "maasserver.certificates.get_maas_certificate",
+                return_value=None,
+            ),
+            patch("maasserver.models.Config") as MockConfig,
+        ):
+            MockRegionCfg.open.return_value.__enter__ = MagicMock(
+                return_value=mock_cfg
+            )
+            MockRegionCfg.open.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
+            MockConfig.objects.db_manager.return_value.get_config.return_value = None
+            cmd = self._cmd(command="list")
+        return cmd.stdout.getvalue()
+
+    @staticmethod
+    def _line_for(output, key):
+        for line in output.splitlines():
+            if line.split()[0] == key:
+                return line
+        raise AssertionError(f"no '{key}' line in output:\n{output}")
+
+    def test_hardening_gated_binds_not_effective_when_hardening_inactive(
+        self,
+    ):
+        # api_bind/http_proxy_bind/syslog_bind only derive under hardening;
+        # rpc_bind/temporal_bind derive from maas_url regardless (see
+        # `_AUTO_DERIVED_BIND_KEYS`/`resolve_rpc_bind_addresses`), so they
+        # are checked separately and excluded here.
+        import provisioningserver.utils.network as network_module
+
+        with patch.object(
+            network_module,
+            "get_source_address_for_url",
+            return_value="10.0.0.9",
+        ):
+            output = self._run_list(self._mock_cfg(), hardening_active=False)
+        for key in (
+            "api_bind",
+            "api_bind6",
+            "internal_api_bind",
+            "internal_api_bind6",
+            "http_proxy_bind",
+            "http_proxy_bind6",
+            "syslog_bind",
+        ):
+            self.assertNotIn("effective", self._line_for(output, key))
+
+    def test_api_bind_shows_effective_value_under_hardening(self):
+        import provisioningserver.utils.network as network_module
+
+        with patch.object(
+            network_module,
+            "get_source_address_for_url",
+            return_value="10.0.0.9",
+        ):
+            output = self._run_list(self._mock_cfg(), hardening_active=True)
+        self.assertIn(
+            "(effective: 10.0.0.9)", self._line_for(output, "api_bind")
+        )
+
+    def test_explicit_bind_not_annotated_as_effective(self):
+        import provisioningserver.utils.network as network_module
+
+        with patch.object(
+            network_module,
+            "get_source_address_for_url",
+            return_value="10.0.0.9",
+        ):
+            output = self._run_list(
+                self._mock_cfg(api_bind=["10.0.0.5"]), hardening_active=True
+            )
+        self.assertNotIn("effective", self._line_for(output, "api_bind"))
+
+    def test_rpc_bind_shows_effective_value_regardless_of_hardening(self):
+        with patch(
+            "maasserver.eventloop.resolve_rpc_bind_addresses",
+            return_value=["10.0.0.9"],
+        ):
+            output = self._run_list(self._mock_cfg(), hardening_active=False)
+        self.assertIn(
+            "(effective: 10.0.0.9)", self._line_for(output, "rpc_bind")
+        )
+
+    def test_prometheus_bind_shows_loopback_effective_under_hardening(self):
+        output = self._run_list(self._mock_cfg(), hardening_active=True)
+        self.assertIn(
+            "(effective: 127.0.0.1)",
+            self._line_for(output, "prometheus_bind"),
+        )
+
+    def test_prometheus_bind_no_effective_value_outside_hardening(self):
+        output = self._run_list(self._mock_cfg(), hardening_active=False)
+        self.assertNotIn(
+            "effective", self._line_for(output, "prometheus_bind")
+        )

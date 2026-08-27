@@ -320,6 +320,14 @@ Check the effective values and their source stores:
 maas config-hardening list
 ```
 
+For a bind key that's left unset but auto-derives from `maas_url` (`api_bind`,
+`api_bind6`, `internal_api_bind`, `internal_api_bind6`, `rpc_bind`,
+`temporal_bind`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`,
+`prometheus_bind`), `list` appends the address MAAS would actually bind to
+right now, e.g. `api_bind [conf ]  (effective: 10.0.0.5)`. Nothing is
+appended when the key is explicitly set, or when no derivation is possible
+(e.g. hardening is inactive for the keys that only derive under hardening).
+
 Run validation on demand. It prints every violation and exits non-zero when any exist, so it doubles as audit evidence:
 
 ```text
