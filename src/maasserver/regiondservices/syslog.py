@@ -19,7 +19,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.syslog.config import write_config
-from provisioningserver.utils.network import resolve_bind_addresses
+from provisioningserver.utils.network import resolve_service_bind
 from provisioningserver.utils.twisted import callOut, synchronous
 
 log = LegacyLogger()
@@ -82,16 +82,10 @@ class RegionSyslogService(TimerService):
         )
         from maascommon.hardening import is_hardening_enabled
 
-        bind = []
-        maas_url = ""
-        try:
-            with RegionConfiguration.open() as region_config:
-                bind = list(region_config.syslog_bind)
-                maas_url = str(region_config.maas_url)
-        except Exception:
-            pass
-        bind = resolve_bind_addresses(
-            bind, maas_url, hardening_active=is_hardening_enabled()
+        bind = resolve_service_bind(
+            RegionConfiguration.open,
+            "syslog_bind",
+            hardening_active=is_hardening_enabled(),
         )
         return _Configuration(port, peers, promtail_port, bind)
 

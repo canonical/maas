@@ -224,8 +224,8 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
             if_missing=[],
         ),
     )
-    internal_api_bind = ConfigurationOption(
-        "internal_api_bind",
+    agent_api_bind = ConfigurationOption(
+        "agent_api_bind",
         "IPv4 address the internal API server (dialed by maas-agent on "
         "rack controllers, port 5242) binds to; empty derives a specific "
         "address from maas_url. May be a list.",
@@ -235,8 +235,8 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
             if_missing=[],
         ),
     )
-    internal_api_bind6 = ConfigurationOption(
-        "internal_api_bind6",
+    agent_api_bind6 = ConfigurationOption(
+        "agent_api_bind6",
         "IPv6 address the internal API server (dialed by maas-agent on "
         "rack controllers, port 5242) binds to; empty derives a specific "
         "address from maas_url. May be a list.",

@@ -45,7 +45,7 @@ from provisioningserver.service_monitor import service_monitor
 from provisioningserver.syslog import config as syslog_config
 from provisioningserver.utils import snap
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET, MAAS_UUID
-from provisioningserver.utils.network import resolve_bind_addresses
+from provisioningserver.utils.network import resolve_service_bind
 from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
@@ -257,29 +257,15 @@ class RackProxy(RackOnlyExternalService):
             for upstream in configuration.upstream_proxies
         )
         hardening_active = is_hardening_enabled()
-        http_proxy_bind = []
-        http_proxy_bind6 = []
-        maas_url = ""
-        try:
-            with ClusterConfiguration.open() as cluster_config:
-                http_proxy_bind = list(cluster_config.http_proxy_bind)
-                http_proxy_bind6 = list(cluster_config.http_proxy_bind6)
-                maas_url = (
-                    cluster_config.maas_url[0]
-                    if cluster_config.maas_url
-                    else ""
-                )
-        except Exception:
-            pass
-        http_proxy_bind = resolve_bind_addresses(
-            http_proxy_bind,
-            maas_url,
+        http_proxy_bind = resolve_service_bind(
+            ClusterConfiguration.open,
+            "http_proxy_bind",
             hardening_active=hardening_active,
             family=AF_INET,
         )
-        http_proxy_bind6 = resolve_bind_addresses(
-            http_proxy_bind6,
-            maas_url,
+        http_proxy_bind6 = resolve_service_bind(
+            ClusterConfiguration.open,
+            "http_proxy_bind6",
             hardening_active=hardening_active,
             family=AF_INET6,
         )
@@ -360,20 +346,10 @@ class RackSyslog(RackOnlyExternalService):
             {"name": name, "ip": ip}
             for name, ip in dict(configuration.forwarders).items()
         ]
-        bind = []
-        maas_url = ""
-        try:
-            with ClusterConfiguration.open() as cluster_config:
-                bind = list(cluster_config.syslog_bind)
-                maas_url = (
-                    cluster_config.maas_url[0]
-                    if cluster_config.maas_url
-                    else ""
-                )
-        except Exception:
-            pass
-        bind = resolve_bind_addresses(
-            bind, maas_url, hardening_active=is_hardening_enabled()
+        bind = resolve_service_bind(
+            ClusterConfiguration.open,
+            "syslog_bind",
+            hardening_active=is_hardening_enabled(),
         )
         syslog_config.write_config(
             False,

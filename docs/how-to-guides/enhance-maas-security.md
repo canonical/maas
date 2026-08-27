@@ -321,7 +321,7 @@ maas config-hardening list
 ```
 
 For a bind key that's left unset but auto-derives from `maas_url` (`api_bind`,
-`api_bind6`, `internal_api_bind`, `internal_api_bind6`, `rpc_bind`,
+`api_bind6`, `agent_api_bind`, `agent_api_bind6`, `rpc_bind`,
 `temporal_bind`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`,
 `prometheus_bind`), `list` appends the address MAAS would actually bind to
 right now, e.g. `api_bind [conf ]  (effective: 10.0.0.5)`. Nothing is

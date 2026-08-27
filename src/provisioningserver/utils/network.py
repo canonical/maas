@@ -21,7 +21,7 @@ from socket import (
     IPPROTO_TCP,
 )
 import struct
-from typing import Iterable, List, Optional, TypeVar
+from typing import Callable, ContextManager, Iterable, List, Optional, TypeVar
 from urllib.parse import urlparse
 from zlib import crc32
 
@@ -1152,6 +1152,48 @@ def resolve_bind_addresses(
             "", maas_url, hardening_active=True, family=family
         )
     ]
+
+
+def resolve_service_bind(
+    open_config: Callable[[], ContextManager],
+    bind_attr: str,
+    *,
+    hardening_active: bool = False,
+    family: Optional[int] = None,
+    maas_url_attr: str = "maas_url",
+) -> List[str]:
+    """Read `bind_attr`/`maas_url_attr` from `open_config()` and resolve.
+
+    Centralizes the "open a Configuration, read a list-valued bind key
+    and maas_url, and fall back to no configured value on any error"
+    pattern shared by every hardened service, then defers to
+    `resolve_bind_addresses` for the actual derivation.
+
+    :param open_config: A zero-argument callable returning a
+        `Configuration.open()` context manager, e.g.
+        ``RegionConfiguration.open`` or ``ClusterConfiguration.open``.
+    :param maas_url_attr: ``maas_url`` is a plain string on
+        `RegionConfiguration` but a list on `ClusterConfiguration`
+        (one per configured region); the first entry is used in the
+        latter case.
+    """
+    configured: Iterable[str] = []
+    maas_url = ""
+    try:
+        with open_config() as config:
+            configured = list(getattr(config, bind_attr))
+            raw_maas_url = getattr(config, maas_url_attr)
+            if isinstance(raw_maas_url, (list, tuple)):
+                raw_maas_url = raw_maas_url[0] if raw_maas_url else ""
+            maas_url = str(raw_maas_url)
+    except Exception:
+        pass
+    return resolve_bind_addresses(
+        configured,
+        maas_url,
+        hardening_active=hardening_active,
+        family=family,
+    )
 
 
 def resolve_connect_address(

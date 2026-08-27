@@ -17,7 +17,7 @@ from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.proxy.config import write_config
 from provisioningserver.utils import snap
-from provisioningserver.utils.network import resolve_bind_addresses
+from provisioningserver.utils.network import resolve_service_bind
 from provisioningserver.utils.twisted import asynchronous
 
 maaslog = get_maas_logger("dns")
@@ -55,25 +55,15 @@ def proxy_update_config(reload_proxy=True):
             "maas_proxy_port": config["maas_proxy_port"],
         }
         hardening_active = is_hardening_enabled()
-        http_proxy_bind = []
-        http_proxy_bind6 = []
-        maas_url = ""
-        try:
-            with RegionConfiguration.open() as region_config:
-                http_proxy_bind = list(region_config.http_proxy_bind)
-                http_proxy_bind6 = list(region_config.http_proxy_bind6)
-                maas_url = str(region_config.maas_url)
-        except Exception:
-            pass
-        kwargs["http_proxy_bind"] = resolve_bind_addresses(
-            http_proxy_bind,
-            maas_url,
+        kwargs["http_proxy_bind"] = resolve_service_bind(
+            RegionConfiguration.open,
+            "http_proxy_bind",
             hardening_active=hardening_active,
             family=AF_INET,
         )
-        kwargs["http_proxy_bind6"] = resolve_bind_addresses(
-            http_proxy_bind6,
-            maas_url,
+        kwargs["http_proxy_bind6"] = resolve_service_bind(
+            RegionConfiguration.open,
+            "http_proxy_bind6",
             hardening_active=hardening_active,
             family=AF_INET6,
         )

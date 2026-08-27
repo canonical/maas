@@ -84,11 +84,11 @@ class RegionHTTPService(Service):
                 configuration.api_bind6 = list(region_config.api_bind6)
                 configuration.api_int_bind = region_config.api_int_bind
                 configuration.api_int_bind6 = region_config.api_int_bind6
-                configuration.internal_api_bind = list(
-                    region_config.internal_api_bind
+                configuration.agent_api_bind = list(
+                    region_config.agent_api_bind
                 )
-                configuration.internal_api_bind6 = list(
-                    region_config.internal_api_bind6
+                configuration.agent_api_bind6 = list(
+                    region_config.agent_api_bind6
                 )
                 configuration.api_tls_dhparam = region_config.api_tls_dhparam
                 configuration.maas_url = str(region_config.maas_url)
@@ -169,21 +169,21 @@ class RegionHTTPService(Service):
             "MAAS_INTERNALAPISERVER_HTTP_SOCKET_PATH",
             get_maas_data_path("internalapiserver-http.sock"),
         )
-        internal_api_bind = resolve_bind_addresses(
-            configuration.internal_api_bind,
+        agent_api_bind = resolve_bind_addresses(
+            configuration.agent_api_bind,
             configuration.maas_url,
             hardening_active=configuration.hardening_active,
             family=AF_INET,
         )
-        internal_api_bind6 = resolve_bind_addresses(
-            configuration.internal_api_bind6,
+        agent_api_bind6 = resolve_bind_addresses(
+            configuration.agent_api_bind6,
             configuration.maas_url,
             hardening_active=configuration.hardening_active,
             family=AF_INET6,
         )
         environ = {
             "internal_api_listen": compose_listen_addresses(
-                5242, internal_api_bind, internal_api_bind6
+                5242, agent_api_bind, agent_api_bind6
             ),
             "internalapiserver_socket_path": internalapiserver_socket_path,
         }
@@ -241,8 +241,8 @@ class _Configuration:
     api_bind6: list = field(default_factory=list)
     api_int_bind: str = ""
     api_int_bind6: str = ""
-    internal_api_bind: list = field(default_factory=list)
-    internal_api_bind6: list = field(default_factory=list)
+    agent_api_bind: list = field(default_factory=list)
+    agent_api_bind6: list = field(default_factory=list)
     api_tls_dhparam: str = ""
     maas_url: str = ""
 

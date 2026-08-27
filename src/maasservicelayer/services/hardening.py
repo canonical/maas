@@ -47,8 +47,8 @@ _AUTO_DERIVED_BIND_KEYS = frozenset(
         "api_bind",
         "api_bind6",
         "rpc_bind",
-        "internal_api_bind",
-        "internal_api_bind6",
+        "agent_api_bind",
+        "agent_api_bind6",
         "prometheus_bind",
         "syslog_bind",
         "http_proxy_bind",
@@ -106,8 +106,8 @@ class HardeningValidator:
         prometheus_bind: str | None = None,
         temporal_bind: str | None = None,
         rpc_bind: Sequence[str] | None = None,
-        internal_api_bind: Sequence[str] | None = None,
-        internal_api_bind6: Sequence[str] | None = None,
+        agent_api_bind: Sequence[str] | None = None,
+        agent_api_bind6: Sequence[str] | None = None,
         dns_bind: Sequence[str] | None = None,
         dns_bind6: Sequence[str] | None = None,
         syslog_bind: Sequence[str] | None = None,
@@ -129,11 +129,9 @@ class HardeningValidator:
             "prometheus_bind": [prometheus_bind] if prometheus_bind else [],
             "temporal_bind": [temporal_bind] if temporal_bind else [],
             "rpc_bind": list(rpc_bind) if rpc_bind else [],
-            "internal_api_bind": (
-                list(internal_api_bind) if internal_api_bind else []
-            ),
-            "internal_api_bind6": (
-                list(internal_api_bind6) if internal_api_bind6 else []
+            "agent_api_bind": (list(agent_api_bind) if agent_api_bind else []),
+            "agent_api_bind6": (
+                list(agent_api_bind6) if agent_api_bind6 else []
             ),
             "syslog_bind": list(syslog_bind) if syslog_bind else [],
             "http_proxy_bind": (
@@ -379,8 +377,8 @@ def configure_and_validate_hardening(
     prometheus_bind: str = "",
     temporal_bind: str = "",
     rpc_bind: Sequence[str] = (),
-    internal_api_bind: Sequence[str] = (),
-    internal_api_bind6: Sequence[str] = (),
+    agent_api_bind: Sequence[str] = (),
+    agent_api_bind6: Sequence[str] = (),
     dns_bind: Sequence[str] = (),
     dns_bind6: Sequence[str] = (),
     syslog_bind: Sequence[str] = (),
@@ -408,8 +406,8 @@ def configure_and_validate_hardening(
         prometheus_bind=prometheus_bind or None,
         temporal_bind=temporal_bind or None,
         rpc_bind=rpc_bind,
-        internal_api_bind=internal_api_bind,
-        internal_api_bind6=internal_api_bind6,
+        agent_api_bind=agent_api_bind,
+        agent_api_bind6=agent_api_bind6,
         dns_bind=dns_bind,
         dns_bind6=dns_bind6,
         syslog_bind=syslog_bind,
