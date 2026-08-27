@@ -261,27 +261,17 @@ def make_IPCWorkerService():
 
 
 def make_PrometheusExporterService():
-    from maascommon.hardening import is_hardening_enabled
-    from maasserver.config import RegionConfiguration
     from maasserver.prometheus.service import (
-        create_prometheus_exporter_service,
+        PrometheusExporterService,
         REGION_PROMETHEUS_PORT,
     )
 
-    # Outside hardening, keep the historical default of all interfaces.
-    # Under hardening, loopback is the safe last resort: `prometheus_bind`
-    # is also seeded to 127.0.0.1 by `maas config-hardening enable`, but
-    # this default holds even if that seeding step was skipped.
-    bind_address = "127.0.0.1" if is_hardening_enabled() else ""
-    try:
-        with RegionConfiguration.open() as config:
-            if config.prometheus_bind:
-                bind_address = str(config.prometheus_bind)
-    except Exception:
-        pass
-    return create_prometheus_exporter_service(
-        reactor, REGION_PROMETHEUS_PORT, bind_address
-    )
+    # Bind-address resolution (hardening-aware) happens lazily in
+    # `PrometheusExporterService.startService()`, not here: `populate()`
+    # constructs every factory before `start_up()` runs
+    # `configure_hardening()`, so resolving eagerly would always observe
+    # hardening as inactive.
+    return PrometheusExporterService(reactor, REGION_PROMETHEUS_PORT)
 
 
 def make_CertificateExpirationCheckService():

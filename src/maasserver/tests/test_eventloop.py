@@ -6,7 +6,6 @@
 from unittest.mock import ANY, call, Mock, sentinel
 
 from django.db import connections
-from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from twisted.python.threadable import isInIOThread
@@ -708,9 +707,11 @@ class TestFactories(MAASServerTestCase):
         )
 
     def test_make_PrometheusExporterService(self):
+        from maasserver.prometheus.service import PrometheusExporterService
+
         service = eventloop.make_PrometheusExporterService()
-        self.assertIsInstance(service, StreamServerEndpointService)
-        self.assertEqual(service.endpoint._port, REGION_PROMETHEUS_PORT)
+        self.assertIsInstance(service, PrometheusExporterService)
+        self.assertEqual(service._port, REGION_PROMETHEUS_PORT)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_PrometheusExporterService,
@@ -729,7 +730,7 @@ class TestFactories(MAASServerTestCase):
 
         service = eventloop.make_PrometheusExporterService()
 
-        self.assertEqual(service.endpoint._interface, "")
+        self.assertEqual(service._resolve_bind_address(), "")
 
     def test_make_PrometheusExporterService_binds_loopback_under_hardening(
         self,
@@ -742,7 +743,7 @@ class TestFactories(MAASServerTestCase):
 
         service = eventloop.make_PrometheusExporterService()
 
-        self.assertEqual(service.endpoint._interface, "127.0.0.1")
+        self.assertEqual(service._resolve_bind_address(), "127.0.0.1")
 
     def test_make_PrometheusExporterService_explicit_bind_overrides(self):
         from maasserver.config import RegionConfiguration
@@ -754,7 +755,22 @@ class TestFactories(MAASServerTestCase):
 
         service = eventloop.make_PrometheusExporterService()
 
-        self.assertEqual(service.endpoint._interface, "10.0.0.5")
+        self.assertEqual(service._resolve_bind_address(), "10.0.0.5")
+
+    def test_make_PrometheusExporterService_bind_resolved_lazily(self):
+        # Regression test for the populate()/configure_hardening() race:
+        # the bind address must be computed when the service actually
+        # starts, not baked in at construction time (`populate()` builds
+        # every factory before `start_up()` calls `configure_hardening()`).
+        import maascommon.hardening as hardening_module
+
+        mock_enabled = self.patch(hardening_module, "is_hardening_enabled")
+        mock_enabled.return_value = False
+        service = eventloop.make_PrometheusExporterService()
+        # Hardening becomes active only after construction, mirroring
+        # configure_hardening() running after populate().
+        mock_enabled.return_value = True
+        self.assertEqual(service._resolve_bind_address(), "127.0.0.1")
 
     def test_make_CertificateExpirationCheckService(self):
         service = eventloop.make_CertificateExpirationCheckService()
