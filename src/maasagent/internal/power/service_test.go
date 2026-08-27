@@ -721,7 +721,7 @@ func TestSetBootOrderWithTrustedSSHHostKeys(t *testing.T) {
 		Order: []map[string]any{{"boot_type": "network", "device": "pxe"}},
 	}
 
-	expectedArgs := []string{"set-boot-order", "wedge", "--power-address", "10.0.0.1", "--power-pass", "maas", "--power-user", "maas", "--order", "''"}
+	expectedArgs := []string{"set-boot-order", "wedge", "--order", `'{"boot_type":"network","device":"pxe"}'`, "--power-address", "10.0.0.1", "--power-pass", "maas", "--power-user", "maas"}
 
 	var mockedPowerProc testPowerProc
 

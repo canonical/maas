@@ -322,7 +322,7 @@ func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam
 
 	log.Info("setting boot order of " + param.SystemID)
 
-	_, err := powerCommand(ctx, "set-boot-order", false, param.PowerParams.DriverType, param.PowerParams.DriverOpts, param.PowerParams.TrustedSSHHostKeys)
+	_, err := powerCommand(ctx, "set-boot-order", false, param.PowerParams.DriverType, param.PowerParams.DriverOpts, param.PowerParams.TrustedSSHHostKeys, param.Order...)
 
 	return err
 }
