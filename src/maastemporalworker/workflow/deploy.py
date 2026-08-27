@@ -529,7 +529,7 @@ class DeployWorkflow:
                 start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
-            state = result["state"]
+            state = PowerState(result["state"])
             if state != candidate_state:
                 candidate_state = state
             elif state != persisted_state:
@@ -537,7 +537,7 @@ class DeployWorkflow:
                     SET_POWER_STATE_ACTIVITY_NAME,
                     SetPowerStateParam(
                         system_id=params.power_params.system_id,
-                        state=PowerState(state),
+                        state=state,
                     ),
                     task_queue="region",
                     start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,

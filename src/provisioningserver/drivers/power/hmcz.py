@@ -98,10 +98,13 @@ VERIFY_SSL_NO = "n"
 
 VERIFY_SSL_CHOICES = [[VERIFY_SSL_NO, "No"], [VERIFY_SSL_YES, "Yes"]]
 
-# 19 x 15s = 285s, kept 15s under the 5 minute Temporal power activity
-# timeout so the HMC session setup and the final successful call still fit
-# within the same activity attempt.
-SET_BOOT_ORDER_RETRY_MAX_ATTEMPTS = 19
+# set_boot_order shares the single 5 minute (300s) Temporal power activity
+# budget with an upfront partition.wait_for_status() that can block up to 120s.
+# Keep the busy-retry budget small enough that 120s + retries + the HMC session
+# setup still finish well under 300s; otherwise Temporal aborts and retries the
+# activity while this Twisted thread keeps writing to the HMC in the background.
+# 8 attempts => 7 x 15s = 105s of retries, so ~225s worst case (120s + 105s).
+SET_BOOT_ORDER_RETRY_MAX_ATTEMPTS = 8
 SET_BOOT_ORDER_RETRY_DELAY = 15
 
 
