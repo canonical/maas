@@ -31,6 +31,8 @@ jobs:
           channel: 5.21/stable
 
       - name: Build MAAS snap
+        env:
+          SNAPCRAFT_BUILD_ENVIRONMENT: host
         run: |
           sudo snap install snapcraft --classic
           sudo snap refresh snapd
