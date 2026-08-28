@@ -21,6 +21,7 @@ from maastesting.crochet import wait_for
 from provisioningserver.testing.certificates import (
     get_sample_cert_with_cacerts,
 )
+import provisioningserver.utils.network as network_module
 
 wait_for_reactor = wait_for()
 
@@ -205,8 +206,8 @@ class TestRegionHTTPService(
             http._Configuration(
                 cert=cert,
                 port=5443,
-                api_bind="10.0.0.5",
-                api_bind6="fd00::5",
+                api_bind=["10.0.0.5"],
+                api_bind6=["fd00::5"],
             )
         )
         self.assertIn("listen 10.0.0.5:5443 ssl http2;", nginx_config)
@@ -215,10 +216,33 @@ class TestRegionHTTPService(
 
     def test_plain_http_binds_to_api_bind_without_tls(self):
         nginx_config = self._configure_to_file(
-            http._Configuration(cert=None, port=None, api_bind="10.0.0.5")
+            http._Configuration(cert=None, port=None, api_bind=["10.0.0.5"])
         )
         self.assertIn("listen 10.0.0.5:5240;", nginx_config)
         self.assertNotIn("listen [::]:5240;", nginx_config)
+
+    def test_wildcard_when_no_bind_and_hardening_off(self):
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=None, port=None)
+        )
+        self.assertIn("listen [::]:5240;", nginx_config)
+        self.assertIn("listen 5240;", nginx_config)
+
+    def test_hardening_on_derives_api_bind_from_maas_url(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.9"
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=None,
+                port=None,
+                hardening_active=True,
+                maas_url="http://10.0.0.9:5240/MAAS",
+            )
+        )
+        self.assertIn("listen 10.0.0.9:5240;", nginx_config)
+        self.assertNotIn("listen [::]:5240;", nginx_config)
+        self.assertNotIn("listen 5240;", nginx_config)
 
     def test_tls_internal_server_binds_to_api_int_bind(self):
         cert = get_sample_cert_with_cacerts()

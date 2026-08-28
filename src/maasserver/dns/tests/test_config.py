@@ -354,7 +354,8 @@ class TestDNSConfigModifications(TestDNSServer):
         bind_write_options.assert_called_once_with(
             dnssec_validation="auto",
             upstream_dns=[random_ip],
-            dns_bind="",
+            dns_bind=[],
+            dns_bind6=[],
             dns_allow_transfer="",
             dns_fetches_per_zone=0,
             dns_fetches_per_server=0,

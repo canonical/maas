@@ -234,8 +234,11 @@ A value of `1` means FIPS mode is active.
 
 Run `maas config-hardening enable`. This sets `hardening_enabled=on` in the
 MAAS database and seeds `prometheus_bind` to `127.0.0.1` in `regiond.conf`
-if it is not already set. `temporal_bind` is left unset: MAAS derives a
-specific, non-wildcard address for it from `maas_url` at startup.
+if it is not already set — the only key that keeps a loopback default,
+since it's scraped locally by a co-located agent (e.g. grafana-agent).
+`api_bind`, `api_bind6`, `temporal_bind`, and `rpc_bind` are left unset:
+MAAS derives a specific, non-wildcard address for each from `maas_url`
+at startup.
 
 ```text
 sudo maas config-hardening enable
@@ -258,9 +261,13 @@ When hardening is active, MAAS validates transport-security prerequisites at
 startup. Use `maas config-hardening set` to configure each parameter:
 
 ```text
-# Bind the public API to a specific management interface, not all interfaces.
+# api_bind/api_bind6 are left unset by default: MAAS derives them from
+# maas_url when hardening is active. Only set them explicitly to pin the
+# public API to a different interface, or to bind several at once
+# (comma-separated).
 sudo maas config-hardening set api_bind 10.0.0.5
 sudo maas config-hardening set api_bind6 fd00::5
+sudo maas config-hardening set api_bind 10.0.0.5,10.0.0.6
 
 # Bind Prometheus metrics to loopback (already seeded by
 # maas config-hardening enable; only needed if you skipped that step).
@@ -270,8 +277,26 @@ sudo maas config-hardening set prometheus_bind 127.0.0.1
 # Only set it explicitly to pin Temporal to a different interface.
 sudo maas config-hardening set temporal_bind 10.0.0.5
 
-# Bind the region RPC service to a specific interface.
+# rpc_bind is left unset by default: MAAS derives it from maas_url, the
+# same as api_bind/temporal_bind. Set it explicitly (optionally as a
+# comma-separated list) to pin exactly which address(es) racks dial.
 sudo maas config-hardening set rpc_bind 10.0.0.5
+
+# syslog_bind is left unset by default: MAAS derives it from maas_url, the
+# same as rpc_bind/temporal_bind. Set it explicitly (optionally as a
+# comma-separated list) to pin the syslog receiver to a different
+# interface, e.g. when enrolled machines reach MAAS over a subnet other
+# than the one maas_url resolves to.
+sudo maas config-hardening set syslog_bind 10.0.0.5
+
+# dns_bind/dns_bind6 have no maas_url-derived default: DNS must serve
+# every managed subnet, not just the interface that reaches the API, so
+# hardening always requires picking address(es) explicitly. Snap installs
+# only: MAAS owns the whole named.conf there; on Debian-packaged installs
+# these keys are not available (nor validated), since MAAS does not own
+# the base named.conf.options.
+sudo maas config-hardening set dns_bind 10.0.0.5
+sudo maas config-hardening set dns_bind6 fd00::5
 
 # Verify the PostgreSQL server certificate.
 sudo maas config-hardening set database_sslmode verify-full
@@ -294,6 +319,14 @@ Check the effective values and their source stores:
 ```text
 maas config-hardening list
 ```
+
+For a bind key that's left unset but auto-derives from `maas_url` (`api_bind`,
+`api_bind6`, `agent_api_bind`, `agent_api_bind6`, `rpc_bind`,
+`temporal_bind`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`,
+`prometheus_bind`), `list` appends the address MAAS would actually bind to
+right now, e.g. `api_bind [conf ]  (effective: 10.0.0.5)`. Nothing is
+appended when the key is explicitly set, or when no derivation is possible
+(e.g. hardening is inactive for the keys that only derive under hardening).
 
 Run validation on demand. It prints every violation and exits non-zero when any exist, so it doubles as audit evidence:
 

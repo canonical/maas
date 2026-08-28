@@ -69,6 +69,7 @@ from provisioningserver.utils.env import (
     MAAS_SHARED_SECRET,
     MAAS_UUID,
 )
+from provisioningserver.utils.snap import running_in_snap
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
 from provisioningserver.utils.version import get_versions_info
 
@@ -358,14 +359,21 @@ def inner_start_up(master=False):
                     api_tls_cert_pem=_cert_pem,
                     api_tls_key_pem=_key_pem,
                     api_tls_dhparam=str(_hcfg.api_tls_dhparam),
-                    api_bind=str(_hcfg.api_bind),
-                    api_bind6=str(_hcfg.api_bind6),
+                    api_bind=list(_hcfg.api_bind),
+                    api_bind6=list(_hcfg.api_bind6),
                     prometheus_bind=str(_hcfg.prometheus_bind),
                     temporal_bind=str(_hcfg.temporal_bind),
-                    rpc_bind=str(_hcfg.rpc_bind),
-                    dns_bind=str(_hcfg.dns_bind),
+                    rpc_bind=list(_hcfg.rpc_bind),
+                    agent_api_bind=list(_hcfg.agent_api_bind),
+                    agent_api_bind6=list(_hcfg.agent_api_bind6),
+                    dns_bind=list(_hcfg.dns_bind),
+                    dns_bind6=list(_hcfg.dns_bind6),
+                    syslog_bind=list(_hcfg.syslog_bind),
+                    http_proxy_bind=list(_hcfg.http_proxy_bind),
+                    http_proxy_bind6=list(_hcfg.http_proxy_bind6),
                     database_sslmode=str(_hcfg.database_sslmode),
                     fips_declared=read_fips_declared_from_db(),
+                    snap_deployment=running_in_snap(),
                 )
         except Exception:
             logger.error(

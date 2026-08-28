@@ -303,7 +303,17 @@ class IPCMasterService(service.Service):
 
     def _getListenAddresses(self, port):
         """Return list of tuple (address, port) for the addresses the worker
-        is listening on."""
+        is listening on.
+
+        Mirrors `eventloop.resolve_rpc_bind_addresses`, which is what
+        `RegionService` itself binds to: an explicit or maas_url-derived
+        address is advertised verbatim. Otherwise, fall back to
+        discovering this host's routable addresses, as before.
+        """
+        rpc_bind = eventloop.resolve_rpc_bind_addresses()
+        if rpc_bind:
+            return {(addr, port) for addr in rpc_bind}
+
         addresses = get_all_interface_source_addresses()
         if addresses:
             return {(addr, port) for addr in addresses}
