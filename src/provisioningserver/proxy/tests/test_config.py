@@ -118,6 +118,52 @@ class TestWriteConfig(MAASTestCase):
             lines = [line.strip() for line in proxy_file.readlines()]
             self.assertIn("http_port %s" % port, lines)
 
+    def test_http_proxy_bind_single_address(self):
+        cidr = factory.make_ipv4_network()
+        config.write_config([cidr], http_proxy_bind=["10.0.0.5"])
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertIn("http_port 10.0.0.5:3128 transparent", lines)
+            self.assertIn("http_port 10.0.0.5:8000", lines)
+
+    def test_http_proxy_bind_multiple_addresses(self):
+        cidr = factory.make_ipv4_network()
+        config.write_config([cidr], http_proxy_bind=["10.0.0.5", "10.0.0.6"])
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertIn("http_port 10.0.0.5:3128 transparent", lines)
+            self.assertIn("http_port 10.0.0.6:3128 transparent", lines)
+            self.assertIn("http_port 10.0.0.5:8000", lines)
+            self.assertIn("http_port 10.0.0.6:8000", lines)
+
+    def test_http_proxy_bind6_uses_bracketed_address(self):
+        cidr = factory.make_ipv4_network()
+        config.write_config([cidr], http_proxy_bind6=["fd00::5"])
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertIn("http_port [fd00::5]:3128 transparent", lines)
+            self.assertIn("http_port [fd00::5]:8000", lines)
+
+    def test_http_proxy_bind_v4_and_v6_combined(self):
+        cidr = factory.make_ipv4_network()
+        config.write_config(
+            [cidr],
+            http_proxy_bind=["10.0.0.5"],
+            http_proxy_bind6=["fd00::5"],
+        )
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertIn("http_port 10.0.0.5:3128 transparent", lines)
+            self.assertIn("http_port [fd00::5]:3128 transparent", lines)
+
+    def test_no_http_proxy_bind_listens_on_all_interfaces(self):
+        cidr = factory.make_ipv4_network()
+        config.write_config([cidr])
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertIn("http_port 3128 transparent", lines)
+            self.assertIn("http_port 8000", lines)
+
     def test_user_in_snap(self):
         self.patch(snap, "running_in_snap").return_value = True
         config.write_config(allowed_cidrs=[])

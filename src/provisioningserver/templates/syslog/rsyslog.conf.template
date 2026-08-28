@@ -3,11 +3,23 @@ module(load="imuxsock" SysSock.Name="{{work_dir}}/log.sock")
 
 # Enable tcp.
 module(load="imtcp")
+{{if bind_addresses}}
+{{for addr in bind_addresses}}
+input(type="imtcp" port="{{port}}" address="{{addr}}")
+{{endfor}}
+{{else}}
 input(type="imtcp" port="{{port}}")
+{{endif}}
 
 # Enable udp.
 module(load="imudp")
+{{if bind_addresses}}
+{{for addr in bind_addresses}}
+input(type="imudp" port="{{port}}" address="{{addr}}")
+{{endfor}}
+{{else}}
 input(type="imudp" port="{{port}}")
+{{endif}}
 
 # Reduce message repetition.
 $RepeatedMsgReduction on
