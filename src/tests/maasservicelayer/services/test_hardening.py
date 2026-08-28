@@ -439,6 +439,15 @@ class TestValidateDbSslmode:
         )
         assert validator._validate_db_sslmode() == []
 
+    @pytest.mark.parametrize("mode", ["disable", "allow", "prefer"])
+    def test_unix_socket_host_returns_no_violations(self, mode: str) -> None:
+        validator = HardeningValidator(
+            hardening_active=True,
+            database_host="/var/snap/maas-test-db/common/postgresql/sockets",
+            database_sslmode=mode,
+        )
+        assert validator._validate_db_sslmode() == []
+
 
 class TestHardeningValidatorFullValidate:
     def test_validate_inactive_returns_empty_list(self) -> None:

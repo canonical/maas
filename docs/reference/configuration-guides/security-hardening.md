@@ -118,7 +118,7 @@ it. A violation clears automatically once the underlying setting is corrected.
 | `DH_PARAMS_PARSE_ERROR` | `api_tls_dhparam` file is not valid PEM DH parameters | See commands below. |
 | `INVALID_BIND_ADDRESS` | A bind key (`api_bind`, `api_bind6`, `prometheus_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`, `dns_bind`, `dns_bind6`) contains a value that is not a valid IP address | `maas config-hardening set <key> <specific-ip-address>` |
 | `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or is unset (except `api_bind`, `api_bind6`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, and `http_proxy_bind6`, which are derived automatically from `maas_url` when unset). `dns_bind`/`dns_bind6` are only checked on snap installs. | `maas config-hardening set <key> <specific-ip-address>` |
-| `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, or `prefer` | See commands below. |
+| `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, or `prefer`, and `database_host` is not a Unix socket path | See commands below. |
 | `FIPS_CONFIG_STATUS_MISMATCH` | The declared `fips_enabled` value in the DB does not match the host kernel's FIPS state | `maas config-hardening set fips_enabled <true\|false>` to match the actual host state, or correct the host FIPS configuration |
 
 **Resolving `WEAK_DH_PARAMS` or `DH_PARAMS_PARSE_ERROR`:** generate a new DH
@@ -138,6 +138,10 @@ sudo maas config-hardening set database_sslcert /var/snap/maas/current/certs/db-
 sudo maas config-hardening set database_sslkey /var/snap/maas/current/certs/db-client.key
 sudo maas config-hardening set database_sslrootcert /var/snap/maas/current/certs/db-ca.pem
 ```
+
+Not flagged when `database_host` is a filesystem path (e.g. the socket
+directory used by `maas-test-db`): connections over a Unix domain socket
+never negotiate TLS, so `database_sslmode` is not applicable.
 
 ## Password policy
 
