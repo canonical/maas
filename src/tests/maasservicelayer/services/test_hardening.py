@@ -286,6 +286,23 @@ class TestValidateBindings:
         assert v_list[0].config_key == "api_bind"
         assert "not-an-ip" in v_list[0].message
 
+    def test_multiple_invalid_ips_in_same_key_all_reported(self) -> None:
+        v_list = self._validator(
+            api_bind=["not-an-ip", "also-not-an-ip"]
+        )._validate_bindings()
+        assert len(v_list) == 2
+        assert all(v.code == "INVALID_BIND_ADDRESS" for v in v_list)
+        messages = [v.message for v in v_list]
+        assert any("not-an-ip" in m for m in messages)
+        assert any("also-not-an-ip" in m for m in messages)
+
+    def test_multiple_wildcards_in_same_key_all_reported(self) -> None:
+        v_list = self._validator(
+            api_bind=["0.0.0.0", "::"]
+        )._validate_bindings()
+        assert len(v_list) == 2
+        assert all(v.code == "WILDCARD_BIND_NOT_ALLOWED" for v in v_list)
+
     def test_multiple_offending_keys_produce_independent_violations(
         self,
     ) -> None:

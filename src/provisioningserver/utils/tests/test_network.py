@@ -1,6 +1,7 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from contextlib import contextmanager
 import itertools
 import json
 import socket
@@ -79,6 +80,7 @@ from provisioningserver.utils.network import (
     resolve_connect_address,
     resolve_host_to_addrinfo,
     resolve_hostname,
+    resolve_service_bind,
     resolves_to_loopback_address,
     reverseResolve,
 )
@@ -2479,6 +2481,53 @@ class TestResolveBindAddresses(MAASTestCase):
             hardening_active=True,
         )
         self.assertEqual(["10.0.0.1"], result)
+
+
+class TestResolveServiceBind(MAASTestCase):
+    def test_reads_configured_list_and_maas_url(self):
+        config = Mock(
+            bind_key=["10.0.0.1", "10.0.0.2"],
+            maas_url="http://10.0.0.1:5240/MAAS",
+        )
+
+        @contextmanager
+        def open_config():
+            yield config
+
+        result = resolve_service_bind(
+            open_config, "bind_key", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.1", "10.0.0.2"], result)
+
+    def test_list_valued_maas_url_uses_first_entry(self):
+        config = Mock(bind_key=[], maas_url=["http://10.0.0.5:5240/MAAS"])
+
+        @contextmanager
+        def open_config():
+            yield config
+
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.5"
+
+        result = resolve_service_bind(
+            open_config, "bind_key", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.5"], result)
+
+    def test_open_config_error_is_logged_and_falls_back(self):
+        def open_config():
+            raise OSError("no such file")
+
+        warning = self.patch(network_module.maaslog, "warning")
+
+        result = resolve_service_bind(
+            open_config, "bind_key", hardening_active=False
+        )
+
+        self.assertEqual([], result)
+        warning.assert_called_once()
+        self.assertEqual(True, warning.call_args.kwargs.get("exc_info"))
 
 
 class TestResolveConnectAddress(MAASTestCase):

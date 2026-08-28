@@ -28,7 +28,6 @@ from twisted.internet.endpoints import TCP6ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
-from twisted.python.failure import Failure
 from zope.interface import implementer
 
 from maasserver import eventloop
@@ -989,13 +988,12 @@ class RegionService(service.Service):
             up: groups are tried in order, and the failure from every
             group but the last is silently discarded, exactly as trying
             the next port in the range was before. If every group fails,
-            the last failure is logged and an empty list is returned so
-            start-up still completes and reports a (nonexistent) port to
-            the IPC master, as before. A `CancelledError` from any group
-            is never treated as "try the next port": it propagates
-            immediately, so cancelling `startService` aborts the retry
-            loop instead of silently continuing or swallowing the
-            cancellation on the last group.
+            the last failure propagates so `startService` errbacks and
+            never reports a (nonexistent) port to the IPC master. A
+            `CancelledError` from any group is never treated as "try the
+            next port": it propagates immediately, so cancelling
+            `startService` aborts the retry loop instead of silently
+            continuing or swallowing the cancellation on the last group.
         """
         last = len(groups) - 1
         for index, group in enumerate(groups):
@@ -1005,9 +1003,7 @@ class RegionService(service.Service):
                 raise
             except Exception:
                 if index == last:
-                    log.err(
-                        Failure(), "RegionServer endpoint failed to listen."
-                    )
+                    raise
             else:
                 returnValue(ports)
         returnValue([])

@@ -39,12 +39,15 @@ from twisted.names.error import (
 )
 
 from maascommon.utils.network import IPRANGE_PURPOSE, MAASIPRange
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.dhclient import get_dhclient_info
 from provisioningserver.utils.ipaddr import get_ip_addr
 from provisioningserver.utils.iproute import get_ip_route
 from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import call_and_check, get_env_with_locale
 from provisioningserver.utils.twisted import synchronous
+
+maaslog = get_maas_logger("network")
 
 # Address families in /etc/network/interfaces that MAAS chooses to parse. All
 # other families are ignored.
@@ -1187,7 +1190,11 @@ def resolve_service_bind(
                 raw_maas_url = raw_maas_url[0] if raw_maas_url else ""
             maas_url = str(raw_maas_url)
     except Exception:
-        pass
+        maaslog.warning(
+            f"Failed to read {bind_attr!r}/{maas_url_attr!r} from "
+            f"configuration; falling back to no configured bind address.",
+            exc_info=True,
+        )
     return resolve_bind_addresses(
         configured,
         maas_url,

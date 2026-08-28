@@ -302,14 +302,14 @@ class HardeningValidator:
                             config_key=key,
                         )
                     )
-                    break
+                    continue
                 if addr.is_unspecified:
                     violations.append(
                         self._wildcard_bind_violation(
                             key, f"'{value}' binds to all interfaces"
                         )
                     )
-                    break
+                    continue
 
         return violations
 
