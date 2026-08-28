@@ -42,9 +42,8 @@ subcommands:
   list                List all hardening parameters with values and stores.
   validate            Run hardening validation; print violations; exit
                       non-zero if any exist.
-  enable              Set hardening_enabled=on and seed a loopback default
-                      for unset prometheus_bind (the only key that keeps
-                      one; it's scraped locally). Every other bind key is
+  enable              Set hardening_enabled=on. A pure database operation;
+                      it does not touch regiond.conf. Every bind key is
                       left unset so MAAS can derive or discover an
                       address at startup.
   disable             Set hardening_enabled=off; refused on FIPS hosts.
@@ -61,10 +60,10 @@ keys backed by `regiond.conf` (`api_bind`, `database_sslmode`, and so on)
 are written to `regiond.conf` on the local host. The `set` command handles
 YAML quoting automatically.
 
-`enable` is a convenience shortcut: it sets `hardening_enabled=on` and also
-seeds `prometheus_bind` to `127.0.0.1` in `regiond.conf` if unset, saving a
-separate step on first activation. No other key is seeded: `api_bind`,
-`api_bind6`, `temporal_bind`, `rpc_bind`, `agent_api_bind`,
+`enable` is a convenience shortcut for
+`maas config-hardening set hardening_enabled on`: it writes only the DB
+`Config` store. No bind key is seeded: `api_bind`, `api_bind6`,
+`prometheus_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`,
 `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, and
 `http_proxy_bind6` derive a specific address from `maas_url` at startup
 when left unset (see the parameter table below).
@@ -77,7 +76,7 @@ when left unset (see the parameter table below).
 | `fips_enabled` | DB Config | not set | Declared FIPS intent (`true`/`false`). When set, startup validation checks that the declared value matches the host kernel state. |
 | `api_bind` | `regiond.conf` (per-host) | empty | IPv4 address(es) the public API binds to; may be a comma-separated list. Left unset by default: derived from `maas_url` at startup when hardening is active (same address clients already use to reach the region), otherwise binds all interfaces. Set explicitly to pin one or more addresses. |
 | `api_bind6` | `regiond.conf` (per-host) | empty | IPv6 address(es) the public API binds to; may be a comma-separated list. Same derivation as `api_bind`, restricted to an IPv6 address of `maas_url`'s host. |
-| `prometheus_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Prometheus metrics endpoint binds to. Seeded to `127.0.0.1` by `maas config-hardening enable` if unset — unlike the other bind keys, it keeps this loopback default because it's scraped locally by a co-located agent (e.g. grafana-agent), not remotely. |
+| `prometheus_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Prometheus metrics endpoint binds to. Left unset by default: when hardening is active, the runtime binds it to `127.0.0.1` — unlike the other bind keys, it defaults to loopback rather than a `maas_url`-derived address, since it's scraped locally by a co-located agent (e.g. grafana-agent), not remotely. Set explicitly to pin it elsewhere. |
 | `temporal_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Temporal services bind to. Left unset by default: derived from `maas_url` at startup, on every install mode (region, rack+region, all-in-one). Set explicitly to pin it elsewhere. |
 | `temporal_server` | `rackd.conf` (per-host) | empty | Address MAAS Agent dials to reach Temporal; not a hardening key. Left unset by default: derived from `maas_url` at startup, the same as `temporal_bind`. Set explicitly to pin it elsewhere. |
 | `rpc_bind` | `regiond.conf` (per-host) | empty | Address(es) the region RPC service binds to; may be a comma-separated list. Left unset by default: derived from `maas_url` at startup (same address rack controllers already use to reach the region), falling back to binding and advertising every interface only if `maas_url` cannot be resolved. When set, rack controllers dial exactly the configured address(es). |
@@ -101,6 +100,38 @@ when left unset (see the parameter table below).
 quoted when editing the file directly — for example `hardening_enabled: "on"`
 (unquoted `on` parses as a boolean). The `maas config-hardening set` command
 handles quoting automatically and is the recommended way to set all parameters.
+
+## Rack controller hardening
+
+`maas config-hardening` manages the region's `regiond.conf`. A rack
+controller has its own bind keys in `rackd.conf` and its own CLI,
+`maas-rack config-hardening`, run locally on the rack:
+
+```text
+usage: maas-rack config-hardening {list,get,set,validate} ...
+
+subcommands:
+  list       List all rack hardening parameters.
+  get <key>  Get a rack hardening parameter value.
+  set <key> <value>
+             Set a rack hardening parameter value.
+  validate   Run hardening validation against rackd.conf; print
+             violations; exit non-zero if any exist.
+```
+
+Keys: `hardening_enabled`, `api_bind`, `api_bind6`, `rpc_bind`,
+`syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`, and (snap installs
+only) `dns_bind`/`dns_bind6`. `api_bind`, `api_bind6`, `syslog_bind`,
+`http_proxy_bind`, and `http_proxy_bind6` derive a specific address from
+`maas_url` when left unset, the same as their region counterparts.
+`rpc_bind` has no such derivation on the rack: leaving it unset binds all
+interfaces and is flagged under hardening.
+
+`maas-rack config-hardening validate` checks only bind-wildcard rules —
+the rack has no TLS certificate, DH parameters, or database to validate;
+those checks are region-only. It does not post notifications to the
+region database (see [Security hardening](/explanation/security.md#security-hardening)
+for the region/rack notification scope).
 
 ## Violation codes
 

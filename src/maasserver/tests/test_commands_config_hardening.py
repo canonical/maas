@@ -380,61 +380,28 @@ class TestConfigHardeningDisable(_Base):
 
 
 class TestConfigHardeningEnable(_Base):
-    def _mock_region_cfg(self, MockRegionCfg, **attrs):
-        mock_cfg = MagicMock(**attrs)
-        MockRegionCfg.open_for_update.return_value.__enter__ = MagicMock(
-            return_value=mock_cfg
-        )
-        MockRegionCfg.open_for_update.return_value.__exit__ = MagicMock(
-            return_value=False
-        )
-        return mock_cfg
-
-    def test_sets_config_and_seeds_unset_prometheus_bind(self):
-        with (
-            patch("maasserver.models.Config") as MockConfig,
-            patch(
-                "maasserver.management.commands.config_hardening.RegionConfiguration"
-            ) as MockRegionCfg,
-        ):
+    def test_sets_hardening_enabled_in_db(self):
+        with patch("maasserver.models.Config") as MockConfig:
             mock_mgr = MagicMock()
             MockConfig.objects.db_manager.return_value = mock_mgr
-            mock_cfg = self._mock_region_cfg(
-                MockRegionCfg, prometheus_bind="", temporal_bind=""
-            )
-            self._cmd(command="enable")
+            cmd = self._cmd(command="enable")
 
-        self.assertEqual("127.0.0.1", mock_cfg.prometheus_bind)
+        mock_mgr.set_config.assert_called_once_with("hardening_enabled", "on")
+        self.assertIn("Hardening enabled", cmd.stdout.getvalue())
 
-    def test_skips_seeding_when_binds_already_set(self):
+    def test_enable_does_not_touch_regiond_conf(self):
+        # `enable` is a pure DB operation; it must never open regiond.conf
+        # (see F11: the prometheus_bind loopback seed was dropped).
         with (
             patch("maasserver.models.Config"),
             patch(
                 "maasserver.management.commands.config_hardening.RegionConfiguration"
             ) as MockRegionCfg,
         ):
-            self._mock_region_cfg(
-                MockRegionCfg,
-                prometheus_bind="10.0.0.1",
-                temporal_bind="10.0.0.2",
-            )
-            cmd = self._cmd(command="enable")
-        self.assertIn("already set", cmd.stdout.getvalue())
+            self._cmd(command="enable")
 
-    def test_warns_on_conf_write_failure(self):
-        with (
-            patch("maasserver.models.Config") as MockConfig,
-            patch(
-                "maasserver.management.commands.config_hardening.RegionConfiguration"
-            ) as MockRegionCfg,
-        ):
-            mock_mgr = MagicMock()
-            MockConfig.objects.db_manager.return_value = mock_mgr
-            MockRegionCfg.open_for_update.side_effect = OSError("no file")
-            cmd = self._cmd(command="enable")
-
-        self.assertIn("Warning", cmd.stderr.getvalue())
-        mock_mgr.set_config.assert_called_once_with("hardening_enabled", "on")
+        MockRegionCfg.open_for_update.assert_not_called()
+        MockRegionCfg.open.assert_not_called()
 
 
 class TestConfigHardeningListEffectiveBinds(_Base):

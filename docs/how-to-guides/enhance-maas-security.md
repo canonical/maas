@@ -233,12 +233,10 @@ A value of `1` means FIPS mode is active.
 ### Activate hardening on a non-FIPS host
 
 Run `maas config-hardening enable`. This sets `hardening_enabled=on` in the
-MAAS database and seeds `prometheus_bind` to `127.0.0.1` in `regiond.conf`
-if it is not already set — the only key that keeps a loopback default,
-since it's scraped locally by a co-located agent (e.g. grafana-agent).
-`api_bind`, `api_bind6`, `temporal_bind`, and `rpc_bind` are left unset:
-MAAS derives a specific, non-wildcard address for each from `maas_url`
-at startup.
+MAAS database; it is a pure database operation and does not touch
+`regiond.conf`. `api_bind`, `api_bind6`, `prometheus_bind`, `temporal_bind`,
+and `rpc_bind` are all left unset: MAAS derives a specific, non-wildcard
+address for each from `maas_url` at startup.
 
 ```text
 sudo maas config-hardening enable
@@ -251,9 +249,8 @@ sudo snap restart maas
 ```
 
 `hardening_enabled` accepts `auto` (default — active only when the host is in FIPS mode), `on`
-(force active), or `off` (inactive; overridden by the host FIPS state). Use
-`maas config-hardening set hardening_enabled <value>` to set the flag without
-the loopback seeding.
+(force active), or `off` (inactive; overridden by the host FIPS state). `enable`
+is a shortcut for `maas config-hardening set hardening_enabled on`.
 
 ### Set the hardening parameters
 

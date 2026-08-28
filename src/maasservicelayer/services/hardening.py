@@ -12,7 +12,6 @@ The validator never raises, exits, or blocks socket binding.
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-import ipaddress
 import logging
 from pathlib import Path
 
@@ -21,7 +20,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.serialization import load_pem_parameters
 
 from maascommon.fips import is_fips_enabled
-from maascommon.hardening import is_hardening_enabled
+from maascommon.hardening import check_bind_violations, is_hardening_enabled
 
 _log = logging.getLogger("maas.hardening")
 
@@ -256,7 +255,7 @@ class HardeningValidator:
                     _violation(
                         code="WEAK_DH_PARAMS",
                         message=f"DH parameters are {bit_length} bits; minimum is 2048",
-                        resolution="Run: openssl dhparam -out dhparam.pem 2048, then run: maas config-hardening set api_tls_dhparam=<path>",
+                        resolution="Run: openssl dhparam -out dhparam.pem 2048, then run: maas config-hardening set api_tls_dhparam <path>",
                         config_key="api_tls_dhparam",
                         file_path=str(dhparam_path),
                     )
@@ -266,7 +265,7 @@ class HardeningValidator:
                 _violation(
                     code="DH_PARAMS_PARSE_ERROR",
                     message=f"Failed to parse DH parameters file: {exc}",
-                    resolution="Run: maas config-hardening set api_tls_dhparam=<path> pointing to a valid PEM DH parameters file",
+                    resolution="Run: maas config-hardening set api_tls_dhparam <path> pointing to a valid PEM DH parameters file",
                     config_key="api_tls_dhparam",
                     file_path=str(dhparam_path),
                 )
@@ -275,59 +274,25 @@ class HardeningValidator:
         return []
 
     def _validate_bindings(self) -> list[HardeningViolation]:
-        """Per-key wildcard/empty check; each key clears independently."""
-        violations: list[HardeningViolation] = []
+        """Per-key wildcard/empty/invalid check; each key clears independently.
 
-        for key, values in self._binds.items():
-            if not values:
-                if key in _AUTO_DERIVED_BIND_KEYS:
-                    continue
-                violations.append(
-                    self._wildcard_bind_violation(
-                        key,
-                        "is not configured; the service would bind to all interfaces",
-                    )
-                )
-                continue
-            for value in values:
-                try:
-                    addr = ipaddress.ip_address(value)
-                except ValueError:
-                    violations.append(
-                        _violation(
-                            code="INVALID_BIND_ADDRESS",
-                            message=f"{key} '{value}' is not a valid IP address",
-                            resolution=(
-                                f"Run: maas config-hardening set {key} "
-                                f"<specific-ip-address>"
-                            ),
-                            config_key=key,
-                        )
-                    )
-                    continue
-                if addr.is_unspecified:
-                    violations.append(
-                        self._wildcard_bind_violation(
-                            key, f"'{value}' binds to all interfaces"
-                        )
-                    )
-                    continue
-
-        return violations
-
-    @staticmethod
-    def _wildcard_bind_violation(key: str, detail: str) -> HardeningViolation:
-        return _violation(
-            code="WILDCARD_BIND_NOT_ALLOWED",
-            message=(
-                f"{key} {detail}, which is not allowed when hardening is active"
-            ),
-            resolution=(
-                f"Run: maas config-hardening set {key} <specific-ip-address>"
-            ),
-            config_key=key,
-            ident=f"hardening-wildcard-bind-{key.replace('_', '-')}",
-        )
+        Delegates to `maascommon.hardening.check_bind_violations`, the same
+        implementation used by the rack's `hardening_command` CLI, so the
+        region and rack enforce identical rules from a single source of
+        truth (see F8 in the hardening findings).
+        """
+        return [
+            _violation(
+                code=v.code,
+                message=v.message,
+                resolution=v.resolution,
+                config_key=v.config_key,
+                ident=v.ident,
+            )
+            for v in check_bind_violations(
+                self._binds, _AUTO_DERIVED_BIND_KEYS, "maas config-hardening"
+            )
+        ]
 
     def _validate_fips_drift(self) -> list[HardeningViolation]:
         # Only flag when the operator declared FIPS in the DB but the kernel

@@ -296,6 +296,18 @@ class TestValidateBindings:
         assert any("not-an-ip" in m for m in messages)
         assert any("also-not-an-ip" in m for m in messages)
 
+    def test_invalid_ips_in_different_keys_have_distinct_idents(self) -> None:
+        # Regression: _validate_bindings() used to build INVALID_BIND_ADDRESS
+        # violations without a per-key ident, so two different keys with bad
+        # addresses collapsed onto the same notification (see F8).
+        v_list = self._validator(
+            api_bind=["not-an-ip"], rpc_bind=["also-not-an-ip"]
+        )._validate_bindings()
+        by_key = {v.config_key: v.ident for v in v_list}
+        assert by_key["api_bind"] != by_key["rpc_bind"]
+        assert by_key["api_bind"] == "hardening-invalid-bind-api-bind"
+        assert by_key["rpc_bind"] == "hardening-invalid-bind-rpc-bind"
+
     def test_multiple_wildcards_in_same_key_all_reported(self) -> None:
         v_list = self._validator(
             api_bind=["0.0.0.0", "::"]

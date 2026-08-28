@@ -41,10 +41,6 @@ _CONF_KEYS = frozenset(
     }
 )
 
-# Seeded to loopback by `enable`;
-# network-facing binds are not auto-seeded.
-_LOOPBACK_SEED_KEYS = frozenset({"prometheus_bind"})
-
 # Keys backed by a comma-separated list in regiond.conf (see
 # `ForEach` in `maasserver.config`). Every other conf-backed key is a
 # plain scalar string.
@@ -204,7 +200,7 @@ class Command(BaseCommandWithConnection):
         )
         subparsers.add_parser(
             "enable",
-            help="Enable hardening and seed loopback defaults for unset region-internal binds.",
+            help="Enable hardening (hardening_enabled=on).",
         )
         subparsers.add_parser(
             "disable",
@@ -327,9 +323,11 @@ class Command(BaseCommandWithConnection):
             self.stdout.write(line + "\n")
 
     def _cmd_validate(self) -> None:
-        if not is_hardening_enabled():
-            self.stdout.write("Hardening is not active; no checks run.\n")
-            return
+        hardening_active = is_hardening_enabled()
+        if not hardening_active:
+            self.stdout.write(
+                "Hardening is not active; only FIPS-drift is checked.\n"
+            )
 
         try:
             fips_declared = self._read_fips_declared()
@@ -395,28 +393,6 @@ class Command(BaseCommandWithConnection):
             "hardening_enabled", "on"
         )
         self.stdout.write("Hardening enabled (hardening_enabled=on).\n")
-
-        seeded = []
-        try:
-            with RegionConfiguration.open_for_update() as cfg:
-                for key in sorted(_LOOPBACK_SEED_KEYS):
-                    if not str(getattr(cfg, key, "")):
-                        setattr(cfg, key, "127.0.0.1")
-                        seeded.append(key)
-        except Exception as exc:
-            self.stderr.write(
-                f"Warning: could not seed bind defaults in regiond.conf: {exc}\n"
-            )
-            return
-
-        if seeded:
-            self.stdout.write(
-                f"Seeded loopback (127.0.0.1) for: {', '.join(seeded)}\n"
-            )
-        else:
-            self.stdout.write(
-                "All region-internal bind keys already set; no seeding done.\n"
-            )
 
     def _cmd_disable(self) -> None:
         if is_fips_enabled():

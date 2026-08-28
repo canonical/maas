@@ -171,5 +171,14 @@ class TestValidateFipsSshPublicKey:
         msg = validate_fips_ssh_public_key("ssh-rsa AAAA c")
         assert msg is not None and "1024" in msg
 
+    def test_rejects_unparseable_rsa_key(self, monkeypatch):
+        # bits cannot be determined (e.g. malformed base64 body): fail
+        # closed and reject rather than assume the key is compliant.
+        monkeypatch.setattr(
+            "maascommon.fips.rsa_ssh_key_bits", lambda _b64: None
+        )
+        msg = validate_fips_ssh_public_key("ssh-rsa AAAA c")
+        assert msg is not None and "could not be determined" in msg
+
     def test_empty_key_returns_none(self):
         assert validate_fips_ssh_public_key("") is None
