@@ -3,14 +3,13 @@
 
 """Test AMP argument classes."""
 
-
+import copy
 import random
-import zlib
 
 import attr
 import netaddr
 from testtools import ExpectedException
-from testtools.matchers import HasLength, LessThan
+from testtools.matchers import HasLength
 from twisted.protocols import amp
 
 from maastesting.factory import factory
@@ -131,34 +130,45 @@ class TestAmpList(MAASTestCase):
 class TestCompressedAmpList(MAASTestCase):
     def test_round_trip(self):
         argument = arguments.CompressedAmpList([("thing", amp.Unicode())])
-        example = [{"thing": factory.make_name("thing")}]
-        encoded = argument.toStringProto(example, proto=None)
-        self.assertIsInstance(encoded, bytes)
-        decoded = argument.fromStringProto(encoded, proto=None)
+        arg_name = factory.make_name()
+        b_arg_name = arg_name.encode()
+        example = {arg_name: [{"thing": factory.make_name("thing")}]}
+
+        box = {}
+        argument.toBox(b_arg_name, box, example.copy(), None)
+        self.assertIsInstance(box[b_arg_name], bytes)
+
+        decoded = {}
+        argument.fromBox(b_arg_name, box, decoded, None)
         self.assertEqual(example, decoded)
 
     def test_compression_is_worth_it(self):
+        arg_name = "leases"
+        b_arg_name = arg_name.encode()
         argument = arguments.CompressedAmpList(
             [("ip", amp.Unicode()), ("mac", amp.Unicode())]
         )
-        # Create 3500 leases. We can get up to ~3750 and still satisfy the
-        # post-conditions, but the randomness means we can't be sure about
-        # test stability that close to the limit.
-        leases = [
-            {
-                "ip": factory.make_ipv4_address(),
-                "mac": factory.make_mac_address(),
-            }
-            for _ in range(3500)
-        ]
-        encoded_compressed = argument.toStringProto(leases, proto=None)
-        encoded_uncompressed = zlib.decompress(encoded_compressed)
-        # The encoded leases compress to less than half the size of the
-        # uncompressed leases, and under the AMP message limit of 64k.
-        self.expectThat(
-            len(encoded_compressed), LessThan(len(encoded_uncompressed) / 2)
-        )
-        self.expectThat(len(encoded_compressed), LessThan(2**16))
+        leases = {
+            arg_name: [
+                {
+                    "ip": factory.make_ipv4_address(),
+                    "mac": factory.make_mac_address(),
+                }
+                for _ in range(10000)
+            ]
+        }
+
+        expected = copy.deepcopy(leases)
+        box = {}
+
+        argument.toBox(b_arg_name, box, leases, None)
+        self.assertEqual(len(box.keys()), 3)
+        for v in box.values():
+            self.assertLess(len(v), 2**16)
+
+        decoded = {}
+        argument.fromBox(b_arg_name, box, decoded, None)
+        self.assertEqual(expected, decoded)
 
 
 class TestIPAddress(MAASTestCase):
