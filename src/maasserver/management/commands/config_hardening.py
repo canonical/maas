@@ -364,6 +364,7 @@ class Command(BaseCommandWithConnection):
                     syslog_bind=list(cfg.syslog_bind),
                     http_proxy_bind=list(cfg.http_proxy_bind),
                     http_proxy_bind6=list(cfg.http_proxy_bind6),
+                    database_host=str(cfg.database_host),
                     database_sslmode=str(cfg.database_sslmode),
                     fips_declared=fips_declared,
                     snap_deployment=running_in_snap(),
