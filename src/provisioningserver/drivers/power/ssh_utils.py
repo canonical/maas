@@ -66,9 +66,11 @@ def get_fips_transport_options() -> dict[str, Any]:
 
 
 class TrustedHostKeyPolicy(MissingHostKeyPolicy):
-    """paramiko host-key policy that verifies keys via the MAAS region RPC.
+    """paramiko host-key policy that verifies keys via env var or MAAS region RPC.
 
-    Set ``fail_open=True`` to accept unknown keys without an RPC round-trip;
+    Checks the ``MAAS_TRUSTED_SSH_HOST_KEYS`` environment variable first
+    (cheap, local). Falls back to RPC when the env var is absent.
+    Set ``fail_open=True`` to accept unknown keys without any lookup;
     only use this in contexts where region RPC is unavailable (e.g. the
     region controller itself).
     """
@@ -93,18 +95,21 @@ class TrustedHostKeyPolicy(MissingHostKeyPolicy):
     def _lookup_trusted_key(
         self, hostname: str, key_type: str, key_b64: str
     ) -> bool:
-        """Return True iff the host key is trusted per the MAAS region.
+        """Return True iff the host key is trusted.
 
-        Tries RPC first (available when running in rackd). Falls back to
-        the ``MAAS_TRUSTED_SSH_HOST_KEYS`` environment variable (available
-        when running in the ``maas-power`` subprocess spawned by the agent).
-        Called synchronously inside paramiko's SSH handshake (a
-        ``deferToThread`` thread), so the Twisted RPC is dispatched via
-        ``blockingCallFromThread``. Any RPC failure falls back to env var;
-        ``fail_open`` returns True without any lookup.
+        Tries the ``MAAS_TRUSTED_SSH_HOST_KEYS`` environment variable first
+        (cheap, local memory — available when running in the ``maas-power``
+        subprocess spawned by the agent). Falls back to RPC (network
+        round-trip — available when running in rackd). ``fail_open`` returns
+        True without any lookup.
         """
         if self._fail_open:
             return True
+        env_result = self._lookup_trusted_key_via_env(
+            hostname, key_type, key_b64
+        )
+        if env_result is not None:
+            return env_result
         try:
             return self._lookup_trusted_key_via_rpc(
                 hostname, key_type, key_b64
@@ -112,12 +117,12 @@ class TrustedHostKeyPolicy(MissingHostKeyPolicy):
         except Exception as exc:
             log.debug(
                 "TrustedHostKeyPolicy: RPC lookup failed for %s (%s); "
-                "falling back to env var. Error: %s",
+                "rejecting key (fail-secure). Error: %s",
                 hostname,
                 key_type,
                 exc,
             )
-        return self._lookup_trusted_key_via_env(hostname, key_type, key_b64)
+            return False
 
     def _lookup_trusted_key_via_rpc(
         self, hostname: str, key_type: str, key_b64: str
@@ -146,17 +151,16 @@ class TrustedHostKeyPolicy(MissingHostKeyPolicy):
     @staticmethod
     def _lookup_trusted_key_via_env(
         hostname: str, key_type: str, key_b64: str
-    ) -> bool:
-        """Return True iff the host key matches one in the env var."""
+    ) -> bool | None:
+        """Return True if the host key matches one in the env var.
+
+        Returns ``None`` when the env var is absent (caller should fall back
+        to RPC).  Returns ``True`` when the key is found, ``False`` when the
+        env var is present but the key is not in it (definitive rejection).
+        """
         raw = os.environ.get(MAAS_TRUSTED_SSH_HOST_KEYS_ENV)
         if not raw:
-            log.warning(
-                "TrustedHostKeyPolicy: no RPC and no %s env var; "
-                "rejecting key for %s (fail-secure).",
-                MAAS_TRUSTED_SSH_HOST_KEYS_ENV,
-                hostname,
-            )
-            return False
+            return None
         try:
             keys = json.loads(raw)
         except (json.JSONDecodeError, TypeError):

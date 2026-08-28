@@ -205,10 +205,11 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
             return_value={"verified": True}
         )
 
+        self.patch(os, "environ", {})
+
         policy.missing_host_key(client, "host.example", key)
 
         rpc_factory.assert_called_once_with()
-        # blockingCallFromThread dispatches the RPC call in the reactor thread.
         blocking.assert_called_once()
         rpc_client.assert_called_once_with(
             command_token,
@@ -220,31 +221,31 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
             "host.example", "ssh-rsa", key
         )
 
-    def test_rpc_failure_falls_back_to_env_var(self):
+    def test_env_var_absent_falls_back_to_rpc(self):
         policy = TrustedHostKeyPolicy()
         client = Mock(spec=SSHClient)
         client._host_keys = Mock()
         key = make_key_mock()
 
-        self._patch_rpc(rpc_side_effect=RuntimeError("rpc down"))
-
-        env_json = json.dumps(
-            [
-                {
-                    "host": "host.example",
-                    "key_type": "ssh-rsa",
-                    "public_key": "AAAA",
-                }
-            ]
+        rpc_client, rpc_factory, command_token, blocking = self._patch_rpc(
+            return_value={"verified": True}
         )
-        self.patch(os, "environ", {MAAS_TRUSTED_SSH_HOST_KEYS_ENV: env_json})
+
+        self.patch(os, "environ", {})
 
         policy.missing_host_key(client, "host.example", key)
+
+        rpc_client.assert_called_once_with(
+            command_token,
+            host="host.example",
+            key_type="ssh-rsa",
+            public_key="AAAA",
+        )
         client._host_keys.add.assert_called_once_with(
             "host.example", "ssh-rsa", key
         )
 
-    def test_rpc_failure_and_no_env_var_rejects_host_key(self):
+    def test_env_var_absent_and_rpc_failure_rejects_host_key(self):
         from paramiko import SSHException
 
         policy = TrustedHostKeyPolicy()
@@ -289,6 +290,33 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
             "host.example", "ssh-rsa", key
         )
 
+    def test_env_var_trusted_skips_rpc(self):
+        policy = TrustedHostKeyPolicy()
+        client = Mock(spec=SSHClient)
+        client._host_keys = Mock()
+        key = make_key_mock()
+
+        rpc_client, rpc_factory, command_token, blocking = self._patch_rpc(
+            return_value={"verified": True}
+        )
+
+        env_json = json.dumps(
+            [
+                {
+                    "host": "host.example",
+                    "key_type": "ssh-rsa",
+                    "public_key": "AAAA",
+                }
+            ]
+        )
+        self.patch(os, "environ", {MAAS_TRUSTED_SSH_HOST_KEYS_ENV: env_json})
+
+        policy.missing_host_key(client, "host.example", key)
+        client._host_keys.add.assert_called_once_with(
+            "host.example", "ssh-rsa", key
+        )
+        rpc_client.assert_not_called()
+
     def test_env_var_key_mismatch_rejects_host_key(self):
         from paramiko import SSHException
 
@@ -318,6 +346,38 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
             key,
         )
         client._host_keys.add.assert_not_called()
+
+    def test_env_var_key_mismatch_does_not_fall_back_to_rpc(self):
+        policy = TrustedHostKeyPolicy()
+        client = Mock(spec=SSHClient)
+        client._host_keys = Mock()
+        key = make_key_mock()
+
+        rpc_client, rpc_factory, command_token, blocking = self._patch_rpc(
+            return_value={"verified": True}
+        )
+
+        env_json = json.dumps(
+            [
+                {
+                    "host": "host.example",
+                    "key_type": "ssh-rsa",
+                    "public_key": "DIFFERENT",
+                }
+            ]
+        )
+        self.patch(os, "environ", {MAAS_TRUSTED_SSH_HOST_KEYS_ENV: env_json})
+
+        from paramiko import SSHException
+
+        self.assertRaises(
+            SSHException,
+            policy.missing_host_key,
+            client,
+            "host.example",
+            key,
+        )
+        rpc_client.assert_not_called()
 
     def test_env_var_invalid_json_rejects_host_key(self):
         from paramiko import SSHException
