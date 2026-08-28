@@ -6,7 +6,6 @@
 from unittest.mock import ANY, call, Mock, sentinel
 
 from django.db import connections
-from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from twisted.python.threadable import isInIOThread
@@ -404,50 +403,97 @@ class TestFactories(MAASServerTestCase):
             ["ipc-worker"], eventloop.loop.factories["rpc"]["requires"]
         )
 
-    def test_make_RegionService_hardening_off_binds_any(self):
-        import maascommon.hardening as _hardening
+    def test_make_RegionService_unset_derives_from_maas_url(self):
+        # An unset rpc_bind derives a specific address from maas_url --
+        # the same address rack controllers already use to reach the
+        # region -- instead of a hardcoded loopback (which would break
+        # rack connectivity) or a bare wildcard bind.
         from maasserver.config import RegionConfiguration
+        import provisioningserver.utils.network as network_module
 
         mock_open = self.patch(RegionConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
-        mock_cfg.rpc_bind = ""
-        mock_cfg.hardening_enabled = "auto"
+        mock_cfg.rpc_bind = []
+        mock_cfg.maas_url = "http://10.0.0.9:5240/MAAS"
         mock_open.return_value.__exit__.return_value = False
-        self.patch(_hardening, "is_hardening_enabled").return_value = False
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.9"
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
-        self.assertEqual(service.endpoints[0][0]._interface, "0.0.0.0")
+        self.assertEqual(service.endpoints[0][0]._interface, "10.0.0.9")
 
-    def test_make_RegionService_hardening_on_binds_loopback(self):
-        import maascommon.hardening as _hardening
+    def test_make_RegionService_unset_and_unresolvable_binds_any(self):
+        # Only when maas_url itself can't be resolved does the bind fall
+        # back to every interface.
         from maasserver.config import RegionConfiguration
+        import provisioningserver.utils.network as network_module
 
         mock_open = self.patch(RegionConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
-        mock_cfg.rpc_bind = ""
-        mock_cfg.hardening_enabled = "on"
+        mock_cfg.rpc_bind = []
+        mock_cfg.maas_url = "http://unreachable.invalid:5240/MAAS"
         mock_open.return_value.__exit__.return_value = False
-        self.patch(_hardening, "is_hardening_enabled").return_value = True
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        service = eventloop.make_RegionService(sentinel.ipcWorker)
+
+        self.assertEqual(service.endpoints[0][0]._interface, "")
+
+    def test_make_RegionService_unresolvable_under_hardening_binds_loopback(
+        self,
+    ):
+        # Under hardening, an unresolvable maas_url falls back to loopback
+        # rather than every interface: a wildcard bind is not allowed.
+        import maascommon.hardening as hardening_module
+        from maasserver.config import RegionConfiguration
+        import provisioningserver.utils.network as network_module
+
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.rpc_bind = []
+        mock_cfg.maas_url = "http://unreachable.invalid:5240/MAAS"
+        mock_open.return_value.__exit__.return_value = False
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = True
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
         self.assertEqual(service.endpoints[0][0]._interface, "127.0.0.1")
 
-    def test_make_RegionService_explicit_bind_overrides_hardening(self):
-        import maascommon.hardening as _hardening
+    def test_make_RegionService_explicit_bind(self):
         from maasserver.config import RegionConfiguration
 
         mock_open = self.patch(RegionConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
-        mock_cfg.rpc_bind = "10.0.0.1"
-        mock_cfg.hardening_enabled = "on"
+        mock_cfg.rpc_bind = ["10.0.0.1"]
         mock_open.return_value.__exit__.return_value = False
-        self.patch(_hardening, "is_hardening_enabled").return_value = True
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
         self.assertEqual(service.endpoints[0][0]._interface, "10.0.0.1")
+
+    def test_make_RegionService_multiple_explicit_binds(self):
+        from maasserver.config import RegionConfiguration
+
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.rpc_bind = ["10.0.0.1", "10.0.0.2"]
+        mock_open.return_value.__exit__.return_value = False
+
+        service = eventloop.make_RegionService(sentinel.ipcWorker)
+
+        self.assertEqual(
+            ["10.0.0.1", "10.0.0.2"],
+            [endpoint._interface for endpoint in service.endpoints[0]],
+        )
 
     def test_make_NonceCleanupService(self):
         service = eventloop.make_NonceCleanupService()
@@ -661,9 +707,11 @@ class TestFactories(MAASServerTestCase):
         )
 
     def test_make_PrometheusExporterService(self):
+        from maasserver.prometheus.service import PrometheusExporterService
+
         service = eventloop.make_PrometheusExporterService()
-        self.assertIsInstance(service, StreamServerEndpointService)
-        self.assertEqual(service.endpoint._port, REGION_PROMETHEUS_PORT)
+        self.assertIsInstance(service, PrometheusExporterService)
+        self.assertEqual(service._port, REGION_PROMETHEUS_PORT)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_PrometheusExporterService,
@@ -672,6 +720,57 @@ class TestFactories(MAASServerTestCase):
         self.assertTrue(
             eventloop.loop.factories["prometheus-exporter"]["only_on_master"]
         )
+
+    def test_make_PrometheusExporterService_binds_all_by_default(self):
+        import maascommon.hardening as hardening_module
+
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = False
+
+        service = eventloop.make_PrometheusExporterService()
+
+        self.assertEqual(service._resolve_bind_address(), "")
+
+    def test_make_PrometheusExporterService_binds_loopback_under_hardening(
+        self,
+    ):
+        import maascommon.hardening as hardening_module
+
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = True
+
+        service = eventloop.make_PrometheusExporterService()
+
+        self.assertEqual(service._resolve_bind_address(), "127.0.0.1")
+
+    def test_make_PrometheusExporterService_explicit_bind_overrides(self):
+        from maasserver.config import RegionConfiguration
+
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.prometheus_bind = "10.0.0.5"
+        mock_open.return_value.__exit__.return_value = False
+
+        service = eventloop.make_PrometheusExporterService()
+
+        self.assertEqual(service._resolve_bind_address(), "10.0.0.5")
+
+    def test_make_PrometheusExporterService_bind_resolved_lazily(self):
+        # Regression test for the populate()/configure_hardening() race:
+        # the bind address must be computed when the service actually
+        # starts, not baked in at construction time (`populate()` builds
+        # every factory before `start_up()` calls `configure_hardening()`).
+        import maascommon.hardening as hardening_module
+
+        mock_enabled = self.patch(hardening_module, "is_hardening_enabled")
+        mock_enabled.return_value = False
+        service = eventloop.make_PrometheusExporterService()
+        # Hardening becomes active only after construction, mirroring
+        # configure_hardening() running after populate().
+        mock_enabled.return_value = True
+        self.assertEqual(service._resolve_bind_address(), "127.0.0.1")
 
     def test_make_CertificateExpirationCheckService(self):
         service = eventloop.make_CertificateExpirationCheckService()

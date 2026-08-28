@@ -10,6 +10,7 @@ from twisted.application.internet import TimerService
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.threads import deferToThread
 
+from maasserver.config import RegionConfiguration
 from maasserver.models.config import Config
 from maasserver.models.node import RegionController
 from maasserver.routablepairs import get_routable_address_map
@@ -18,6 +19,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.syslog.config import write_config
+from provisioningserver.utils.network import resolve_service_bind
 from provisioningserver.utils.twisted import callOut, synchronous
 
 log = LegacyLogger()
@@ -78,7 +80,14 @@ class RegionSyslogService(TimerService):
             if promtail_enabled
             else None
         )
-        return _Configuration(port, peers, promtail_port)
+        from maascommon.hardening import is_hardening_enabled
+
+        bind = resolve_service_bind(
+            RegionConfiguration.open,
+            "syslog_bind",
+            hardening_active=is_hardening_enabled(),
+        )
+        return _Configuration(port, peers, promtail_port, bind)
 
     def _maybeApplyConfiguration(self, configuration):
         """Reconfigure the syslog server if the configuration changes.
@@ -118,6 +127,7 @@ class RegionSyslogService(TimerService):
             ],
             port=configuration.port,
             promtail_port=configuration.promtail_port,
+            bind=list(configuration.bind),
         )
         d.addCallback(callOut, service_monitor.restartService, "syslog_region")
         return d
@@ -157,3 +167,6 @@ class _Configuration:
 
     # Promtail syslog port
     promtail_port = attr.ib(converter=converter_obj(int), default=None)
+
+    # Address(es) rsyslog binds to; empty means all interfaces.
+    bind = attr.ib(converter=tuple, default=())

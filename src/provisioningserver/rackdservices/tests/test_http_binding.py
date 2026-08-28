@@ -12,6 +12,7 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.config import ClusterConfiguration
 import provisioningserver.rackdservices.http as http_module
 from provisioningserver.rackdservices.http import RackHTTPService
+import provisioningserver.utils.network as network_module
 
 
 def _make_service():
@@ -23,7 +24,9 @@ def _make_service():
 class TestNginxHardeningVarsPassthrough(MAASTestCase):
     """Verify _configure forwards binding/hardening context to the template."""
 
-    def _run_configure(self, hardening_active, api_bind="", **extra):
+    def _run_configure(
+        self, hardening_active, api_bind="", maas_url="", **extra
+    ):
         """Run _configure and return the dict passed to template.substitute."""
         captured = {}
 
@@ -38,8 +41,10 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
         def fake_cluster_open():
             m = MagicMock(spec=ClusterConfiguration)
             m.hardening_enabled = "on" if hardening_active else "auto"
-            m.api_bind = api_bind
-            m.api_bind6 = extra.get("api_bind6", "")
+            m.api_bind = [api_bind] if api_bind else []
+            api_bind6 = extra.get("api_bind6", "")
+            m.api_bind6 = [api_bind6] if api_bind6 else []
+            m.maas_url = [maas_url] if maas_url else []
             m.api_upstream_port = extra.get("api_upstream_port", 5240)
             m.api_rate_limit_rate = extra.get("api_rate_limit_rate", "10r/s")
             m.api_rate_limit_burst = extra.get("api_rate_limit_burst", 20)
@@ -82,6 +87,21 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
         assert captured.get("hardening") is True
         assert "127.0.0.1:5248" in captured.get("api_listen")
         assert "[fd00::5]:5248" in captured.get("api_listen")
+
+    def test_hardening_off_unset_stays_wildcard(self):
+        captured = self._run_configure(
+            hardening_active=False, maas_url="http://10.0.0.9:5240/MAAS"
+        )
+        assert captured.get("api_listen") == ["[::]:5248", "5248"]
+
+    def test_hardening_on_unset_derives_from_maas_url(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.9"
+        captured = self._run_configure(
+            hardening_active=True, maas_url="http://10.0.0.9:5240/MAAS"
+        )
+        assert "10.0.0.9:5248" in captured.get("api_listen")
 
     def test_upstream_port_forwarded(self):
         captured = self._run_configure(

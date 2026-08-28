@@ -32,8 +32,12 @@ def _render(extra: dict | None = None) -> str:
     }
     if extra:
         base.update(extra)
+    api_bind = base.pop("api_bind", "")
+    api_bind6 = base.pop("api_bind6", "")
     base["api_listen"] = compose_listen_addresses(
-        5248, base.pop("api_bind", ""), base.pop("api_bind6", "")
+        5248,
+        [api_bind] if api_bind else [],
+        [api_bind6] if api_bind6 else [],
     )
     tpl = tempita.Template.from_filename(
         locate_template("http", "rackd.nginx.conf.template"),
@@ -202,4 +206,7 @@ class TestNginxTemplateLocations(MAASTestCase):
         for extra in (None, HARDENING_VARS):
             rendered = _render(extra)
             self.assertIn("location /machine-resources/", rendered)
-            self.assertIn("proxy_pass http://localhost:5249/boot/;", rendered)
+            # The rackd metadata/boot HTTP service (port 5249) binds to
+            # ::1 only (see `ProvisioningServiceMaker._makeHTTPService`),
+            # so nginx must dial it there rather than via "localhost".
+            self.assertIn("proxy_pass http://[::1]:5249/boot/;", rendered)

@@ -21,6 +21,7 @@ from provisioningserver.dns.config import (
     set_up_rndc,
     set_up_zone_file_dir,
 )
+from provisioningserver.utils.snap import running_in_snap
 
 
 def add_arguments(parser):
@@ -58,7 +59,17 @@ def run(args, stdout=sys.stdout, stderr=sys.stderr):
     set_up_rndc()
 
     with ClusterConfiguration.open() as cluster_config:
-        dns_bind = cluster_config.dns_bind
+        # dns_bind/dns_bind6 only take effect in snap installs: MAAS owns
+        # the whole named.conf there. On Debian-packaged installs the base
+        # named.conf.options belongs to the system's bind9 package, so
+        # MAAS cannot rely on a listen-on/listen-on-v6 directive taking
+        # effect there.
+        if running_in_snap():
+            dns_bind = cluster_config.dns_bind
+            dns_bind6 = cluster_config.dns_bind6
+        else:
+            dns_bind = []
+            dns_bind6 = []
         dns_allow_transfer = cluster_config.dns_allow_transfer
         dns_fetches_per_zone = int(cluster_config.dns_fetches_per_zone)
         dns_fetches_per_server = int(cluster_config.dns_fetches_per_server)
@@ -66,6 +77,7 @@ def run(args, stdout=sys.stdout, stderr=sys.stderr):
     set_up_options_conf(
         overwrite=not args.no_clobber,
         dns_bind=dns_bind,
+        dns_bind6=dns_bind6,
         dns_allow_transfer=dns_allow_transfer,
         dns_fetches_per_zone=dns_fetches_per_zone,
         dns_fetches_per_server=dns_fetches_per_server,

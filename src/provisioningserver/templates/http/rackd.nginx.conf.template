@@ -90,13 +90,13 @@ server {
 
     location = /log {
         internal;
-        proxy_pass http://localhost:5249/log;
+        proxy_pass http://[::1]:5249/log;
         proxy_set_header X-Original-URI $request_uri;
         proxy_set_header X-Original-Remote-IP $remote_addr;
     }
 
     location / {
-        proxy_pass http://localhost:5249/boot/;
+        proxy_pass http://[::1]:5249/boot/;
         proxy_buffering off;
         proxy_set_header X-Server-Addr $server_addr;
         proxy_set_header X-Server-Port $server_port;
