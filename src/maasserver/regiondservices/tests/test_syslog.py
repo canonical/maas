@@ -94,7 +94,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
         self.assertEqual(write_config.call_count, 1)
         self.assertEqual(
             write_config.call_args.kwargs,
-            {"port": port, "promtail_port": None},
+            {"port": port, "promtail_port": None, "bind": []},
         )
         write_local, called_peers = write_config.call_args.args
         self.assertTrue(write_local)
@@ -114,6 +114,67 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
         yield service._tryUpdate()
         write_config.assert_not_called()
         restartService.assert_not_called()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_syslog_bind_hardening_off_stays_wildcard(self):
+        import maascommon.hardening as hardening_module
+
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = False
+        service = syslog.RegionSyslogService(reactor)
+        port, _ = yield deferToDatabase(self.make_example_configuration)
+        write_config = self.patch_autospec(syslog, "write_config")
+        self.patch_autospec(service_monitor, "restartService")
+        yield service._tryUpdate()
+        self.assertEqual(write_config.call_args.kwargs["bind"], [])
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_syslog_bind_derives_from_maas_url_under_hardening(self):
+        import maascommon.hardening as hardening_module
+        from maasserver.config import RegionConfiguration
+        import provisioningserver.utils.network as network_module
+
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = True
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.9"
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.syslog_bind = []
+        mock_cfg.maas_url = "http://10.0.0.9:5240/MAAS"
+        mock_open.return_value.__exit__.return_value = False
+        service = syslog.RegionSyslogService(reactor)
+        port, _ = yield deferToDatabase(self.make_example_configuration)
+        write_config = self.patch_autospec(syslog, "write_config")
+        self.patch_autospec(service_monitor, "restartService")
+        yield service._tryUpdate()
+        self.assertEqual(write_config.call_args.kwargs["bind"], ["10.0.0.9"])
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_syslog_bind_explicit_value_used(self):
+        import maascommon.hardening as hardening_module
+        from maasserver.config import RegionConfiguration
+
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = True
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.syslog_bind = ["10.0.0.5"]
+        mock_cfg.maas_url = "http://10.0.0.9:5240/MAAS"
+        mock_open.return_value.__exit__.return_value = False
+        service = syslog.RegionSyslogService(reactor)
+        port, _ = yield deferToDatabase(self.make_example_configuration)
+        write_config = self.patch_autospec(syslog, "write_config")
+        self.patch_autospec(service_monitor, "restartService")
+        yield service._tryUpdate()
+        self.assertEqual(write_config.call_args.kwargs["bind"], ["10.0.0.5"])
 
 
 class TestRegionSyslogService_Errors(MAASTransactionServerTestCase):

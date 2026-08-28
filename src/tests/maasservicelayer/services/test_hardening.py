@@ -194,16 +194,42 @@ class TestValidateBindings:
     """Per-key wildcard/empty binding violations."""
 
     _ALL_SPECIFIC = {
-        "api_bind": "10.0.0.1",
-        "api_bind6": "fd00::1",
+        "api_bind": ["10.0.0.1"],
+        "api_bind6": ["fd00::1"],
         "prometheus_bind": "127.0.0.1",
         "temporal_bind": "127.0.0.1",
-        "rpc_bind": "10.0.0.2",
-        "dns_bind": "10.0.0.3",
+        "rpc_bind": ["10.0.0.2"],
+        "agent_api_bind": ["10.0.0.4"],
+        "agent_api_bind6": ["fd00::4"],
+        "dns_bind": ["10.0.0.3"],
+        "dns_bind6": ["fd00::3"],
+        "syslog_bind": ["10.0.0.5"],
+        "http_proxy_bind": ["10.0.0.6"],
+        "http_proxy_bind6": ["fd00::6"],
     }
+
+    # Keys where an empty/unset value derives a real address at runtime
+    # (see `_AUTO_DERIVED_BIND_KEYS`), so it's never a wildcard violation.
+    _AUTO_DERIVED = (
+        "api_bind",
+        "api_bind6",
+        "temporal_bind",
+        "rpc_bind",
+        "agent_api_bind",
+        "agent_api_bind6",
+        "prometheus_bind",
+        "syslog_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
+    )
 
     def _validator(self, **overrides) -> HardeningValidator:
         kwargs = {**self._ALL_SPECIFIC, **overrides}
+        # dns_bind/dns_bind6 are only validated in snap deployments; force
+        # it on here so these per-key tests exercise them like every other
+        # bind key. Snap-gating itself is covered by
+        # `TestValidateDnsBindSnapGating` below.
+        kwargs.setdefault("snap_deployment", True)
         return HardeningValidator(hardening_active=True, **kwargs)
 
     def test_all_specific_addresses_no_violations(self) -> None:
@@ -211,7 +237,7 @@ class TestValidateBindings:
 
     def test_each_key_unset_produces_its_own_violation(self) -> None:
         for key in self._ALL_SPECIFIC:
-            if key == "temporal_bind":
+            if key in self._AUTO_DERIVED:
                 continue
             v_list = self._validator(**{key: None})._validate_bindings()
             assert len(v_list) == 1, f"expected 1 violation for {key}"
@@ -222,28 +248,31 @@ class TestValidateBindings:
                 == f"hardening-wildcard-bind-{key.replace('_', '-')}"
             )
 
-    def test_temporal_bind_unset_produces_no_violation(self) -> None:
-        # temporal_bind is auto-derived from maas_url at runtime when
-        # unset (see resolve_bind_address), so an empty value
-        # is not a wildcard violation.
-        v_list = self._validator(temporal_bind=None)._validate_bindings()
-        assert v_list == []
+    def test_auto_derived_keys_unset_produce_no_violation(self) -> None:
+        # api_bind/api_bind6/temporal_bind/rpc_bind are auto-derived from
+        # maas_url at runtime when unset (see
+        # eventloop.resolve_rpc_bind_addresses/resolve_bind_address/
+        # resolve_bind_addresses), so an empty value is not a wildcard
+        # violation.
+        for key in self._AUTO_DERIVED:
+            v_list = self._validator(**{key: None})._validate_bindings()
+            assert v_list == [], f"expected no violation for {key}"
 
     def test_each_key_ipv4_wildcard_produces_its_own_violation(self) -> None:
-        for key in (
-            "api_bind",
-            "prometheus_bind",
-            "rpc_bind",
-            "temporal_bind",
+        for key, wildcard in (
+            ("api_bind", ["0.0.0.0"]),
+            ("prometheus_bind", "0.0.0.0"),
+            ("rpc_bind", ["0.0.0.0"]),
+            ("temporal_bind", "0.0.0.0"),
         ):
-            v_list = self._validator(**{key: "0.0.0.0"})._validate_bindings()
+            v_list = self._validator(**{key: wildcard})._validate_bindings()
             assert any(
                 v.code == "WILDCARD_BIND_NOT_ALLOWED" and v.config_key == key
                 for v in v_list
             ), f"expected WILDCARD violation for {key}"
 
     def test_each_key_ipv6_wildcard_produces_its_own_violation(self) -> None:
-        v_list = self._validator(api_bind6="::")._validate_bindings()
+        v_list = self._validator(api_bind6=["::"])._validate_bindings()
         assert any(
             v.code == "WILDCARD_BIND_NOT_ALLOWED"
             and v.config_key == "api_bind6"
@@ -251,23 +280,81 @@ class TestValidateBindings:
         )
 
     def test_invalid_ip_returns_invalid_bind_violation(self) -> None:
-        v_list = self._validator(api_bind="not-an-ip")._validate_bindings()
+        v_list = self._validator(api_bind=["not-an-ip"])._validate_bindings()
         assert len(v_list) == 1
         assert v_list[0].code == "INVALID_BIND_ADDRESS"
         assert v_list[0].config_key == "api_bind"
         assert "not-an-ip" in v_list[0].message
 
+    def test_multiple_invalid_ips_in_same_key_all_reported(self) -> None:
+        v_list = self._validator(
+            api_bind=["not-an-ip", "also-not-an-ip"]
+        )._validate_bindings()
+        assert len(v_list) == 2
+        assert all(v.code == "INVALID_BIND_ADDRESS" for v in v_list)
+        messages = [v.message for v in v_list]
+        assert any("not-an-ip" in m for m in messages)
+        assert any("also-not-an-ip" in m for m in messages)
+
+    def test_multiple_wildcards_in_same_key_all_reported(self) -> None:
+        v_list = self._validator(
+            api_bind=["0.0.0.0", "::"]
+        )._validate_bindings()
+        assert len(v_list) == 2
+        assert all(v.code == "WILDCARD_BIND_NOT_ALLOWED" for v in v_list)
+
     def test_multiple_offending_keys_produce_independent_violations(
         self,
     ) -> None:
         v_list = self._validator(
-            prometheus_bind=None, dns_bind=None
+            dns_bind=None, dns_bind6=None
         )._validate_bindings()
         codes = [v.config_key for v in v_list]
-        assert "prometheus_bind" in codes
         assert "dns_bind" in codes
+        assert "dns_bind6" in codes
         # Other keys are specific — no other violations.
         assert len(v_list) == 2
+
+
+class TestValidateDnsBindSnapGating:
+    """dns_bind/dns_bind6 are only validated in snap deployments."""
+
+    def test_unset_dns_bind_outside_snap_produces_no_violation(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, snap_deployment=False
+        )
+        violations = validator._validate_bindings()
+        assert all(
+            v.config_key not in ("dns_bind", "dns_bind6") for v in violations
+        )
+
+    def test_wildcard_dns_bind_outside_snap_produces_no_violation(
+        self,
+    ) -> None:
+        validator = HardeningValidator(
+            hardening_active=True,
+            dns_bind=["0.0.0.0"],
+            dns_bind6=["::"],
+            snap_deployment=False,
+        )
+        violations = validator._validate_bindings()
+        assert all(
+            v.config_key not in ("dns_bind", "dns_bind6") for v in violations
+        )
+
+    def test_unset_dns_bind_in_snap_produces_violations(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, snap_deployment=True
+        )
+        codes = {v.config_key for v in validator._validate_bindings()}
+        assert "dns_bind" in codes
+        assert "dns_bind6" in codes
+
+    def test_snap_deployment_defaults_to_false(self) -> None:
+        validator = HardeningValidator(hardening_active=True)
+        codes = {v.config_key for v in validator._validate_bindings()}
+        assert "dns_bind" not in codes
+        assert "dns_bind6" not in codes
 
 
 class TestValidateFipsDrift:
@@ -422,11 +509,11 @@ class TestConfigureAndValidateHardening:
             return_value=True,
         )
         result = configure_and_validate_hardening(
-            api_bind="10.0.0.1",
-            api_bind6="fd00::1",
+            api_bind=["10.0.0.1"],
+            api_bind6=["fd00::1"],
             prometheus_bind="127.0.0.1",
             temporal_bind="127.0.0.1",
-            rpc_bind="10.0.0.2",
+            rpc_bind=["10.0.0.2"],
             fips_declared=None,
         )
         assert any(v.code == "MISSING_TLS_CERT" for v in result)

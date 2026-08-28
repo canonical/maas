@@ -3,9 +3,12 @@
 
 """Proxy config management module."""
 
+from socket import AF_INET, AF_INET6
+
 from django.conf import settings
 from twisted.internet.defer import succeed
 
+from maasserver.config import RegionConfiguration
 from maasserver.models import Config
 from maasserver.models.subnet import Subnet
 from maasserver.service_monitor import service_monitor
@@ -14,6 +17,7 @@ from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.proxy.config import write_config
 from provisioningserver.utils import snap
+from provisioningserver.utils.network import resolve_service_bind
 from provisioningserver.utils.twisted import asynchronous
 
 maaslog = get_maas_logger("dns")
@@ -32,6 +36,8 @@ def proxy_update_config(reload_proxy=True):
 
     @transactional
     def _write_config():
+        from maascommon.hardening import is_hardening_enabled
+
         allowed_subnets = Subnet.objects.filter(allow_proxy=True)
         cidrs = [subnet.cidr for subnet in allowed_subnets]
         config = Config.objects.get_configs(
@@ -48,6 +54,19 @@ def proxy_update_config(reload_proxy=True):
             "prefer_v4_proxy": config["prefer_v4_proxy"],
             "maas_proxy_port": config["maas_proxy_port"],
         }
+        hardening_active = is_hardening_enabled()
+        kwargs["http_proxy_bind"] = resolve_service_bind(
+            RegionConfiguration.open,
+            "http_proxy_bind",
+            hardening_active=hardening_active,
+            family=AF_INET,
+        )
+        kwargs["http_proxy_bind6"] = resolve_service_bind(
+            RegionConfiguration.open,
+            "http_proxy_bind6",
+            hardening_active=hardening_active,
+            family=AF_INET6,
+        )
         if (
             config["enable_http_proxy"]
             and config["http_proxy"]

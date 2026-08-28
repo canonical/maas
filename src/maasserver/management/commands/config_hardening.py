@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Django management command: config-hardening."""
 
+from socket import AF_INET, AF_INET6
+
 from django.core.management.base import BaseCommand
 from django.db import DEFAULT_DB_ALIAS
 
@@ -10,8 +12,10 @@ from maascommon.hardening import configure_hardening, is_hardening_enabled
 from maasserver.config import RegionConfiguration
 from maasserver.management.commands.base import BaseCommandWithConnection
 from maasservicelayer.services.hardening import (
+    _AUTO_DERIVED_BIND_KEYS,
     configure_and_validate_hardening,
 )
+from provisioningserver.utils.snap import running_in_snap
 
 _CONFIG_KEYS = frozenset({"hardening_enabled", "fips_enabled"})
 
@@ -23,7 +27,13 @@ _CONF_KEYS = frozenset(
         "prometheus_bind",
         "temporal_bind",
         "rpc_bind",
+        "agent_api_bind",
+        "agent_api_bind6",
         "dns_bind",
+        "dns_bind6",
+        "syslog_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
         "database_sslmode",
         "database_sslcert",
         "database_sslkey",
@@ -34,6 +44,85 @@ _CONF_KEYS = frozenset(
 # Seeded to loopback by `enable`;
 # network-facing binds are not auto-seeded.
 _LOOPBACK_SEED_KEYS = frozenset({"prometheus_bind"})
+
+# Keys backed by a comma-separated list in regiond.conf (see
+# `ForEach` in `maasserver.config`). Every other conf-backed key is a
+# plain scalar string.
+_LIST_KEYS = frozenset(
+    {
+        "api_bind",
+        "api_bind6",
+        "rpc_bind",
+        "agent_api_bind",
+        "agent_api_bind6",
+        "dns_bind",
+        "dns_bind6",
+        "syslog_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
+    }
+)
+
+# Only meaningful in snap deployments: MAAS owns the whole named.conf
+# there. On Debian-packaged installs MAAS does not own the base
+# named.conf.options, so these keys are refused entirely.
+_SNAP_ONLY_KEYS = frozenset({"dns_bind", "dns_bind6"})
+
+# Family to derive for keys resolved via `resolve_bind_addresses`
+# (list-valued, per-family binds). Keys absent here (`rpc_bind`,
+# `temporal_bind`, `syslog_bind`, `prometheus_bind`) are single mixed-family
+# binds resolved differently -- see `_effective_bind_value`.
+_BIND_FAMILY_FOR_KEY = {
+    "api_bind": AF_INET,
+    "api_bind6": AF_INET6,
+    "agent_api_bind": AF_INET,
+    "agent_api_bind6": AF_INET6,
+    "http_proxy_bind": AF_INET,
+    "http_proxy_bind6": AF_INET6,
+}
+
+
+def _effective_bind_value(
+    key: str, maas_url: str, hardening_active: bool
+) -> str:
+    """Return what MAAS would actually bind `key` to right now, if unset.
+
+    Mirrors the resolution each consuming service performs at startup (see
+    `_AUTO_DERIVED_BIND_KEYS` in `maasservicelayer.services.hardening`).
+    Returns "" when nothing more specific than "all interfaces" would
+    result -- i.e. there is nothing useful to show.
+    """
+    from provisioningserver.utils.network import (
+        resolve_bind_address,
+        resolve_bind_addresses,
+    )
+
+    if key == "rpc_bind":
+        from maasserver.eventloop import resolve_rpc_bind_addresses
+
+        return ",".join(resolve_rpc_bind_addresses())
+    if key == "temporal_bind":
+        address = resolve_bind_address(
+            "", maas_url, hardening_active=hardening_active
+        )
+        return "" if address in ("0.0.0.0", "::") else address
+    if key == "syslog_bind":
+        return ",".join(
+            resolve_bind_addresses(
+                [], maas_url, hardening_active=hardening_active
+            )
+        )
+    if key == "prometheus_bind":
+        return "127.0.0.1" if hardening_active else ""
+    family = _BIND_FAMILY_FOR_KEY.get(key)
+    if family is None:
+        return ""
+    return ",".join(
+        resolve_bind_addresses(
+            [], maas_url, hardening_active=hardening_active, family=family
+        )
+    )
+
 
 _ALL_KNOWN_KEYS = _CONFIG_KEYS | _CONF_KEYS
 
@@ -46,6 +135,18 @@ def _is_conf_only_operation(command: str, key: str) -> bool:
 _HARDENING_ENABLED_VALUES = frozenset({"auto", "on", "off"})
 _FIPS_ENABLED_TRUE = frozenset({"true", "on", "1", "yes"})
 _FIPS_ENABLED_FALSE = frozenset({"false", "off", "0", "no"})
+
+
+def _format_conf_value(key: str, value) -> str:
+    if key in _LIST_KEYS:
+        return ",".join(value)
+    return str(value)
+
+
+def _parse_conf_value(key: str, value: str):
+    if key in _LIST_KEYS:
+        return [addr.strip() for addr in value.split(",") if addr.strip()]
+    return value
 
 
 def _sanitize_hardening_enabled(value: str) -> str:
@@ -147,7 +248,14 @@ class Command(BaseCommandWithConnection):
         elif command == "disable":
             self._cmd_disable()
 
+    def _refuse_if_snap_only(self, key: str) -> None:
+        if key in _SNAP_ONLY_KEYS and not running_in_snap():
+            self.stderr.write(f"'{key}' is only available on snap installs.\n")
+            raise SystemExit(1)
+
     def _cmd_set(self, key: str, value: str) -> None:
+        self._refuse_if_snap_only(key)
+
         if key not in _ALL_KNOWN_KEYS:
             self.stderr.write(
                 f"Unknown hardening key '{key}'."
@@ -176,12 +284,15 @@ class Command(BaseCommandWithConnection):
         self.stdout.write(f"Set {key} in DB Config store\n")
 
     def _cmd_get(self, key: str) -> None:
+        self._refuse_if_snap_only(key)
         self.stdout.write(
             f"{key} [{_store_for(key)}] = {self._read_key(key)}\n"
         )
 
     def _cmd_list(self) -> None:
         conf_values = self._read_conf_values()
+        hardening_active = is_hardening_enabled()
+        maas_url = self._read_maas_url()
 
         try:
             from maasserver.certificates import get_maas_certificate
@@ -198,13 +309,22 @@ class Command(BaseCommandWithConnection):
         )
 
         for key in sorted(_ALL_KNOWN_KEYS):
+            if key in _SNAP_ONLY_KEYS and not running_in_snap():
+                continue
             store = _store_for(key)
             value = (
                 conf_values.get(key, "<not in conf>")
                 if store == "conf"
                 else self._read_key(key)
             )
-            self.stdout.write(f"{key:<35} [{store:<7}] {value}\n")
+            line = f"{key:<35} [{store:<7}] {value}"
+            if not value and key in _AUTO_DERIVED_BIND_KEYS:
+                effective = _effective_bind_value(
+                    key, maas_url, hardening_active
+                )
+                if effective:
+                    line += f"  (effective: {effective})"
+            self.stdout.write(line + "\n")
 
     def _cmd_validate(self) -> None:
         if not is_hardening_enabled():
@@ -232,14 +352,21 @@ class Command(BaseCommandWithConnection):
                     api_tls_cert_pem=cert_pem,
                     api_tls_key_pem=key_pem,
                     api_tls_dhparam=str(cfg.api_tls_dhparam),
-                    api_bind=str(cfg.api_bind),
-                    api_bind6=str(cfg.api_bind6),
+                    api_bind=list(cfg.api_bind),
+                    api_bind6=list(cfg.api_bind6),
                     prometheus_bind=str(cfg.prometheus_bind),
                     temporal_bind=str(cfg.temporal_bind),
-                    rpc_bind=str(cfg.rpc_bind),
-                    dns_bind=str(cfg.dns_bind),
+                    rpc_bind=list(cfg.rpc_bind),
+                    agent_api_bind=list(cfg.agent_api_bind),
+                    agent_api_bind6=list(cfg.agent_api_bind6),
+                    dns_bind=list(cfg.dns_bind),
+                    dns_bind6=list(cfg.dns_bind6),
+                    syslog_bind=list(cfg.syslog_bind),
+                    http_proxy_bind=list(cfg.http_proxy_bind),
+                    http_proxy_bind6=list(cfg.http_proxy_bind6),
                     database_sslmode=str(cfg.database_sslmode),
                     fips_declared=fips_declared,
+                    snap_deployment=running_in_snap(),
                 )
         except Exception as exc:
             self.stderr.write(f"Could not read configuration: {exc}\n")
@@ -308,7 +435,7 @@ class Command(BaseCommandWithConnection):
     def _write_conf_key(self, key: str, value: str) -> None:
         try:
             with RegionConfiguration.open_for_update() as cfg:
-                setattr(cfg, key, value)
+                setattr(cfg, key, _parse_conf_value(key, value))
         except Exception as exc:
             self.stderr.write(
                 f"Could not write '{key}' to regiond.conf: {exc}\n"
@@ -319,20 +446,18 @@ class Command(BaseCommandWithConnection):
         try:
             with RegionConfiguration.open() as cfg:
                 return {
-                    "api_tls_dhparam": str(cfg.api_tls_dhparam),
-                    "api_bind": str(cfg.api_bind),
-                    "api_bind6": str(cfg.api_bind6),
-                    "prometheus_bind": str(cfg.prometheus_bind),
-                    "temporal_bind": str(cfg.temporal_bind),
-                    "rpc_bind": str(cfg.rpc_bind),
-                    "dns_bind": str(cfg.dns_bind),
-                    "database_sslmode": str(cfg.database_sslmode),
-                    "database_sslcert": str(cfg.database_sslcert),
-                    "database_sslkey": str(cfg.database_sslkey),
-                    "database_sslrootcert": str(cfg.database_sslrootcert),
+                    key: _format_conf_value(key, getattr(cfg, key))
+                    for key in _CONF_KEYS
                 }
         except Exception:
             return {}
+
+    def _read_maas_url(self) -> str:
+        try:
+            with RegionConfiguration.open() as cfg:
+                return str(cfg.maas_url)
+        except Exception:
+            return ""
 
     def _read_fips_declared(self) -> "bool | None":
         from maasserver.models import Config

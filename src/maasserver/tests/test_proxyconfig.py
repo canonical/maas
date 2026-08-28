@@ -199,3 +199,66 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         self.service_monitor.reloadService.assert_not_called()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_http_proxy_bind_hardening_off_stays_wildcard(self):
+        self.patch(settings, "PROXY_CONNECT", True)
+        import maascommon.hardening as hardening_module
+
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = False
+        yield deferToDatabase(self.make_subnet)
+        yield proxyconfig.proxy_update_config(reload_proxy=False)
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+        self.assertIn("http_port 3128 transparent", lines)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_http_proxy_bind_derives_from_maas_url_under_hardening(self):
+        self.patch(settings, "PROXY_CONNECT", True)
+        import maascommon.hardening as hardening_module
+        from maasserver.config import RegionConfiguration
+        import provisioningserver.utils.network as network_module
+
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = True
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.9"
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.http_proxy_bind = []
+        mock_cfg.http_proxy_bind6 = []
+        mock_cfg.maas_url = "http://10.0.0.9:5240/MAAS"
+        mock_open.return_value.__exit__.return_value = False
+
+        yield deferToDatabase(self.make_subnet)
+        yield proxyconfig.proxy_update_config(reload_proxy=False)
+
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+        self.assertIn("http_port 10.0.0.9:3128 transparent", lines)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_http_proxy_bind_explicit_value_used(self):
+        self.patch(settings, "PROXY_CONNECT", True)
+        from maasserver.config import RegionConfiguration
+
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.http_proxy_bind = ["10.0.0.5"]
+        mock_cfg.http_proxy_bind6 = []
+        mock_cfg.maas_url = ""
+        mock_open.return_value.__exit__.return_value = False
+
+        yield deferToDatabase(self.make_subnet)
+        yield proxyconfig.proxy_update_config(reload_proxy=False)
+
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+        self.assertIn("http_port 10.0.0.5:3128 transparent", lines)
