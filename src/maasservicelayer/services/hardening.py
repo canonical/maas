@@ -113,6 +113,7 @@ class HardeningValidator:
         syslog_bind: Sequence[str] | None = None,
         http_proxy_bind: Sequence[str] | None = None,
         http_proxy_bind6: Sequence[str] | None = None,
+        database_host: str | None = None,
         database_sslmode: str | None = None,
         fips_declared: bool | None = None,
         fips_active: bool = False,
@@ -146,6 +147,7 @@ class HardeningValidator:
             self._binds["dns_bind"] = list(dns_bind) if dns_bind else []
             self._binds["dns_bind6"] = list(dns_bind6) if dns_bind6 else []
         self.database_sslmode = database_sslmode
+        self.database_host = database_host
         self.fips_declared = fips_declared
         self.fips_active = fips_active
 
@@ -355,6 +357,11 @@ class HardeningValidator:
     def _validate_db_sslmode(self) -> list[HardeningViolation]:
         if not self.database_sslmode:
             return []
+        # A host path (e.g. "/var/snap/maas-test-db/.../socket") selects a
+        # Unix domain socket, not a TCP/IP connection. libpq never
+        # negotiates SSL over a Unix socket, so sslmode is moot there.
+        if self.database_host and self.database_host.startswith("/"):
+            return []
         if self.database_sslmode.lower() in _INSECURE_SSLMODES:
             return [
                 _violation(
@@ -384,6 +391,7 @@ def configure_and_validate_hardening(
     syslog_bind: Sequence[str] = (),
     http_proxy_bind: Sequence[str] = (),
     http_proxy_bind6: Sequence[str] = (),
+    database_host: str = "",
     database_sslmode: str = "",
     fips_declared: bool | None = None,
     snap_deployment: bool = False,
@@ -413,6 +421,7 @@ def configure_and_validate_hardening(
         syslog_bind=syslog_bind,
         http_proxy_bind=http_proxy_bind,
         http_proxy_bind6=http_proxy_bind6,
+        database_host=database_host or None,
         database_sslmode=database_sslmode or None,
         fips_declared=fips_declared,
         fips_active=is_fips_enabled(),

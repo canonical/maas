@@ -371,6 +371,7 @@ def inner_start_up(master=False):
                     syslog_bind=list(_hcfg.syslog_bind),
                     http_proxy_bind=list(_hcfg.http_proxy_bind),
                     http_proxy_bind6=list(_hcfg.http_proxy_bind6),
+                    database_host=str(_hcfg.database_host),
                     database_sslmode=str(_hcfg.database_sslmode),
                     fips_declared=read_fips_declared_from_db(),
                     snap_deployment=running_in_snap(),
