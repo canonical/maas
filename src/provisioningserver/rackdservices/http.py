@@ -6,6 +6,7 @@
 from collections import defaultdict
 from datetime import timedelta
 import os
+from socket import AF_INET, AF_INET6
 import sys
 
 import attr
@@ -34,6 +35,7 @@ from provisioningserver.prometheus.resource import PrometheusMetricsResource
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import load_template
 from provisioningserver.utils.fs import atomic_write, get_root_path
+from provisioningserver.utils.network import resolve_bind_addresses
 from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
@@ -56,12 +58,13 @@ def compose_http_config_path(filename):
     return os.path.join(get_http_config_dir(), filename)
 
 
-def compose_listen_addresses(port, bind4="", bind6=""):
+def compose_listen_addresses(port, binds4=(), binds6=()):
     """Return the list of addresses for nginx ``listen`` directives.
 
-    When neither ``bind4`` nor ``bind6`` is set, returns the IPv6 and IPv4
-    wildcard addresses so nginx listens on all interfaces. When either is set,
-    returns only the specified address(es).
+    When both ``binds4`` and ``binds6`` are empty, returns the IPv6 and
+    IPv4 wildcard addresses so nginx listens on all interfaces. Otherwise,
+    returns one ``listen`` entry per address in ``binds4``/``binds6``
+    (nginx has no trouble listening on any number of specific addresses).
 
     Templates render the result with a ``for`` loop::
 
@@ -69,12 +72,9 @@ def compose_listen_addresses(port, bind4="", bind6=""):
         listen {{addr}};
         {{endfor}}
     """
-    if bind4 or bind6:
-        addresses = []
-        if bind4:
-            addresses.append(f"{bind4}:{port}")
-        if bind6:
-            addresses.append(f"[{bind6}]:{port}")
+    if binds4 or binds6:
+        addresses = [f"{addr}:{port}" for addr in binds4]
+        addresses += [f"[{addr}]:{port}" for addr in binds6]
         return addresses
     return [f"[::]:{port}", str(port)]
 
@@ -203,16 +203,22 @@ class RackHTTPService(TimerService):
         from provisioningserver.config import ClusterConfiguration
 
         hardening_active = is_hardening_enabled()
-        api_bind = ""
-        api_bind6 = ""
+        api_bind = []
+        api_bind6 = []
+        maas_url = ""
         api_upstream_port = 5240
         api_rate_limit_rate = "20r/s"
         api_rate_limit_burst = 60
         api_conn_limit = 100
         try:
             with ClusterConfiguration.open() as cluster_config:
-                api_bind = cluster_config.api_bind
-                api_bind6 = cluster_config.api_bind6
+                api_bind = list(cluster_config.api_bind)
+                api_bind6 = list(cluster_config.api_bind6)
+                maas_url = (
+                    cluster_config.maas_url[0]
+                    if cluster_config.maas_url
+                    else ""
+                )
                 api_upstream_port = cluster_config.api_upstream_port
                 api_rate_limit_rate = cluster_config.api_rate_limit_rate
                 api_rate_limit_burst = cluster_config.api_rate_limit_burst
@@ -222,6 +228,19 @@ class RackHTTPService(TimerService):
                 _why="Could not read ClusterConfiguration; using defaults for "
                 "bind, rate-limit, and upstream-port settings."
             )
+
+        api_bind = resolve_bind_addresses(
+            api_bind,
+            maas_url,
+            hardening_active=hardening_active,
+            family=AF_INET,
+        )
+        api_bind6 = resolve_bind_addresses(
+            api_bind6,
+            maas_url,
+            hardening_active=hardening_active,
+            family=AF_INET6,
+        )
 
         try:
             rendered = template.substitute(

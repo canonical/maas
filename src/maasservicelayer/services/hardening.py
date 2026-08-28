@@ -10,6 +10,7 @@ Violations are returned as a list of :class:`HardeningViolation` objects.
 The validator never raises, exits, or blocks socket binding.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 import ipaddress
 import logging
@@ -28,9 +29,32 @@ _INSECURE_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
 
 # Keys where an empty value is not a wildcard violation: the consuming
 # service derives a specific, non-wildcard address at runtime when unset
-# (see `RegionTemporalService`/`resolve_bind_address`). An
-# explicit wildcard value (e.g. `0.0.0.0`) is still flagged below.
-_AUTO_DERIVED_BIND_KEYS = frozenset({"temporal_bind"})
+# (see `RegionTemporalService`/`RegionHTTPService`/`RackProxy`/
+# `RegionSyslogService`/`RackSyslog`/`proxyconfig.proxy_update_config`/
+# `eventloop.make_PrometheusExporterService`/`resolve_bind_address`/
+# `resolve_bind_addresses`).
+# An explicit wildcard value (e.g. `0.0.0.0`) is still flagged below.
+# `dns_bind`/`dns_bind6` are deliberately excluded from this set: they
+# have no maas_url-derived default, since DNS must be explicitly picked
+# to serve every managed subnet, not just the one that reaches
+# `maas_url`. They are validated only in snap deployments (see
+# `snap_deployment` below): on Debian-packaged installs MAAS does not
+# own the base named.conf.options, so it cannot guarantee either key
+# takes effect there.
+_AUTO_DERIVED_BIND_KEYS = frozenset(
+    {
+        "temporal_bind",
+        "api_bind",
+        "api_bind6",
+        "rpc_bind",
+        "agent_api_bind",
+        "agent_api_bind6",
+        "prometheus_bind",
+        "syslog_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
+    }
+)
 
 
 def _ident(code: str) -> str:
@@ -77,28 +101,50 @@ class HardeningValidator:
         api_tls_cert_pem: bytes | None = None,
         api_tls_key_pem: bytes | None = None,
         api_tls_dhparam: str | None = None,
-        api_bind: str | None = None,
-        api_bind6: str | None = None,
+        api_bind: Sequence[str] | None = None,
+        api_bind6: Sequence[str] | None = None,
         prometheus_bind: str | None = None,
         temporal_bind: str | None = None,
-        rpc_bind: str | None = None,
-        dns_bind: str | None = None,
+        rpc_bind: Sequence[str] | None = None,
+        agent_api_bind: Sequence[str] | None = None,
+        agent_api_bind6: Sequence[str] | None = None,
+        dns_bind: Sequence[str] | None = None,
+        dns_bind6: Sequence[str] | None = None,
+        syslog_bind: Sequence[str] | None = None,
+        http_proxy_bind: Sequence[str] | None = None,
+        http_proxy_bind6: Sequence[str] | None = None,
         database_sslmode: str | None = None,
         fips_declared: bool | None = None,
         fips_active: bool = False,
+        snap_deployment: bool = False,
     ) -> None:
         self.hardening_active = hardening_active
         self.api_tls_cert_pem = api_tls_cert_pem
         self.api_tls_key_pem = api_tls_key_pem
         self.api_tls_dhparam = api_tls_dhparam
-        self._binds: dict[str, str | None] = {
-            "api_bind": api_bind,
-            "api_bind6": api_bind6,
-            "prometheus_bind": prometheus_bind,
-            "temporal_bind": temporal_bind,
-            "rpc_bind": rpc_bind,
-            "dns_bind": dns_bind,
+        self._snap_deployment = snap_deployment
+        self._binds: dict[str, list[str]] = {
+            "api_bind": list(api_bind) if api_bind else [],
+            "api_bind6": list(api_bind6) if api_bind6 else [],
+            "prometheus_bind": [prometheus_bind] if prometheus_bind else [],
+            "temporal_bind": [temporal_bind] if temporal_bind else [],
+            "rpc_bind": list(rpc_bind) if rpc_bind else [],
+            "agent_api_bind": (list(agent_api_bind) if agent_api_bind else []),
+            "agent_api_bind6": (
+                list(agent_api_bind6) if agent_api_bind6 else []
+            ),
+            "syslog_bind": list(syslog_bind) if syslog_bind else [],
+            "http_proxy_bind": (
+                list(http_proxy_bind) if http_proxy_bind else []
+            ),
+            "http_proxy_bind6": (
+                list(http_proxy_bind6) if http_proxy_bind6 else []
+            ),
         }
+        # Snap-only; see _AUTO_DERIVED_BIND_KEYS above for why.
+        if self._snap_deployment:
+            self._binds["dns_bind"] = list(dns_bind) if dns_bind else []
+            self._binds["dns_bind6"] = list(dns_bind6) if dns_bind6 else []
         self.database_sslmode = database_sslmode
         self.fips_declared = fips_declared
         self.fips_active = fips_active
@@ -230,8 +276,8 @@ class HardeningValidator:
         """Per-key wildcard/empty check; each key clears independently."""
         violations: list[HardeningViolation] = []
 
-        for key, value in self._binds.items():
-            if not value:
+        for key, values in self._binds.items():
+            if not values:
                 if key in _AUTO_DERIVED_BIND_KEYS:
                     continue
                 violations.append(
@@ -241,27 +287,29 @@ class HardeningValidator:
                     )
                 )
                 continue
-            try:
-                addr = ipaddress.ip_address(value)
-            except ValueError:
-                violations.append(
-                    _violation(
-                        code="INVALID_BIND_ADDRESS",
-                        message=f"{key} '{value}' is not a valid IP address",
-                        resolution=(
-                            f"Run: maas config-hardening set {key} "
-                            f"<specific-ip-address>"
-                        ),
-                        config_key=key,
+            for value in values:
+                try:
+                    addr = ipaddress.ip_address(value)
+                except ValueError:
+                    violations.append(
+                        _violation(
+                            code="INVALID_BIND_ADDRESS",
+                            message=f"{key} '{value}' is not a valid IP address",
+                            resolution=(
+                                f"Run: maas config-hardening set {key} "
+                                f"<specific-ip-address>"
+                            ),
+                            config_key=key,
+                        )
                     )
-                )
-                continue
-            if addr.is_unspecified:
-                violations.append(
-                    self._wildcard_bind_violation(
-                        key, f"'{value}' binds to all interfaces"
+                    continue
+                if addr.is_unspecified:
+                    violations.append(
+                        self._wildcard_bind_violation(
+                            key, f"'{value}' binds to all interfaces"
+                        )
                     )
-                )
+                    continue
 
         return violations
 
@@ -324,34 +372,50 @@ def configure_and_validate_hardening(
     api_tls_cert_pem: bytes | None = None,
     api_tls_key_pem: bytes | None = None,
     api_tls_dhparam: str = "",
-    api_bind: str = "",
-    api_bind6: str = "",
+    api_bind: Sequence[str] = (),
+    api_bind6: Sequence[str] = (),
     prometheus_bind: str = "",
     temporal_bind: str = "",
-    rpc_bind: str = "",
-    dns_bind: str = "",
+    rpc_bind: Sequence[str] = (),
+    agent_api_bind: Sequence[str] = (),
+    agent_api_bind6: Sequence[str] = (),
+    dns_bind: Sequence[str] = (),
+    dns_bind6: Sequence[str] = (),
+    syslog_bind: Sequence[str] = (),
+    http_proxy_bind: Sequence[str] = (),
+    http_proxy_bind6: Sequence[str] = (),
     database_sslmode: str = "",
     fips_declared: bool | None = None,
+    snap_deployment: bool = False,
 ) -> list[HardeningViolation]:
     """Run hardening validation.
 
     ``api_tls_cert_pem`` and ``api_tls_key_pem`` are optional PEM bytes for
     the TLS certificate/key; the caller is responsible for reading them from
-    the secrets store.  Returns violations.  Never raises or exits.
+    the secrets store.  ``snap_deployment`` gates ``dns_bind``/``dns_bind6``
+    validation; pass ``provisioningserver.utils.snap.running_in_snap()``.
+    Returns violations.  Never raises or exits.
     """
     validator = HardeningValidator(
         hardening_active=is_hardening_enabled(),
         api_tls_cert_pem=api_tls_cert_pem,
         api_tls_key_pem=api_tls_key_pem,
         api_tls_dhparam=api_tls_dhparam or None,
-        api_bind=api_bind or None,
-        api_bind6=api_bind6 or None,
+        api_bind=api_bind,
+        api_bind6=api_bind6,
         prometheus_bind=prometheus_bind or None,
         temporal_bind=temporal_bind or None,
-        rpc_bind=rpc_bind or None,
-        dns_bind=dns_bind or None,
+        rpc_bind=rpc_bind,
+        agent_api_bind=agent_api_bind,
+        agent_api_bind6=agent_api_bind6,
+        dns_bind=dns_bind,
+        dns_bind6=dns_bind6,
+        syslog_bind=syslog_bind,
+        http_proxy_bind=http_proxy_bind,
+        http_proxy_bind6=http_proxy_bind6,
         database_sslmode=database_sslmode or None,
         fips_declared=fips_declared,
         fips_active=is_fips_enabled(),
+        snap_deployment=snap_deployment,
     )
     return validator.validate()

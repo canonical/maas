@@ -836,9 +836,14 @@ class RegionService(service.Service):
     ``Region`` protocol on a port.
 
     :ivar endpoints: The endpoints on which to listen, as a list of lists.
-        Only one endpoint in each nested list will be bound (they will be
-        tried in order until the first success). In this way it is possible to
-        specify, say, a range of ports, but only bind one of them.
+        The outer list holds one candidate port from the configured range
+        (5250-5259); groups are tried in order, and the first candidate
+        port for which *every* endpoint in its group binds successfully
+        wins. Each inner group has one endpoint per configured
+        ``rpc_bind`` address (or a single wildcard endpoint when none are
+        configured), so a worker binding several addresses always shares
+        one port number across all of them -- the number reported to the
+        IPC master and, in turn, advertised to rack controllers.
     :ivar ports: The opened :py:class:`IListeningPort`s.
     :ivar connections: Maps :class:`Region` connections to clusters.
     :ivar waiters: Maps cluster idents to callers waiting for a connection.
@@ -850,14 +855,16 @@ class RegionService(service.Service):
     connections = None
     starting = None
 
-    def __init__(self, ipcWorker, rpc_bind=""):
+    def __init__(self, ipcWorker, rpc_bind=()):
         super().__init__()
         self.ipcWorker = ipcWorker
+        self.rpc_bind = tuple(rpc_bind) if rpc_bind else ("",)
         self.endpoints = [
             [
-                TCP6ServerEndpoint(reactor, port, interface=rpc_bind)
-                for port in range(5250, 5260)
+                TCP6ServerEndpoint(reactor, port, interface=addr)
+                for addr in self.rpc_bind
             ]
+            for port in range(5250, 5260)
         ]
         self.connections = defaultdict(set)
         self.connectionsCache = defaultdict(dict)
@@ -942,53 +949,70 @@ class RegionService(service.Service):
         self.connectionsCache.pop(connection, None)
         self.events.disconnected.fire(ident)
 
-    def _savePorts(self, results):
-        """Save the opened ports to ``self.ports``.
-
-        Expects `results` to be an iterable of ``(success, result)`` tuples,
-        just as is passed into a :py:class:`~defer.DeferredList` callback.
-        """
-        for success, result in results:
-            if success:
-                self.ports.append(result)
-            elif result.check(defer.CancelledError):
-                pass  # Ignore.
-            else:
-                log.err(result, "RegionServer endpoint failed to listen.")
+    def _savePorts(self, ports):
+        """Save the opened ports to ``self.ports``."""
+        self.ports.extend(ports)
 
     @inlineCallbacks
-    def _bindFirst(self, endpoints, factory):
-        """Return the first endpoint to successfully listen.
+    def _bindAll(self, endpoints, factory):
+        """Bind every endpoint in `endpoints`, or none at all.
 
-        :param endpoints: A sized iterable of `IStreamServerEndpoint`.
+        :param endpoints: A sized iterable of `IStreamServerEndpoint`, one
+            per configured bind address, all for the same candidate port.
         :param factory: A protocol factory.
 
-        :return: A `Deferred` yielding a :class:`twisted.internet.tcp.Port` or
-            the error encountered when trying to listen on the last of the
-            given endpoints.
+        :return: A `Deferred` yielding the list of bound ports if every
+            endpoint listened successfully. If any fails, every port
+            already opened for this attempt is closed before the failure
+            propagates, so a retry on the next candidate port starts from
+            a clean slate.
         """
-        assert len(endpoints) > 0, "No endpoint options specified."
-        last = len(endpoints) - 1
-        for index, endpoint in enumerate(endpoints):
-            try:
+        ports = []
+        try:
+            for endpoint in endpoints:
                 port = yield endpoint.listen(factory)
+                ports.append(port)
+        except Exception:
+            for port in ports:
+                yield port.stopListening()
+            raise
+        returnValue(ports)
+
+    @inlineCallbacks
+    def _bindFirstGroup(self, groups, factory):
+        """Return the ports of the first candidate group to bind completely.
+
+        :param groups: A sized iterable of endpoint groups (each itself a
+            sized iterable of `IStreamServerEndpoint` sharing one candidate
+            port). Mirrors the previous per-port retry semantics one level
+            up: groups are tried in order, and the failure from every
+            group but the last is silently discarded, exactly as trying
+            the next port in the range was before. If every group fails,
+            the last failure propagates so `startService` errbacks and
+            never reports a (nonexistent) port to the IPC master. A
+            `CancelledError` from any group is never treated as "try the
+            next port": it propagates immediately, so cancelling
+            `startService` aborts the retry loop instead of silently
+            continuing or swallowing the cancellation on the last group.
+        """
+        last = len(groups) - 1
+        for index, group in enumerate(groups):
+            try:
+                ports = yield self._bindAll(group, factory)
+            except defer.CancelledError:
+                raise
             except Exception:
                 if index == last:
                     raise
             else:
-                returnValue(port)
+                returnValue(ports)
+        returnValue([])
 
     @asynchronous
     def startService(self):
         """Start listening on an ephemeral port."""
         super().startService()
-        self.starting = defer.DeferredList(
-            (
-                self._bindFirst(endpoint_options, self.factory)
-                for endpoint_options in self.endpoints
-            ),
-            consumeErrors=True,
-        )
+        self.starting = self._bindFirstGroup(self.endpoints, self.factory)
 
         def log_failure(failure):
             if failure.check(defer.CancelledError):

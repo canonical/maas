@@ -11,6 +11,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from datetime import timedelta
+from socket import AF_INET, AF_INET6
 from urllib.parse import urlparse
 
 import attr
@@ -44,6 +45,7 @@ from provisioningserver.service_monitor import service_monitor
 from provisioningserver.syslog import config as syslog_config
 from provisioningserver.utils import snap
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET, MAAS_UUID
+from provisioningserver.utils.network import resolve_service_bind
 from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
@@ -248,15 +250,32 @@ class RackProxy(RackOnlyExternalService):
 
     def _configure(self, configuration):
         """Update the proxy configuration for the rack."""
+        from maascommon.hardening import is_hardening_enabled
+
         peers = sorted(
             f"http://{upstream}:{configuration.port}"
             for upstream in configuration.upstream_proxies
+        )
+        hardening_active = is_hardening_enabled()
+        http_proxy_bind = resolve_service_bind(
+            ClusterConfiguration.open,
+            "http_proxy_bind",
+            hardening_active=hardening_active,
+            family=AF_INET,
+        )
+        http_proxy_bind6 = resolve_service_bind(
+            ClusterConfiguration.open,
+            "http_proxy_bind6",
+            hardening_active=hardening_active,
+            family=AF_INET6,
         )
         proxy_config.write_config(
             configuration.allowed_cidrs,
             peer_proxies=peers,
             prefer_v4_proxy=configuration.prefer_v4_proxy,
             maas_proxy_port=configuration.port,
+            http_proxy_bind=http_proxy_bind,
+            http_proxy_bind6=http_proxy_bind6,
         )
 
 
@@ -318,6 +337,8 @@ class RackSyslog(RackOnlyExternalService):
 
     def _configure(self, configuration):
         """Update the syslog configuration for the rack."""
+        from maascommon.hardening import is_hardening_enabled
+
         # Convert the frozenset to a dictionary before constructing the
         # dictionary that `syslog_config.write_config` expects. This ensures
         # that only unique regions are included in the forwarders.
@@ -325,11 +346,17 @@ class RackSyslog(RackOnlyExternalService):
             {"name": name, "ip": ip}
             for name, ip in dict(configuration.forwarders).items()
         ]
+        bind = resolve_service_bind(
+            ClusterConfiguration.open,
+            "syslog_bind",
+            hardening_active=is_hardening_enabled(),
+        )
         syslog_config.write_config(
             False,
             forwarders=forwarders,
             port=configuration.port,
             promtail_port=configuration.promtail_port,
+            bind=bind,
         )
 
 
