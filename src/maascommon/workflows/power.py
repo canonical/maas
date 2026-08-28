@@ -30,6 +30,15 @@ class PowerAction(Enum):
 
 # Workflows parameters
 @dataclass
+class TrustedSshHostKeyEntry:
+    """A single trusted SSH host key, pre-fetched by the region."""
+
+    host: str
+    key_type: str
+    public_key: str
+
+
+@dataclass
 class PowerParam:
     system_id: str
 
@@ -39,6 +48,7 @@ class PowerParam:
     driver_opts: dict[str, Any]
     task_queue: str
     is_dpu: bool
+    trusted_ssh_host_keys: list[TrustedSshHostKeyEntry] | None = None
 
     # Optional serialized boot order (list of device dicts). When present, the
     # power workflow applies it via the agent 'set-boot-order' activity before
