@@ -3,7 +3,6 @@
 
 """Tests for the ``maas-rack config-hardening`` command."""
 
-import argparse
 from contextlib import redirect_stdout
 import io
 from unittest.mock import patch
@@ -52,12 +51,13 @@ class TestCmdSetGetList(_Base):
             self.assertEqual(["10.0.0.5", "10.0.0.6"], config.api_bind)
 
     def test_set_hardening_enabled_rejects_invalid_value(self):
-        self.assertRaises(
-            argparse.ArgumentTypeError,
+        exc = self.assertRaises(
+            SystemExit,
             hardening_command._cmd_set,
             "hardening_enabled",
             "bogus",
         )
+        self.assertIn("hardening_enabled must be one of", str(exc))
 
     def test_set_hardening_enabled_accepts_known_values(self):
         hardening_command._cmd_set("hardening_enabled", "ON")

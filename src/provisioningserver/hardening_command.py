@@ -11,8 +11,6 @@ only the bind-wildcard rules that apply locally -- TLS certificate, DH
 parameter, and database sslmode checks are region-only concerns.
 """
 
-import argparse
-
 from maascommon.hardening import (
     check_bind_violations,
     configure_hardening,
@@ -80,7 +78,7 @@ def _parse_value(key: str, value: str):
 def _sanitize_hardening_enabled(value: str) -> str:
     canonical = value.strip().lower()
     if canonical not in _HARDENING_ENABLED_VALUES:
-        raise argparse.ArgumentTypeError(
+        raise ValueError(
             "hardening_enabled must be one of "
             f"{sorted(_HARDENING_ENABLED_VALUES)}, got {value!r}"
         )
@@ -139,11 +137,14 @@ def _cmd_set(key: str, value: str):
             f"{key} is only available on snap deployments (MAAS does not "
             "own named.conf.options on Debian-packaged installs)."
         )
-    parsed = (
-        _sanitize_hardening_enabled(value)
-        if key == "hardening_enabled"
-        else _parse_value(key, value)
-    )
+    try:
+        parsed = (
+            _sanitize_hardening_enabled(value)
+            if key == "hardening_enabled"
+            else _parse_value(key, value)
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     with ClusterConfiguration.open_for_update() as config:
         setattr(config, key, parsed)
     print(f"{key} set.")

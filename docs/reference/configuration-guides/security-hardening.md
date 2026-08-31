@@ -62,11 +62,13 @@ YAML quoting automatically.
 
 `enable` is a convenience shortcut for
 `maas config-hardening set hardening_enabled on`: it writes only the DB
-`Config` store. No bind key is seeded: `api_bind`, `api_bind6`,
-`prometheus_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`,
-`agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, and
-`http_proxy_bind6` derive a specific address from `maas_url` at startup
-when left unset (see the parameter table below).
+`Config` store. No bind key is seeded. `api_bind`, `api_bind6`,
+`temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`,
+`syslog_bind`, `http_proxy_bind`, and `http_proxy_bind6` derive a specific
+address from `maas_url` at startup when left unset; `prometheus_bind`
+instead defaults to loopback (`127.0.0.1`) when left unset, since it's
+scraped locally rather than reached via `maas_url` (see the parameter
+table below).
 
 ## Parameters and stores
 

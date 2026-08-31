@@ -234,9 +234,11 @@ A value of `1` means FIPS mode is active.
 
 Run `maas config-hardening enable`. This sets `hardening_enabled=on` in the
 MAAS database; it is a pure database operation and does not touch
-`regiond.conf`. `api_bind`, `api_bind6`, `prometheus_bind`, `temporal_bind`,
-and `rpc_bind` are all left unset: MAAS derives a specific, non-wildcard
-address for each from `maas_url` at startup.
+`regiond.conf`. `api_bind`, `api_bind6`, `temporal_bind`, and `rpc_bind` are
+all left unset: MAAS derives a specific, non-wildcard address for each from
+`maas_url` at startup. `prometheus_bind` is also left unset, but defaults to
+loopback (`127.0.0.1`) instead, since it's scraped locally rather than
+reached via `maas_url`.
 
 ```text
 sudo maas config-hardening enable
@@ -319,11 +321,13 @@ maas config-hardening list
 
 For a bind key that's left unset but auto-derives from `maas_url` (`api_bind`,
 `api_bind6`, `agent_api_bind`, `agent_api_bind6`, `rpc_bind`,
-`temporal_bind`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`,
-`prometheus_bind`), `list` appends the address MAAS would actually bind to
-right now, e.g. `api_bind [conf ]  (effective: 10.0.0.5)`. Nothing is
-appended when the key is explicitly set, or when no derivation is possible
-(e.g. hardening is inactive for the keys that only derive under hardening).
+`temporal_bind`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`),
+`list` appends the address MAAS would actually bind to right now, e.g.
+`api_bind [conf ]  (effective: 10.0.0.5)`. `prometheus_bind` gets the same
+treatment but with a loopback default instead of a `maas_url`-derived one.
+Nothing is appended when the key is explicitly set, or when no derivation
+is possible (e.g. hardening is inactive for the keys that only derive
+under hardening).
 
 Run validation on demand. It prints every violation and exits non-zero when any exist, so it doubles as audit evidence:
 
