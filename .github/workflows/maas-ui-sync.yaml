@@ -11,42 +11,60 @@ permissions:
   contents: write
 
 jobs:
-  check-last-commit:
+  sync:
+    name: Sync ${{ matrix.maas_branch }}
     runs-on: ubuntu-latest
-    outputs:
-      has_update: ${{ steps.compare.outputs.has_update }}
-      latest_commit: ${{ steps.compare.outputs.latest_commit }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Compare submodule and upstream commits
-        id: compare
-        run: |
-          latest_commit=$(git ls-remote https://github.com/canonical/maas-ui HEAD | awk '{print $1}')
-          current_commit=$(git rev-parse HEAD:src/maasui/src)
-
-          if [[ "$latest_commit" == "$current_commit" ]]; then
-            echo "has_update=false" >> "$GITHUB_OUTPUT"
-            echo "No update needed. Submodule already points to $current_commit"
-          else
-            echo "has_update=true" >> "$GITHUB_OUTPUT"
-            echo "latest_commit=$latest_commit" >> "$GITHUB_OUTPUT"
-            echo "Update needed: $current_commit -> $latest_commit"
-          fi
-
-  run-tests-in-container-and-commit:
-    needs: check-last-commit
-    # only run if the maas-ui commit changed
-    if: needs.check-last-commit.outputs.has_update == 'true'
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        maas_branch: ${{ fromJSON(github.event_name == 'push' && '["debug"]' || '["master", "3.6", "3.7", "3.8"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
+          ref: ${{ matrix.maas_branch == 'debug' && github.ref_name || matrix.maas_branch }}
           submodules: recursive
           fetch-depth: 0
           token: ${{ secrets.LANDER_GH_TOKEN }}
+
+      - name: Compare submodule and upstream commits
+        id: compare
+        env:
+          SYNC_BRANCH: ${{ matrix.maas_branch }}
+        run: |
+          if [[ "$SYNC_BRANCH" == "debug" ]]; then
+            target_branch=$GITHUB_REF_NAME
+            ui_branch=main
+          elif [[ "$SYNC_BRANCH" == "master" ]]; then
+            target_branch=master
+            ui_branch=main
+          else
+            target_branch=$SYNC_BRANCH
+            ui_branch=$SYNC_BRANCH
+          fi
+
+          latest_commit=$(git ls-remote --exit-code https://github.com/canonical/maas-ui "refs/heads/$ui_branch" | awk '{print $1}')
+          current_commit=$(git rev-parse HEAD:src/maasui/src)
+
+          echo "target_branch=$target_branch" >> "$GITHUB_OUTPUT"
+          echo "ui_branch=$ui_branch" >> "$GITHUB_OUTPUT"
+
+          if [[ "$latest_commit" == "$current_commit" ]]; then
+            echo "has_update=false" >> "$GITHUB_OUTPUT"
+            echo "No update needed for $target_branch. Submodule already points to $current_commit"
+          else
+            echo "has_update=true" >> "$GITHUB_OUTPUT"
+            echo "latest_commit=$latest_commit" >> "$GITHUB_OUTPUT"
+            echo "Update needed for $target_branch from maas-ui $ui_branch: $current_commit -> $latest_commit"
+          fi
+
+      - name: Update maas-ui submodule
+        if: steps.compare.outputs.has_update == 'true'
+        env:
+          LATEST_COMMIT: ${{ steps.compare.outputs.latest_commit }}
+        run: |
+          git -C src/maasui/src fetch origin "$LATEST_COMMIT"
+          git -C src/maasui/src checkout --detach "$LATEST_COMMIT"
 
       - name: Setup LXD
         uses: canonical/setup-lxd@v1
@@ -113,13 +131,14 @@ jobs:
           npx cypress run
 
       - name: Commit submodule update
+        if: steps.compare.outputs.has_update == 'true'
+        env:
+          LATEST_COMMIT: ${{ steps.compare.outputs.latest_commit }}
+          TARGET_BRANCH: ${{ steps.compare.outputs.target_branch }}
         run: |
           git config user.name ${{ vars.LANDER_USERNAME }}
           git config user.email ${{ vars.LANDER_EMAIL }}
 
-          git submodule update --init --remote src/maasui/src
-
           git add src/maasui/src
-          git commit -m "chore: update maas-ui to ${{ needs.check-last-commit.outputs.latest_commit }}"
-          # use $GITHUB_REF_NAME to allow updating the maas-ui for other branches
-          git push origin "HEAD:${GITHUB_REF_NAME:-master}"
+          git commit -m "chore: update maas-ui to $LATEST_COMMIT"
+          git push origin "HEAD:$TARGET_BRANCH"
