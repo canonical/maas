@@ -132,9 +132,10 @@ class PrometheusExporterService(Service):
         from maasserver.config import RegionConfiguration
 
         # Outside hardening, keep the historical default of all interfaces.
-        # Under hardening, loopback is the safe last resort: `prometheus_bind`
-        # is also seeded to 127.0.0.1 by `maas config-hardening enable`, but
-        # this default holds even if that seeding step was skipped.
+        # Under hardening, loopback is the safe last resort: unlike other
+        # bind keys, `prometheus_bind` has no `maas_url`-derived address,
+        # since the metrics endpoint is scraped locally by a co-located
+        # agent (e.g. grafana-agent), not remotely.
         bind_address = "127.0.0.1" if is_hardening_enabled() else ""
         try:
             with RegionConfiguration.open() as config:

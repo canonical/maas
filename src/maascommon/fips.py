@@ -97,8 +97,9 @@ def rsa_ssh_key_bits(b64_body: str) -> int | None:
 
     Parses the SSH wire format (RFC 4253 §6.6): each field is a 4-byte
     big-endian length followed by the field bytes. For ssh-rsa the fields are
-    key-type, public exponent, modulus. Returns None on any parse error so the
-    caller skips the size check rather than reject a key it cannot inspect.
+    key-type, public exponent, modulus. Returns None on any parse error;
+    :func:`validate_fips_ssh_public_key` treats that as fail-closed and
+    rejects the key rather than assume it is compliant.
     """
     try:
         data = base64.b64decode(b64_body)
@@ -155,7 +156,12 @@ def validate_fips_ssh_public_key(normalized_key: str) -> str | None:
         )
     if key_type == "ssh-rsa" and len(parts) >= 2:
         bits = rsa_ssh_key_bits(parts[1])
-        if bits is not None and bits < FIPS_RSA_MIN_BITS:
+        if bits is None:
+            return (
+                "RSA key size could not be determined from its base64 "
+                "body; the key is rejected rather than assumed compliant"
+            )
+        if bits < FIPS_RSA_MIN_BITS:
             return (
                 f"RSA key size {bits} bits is below the FIPS minimum "
                 f"of {FIPS_RSA_MIN_BITS}"
