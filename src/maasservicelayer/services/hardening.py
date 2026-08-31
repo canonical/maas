@@ -279,7 +279,7 @@ class HardeningValidator:
         Delegates to `maascommon.hardening.check_bind_violations`, the same
         implementation used by the rack's `hardening_command` CLI, so the
         region and rack enforce identical rules from a single source of
-        truth (see F8 in the hardening findings).
+        truth.
         """
         return [
             _violation(

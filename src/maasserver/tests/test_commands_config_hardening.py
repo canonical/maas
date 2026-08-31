@@ -391,7 +391,7 @@ class TestConfigHardeningEnable(_Base):
 
     def test_enable_does_not_touch_regiond_conf(self):
         # `enable` is a pure DB operation; it must never open regiond.conf
-        # (see F11: the prometheus_bind loopback seed was dropped).
+        # (it used to seed a prometheus_bind loopback default there).
         with (
             patch("maasserver.models.Config"),
             patch(

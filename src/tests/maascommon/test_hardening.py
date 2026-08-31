@@ -97,7 +97,7 @@ class TestCheckBindViolations:
     def test_invalid_address_wins_over_wildcard_for_same_key(self):
         # A key with one malformed value and one wildcard value reports
         # only the invalid-address finding: once the parser rejects one
-        # value the rest of the list cannot be trusted (F8).
+        # value the rest of the list cannot be trusted.
         violations = check_bind_violations(
             {"api_bind": ["not-an-ip", "0.0.0.0"]},
             frozenset({"api_bind"}),

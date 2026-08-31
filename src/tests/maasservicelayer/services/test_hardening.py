@@ -299,7 +299,7 @@ class TestValidateBindings:
     def test_invalid_ips_in_different_keys_have_distinct_idents(self) -> None:
         # Regression: _validate_bindings() used to build INVALID_BIND_ADDRESS
         # violations without a per-key ident, so two different keys with bad
-        # addresses collapsed onto the same notification (see F8).
+        # addresses collapsed onto the same notification.
         v_list = self._validator(
             api_bind=["not-an-ip"], rpc_bind=["also-not-an-ip"]
         )._validate_bindings()
