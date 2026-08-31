@@ -43,6 +43,22 @@ class TestValidatePowerParamsFips(MAASTestCase):
             self.assertIsNotNone(exc)
             self.assertEqual("fips_violation", exc.code)
 
+    def test_rejected_driver_emits_audit_event(self):
+        """A rejected driver logs a `fips_driver_rejected` audit event."""
+        with (
+            patch(
+                "maasserver.forms.fips_power.is_fips_enabled",
+                return_value=True,
+            ),
+            patch(
+                "maasserver.forms.fips_power.log_fips_driver_rejected"
+            ) as mock_log,
+        ):
+            _raises_validation_error(validate_power_params_fips, "apc", {})
+            mock_log.assert_called_once()
+            self.assertEqual("apc", mock_log.call_args.kwargs["driver"])
+            self.assertIn("SNMPv1", mock_log.call_args.kwargs["reason"])
+
     def test_accepts_compliant_driver_in_fips(self):
         """A compliant driver with correct cipher does not raise."""
         with patch(

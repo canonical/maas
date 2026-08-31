@@ -283,8 +283,11 @@ class IPMIPowerDriver(PowerDriver):
             "Cipher Suite ID",
             field_type="choice",
             choices=IPMI_CIPHER_SUITE_ID_CHOICES,
-            # freeipmi-tools defaults to 3, not all IPMI BMCs support 17.
-            default="3",
+            # freeipmi-tools defaults to 3, but that is not FIPS-approved
+            # (see FIPS_ALLOWED_IPMI_CIPHERS); on a FIPS host default to 17
+            # instead so the default path passes fips_power.py's validator.
+            # Not all IPMI BMCs support 17, so a non-FIPS host keeps 3.
+            default=("17" if is_fips_enabled() else "3"),
         ),
         make_setting_field(
             "privilege_level",
