@@ -483,26 +483,18 @@ func (s *DHCPService) configureViaOMAPI(ctx context.Context, param ApplyConfigVi
 				return ErrV4NotActive
 			}
 
-			err = clientV4.AddHost(host.IP, host.MAC)
+			err = clientV4.SyncHost(host.IP, host.MAC)
 			if err != nil {
-				if !errors.Is(err, omapi.ErrHostAlreadyExists) {
-					return err
-				}
-
-				log.Warn(fmt.Sprintf("Ignoring already existing host: %s", host.MAC))
+				return err
 			}
 		} else {
 			if !runningV6 {
 				return ErrV6NotActive
 			}
 
-			err = clientV6.AddHost(host.IP, host.MAC)
+			err = clientV6.SyncHost(host.IP, host.MAC)
 			if err != nil {
-				if !errors.Is(err, omapi.ErrHostAlreadyExists) {
-					return err
-				}
-
-				log.Warn(fmt.Sprintf("Ignoring already existing host: %s", host.MAC))
+				return err
 			}
 		}
 	}

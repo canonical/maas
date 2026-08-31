@@ -716,18 +716,20 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         super().save(*args, **kwargs)
 
         if configure_dhcp:
-            params = (
-                ConfigureDHCPParam(
+            if self._previous_subnet_id:
+                param = ConfigureDHCPParam(
                     subnet_ids=[self._previous_subnet_id, self.subnet_id]
                 )
-                if self._previous_subnet_id
-                else ConfigureDHCPParam(static_ip_addr_ids=[self.id])
-            )
+            elif self.ip is None and self.subnet_id is not None:
+                # Use the subnet_id when the IP is set to None
+                param = ConfigureDHCPParam(subnet_ids=[self.subnet_id])
+            else:
+                param = ConfigureDHCPParam(static_ip_addr_ids=[self.id])
 
             post_commit_do(
                 start_workflow,
                 workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
-                param=params,
+                param=param,
                 task_queue="region",
             )
 

@@ -42,6 +42,7 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
+from maasserver.models import staticipaddress as staticipaddress_module
 from maasserver.models.config import NetworkDiscoveryConfig
 from maasserver.models.interface import (
     BondInterface,
@@ -4472,6 +4473,31 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         )
         self.assertEqual(subnet, observed[0].subnet)
         self.assertIsNone(observed[0].ip)
+
+    def test_releasing_auto_ips_triggers_dhcp_reload_for_subnet(self):
+        mock_start_workflow = self.patch(
+            staticipaddress_module, "start_workflow"
+        )
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=ip,
+            subnet=subnet,
+            interface=interface,
+        )
+
+        mock_start_workflow.reset_mock()
+
+        with post_commit_hooks:
+            interface.release_auto_ips()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(subnet_ids=[subnet.id]),
+            task_queue="region",
+        )
 
 
 class TestInterfaceUpdateDiscovery(MAASServerTestCase):
