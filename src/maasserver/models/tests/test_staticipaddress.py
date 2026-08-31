@@ -1690,6 +1690,55 @@ class TestStaticIPAddress(MAASServerTestCase):
             task_queue="region",
         )
 
+    def test_save_released_ip_calls_dhcp_configure_workflow_with_subnet(self):
+        mock_start_workflow = self.patch(
+            static_ip_address_module, "start_workflow"
+        )
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        ip = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="10.0.0.1", subnet=subnet
+        )
+
+        with post_commit_hooks:
+            ip.save()
+
+        mock_start_workflow.reset_mock()
+
+        with post_commit_hooks:
+            ip.ip = None
+            ip.save()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(subnet_ids=[subnet.id]),
+            task_queue="region",
+        )
+
+    def test_save_released_ip_without_subnet_uses_static_ip_id(self):
+        mock_start_workflow = self.patch(
+            static_ip_address_module, "start_workflow"
+        )
+        ip = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip="10.0.0.1",
+            subnet=None,
+        )
+
+        with post_commit_hooks:
+            ip.save()
+
+        mock_start_workflow.reset_mock()
+
+        with post_commit_hooks:
+            ip.ip = None
+            ip.save()
+
+        mock_start_workflow.assert_called_once_with(
+            workflow_name=CONFIGURE_DHCP_WORKFLOW_NAME,
+            param=ConfigureDHCPParam(static_ip_addr_ids=[ip.id]),
+            task_queue="region",
+        )
+
     def test_save_new_temp_expires_on_calls_dhcp_configure_workflow(self):
         mock_start_workflow = self.patch(
             static_ip_address_module, "start_workflow"

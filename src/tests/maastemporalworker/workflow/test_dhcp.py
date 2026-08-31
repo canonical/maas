@@ -207,6 +207,25 @@ class TestDHCPConfigActivity:
         for rc in [rack_controller1, rack_controller2, rack_controller3]:
             assert rc["system_id"] in result.agent_system_ids
 
+    async def test_get_rack_id(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        rack = await create_test_rack_controller_entry(fixture)
+
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
+        )
+
+        result = await activities._get_rack_id(
+            db_connection, rack["system_id"]
+        )
+
+        assert result == rack["id"]
+
     async def test_get_hosts_for_static_ip_addrs(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
@@ -227,7 +246,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await activities._get_hosts_for_static_ip_addresses(
-            db_connection, rack["system_id"], [ip["id"] for ip in ips]
+            db_connection, rack["id"], [ip["id"] for ip in ips]
         )
         assert result == [
             Host(
@@ -237,6 +256,97 @@ class TestDHCPConfigActivity:
             )
             for ip in ips
         ]
+
+    async def test_get_hosts_for_static_ip_addrs_skips_released_ip(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        rack = await create_test_rack_controller_entry(fixture)
+        vlan = await create_test_vlan_entry(
+            fixture, dhcp_on=True, primary_rack_id=rack["id"]
+        )
+        subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+        [released_ip] = await create_test_staticipaddress_entry(
+            fixture, ip=None, subnet_id=subnet["id"]
+        )
+        machine = await create_test_machine_entry(fixture)
+        await create_test_interface_entry(
+            fixture, node=machine, ips=[released_ip], vlan_id=vlan["id"]
+        )
+
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
+        )
+
+        result = await activities._get_hosts_for_static_ip_addresses(
+            db_connection, rack["id"], [released_ip["id"]]
+        )
+
+        assert result == []
+
+    async def test_get_hosts_for_static_ip_addrs_skips_null_mac(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        rack = await create_test_rack_controller_entry(fixture)
+        vlan = await create_test_vlan_entry(
+            fixture, dhcp_on=True, primary_rack_id=rack["id"]
+        )
+        subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+        ips = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        machine = await create_test_machine_entry(fixture)
+        await create_test_interface_entry(
+            fixture,
+            node=machine,
+            ips=ips,
+            vlan_id=vlan["id"],
+            mac_address=None,
+        )
+
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
+        )
+
+        result = await activities._get_hosts_for_static_ip_addresses(
+            db_connection, rack["id"], [ip["id"] for ip in ips]
+        )
+
+        assert result == []
+
+    async def test_get_hosts_for_static_ip_addrs_ignores_other_racks(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        rack = await create_test_rack_controller_entry(fixture)
+        other_rack = await create_test_rack_controller_entry(fixture)
+        vlan = await create_test_vlan_entry(
+            fixture, dhcp_on=True, primary_rack_id=rack["id"]
+        )
+        subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+        ips = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        machine = await create_test_machine_entry(fixture)
+        await create_test_interface_entry(
+            fixture, node=machine, ips=ips, vlan_id=vlan["id"]
+        )
+
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
+        )
+
+        result = await activities._get_hosts_for_static_ip_addresses(
+            db_connection, other_rack["id"], [ip["id"] for ip in ips]
+        )
+
+        assert result == []
 
     async def test_get_hosts_for_reserved_ips(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
@@ -256,7 +366,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await activities._get_hosts_for_reserved_ips(
-            db_connection, rack["system_id"], [reserved_ip["id"]]
+            db_connection, rack["id"], [reserved_ip["id"]]
         )
         assert result == [
             Host(
@@ -313,6 +423,42 @@ class TestDHCPConfigActivity:
             )
         ]:
             assert host in result.hosts
+
+    async def test_fetch_hosts_for_update_skips_released_ip(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        env = ActivityEnvironment()
+
+        rack = await create_test_rack_controller_entry(fixture)
+        vlan = await create_test_vlan_entry(
+            fixture, dhcp_on=True, primary_rack_id=rack["id"]
+        )
+        subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+        [released_ip] = await create_test_staticipaddress_entry(
+            fixture, ip=None, subnet_id=subnet["id"]
+        )
+        machine = await create_test_machine_entry(fixture)
+        await create_test_interface_entry(
+            fixture, node=machine, ips=[released_ip], vlan_id=vlan["id"]
+        )
+
+        services_cache = CacheForServices()
+        activities = DHCPConfigActivity(
+            db,
+            services_cache,
+            connection=db_connection,
+            temporal_client=Mock(Client),
+        )
+
+        result = await env.run(
+            activities.fetch_hosts_for_update,
+            FetchHostsForUpdateParam(
+                system_id=rack["system_id"],
+                static_ip_addr_ids=[released_ip["id"]],
+            ),
+        )
+
+        assert result.hosts == []
 
     async def test_get_omapi_key(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
