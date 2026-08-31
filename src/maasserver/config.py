@@ -159,14 +159,10 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         "Enable HTTP debugging. Logs all HTTP requests and HTTP responses.",
         OneWayStringBool(if_missing=False),
     )
-
-    # Security hardening options.
-    hardening_enabled = ConfigurationOption(
-        "hardening_enabled",
-        "Security hardening activation: 'auto' (on when the host is in FIPS "
-        "mode), 'on' (force on), or 'off'.",
-        UnicodeString(if_missing="auto"),
-    )
+    # Security hardening is controlled by the DB `Config` row
+    # (`hardening_enabled`, set via `maas config-hardening`); the region
+    # has no per-host conf-based toggle. See
+    # `maasserver.models.config.read_hardening_enabled_from_db`.
 
     api_bind = ConfigurationOption(
         "api_bind",
