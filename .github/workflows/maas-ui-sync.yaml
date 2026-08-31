@@ -45,17 +45,28 @@ jobs:
 
           latest_commit=$(git ls-remote --exit-code https://github.com/canonical/maas-ui "refs/heads/$ui_branch" | awk '{print $1}')
           current_commit=$(git rev-parse HEAD:src/maasui/src)
+          git -C src/maasui/src fetch origin "$latest_commit"
 
           echo "target_branch=$target_branch" >> "$GITHUB_OUTPUT"
           echo "ui_branch=$ui_branch" >> "$GITHUB_OUTPUT"
+          echo "latest_commit=$latest_commit" >> "$GITHUB_OUTPUT"
 
           if [[ "$latest_commit" == "$current_commit" ]]; then
             echo "has_update=false" >> "$GITHUB_OUTPUT"
             echo "No update needed for $target_branch. Submodule already points to $current_commit"
           else
             echo "has_update=true" >> "$GITHUB_OUTPUT"
-            echo "latest_commit=$latest_commit" >> "$GITHUB_OUTPUT"
             echo "Update needed for $target_branch from maas-ui $ui_branch: $current_commit -> $latest_commit"
+          fi
+
+          maas_changed=$(git log -1 --since="24 hours ago" --format=%H)
+          ui_changed=$(git -C src/maasui/src log -1 --since="24 hours ago" --format=%H "$latest_commit")
+
+          if [[ "$latest_commit" != "$current_commit" || -n "$maas_changed" || -n "$ui_changed" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping smoke test: neither MAAS nor maas-ui changed in the past 24 hours"
           fi
 
       - name: Update maas-ui submodule
@@ -63,15 +74,16 @@ jobs:
         env:
           LATEST_COMMIT: ${{ steps.compare.outputs.latest_commit }}
         run: |
-          git -C src/maasui/src fetch origin "$LATEST_COMMIT"
           git -C src/maasui/src checkout --detach "$LATEST_COMMIT"
 
       - name: Setup LXD
+        if: steps.compare.outputs.should_run == 'true'
         uses: canonical/setup-lxd@v1
         with:
           channel: 5.21/stable
 
       - name: Build MAAS snap
+        if: steps.compare.outputs.should_run == 'true'
         run: |
           sudo snap install snapcraft --classic
           sudo snap refresh snapd
@@ -82,6 +94,7 @@ jobs:
 
       - name: Setup LXD container
         id: setup-lxd
+        if: steps.compare.outputs.should_run == 'true'
         run: |
           cd "$GITHUB_WORKSPACE"
           lxc launch ubuntu-daily:resolute maas-ui-tester-backend
@@ -98,6 +111,7 @@ jobs:
           echo "maas_ip=$MAAS_IP" >> "$GITHUB_OUTPUT"
 
       - name: Initialize MAAS
+        if: steps.compare.outputs.should_run == 'true'
         run: |
           export MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
           lxc exec maas-ui-tester-backend -- maas init region+rack --maas-url="http://${MAAS_IP}:5240/MAAS" --database-uri maas-test-db:///
@@ -109,11 +123,13 @@ jobs:
           fi
 
       - name: Setup Node
+        if: steps.compare.outputs.should_run == 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 22
 
       - name: Test
+        if: steps.compare.outputs.should_run == 'true'
         run: |
           export MAAS_IP=${{ steps.setup-lxd.outputs.maas_ip }}
           export CYPRESS_URL="http://${MAAS_IP}:5240/MAAS/r/"
