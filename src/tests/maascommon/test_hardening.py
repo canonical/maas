@@ -6,6 +6,7 @@ import pytest
 
 import maascommon.hardening as _hardening
 from maascommon.hardening import (
+    check_bind_violations,
     configure_hardening,
     HardeningMode,
     is_hardening_enabled,
@@ -50,3 +51,66 @@ class TestConfigureHardening:
         configure_hardening(HardeningMode.OFF)
         # Second call must not change the already-configured state.
         assert is_hardening_enabled() is True
+
+
+class TestCheckBindViolations:
+    def test_empty_auto_derived_key_is_not_a_violation(self):
+        violations = check_bind_violations(
+            {"api_bind": []}, frozenset({"api_bind"}), "maas config-hardening"
+        )
+        assert violations == []
+
+    def test_empty_non_auto_derived_key_is_a_wildcard_violation(self):
+        violations = check_bind_violations(
+            {"rpc_bind": []}, frozenset(), "maas config-hardening"
+        )
+        assert len(violations) == 1
+        assert violations[0].code == "WILDCARD_BIND_NOT_ALLOWED"
+        assert violations[0].config_key == "rpc_bind"
+
+    def test_explicit_wildcard_address_is_a_violation(self):
+        violations = check_bind_violations(
+            {"api_bind": ["0.0.0.0"]},
+            frozenset({"api_bind"}),
+            "maas config-hardening",
+        )
+        assert len(violations) == 1
+        assert violations[0].code == "WILDCARD_BIND_NOT_ALLOWED"
+
+    def test_ipv6_wildcard_address_is_a_violation(self):
+        violations = check_bind_violations(
+            {"api_bind6": ["::"]},
+            frozenset({"api_bind6"}),
+            "maas config-hardening",
+        )
+        assert len(violations) == 1
+        assert violations[0].code == "WILDCARD_BIND_NOT_ALLOWED"
+
+    def test_specific_address_is_not_a_violation(self):
+        violations = check_bind_violations(
+            {"api_bind": ["10.0.0.5"]},
+            frozenset({"api_bind"}),
+            "maas config-hardening",
+        )
+        assert violations == []
+
+    def test_invalid_address_wins_over_wildcard_for_same_key(self):
+        # A key with one malformed value and one wildcard value reports
+        # only the invalid-address finding: once the parser rejects one
+        # value the rest of the list cannot be trusted.
+        violations = check_bind_violations(
+            {"api_bind": ["not-an-ip", "0.0.0.0"]},
+            frozenset({"api_bind"}),
+            "maas config-hardening",
+        )
+        assert len(violations) == 1
+        assert violations[0].code == "INVALID_BIND_ADDRESS"
+        assert "not-an-ip" in violations[0].message
+
+    def test_resolution_uses_command_prefix(self):
+        violations = check_bind_violations(
+            {"rpc_bind": []}, frozenset(), "maas-rack config-hardening"
+        )
+        assert violations[0].resolution.startswith(
+            "Run: maas-rack config-hardening set rpc_bind"
+        )

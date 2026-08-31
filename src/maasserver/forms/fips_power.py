@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 
 from maascommon.fips import is_fips_enabled
 from maascommon.hardening import is_hardening_enabled
+from maascommon.logging.security import log_fips_driver_rejected
 from maascommon.password_policy import validate_password_complexity
 from provisioningserver.drivers.power.fips import (
     FIPS_ALLOWED_IPMI_CIPHERS,
@@ -29,6 +30,7 @@ def validate_power_params_fips(
     supported, reason = get_fips_status_for_driver(power_type)
     if not supported:
         alternatives = get_fips_compliant_alternatives()
+        log_fips_driver_rejected(driver=power_type, reason=reason or "")
         raise ValidationError(
             f"Power driver '{power_type}' is not supported in FIPS mode: "
             f"{reason}. FIPS-compliant alternatives: "

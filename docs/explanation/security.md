@@ -30,7 +30,7 @@ This differs from the certificate-expiration notification, which is dismissable 
 
 ### Region and rack scope
 
-The notification model and the validator live on the region controller. A rack-only controller applies its own hardening controls locally but has no region-facing channel for posting notifications, so rack-local configuration violations are not surfaced cross-host. The region database is the single source of compliance notifications. To audit a rack-only controller's hardening posture, run `maas config-hardening validate` on the region host.
+The notification model lives on the region controller: violations found there are posted as `Notification` rows, visible in the web UI and API. A rack controller applies its own hardening controls locally (its own bind addresses in `rackd.conf`) but has no region-facing channel for posting notifications, so rack-local configuration violations are not surfaced cross-host or recorded in the region database. To audit a rack controller's own hardening posture, run `maas-rack config-hardening validate` on that rack.
 
 See [Security hardening reference](/reference/configuration-guides/security-hardening.md) for the parameters, stores, and violation codes, and [Activate MAAS hardening](/how-to-guides/enhance-maas-security.md#activate-maas-hardening) for setup steps.
 
