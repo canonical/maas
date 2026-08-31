@@ -370,12 +370,7 @@ class DHCPConfigActivity(ActivityBase):
 
             return AgentsForUpdateResult(agent_system_ids=list(system_ids))
 
-    async def _get_hosts_for_static_ip_addresses(
-        self,
-        tx: AsyncConnection,
-        system_id: str,
-        static_ip_addr_ids: list[int],
-    ) -> list[Host]:
+    async def _get_rack_id(self, tx: AsyncConnection, system_id: str) -> int:
         rack_stmt = (
             select(NodeTable.c.id)
             .select_from(NodeTable)
@@ -383,7 +378,11 @@ class DHCPConfigActivity(ActivityBase):
         )
 
         [rack_id] = (await tx.execute(rack_stmt)).one()
+        return rack_id
 
+    async def _get_hosts_for_static_ip_addresses(
+        self, tx: AsyncConnection, rack_id: int, static_ip_addr_ids: list[int]
+    ) -> list[Host]:
         stmt = (
             select(
                 StaticIPAddressTable.c.ip,
@@ -412,6 +411,7 @@ class DHCPConfigActivity(ActivityBase):
             .filter(
                 and_(
                     StaticIPAddressTable.c.id.in_(static_ip_addr_ids),
+                    StaticIPAddressTable.c.ip.is_not(None),
                     or_(
                         VlanTable.c.primary_rack_id == rack_id,
                         VlanTable.c.secondary_rack_id == rack_id,
@@ -421,21 +421,18 @@ class DHCPConfigActivity(ActivityBase):
         )
         result = await tx.execute(stmt)
         return [
-            Host(ip=str(r[0]), mac=str(r[1]), hostname=str(r[2]))
-            for r in result.all()
+            Host(
+                ip=str(row["ip"]),
+                mac=str(row["mac_address"]),
+                hostname=str(row["hostname"]),
+            )
+            for row in result.mappings().all()
+            if row["mac_address"] is not None
         ]
 
     async def _get_hosts_for_reserved_ips(
-        self, tx: AsyncConnection, system_id: str, reserved_ip_ids: list[int]
+        self, tx: AsyncConnection, rack_id: int, reserved_ip_ids: list[int]
     ) -> list[Host]:
-        rack_stmt = (
-            select(NodeTable.c.id)
-            .select_from(NodeTable)
-            .filter(NodeTable.c.system_id == system_id)
-        )
-
-        [rack_id] = (await tx.execute(rack_stmt)).one()
-
         stmt = (
             select(
                 ReservedIPTable.c.ip,
@@ -462,8 +459,12 @@ class DHCPConfigActivity(ActivityBase):
         )
         result = await tx.execute(stmt)
         return [
-            Host(ip=str(r[0]), mac=str(r[1]) if r[1] else None, hostname="")
-            for r in result.all()
+            Host(
+                ip=str(row["ip"]),
+                mac=str(row["mac_address"]),
+                hostname="",
+            )
+            for row in result.mappings().all()
         ]
 
     @activity_defn_with_context(name=FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME)
@@ -471,15 +472,16 @@ class DHCPConfigActivity(ActivityBase):
         self, param: FetchHostsForUpdateParam
     ) -> HostsForUpdateResult:
         async with self._start_transaction() as tx:
+            rack_id = await self._get_rack_id(tx, param.system_id)
             hosts = []
             if param.static_ip_addr_ids:
                 hosts += await self._get_hosts_for_static_ip_addresses(
-                    tx, param.system_id, param.static_ip_addr_ids
+                    tx, rack_id, param.static_ip_addr_ids
                 )
 
             if param.reserved_ip_ids:
                 hosts += await self._get_hosts_for_reserved_ips(
-                    tx, param.system_id, param.reserved_ip_ids
+                    tx, rack_id, param.reserved_ip_ids
                 )
 
             return HostsForUpdateResult(hosts=hosts)
