@@ -1,11 +1,13 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The fabric handler for the WebSocket connection."""
 
+from maasserver.authorization import can_edit_global_entities
 from maasserver.forms.fabric import FabricForm
 from maasserver.models.fabric import Fabric
 from maasserver.permissions import NodePermission
+from maasserver.websockets.base import HandlerPermissionError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -26,6 +28,7 @@ class FabricHandler(TimestampedModelHandler):
             "set_active",
         ]
         listen_channels = ["fabric"]
+        view_permission = NodePermission.view
 
     def dehydrate(self, obj, data, for_list=False):
         data["name"] = obj.get_name()
@@ -36,6 +39,18 @@ class FabricHandler(TimestampedModelHandler):
         # logic in the javascript.
         data["default_vlan_id"] = data["vlan_ids"][0]
         return data
+
+    def create(self, parameters):
+        """Create a fabric."""
+        if not can_edit_global_entities(self.user):
+            raise HandlerPermissionError()
+        return super().create(parameters)
+
+    def update(self, parameters):
+        """Update this fabric."""
+        if not can_edit_global_entities(self.user):
+            raise HandlerPermissionError()
+        return super().update(parameters)
 
     def delete(self, parameters):
         """Delete this Domain."""

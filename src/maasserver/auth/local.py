@@ -18,7 +18,9 @@ from maasserver.models.domain import Domain
 from maasserver.models.fabric import Fabric
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface
+from maasserver.models.iprange import IPRange
 from maasserver.models.node import Node
+from maasserver.models.reservedip import ReservedIP
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.space import Space
 from maasserver.models.staticroute import StaticRoute
@@ -44,6 +46,8 @@ UNRESTRICTED_READ_MODELS = (
     DNSResource,
     Domain,
     Fabric,
+    IPRange,
+    ReservedIP,
     ResourcePool,
     Space,
     Subnet,
