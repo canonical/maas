@@ -32,6 +32,8 @@ jobs:
         env:
           SYNC_BRANCH: ${{ matrix.maas_branch }}
         run: |
+          set -o pipefail
+
           if [[ "$SYNC_BRANCH" == "debug" ]]; then
             target_branch=$GITHUB_REF_NAME
             ui_branch=main
@@ -81,8 +83,8 @@ jobs:
           # build below, instead of the stale one still in HEAD. This is only
           # pushed to the remote in "Push submodule update", after the smoke
           # test has passed.
-          git config user.name ${{ vars.LANDER_USERNAME }}
-          git config user.email ${{ vars.LANDER_EMAIL }}
+          git config user.name "${{ vars.LANDER_USERNAME }}"
+          git config user.email "${{ vars.LANDER_EMAIL }}"
           git add src/maasui/src
           git commit -m "chore: update maas-ui to $LATEST_COMMIT"
 
@@ -157,7 +159,7 @@ jobs:
           npx cypress run
 
       - name: Upload Cypress screenshots
-        if: always() && steps.compare.outputs.should_run == 'true'
+        if: failure() && steps.compare.outputs.should_run == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: cypress-screenshots-${{ matrix.maas_branch }}
