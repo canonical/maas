@@ -241,8 +241,7 @@ class TestUsers(APITestCase.ForUser):
     def test_POST_rejects_weak_password_when_hardening_active(self):
         self.become_admin()
         username = factory.make_name("user")
-        _hardening._hardening_active = True
-        self.addCleanup(setattr, _hardening, "_hardening_active", False)
+        self.patch(_hardening, "_hardening_active", True)
         response = self.client.post(
             reverse("users_handler"),
             {
@@ -264,8 +263,7 @@ class TestUsers(APITestCase.ForUser):
     def test_POST_accepts_strong_password_when_hardening_active(self):
         self.become_admin()
         username = factory.make_name("user")
-        _hardening._hardening_active = True
-        self.addCleanup(setattr, _hardening, "_hardening_active", False)
+        self.patch(_hardening, "_hardening_active", True)
         response = self.client.post(
             reverse("users_handler"),
             {
