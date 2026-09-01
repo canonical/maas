@@ -318,6 +318,195 @@ class TestStaticIPAddressService:
             wait=False,
         )
 
+    async def test_update_released_ip_uses_subnet_id(self) -> None:
+        now = utcnow()
+        old_sip = StaticIPAddress(
+            id=2,
+            ip="10.0.0.2",
+            lease_time=30,
+            subnet_id=1,
+            alloc_type=IpAddressType.AUTO,
+            created=now,
+            updated=now,
+        )
+        released_sip = old_sip.copy()
+        released_sip.ip = None
+
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_by_id.return_value = old_sip
+        mock_staticipaddress_repository.update_by_id.return_value = (
+            released_sip
+        )
+
+        mock_temporal = Mock(TemporalService)
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        await staticipaddress_service.update_by_id(
+            old_sip.id, StaticIPAddressBuilder(ip=None)
+        )
+
+        mock_temporal.register_or_update_workflow_call.assert_called_once_with(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(subnet_ids=[old_sip.subnet_id]),
+            parameter_merge_func=merge_configure_dhcp_param,
+            wait=False,
+        )
+
+    async def test_update_released_ip_without_subnet_uses_static_ip_id(
+        self,
+    ) -> None:
+        now = utcnow()
+        old_sip = StaticIPAddress(
+            id=2,
+            ip="10.0.0.2",
+            lease_time=30,
+            subnet_id=None,
+            alloc_type=IpAddressType.STICKY,
+            created=now,
+            updated=now,
+        )
+        released_sip = old_sip.copy()
+        released_sip.ip = None
+
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_by_id.return_value = old_sip
+        mock_staticipaddress_repository.update_by_id.return_value = (
+            released_sip
+        )
+
+        mock_temporal = Mock(TemporalService)
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        await staticipaddress_service.update_by_id(
+            old_sip.id, StaticIPAddressBuilder(ip=None)
+        )
+
+        mock_temporal.register_or_update_workflow_call.assert_called_once_with(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(static_ip_addr_ids=[old_sip.id]),
+            parameter_merge_func=merge_configure_dhcp_param,
+            wait=False,
+        )
+
+    async def test_update_moved_subnet_uses_both_subnet_ids(self) -> None:
+        now = utcnow()
+        old_sip = StaticIPAddress(
+            id=2,
+            ip="10.0.0.2",
+            lease_time=30,
+            subnet_id=1,
+            alloc_type=IpAddressType.AUTO,
+            created=now,
+            updated=now,
+        )
+        moved_sip = old_sip.copy()
+        moved_sip.subnet_id = 2
+        moved_sip.ip = IPv4Address("10.0.1.2")
+
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_by_id.return_value = old_sip
+        mock_staticipaddress_repository.update_by_id.return_value = moved_sip
+
+        mock_temporal = Mock(TemporalService)
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        await staticipaddress_service.update_by_id(
+            old_sip.id, StaticIPAddressBuilder(subnet_id=2, ip="10.0.1.2")
+        )
+
+        mock_temporal.register_or_update_workflow_call.assert_called_once_with(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(subnet_ids=[1, 2]),
+            parameter_merge_func=merge_configure_dhcp_param,
+            wait=False,
+        )
+
+    async def test_update_moved_subnet_drops_null_subnet_ids(self) -> None:
+        now = utcnow()
+        old_sip = StaticIPAddress(
+            id=2,
+            ip="10.0.0.2",
+            lease_time=30,
+            subnet_id=None,
+            alloc_type=IpAddressType.USER_RESERVED,
+            created=now,
+            updated=now,
+        )
+        moved_sip = old_sip.copy()
+        moved_sip.subnet_id = 2
+
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_by_id.return_value = old_sip
+        mock_staticipaddress_repository.update_by_id.return_value = moved_sip
+
+        mock_temporal = Mock(TemporalService)
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        await staticipaddress_service.update_by_id(
+            old_sip.id, StaticIPAddressBuilder(subnet_id=2)
+        )
+
+        mock_temporal.register_or_update_workflow_call.assert_called_once_with(
+            CONFIGURE_DHCP_WORKFLOW_NAME,
+            ConfigureDHCPParam(subnet_ids=[2]),
+            parameter_merge_func=merge_configure_dhcp_param,
+            wait=False,
+        )
+
+    async def test_update_discovered_does_not_configure_dhcp(self) -> None:
+        now = utcnow()
+        old_sip = StaticIPAddress(
+            id=2,
+            ip="10.0.0.2",
+            lease_time=30,
+            subnet_id=1,
+            alloc_type=IpAddressType.DISCOVERED,
+            created=now,
+            updated=now,
+        )
+        released_sip = old_sip.copy()
+        released_sip.ip = None
+
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_by_id.return_value = old_sip
+        mock_staticipaddress_repository.update_by_id.return_value = (
+            released_sip
+        )
+
+        mock_temporal = Mock(TemporalService)
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=mock_temporal,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        await staticipaddress_service.update_by_id(
+            old_sip.id, StaticIPAddressBuilder(ip=None)
+        )
+
+        mock_temporal.register_or_update_workflow_call.assert_not_called()
+
     @pytest.mark.parametrize(
         "builder, should_raise",
         [

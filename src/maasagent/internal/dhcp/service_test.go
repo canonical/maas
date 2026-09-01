@@ -49,15 +49,15 @@ func MockConfigureDHCPForAgent(ctx tworkflow.Context, args map[string]any) error
 
 type mockOMAPIClient struct {
 	omapi.OMAPI
-	assertAddHost func(net.IP, net.HardwareAddr) error
+	assertSyncHost func(net.IP, net.HardwareAddr) error
 }
 
 func (m *mockOMAPIClient) Close() error {
 	return nil
 }
 
-func (m *mockOMAPIClient) AddHost(ip net.IP, mac net.HardwareAddr) error {
-	return m.assertAddHost(ip, mac)
+func (m *mockOMAPIClient) SyncHost(ip net.IP, mac net.HardwareAddr) error {
+	return m.assertSyncHost(ip, mac)
 }
 
 type MockDHCPController struct {
@@ -146,11 +146,10 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 		}),
 		WithOMAPIClientFactory(func(_ net.Conn, _ omapi.Authenticator) (omapi.OMAPI, error) {
 			return &mockOMAPIClient{
-				assertAddHost: func(ip net.IP, mac net.HardwareAddr) error {
+				assertSyncHost: func(ip net.IP, mac net.HardwareAddr) error {
 					s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
 					return nil
-				},
-			}, nil
+				}}, nil
 		}),
 		WithAPIClient(apiClient),
 		WithDataPathFactory(func(path string) string {
@@ -338,7 +337,8 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPINotRunningV6() {
 	s.Equal(errors.Unwrap(err).Error(), ErrV6NotActive.Error())
 }
 
-func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4NoErrorHostAlreadyExisting() {
+// TestConfigureViaOMAPIV4SyncHosts ensures that SyncHost is being called.
+func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4SyncHost() {
 	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
 
 	hosts := []Host{
@@ -351,9 +351,9 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4NoErrorHostAlreadyExisting
 	s.svc.runningV4.Store(true)
 	s.svc.omapiClientFactory = func(_ net.Conn, _ omapi.Authenticator) (omapi.OMAPI, error) {
 		return &mockOMAPIClient{
-			assertAddHost: func(ip net.IP, mac net.HardwareAddr) error {
+			assertSyncHost: func(ip net.IP, mac net.HardwareAddr) error {
 				s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
-				return omapi.ErrHostAlreadyExists
+				return nil
 			},
 		}, nil
 	}
@@ -366,9 +366,44 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4NoErrorHostAlreadyExisting
 	)
 
 	s.NoError(err)
+	s.Len(s.configureViaOMAPICalls, 1)
 }
 
-func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6NoErrorHostAlreadyExisting() {
+// TestConfigureViaOMAPIV4SyncHostFails ensures a failure in SyncHost is fatal.
+// SyncHost will try to delete and re-add the host if it already exists and will
+// raise any error encountered.
+func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4SyncHostFails() {
+	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
+
+	hosts := []Host{
+		{
+			IP:  net.ParseIP("10.0.0.1"),
+			MAC: net.HardwareAddr{0x00, 0x01, 0x02, 0x03, 0x04, 0x05},
+		},
+	}
+
+	s.svc.runningV4.Store(true)
+	s.svc.omapiClientFactory = func(_ net.Conn, _ omapi.Authenticator) (omapi.OMAPI, error) {
+		return &mockOMAPIClient{
+			assertSyncHost: func(ip net.IP, mac net.HardwareAddr) error {
+				s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
+				return errors.New("Failure in OMAPI call.")
+			},
+		}, nil
+	}
+	_, err := s.activityEnv.ExecuteActivity(
+		"configure-dhcp-via-omapi",
+		ApplyConfigViaOMAPIParam{
+			Secret: secret,
+			Hosts:  hosts,
+		},
+	)
+
+	s.Error(err)
+}
+
+// TestConfigureViaOMAPIV6SyncHost ensure that SyncHost is being called.
+func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6SyncHost() {
 	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
 
 	hosts := []Host{
@@ -381,9 +416,9 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6NoErrorHostAlreadyExisting
 	s.svc.runningV6.Store(true)
 	s.svc.omapiClientFactory = func(_ net.Conn, _ omapi.Authenticator) (omapi.OMAPI, error) {
 		return &mockOMAPIClient{
-			assertAddHost: func(ip net.IP, mac net.HardwareAddr) error {
+			assertSyncHost: func(ip net.IP, mac net.HardwareAddr) error {
 				s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
-				return omapi.ErrHostAlreadyExists
+				return nil
 			},
 		}, nil
 	}
@@ -396,6 +431,40 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6NoErrorHostAlreadyExisting
 	)
 
 	s.NoError(err)
+	s.Len(s.configureViaOMAPICalls, 1)
+}
+
+// TestConfigureViaOMAPIV6SyncHostFails ensures a failure in SyncHost is fatal.
+// SyncHost will try to delete and re-add the host if it already exists and will
+// raise any error encountered.
+func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6SyncHostFails() {
+	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
+
+	hosts := []Host{
+		{
+			IP:  net.ParseIP("::1"),
+			MAC: net.HardwareAddr{0x00, 0x01, 0x02, 0x03, 0x04, 0x05},
+		},
+	}
+
+	s.svc.runningV6.Store(true)
+	s.svc.omapiClientFactory = func(_ net.Conn, _ omapi.Authenticator) (omapi.OMAPI, error) {
+		return &mockOMAPIClient{
+			assertSyncHost: func(ip net.IP, mac net.HardwareAddr) error {
+				s.configureViaOMAPICalls = append(s.configureViaOMAPICalls, []any{ip, mac})
+				return errors.New("Failure in OMAPI call.")
+			},
+		}, nil
+	}
+	_, err := s.activityEnv.ExecuteActivity(
+		"configure-dhcp-via-omapi",
+		ApplyConfigViaOMAPIParam{
+			Secret: secret,
+			Hosts:  hosts,
+		},
+	)
+
+	s.Error(err)
 }
 
 // TestConfigureViaFile ensures that provided JSON decoded and written
