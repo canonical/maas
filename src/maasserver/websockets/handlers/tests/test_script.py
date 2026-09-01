@@ -1,10 +1,11 @@
-# Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.script`"""
 
 import random
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -134,3 +135,28 @@ class TestScriptHandler(MAASServerTestCase):
             handler.get_script,
             {"id": script.id, "revision": random.randint(1000, 10000)},
         )
+
+
+class TestScriptHandlerOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_delete_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = True
+        user = factory.make_User()
+        script = factory.make_Script()
+        handler = ScriptHandler(user, {}, None)
+        handler.delete({"id": script.id})
+        self.openfga_client.can_edit_global_entities.assert_called_once_with(
+            user
+        )
+        self.assertIsNone(reload_object(script))
+
+    def test_delete_denied_without_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = False
+        user = factory.make_User()
+        script = factory.make_Script()
+        handler = ScriptHandler(user, {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.delete, {"id": script.id}
+        )
+        self.assertIsNotNone(reload_object(script))
