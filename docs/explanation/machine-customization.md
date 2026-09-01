@@ -103,11 +103,10 @@ You can pass any option supported by the Linux kernel. See the [kernel parameter
 
 ## Key takeaway
 
-Machine customisation in MAAS spans four layers:
+Machine customisation in MAAS spans three layers:
 
 1. Storage – layouts, partitions, erasure.
 2. Configuration – preseeds (curtin/cloud-init), templates, and deployment scripts.
 3. Kernel – type, version, and boot options.
-4. Runtime behavior – through deployment scripts running before/after installation.
 
 Together these features let you tune deployments for anything from simple test servers to complex production systems.

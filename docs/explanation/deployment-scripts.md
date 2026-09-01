@@ -23,7 +23,7 @@ MAAS ships a built-in deployment script, `50-curtin-install`, which downloads an
 - Scripts that sort **before** `50-curtin-install` run **before** the OS is installed (pre-install).
 - Scripts that sort **after** `50-curtin-install` run **after** the OS is installed (post-install).
 
-curtin still uploads its logs as usual, they are stored in the installation script results, and also captured in the deployment script result for `50-curtin-install`.
+curtin still uploads its logs as usual; they are stored in the installation script results and also captured in the deployment script result for `50-curtin-install`.
 
 ## Execution order
 
