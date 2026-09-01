@@ -76,6 +76,16 @@ jobs:
         run: |
           git -C src/maasui/src checkout --detach "$LATEST_COMMIT"
 
+          # Commit locally (without pushing) so that `git rev-parse HEAD:./src`
+          # in src/maasui/Makefile reflects the new commit during the snap
+          # build below, instead of the stale one still in HEAD. This is only
+          # pushed to the remote in "Push submodule update", after the smoke
+          # test has passed.
+          git config user.name ${{ vars.LANDER_USERNAME }}
+          git config user.email ${{ vars.LANDER_EMAIL }}
+          git add src/maasui/src
+          git commit -m "chore: update maas-ui to $LATEST_COMMIT"
+
       - name: Setup LXD
         if: steps.compare.outputs.should_run == 'true'
         uses: canonical/setup-lxd@v1
@@ -154,18 +164,12 @@ jobs:
           path: /tmp/cypress-test/cypress/screenshots
           if-no-files-found: ignore
 
-      - name: Commit submodule update
+      - name: Push submodule update
         if: |
           steps.compare.outputs.has_update == 'true' &&
           steps.compare.outputs.should_run == 'true' &&
           matrix.maas_branch != 'debug'
         env:
-          LATEST_COMMIT: ${{ steps.compare.outputs.latest_commit }}
           TARGET_BRANCH: ${{ steps.compare.outputs.target_branch }}
         run: |
-          git config user.name ${{ vars.LANDER_USERNAME }}
-          git config user.email ${{ vars.LANDER_EMAIL }}
-
-          git add src/maasui/src
-          git commit -m "chore: update maas-ui to $LATEST_COMMIT"
           git push origin "HEAD:$TARGET_BRANCH"
