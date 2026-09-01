@@ -7,7 +7,6 @@ from contextlib import contextmanager
 import os
 from unittest.mock import MagicMock
 
-import maascommon.hardening as hardening_module
 from maastesting.testcase import MAASTestCase
 from provisioningserver.config import ClusterConfiguration
 import provisioningserver.rackdservices.http as http_module
@@ -68,7 +67,7 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
         self.patch(os, "makedirs")
         self.patch(ClusterConfiguration, "open", fake_cluster_open)
         self.patch(
-            hardening_module, "is_hardening_enabled", lambda: hardening_active
+            http_module, "is_hardening_enabled", lambda: hardening_active
         )
 
         _make_service()._configure([])
