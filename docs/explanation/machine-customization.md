@@ -8,6 +8,7 @@ Before a machine is deployed, you can customise:
 
 - Storage layouts – partitioning, LVM, RAID, bcache, and UEFI boot.
 - Preseeding – commissioning and deployment configurations applied by curtin or cloud-init.
+- Deployment scripts – custom logic executed before and after OS installation during deployment.
 - Kernel choice – GA, HWE, pre-release HWE, or low-latency kernels.
 - Kernel parameters – boot-time options for tuning or troubleshooting.
 
@@ -72,6 +73,10 @@ Two main tools apply preseeds:
 
 Templates are matched in lexical order, from the most specific (`curtin_userdata_ubuntu_amd64_generic_xenial_node`) to generic fallbacks. This lets you override behaviour per OS, release, or machine.
 
+## Deployment scripts
+
+For tasks that must run *during* the deployment process—before or after the OS is installed—you can use [deployment scripts](/explanation/deployment-scripts.md). These run in the ephemeral environment and execute on every machine being deployed. Unlike cloud-init user-data (which configures the installed OS on first boot), deployment scripts are ideal for one-shot hardware-facing tasks such as firmware updates or preparing attached devices. See [Manage deployment scripts](/how-to-guides/manage-deployment-scripts.md) for practical guidance.
+
 ## Kernel choices
 
 MAAS can deploy machines with one of four Ubuntu kernel families:
@@ -98,10 +103,11 @@ You can pass any option supported by the Linux kernel. See the [kernel parameter
 
 ## Key takeaway
 
-Machine customisation in MAAS spans three layers:
+Machine customisation in MAAS spans four layers:
 
 1. Storage – layouts, partitions, erasure.
-2. Configuration – preseeds (curtin/cloud-init), templates.
+2. Configuration – preseeds (curtin/cloud-init), templates, and deployment scripts.
 3. Kernel – type, version, and boot options.
+4. Runtime behavior – through deployment scripts running before/after installation.
 
 Together these features let you tune deployments for anything from simple test servers to complex production systems.
