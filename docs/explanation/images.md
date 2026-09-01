@@ -18,9 +18,30 @@ The candidate stream contains images and bootloaders which have not been explici
 
 This stream is available [here](http://images.maas.io/ephemeral-v3/candidate).
 
+### Multiple image streams
+
+MAAS allows you to configure multiple SimpleStreams sources simultaneously, each with a unique priority value. Priority values determine precedence: higher values take precedence. When the same boot resource (for example, Ubuntu Jammy for amd64 architecture) is available in multiple streams, MAAS downloads it from the stream with the highest priority.
+
+Note: Each boot source must have a different priority value. You cannot assign the same priority to two different streams.
+
+Multiple streams are useful when you:
+
+- Want to test newer images from the candidate stream while keeping production-ready stable images
+- Operate a custom mirror alongside the official Canonical streams
+- Need flexibility to switch between different image sources based on your deployment requirements
+
+#### Disabling boot sources
+
+You can disable a boot source to prevent MAAS from synchronizing (downloading) images from it. When a boot source is disabled:
+
+- New images from that source are not downloaded during synchronization
+- If multiple sources provide the same image, MAAS uses the image from the highest-priority enabled source
+- Images already downloaded from the disabled source remain on disk and can still be deployed
+- These images are deleted when you select the same image from an active (enabled) boot source
+
 ### The retired daily stream
 
-Previously there was only one MAAS stream available, daily. This stream has been replaced by the stable stream. Any client using this stream will be automatically redirected to the stable stream.
+Previously there was only one MAAS stream available: daily, now replaced by the stable stream. Any client using this stream will be automatically redirected to the stable stream.
 
 ## Custom images
 
