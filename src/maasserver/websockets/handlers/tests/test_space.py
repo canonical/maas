@@ -1,13 +1,20 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.space`"""
 
+from unittest.mock import MagicMock
+
+from maasserver import openfga
 from maasserver.models.space import Space
+from maasserver.rbac import rbac
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maasserver.websockets.base import dehydrate_datetime
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.space import SpaceHandler
 from maastesting.djangotestcase import count_queries
 
@@ -58,6 +65,13 @@ class TestSpaceHandler(MAASServerTestCase):
             interface = node.get_boot_interface()
             subnet = factory.make_Subnet(space=space, vlan=interface.vlan)
             factory.make_StaticIPAddress(subnet=subnet, interface=interface)
+
+        # Warm the RBAC enabled-state cache: the view-permission check reads
+        # it lazily (one DB query), and RBACClearFixture resets it each test.
+        # Priming here keeps that one-off query out of the measured section so
+        # both counts reflect steady state.
+        rbac.is_enabled()
+
         queries_one, _ = count_queries(handler.list, {"limit": 1})
         queries_multiple, _ = count_queries(handler.list, {})
 
@@ -88,3 +102,42 @@ class TestSpaceHandlerDelete(MAASServerTestCase):
         user.save()
         with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.delete({"id": space.id})
+
+
+class TestSpaceHandlerViewPermission(MAASServerTestCase):
+    def deny_global_view(self):
+        client = openfga.get_openfga_client()
+        client.can_view_global_entities = MagicMock(return_value=False)
+
+    def test_list_requires_view_permission(self):
+        self.deny_global_view()
+        handler = SpaceHandler(factory.make_User(), {}, None)
+        factory.make_Space()
+        self.assertRaises(HandlerPermissionError, handler.list, {})
+
+    def test_get_requires_view_permission(self):
+        self.deny_global_view()
+        space = factory.make_Space()
+        handler = SpaceHandler(factory.make_User(), {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.get, {"id": space.id}
+        )
+
+
+class TestSpaceHandlerEditPermission(MAASServerTestCase):
+    def deny_global_edit(self):
+        client = openfga.get_openfga_client()
+        client.can_edit_global_entities = MagicMock(return_value=False)
+
+    def test_create_requires_edit_permission(self):
+        self.deny_global_edit()
+        handler = SpaceHandler(factory.make_User(), {}, None)
+        self.assertRaises(HandlerPermissionError, handler.create, {})
+
+    def test_update_requires_edit_permission(self):
+        self.deny_global_edit()
+        space = factory.make_Space()
+        handler = SpaceHandler(factory.make_User(), {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.update, {"id": space.id}
+        )

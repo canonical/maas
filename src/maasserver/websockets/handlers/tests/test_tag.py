@@ -1,7 +1,10 @@
-# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from unittest.mock import MagicMock
+
 from maascommon.events import AUDIT
+from maasserver import openfga
 from maasserver.enum import NODE_TYPE
 from maasserver.models import Event, Tag
 from maasserver.testing.factory import factory
@@ -221,3 +224,21 @@ class TestTagHandler(MAASServerTestCase):
         self.assertEqual(len(listing), 1, listing)
         self.assertEqual(listing[0]["name"], tag.name)
         self.assertEqual(listing[0]["machine_count"], 1)
+
+
+class TestTagHandlerViewPermission(MAASServerTestCase):
+    def deny_global_view(self):
+        client = openfga.get_openfga_client()
+        client.can_view_global_entities = MagicMock(return_value=False)
+
+    def test_list_requires_view_permission(self):
+        self.deny_global_view()
+        handler = TagHandler(factory.make_User(), {}, None)
+        factory.make_Tag()
+        self.assertRaises(HandlerPermissionError, handler.list, {})
+
+    def test_get_requires_view_permission(self):
+        self.deny_global_view()
+        tag = factory.make_Tag()
+        handler = TagHandler(factory.make_User(), {}, None)
+        self.assertRaises(HandlerPermissionError, handler.get, {"id": tag.id})
