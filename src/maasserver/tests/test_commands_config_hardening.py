@@ -468,7 +468,7 @@ class TestConfigHardeningListEffectiveBinds(_Base):
     ):
         # api_bind/http_proxy_bind/syslog_bind only derive under hardening;
         # rpc_bind/temporal_bind derive from maas_url regardless (see
-        # `_AUTO_DERIVED_BIND_KEYS`/`resolve_rpc_bind_addresses`), so they
+        # `AUTO_DERIVED_BIND_KEYS`/`resolve_rpc_bind_addresses`), so they
         # are checked separately and excluded here.
         import provisioningserver.utils.network as network_module
 

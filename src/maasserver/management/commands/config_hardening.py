@@ -12,7 +12,7 @@ from maascommon.hardening import configure_hardening, is_hardening_enabled
 from maasserver.config import RegionConfiguration
 from maasserver.management.commands.base import BaseCommandWithConnection
 from maasservicelayer.services.hardening import (
-    _AUTO_DERIVED_BIND_KEYS,
+    AUTO_DERIVED_BIND_KEYS,
     configure_and_validate_hardening,
 )
 from provisioningserver.utils.snap import running_in_snap
@@ -84,7 +84,7 @@ def _effective_bind_value(
     """Return what MAAS would actually bind `key` to right now, if unset.
 
     Mirrors the resolution each consuming service performs at startup (see
-    `_AUTO_DERIVED_BIND_KEYS` in `maasservicelayer.services.hardening`).
+    `AUTO_DERIVED_BIND_KEYS` in `maasservicelayer.services.hardening`).
     Returns "" when nothing more specific than "all interfaces" would
     result -- i.e. there is nothing useful to show.
     """
@@ -314,7 +314,7 @@ class Command(BaseCommandWithConnection):
                 else self._read_key(key)
             )
             line = f"{key:<35} [{store:<7}] {value}"
-            if not value and key in _AUTO_DERIVED_BIND_KEYS:
+            if not value and key in AUTO_DERIVED_BIND_KEYS:
                 effective = _effective_bind_value(
                     key, maas_url, hardening_active
                 )
