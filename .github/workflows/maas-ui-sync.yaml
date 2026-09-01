@@ -147,7 +147,10 @@ jobs:
           npx cypress run
 
       - name: Commit submodule update
-        if: steps.compare.outputs.has_update == 'true'
+        if: |
+          steps.compare.outputs.has_update == 'true' &&
+          steps.compare.outputs.should_run == 'true' &&
+          matrix.maas_branch != 'debug'
         env:
           LATEST_COMMIT: ${{ steps.compare.outputs.latest_commit }}
           TARGET_BRANCH: ${{ steps.compare.outputs.target_branch }}
