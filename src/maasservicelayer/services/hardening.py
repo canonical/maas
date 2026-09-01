@@ -17,7 +17,10 @@ from pathlib import Path
 
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import load_pem_parameters
+from cryptography.x509.oid import SignatureAlgorithmOID
 
 from maascommon.fips import is_fips_enabled
 from maascommon.hardening import check_bind_violations, is_hardening_enabled
@@ -102,6 +105,8 @@ class HardeningValidator:
         api_tls_dhparam: str | None = None,
         api_bind: Sequence[str] | None = None,
         api_bind6: Sequence[str] | None = None,
+        api_int_bind: str | None = None,
+        api_int_bind6: str | None = None,
         prometheus_bind: str | None = None,
         temporal_bind: str | None = None,
         rpc_bind: Sequence[str] | None = None,
@@ -126,6 +131,8 @@ class HardeningValidator:
         self._binds: dict[str, list[str]] = {
             "api_bind": list(api_bind) if api_bind else [],
             "api_bind6": list(api_bind6) if api_bind6 else [],
+            "api_int_bind": [api_int_bind] if api_int_bind else [],
+            "api_int_bind6": [api_int_bind6] if api_int_bind6 else [],
             "prometheus_bind": [prometheus_bind] if prometheus_bind else [],
             "temporal_bind": [temporal_bind] if temporal_bind else [],
             "rpc_bind": list(rpc_bind) if rpc_bind else [],
@@ -233,6 +240,60 @@ class HardeningValidator:
                     code="TLS_CERT_PARSE_ERROR",
                     message=f"Failed to parse TLS certificate or key: {exc}",
                     resolution="Run: maas config-tls enable <key> <cert> with a valid PEM certificate",
+                    config_key="tls",
+                )
+            ]
+
+        return self._validate_tls_cert_fips_key(cert)
+
+    def _validate_tls_cert_fips_key(
+        self, cert: x509.Certificate
+    ) -> list[HardeningViolation]:
+        """Reject TLS certificates using a non-FIPS-approved key or
+        signature algorithm. Only relevant on FIPS hosts: hardening can be
+        opted into on non-FIPS hosts, where these algorithms remain valid.
+        """
+        if not self.fips_active:
+            return []
+
+        if cert.signature_algorithm_oid in (
+            SignatureAlgorithmOID.RSA_WITH_SHA1,
+            SignatureAlgorithmOID.ECDSA_WITH_SHA1,
+            SignatureAlgorithmOID.DSA_WITH_SHA1,
+            SignatureAlgorithmOID.RSA_WITH_MD5,
+        ):
+            return [
+                _violation(
+                    code="WEAK_TLS_CERT_KEY",
+                    message=(
+                        f"TLS certificate is signed with "
+                        f"{cert.signature_algorithm_oid._name}, which is "
+                        "not FIPS-compliant. Use SHA-256 or stronger."
+                    ),
+                    resolution="Run: maas config-tls enable <key> <cert> with a FIPS-compliant certificate",
+                    config_key="tls",
+                )
+            ]
+
+        pub_key = cert.public_key()
+        if isinstance(pub_key, DSAPublicKey):
+            return [
+                _violation(
+                    code="WEAK_TLS_CERT_KEY",
+                    message="TLS certificate key is DSA, which is not FIPS-compliant.",
+                    resolution="Run: maas config-tls enable <key> <cert> with an RSA or ECDSA key",
+                    config_key="tls",
+                )
+            ]
+        if isinstance(pub_key, RSAPublicKey) and pub_key.key_size < 2048:
+            return [
+                _violation(
+                    code="WEAK_TLS_CERT_KEY",
+                    message=(
+                        f"TLS certificate RSA key size {pub_key.key_size} "
+                        "bits is below the FIPS minimum of 2048 bits."
+                    ),
+                    resolution="Run: maas config-tls enable <key> <cert> with a key of at least 2048 bits",
                     config_key="tls",
                 )
             ]
@@ -346,6 +407,8 @@ def configure_and_validate_hardening(
     api_tls_dhparam: str = "",
     api_bind: Sequence[str] = (),
     api_bind6: Sequence[str] = (),
+    api_int_bind: str = "",
+    api_int_bind6: str = "",
     prometheus_bind: str = "",
     temporal_bind: str = "",
     rpc_bind: Sequence[str] = (),
@@ -376,6 +439,8 @@ def configure_and_validate_hardening(
         api_tls_dhparam=api_tls_dhparam or None,
         api_bind=api_bind,
         api_bind6=api_bind6,
+        api_int_bind=api_int_bind or None,
+        api_int_bind6=api_int_bind6 or None,
         prometheus_bind=prometheus_bind or None,
         temporal_bind=temporal_bind or None,
         rpc_bind=rpc_bind,

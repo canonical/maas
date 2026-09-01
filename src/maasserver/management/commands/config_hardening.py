@@ -352,6 +352,8 @@ class Command(BaseCommandWithConnection):
                     api_tls_dhparam=str(cfg.api_tls_dhparam),
                     api_bind=list(cfg.api_bind),
                     api_bind6=list(cfg.api_bind6),
+                    api_int_bind=str(cfg.api_int_bind),
+                    api_int_bind6=str(cfg.api_int_bind6),
                     prometheus_bind=str(cfg.prometheus_bind),
                     temporal_bind=str(cfg.temporal_bind),
                     rpc_bind=list(cfg.rpc_bind),

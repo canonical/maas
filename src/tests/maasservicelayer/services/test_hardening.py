@@ -8,11 +8,12 @@ validate() returns list[HardeningViolation] — never exits or raises.
 import datetime
 import logging
 from pathlib import Path
+from unittest import mock
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives.asymmetric import dsa, rsa
+from cryptography.x509.oid import NameOID, SignatureAlgorithmOID
 import pytest
 
 from maasservicelayer.services.hardening import (
@@ -26,7 +27,19 @@ def _generate_private_key() -> rsa.RSAPrivateKey:
     return rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
 
-def _generate_cert(private_key: rsa.RSAPrivateKey) -> x509.Certificate:
+def _generate_small_rsa_key() -> rsa.RSAPrivateKey:
+    return rsa.generate_private_key(public_exponent=65537, key_size=1024)
+
+
+def _generate_dsa_key() -> dsa.DSAPrivateKey:
+    return dsa.generate_private_key(key_size=2048)
+
+
+def _generate_cert(
+    private_key, algorithm: hashes.HashAlgorithm | None = None
+) -> x509.Certificate:
+    if algorithm is None:
+        algorithm = hashes.SHA256()
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "maas-test")])
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     return (
@@ -37,7 +50,7 @@ def _generate_cert(private_key: rsa.RSAPrivateKey) -> x509.Certificate:
         .serial_number(x509.random_serial_number())
         .not_valid_before(now)
         .not_valid_after(now + datetime.timedelta(days=365))
-        .sign(private_key, hashes.SHA256())
+        .sign(private_key, algorithm)
     )
 
 
@@ -129,6 +142,72 @@ class TestValidateTLSCert:
         assert len(violations) == 1
         assert violations[0].code == "TLS_CERT_PARSE_ERROR"
 
+    def test_fips_active_dsa_key_returns_violation(self) -> None:
+        key = _generate_dsa_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key),
+            fips_active=True,
+        )
+        violations = validator._validate_tls_cert()
+        assert len(violations) == 1
+        assert violations[0].code == "WEAK_TLS_CERT_KEY"
+        assert "DSA" in violations[0].message
+
+    def test_fips_active_small_rsa_key_returns_violation(self) -> None:
+        key = _generate_small_rsa_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key),
+            fips_active=True,
+        )
+        violations = validator._validate_tls_cert()
+        assert len(violations) == 1
+        assert violations[0].code == "WEAK_TLS_CERT_KEY"
+        assert "1024" in violations[0].message
+
+    def test_fips_active_sha1_signature_returns_violation(self) -> None:
+        # The local cryptography/OpenSSL backend refuses to *produce* a
+        # SHA-1-signed certificate outright, so exercise the algorithm
+        # check directly against a cert whose signature OID is SHA-1.
+        key = _generate_private_key()
+        cert = mock.Mock(spec=x509.Certificate)
+        cert.signature_algorithm_oid = SignatureAlgorithmOID.RSA_WITH_SHA1
+        cert.public_key.return_value = key.public_key()
+        validator = HardeningValidator(hardening_active=True, fips_active=True)
+        violations = validator._validate_tls_cert_fips_key(cert)
+        assert len(violations) == 1
+        assert violations[0].code == "WEAK_TLS_CERT_KEY"
+        assert "SHA-256" in violations[0].message
+
+    def test_fips_active_compliant_cert_returns_no_violations(self) -> None:
+        key = _generate_private_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key),
+            fips_active=True,
+        )
+        assert validator._validate_tls_cert() == []
+
+    def test_fips_inactive_hardening_active_allows_dsa_key(self) -> None:
+        # Opt-in hardening on a non-FIPS host does not restrict key
+        # algorithms; only fips_active enforces this.
+        key = _generate_dsa_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key),
+            fips_active=False,
+        )
+        assert validator._validate_tls_cert() == []
+
 
 class TestValidateDHParams:
     def test_no_dhparam_returns_no_violations(self) -> None:
@@ -196,6 +275,8 @@ class TestValidateBindings:
     _ALL_SPECIFIC = {
         "api_bind": ["10.0.0.1"],
         "api_bind6": ["fd00::1"],
+        "api_int_bind": "10.0.0.7",
+        "api_int_bind6": "fd00::7",
         "prometheus_bind": "127.0.0.1",
         "temporal_bind": "127.0.0.1",
         "rpc_bind": ["10.0.0.2"],
