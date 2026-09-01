@@ -65,7 +65,13 @@ class TestSpaceHandler(MAASServerTestCase):
             interface = node.get_boot_interface()
             subnet = factory.make_Subnet(space=space, vlan=interface.vlan)
             factory.make_StaticIPAddress(subnet=subnet, interface=interface)
+
+        # Warm the RBAC enabled-state cache: the view-permission check reads
+        # it lazily (one DB query), and RBACClearFixture resets it each test.
+        # Priming here keeps that one-off query out of the measured section so
+        # both counts reflect steady state.
         rbac.is_enabled()
+
         queries_one, _ = count_queries(handler.list, {"limit": 1})
         queries_multiple, _ = count_queries(handler.list, {})
 

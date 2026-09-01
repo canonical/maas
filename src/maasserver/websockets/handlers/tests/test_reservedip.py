@@ -282,7 +282,12 @@ class TestReservedIPHandler(MAASServerTestCase):
         )
         user = factory.make_User()
         handler = ReservedIPHandler(user, {}, None)
+
+        # Warm the RBAC enabled-state cache: the view-permission check reads
+        # it lazily (one DB query), and RBACClearFixture resets it each test.
+        # Priming here keeps that one-off query out of the measured count.
         rbac.is_enabled()
+
         num_queries, reserved_ips = count_queries(handler.list, {})
         self.assertEqual(len(reserved_ips), 1)
         # 1 - get the list of reserved ips
