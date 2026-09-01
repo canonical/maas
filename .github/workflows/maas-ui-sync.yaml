@@ -146,6 +146,14 @@ jobs:
           echo 'describe("MAAS UI sync check", () => { it("loads and shows the initial setup page", () => { cy.visit(Cypress.env("URL")); cy.get("#maas-ui", { timeout: 30000 }).should("exist"); cy.contains(/Loading/i, { timeout: 30000 }).should("not.exist"); cy.contains("Failed to connect").should("not.exist"); cy.get(".p-card__title", { timeout: 30000 }).should("contain", "No admin user has been created yet"); }); });' > cypress/e2e/sync-check.cy.js
           npx cypress run
 
+      - name: Upload Cypress screenshots
+        if: always() && steps.compare.outputs.should_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots-${{ matrix.maas_branch }}
+          path: /tmp/cypress-test/cypress/screenshots
+          if-no-files-found: ignore
+
       - name: Commit submodule update
         if: |
           steps.compare.outputs.has_update == 'true' &&
