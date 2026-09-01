@@ -22,6 +22,7 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.exceptions.constants import (
     FIPS_VIOLATION_TYPE,
+    INVALID_ARGUMENT_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.sslkeys import SSLKey
@@ -41,7 +42,7 @@ class SSLKeysService(BaseService[SSLKey, SSLKeysRepository, SSLKeyBuilder]):
             raise ValidationException(
                 details=[
                     BaseExceptionDetail(
-                        type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
                         message="SSL key must be a string.",
                     )
                 ]
