@@ -522,12 +522,9 @@ class TestRackProxy(MAASTestCase):
         return external._ProxyConfiguration(**defaults)
 
     def test_configure_hardening_off_unset_stays_wildcard(self):
-        import maascommon.hardening as hardening_module
         from provisioningserver.config import ClusterConfiguration
 
-        self.patch(
-            hardening_module, "is_hardening_enabled"
-        ).return_value = False
+        self.patch(external, "is_hardening_enabled").return_value = False
         mock_open = self.patch(ClusterConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
         mock_cfg.http_proxy_bind = []
@@ -544,13 +541,10 @@ class TestRackProxy(MAASTestCase):
         self.assertEqual([], write_config.call_args.kwargs["http_proxy_bind6"])
 
     def test_configure_hardening_on_unset_derives_from_maas_url(self):
-        import maascommon.hardening as hardening_module
         from provisioningserver.config import ClusterConfiguration
         import provisioningserver.utils.network as network_module
 
-        self.patch(
-            hardening_module, "is_hardening_enabled"
-        ).return_value = True
+        self.patch(external, "is_hardening_enabled").return_value = True
         self.patch(
             network_module, "get_source_address_for_url"
         ).return_value = "10.0.0.9"
@@ -571,12 +565,9 @@ class TestRackProxy(MAASTestCase):
         )
 
     def test_configure_explicit_bind_wins_over_derivation(self):
-        import maascommon.hardening as hardening_module
         from provisioningserver.config import ClusterConfiguration
 
-        self.patch(
-            hardening_module, "is_hardening_enabled"
-        ).return_value = True
+        self.patch(external, "is_hardening_enabled").return_value = True
         mock_open = self.patch(ClusterConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
         mock_cfg.http_proxy_bind = ["10.0.0.5"]
@@ -740,12 +731,9 @@ class TestRackSyslog(MAASTestCase):
         return external._SyslogConfiguration(**defaults)
 
     def test_configure_hardening_off_unset_stays_wildcard(self):
-        import maascommon.hardening as hardening_module
         from provisioningserver.config import ClusterConfiguration
 
-        self.patch(
-            hardening_module, "is_hardening_enabled"
-        ).return_value = False
+        self.patch(external, "is_hardening_enabled").return_value = False
         mock_open = self.patch(ClusterConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
         mock_cfg.syslog_bind = []
@@ -760,13 +748,10 @@ class TestRackSyslog(MAASTestCase):
         self.assertEqual([], write_config.call_args.kwargs["bind"])
 
     def test_configure_hardening_on_unset_derives_from_maas_url(self):
-        import maascommon.hardening as hardening_module
         from provisioningserver.config import ClusterConfiguration
         import provisioningserver.utils.network as network_module
 
-        self.patch(
-            hardening_module, "is_hardening_enabled"
-        ).return_value = True
+        self.patch(external, "is_hardening_enabled").return_value = True
         self.patch(
             network_module, "get_source_address_for_url"
         ).return_value = "10.0.0.9"
@@ -784,12 +769,9 @@ class TestRackSyslog(MAASTestCase):
         self.assertEqual(["10.0.0.9"], write_config.call_args.kwargs["bind"])
 
     def test_configure_explicit_bind_wins_over_derivation(self):
-        import maascommon.hardening as hardening_module
         from provisioningserver.config import ClusterConfiguration
 
-        self.patch(
-            hardening_module, "is_hardening_enabled"
-        ).return_value = True
+        self.patch(external, "is_hardening_enabled").return_value = True
         mock_open = self.patch(ClusterConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
         mock_cfg.syslog_bind = ["10.0.0.5"]

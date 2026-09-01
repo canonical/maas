@@ -11,7 +11,6 @@ The validator never raises, exits, or blocks socket binding.
 """
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
 import logging
 from pathlib import Path
 
@@ -23,6 +22,7 @@ from cryptography.hazmat.primitives.serialization import load_pem_parameters
 from cryptography.x509.oid import SignatureAlgorithmOID
 
 from maascommon.fips import is_fips_enabled
+from maascommon.hardening import BindViolation as HardeningViolation
 from maascommon.hardening import check_bind_violations, is_hardening_enabled
 
 _log = logging.getLogger("maas.hardening")
@@ -62,18 +62,6 @@ AUTO_DERIVED_BIND_KEYS = frozenset(
 def _ident(code: str) -> str:
     slug = code.lower().replace("_", "-")[:29]
     return f"hardening-{slug}"
-
-
-@dataclass(frozen=True)
-class HardeningViolation:
-    """A single hardening validation failure."""
-
-    ident: str
-    code: str
-    message: str
-    resolution: str
-    config_key: str
-    file_path: str | None = field(default=None)
 
 
 def _violation(
@@ -340,20 +328,12 @@ class HardeningValidator:
         Delegates to `maascommon.hardening.check_bind_violations`, the same
         implementation used by the rack's `hardening_command` CLI, so the
         region and rack enforce identical rules from a single source of
-        truth.
+        truth. `BindViolation` is `HardeningViolation`, so no translation
+        is needed.
         """
-        return [
-            _violation(
-                code=v.code,
-                message=v.message,
-                resolution=v.resolution,
-                config_key=v.config_key,
-                ident=v.ident,
-            )
-            for v in check_bind_violations(
-                self._binds, AUTO_DERIVED_BIND_KEYS, "maas config-hardening"
-            )
-        ]
+        return check_bind_violations(
+            self._binds, AUTO_DERIVED_BIND_KEYS, "maas config-hardening"
+        )
 
     def _validate_fips_drift(self) -> list[HardeningViolation]:
         # `fips_declared` is auto-detected, not operator-set: the first
@@ -383,7 +363,6 @@ class HardeningValidator:
                     "cannot be unset via config-hardening."
                 ),
                 config_key="fips_enabled",
-                ident="hardening-fips-config-mismatch",
             )
         ]
 
