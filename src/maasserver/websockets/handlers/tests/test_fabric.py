@@ -1,12 +1,19 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.fabric`"""
 
+from unittest.mock import MagicMock
+
+from maasserver import openfga
 from maasserver.models.fabric import Fabric
+from maasserver.rbac import rbac
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.base import dehydrate_datetime
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.fabric import FabricHandler
 from maastesting.djangotestcase import count_queries
 
@@ -73,7 +80,47 @@ class TestFabricHandler(MAASServerTestCase):
                 interface.vlan = vlan
                 interface.save()
 
+        rbac.is_enabled()
         queries_one, _ = count_queries(handler.list, {"limit": 1})
         queries_multiple, _ = count_queries(handler.list, {})
 
         self.assertEqual(queries_one, queries_multiple)
+
+
+class TestFabricHandlerViewPermission(MAASServerTestCase):
+    def deny_global_view(self):
+        client = openfga.get_openfga_client()
+        client.can_view_global_entities = MagicMock(return_value=False)
+
+    def test_list_requires_view_permission(self):
+        self.deny_global_view()
+        handler = FabricHandler(factory.make_User(), {}, None)
+        factory.make_Fabric()
+        self.assertRaises(HandlerPermissionError, handler.list, {})
+
+    def test_get_requires_view_permission(self):
+        self.deny_global_view()
+        fabric = factory.make_Fabric()
+        handler = FabricHandler(factory.make_User(), {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.get, {"id": fabric.id}
+        )
+
+
+class TestFabricHandlerEditPermission(MAASServerTestCase):
+    def deny_global_edit(self):
+        client = openfga.get_openfga_client()
+        client.can_edit_global_entities = MagicMock(return_value=False)
+
+    def test_create_requires_edit_permission(self):
+        self.deny_global_edit()
+        handler = FabricHandler(factory.make_User(), {}, None)
+        self.assertRaises(HandlerPermissionError, handler.create, {})
+
+    def test_update_requires_edit_permission(self):
+        self.deny_global_edit()
+        fabric = factory.make_Fabric()
+        handler = FabricHandler(factory.make_User(), {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.update, {"id": fabric.id}
+        )

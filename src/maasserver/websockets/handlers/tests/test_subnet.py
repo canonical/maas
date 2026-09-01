@@ -1,20 +1,25 @@
-# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import re
-from unittest.mock import sentinel
+from unittest.mock import MagicMock, sentinel
 
 from fixtures import FakeLogger
 from netaddr import IPNetwork
 
 from maascommon.utils.network import IPRangeStatistics
+from maasserver import openfga
 from maasserver.api import discoveries as discoveries_module
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models.subnet import Subnet
+from maasserver.rbac import rbac
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks, reload_object
-from maasserver.websockets.base import dehydrate_datetime
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.subnet import SubnetHandler
 from maastesting.djangotestcase import count_queries
 
@@ -78,6 +83,7 @@ class TestSubnetHandler(MAASServerTestCase):
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
         self.assertIsNone(handler.cache.get("staticroutes"))
+        rbac.is_enabled()
         queries, _ = count_queries(handler.get, {"id": subnet.id})
         self.assertEqual(6, queries)
         self.assertIsNotNone(handler.cache["staticroutes"])
@@ -98,6 +104,7 @@ class TestSubnetHandler(MAASServerTestCase):
         subnet = factory.make_Subnet()
         factory.make_Interface(iftype=INTERFACE_TYPE.UNKNOWN, subnet=subnet)
         self.assertIsNone(handler.cache.get("staticroutes"))
+        rbac.is_enabled()
         queries_one, _ = count_queries(handler.list, {})
 
         for _ in range(5):
@@ -319,3 +326,23 @@ class TestSubnetHandlerScan(MAASServerTestCase):
         user.save()
         with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.scan({"id": subnet.id})
+
+
+class TestSubnetHandlerViewPermission(MAASServerTestCase):
+    def deny_global_view(self):
+        client = openfga.get_openfga_client()
+        client.can_view_global_entities = MagicMock(return_value=False)
+
+    def test_list_requires_view_permission(self):
+        self.deny_global_view()
+        handler = SubnetHandler(factory.make_User(), {}, None)
+        factory.make_Subnet()
+        self.assertRaises(HandlerPermissionError, handler.list, {})
+
+    def test_get_requires_view_permission(self):
+        self.deny_global_view()
+        subnet = factory.make_Subnet()
+        handler = SubnetHandler(factory.make_User(), {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.get, {"id": subnet.id}
+        )
