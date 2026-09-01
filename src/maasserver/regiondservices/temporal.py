@@ -29,8 +29,10 @@ maaslog = get_maas_logger()
 
 
 class RegionTemporalService(Service):
+    @inlineCallbacks
     def startService(self):
         self._configure()
+        yield self._reload_service()
         super().startService()
 
     def _configure(self):
