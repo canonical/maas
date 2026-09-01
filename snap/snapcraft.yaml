@@ -19,6 +19,8 @@ system-usernames:
 epoch: 4*
 
 package-repositories:
+  # TODO: temporary, until the FIPS-enabled packages land in the
+  # production MAAS PPA; remove this override once they do.
   - type: apt
     ppa: alexsander-souza/maas-3.7-fips
 environment:

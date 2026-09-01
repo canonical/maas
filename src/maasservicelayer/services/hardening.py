@@ -43,7 +43,7 @@ _INSECURE_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
 # `snap_deployment` below): on Debian-packaged installs MAAS does not
 # own the base named.conf.options, so it cannot guarantee either key
 # takes effect there.
-_AUTO_DERIVED_BIND_KEYS = frozenset(
+AUTO_DERIVED_BIND_KEYS = frozenset(
     {
         "temporal_bind",
         "api_bind",
@@ -148,7 +148,7 @@ class HardeningValidator:
                 list(http_proxy_bind6) if http_proxy_bind6 else []
             ),
         }
-        # Snap-only; see _AUTO_DERIVED_BIND_KEYS above for why.
+        # Snap-only; see AUTO_DERIVED_BIND_KEYS above for why.
         if self._snap_deployment:
             self._binds["dns_bind"] = list(dns_bind) if dns_bind else []
             self._binds["dns_bind6"] = list(dns_bind6) if dns_bind6 else []
@@ -351,7 +351,7 @@ class HardeningValidator:
                 ident=v.ident,
             )
             for v in check_bind_violations(
-                self._binds, _AUTO_DERIVED_BIND_KEYS, "maas config-hardening"
+                self._binds, AUTO_DERIVED_BIND_KEYS, "maas config-hardening"
             )
         ]
 

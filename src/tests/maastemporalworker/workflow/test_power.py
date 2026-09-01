@@ -50,19 +50,19 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 class TestFetchTrustedSshHostKeys:
     def test_non_ssh_driver_returns_none(self):
-        result = power_workflow._fetch_trusted_ssh_host_keys(
+        result = power_workflow.fetch_trusted_ssh_host_keys(
             "redfish", {"power_address": "10.0.0.1"}
         )
         assert result is None
 
     def test_non_string_driver_type_returns_none(self):
-        result = power_workflow._fetch_trusted_ssh_host_keys(
+        result = power_workflow.fetch_trusted_ssh_host_keys(
             {}, {"power_address": "10.0.0.1"}
         )
         assert result is None
 
     def test_ssh_driver_no_power_address_returns_none(self):
-        result = power_workflow._fetch_trusted_ssh_host_keys("wedge", {})
+        result = power_workflow.fetch_trusted_ssh_host_keys("wedge", {})
         assert result is None
 
     def test_ssh_driver_no_keys_in_db_returns_none(self, mocker):
@@ -74,7 +74,7 @@ class TestFetchTrustedSshHostKeys:
             "maasserver.models.trustedsshhostkey.TrustedSshHostKey",
             mocked_manager,
         )
-        result = power_workflow._fetch_trusted_ssh_host_keys(
+        result = power_workflow.fetch_trusted_ssh_host_keys(
             "wedge", {"power_address": "10.0.0.1"}
         )
         assert result is None
@@ -93,7 +93,7 @@ class TestFetchTrustedSshHostKeys:
             "maasserver.models.trustedsshhostkey.TrustedSshHostKey",
             mocked_manager,
         )
-        result = power_workflow._fetch_trusted_ssh_host_keys(
+        result = power_workflow.fetch_trusted_ssh_host_keys(
             "wedge", {"power_address": "10.0.0.1"}
         )
         assert len(result) == 2
@@ -283,7 +283,7 @@ class TestGetTemporalQueueForMachine:
         )
 
         mocker.patch.object(
-            power_workflow, "_fetch_trusted_ssh_host_keys", return_value=None
+            power_workflow, "fetch_trusted_ssh_host_keys", return_value=None
         )
 
         for power_action, param in power_actions.items():  # noqa: B007
@@ -326,7 +326,7 @@ class TestGetTemporalQueueForMachine:
         ]
         mocker.patch.object(
             power_workflow,
-            "_fetch_trusted_ssh_host_keys",
+            "fetch_trusted_ssh_host_keys",
             return_value=trusted_keys,
         )
 

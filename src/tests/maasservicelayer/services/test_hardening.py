@@ -290,7 +290,7 @@ class TestValidateBindings:
     }
 
     # Keys where an empty/unset value derives a real address at runtime
-    # (see `_AUTO_DERIVED_BIND_KEYS`), so it's never a wildcard violation.
+    # (see `AUTO_DERIVED_BIND_KEYS`), so it's never a wildcard violation.
     _AUTO_DERIVED = (
         "api_bind",
         "api_bind6",
