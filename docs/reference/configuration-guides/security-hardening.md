@@ -153,7 +153,7 @@ it. A violation clears automatically once the underlying setting is corrected.
 | `DH_PARAMS_PARSE_ERROR` | `api_tls_dhparam` file is not valid PEM DH parameters | See commands below. |
 | `INVALID_BIND_ADDRESS` | A bind key (`api_bind`, `api_bind6`, `api_int_bind`, `api_int_bind6`, `prometheus_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`, `dns_bind`, `dns_bind6`) contains a value that is not a valid IP address | `maas config-hardening set <key> <specific-ip-address>` |
 | `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or is unset (except `api_bind`, `api_bind6`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, and `http_proxy_bind6`, which are derived automatically from `maas_url` when unset). `api_int_bind`/`api_int_bind6` have no such derivation and are flagged when unset. `dns_bind`/`dns_bind6` are only checked on snap installs. | `maas config-hardening set <key> <specific-ip-address>` |
-| `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, or `prefer`, and `database_host` is not a Unix socket path | See commands below. |
+| `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, `prefer`, or `require`, and `database_host` is not a Unix socket path | See commands below. |
 | `FIPS_CONFIG_STATUS_MISMATCH` | Another controller in the fleet has FIPS mode active (`fips_enabled` in the DB), but this host's kernel does not | Enable FIPS mode on this host's kernel to match the rest of the fleet. `fips_enabled` cannot be unset via `config-hardening`. |
 
 **Resolving `WEAK_DH_PARAMS` or `DH_PARAMS_PARSE_ERROR`:** generate a new DH

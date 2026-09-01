@@ -27,6 +27,15 @@ from maascommon.hardening import check_bind_violations, is_hardening_enabled
 
 _log = logging.getLogger("maas.hardening")
 
+# `ObjectIdentifier` has no public human-readable name accessor (`._name`
+# is private); spell these out explicitly instead.
+_WEAK_SIGNATURE_ALGORITHM_NAMES = {
+    SignatureAlgorithmOID.RSA_WITH_SHA1: "RSA-SHA1",
+    SignatureAlgorithmOID.ECDSA_WITH_SHA1: "ECDSA-SHA1",
+    SignatureAlgorithmOID.DSA_WITH_SHA1: "DSA-SHA1",
+    SignatureAlgorithmOID.RSA_WITH_MD5: "RSA-MD5",
+}
+
 _INSECURE_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
 
 # Keys where an empty value is not a wildcard violation: the consuming
@@ -244,18 +253,16 @@ class HardeningValidator:
         if not self.fips_active:
             return []
 
-        if cert.signature_algorithm_oid in (
-            SignatureAlgorithmOID.RSA_WITH_SHA1,
-            SignatureAlgorithmOID.ECDSA_WITH_SHA1,
-            SignatureAlgorithmOID.DSA_WITH_SHA1,
-            SignatureAlgorithmOID.RSA_WITH_MD5,
-        ):
+        weak_signature_algorithm = _WEAK_SIGNATURE_ALGORITHM_NAMES.get(
+            cert.signature_algorithm_oid
+        )
+        if weak_signature_algorithm is not None:
             return [
                 _violation(
                     code="WEAK_TLS_CERT_KEY",
                     message=(
                         f"TLS certificate is signed with "
-                        f"{cert.signature_algorithm_oid._name}, which is "
+                        f"{weak_signature_algorithm}, which is "
                         "not FIPS-compliant. Use SHA-256 or stronger."
                     ),
                     resolution="Run: maas config-tls enable <key> <cert> with a FIPS-compliant certificate",
