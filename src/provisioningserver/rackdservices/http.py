@@ -22,7 +22,9 @@ from twisted.web import resource
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.static import NoRangeStaticProducer
 
+from maascommon.hardening import is_hardening_enabled
 from provisioningserver import services
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import (
@@ -198,9 +200,6 @@ class RackHTTPService(TimerService):
             str(get_maas_run_path() / "httpproxy.sock"),
         )
         agent_http_socket_path = str(get_maas_run_path() / "agent-http.sock")
-
-        from maascommon.hardening import is_hardening_enabled
-        from provisioningserver.config import ClusterConfiguration
 
         hardening_active = is_hardening_enabled()
         api_bind = []

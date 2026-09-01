@@ -486,7 +486,7 @@ class TestValidateFipsDrift:
         violations = v._validate_fips_drift()
         assert len(violations) == 1
         assert violations[0].code == "FIPS_CONFIG_STATUS_MISMATCH"
-        assert violations[0].ident == "hardening-fips-config-mismatch"
+        assert violations[0].ident == "hardening-fips-config-status-mismatch"
         assert "FIPS mode active" in violations[0].message
         assert "cannot be unset via config-hardening" in (
             violations[0].resolution
@@ -511,7 +511,7 @@ class TestValidateFipsDrift:
 
 
 class TestValidateDbSslmode:
-    @pytest.mark.parametrize("mode", ["disable", "allow", "prefer"])
+    @pytest.mark.parametrize("mode", ["disable", "allow", "prefer", "require"])
     def test_insecure_sslmode_returns_violation(self, mode: str) -> None:
         validator = HardeningValidator(
             hardening_active=True, database_sslmode=mode
