@@ -356,9 +356,14 @@ class HardeningValidator:
         ]
 
     def _validate_fips_drift(self) -> list[HardeningViolation]:
-        # Only flag when the operator declared FIPS in the DB but the kernel
-        # disagrees.  The reverse (kernel FIPS, config silent) is not flagged
-        # here because hardening.py already activates all FIPS controls via
+        # `fips_declared` is auto-detected, not operator-set: the first
+        # controller in the fleet to observe kernel FIPS mode writes
+        # fips_enabled=True to the DB (see start_up.py), and it is never
+        # unset via config-hardening. So a mismatch here means this
+        # specific controller's kernel has fallen out of step with a
+        # fleet-wide FIPS requirement already established elsewhere. The
+        # reverse (kernel FIPS, DB silent) is not flagged because
+        # hardening.py already activates all FIPS controls via
         # is_fips_enabled() regardless of what the DB says.
         if not self.fips_declared or self.fips_declared == self.fips_active:
             return []
@@ -366,14 +371,16 @@ class HardeningValidator:
             _violation(
                 code="FIPS_CONFIG_STATUS_MISMATCH",
                 message=(
-                    "FIPS is declared enabled in configuration but the "
-                    "host kernel does not have FIPS mode active "
+                    "Another controller in this MAAS has FIPS mode active, "
+                    "so all controllers are required to run FIPS, but this "
+                    "host's kernel does not have FIPS mode active "
                     "(/proc/sys/crypto/fips_enabled != 1). "
-                    "FIPS-conditional controls are not active."
+                    "FIPS-conditional controls are not active on this host."
                 ),
                 resolution=(
-                    "Run: maas config-hardening set fips_enabled false"
-                    "  (or re-enable FIPS on the host)"
+                    "Enable FIPS mode on this host's kernel to match the "
+                    "rest of the fleet. fips_enabled is auto-detected and "
+                    "cannot be unset via config-hardening."
                 ),
                 config_key="fips_enabled",
                 ident="hardening-fips-config-mismatch",

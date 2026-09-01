@@ -487,8 +487,10 @@ class TestValidateFipsDrift:
         assert len(violations) == 1
         assert violations[0].code == "FIPS_CONFIG_STATUS_MISMATCH"
         assert violations[0].ident == "hardening-fips-config-mismatch"
-        assert "declared enabled" in violations[0].message
-        assert "set fips_enabled false" in violations[0].resolution
+        assert "FIPS mode active" in violations[0].message
+        assert "cannot be unset via config-hardening" in (
+            violations[0].resolution
+        )
 
     def test_declared_off_host_on_returns_no_violation(self) -> None:
         v = HardeningValidator(

@@ -87,6 +87,11 @@ class TestConfigHardeningSet(_Base):
             self._cmd(command="set", key="nonexistent_key", value="val")
         self.assertEqual(1, ctx.exception.code)
 
+    def test_set_fips_enabled_refused(self):
+        with self.assertRaises(SystemExit) as ctx:
+            self._cmd(command="set", key="fips_enabled", value="true")
+        self.assertEqual(1, ctx.exception.code)
+
 
 class TestConfigHardeningSnapOnlyKeys(_Base):
     def test_set_dns_bind_refused_outside_snap(self):

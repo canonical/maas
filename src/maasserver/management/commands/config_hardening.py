@@ -129,8 +129,6 @@ def _is_conf_only_operation(command: str, key: str) -> bool:
 
 
 _HARDENING_ENABLED_VALUES = frozenset({"auto", "on", "off"})
-_FIPS_ENABLED_TRUE = frozenset({"true", "on", "1", "yes"})
-_FIPS_ENABLED_FALSE = frozenset({"false", "off", "0", "no"})
 
 
 def _format_conf_value(key: str, value) -> str:
@@ -153,18 +151,6 @@ def _sanitize_hardening_enabled(value: str) -> str:
             f" Must be one of: {sorted(_HARDENING_ENABLED_VALUES)}"
         )
     return canonical
-
-
-def _sanitize_fips_enabled(value: str) -> bool:
-    lowered = value.strip().lower()
-    if lowered in _FIPS_ENABLED_TRUE:
-        return True
-    if lowered in _FIPS_ENABLED_FALSE:
-        return False
-    raise ValueError(
-        f"Invalid fips_enabled value '{value}'."
-        f" Use: on/off, true/false, yes/no, or 1/0"
-    )
 
 
 def _store_for(key: str) -> str:
@@ -260,16 +246,24 @@ class Command(BaseCommandWithConnection):
             )
             raise SystemExit(1)
 
+        if key == "fips_enabled":
+            self.stderr.write(
+                "'fips_enabled' is not user-settable. It is declared "
+                "automatically the first time any controller in this MAAS "
+                "reports FIPS mode active, so that the whole fleet is held "
+                "to the same requirement; 'validate' then flags any "
+                "controller whose kernel disagrees. Use 'get'/'list' to "
+                "inspect it.\n"
+            )
+            raise SystemExit(1)
+
         if _store_for(key) == "conf":
             self._write_conf_key(key, value)
             self.stdout.write(f"Set {key} in regiond.conf\n")
             return
 
         try:
-            if key == "hardening_enabled":
-                stored = _sanitize_hardening_enabled(value)
-            else:
-                stored = _sanitize_fips_enabled(value)
+            stored = _sanitize_hardening_enabled(value)
         except ValueError as exc:
             self.stderr.write(f"{exc}\n")
             raise SystemExit(1) from exc
