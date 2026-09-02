@@ -4,21 +4,62 @@
 
 This section recaps the release history of MAAS version 3.5.
 
+### MAAS 3.5.9 has been released
+
+We are happy to announce that MAAS 3.5.9 has been released, with the following bug fixes
+
+- [2083076](https://bugs.launchpad.net/maas/+bug/2083076): MAAS nodes that fail commissioning continue to use stale commissioning scripts
+- [2125396](https://bugs.launchpad.net/bugs/2125396): StaticIPAddress auto IP allocation fails because of unhandled exception
+- [2122720](https://bugs.launchpad.net/bugs/2122720): Cilium and MAAS routing rule priorities conflict in some cases
+- [2110046](https://bugs.launchpad.net/bugs/2110046): MAAS allows AXFR from all sources
+- [2130237](https://bugs.launchpad.net/bugs/2130237): RPC RegisterRackController can saturate all the database threads, causing region controllers to become unresponsive for minutes
+- [2130037](https://bugs.launchpad.net/bugs/2130037): MAAS boot_images_no_proxy configuration ignored, MAAS cannot download images from mirror in the same network
+- [2130269](https://bugs.launchpad.net/bugs/2130269): Build is failing to download pre-built UI assets
+
+Please note that with the bugfix for [2110046](https://bugs.launchpad.net/bugs/2110046), a new configuration `allow_only_trusted_transfers` has been added. From 3.8.0 on, the default value will be True. But in 3.5.9 the default value is False to guarantee backwards compatibility. You can change it to True if you want to modify this behavior of DNS.
+
+### MAAS 3.5.8 has been released
+
+We are happy to announce that MAAS 3.5.8 has been released, with the following bug fixes
+
+- [2118408](https://bugs.launchpad.net/maas/+bug/2118408): add tftp_max_blksize rackd configuration to limit the tftp blksize requested by the clients
+- [2117200](https://bugs.launchpad.net/maas/+bug/2117200): when the machine is configured with redfish and the bmc_config commissioning script is setting up IPMI, the metadataserver should discard the IPMI specific power parameters and update only the username, password and address.
+- [2119630](https://bugs.launchpad.net/maas/+bug/2119630): support secureboot for rocky images
+- [2098967](https://bugs.launchpad.net/bugs/2098967): improve performances of domain.resource_record_count
+- [2118833](https://bugs.launchpad.net/bugs/2118833): disable forwarders in authoritative zones
+
+### MAAS 3.5.7 has been released
+
+We are happy to announce that MAAS 3.5.7 has been released, with the following bug fixes
+
+- [2091271](https://bugs.launchpad.net/maas/+bug/2091271): HW sync is not able to detect a bridge interface configured with OVS
+- [2097079](https://bugs.launchpad.net/maas/+bug/2097079): Failed to initialize MAAS on PostgreSQL with pgaudit plugin enabled
+- [2097242](https://bugs.launchpad.net/maas/+bug/2097242): MAAS is not auditing changes in OS images
+- [2109364](https://bugs.launchpad.net/maas/+bug/2109364): MAAS 3.5 Unable to disable SSL checks when adding a machine with Redfish
+- [2111831](https://bugs.launchpad.net/maas/+bug/2111831): MAAS snap uses setuptools from pip - UserWarning: pkg_resources is deprecated as an API.
+- [2112460](https://bugs.launchpad.net/maas/+bug/2112460): DHCP Commissioning script fails on nodes with multiple unused interfaces
+- [2112637](https://bugs.launchpad.net/maas/+bug/2112637): MAAS does not set BOOTIF mac address for IBM s390x LPARs during PXE boot
+- [2115176](https://bugs.launchpad.net/maas/+bug/2115176): Power management picks offline Rack Controller for VLAN
+- [2056208](https://bugs.launchpad.net/maas/+bug/2056208): No option to disable TLS verification on HMC Z
+- [2056211](https://bugs.launchpad.net/maas/+bug/2056211): Configuring an LPAR to boot on a disk doesn't work on HMC Z, which breaks deployments
+- [2098446](https://bugs.launchpad.net/maas/+bug/2098446): MAAS prometheus wrong Content-Type
+
 ### MAAS 3.5.6 has been released
 
 We are happy to announce that MAAS 3.5.6 has been released, with the following bug fixes
 
-- [2063458](https://bugs.launchpad.net/maas/+bug/2063458): Node has no address family in common with server" when deploying a LXD VM on an IPv6-only bridge
-- [2109360](https://bugs.launchpad.net/bugs/2109360):  MAAS incorrectly calculates cache_size for SNAP
-- [2109681](https://bugs.launchpad.net/bugs/2109681): Proxmox power driver regression fix
-- maas-ui 3.5.0 46934a94591e7355fefff6a50bd55e1b4b8d8591
+- [2109681](https://bugs.launchpad.net/bugs/2109681): Proxmox power driver is broken
+- [2109864](https://bugs.launchpad.net/bugs/2109864): No rack controller can access BMC of node [MAAS 3.5.5]
+- [2063458](https://bugs.launchpad.net/bugs/2063458): "Node has no address family in common with server" when deploying a LXD VM on an IPv6-only bridge
+- [2109360](https://bugs.launchpad.net/bugs/2109360): MAAS incorrectly calculates cache_size for SNAP
+- [2110370](https://bugs.launchpad.net/bugs/2110370): "Trying to reconnect" in maas 1:3.5.5-16357-g.51588a151-0ubuntu1~22.04.1
 
 ### MAAS 3.5.5 has been released
 
 We are happy to announce that MAAS 3.5.5 has been released, with the following bug fixes
 
 - [2103903](https://bugs.launchpad.net/bugs/2103903): Deployment fails when using interface with OVS bridge
-- [2104260](https://bugs.launchpad.net/bugs/2104260):  Cloud-init 24.04.1 requires OVS bridge interface not to be optional in the netplan preseed network
+- [2104260](https://bugs.launchpad.net/bugs/2104260): Cloud-init 24.04.1 requires OVS bridge interface not to be optional in the netplan preseed network
 - [2104278](https://bugs.launchpad.net/bugs/2104278): MAAS KVM deploy with 24.04 fails sshd.service not found
 - [2104530](https://bugs.launchpad.net/bugs/2104530): plucky deployments fail after reboot to disk due to no network
 - [2104838](https://bugs.launchpad.net/bugs/2104838): MAAS snap incorrectly calculates cache_size
@@ -29,8 +70,8 @@ We are happy to announce that MAAS 3.5.5 has been released, with the following b
 We are happy to announce that MAAS 3.5.4 has been released, with the following bug fixes
 
 - [2095477](https://bugs.launchpad.net/maas/+bug/2095477): boot-resources read is slow when there are a lot of images that have been deployed a lot of times
-- [2092172](https://bugs.launchpad.net/bugs/2092172):  Redfish powerdriver I/O operation on closed file.
-- [2099949](https://bugs.launchpad.net/bugs/2099949):  Redfish power driver requests fails with 412 status code
+- [2092172](https://bugs.launchpad.net/bugs/2092172): Redfish powerdriver I/O operation on closed file.
+- [2099949](https://bugs.launchpad.net/bugs/2099949): Redfish power driver requests fails with 412 status code
 - (No bug link) HW sync fails due to MAAS/metadata/2012-03-01 HTTP Error 409: Conflict.
 - [2095019](https://bugs.launchpad.net/maas/+bug/2095019): read the global configurations disk_erase_with_secure_erase and disk_erase_with_quick_erase when releasing a machine
 - [2091370](https://bugs.launchpad.net/maas/+bug/2091370): MAAS snap build pulls python modules from outside Ubuntu Archive / MAAS PPAs
@@ -55,16 +96,16 @@ We are happy to announce that MAAS 3.5.3 has been released, with the following b
 
 We are happy to announce that MAAS 3.5.2 has been released, with the following bug fixes
 
-- [2079987](https://bugs.launchpad.net/bugs/2079987):  LeaseSocketService is sending 10 RPC calls to the region every second even if there are no updates
-- [2079797](https://bugs.launchpad.net/bugs/2079797):  Redfish powerdriver should be able to handle the reset power status
-- [2075555](https://bugs.launchpad.net/bugs/2075555):  Custom OSes fail to deploy 'in memory'
-- [2069059](https://bugs.launchpad.net/bugs/2069059):  Ubuntu 24.04 doesn't deploy on any ARM64 machine
-- [2078941](https://bugs.launchpad.net/bugs/2078941):  When the snap is initialized again the certificates are not cleaned up
-- [2004661](https://bugs.launchpad.net/bugs/2004661):  MAAS deployment failures on server with Redfish
-- [2076910](https://bugs.launchpad.net/bugs/2076910):  'crypto/rsa: verification error' while trying to verify candidate authority certificate 'maas-ca'
-- [2077602](https://bugs.launchpad.net/bugs/2077602):   Unknown power configuration error for new machines registered with IPMI
-- [2078052](https://bugs.launchpad.net/bugs/2078052):   Squid initialization issue with pebble - [2039737](https://bugs.launchpad.net/bugs/2039737):   Page sizing on machine table doesn't work
-- [2081262](https://bugs.launchpad.net/bugs/2081262):   Missing module in MAAS snap, required for AMT power
+- [2079987](https://bugs.launchpad.net/bugs/2079987): LeaseSocketService is sending 10 RPC calls to the region every second even if there are no updates
+- [2079797](https://bugs.launchpad.net/bugs/2079797): Redfish powerdriver should be able to handle the reset power status
+- [2075555](https://bugs.launchpad.net/bugs/2075555): Custom OSes fail to deploy 'in memory'
+- [2069059](https://bugs.launchpad.net/bugs/2069059): Ubuntu 24.04 doesn't deploy on any ARM64 machine
+- [2078941](https://bugs.launchpad.net/bugs/2078941): When the snap is initialized again the certificates are not cleaned up
+- [2004661](https://bugs.launchpad.net/bugs/2004661): MAAS deployment failures on server with Redfish
+- [2076910](https://bugs.launchpad.net/bugs/2076910): 'crypto/rsa: verification error' while trying to verify candidate authority certificate 'maas-ca'
+- [2077602](https://bugs.launchpad.net/bugs/2077602): Unknown power configuration error for new machines registered with IPMI
+- [2078052](https://bugs.launchpad.net/bugs/2078052): Squid initialization issue with pebble - [2039737](https://bugs.launchpad.net/bugs/2039737): Page sizing on machine table doesn't work
+- [2081262](https://bugs.launchpad.net/bugs/2081262): Missing module in MAAS snap, required for AMT power
 
 ### MAAS 3.5.1 has been released
 
@@ -75,25 +116,25 @@ We are happy to announce that MAAS 3.5.1 has been released, with the following b
 - [1980000](https://bugs.launchpad.net/bugs/1980000): dhcpd.conf not written due to byte size of hosts value in rpc
 - [2073575](https://bugs.launchpad.net/bugs/2073575): Incorrect display of bondig options
 - [2076292](https://bugs.launchpad.net/bugs/2076292): Installing MAAS does not install the required simplestream version
-- [2073540](https://bugs.launchpad.net/bugs/2073540):  Error: ('Connection aborted.', FileNotFoundError(2, 'No such file or directory'))
+- [2073540](https://bugs.launchpad.net/bugs/2073540): Error: ('Connection aborted.', FileNotFoundError(2, 'No such file or directory'))
 
-MAAS 3.5 delivers substantial improvements in core functionality.  We've integrated Temporal for enhanced process and thread management, and started a transition to Go, re-implementing some of the rack controller functions as the "MAAS agent."  We've standardised logging and monitoring to use tools like syslogd, stepping away from the custom code we had been using.  We've also expanded the capabilities of existing features to include comprehensive service monitoring and support for deploying ephemeral (RAM-only) OS images.  And we've made great strides in visibly improving the performance of MAAS.
+### Capabilities added in MAAS 3.5
 
-## Capabilities added in MAAS 3.5
+MAAS 3.5 delivers substantial improvements in core functionality. We've integrated Temporal for enhanced process and thread management, and started a transition to Go, re-implementing some of the rack controller functions as the "MAAS agent." We've standardized logging and monitoring to use tools like syslogd, stepping away from the custom code we had been using. We've also expanded the capabilities of existing features to include comprehensive service monitoring and support for deploying ephemeral (RAM-only) OS images. And we've made great strides in visibly improving the performance of MAAS.
 
-### Faster and more efficient image storage and sync
+#### Faster and more efficient image storage and sync
 
 MAAS previously stored the boot resources (boot-loaders, kernels and disk images) in the MAAS database, and then replicated them on all Rack controllers. This make operations difficult and slow, as the database quickly became huge and files had to be transferred to all Racks before they were available for use. To address this issue, we have moved the resource storage from the database to the Region controller, and repurposed the storage in the Rack.
 
-#### Storing boot resources in the Region Controllers
+#### Storing boot resources in the region controllers
 
-All boot resources are stored in the local disk in each Controller host (`/var/lib/maas/image-storage` for *deb* or `$SNAP_COMMON/maas/image-storage` for *snap*). MAAS checks the contents of these directories on every start-up, removing unknown/stale files and downloading any missing resource.
+All boot resources are stored in the local disk in each Controller host (`/var/lib/maas/image-storage` for _deb_ or `$SNAP_COMMON/maas/image-storage` for _snap_). MAAS checks the contents of these directories on every start-up, removing unknown/stale files and downloading any missing resource.
 
-MAAS checks the amount of disk space available before downloading any resource, and stops synchronising files if there isn't enough free space. This error will be reported in the logs and a banner in the Web UI.
+MAAS checks the amount of disk space available before downloading any resource, and stops synchronizing files if there isn't enough free space. This error will be reported in the logs and a banner in the Web UI.
 
-#### Storage use by the Rack Controller
+#### Storage use by the rack controller
 
-Images are no longer copied from the MAAS database to the rack. Instead, the rack downloads images from the region on-demand.  This works well with the redesign of the rack controller (now known as the *MAAS agent*), which has been re-imagined as a 4G LRU caching agent.  The MAAS agent has limited storage space, managing cache carefully, but it is possible to configure the size of this cache if you need to do so.
+Images are no longer copied from the MAAS database to the rack. Instead, the rack downloads images from the region on-demand. This works well with the redesign of the rack controller (now known as the _MAAS agent_), which has been re-imagined as a 4G LRU caching agent. The MAAS agent has limited storage space, managing cache carefully, but it is possible to configure the size of this cache if you need to do so.
 
 As boot resources are now downloaded from a Region controller on-demand, a fast and reliable network connection between Regions and Racks is essential for a smooth operation. Adjusting the cache size might also be important for performance if you regularly deploy a large number of different systems.
 
@@ -111,23 +152,23 @@ The controllers are no longer capable of serving boot resources directly from th
 
 #### Sync works differently
 
-When downloading boot resources from an upstream source (e.g. images.maas.io), MAAS divides the workload between all Region controllers available, so each file is downloaded only once, but not all by the same controller. After all external files were fetched, the controllers synchronise files among them in a peer-to-peer fashion. This requires **direct communication between Regions to be allowed**, so you should review your firewall rules before upgrading.
+When downloading boot resources from an upstream source (e.g. images.maas.io), MAAS divides the workload between all Region controllers available, so each file is downloaded only once, but not all by the same controller. After all external files were fetched, the controllers synchronize files among them in a peer-to-peer fashion. This requires **direct communication between Regions to be allowed**, so you should review your firewall rules before upgrading.
 
-In this new model, a given image is *only* available for deployment after *all* regions have it, although stale versions can be used until everyone is up to date. This differs from previous versions where the boot resource needed to be copied to all Rack controllers before it was available, meaning that the images should be ready for use sooner.
+In this new model, a given image is _only_ available for deployment after _all_ regions have it, although stale versions can be used until everyone is up to date. This differs from previous versions where the boot resource needed to be copied to all Rack controllers before it was available, meaning that the images should be ready for use sooner.
 
-### Faster machine listing when deploying many machines
+#### Faster machine listing when deploying many machines
 
 We have made the MAAS machine listing considerably faster for large page sizes.
 
-### Soft Power Off
+#### Soft Power Off
 
-MAAS 3.5 allows you to execute a "soft" power-off for one or more machines.  Rather than commanding a power-off via the BMC, MAAS will ask the running OS to power-down the machine.  This allows machines to go through their normal shutdown routines before powering off.
+MAAS 3.5 allows you to execute a "soft" power-off for one or more machines. Rather than commanding a power-off via the BMC, MAAS will ask the running OS to power-down the machine. This allows machines to go through their normal shutdown routines before powering off.
 
-### Improved "Select All" in the machine list
+#### Improved "Select All" in the machine list
 
 With MAAS 3.5, you can select only the machines that are visible on the current page.
 
-### Improved support for multipath storage devices
+#### Improved support for multipath storage devices
 
 MAAS support of multipath storage devices has been reviewed and improved, and now it's capable of correctly identifying the following technologies:
 
@@ -138,9 +179,9 @@ MAAS support of multipath storage devices has been reviewed and improved, and no
 
 When one of these devices is detected by the commissioning scripts, MAAS will suppress the duplicated disks.
 
-### MAAS services exposed as Prometheus metrics
+#### MAAS services exposed as Prometheus metrics
 
-All services found in the *Hardware > Controllers > <controller> > Services* panel are now exposed as Prometheus metrics, to include:
+All services found in the _Hardware > Controllers > <controller> > Services_ panel are now exposed as Prometheus metrics, to include:
 
 - regiond
 - bind9
@@ -159,19 +200,19 @@ This should improve the user's ability to monitor MAAS.
 
 #### Monitoring setup sequence updated
 
-Also, the monitoring setup sequence for MAAS [has changed](/how-to-guides/monitor-maas).
+Also, the monitoring setup sequence for MAAS [has changed](https://canonical.com/maas/docs/stable/how-to-guides/monitor-maas).
 
-### Logs collapsed into system log files
+#### Logs collapsed into system log files
 
-With the advent of 3.5, all of the separate logs used by MAAS through version 3.4 have been eliminated and replaced with logging into the standard `systemd` files.  See [How to use MAAS systemd logs](https://discourse.maas.io/t/how-to-use-maas-systemd-logs/8103) in the documentation set for details.
+With the advent of 3.5, all of the separate logs used by MAAS through version 3.4 have been eliminated and replaced with logging into the standard `systemd` files. See [How to use MAAS systemd logs](https://discourse.maas.io/t/how-to-use-maas-systemd-logs/8103) in the documentation set for details.
 
-### Deployment of Oracle Linux 8 and 9 on MAAS machines
+#### Deployment of Oracle Linux 8 and 9 on MAAS machines
 
 Concurrent with the release of MAAS 3.5, we have added Oracle Linux 8 and Oracle Linux 9 to the stable of custom OS images that can be deployed on MAAS machines.
 
-### Ephemeral OS deployments
+#### Ephemeral OS deployments
 
-With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images should succeed.  Networking is only set up for Ubuntu images. For non-Ubuntu images, you only get the PXE interface set up to do DHCP against MAAS. All other interfaces need to be configured manually after deployment.
+With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images should succeed. Networking is only set up for Ubuntu images. For non-Ubuntu images, you only get the PXE interface set up to do DHCP against MAAS. All other interfaces need to be configured manually after deployment.
 
 You can choose an ephemeral OS deployment from the deployment configuration screen in the machine list: Just select the "Deploy in memory" option and deploy as normal.
 
@@ -179,11 +220,11 @@ You can choose an ephemeral OS deployment from the deployment configuration scre
 
 You can now select two new filters for deployment targets: "Deployed in memory" and "Deployed to disk."
 
-### Machine release scripts
+#### Machine release scripts
 
-MAAS now supports machine release scripts -- scripts that will be run when releasing a machine from deployment.  These scripts run on an ephemeral copy of Ubuntu that is loaded after the deployed OS has been shut down.  This ephemeral Ubuntu is similar to the OS image used to commission machines.
+MAAS now supports machine release scripts -- scripts that will be run when releasing a machine from deployment. These scripts run on an ephemeral copy of Ubuntu that is loaded after the deployed OS has been shut down. This ephemeral Ubuntu is similar to the OS image used to commission machines.
 
-Release scripts are the same type of scripts that you can create for commissioning or testing, with one difference: `script_type: release`.  Here's a sample release script:
+Release scripts are the same type of scripts that you can create for commissioning or testing, with one difference: `script_type: release`. Here's a sample release script:
 
 ```text
 #!/usr/bin/env python3
@@ -237,7 +278,7 @@ You can check your uploaded release scripts like this:
 maas $PROFILE node-scripts read type=release
 ```
 
-Among listed scripts you might see one named `wipe-disks`. This is the script that comes with MAAS to support the *Disk Erase* functionality.
+Among listed scripts you might see one named `wipe-disks`. This is the script that comes with MAAS to support the _Disk Erase_ functionality.
 
 Once you have your script uploaded to MAAS, you can pass it as a parameter to the MAAS CLI:
 
@@ -251,7 +292,7 @@ You can inspect release script results via the MAAS CLI:
 maas $PROFILE node-script-results read $SYSTEM_ID type=release
 ```
 
-## Updates to the MAAS UI
+#### Updates to the MAAS UI
 
 - The header of the "Deploy" form now sticks to the top of the screen when you scroll down
 - Added a message on empty tables across the UI
@@ -260,18 +301,18 @@ maas $PROFILE node-script-results read $SYSTEM_ID type=release
 - The width of the settings pages is now more consistent
 - Improved the grouping of subnets
 - Proxied the local documentation so it can be accessed from the UI
-- Columns on the machine list will now adapt to the screen size, and hide if there's not  enough space
+- Columns on the machine list will now adapt to the screen size, and hide if there's not enough space
 - Improved the side panel for managing tags
- -- Creating a new tag while applying tags to a machine now expands the side panel with the fields for the new tag
- -- Clicking a tag will expand the side panel to show information on that tag
+  -- Creating a new tag while applying tags to a machine now expands the side panel with the fields for the new tag
+  -- Clicking a tag will expand the side panel to show information on that tag
 - Pressing `/` on your keyboard will now automatically focus the search bar on pages that have one
 - If an action fails, the reason for it is now shown in the error message (if applicable)
 - Removed the footer from all pages, and moved the links to the status bar at the bottom
 - Migrated the maas-ui tooling from "create-react-app" to Vite
- -- Less JavaScript code has to be fetched on the initial page load
- -- Increased performance of the development environment of the UI
+  -- Less JavaScript code has to be fetched on the initial page load
+  -- Increased performance of the development environment of the UI
 
-### "Agent" and "Temporal" controller services
+#### "Agent" and "temporal" controller services
 
 MAAS 3.5 makes some internal changes to improve the operation of MAAS, including:
 
@@ -279,9 +320,9 @@ MAAS 3.5 makes some internal changes to improve the operation of MAAS, including
 
 - using a product called Temporal to improve process management and scheduling.
 
-There are no exposed controls, and there is no need for users to take any action on these changes. You will, though, see two new services in *Controllers > <controller> > Services: "agent" and "temporal."
+There are no exposed controls, and there is no need for users to take any action on these changes. You will, though, see two new services in \*Controllers > <controller> > Services: "agent" and "temporal."
 
-## UI bug fixes
+### UI bug fixes
 
 - Images that are queued for download can now be deleted
 - Improved alignment of headers in side panels
@@ -324,10 +365,10 @@ There are no exposed controls, and there is no need for users to take any action
 - Non-admin usernames are now displayed correctly in the side navigation
 - Fixed table pagination in the "Add DHCP snippet" form
 - Machine list pagination now displays the correct total number of pages
-- Machine list filters are now properly synchronised with the URL
+- Machine list filters are now properly synchronized with the URL
 - Made the tool-tip message for "Automatically sync images" a bit more concise
 
-## Back-end bug fixes
+### Back-end bug fixes
 
 - [2055009](https://bugs.launchpad.net/maas/+bug/2055009) : Default zone can not be renamed
 - [2049508](https://bugs.launchpad.net/maas/+bug/2049508) : MAAS has orphan ip addresses and dns records that are slowing down the entire service
