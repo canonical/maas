@@ -33,6 +33,7 @@ Considering MAAS for your next project? [Get in touch](https://canonical.com/maa
 :maxdepth: 2
 
 Home <self>
-Release Notes <release-notes>
+Release notes <release-notes>
 Supported MAAS versions <supported-maas-versions>
+Older releases <older-releases/index>
 ```

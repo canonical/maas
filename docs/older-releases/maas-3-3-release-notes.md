@@ -8,25 +8,25 @@ This section recaps the version history of MAAS version 3.3.
 
 ### MAAS 3.3.9 has been released
 
-We are happy to announce  that MAAS 3.3.9 has been released.
-This  is  a  maintenance  release,  with  no  new  features, providing the following bug fixes:
+We are happy to announce that MAAS 3.3.9 has been released.
+This is a maintenance release, with no new features, providing the following bug fixes:
 
 - [2004661](https://bugs.launchpad.net/maas/+bug/2004661): implement exponential backoff retry in the redfish power driver. We retry up to 6 times the requests to redfish before giving up. With this change the rackd is going to be more fault tolerant to whatever failure might happen.
 - [2058063](https://bugs.launchpad.net/maas/+bug/2058063): regiond and rackd showing different versions
-- [2040324](https://bugs.launchpad.net/maas/+bug/2040324):  distro_series and osystem check based on node status
+- [2040324](https://bugs.launchpad.net/maas/+bug/2040324): distro_series and osystem check based on node status
 
 ### MAAS 3.3.8 has been released
 
-We are happy to announce  that MAAS 3.3.8 has been released.
-This  is  a  maintenance  release,  with  no  new  features, providing the following bug fixes:
+We are happy to announce that MAAS 3.3.8 has been released.
+This is a maintenance release, with no new features, providing the following bug fixes:
 
-- [2029522](https://bugs.launchpad.net/maas/+bug/2029522): stacktrace on _reap_extra_connection()
+- [2029522](https://bugs.launchpad.net/maas/+bug/2029522): stacktrace on \_reap_extra_connection()
 - [2031482](https://bugs.launchpad.net/maas/+bug/2031482): Subnet changed to wrong fabric, impacting DHCP
 
 ### MAAS 3.3.7 has been released
 
-We are happy to announce  that MAAS 3.3.7 has been released.
-This  is  a  maintenance  release,  with  no  new  features,
+We are happy to announce that MAAS 3.3.7 has been released.
+This is a maintenance release, with no new features,
 providing the following bug fixes:
 
 - [1887558](https://bugs.launchpad.net/maas/+bug/1887558): multipathd bcache disks do not get picked up by multipath-tools during boot
@@ -36,12 +36,12 @@ providing the following bug fixes:
 - [2052958](https://bugs.launchpad.net/maas/+bug/2052958): PPC64 machines without disk serial fail condense LUNs
 - [2054915](https://bugs.launchpad.net/maas/+bug/2054915): Failed configuring DHCP on rack controller - too many values to unpack (expected 5)
 - [2062107](https://bugs.launchpad.net/maas/+bug/2062107): Failed to reload DNS; serial mismatch on domains maas
-- [2066276](https://bugs.launchpad.net/maas/+bug/2066276): ipv6 test failures: AttributeError: 'RRHeader' object has no attribute '_address'
+- [2066276](https://bugs.launchpad.net/maas/+bug/2066276): ipv6 test failures: AttributeError: 'RRHeader' object has no attribute '\_address'
 
 ### MAAS 3.3.6 has been released
 
-We are happy to announce  that MAAS 3.3.6 has been released.
-This  is  a  maintenance  release,  with  no  new  features,
+We are happy to announce that MAAS 3.3.6 has been released.
+This is a maintenance release, with no new features,
 providing the following bug fixes:
 
 - [2053033](https://bugs.launchpad.net/maas/+bug/2053033): Creating MAAS Virsh VM does not work (libvirt: error)
@@ -85,7 +85,7 @@ We are happy to announce that MAAS 3.3.4 has been released. This is a maintenanc
 
 - [1998615](https://bugs.launchpad.net/maas/+bug/1998615): Rack controller status flapping when "ClusterClient connection lost" messages in rackd.log
 - [2013476](https://bugs.launchpad.net/maas/+bug/2013476): 3.3/UI: Machines page is flapping once the machine operation in progress
-- [1807725](https://bugs.launchpad.net/maas/+bug/1807725): Machine interfaces allow '_' character, results on a interface based domain breaking bind (as it doesn't allow it for the host part).
+- [1807725](https://bugs.launchpad.net/maas/+bug/1807725): Machine interfaces allow '\_' character, results on a interface based domain breaking bind (as it doesn't allow it for the host part).
 - [1914762](https://bugs.launchpad.net/maas/+bug/1914762): test network configuration broken with openvswitch bridge
 
 ### MAAS 3.3.3 has been released
@@ -114,15 +114,15 @@ We are happy to announce that MAAS 3.3.2 has been release with the following bug
 
 We are happy to announce that MAAS 3.3.1 has been released with the following bug fixes:
 
-- [1773150](https://bugs.launchpad.net/maas/+bug/1773150):  smartctl verify fails due to Unicode in Disk Vendor Name
-- [1993618](https://bugs.launchpad.net/maas/+bug/1993618):  Web UI redirection policy can invalidate HAProxy and/or TLS setup
-- [1996997](https://bugs.launchpad.net/maas/+bug/1996997):  LXD resources fails on a Raspberry Pi with no Ethernet
-- [2003310](https://bugs.launchpad.net/maas/+bug/2003310):  Refresh scripts are not re-run if they pass, but fail to report the results to the region
-- [2008275](https://bugs.launchpad.net/maas/+bug/2008275):  Intel AMT support is broken in MAAS 3.3.0
-- [2009137](https://bugs.launchpad.net/maas/+bug/2009137):  MAAS OpenApi Schema missing parameters
-- [2009140](https://bugs.launchpad.net/maas/+bug/2009140):  MAAS OpenApi Schema cutoff variable names
-- [2009186](https://bugs.launchpad.net/maas/+bug/2009186):  CLI results in connection timed out when behind haproxy and 5240 is blocked
-- [2009805](https://bugs.launchpad.net/maas/+bug/2009805):  machine deploy install_kvm=True fails
+- [1773150](https://bugs.launchpad.net/maas/+bug/1773150): smartctl verify fails due to Unicode in Disk Vendor Name
+- [1993618](https://bugs.launchpad.net/maas/+bug/1993618): Web UI redirection policy can invalidate HAProxy and/or TLS setup
+- [1996997](https://bugs.launchpad.net/maas/+bug/1996997): LXD resources fails on a Raspberry Pi with no Ethernet
+- [2003310](https://bugs.launchpad.net/maas/+bug/2003310): Refresh scripts are not re-run if they pass, but fail to report the results to the region
+- [2008275](https://bugs.launchpad.net/maas/+bug/2008275): Intel AMT support is broken in MAAS 3.3.0
+- [2009137](https://bugs.launchpad.net/maas/+bug/2009137): MAAS OpenApi Schema missing parameters
+- [2009140](https://bugs.launchpad.net/maas/+bug/2009140): MAAS OpenApi Schema cutoff variable names
+- [2009186](https://bugs.launchpad.net/maas/+bug/2009186): CLI results in connection timed out when behind haproxy and 5240 is blocked
+- [2009805](https://bugs.launchpad.net/maas/+bug/2009805): machine deploy install_kvm=True fails
 
 ### MAAS 3.3 has been released
 
@@ -148,9 +148,9 @@ Greatly expanded documentation sections include:
 
 - [MAAS configuration settings reference](#maas-configuration-settings-reference): There is now one reference page that addresses all MAAS settings in one place. Other references throughout the document are preserved for now.
 
-- [Improved MAAS event documentation](#improved-maas-event-documentation): MAAS event documentation has been expanded to include [much better explanations](/explanation/events) of MAAS events, including many examples.
+- [Improved MAAS event documentation](#improved-maas-event-documentation): MAAS event documentation has been expanded to include much better explanations of MAAS events, including many examples.
 
-- [Improved MAAS audit event documentation](#improved-maas-audit-event-documentation): MAAS audit event documentation has been greatly expanded to include [much better explanations](/explanation/events.md) of MAAS audit events, including many examples and use cases.
+- [Improved MAAS audit event documentation](#improved-maas-audit-event-documentation): MAAS audit event documentation has been greatly expanded to include much better explanations of MAAS audit events, including many examples and use cases.
 
 Several forward-looking improvements are included as well:
 
@@ -195,8 +195,8 @@ The following table describes the expanded filter set for the MAAS machine list:
 
 See [How to search MAAS](https://discourse.maas.io/t/locating-and-searching-for-machines/5192) for more details on how to use these parameters.
 
-| Parameter (bold) w/example           | Shows nodes...                  | Dyn | Grp | Man |
-|--------------------------------------|----------------------------------|-----|-----|-----|
+| Parameter (bold) w/example           | Shows nodes...                   | Dyn | Grp | Man |
+| ------------------------------------ | -------------------------------- | --- | --- | --- |
 | **arch**:(=architecture)             | with "architecture"              |     | Grp |     |
 | arch:(!=architecture)                | NOT with "architecture"          | Dyn |     |     |
 | **zone**:(=zone-name)                | in "zone-name"                   | Dyn | Grp |     |
@@ -276,7 +276,7 @@ MAAS packages now run on Ubuntu 22.04, aka Jammy Jellyfish.
 
 MAAS users want to install MAAS on a 22.04 LTS system via deb packages, as well as upgrade machines currently running MAAS on Ubuntu 20.04 LTS to 22.04 LTS. With the advent of MAAS 3.3, we have created an appropriate PPA with all required dependencies. This PPA can be directly installed on Ubuntu 22.04, Jammy Jellyfish, with no requirement to use snaps.
 
-Note that the upgrade procedure will require a release upgrade from previous Ubuntu versions to Ubuntu 22.04. Also note that, with this version of MAAS, PostgreSQL 12 is deprecated and should be upgraded to PostgreSQL 14. The [installation guide](/how-to-guides/get-started/index.md) provides the necessary details.
+Note that the upgrade procedure will require a release upgrade from previous Ubuntu versions to Ubuntu 22.04. Also note that, with this version of MAAS, PostgreSQL 12 is deprecated and should be upgraded to PostgreSQL 14. The installation guide provides the necessary details.
 
 <!--
 ### Reliability improvements for simultaneous machine deployments
@@ -354,7 +354,7 @@ This update should make it much simpler to use custom-built Windows images with 
 
 ### Shifting the MAAS API documentation to OpenAPI standards
 
-MAAS API User want to experience the MAAS API in a more standard way, along the lines of the OpenAPI definition. MAAS 3.3 begins this process by providing most of the MAAS API functionality in a discover-able form. You should now be able to easily retrieve human-readable service documentation and API definitions using standard methods. Consult [the API documentation](/reference/api-reference/index.md) for details.
+MAAS API User want to experience the MAAS API in a more standard way, along the lines of the OpenAPI definition. MAAS 3.3 begins this process by providing most of the MAAS API functionality in a discover-able form. You should now be able to easily retrieve human-readable service documentation and API definitions using standard methods. Consult the API documentation for details.
 
 ### MAAS configuration settings reference
 
@@ -370,7 +370,7 @@ MAAS configuration settings are scattered in various (generally relevant) places
 
 A minor new feature added with MAAS 3.3 is MAAS site identity, which enables some new configuration parameters:
 
-- MAAS name: The “* MAAS name” is a text box that sets the text which appears at the bottom of every MAAS screen, in front of the version descriptor.
+- MAAS name: The “\* MAAS name” is a text box that sets the text which appears at the bottom of every MAAS screen, in front of the version descriptor.
 
 - MAAS name emoji: You may also paste a suitable emoji in front of the MAAS name to help identify it.
 
@@ -380,7 +380,7 @@ These enhancements were made available to assist users who have more than one in
 
 ### Improved MAAS event documentation
 
-MAAS event documentation has been expanded to include [much better explanations](/explanation/events) of MAAS events, including many examples.
+MAAS event documentation has been expanded to include much better explanations of MAAS events, including many examples.
 
 #### Ten words or less
 
@@ -426,9 +426,9 @@ Since the MAAS CLI returns JSON -- which is hard to humans to parse -- we've inc
 
 ```text
 maas $PROFILE events query limit=20 \
-| jq -r '(["USERNAME","NODE","HOSTNAME","LEVEL","DATE","TYPE","EVENT"] | 
+| jq -r '(["USERNAME","NODE","HOSTNAME","LEVEL","DATE","TYPE","EVENT"] |
 (., map(length*"-"))),
-(.events[] | [.username,.node,.hostname,.level,.created,.type,.description]) 
+(.events[] | [.username,.node,.hostname,.level,.created,.type,.description])
 | @tsv' | column -t -s\t'
 ```
 
@@ -452,37 +452,37 @@ This gave us a reasonably thorough report of what happened to the machine:
 ```text
 USERNAME  NODE    HOSTNAME   LEVEL  DATE                        TYPE                   EVENT
 --------  ----    --------   -----  ----                        ----                   -----
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:29:53  Exited rescue mode     
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:29:52  Powering off           
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:28:58  Rescue mode            
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:27:18  Loading ephemeral      
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:40  Performing PXE boot    
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:23  Power cycling          
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:23  Entering rescue mode   
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:14  Powering off           
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:14  Aborted testing        
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:24:08  Performing PXE boot    
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:51  Powering on            
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:51  Testing                
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:38  Released               
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:37  Powering off           
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:37  Releasing              
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:22:41  Deployed               
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:21:49  Rebooting              
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:18:42  Configuring OS         
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:17:42  Installing OS          
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:17:30  Configuring storage    
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:15:31  Loading ephemeral      
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:14:48  Performing PXE boot    
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:14:31  Powering on            
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:14:27  Deploying              
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:04:17  Ready                  
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:29:53  Exited rescue mode
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:29:52  Powering off
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:28:58  Rescue mode
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:27:18  Loading ephemeral
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:40  Performing PXE boot
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:23  Power cycling
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:23  Entering rescue mode
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:14  Powering off
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:14  Aborted testing
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:24:08  Performing PXE boot
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:51  Powering on
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:51  Testing
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:38  Released
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:37  Powering off
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:37  Releasing
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:22:41  Deployed
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:21:49  Rebooting
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:18:42  Configuring OS
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:17:42  Installing OS
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:17:30  Configuring storage
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:15:31  Loading ephemeral
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:14:48  Performing PXE boot
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:14:31  Powering on
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:14:27  Deploying
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:04:17  Ready
 unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:04:07  Running test           smartctl-validate on sda
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:01:27  Gathering information  
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:01:10  Loading ephemeral      
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:00:35  Performing PXE boot    
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:00:16  Powering on            
-unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:00:16  Commissioning          
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:01:27  Gathering information
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:01:10  Loading ephemeral
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:00:35  Performing PXE boot
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:00:16  Powering on
+unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:00:16  Commissioning
 ```
 
 Additional examples and techniques are provided as part of this new documentation.
@@ -499,7 +499,7 @@ We've finally offered details about how you should audit MAAS.
 
 There's probably no limit to what you can figure out if you use audit events properly. The problems are: (1) a lot goes on in MAAS, and (2) you need more than just the explicit audit events to get a clear picture of what's happening. We've tried to address this by taking a deeper look at the auditing process (not just the events).
 
-As you may know, an audit event is just a [MAAS event](/explanation/events) tagged with `AUDIT`. It generally captures changes to the MAAS configuration and machine states. These events provide valuable oversight of user actions and automated updates -- and their effects -- especially when multiple users are interacting with multiple machines.
+As you may know, an audit event is just a MAAS event tagged with `AUDIT`. It generally captures changes to the MAAS configuration and machine states. These events provide valuable oversight of user actions and automated updates -- and their effects -- especially when multiple users are interacting with multiple machines.
 
 #### Viewing events
 
@@ -513,9 +513,9 @@ You'll probably get better results by appending a `jq` filter, to prettify the o
 
 ```text
 $ maas $PROFILE events query level=AUDIT after=0 limit=20 \
-| jq -r '(["USERNAME","HOSTNAME","DATE","EVENT"] | 
+| jq -r '(["USERNAME","HOSTNAME","DATE","EVENT"] |
 (., map(length*"-"))),
-(.events[] | [.username,.hostname,.created,.description]) 
+(.events[] | [.username,.hostname,.created,.description])
 | @tsv' | column -t -s\t'
 ```
 
@@ -546,7 +546,7 @@ admin     unknown      Thu, 21 Apr. 2022 19:20:47  Updated configuration setting
 admin     unknown      Thu, 21 Apr. 2022 19:20:24  Logged in admin.
 ```
 
-You can, of course, use the [various event filters](/explanation/events) with `level=AUDIT` to further restrict your output.
+You can, of course, use the various event filters with `level=AUDIT` to further restrict your output.
 
 #### The meaning of audit events
 
@@ -571,15 +571,15 @@ As part of the updates to our "[How to work with audit event logs](https://disco
 ```text
 418606  ERROR    Marking node broken               Wed, 17 Nov. 2021 00:02:52  A Physical Interface requires a MAC address.
 418607  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:02:52  From 'New' to 'Broken'
-418608  DEBUG    Marking node fixed                Wed, 17 Nov. 2021 00:04:24  
+418608  DEBUG    Marking node fixed                Wed, 17 Nov. 2021 00:04:24
 418609  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:04:24  From 'Broken' to 'Ready'
 418613  DEBUG    User acquiring node               Wed, 17 Nov. 2021 00:04:51  (admin)
 418614  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:04:51  From 'Ready' to 'Allocated' (to admin)
 418615  DEBUG    User starting deployment          Wed, 17 Nov. 2021 00:04:51  (admin)
 418616  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:04:51  From 'Allocated' to 'Deploying'
-418617  INFO     Deploying                         Wed, 17 Nov. 2021 00:04:51  
+418617  INFO     Deploying                         Wed, 17 Nov. 2021 00:04:51
 418618  AUDIT    Node                              Wed, 17 Nov. 2021 00:04:51  Started deploying 'ruling-bobcat'.
-418619  INFO     Powering on                       Wed, 17 Nov. 2021 00:04:55  
+418619  INFO     Powering on                       Wed, 17 Nov. 2021 00:04:55
 418625  ERROR    Marking node failed               Wed, 17 Nov. 2021 00:05:32  Power on for the node failed: Failed talking to node's BMC: Failed to power pbpncx. BMC never transitioned from off to on.
 418626  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:05:32  From 'Deploying' to 'Failed deployment'
 418627  ERROR    Failed to power on node           Wed, 17 Nov. 2021 00:05:32  Power on for the node failed: Failed talking to node's BMC: Failed to power pbpncx. BMC never transitioned from off to on.
@@ -589,7 +589,7 @@ In this case, we managed to recognise, rather quickly, that no physical interfac
 
 ## Installation
 
-MAAS will run on just about any modern hardware configuration, even a development laptop. If you're not sure whether your target server will handle MAAS, [you can always double-check](/reference/configuration-guides/installation-requirements).
+MAAS will run on just about any modern hardware configuration, even a development laptop. If you're not sure whether your target server will handle MAAS, you can always double-check the installation requirements.
 
 **NOTE** that PostgreSQL 12 is deprecated with the release of MAAS 3.3, in favour of PostgreSQL 14. Support for PostgreSQL 12 will be discontinued in MAAS 3.4. Also note, though, that Postgres 14 does not run on Focal 20.04 LTS.
 
@@ -613,7 +613,7 @@ If you are using a multi-node maas deployment with separate regions and racks, y
 
 ### How to initialise MAAS 3.3 snap for a test or POC environment
 
-You can initialise MAAS as a compact version for testing. To achieve this, we provide a separate snap, called `maas-test-db`, which contains a PostgreSQL database for use in testing and evaluating MAAS.  The following instructions will help you take advantage of this test configuration.
+You can initialise MAAS as a compact version for testing. To achieve this, we provide a separate snap, called `maas-test-db`, which contains a PostgreSQL database for use in testing and evaluating MAAS. The following instructions will help you take advantage of this test configuration.
 
 Once MAAS is installed, you can use the `--help` flag with `maas init` to get relevant instructions:
 
@@ -705,7 +705,7 @@ To set up PostgreSQL, even if it's running on a different machine, you can use t
 
         sudo -u postgres createdb -O "$MAAS_DBUSER" "$MAAS_DBNAME"
 
-4. Edit `/etc/postgresql/14/main/pg_hba.conf` and add a line for the newly created database, replacing the variables with actual  names. You can limit access to a specific network by using a different CIDR than `0/0`.
+4. Edit `/etc/postgresql/14/main/pg_hba.conf` and add a line for the newly created database, replacing the variables with actual names. You can limit access to a specific network by using a different CIDR than `0/0`.
 
         host    $MAAS_DBNAME    $MAAS_DBUSER    0/0     md5
 
@@ -713,7 +713,7 @@ To set up PostgreSQL, even if it's running on a different machine, you can use t
 
         sudo maas init region+rack --database-uri "postgres://$MAAS_DBUSER:$MAAS_DBPASS@$HOSTNAME/$MAAS_DBNAME"
 
- You should use `localhost` for `$HOSTNAME` if you're running PostgreSQL on the same box as MAAS.
+You should use `localhost` for `$HOSTNAME` if you're running PostgreSQL on the same box as MAAS.
 
 Don't worry; if you leave out any of the database parameters, you'll be prompted for those details.
 
@@ -721,7 +721,7 @@ Don't worry; if you leave out any of the database parameters, you'll be prompted
 
 MAAS 3.3 from packages runs on 22.04 LTS only. The recommended way to set up an initial MAAS environment is to put everything on one machine:
 
-``` bash
+```bash
 sudo apt-add-repository ppa:maas/3.3
 sudo apt update
 sudo apt-get -y install maas
@@ -733,13 +733,13 @@ Executing this command leads you to a list of dependent packages to be installed
 
 <p>For a more distributed environment, you can place the region controller on one machine:</p>
 
-``` bash
+```bash
 sudo apt install maas-region-controller
 ```
 
 and the rack controller on another:
 
-``` bash
+```bash
 sudo apt install maas-rack-controller
 sudo maas-rack register
 ```
@@ -832,7 +832,7 @@ If this didn’t work, you will need to restore from the backup you made in step
 
 The following sections enumerate the bugs we've fixed in MAAS 3.3.
 
-### MAAS 3.3 Beta 1 bug list  
+### MAAS 3.3 Beta 1 bug list
 
 So far in MAAS 3.3, we've fixed well over 100 bugs:
 
@@ -889,11 +889,11 @@ So far in MAAS 3.3, we've fixed well over 100 bugs:
 - [1976194](https://bugs.launchpad.net/bugs/1976194): init rack can't find secrets
 - [1976196](https://bugs.launchpad.net/bugs/1976196): Controller WebSocket handler contains unimplemented methods
 - [1977820](https://bugs.launchpad.net/bugs/1977820): Some tests are skipped due to the "perf" filtering
-- [1977822](https://bugs.launchpad.net/bugs/1977822): ERROR: Redfish 'Redfish' object has no attribute '_get_network_interface'
+- [1977822](https://bugs.launchpad.net/bugs/1977822): ERROR: Redfish 'Redfish' object has no attribute '\_get_network_interface'
 - [1977864](https://bugs.launchpad.net/bugs/1977864): 30-maas-01-bmc-config: ERROR: Redfish string indices must be integers
 - [1977866](https://bugs.launchpad.net/bugs/1977866): 30-maas-01-bmc-config: ERROR: 169.254.95.120/16 has host bits set
 - [1977895](https://bugs.launchpad.net/bugs/1977895): Certificate metadata missing from controller websocket model
-- [1977942](https://bugs.launchpad.net/bugs/1977942): 30-maas-01-bmc-config: ERROR: Redfish 'Redfish' object has no attribute '_bmc_config'
+- [1977942](https://bugs.launchpad.net/bugs/1977942): 30-maas-01-bmc-config: ERROR: Redfish 'Redfish' object has no attribute '\_bmc_config'
 - [1977951](https://bugs.launchpad.net/bugs/1977951): 30-maas-01-bmc-config: ERROR: Redfish nonnumeric port: 'None'
 - [1978024](https://bugs.launchpad.net/bugs/1978024): maas auto-creates interface name for docker bridge on controller, which breaks bind
 - [1978037](https://bugs.launchpad.net/bugs/1978037): Drop legacy /l/ UI prefix

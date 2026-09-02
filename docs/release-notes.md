@@ -9,13 +9,13 @@
 
 ### Older releases
 
-- [MAAS 3.3 release notes](/uncategorized/maas-3-3-release-notes.md)
-- [MAAS 3.2 release notes](/uncategorized/maas-3-2-release-notes.md)
-- [MAAS 3.1 release notes](/uncategorized/maas-3-1-release-notes.md)
-- [MAAS 3.0 release notes](/uncategorized/maas-3-0-release-notes.md)
-- [MAAS 2.9 release notes](/uncategorized/maas-2-9-release-notes.md)
-- [MAAS 2.8 release notes](/uncategorized/maas-2-8-release-notes.md)
-- [MAAS 2.7 release notes](/uncategorized/maas-2-7-release-notes.md)
+- [MAAS 3.3 release notes](/older-releases/maas-3-3-release-notes.md)
+- [MAAS 3.2 release notes](/older-releases/maas-3-2-release-notes.md)
+- [MAAS 3.1 release notes](/older-releases/maas-3-1-release-notes.md)
+- [MAAS 3.0 release notes](/older-releases/maas-3-0-release-notes.md)
+- [MAAS 2.9 release notes](/older-releases/maas-2-9-release-notes.md)
+- [MAAS 2.8 release notes](/older-releases/maas-2-8-release-notes.md)
+- [MAAS 2.7 release notes](/older-releases/maas-2-7-release-notes.md)
 
 <!--
 ## Release policy and schedule
@@ -760,7 +760,7 @@ This should improve the user's ability to monitor MAAS.
 
 #### Monitoring setup sequence updated
 
-Also, the monitoring setup sequence for MAAS [has changed](/how-to-guides/monitor-maas).
+Also, the monitoring setup sequence for MAAS [has changed](https://canonical.com/maas/docs/stable/how-to-guides/monitor-maas).
 
 #### Logs collapsed into system log files
 
@@ -1108,7 +1108,7 @@ The MAAS 3.4 release expands Packer support to include SUSE Linux Enterprise Ser
 
 ### Installation
 
-MAAS will run on [just about any modern hardware configuration](/reference/configuration-guides/installation-requirements).
+MAAS will run on [just about any modern hardware configuration](https://canonical.com/maas/docs/stable/reference/configuration-guides/installation-requirements/).
 
 - [How to do a fresh install of MAAS 3.4](/how-to-guides/get-started/index.md): Use the tabs to select snaps or packages.
 

@@ -46,7 +46,7 @@ Here's a summary of the bugs that were fixed in 2.8.3:
 ```
 
 - [Ubuntu 20.04 pxe installation fails...](https://bugs.launchpad.net/curtin/+bug/1876258):
-When trying to PXE install Ubuntu 20.04, the installation fails with "no such file or directory, /dev/disk/by-id exception." This was an issue with block devices being created without serial numbers, bug fixed in curtin and released with 2.8.3.
+  When trying to PXE install Ubuntu 20.04, the installation fails with "no such file or directory, /dev/disk/by-id exception." This was an issue with block devices being created without serial numbers, bug fixed in curtin and released with 2.8.3.
 
 - [Failed to allocate the required AUTO IP addresses after 2 retries](https://bugs.launchpad.net/maas/+bug/1902425): MAAS incorrectly perceives that there are no available IP addresses, when in fact, there are plenty still available. This is fixed in 2.8.3.
 
@@ -71,7 +71,7 @@ Note that there is a workaround for those not ready to upgrade to 2.8.3, specifi
 - [Admin users cannot change other user's passwords via UI (backport)](https://bugs.launchpad.net/maas/+bug/1894727): An administrator is unable to change users passwords via the UI. This was fixed in 2.9 and backported to 2.8.3.
 
 - [all rack addresses in vlan are included in list of nameservers sent to deployed server (backport)](https://bugs.launchpad.net/maas/+bug/1896684): From the Bug Description: "MAAS forces all rack addresses for all subnets in a single vlan to any system deployed into any of those subnets. If the deployed systems are isolated, with no gateway configured, they may end up with broken DNS due to having nameservers configured which are not reachable."
-This was fixed in 2.9 and backported to 2.8.3.
+  This was fixed in 2.9 and backported to 2.8.3.
 
 ### MAAS 2.8.2 released
 
@@ -95,9 +95,7 @@ Following on from MAAS 2.7, we are happy to announce that MAAS 2.8 is now availa
 
 - [What are the new features and fixes for 2.8?](#features)
 - [What known issues should I be aware of?](#known-issues)
-- [How do I install MAAS 2.8 as a snap?](/how-to-guides/get-started/index.md)
 - [How do I upgrade my MAAS 2.7 snap to a MAAS 2.8 snap?](https://discourse.maas.io/t/how-to-upgrade-maas/5436)
-- [How do I install MAAS 2.8 from packages?](/how-to-guides/get-started/index.md)
 - [What bugs were fixed in this release?](#bug-fixes)
 
 ### LXD support (Beta)

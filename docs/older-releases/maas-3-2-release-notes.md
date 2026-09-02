@@ -8,11 +8,11 @@ We are happy to announce that MAAS 3.2.10 has been released.
 
 This point release of MAAS 3.2 provides five bug fixes:
 
-[1999827](https://bugs.launchpad.net/maas/+bug/1999827) :  DNS entries for MAAS servers change to secondary IPs
-[2022084](https://bugs.launchpad.net/maas/+bug/2022084) :  secure boot enabled on RHEL image fails to boot local on 2nd reboot after deploy
-[2029417](https://bugs.launchpad.net/maas/+bug/2029417) :  RPC failure to contact rack/region - operations on closed handler
-[2034014](https://bugs.launchpad.net/maas/+bug/2034014) :  Conflict error during w3 request
-[2040188](https://bugs.launchpad.net/maas/+bug/2040188) :  MAAS config option for IPMI cipher suite ID is not passed to bmc-config script
+[1999827](https://bugs.launchpad.net/maas/+bug/1999827) : DNS entries for MAAS servers change to secondary IPs
+[2022084](https://bugs.launchpad.net/maas/+bug/2022084) : secure boot enabled on RHEL image fails to boot local on 2nd reboot after deploy
+[2029417](https://bugs.launchpad.net/maas/+bug/2029417) : RPC failure to contact rack/region - operations on closed handler
+[2034014](https://bugs.launchpad.net/maas/+bug/2034014) : Conflict error during w3 request
+[2040188](https://bugs.launchpad.net/maas/+bug/2040188) : MAAS config option for IPMI cipher suite ID is not passed to bmc-config script
 
 ## MAAS 3.2.9
 
@@ -36,9 +36,9 @@ We are happy to announce that MAAS 3.2.8 has been released.
 This point release of MAAS 3.2 provides a number of high-profile bug fixes:
 
 [2009186](https://bugs.launchpad.net/maas/+bug/2009186): CLI results in connection timed out when behind haproxy and 5240 is blocked
-[2009805](https://bugs.launchpad.net/maas/+bug/2009805): machine deploy install_kvm=True fails
+[2009805](https://bugs.launchpad.net/maas/+bug/2009805): machine deploy install*kvm=True fails
 [2012139](https://bugs.launchpad.net/maas/+bug/2012139): maas commands occasionally fail with NO_CERTIFICATE_OR_CRL_FOUND when TLS is enabled
-[1807725](https://bugs.launchpad.net/maas/+bug/1807725): Machine interfaces allow ‘_’ character, results on a interface based domain breaking bind (as it doesn’t allow it for the host part).
+[1807725](https://bugs.launchpad.net/maas/+bug/1807725): Machine interfaces allow ‘*’ character, results on a interface based domain breaking bind (as it doesn’t allow it for the host part).
 [1979403](https://bugs.launchpad.net/maas/+bug/1979403): commission failed with MAAS 3.1 when BMC has multiple channels but the first channel is disabled
 [1986590](https://bugs.launchpad.net/maas/+bug/1986590): maas-cli from PPA errors out with traceback - ModuleNotFoundError: No module named ‘provisioningserver’
 
@@ -167,7 +167,7 @@ MAAS 3.2 provides greatly [expanded tagging capability](https://discourse.maas.i
 
 MAAS 3.2 rounds out the feature set with a few more items:
 
-- [Support for observability (O11y) in MAAS](/how-to-guides/monitor-maas): MAAS now supports integration with FOSS Observability stacks.
+- Support for observability (O11y) in MAAS: MAAS now supports integration with FOSS Observability stacks.
 
 - [Ability for user to specify IPMI cipher suite](https://discourse.maas.io/t/how-to-set-up-power-drivers/5246): You can explicitly select which cipher suite to use when interacting with a BMC.
 

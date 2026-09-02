@@ -6,7 +6,7 @@ We have released MAAS 2.9.2, which contains two new features, and some notable [
 
 - Proxmox driver: A driver has been added to MAAS 2.9.2 which interacts with the Proxmox API. Only one URL is needed, though a username and credentials are required. Credentials can be either a password or an API token. Note that if you use a token, you have to configure the permissions for the token. Newly-created Proxmox tokens don't assign any permissions by default, so you must add `power on`, `power off`, and `query power` permissions to the token before using it.
 
-- Power driver Webhook:  A webhook was added to 2.9.2, which allows MAAS to interface with another web service that's running the power commands. This webhook is provided for interacting with objects that MAAS does not support, that is, the MAAS team supports the driver itself, but whatever is interfacing to the driver is not supported. This webhook as three URLs, one each for power on, power off, and power query. Optionally, this webhook also supports a power user and password or token (RFC 6717). This gives you a way to add your own power drivers without waiting for the driver to be added to MAAS. There is a [video tutorial](https://discourse.maas.io/t/maas-show-and-tell-proxmox-and-webhook/3754/3) available on this new feature.
+- Power driver Webhook: A webhook was added to 2.9.2, which allows MAAS to interface with another web service that's running the power commands. This webhook is provided for interacting with objects that MAAS does not support, that is, the MAAS team supports the driver itself, but whatever is interfacing to the driver is not supported. This webhook as three URLs, one each for power on, power off, and power query. Optionally, this webhook also supports a power user and password or token (RFC 6717). This gives you a way to add your own power drivers without waiting for the driver to be added to MAAS. There is a [video tutorial](https://discourse.maas.io/t/maas-show-and-tell-proxmox-and-webhook/3754/3) available on this new feature.
 
 You can also find a [digest](#bug-fixes) of the 2.9.2 bug fixes below.
 
@@ -80,7 +80,7 @@ A number of MAAS issues have actually been issues with an older version of Curti
 
 ### HTTP boot disabled
 
-MAAS 2.9 disables HTTP boot. There are known issues with HTTP boot in MAAS, as well as known issues for HTTP boot with grub (e.g. <https://bugs.launchpad.net/maas/+bug/1899581> )  This shouldn’t affect machine boot, as machines will normally try PXE as a fallback boot method if HTTP boot fails. Be aware, though, that machine boot will fail if the BIOS is configured to boot only over HTTP; those machines need to be reconfigured to use PXE.
+MAAS 2.9 disables HTTP boot. There are known issues with HTTP boot in MAAS, as well as known issues for HTTP boot with grub (e.g. <https://bugs.launchpad.net/maas/+bug/1899581> ) This shouldn’t affect machine boot, as machines will normally try PXE as a fallback boot method if HTTP boot fails. Be aware, though, that machine boot will fail if the BIOS is configured to boot only over HTTP; those machines need to be reconfigured to use PXE.
 
 ### New commissioning parameters
 
@@ -136,10 +136,8 @@ Three substantial improvements to BMC usage have been released:
 Three new configuration options have been added to the IPMI power driver:
 
 - K_g - The BMC Key of the IPMI device. Used to encrypt all traffic to and from the device during communication.
-- Cipher Suite ID - The cipher suite to use when communicating with the IPMI BMC. Only 3, 8, 12, and 17 are available as only those enable ciphers for authentication, integrity, and confidentiality. Defaults to 3, freeipmi-tools default. See <http://fish2.com/ipmi/bp.pdf>  for more information.
+- Cipher Suite ID - The cipher suite to use when communicating with the IPMI BMC. Only 3, 8, 12, and 17 are available as only those enable ciphers for authentication, integrity, and confidentiality. Defaults to 3, freeipmi-tools default. See <http://fish2.com/ipmi/bp.pdf> for more information.
 - Privilege Level - The IPMI privilege level to use when communicating with the BMC. Defaults to OPERATOR.
-
-See the [power management page](/reference/configuration-guides/power-drivers) for details.
 
 ### Enlistment improvements
 
@@ -190,7 +188,7 @@ See the [How to read commissioning logs](https://discourse.maas.io/t/how-to-read
 Four improvements have been made to speed up the commissioning process, mostly by running scripts in parallel (see above):
 
 1. Commissioning should now take 60s.
-2. Logging has been added to 20-maas-01-install-lldpd  (commissioning log output).
+2. Logging has been added to 20-maas-01-install-lldpd (commissioning log output).
 3. Logging added to 20-maas-02-dhcp-unconfigured-ifaces (commissioning log output).
 4. `user_data` can now be input directly into the UI.
 
@@ -206,7 +204,7 @@ Four improvements have been made to speed up the commissioning process, mostly b
 
 - Debug [could not be properly enabled for MAAS snap version 2.9.1](https://bugs.launchpad.net/maas/+bug/1914588). This has been remedied.
 
-- The MAAS [Backup doc article](/how-to-guides/back-up-maas) [was not clearly written with respect to stopping critical services](https://bugs.launchpad.net/maas/+bug/1892998). The article has been reworked to make clear in what order steps should be performed so that services are not stopped before appropriate data has been retrieved for backup.
+- The MAAS Backup doc article [was not clearly written with respect to stopping critical services](https://bugs.launchpad.net/maas/+bug/1892998). The article has been reworked to make clear in what order steps should be performed so that services are not stopped before appropriate data has been retrieved for backup.
 
 - Deselecting all architectures in the Ubuntu extra architectures repo [blocks all deployments](https://bugs.launchpad.net/maas/+bug/1894116). The default architectures have been changed to prevent this issue.
 
