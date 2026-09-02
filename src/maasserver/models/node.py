@@ -86,11 +86,7 @@ from maascommon.workflows.dhcp import (
 )
 from maascommon.workflows.power import PowerParam
 from maasserver.clusterrpc.pods import decompose_machine
-from maasserver.clusterrpc.power import (
-    power_driver_check,
-    power_query_all,
-    set_boot_order,
-)
+from maasserver.clusterrpc.power import power_driver_check, power_query_all
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
     BMC_TYPE,
@@ -3360,31 +3356,6 @@ class Node(CleanSave, TimestampedModel):
         else:
             return block_devices + interfaces
 
-    def set_boot_order(self, network_boot=None):
-        """Remotely configure the Node to network or local boot.
-
-        If supported by the power driver this function will configure a
-        Node remotely to either boot from the network or boot locally.
-        This isn't done as part of self.set_netboot() as power commands
-        already use self._power_control_node() which figures out which
-        rack controller to issue power commands from.
-        """
-        power_info = self.get_effective_power_info()
-        # Only send RPC call to set boot order if power driver
-        # supports it.
-        if not power_info.can_set_boot_order:
-            return
-
-        boot_order = self._get_boot_order(network_boot)
-
-        @asynchronous
-        def configure_boot_order():
-            return self._power_control_node(
-                succeed(None), None, power_info, boot_order
-            )
-
-        configure_boot_order().wait(120)
-
     def get_effective_special_filesystems(self):
         """Return special filesystems for the node."""
         deployed_statuses = {
@@ -6422,14 +6393,6 @@ class Node(CleanSave, TimestampedModel):
             if try_fallback:
                 d.addErrback(eb_fallback_clients)
             d.addCallback(cb_check_power_driver, power_info)
-            if order:
-                d.addCallback(
-                    set_boot_order,
-                    self.system_id,
-                    self.hostname,
-                    power_info,
-                    order,
-                )
             if power_method_name:
                 d.addCallback(
                     lambda _: deferToDatabase(
@@ -6438,6 +6401,7 @@ class Node(CleanSave, TimestampedModel):
                         self,
                         power_info,
                         self.is_dpu,
+                        order,
                     ),
                 )
 
