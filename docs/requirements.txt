@@ -1,5 +1,5 @@
 # Canonical theme (still needed for Furo theme and custom templates)
-canonical-sphinx @ git+https://github.com/canonical/canonical-sphinx.git@work/issue-link
+canonical-sphinx==0.7.0
 
 # Extensions previously auto-loaded by canonical-sphinx
 myst-parser==4.0.1
