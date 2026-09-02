@@ -8,6 +8,7 @@ export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
 export MAAS_DATA="$SNAP_COMMON/maas"
 export MAAS_CACHE="$SNAP_COMMON/maas/cache"
+export MAAS_SYSLOG_CONFIG_DIR="$SNAP_DATA/syslog"
 
 # Set up perl so that amttool can run.
 export PERL5LIB

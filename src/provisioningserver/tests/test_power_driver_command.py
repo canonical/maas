@@ -116,6 +116,17 @@ class TestPowerDriverCommand(MAASTestCase):
             },
         )
 
+    def test_run_configures_logging(self):
+        configure = self.patch(power_driver_command.logger, "configure")
+        self.patch(power_driver_command, "react")
+        self.patch(power_driver_command, "_parse_args")
+
+        power_driver_command.run(["status", "virsh"])
+
+        configure.assert_called_once_with(
+            mode=power_driver_command.logger.LoggingMode.COMMAND
+        )
+
     def test_create_subparser(self):
         parser = ArgumentParser()
         driver_settings = [
