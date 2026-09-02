@@ -8,6 +8,8 @@ from textwrap import dedent
 from twisted.internet.defer import ensureDeferred
 from twisted.internet.task import react
 
+from provisioningserver import logger
+
 # This import causes asyncioreactor to be installed
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
@@ -135,6 +137,10 @@ async def _run(reactor, args, driver_registry=PowerDriverRegistry):
 def run(argv=None):
     if argv is None:
         argv = sys.argv[1:]
+
+    # Wire up MAAS logging so maas.* records (e.g. FIPS audit events) are
+    # emitted; this subprocess would otherwise have no handlers configured.
+    logger.configure(mode=logger.LoggingMode.COMMAND)
 
     args = _parse_args(argv)
 
