@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 # Workflows names
 POWER_ON_WORKFLOW_NAME = "power-on"
@@ -12,6 +12,11 @@ POWER_OFF_WORKFLOW_NAME = "power-off"
 POWER_QUERY_WORKFLOW_NAME = "power-query"
 POWER_MANY_WORKFLOW_NAME = "power-many"
 POWER_RESET_WORKFLOW_NAME = "power-reset"
+
+# Activity names
+# The set-boot-order activity is executed on the agent (same as the power
+# activities); the power workflows dispatch it when a boot order is supplied.
+SET_BOOT_ORDER_ACTIVITY_NAME = "set-boot-order"
 
 
 # XXX: Once Python 3.11 switch to StrEnum
@@ -44,6 +49,12 @@ class PowerParam:
     task_queue: str
     is_dpu: bool
     trusted_ssh_host_keys: list[TrustedSshHostKeyEntry] | None = None
+
+    # Optional serialized boot order (list of device dicts). When present, the
+    # power workflow applies it via the agent 'set-boot-order' activity before
+    # the power action, so boot ordering rides the Temporal path instead of the
+    # legacy region RPC. Defaults to None so existing callers are unaffected.
+    boot_order: Optional[list[dict[str, Any]]] = None
 
 
 @dataclass
@@ -100,3 +111,14 @@ class PowerResetParam(PowerParam):
     """
     Parameters required by the PowerReset workflow
     """
+
+
+@dataclass
+class SetBootOrderParam:
+    """
+    Parameters required by the set-boot-order activity (run on the agent).
+    """
+
+    system_id: str
+    power_params: PowerParam
+    order: list[dict[str, Any]]

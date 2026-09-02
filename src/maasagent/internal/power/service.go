@@ -322,7 +322,7 @@ func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam
 
 	log.Info("setting boot order of " + param.SystemID)
 
-	_, err := powerCommand(ctx, "set-boot-order", false, param.PowerParams.DriverType, param.PowerParams.DriverOpts, param.PowerParams.TrustedSSHHostKeys, param.Order...)
+	_, err := powerCommand(ctx, "set-boot-order", false, param.PowerParams.DriverType, param.PowerParams.DriverOpts, param.Order...)
 
 	return err
 }
@@ -352,21 +352,15 @@ func powerCommand(ctx context.Context, action string, isDPU bool, driver string,
 
 	args = append(args, formattedOpts...)
 
-	if action == "set-boot-order" {
-		bootOrderStr := make([]string, len(bootOrder))
+	if action == "set-boot-order" && len(bootOrder) > 0 {
+		var orderJSON []byte
 
-		for i, device := range bootOrder {
-			var dev []byte
-
-			dev, err = json.Marshal(device)
-			if err != nil {
-				return "", err
-			}
-
-			bootOrderStr[i] = string(dev)
+		orderJSON, err = json.Marshal(bootOrder)
+		if err != nil {
+			return "", err
 		}
 
-		args = append(args, "--order", "'"+strings.Join(bootOrderStr, ",")+"'")
+		args = append(args, "--order", string(orderJSON))
 	}
 
 	log.Debug("Executing MAAS power CLI", tag.Builder().KV("args", args).KeyVals...)

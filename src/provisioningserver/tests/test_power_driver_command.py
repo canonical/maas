@@ -5,6 +5,7 @@
 
 from argparse import ArgumentParser, Namespace
 from collections import defaultdict
+import json
 
 from testtools import ExpectedException
 from twisted.internet import reactor
@@ -76,7 +77,11 @@ class TestPowerDriverCommand(MAASTestCase):
     )
 
     @inlineCallbacks
-    def test_run_set_boot_order_hmcz_uses_split_order(self):
+    def test_run_set_boot_order_hmcz_parses_json_order(self):
+        order = [
+            {"mac_address": "00:11:22:33:44:55"},
+            {"id": 1, "name": "sda"},
+        ]
         args = power_driver_command._parse_args(
             [
                 "set-boot-order",
@@ -91,9 +96,10 @@ class TestPowerDriverCommand(MAASTestCase):
                 "partition-1",
                 "--power-verify-ssl",
                 "y",
+                "--order",
+                json.dumps(order),
             ]
         )
-        args.order = "pxe,disk"
 
         driver = FakeHMCZDriver()
         status = yield ensureDeferred(
@@ -104,7 +110,7 @@ class TestPowerDriverCommand(MAASTestCase):
         self.assertEqual(len(driver.calls["set_boot_order"]), 1)
         set_boot_order_call = driver.calls["set_boot_order"][0]
         self.assertEqual(set_boot_order_call["system_id"], None)
-        self.assertEqual(set_boot_order_call["order"], ["pxe", "disk"])
+        self.assertEqual(set_boot_order_call["order"], order)
         self.assertEqual(
             set_boot_order_call["context"],
             {
