@@ -22,6 +22,49 @@ class HardeningMode(StrEnum):
     OFF = "off"
 
 
+#: regiond.conf-backed hardening parameters managed by
+#: ``maas config-hardening`` (see ``maasserver.config``).
+CONF_KEYS = frozenset(
+    {
+        "api_tls_dhparam",
+        "api_bind",
+        "api_bind6",
+        "prometheus_bind",
+        "temporal_bind",
+        "rpc_bind",
+        "agent_api_bind",
+        "agent_api_bind6",
+        "dns_bind",
+        "dns_bind6",
+        "syslog_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
+        "database_sslmode",
+        "database_sslcert",
+        "database_sslkey",
+        "database_sslrootcert",
+    }
+)
+
+#: Subset of :data:`CONF_KEYS` backed by a comma-separated list in
+#: regiond.conf (see ``ForEach`` in ``maasserver.config``). Every other
+#: conf-backed key is a plain scalar string.
+CONF_LIST_KEYS = frozenset(
+    {
+        "api_bind",
+        "api_bind6",
+        "rpc_bind",
+        "agent_api_bind",
+        "agent_api_bind6",
+        "dns_bind",
+        "dns_bind6",
+        "syslog_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
+    }
+)
+
+
 def configure_hardening(hardening_enabled: HardeningMode | None) -> None:
     """Set the process-wide hardening state.
 
