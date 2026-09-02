@@ -4,8 +4,8 @@
 
 \restrict jDB4gdI1N8dbUCAC3vcdCvWs48TBU3tT39yhtb0ijqwqYnAc3QoCur8LfK1MnsD
 
--- Dumped from database version 18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)
--- Dumped by pg_dump version 18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)
+-- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
+-- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;

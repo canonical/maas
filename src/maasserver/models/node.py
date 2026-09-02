@@ -82,11 +82,7 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
 )
 from maascommon.workflows.power import PowerParam
-from maasserver.clusterrpc.power import (
-    power_driver_check,
-    power_query_all,
-    set_boot_order,
-)
+from maasserver.clusterrpc.power import power_driver_check, power_query_all
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
@@ -3343,31 +3339,6 @@ class Node(CleanSave, TimestampedModel):
         else:
             return block_devices + interfaces
 
-    def set_boot_order(self, network_boot=None):
-        """Remotely configure the Node to network or local boot.
-
-        If supported by the power driver this function will configure a
-        Node remotely to either boot from the network or boot locally.
-        This isn't done as part of self.set_netboot() as power commands
-        already use self._power_control_node() which figures out which
-        rack controller to issue power commands from.
-        """
-        power_info = self.get_effective_power_info()
-        # Only send RPC call to set boot order if power driver
-        # supports it.
-        if not power_info.can_set_boot_order:
-            return
-
-        boot_order = self._get_boot_order(network_boot)
-
-        @asynchronous
-        def configure_boot_order():
-            return self._power_control_node(
-                succeed(None), None, power_info, boot_order
-            )
-
-        configure_boot_order().wait(120)
-
     def get_effective_special_filesystems(self):
         """Return special filesystems for the node."""
         deployed_statuses = {
@@ -5257,7 +5228,10 @@ class Node(CleanSave, TimestampedModel):
                 subnet.gateway_ip IS NOT NULL AND
                 host(subnet.gateway_ip) != '' AND
                 staticip.alloc_type != 5 AND /* Ignore DHCP */
-                staticip.alloc_type != 6 /* Ignore DISCOVERED */
+                staticip.alloc_type != 6 AND /* Ignore DISCOVERED */
+                /* Ignore LINK_UP / Unconfigured (STICKY with no IP), but keep
+                   AUTO links that have no IP assigned yet (pre-deployment) */
+                NOT (staticip.alloc_type = 1 AND staticip.ip IS NULL)
             ORDER BY
                 family(subnet.gateway_ip),
                 vlan.dhcp_on DESC,
@@ -5326,17 +5300,26 @@ class Node(CleanSave, TimestampedModel):
         """
         all_gateways = self.get_gateways_by_priority()
 
-        # Get the set gateways on the node.
+        # Get the set gateways on the node. Links that are
+        # unconfigured (LINK_UP) should not be used as the gateway.
         gateway_ipv4 = None
         gateway_ipv6 = None
-        if self.gateway_link_ipv4 is not None:
+        if (
+            self.gateway_link_ipv4 is not None
+            and self.gateway_link_ipv4.get_interface_link_type()
+            != INTERFACE_LINK_TYPE.LINK_UP
+        ):
             subnet = self.gateway_link_ipv4.subnet
             if subnet is not None:
                 if subnet.gateway_ip:
                     gateway_ipv4 = self._get_gateway_tuple(
                         self.gateway_link_ipv4
                     )
-        if self.gateway_link_ipv6 is not None:
+        if (
+            self.gateway_link_ipv6 is not None
+            and self.gateway_link_ipv6.get_interface_link_type()
+            != INTERFACE_LINK_TYPE.LINK_UP
+        ):
             subnet = self.gateway_link_ipv6.subnet
             if subnet is not None:
                 if subnet.gateway_ip:
@@ -6378,14 +6361,6 @@ class Node(CleanSave, TimestampedModel):
             if try_fallback:
                 d.addErrback(eb_fallback_clients)
             d.addCallback(cb_check_power_driver, power_info)
-            if order:
-                d.addCallback(
-                    set_boot_order,
-                    self.system_id,
-                    self.hostname,
-                    power_info,
-                    order,
-                )
             if power_method_name:
                 d.addCallback(
                     lambda _: deferToDatabase(
@@ -6394,6 +6369,7 @@ class Node(CleanSave, TimestampedModel):
                         self,
                         power_info,
                         self.is_dpu,
+                        order,
                     ),
                 )
 

@@ -44,7 +44,8 @@ class ReservedIPsService(
     async def post_delete_hook(self, resource: ReservedIP) -> None:
         self.temporal_service.register_or_update_workflow_call(
             CONFIGURE_DHCP_WORKFLOW_NAME,
-            ConfigureDHCPParam(reserved_ip_ids=[resource.id]),
+            # use parent id on delete
+            ConfigureDHCPParam(subnet_ids=[resource.subnet_id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )

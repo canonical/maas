@@ -1,13 +1,17 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.iprange`"""
 
+from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.models.iprange import IPRange
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
-from maasserver.websockets.base import dehydrate_datetime
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.iprange import IPRangeHandler
 
 
@@ -47,7 +51,7 @@ class TestIPRangeHandler(MAASServerTestCase):
         self.assertCountEqual(expected_ipranges, handler.list({}))
 
     def test_create(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         factory.make_Subnet(cidr="192.168.0.0/24")
         handler = IPRangeHandler(user, {}, None)
         ip_range = handler.create(
@@ -63,7 +67,7 @@ class TestIPRangeHandler(MAASServerTestCase):
         self.assertEqual(created.end_ip, "192.168.0.20")
 
     def test_update(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         factory.make_Subnet(cidr="192.168.0.0/24")
         handler = IPRangeHandler(user, {}, None)
         ip_range = handler.create(
@@ -81,7 +85,7 @@ class TestIPRangeHandler(MAASServerTestCase):
         self.assertEqual(created.end_ip, "192.168.0.30")
 
     def test_delete(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         factory.make_Subnet(cidr="192.168.0.0/24")
         handler = IPRangeHandler(user, {}, None)
         ip_range = handler.create(
@@ -93,3 +97,47 @@ class TestIPRangeHandler(MAASServerTestCase):
         )
         handler.delete(ip_range)
         self.assertIsNone(get_one(IPRange.objects.filter(id=ip_range["id"])))
+
+
+class TestIPRangeHandlerOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def test_list_requires_can_view_global_entities(self):
+        self.openfga_client.can_view_global_entities.return_value = False
+        user = factory.make_User()
+        factory.make_IPRange()
+        handler = IPRangeHandler(user, {}, None)
+        self.assertRaises(HandlerPermissionError, handler.list, {})
+
+    def test_get_requires_can_view_global_entities(self):
+        self.openfga_client.can_view_global_entities.return_value = False
+        user = factory.make_User()
+        ip_range = factory.make_IPRange()
+        handler = IPRangeHandler(user, {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.get, {"id": ip_range.id}
+        )
+
+    def test_create_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = False
+        user = factory.make_User()
+        handler = IPRangeHandler(user, {}, None)
+        self.assertRaises(HandlerPermissionError, handler.create, {})
+
+    def test_update_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = False
+        user = factory.make_User()
+        ip_range = factory.make_IPRange()
+        handler = IPRangeHandler(user, {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.update, {"id": ip_range.id}
+        )
+
+    def test_delete_requires_can_edit_global_entities(self):
+        self.openfga_client.can_edit_global_entities.return_value = False
+        user = factory.make_User()
+        ip_range = factory.make_IPRange()
+        handler = IPRangeHandler(user, {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.delete, {"id": ip_range.id}
+        )
