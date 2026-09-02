@@ -1,7 +1,5 @@
 # Release notes
 
-These release notes for MAAS summarize new features, bug fixes and backwards-incompatible changes in each version.
-
 ## Releases
 
 - [Version 3.7](#version-37-release-notes)
@@ -76,25 +74,25 @@ We are happy to announce that MAAS 3.7.2 has been released, with the following b
 
 We are happy to announce that MAAS 3.7.1 has been released, with the following bug fixes:
 
-- [2132663](https://launchpad.net/maas/+bug/2132663):  Custom images fail to deploy in memory
-- [2134059](https://launchpad.net/maas/+bug/2134059):  In-memory deployments cause incorrect netplan
-- [2134484](https://launchpad.net/maas/+bug/2134484):  DHCP fails to start due to dhcpd.conf not formatted correctly for multi-homed clients
-- [2134485](https://launchpad.net/maas/+bug/2134485):  MAAS 3.7.0: DHCP Fails on Split Region/Rack with VLANs (Initial Crash, Duplicate Host, and Event Trigger Failure)
-- [2127672](https://launchpad.net/maas/+bug/2127672):  _gen_reverse_zones takes a lot of time in environments with lots of subnets
-- [2110046](https://launchpad.net/maas/+bug/2110046):  MAAS allows AXFR from all sources
-- [2129772](https://launchpad.net/maas/+bug/2129772):  TFTP server reports intermittent "Error code 1: File not found"
-- [2130621](https://launchpad.net/maas/+bug/2130621):  DGX H200 commissioning failed randomly due to a password policy mismatch
-- [2132282](https://launchpad.net/maas/+bug/2132282):  20-maas-03-machine-resources fails for uint64 counters
-- [2137254](https://launchpad.net/maas/+bug/2137254):  "Add Hardware" fails with 500 error when Candid is enabled and RBAC is disabled (UI calls service-layer endpoint that does not exist)
-- [2137017](https://launchpad.net/maas/+bug/2137017):  maas-run-scripts failing with 'NoneType' object is not iterable
-- [2137724](https://launchpad.net/maas/+bug/2137724):  Temporal worker pool configuration failure on NULL IP
-- [2135830](https://launchpad.net/maas/+bug/2135830):  Virsh VM cannot use storage type ZFS
-- [2138301](https://launchpad.net/maas/+bug/2138301):  The images page of a MAAS with many boot resources is slow
-- [2138312](https://launchpad.net/maas/+bug/2138312):  ARM64 custom image deploy fails if AMD64 custom image exists with the same name
-- [2138738](https://launchpad.net/maas/+bug/2138738):  MAAS 3.7.0 does not allow to change the hostname
-- [2080646](https://launchpad.net/maas/+bug/2080646):  MAAS_PATH env variable missing from snap env, causes maas not to be able to connect to virsh
-- [2107706](https://launchpad.net/maas/+bug/2107706):  Power error for intel AMT when using HTTPS: Unsupported protocol
-- [2135117](https://launchpad.net/maas/+bug/2135117):  MAAS is trying to remove lost+found for filesystem mounted on /var/lib/maas/image-storage
+- [2132663](https://launchpad.net/maas/+bug/2132663): Custom images fail to deploy in memory
+- [2134059](https://launchpad.net/maas/+bug/2134059): In-memory deployments cause incorrect netplan
+- [2134484](https://launchpad.net/maas/+bug/2134484): DHCP fails to start due to dhcpd.conf not formatted correctly for multi-homed clients
+- [2134485](https://launchpad.net/maas/+bug/2134485): MAAS 3.7.0: DHCP Fails on Split Region/Rack with VLANs (Initial Crash, Duplicate Host, and Event Trigger Failure)
+- [2127672](https://launchpad.net/maas/+bug/2127672): \_gen_reverse_zones takes a lot of time in environments with lots of subnets
+- [2110046](https://launchpad.net/maas/+bug/2110046): MAAS allows AXFR from all sources
+- [2129772](https://launchpad.net/maas/+bug/2129772): TFTP server reports intermittent "Error code 1: File not found"
+- [2130621](https://launchpad.net/maas/+bug/2130621): DGX H200 commissioning failed randomly due to a password policy mismatch
+- [2132282](https://launchpad.net/maas/+bug/2132282): 20-maas-03-machine-resources fails for uint64 counters
+- [2137254](https://launchpad.net/maas/+bug/2137254): "Add Hardware" fails with 500 error when Candid is enabled and RBAC is disabled (UI calls service-layer endpoint that does not exist)
+- [2137017](https://launchpad.net/maas/+bug/2137017): maas-run-scripts failing with 'NoneType' object is not iterable
+- [2137724](https://launchpad.net/maas/+bug/2137724): Temporal worker pool configuration failure on NULL IP
+- [2135830](https://launchpad.net/maas/+bug/2135830): Virsh VM cannot use storage type ZFS
+- [2138301](https://launchpad.net/maas/+bug/2138301): The images page of a MAAS with many boot resources is slow
+- [2138312](https://launchpad.net/maas/+bug/2138312): ARM64 custom image deploy fails if AMD64 custom image exists with the same name
+- [2138738](https://launchpad.net/maas/+bug/2138738): MAAS 3.7.0 does not allow to change the hostname
+- [2080646](https://launchpad.net/maas/+bug/2080646): MAAS_PATH env variable missing from snap env, causes maas not to be able to connect to virsh
+- [2107706](https://launchpad.net/maas/+bug/2107706): Power error for intel AMT when using HTTPS: Unsupported protocol
+- [2135117](https://launchpad.net/maas/+bug/2135117): MAAS is trying to remove lost+found for filesystem mounted on /var/lib/maas/image-storage
 
 ### 3.7.0
 
@@ -157,7 +155,7 @@ In rack-only mode, we no longer run a BIND instance to forward queries to the re
 - [LP#2112206](https://bugs.launchpad.net/bugs/2112206) - Powerloop on HPE ProLiant DL385 and DL360
 - [LP#2112460](https://bugs.launchpad.net/bugs/2112460) - DHCP Commissioning script fails on nodes with multiple unused interfaces
 - [LP#2112637](https://bugs.launchpad.net/bugs/2112637) - MAAS does not set BOOTIF mac address for IBM s390x LPARs during PXE boot
-- [LP#2113894](https://bugs.launchpad.net/bugs/2113894) - AMT power driver (amttool) is broken - builtins.TypeError: AMTPowerDriver._issue_amttool_command() takes from 4 to 5 positional arguments but 6 were given. amttool perl not found
+- [LP#2113894](https://bugs.launchpad.net/bugs/2113894) - AMT power driver (amttool) is broken - builtins.TypeError: AMTPowerDriver.\_issue_amttool_command() takes from 4 to 5 positional arguments but 6 were given. amttool perl not found
 - [LP#2115176](https://bugs.launchpad.net/bugs/2115176) - Power management picks offline Rack Controller for VLAN
 - [LP#1964644](https://bugs.launchpad.net/bugs/1964644) - Adding overlapping subnets in fabric breaks deployments and squid
 - [LP#2034940](https://bugs.launchpad.net/bugs/2034940) - /api/docs/ does not show correct documentation
@@ -215,7 +213,7 @@ We are happy to announce that MAAS 3.6.4 has been released, with the following b
 
 We are happy to announce that MAAS 3.6.3 has been released, with the following bug fixes:
 
-- [2080646](https://bugs.launchpad.net/maas/+bug/2080646): MAAS_PATH env variable missing from snap env, causes maas  not to be able to connect to virsh
+- [2080646](https://bugs.launchpad.net/maas/+bug/2080646): MAAS_PATH env variable missing from snap env, causes maas not to be able to connect to virsh
 - [2107706](https://bugs.launchpad.net/maas/+bug/2107706): Power error for intel AMT when using HTTPS: Unsupported protocol
 - [2110046](https://bugs.launchpad.net/maas/+bug/2110046): MAAS allows AXFR from all sources
 - [2122720](https://bugs.launchpad.net/maas/+bug/2122720): Cilium and MAAS routing rule priorities conflict in some cases
@@ -293,7 +291,7 @@ We are happy to announce that MAAS 3.6.1 has been released, with the following b
 - [2104907](https://bugs.launchpad.net/maas/+bug/2104907): Enabling 'Verify SSL connections with system CA certificates' for Proxmox power type fails
 - [2106398](https://bugs.launchpad.net/maas/+bug/2106398): Multiple results were returned by get_one
 - [2107537](https://bugs.launchpad.net/maas/+bug/2107537): sshkeys import command not working
-- [2113894](https://bugs.launchpad.net/maas/+bug/2113894): AMT power driver (amttool) is broken - builtins.TypeError: AMTPowerDriver._issue_amttool_command() takes from 4 to 5 positional arguments but 6 were given. amttool perl not found
+- [2113894](https://bugs.launchpad.net/maas/+bug/2113894): AMT power driver (amttool) is broken - builtins.TypeError: AMTPowerDriver.\_issue_amttool_command() takes from 4 to 5 positional arguments but 6 were given. amttool perl not found
 - [2118761](https://bugs.launchpad.net/maas/+bug/2118761): apiserver is not restarted properly when vault is configured
 - [2058063](https://bugs.launchpad.net/maas/+bug/2058063): Controllers show different versions when installed with debs
 - [2098446](https://bugs.launchpad.net/maas/+bug/2098446): Maas prometheus wrong Content-Type
@@ -490,7 +488,7 @@ You can access the dashboard at <https://github.com/canonical/maas-grafana-dashb
 - [2064281](https://bugs.launchpad.net/maas/+bug/2064281) : MAAS 3.4 and 3.5 are not automatically moving the boot NIC to the same VLAN of the rack controller
 - [2064726](https://bugs.launchpad.net/maas/+bug/2064726) : Local priviledge escalation in MAAS snap
 - [2064727](https://bugs.launchpad.net/maas/+bug/2064727) : In maas 3.5 DEB the UI shows ('Connection aborted.', FileNotFoundError(2, 'No such file or directory')) and does not display any machine
-- [2066276](https://bugs.launchpad.net/maas/+bug/2066276) : ipv6 test failures: AttributeError: 'RRHeader' object has no attribute '_address'
+- [2066276](https://bugs.launchpad.net/maas/+bug/2066276) : ipv6 test failures: AttributeError: 'RRHeader' object has no attribute '\_address'
 - [2066936](https://bugs.launchpad.net/maas/+bug/2066936) : Some foreign key contraints are missing
 - [2067474](https://bugs.launchpad.net/maas/+bug/2067474) : Unable to deploy lxd vm's on new 3.5.0~rc4-16292-g.18b753d78 install with new DB
 - [2067793](https://bugs.launchpad.net/maas/+bug/2067793) : tftp returns 0 bytes file when dtb request resulting in boot failure
@@ -539,7 +537,7 @@ You can access the dashboard at <https://github.com/canonical/maas-grafana-dashb
 - [2104278](https://bugs.launchpad.net/maas/3.6/+bug/2104278) : MAAS KVM deploy with 24.04 fails sshd.service not found
 - [2106542](https://bugs.launchpad.net/maas/3.6/+bug/2106542) : When MAAS receives a DHCP lease it should remove all the old discovered IPs linked to the interface
 - [2024466](https://bugs.launchpad.net/maas/+bug/2024466) : vm-host parameters help is wrong
-- [2029522](https://bugs.launchpad.net/maas/+bug/2029522) : stacktrace on _reap_extra_connection()
+- [2029522](https://bugs.launchpad.net/maas/+bug/2029522) : stacktrace on \_reap_extra_connection()
 - [2043816](https://bugs.launchpad.net/maas/+bug/2043816) : Adding new rackd and downloading images causes OOM on regiond
 - [2049661](https://bugs.launchpad.net/maas/+bug/2049661) : "Mark broken" error description message not shown in the machines list output
 - [2056208](https://bugs.launchpad.net/maas/+bug/2056208) : No option to disable TLS verification on HMC Z
@@ -658,16 +656,16 @@ We are happy to announce that MAAS 3.5.3 has been released, with the following b
 
 We are happy to announce that MAAS 3.5.2 has been released, with the following bug fixes
 
-- [2079987](https://bugs.launchpad.net/bugs/2079987):  LeaseSocketService is sending 10 RPC calls to the region every second even if there are no updates
-- [2079797](https://bugs.launchpad.net/bugs/2079797):  Redfish powerdriver should be able to handle the reset power status
-- [2075555](https://bugs.launchpad.net/bugs/2075555):  Custom OSes fail to deploy 'in memory'
-- [2069059](https://bugs.launchpad.net/bugs/2069059):  Ubuntu 24.04 doesn't deploy on any ARM64 machine
-- [2078941](https://bugs.launchpad.net/bugs/2078941):  When the snap is initialized again the certificates are not cleaned up
-- [2004661](https://bugs.launchpad.net/bugs/2004661):  MAAS deployment failures on server with Redfish
-- [2076910](https://bugs.launchpad.net/bugs/2076910):  'crypto/rsa: verification error' while trying to verify candidate authority certificate 'maas-ca'
-- [2077602](https://bugs.launchpad.net/bugs/2077602):   Unknown power configuration error for new machines registered with IPMI
-- [2078052](https://bugs.launchpad.net/bugs/2078052):   Squid initialization issue with pebble - [2039737](https://bugs.launchpad.net/bugs/2039737):   Page sizing on machine table doesn't work
-- [2081262](https://bugs.launchpad.net/bugs/2081262):   Missing module in MAAS snap, required for AMT power
+- [2079987](https://bugs.launchpad.net/bugs/2079987): LeaseSocketService is sending 10 RPC calls to the region every second even if there are no updates
+- [2079797](https://bugs.launchpad.net/bugs/2079797): Redfish powerdriver should be able to handle the reset power status
+- [2075555](https://bugs.launchpad.net/bugs/2075555): Custom OSes fail to deploy 'in memory'
+- [2069059](https://bugs.launchpad.net/bugs/2069059): Ubuntu 24.04 doesn't deploy on any ARM64 machine
+- [2078941](https://bugs.launchpad.net/bugs/2078941): When the snap is initialized again the certificates are not cleaned up
+- [2004661](https://bugs.launchpad.net/bugs/2004661): MAAS deployment failures on server with Redfish
+- [2076910](https://bugs.launchpad.net/bugs/2076910): 'crypto/rsa: verification error' while trying to verify candidate authority certificate 'maas-ca'
+- [2077602](https://bugs.launchpad.net/bugs/2077602): Unknown power configuration error for new machines registered with IPMI
+- [2078052](https://bugs.launchpad.net/bugs/2078052): Squid initialization issue with pebble - [2039737](https://bugs.launchpad.net/bugs/2039737): Page sizing on machine table doesn't work
+- [2081262](https://bugs.launchpad.net/bugs/2081262): Missing module in MAAS snap, required for AMT power
 
 ### MAAS 3.5.1 has been released
 
@@ -678,11 +676,11 @@ We are happy to announce that MAAS 3.5.1 has been released, with the following b
 - [1980000](https://bugs.launchpad.net/bugs/1980000): dhcpd.conf not written due to byte size of hosts value in rpc
 - [2073575](https://bugs.launchpad.net/bugs/2073575): Incorrect display of bondig options
 - [2076292](https://bugs.launchpad.net/bugs/2076292): Installing MAAS does not install the required simplestream version
-- [2073540](https://bugs.launchpad.net/bugs/2073540):  Error: ('Connection aborted.', FileNotFoundError(2, 'No such file or directory'))
+- [2073540](https://bugs.launchpad.net/bugs/2073540): Error: ('Connection aborted.', FileNotFoundError(2, 'No such file or directory'))
 
 ### Capabilities added in MAAS 3.5
 
-MAAS 3.5 delivers substantial improvements in core functionality.  We've integrated Temporal for enhanced process and thread management, and started a transition to Go, re-implementing some of the rack controller functions as the "MAAS agent."  We've standardized logging and monitoring to use tools like syslogd, stepping away from the custom code we had been using.  We've also expanded the capabilities of existing features to include comprehensive service monitoring and support for deploying ephemeral (RAM-only) OS images.  And we've made great strides in visibly improving the performance of MAAS.
+MAAS 3.5 delivers substantial improvements in core functionality. We've integrated Temporal for enhanced process and thread management, and started a transition to Go, re-implementing some of the rack controller functions as the "MAAS agent." We've standardized logging and monitoring to use tools like syslogd, stepping away from the custom code we had been using. We've also expanded the capabilities of existing features to include comprehensive service monitoring and support for deploying ephemeral (RAM-only) OS images. And we've made great strides in visibly improving the performance of MAAS.
 
 #### Faster and more efficient image storage and sync
 
@@ -690,13 +688,13 @@ MAAS previously stored the boot resources (boot-loaders, kernels and disk images
 
 #### Storing boot resources in the region controllers
 
-All boot resources are stored in the local disk in each Controller host (`/var/lib/maas/image-storage` for *deb* or `$SNAP_COMMON/maas/image-storage` for *snap*). MAAS checks the contents of these directories on every start-up, removing unknown/stale files and downloading any missing resource.
+All boot resources are stored in the local disk in each Controller host (`/var/lib/maas/image-storage` for _deb_ or `$SNAP_COMMON/maas/image-storage` for _snap_). MAAS checks the contents of these directories on every start-up, removing unknown/stale files and downloading any missing resource.
 
 MAAS checks the amount of disk space available before downloading any resource, and stops synchronizing files if there isn't enough free space. This error will be reported in the logs and a banner in the Web UI.
 
 #### Storage use by the rack controller
 
-Images are no longer copied from the MAAS database to the rack. Instead, the rack downloads images from the region on-demand.  This works well with the redesign of the rack controller (now known as the *MAAS agent*), which has been re-imagined as a 4G LRU caching agent.  The MAAS agent has limited storage space, managing cache carefully, but it is possible to configure the size of this cache if you need to do so.
+Images are no longer copied from the MAAS database to the rack. Instead, the rack downloads images from the region on-demand. This works well with the redesign of the rack controller (now known as the _MAAS agent_), which has been re-imagined as a 4G LRU caching agent. The MAAS agent has limited storage space, managing cache carefully, but it is possible to configure the size of this cache if you need to do so.
 
 As boot resources are now downloaded from a Region controller on-demand, a fast and reliable network connection between Regions and Racks is essential for a smooth operation. Adjusting the cache size might also be important for performance if you regularly deploy a large number of different systems.
 
@@ -716,7 +714,7 @@ The controllers are no longer capable of serving boot resources directly from th
 
 When downloading boot resources from an upstream source (e.g. images.maas.io), MAAS divides the workload between all Region controllers available, so each file is downloaded only once, but not all by the same controller. After all external files were fetched, the controllers synchronize files among them in a peer-to-peer fashion. This requires **direct communication between Regions to be allowed**, so you should review your firewall rules before upgrading.
 
-In this new model, a given image is *only* available for deployment after *all* regions have it, although stale versions can be used until everyone is up to date. This differs from previous versions where the boot resource needed to be copied to all Rack controllers before it was available, meaning that the images should be ready for use sooner.
+In this new model, a given image is _only_ available for deployment after _all_ regions have it, although stale versions can be used until everyone is up to date. This differs from previous versions where the boot resource needed to be copied to all Rack controllers before it was available, meaning that the images should be ready for use sooner.
 
 #### Faster machine listing when deploying many machines
 
@@ -724,7 +722,7 @@ We have made the MAAS machine listing considerably faster for large page sizes.
 
 #### Soft Power Off
 
-MAAS 3.5 allows you to execute a "soft" power-off for one or more machines.  Rather than commanding a power-off via the BMC, MAAS will ask the running OS to power-down the machine.  This allows machines to go through their normal shutdown routines before powering off.
+MAAS 3.5 allows you to execute a "soft" power-off for one or more machines. Rather than commanding a power-off via the BMC, MAAS will ask the running OS to power-down the machine. This allows machines to go through their normal shutdown routines before powering off.
 
 #### Improved "Select All" in the machine list
 
@@ -743,7 +741,7 @@ When one of these devices is detected by the commissioning scripts, MAAS will su
 
 #### MAAS services exposed as Prometheus metrics
 
-All services found in the *Hardware > Controllers > <controller> > Services* panel are now exposed as Prometheus metrics, to include:
+All services found in the _Hardware > Controllers > <controller> > Services_ panel are now exposed as Prometheus metrics, to include:
 
 - regiond
 - bind9
@@ -766,7 +764,7 @@ Also, the monitoring setup sequence for MAAS [has changed](/how-to-guides/monito
 
 #### Logs collapsed into system log files
 
-With the advent of 3.5, all of the separate logs used by MAAS through version 3.4 have been eliminated and replaced with logging into the standard `systemd` files.  See [How to use MAAS systemd logs](https://discourse.maas.io/t/how-to-use-maas-systemd-logs/8103) in the documentation set for details.
+With the advent of 3.5, all of the separate logs used by MAAS through version 3.4 have been eliminated and replaced with logging into the standard `systemd` files. See [How to use MAAS systemd logs](https://discourse.maas.io/t/how-to-use-maas-systemd-logs/8103) in the documentation set for details.
 
 #### Deployment of Oracle Linux 8 and 9 on MAAS machines
 
@@ -774,7 +772,7 @@ Concurrent with the release of MAAS 3.5, we have added Oracle Linux 8 and Oracle
 
 #### Ephemeral OS deployments
 
-With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images should succeed.  Networking is only set up for Ubuntu images. For non-Ubuntu images, you only get the PXE interface set up to do DHCP against MAAS. All other interfaces need to be configured manually after deployment.
+With the release of MAAS 3.5, ephemeral deployments for Ubuntu and custom images should succeed. Networking is only set up for Ubuntu images. For non-Ubuntu images, you only get the PXE interface set up to do DHCP against MAAS. All other interfaces need to be configured manually after deployment.
 
 You can choose an ephemeral OS deployment from the deployment configuration screen in the machine list: Just select the "Deploy in memory" option and deploy as normal.
 
@@ -784,9 +782,9 @@ You can now select two new filters for deployment targets: "Deployed in memory" 
 
 #### Machine release scripts
 
-MAAS now supports machine release scripts -- scripts that will be run when releasing a machine from deployment.  These scripts run on an ephemeral copy of Ubuntu that is loaded after the deployed OS has been shut down.  This ephemeral Ubuntu is similar to the OS image used to commission machines.
+MAAS now supports machine release scripts -- scripts that will be run when releasing a machine from deployment. These scripts run on an ephemeral copy of Ubuntu that is loaded after the deployed OS has been shut down. This ephemeral Ubuntu is similar to the OS image used to commission machines.
 
-Release scripts are the same type of scripts that you can create for commissioning or testing, with one difference: `script_type: release`.  Here's a sample release script:
+Release scripts are the same type of scripts that you can create for commissioning or testing, with one difference: `script_type: release`. Here's a sample release script:
 
 ```text
 #!/usr/bin/env python3
@@ -840,7 +838,7 @@ You can check your uploaded release scripts like this:
 maas $PROFILE node-scripts read type=release
 ```
 
-Among listed scripts you might see one named `wipe-disks`. This is the script that comes with MAAS to support the *Disk Erase* functionality.
+Among listed scripts you might see one named `wipe-disks`. This is the script that comes with MAAS to support the _Disk Erase_ functionality.
 
 Once you have your script uploaded to MAAS, you can pass it as a parameter to the MAAS CLI:
 
@@ -863,16 +861,16 @@ maas $PROFILE node-script-results read $SYSTEM_ID type=release
 - The width of the settings pages is now more consistent
 - Improved the grouping of subnets
 - Proxied the local documentation so it can be accessed from the UI
-- Columns on the machine list will now adapt to the screen size, and hide if there's not  enough space
+- Columns on the machine list will now adapt to the screen size, and hide if there's not enough space
 - Improved the side panel for managing tags
- -- Creating a new tag while applying tags to a machine now expands the side panel with the fields for the new tag
- -- Clicking a tag will expand the side panel to show information on that tag
+  -- Creating a new tag while applying tags to a machine now expands the side panel with the fields for the new tag
+  -- Clicking a tag will expand the side panel to show information on that tag
 - Pressing `/` on your keyboard will now automatically focus the search bar on pages that have one
 - If an action fails, the reason for it is now shown in the error message (if applicable)
 - Removed the footer from all pages, and moved the links to the status bar at the bottom
 - Migrated the maas-ui tooling from "create-react-app" to Vite
- -- Less JavaScript code has to be fetched on the initial page load
- -- Increased performance of the development environment of the UI
+  -- Less JavaScript code has to be fetched on the initial page load
+  -- Increased performance of the development environment of the UI
 
 #### "Agent" and "temporal" controller services
 
@@ -882,7 +880,7 @@ MAAS 3.5 makes some internal changes to improve the operation of MAAS, including
 
 - using a product called Temporal to improve process management and scheduling.
 
-There are no exposed controls, and there is no need for users to take any action on these changes. You will, though, see two new services in *Controllers > <controller> > Services: "agent" and "temporal."
+There are no exposed controls, and there is no need for users to take any action on these changes. You will, though, see two new services in \*Controllers > <controller> > Services: "agent" and "temporal."
 
 ### UI bug fixes
 
@@ -1016,9 +1014,9 @@ We are happy to announce that MAAS 3.4.4 has been released, with the following b
 
 We are happy to announce that MAAS 3.4.3 has been released, with the following bug fixes
 
-- [2029522](https://bugs.launchpad.net/bugs/2029522): stacktrace on _reap_extra_connection()
+- [2029522](https://bugs.launchpad.net/bugs/2029522): stacktrace on \_reap_extra_connection()
 - [2031482](https://bugs.launchpad.net/bugs/2031482): Subnet changed to wrong fabric, impacting DHCP
-- [2066276](https://bugs.launchpad.net/bugs/2066276): IPv6 test failures: AttributeError: 'RRHeader' object has no attribute '_address'
+- [2066276](https://bugs.launchpad.net/bugs/2066276): IPv6 test failures: AttributeError: 'RRHeader' object has no attribute '\_address'
 - [2067998](https://bugs.launchpad.net/bugs/2067998): MAAS resets VLAN on interface if no link is detected during commissioning
 - [2070304](https://bugs.launchpad.net/bugs/2070304): regiond at 100% CPU after UI reconnect causing API errors
 
@@ -1070,7 +1068,7 @@ MAAS 3.4 provides several new features.
 
 #### Redesigned UI
 
-The MAAS User Interface (UI) has undergone a significant redesign, introducing the MAAS UI new layout. This new layout incorporates various features and improvements aimed at enhancing the user experience for MAAS users and operators who primarily interact with the UI.  The MAAS UI new layout introduces several enhancements that aim to improve usability, customization, and navigation within the application
+The MAAS User Interface (UI) has undergone a significant redesign, introducing the MAAS UI new layout. This new layout incorporates various features and improvements aimed at enhancing the user experience for MAAS users and operators who primarily interact with the UI. The MAAS UI new layout introduces several enhancements that aim to improve usability, customization, and navigation within the application
 
 - Customized column visibility: One of the major improvements in the MAAS UI new layout is the ability for users to customize the visibility of columns on the machine list. This feature empowers users to focus on the specific information they need, while hiding irrelevant columns. By allowing users to tailor their view, this enhancement improves readability, reduces clutter, and provides a more personalized experience.
 
@@ -1102,11 +1100,11 @@ The MAAS UI new layout introduces a redesigned interface with enhanced features 
 
 #### Configurable session timeout
 
-In MAAS 3.4, we've introduced the Configurable Session Timeout feature, offering better control over session length. This feature allows you to set a personalized duration for your sessions, hopefully avoiding abrupt disconnections or lingering sessions.  If you're a user who has login repeatedly, due to short session defaults, or you're concerned about leaving your session accessible for too long, setting a custom timeout is useful and potentially more secure.
+In MAAS 3.4, we've introduced the Configurable Session Timeout feature, offering better control over session length. This feature allows you to set a personalized duration for your sessions, hopefully avoiding abrupt disconnections or lingering sessions. If you're a user who has login repeatedly, due to short session defaults, or you're concerned about leaving your session accessible for too long, setting a custom timeout is useful and potentially more secure.
 
 #### Packer MAAS - SLES
 
-The MAAS 3.4 release expands Packer support to include SUSE Linux Enterprise Server (SLES), expanding the the list of deployable Linux distributions.  We also support openSUSE and openSUSE Tumbleweed. And we’ve added a template for Red Hat Enterprise Linux (RHEL) version 9.
+The MAAS 3.4 release expands Packer support to include SUSE Linux Enterprise Server (SLES), expanding the the list of deployable Linux distributions. We also support openSUSE and openSUSE Tumbleweed. And we’ve added a template for Red Hat Enterprise Linux (RHEL) version 9.
 
 ### Installation
 
@@ -1159,7 +1157,7 @@ Here is the list of bug fixes for all versions of MAAS 3.4, from first Beta thro
 - (3.4-rc1)[2003812](https://bugs.launchpad.net/maas/+bug/2003812): MAAS servers have two NTP clients
 - (3.4-rc1)[2023138](https://bugs.launchpad.net/maas/+bug/2023138): UI: Deleted machines don't correctly update MAAS web UI
 - (3.4-rc1)[2022926](https://bugs.launchpad.net/maas/+bug/2022926): Wrong metadata url in enlist cloud-config
-- (3.4-rc1)[2012801](https://bugs.launchpad.net/maas/+bug/2012801): MAAS rDNS returns two hostnames that lead to Services not running that should be: apache2, SSLCertificateFile: file '/etc/apache2/ssl//cert_ does not exist or is empty
+- (3.4-rc1)[2012801](https://bugs.launchpad.net/maas/+bug/2012801): MAAS rDNS returns two hostnames that lead to Services not running that should be: apache2, SSLCertificateFile: file '/etc/apache2/ssl//cert\_ does not exist or is empty
 - (3.4-rc1)[2025375](https://bugs.launchpad.net/maas/+bug/2025375): Machine listing pagination displays incorrect total number of pages
 - (3.4-rc1)[2027621](https://bugs.launchpad.net/maas/+bug/2027621): ipv6 addresses in dhcpd.conf
 - (3.4-rc1)[1914812](https://bugs.launchpad.net/maas/+bug/1914812): curtin fails to deploy centos 8 on nvme with multipath from ubuntu 20.04
@@ -1177,7 +1175,7 @@ Here is the list of bug fixes for all versions of MAAS 3.4, from first Beta thro
 - (3.4-beta3)[2011841](https://bugs.launchpad.net/maas/+bug/2011841): DNS resolution fails
 - (3.4-beta3)[2013529](https://bugs.launchpad.net/maas/+bug/2013529): Nodes stuck in Failed Disk Erasing due to wrong ipxe boot file
 - (3.4-beta3)[2021965](https://bugs.launchpad.net/maas/+bug/2021965): MAAS Settings (sidebar) scroll issue
-- (3.4-beta3)[1807725](https://bugs.launchpad.net/maas/+bug/1807725): Machine interfaces allow '_' character, results on a interface based domain breaking bind (as it doesn't allow it for the host part).
+- (3.4-beta3)[1807725](https://bugs.launchpad.net/maas/+bug/1807725): Machine interfaces allow '\_' character, results on a interface based domain breaking bind (as it doesn't allow it for the host part).
 - (3.4-beta3)[2006497](https://bugs.launchpad.net/maas/+bug/2006497): unsupported configuration in virsh command
 - (3.4-beta3)[2011853](https://bugs.launchpad.net/maas/+bug/2011853): Auto-discovered subnet does not get correct VLAN
 - (3.4-beta3)[2020865](https://bugs.launchpad.net/maas/+bug/2020865): flaky test: src/tests/maasperf/cli/test_machines.py::test_perf_list_machines_CLI- [1974050](https://bugs.launchpad.net/bugs/1974050): Vmware no longer supports image cloning
@@ -1192,45 +1190,45 @@ Here is the list of bug fixes for all versions of MAAS 3.4, from first Beta thro
 - (3.4-beta2)[1876365](https://bugs.launchpad.net/bugs/1876365): host passthrough not working with KVMs
 - (3.4-beta2)[2018149](https://bugs.launchpad.net/bugs/2018149): MAAS generates netplan with illegal autoconf and accept_ra flags for 22.04
 - (3.4-beta2)[2020427](https://bugs.launchpad.net/bugs/2020427): crash importing large database dump into maas-test-db
-- (3.4-beta1)[1999160](https://bugs.launchpad.net/bugs/1999160): Region controller fails to run commissioning scripts in proxied environment  
-- (3.4-beta1)[1999191](https://bugs.launchpad.net/bugs/1999191): bad interaction between Colorama and the CLI  
-- (3.4-beta1)[1999557](https://bugs.launchpad.net/bugs/1999557): MAAS fails to startup when installed from deb package and vault is enabled  
-- (3.4-beta1)[2002109](https://bugs.launchpad.net/bugs/2002109): Migration of BMC power credentials fails with manual driver  
-- (3.4-beta1)[2002111](https://bugs.launchpad.net/bugs/2002111): Connection to local Vault fails if proxy is configured  
-- (3.4-beta1)[2003888](https://bugs.launchpad.net/bugs/2003888): Grouped machine list view: Inconsistent display when machine state changes  
-- (3.4-beta1)[1743648](https://bugs.launchpad.net/bugs/1743648): Image import fails  
-- (3.4-beta1)[1811799](https://bugs.launchpad.net/bugs/1811799): Normal users can read machine details of owned machines  
-- (3.4-beta1)[1812377](https://bugs.launchpad.net/bugs/1812377): An admin is allowed to create raids for an Allocated node in the UI, but not the API  
-- (3.4-beta1)[1958451](https://bugs.launchpad.net/bugs/1958451): power_driver parameter is not preserved  
-- (3.4-beta1)[1990172](https://bugs.launchpad.net/bugs/1990172): "20-maas-03-machine-resources" commissioning script improperly reports a Pass when the test fails  
-- (3.4-beta1)[1995084](https://bugs.launchpad.net/bugs/1995084): MAAS TLS sets HSTS forcibly and with too short value  
-- (3.4-beta1)[1999147](https://bugs.launchpad.net/bugs/1999147): [3.3.0-candidate] failure when arch is requested as a filter  
-- (3.4-beta1)[1999368](https://bugs.launchpad.net/bugs/1999368): [3.3.0 RC] wrong DNS records  
-- (3.4-beta1)[1999579](https://bugs.launchpad.net/bugs/1999579): MAAS OpenAPI docs are not available in air-gapped mode  
-- (3.4-beta1)[2001546](https://bugs.launchpad.net/bugs/2001546): Server reboot will make subnet entries disappear from zone.maas-internal  
-- (3.4-beta1)[2003310](https://bugs.launchpad.net/bugs/2003310): Refresh scripts are not re-run if they pass, but fail to report the results to the region  
-- (3.4-beta1)[2003940](https://bugs.launchpad.net/bugs/2003940): MAAS 3.3 RC shows incorrect storage amount  
-- (3.4-beta1)[2008275](https://bugs.launchpad.net/bugs/2008275): Intel AMT support is broken in MAAS 3.3.0  
-- (3.4-beta1)[2009137](https://bugs.launchpad.net/bugs/2009137): MAAS OpenApi Schema missing parameters  
-- (3.4-beta1)[2009186](https://bugs.launchpad.net/bugs/2009186): CLI results in connection timed out when behind haproxy and 5240 is blocked  
-- (3.4-beta1)[2009805](https://bugs.launchpad.net/bugs/2009805): machine deploy install_kvm=True fails  
-- (3.4-beta1)[2011274](https://bugs.launchpad.net/bugs/2011274): MAAS 3.4: Deployment fails on LXD VMs  
-- (3.4-beta1)[2011822](https://bugs.launchpad.net/bugs/2011822): Reverse DNS resolution fails for some machines  
-- (3.4-beta1)[2012139](https://bugs.launchpad.net/bugs/2012139): maas commands occasionally fail with NO_CERTIFICATE_OR_CRL_FOUND when TLS is enabled  
-- (3.4-beta1)[2017504](https://bugs.launchpad.net/bugs/2017504): Cannot deploy from the cli when "Allow DNS resolution" is set on minimal subnet  
-- (3.4-beta1)[1696108](https://bugs.launchpad.net/bugs/1696108): Interface model validates the MAC address twice  
-- (3.4-beta1)[1773150](https://bugs.launchpad.net/bugs/1773150): smartctl verify fails due to Unicode in Disk Vendor Name  
-- (3.4-beta1)[1773671](https://bugs.launchpad.net/bugs/1773671): MAC address column should use mono font  
-- (3.4-beta1)[1959648](https://bugs.launchpad.net/bugs/1959648): Websocket vlan handler should include associated subnet ids  
-- (3.4-beta1)[1979403](https://bugs.launchpad.net/bugs/1979403): commission failed with MAAS 3.1 when BMC has multiple channels but the first channel is disabled  
-- (3.4-beta1)[1986590](https://bugs.launchpad.net/bugs/1986590): maas-cli from PPA errors out with traceback - (3.4-beta1)ModuleNotFoundError: No module named 'provisioningserver'  
-- (3.4-beta1)[1990416](https://bugs.launchpad.net/bugs/1990416): MAAS reports invalid command to run when maas-url is incorrect  
-- (3.4-beta1)[1993618](https://bugs.launchpad.net/bugs/1993618): Web UI redirection policy can invalidate HAProxy and/or TLS setup  
-- (3.4-beta1)[1994945](https://bugs.launchpad.net/bugs/1994945): Failure to create ephemeral VM when no architectures are found on the VM host  
-- (3.4-beta1)[1996997](https://bugs.launchpad.net/bugs/1996997): LXD resources fails on a Raspberry Pi with no Ethernet  
-- (3.4-beta1)[1999064](https://bugs.launchpad.net/bugs/1999064): `maas_run_scripts.py` does not clean up temporary directory  
-- (3.4-beta1)[2002550](https://bugs.launchpad.net/bugs/2002550): Controller type displays as "Undefined"  
-- (3.4-beta1)[2007297](https://bugs.launchpad.net/bugs/2007297): LXD REST API connection goes via proxy  
-- (3.4-beta1)[2009045](https://bugs.launchpad.net/bugs/2009045): WebSocket API to report reasons for failure for machine bulk actions  
-- (3.4-beta1)[2009140](https://bugs.launchpad.net/bugs/2009140): MAAS OpenApi Schema cutoff variable names  
+- (3.4-beta1)[1999160](https://bugs.launchpad.net/bugs/1999160): Region controller fails to run commissioning scripts in proxied environment
+- (3.4-beta1)[1999191](https://bugs.launchpad.net/bugs/1999191): bad interaction between Colorama and the CLI
+- (3.4-beta1)[1999557](https://bugs.launchpad.net/bugs/1999557): MAAS fails to startup when installed from deb package and vault is enabled
+- (3.4-beta1)[2002109](https://bugs.launchpad.net/bugs/2002109): Migration of BMC power credentials fails with manual driver
+- (3.4-beta1)[2002111](https://bugs.launchpad.net/bugs/2002111): Connection to local Vault fails if proxy is configured
+- (3.4-beta1)[2003888](https://bugs.launchpad.net/bugs/2003888): Grouped machine list view: Inconsistent display when machine state changes
+- (3.4-beta1)[1743648](https://bugs.launchpad.net/bugs/1743648): Image import fails
+- (3.4-beta1)[1811799](https://bugs.launchpad.net/bugs/1811799): Normal users can read machine details of owned machines
+- (3.4-beta1)[1812377](https://bugs.launchpad.net/bugs/1812377): An admin is allowed to create raids for an Allocated node in the UI, but not the API
+- (3.4-beta1)[1958451](https://bugs.launchpad.net/bugs/1958451): power_driver parameter is not preserved
+- (3.4-beta1)[1990172](https://bugs.launchpad.net/bugs/1990172): "20-maas-03-machine-resources" commissioning script improperly reports a Pass when the test fails
+- (3.4-beta1)[1995084](https://bugs.launchpad.net/bugs/1995084): MAAS TLS sets HSTS forcibly and with too short value
+- (3.4-beta1)[1999147](https://bugs.launchpad.net/bugs/1999147): [3.3.0-candidate] failure when arch is requested as a filter
+- (3.4-beta1)[1999368](https://bugs.launchpad.net/bugs/1999368): [3.3.0 RC] wrong DNS records
+- (3.4-beta1)[1999579](https://bugs.launchpad.net/bugs/1999579): MAAS OpenAPI docs are not available in air-gapped mode
+- (3.4-beta1)[2001546](https://bugs.launchpad.net/bugs/2001546): Server reboot will make subnet entries disappear from zone.maas-internal
+- (3.4-beta1)[2003310](https://bugs.launchpad.net/bugs/2003310): Refresh scripts are not re-run if they pass, but fail to report the results to the region
+- (3.4-beta1)[2003940](https://bugs.launchpad.net/bugs/2003940): MAAS 3.3 RC shows incorrect storage amount
+- (3.4-beta1)[2008275](https://bugs.launchpad.net/bugs/2008275): Intel AMT support is broken in MAAS 3.3.0
+- (3.4-beta1)[2009137](https://bugs.launchpad.net/bugs/2009137): MAAS OpenApi Schema missing parameters
+- (3.4-beta1)[2009186](https://bugs.launchpad.net/bugs/2009186): CLI results in connection timed out when behind haproxy and 5240 is blocked
+- (3.4-beta1)[2009805](https://bugs.launchpad.net/bugs/2009805): machine deploy install_kvm=True fails
+- (3.4-beta1)[2011274](https://bugs.launchpad.net/bugs/2011274): MAAS 3.4: Deployment fails on LXD VMs
+- (3.4-beta1)[2011822](https://bugs.launchpad.net/bugs/2011822): Reverse DNS resolution fails for some machines
+- (3.4-beta1)[2012139](https://bugs.launchpad.net/bugs/2012139): maas commands occasionally fail with NO_CERTIFICATE_OR_CRL_FOUND when TLS is enabled
+- (3.4-beta1)[2017504](https://bugs.launchpad.net/bugs/2017504): Cannot deploy from the cli when "Allow DNS resolution" is set on minimal subnet
+- (3.4-beta1)[1696108](https://bugs.launchpad.net/bugs/1696108): Interface model validates the MAC address twice
+- (3.4-beta1)[1773150](https://bugs.launchpad.net/bugs/1773150): smartctl verify fails due to Unicode in Disk Vendor Name
+- (3.4-beta1)[1773671](https://bugs.launchpad.net/bugs/1773671): MAC address column should use mono font
+- (3.4-beta1)[1959648](https://bugs.launchpad.net/bugs/1959648): Websocket vlan handler should include associated subnet ids
+- (3.4-beta1)[1979403](https://bugs.launchpad.net/bugs/1979403): commission failed with MAAS 3.1 when BMC has multiple channels but the first channel is disabled
+- (3.4-beta1)[1986590](https://bugs.launchpad.net/bugs/1986590): maas-cli from PPA errors out with traceback - (3.4-beta1)ModuleNotFoundError: No module named 'provisioningserver'
+- (3.4-beta1)[1990416](https://bugs.launchpad.net/bugs/1990416): MAAS reports invalid command to run when maas-url is incorrect
+- (3.4-beta1)[1993618](https://bugs.launchpad.net/bugs/1993618): Web UI redirection policy can invalidate HAProxy and/or TLS setup
+- (3.4-beta1)[1994945](https://bugs.launchpad.net/bugs/1994945): Failure to create ephemeral VM when no architectures are found on the VM host
+- (3.4-beta1)[1996997](https://bugs.launchpad.net/bugs/1996997): LXD resources fails on a Raspberry Pi with no Ethernet
+- (3.4-beta1)[1999064](https://bugs.launchpad.net/bugs/1999064): `maas_run_scripts.py` does not clean up temporary directory
+- (3.4-beta1)[2002550](https://bugs.launchpad.net/bugs/2002550): Controller type displays as "Undefined"
+- (3.4-beta1)[2007297](https://bugs.launchpad.net/bugs/2007297): LXD REST API connection goes via proxy
+- (3.4-beta1)[2009045](https://bugs.launchpad.net/bugs/2009045): WebSocket API to report reasons for failure for machine bulk actions
+- (3.4-beta1)[2009140](https://bugs.launchpad.net/bugs/2009140): MAAS OpenApi Schema cutoff variable names
 - (3.4-beta1)[2012054](https://bugs.launchpad.net/bugs/2012054): RPC logging when debug is too verbose
