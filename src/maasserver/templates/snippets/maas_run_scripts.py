@@ -1,1 +1,0 @@
-../../../metadataserver/user_data/templates/snippets/maas_run_scripts.py

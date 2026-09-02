@@ -1,1 +1,0 @@
-../../../builtin_scripts/release_scripts/maas_wipe.py
