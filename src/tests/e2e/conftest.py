@@ -9,6 +9,7 @@ import time
 import pytest
 import yaml
 
+from maasserver.regiondservices.openfga import build_openfga_dsn
 from tests.maasapiserver.fixtures.db import db, db_connection, test_config
 
 __all__ = [
@@ -42,24 +43,38 @@ def mock_maas_env(monkeypatch, openfga_socket_path):
 
 @pytest.fixture
 def openfga_server(tmpdir, project_root_path, openfga_socket_path, db):
-    """Fixture to start the OpenFGA server as a subprocess for testing. After the test is done, it ensures that the server process is terminated."""
+    """Fixture to start the OpenFGA server as a subprocess for testing.
+
+    The fixture writes an OpenFGA configuration file with a database URI built
+    from the test database settings, matching what ``RegionOpenFGAService``
+    generates at runtime.
+    """
     binary_path = project_root_path / "src/maasopenfga/build/maas-openfga"
 
-    # Set the environment variable for the OpenFGA server to use the socket path in the temporary directory
     env = os.environ.copy()
     env["MAAS_OPENFGA_HTTP_SOCKET_PATH"] = str(openfga_socket_path)
+    env.pop("MAAS_OPENFGA_CONFIG", None)
 
-    regiond_conf = {
-        "database_host": db.config.host,
-        "database_name": db.config.name,
-        "database_user": env["USER"],
-    }
+    host = db.config.host
+    port = db.config.port or 5432
+    user = env["USER"]
+    password = db.config.password or ""
+    name = db.config.name
 
-    # Write the regiond configuration to a file in the temporary directory
-    with open(tmpdir / "regiond.conf", "w") as f:
-        f.write(yaml.dump(regiond_conf))
+    dsn = build_openfga_dsn(host, port, user, password, name)
 
-    env["SNAP_DATA"] = str(tmpdir)
+    config_path = tmpdir / "openfga.yaml"
+    with open(config_path, "w") as f:
+        yaml.safe_dump(
+            {
+                "database_uri": dsn,
+                "openfga_max_open_conns": 3,
+                "openfga_max_idle_conns": 1,
+            },
+            f,
+        )
+
+    env["MAAS_OPENFGA_CONFIG"] = str(config_path)
 
     pid = subprocess.Popen(binary_path, env=env)
 

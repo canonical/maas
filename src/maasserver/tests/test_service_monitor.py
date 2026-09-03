@@ -32,6 +32,7 @@ class TestGlobalServiceMonitor(MAASTestCase):
                 "syslog_region",
                 "temporal",
                 "temporal-worker",
+                "openfga",
             },
             service_monitor._services.keys(),
         )

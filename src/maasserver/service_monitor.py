@@ -101,6 +101,14 @@ class TemporalWorkerService(AlwaysOnService):
     snap_service_name = "temporal-worker"
 
 
+class OpenFGAService(AlwaysOnService):
+    """Monitored OpenFGA service."""
+
+    name = "openfga"
+    service_name = "maas-openfga"
+    snap_service_name = "openfga"
+
+
 # Global service monitor for regiond. NOTE that changes to this need to be
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
@@ -111,4 +119,5 @@ service_monitor = ServiceMonitor(
     HTTPService(),
     TemporalService(),
     TemporalWorkerService(),
+    OpenFGAService(),
 )
