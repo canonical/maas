@@ -6,7 +6,10 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from maasapiserver.common.api.base import Handler, handler
-from maasapiserver.v3.auth.base import check_permissions
+from maasapiserver.v3.auth.base import (
+    check_permissions,
+    get_authenticated_user,
+)
 from maascommon.fips import get_fips_status
 from maascommon.hardening import (
     CONF_KEYS,
@@ -15,6 +18,7 @@ from maascommon.hardening import (
 )
 from maasserver.config import RegionConfiguration
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.models.auth import AuthenticatedUser
 from provisioningserver.utils.version import get_running_version
 
 
@@ -43,7 +47,7 @@ class HardeningConfiguration(BaseModel):
 class SystemInfoResponse(BaseModel):
     fips_active: bool
     hardening_active: bool
-    hardening_configuration: HardeningConfiguration
+    hardening_configuration: HardeningConfiguration | None
     version: str
 
 
@@ -72,16 +76,24 @@ class SystemHandler(Handler):
     )
     async def get_system_info(
         self,
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
     ) -> SystemInfoResponse:
+        assert authenticated_user is not None
         fips_status = get_fips_status()
         version = await run_in_threadpool(get_running_version)
-        conf = await run_in_threadpool(_read_hardening_conf)
         hardening_enabled = is_hardening_enabled()
+        hardening_cfg = None
+        if UserRole.ADMIN in authenticated_user.roles:
+            conf = await run_in_threadpool(_read_hardening_conf)
+            hardening_cfg = HardeningConfiguration(
+                **conf,
+            )
+
         return SystemInfoResponse(
             fips_active=fips_status.enabled,
             hardening_active=hardening_enabled,
-            hardening_configuration=HardeningConfiguration(
-                **conf,
-            ),
+            hardening_configuration=hardening_cfg,
             version=version.short_version,
         )
