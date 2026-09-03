@@ -34,6 +34,7 @@ from maasservicelayer.exceptions.constants import (
     FIPS_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.logging.tls import fips_tls_trace_config
 from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
 
@@ -120,7 +121,11 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
     async def _get_session(self) -> ClientSession:
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
-        return ClientSession(trust_env=True, connector=tcp_conn)
+        return ClientSession(
+            trust_env=True,
+            connector=tcp_conn,
+            trace_configs=[fips_tls_trace_config()],
+        )
 
     async def import_keys(
         self, protocol: SshKeysProtocolType, auth_id: str, user_id: int

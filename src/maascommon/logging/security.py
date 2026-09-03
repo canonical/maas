@@ -36,6 +36,33 @@ def log_fips_tls_handshake(
     )
 
 
+def log_fips_tls_handshake_from_sslobj(ssl_object, peer: str) -> None:
+    """Emit a ``fips_tls_handshake`` audit event from a stdlib SSL object.
+
+    ``ssl_object`` is an :class:`ssl.SSLSocket`/:class:`ssl.SSLObject` as
+    exposed by aiohttp/httpx transports via ``get_extra_info("ssl_object")``.
+    No-op on non-FIPS hosts or when ``ssl_object`` is ``None`` (plain HTTP).
+    """
+    from maascommon.fips import is_fips_enabled
+
+    if ssl_object is None or not is_fips_enabled():
+        return
+
+    cipher = ssl_object.cipher()
+    peer_cert = ssl_object.getpeercert()
+    cert_issuer = "unknown"
+    if peer_cert:
+        issuer = dict(item[0] for item in peer_cert.get("issuer", ()))
+        cert_issuer = issuer.get("commonName", "unknown")
+    log_fips_tls_handshake(
+        cipher_suite=cipher[0] if cipher else "unknown",
+        protocol_version=ssl_object.version() or "unknown",
+        peer=peer,
+        cert_issuer=cert_issuer,
+        cert_valid=bool(peer_cert),
+    )
+
+
 def log_fips_ssh_authentication(
     *,
     key_type: str,

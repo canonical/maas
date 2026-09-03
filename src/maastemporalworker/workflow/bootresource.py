@@ -7,6 +7,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 import shutil
 from typing import Coroutine, Sequence
+from urllib.parse import urlparse
 
 from aiohttp.client_exceptions import ClientError
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -16,6 +17,7 @@ from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ActivityCancellationType, random
 
 from maascommon.apiclient import MAASAPIClient
+from maascommon.logging.security import log_fips_tls_handshake_from_sslobj
 from maasserver.utils.bootresource import (
     get_bootresource_store_path,
     LocalBootResourceFile,
@@ -243,6 +245,15 @@ class BootResourcesActivity(ActivityBase):
                 lfile.astore(autocommit=False) as store,
             ):
                 response.raise_for_status()
+
+                if url.startswith("https"):
+                    ssl_object = response.extensions[
+                        "network_stream"
+                    ].get_extra_info("ssl_object")
+                    log_fips_tls_handshake_from_sslobj(
+                        ssl_object, peer=urlparse(url).hostname or "unknown"
+                    )
+
                 last_update = datetime.now(timezone.utc)
 
                 # Let's assume the network is fast, and we can get 5MB chunks within 10 seconds (the heartbeat timeout).
