@@ -157,7 +157,7 @@ html_context = {
     "display_contributors": False,
     # Required for feedback button
     "github_issues": "enabled",
-    "release_information": "/",
+    "release_information": "https://canonical.com/maas/docs/release-information",
 }
 
 html_extra_path = []
