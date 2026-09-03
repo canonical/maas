@@ -274,7 +274,6 @@ Key points:
     - Use `check_permissions` for authorization
     - Mock services in tests, not repositories
 - **Testing**: Use `APICommonTests`, `mocked_api_client*` fixtures
-- **Authentication**: Support Bearer tokens, Django sessionid, and Macaroons
 - **Documentation**: Ensure OpenAPI spec stays accurate
 
 ### `src/maasservicelayer`

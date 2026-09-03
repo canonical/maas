@@ -36,11 +36,11 @@ Resource pools are another single-assignment label.  They are:
 
 Assigned one to a machine: Like AZs, each machine belongs to one pool.
 
-Designed for RBAC: Pools were added primarily to support role-based access control. You can assign a pool to a user or team, giving them access to just that subset of machines.
+Designed for access control: Pools are the unit of scope for MAAS's built-in fine-grained authorization. You can grant a user group per-pool entitlements -- such as `can_view_machines`, `can_deploy_machines`, or `can_edit_machines` -- giving that group access to just the machines in that pool. See [User groups and entitlements](/how-to-guides/user-groups-and-entitlements.md) for details.
 
 Easy to customize: The pool name can be anything -- finance, HPC, staging, or “arm64-nodes." It’s entirely up to you.
 
-Outside RBAC, MAAS doesn’t enforce semantics beyond the label. If you’re not using RBAC, pools are just another way to subdivide your machines.  Often this is useful when you have a limited number of machines per corporate function.
+Even without any entitlements assigned, pools are still a useful way to subdivide your machines. Often this is useful when you have a limited number of machines per corporate function.
 
 For example, if you run the IT department of a large hospital, you may want to reserve so many machines for nursing stations, so many for physicians, so many for pharamacy, and so on.  This helps make sure that one or two failed machines won't mean pulling capacity from another department.
 

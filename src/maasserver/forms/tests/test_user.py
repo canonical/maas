@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for user-creation forms."""
@@ -6,7 +6,6 @@
 from django.contrib.auth.models import User
 
 from maasserver.forms import EditUserForm, NewUserCreationForm, ProfileForm
-from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -122,17 +121,3 @@ class TestNewUserCreationForm(MAASServerTestCase):
             ],
             list(form.fields),
         )
-
-    def test_password_not_required_with_external_auth(self):
-        SecretManager().set_composite_secret(
-            "external-auth",
-            {"url": "http://auth.example.com"},
-        )
-        form = NewUserCreationForm()
-        params = {
-            "email": factory.make_email(),
-            "username": factory.make_name("user"),
-        }
-        form = NewUserCreationForm(params)
-        user = form.save()
-        self.assertFalse(user.has_usable_password())

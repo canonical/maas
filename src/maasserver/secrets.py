@@ -1,11 +1,11 @@
-# Copyright 2022-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2022-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Any, Literal, NamedTuple, Optional
 
 from django.db.models import Model
 
-from maasserver.models import BMC, Node, RootKey, Secret, VaultSecret
+from maasserver.models import BMC, Node, Secret, VaultSecret
 from maasserver.vault import (
     get_region_vault_client_if_enabled,
     UnknownSecretPath,
@@ -14,15 +14,12 @@ from maasserver.vault import (
 from maasservicelayer.models.secrets import (
     BMCPowerParametersSecret,
     ClusterCertificateSecret,
-    ExternalAuthSecret,
     MAASAutoIPMIKGBmcKeySecret,
     MAASCACertificateSecret,
-    MacaroonKeySecret,
     MSMConnectorSecret,
     NodeDeployMetadataSecret,
     NodePowerParametersSecret,
     OMAPIKeySecret,
-    RootKeyMaterialSecret,
     RPCSharedSecret,
     TLSSecret,
     VCenterPasswordSecret,
@@ -74,11 +71,6 @@ MODEL_SECRETS = {
             ],
         ),
         ModelSecret(
-            RootKey,
-            RootKeyMaterialSecret.prefix,
-            [RootKeyMaterialSecret.secret_name],
-        ),
-        ModelSecret(
             BMC,
             BMCPowerParametersSecret.prefix,
             [BMCPowerParametersSecret.secret_name],
@@ -89,10 +81,8 @@ MODEL_SECRETS = {
 GLOBAL_SECRETS = frozenset(
     [
         ClusterCertificateSecret.secret_name,
-        ExternalAuthSecret.secret_name,
         MAASAutoIPMIKGBmcKeySecret.secret_name,
         MAASCACertificateSecret.secret_name,
-        MacaroonKeySecret.secret_name,
         MSMConnectorSecret.secret_name,
         OMAPIKeySecret.secret_name,
         RPCSharedSecret.secret_name,

@@ -1,11 +1,10 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `BulkNodeActionForm`."""
 
 from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 
@@ -44,42 +43,6 @@ class TestBulkNodeActionForm(MAASServerTestCase):
             },
         )
         self.assertFalse(form.is_valid())
-
-    def test_set_zone_does_not_work_if_not_rbac_pool_admin(self):
-        rbac = self.useFixture(RBACEnabled())
-        user = factory.make_User()
-        machine = factory.make_Machine()
-        rbac.store.add_pool(machine.pool)
-        rbac.store.allow(user.username, machine.pool, "deploy-machines")
-        rbac.store.allow(user.username, machine.pool, "view")
-        form = BulkNodeSetZoneForm(
-            user=user,
-            data={
-                "zone": factory.make_Zone().name,
-                "system_id": [machine.system_id],
-            },
-        )
-        self.assertFalse(form.is_valid())
-
-    def test_set_zone_works_if_rbac_pool_admin(self):
-        rbac = self.useFixture(RBACEnabled())
-        user = factory.make_User()
-        machine = factory.make_Machine()
-        zone = factory.make_Zone()
-        rbac.store.add_pool(machine.pool)
-        rbac.store.allow(user.username, machine.pool, "admin-machines")
-        rbac.store.allow(user.username, machine.pool, "view")
-        form = BulkNodeSetZoneForm(
-            user=user,
-            data={"zone": zone.name, "system_id": [machine.system_id]},
-        )
-        self.assertTrue(form.is_valid(), form._errors)
-        done, not_actionable, not_permitted = form.save()
-
-        self.assertEqual([1, 0, 0], [done, not_actionable, not_permitted])
-
-        machine = reload_object(machine)
-        self.assertEqual(zone, machine.zone)
 
     def test_zone_field_rejects_empty_zone(self):
         # If the field is present, the zone name has to be valid
