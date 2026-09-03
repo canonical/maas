@@ -541,6 +541,35 @@ class TestRNDCUtilities(MAASTestCase):
         self.assertNotIn("fetches-per-zone", contents)
         self.assertNotIn("fetches-per-server", contents)
 
+    def test_set_up_options_conf_allow_transfer_default_applies_when_explicit_empty_string_and_hardening(
+        self,
+    ):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True, dns_allow_transfer="")
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("allow-transfer { none; }", contents)
+
+    def test_set_up_options_conf_fetch_limits_default_applies_when_explicit_zero_and_hardening(
+        self,
+    ):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(
+            hardening=True,
+            dns_fetches_per_zone=0,
+            dns_fetches_per_server=0,
+        )
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("fetches-per-zone 100", contents)
+        self.assertIn("fetches-per-server 100", contents)
+
     def test_clean_old_zone_files(self):
         zone_file_dir = patch_zone_file_config_path(self)
 

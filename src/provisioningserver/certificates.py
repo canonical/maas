@@ -122,6 +122,7 @@ class Certificate(NamedTuple):
             cert = crypto.load_certificate(crypto.FILETYPE_PEM, material)
         except crypto.Error:
             raise CertificateError("Invalid PEM material")  # noqa: B904
+        _validate_fips_key(key)
         cls._check_key_match(key, cert)
 
         ca_certs = cls._split_ca_certs(ca_certs_material)

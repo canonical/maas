@@ -90,7 +90,7 @@ class TrustedHostKeyPolicy(MissingHostKeyPolicy):
             algorithm=key.get_name(),
             peer=hostname,
         )
-        raise RejectPolicy().missing_host_key(client, hostname, key)
+        RejectPolicy().missing_host_key(client, hostname, key)
 
     def _lookup_trusted_key(
         self, hostname: str, key_type: str, key_b64: str

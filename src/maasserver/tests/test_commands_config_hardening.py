@@ -87,6 +87,11 @@ class TestConfigHardeningSet(_Base):
             self._cmd(command="set", key="nonexistent_key", value="val")
         self.assertEqual(1, ctx.exception.code)
 
+    def test_set_fips_enabled_refused(self):
+        with self.assertRaises(SystemExit) as ctx:
+            self._cmd(command="set", key="fips_enabled", value="true")
+        self.assertEqual(1, ctx.exception.code)
+
 
 class TestConfigHardeningSnapOnlyKeys(_Base):
     def test_set_dns_bind_refused_outside_snap(self):
@@ -468,7 +473,7 @@ class TestConfigHardeningListEffectiveBinds(_Base):
     ):
         # api_bind/http_proxy_bind/syslog_bind only derive under hardening;
         # rpc_bind/temporal_bind derive from maas_url regardless (see
-        # `_AUTO_DERIVED_BIND_KEYS`/`resolve_rpc_bind_addresses`), so they
+        # `AUTO_DERIVED_BIND_KEYS`/`resolve_rpc_bind_addresses`), so they
         # are checked separately and excluded here.
         import provisioningserver.utils.network as network_module
 

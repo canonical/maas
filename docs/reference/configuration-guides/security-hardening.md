@@ -34,10 +34,9 @@ usage: maas config-hardening {set,get,list,validate,enable,disable} ...
 Manage MAAS hardening configuration parameters.
 
 subcommands:
-  set <key> <value>   Set a hardening parameter. DB-backed keys (hardening_enabled,
-                      fips_enabled) are written to the MAAS database; conf-backed
-                      keys (api_bind, database_sslmode, etc.) are written to
-                      regiond.conf.
+  set <key> <value>   Set a hardening parameter. hardening_enabled (DB-backed)
+                      and conf-backed keys (api_bind, database_sslmode, etc.)
+                      can be set; fips_enabled cannot (see below).
   get <key>           Get a hardening parameter value and its source store.
   list                List all hardening parameters with values and stores.
   validate            Run hardening validation; print violations; exit
@@ -54,11 +53,11 @@ region's current configuration, runs every check, prints violations, and exits
 non-zero when any exist — use it as on-demand audit evidence. It does not start
 or restart services.
 
-`set` accepts any known hardening key. Keys backed by the MAAS database
-(`hardening_enabled`, `fips_enabled`) are written to the DB Config store;
-keys backed by `regiond.conf` (`api_bind`, `database_sslmode`, and so on)
-are written to `regiond.conf` on the local host. The `set` command handles
-YAML quoting automatically.
+`set` accepts any known hardening key except `fips_enabled` (see below).
+`hardening_enabled` is written to the DB Config store; keys backed by
+`regiond.conf` (`api_bind`, `database_sslmode`, and so on) are written to
+`regiond.conf` on the local host. The `set` command handles YAML quoting
+automatically.
 
 `enable` is a convenience shortcut for
 `maas config-hardening set hardening_enabled on`: it writes only the DB
@@ -75,9 +74,11 @@ table below).
 | Key | Store | Default | Purpose |
 |-----|-------|---------|---------|
 | `hardening_enabled` | DB Config | `auto` | `auto`/`on`/`off` — see the activation model above. Set with `maas config-hardening set hardening_enabled <value>`. |
-| `fips_enabled` | DB Config | not set | Declared FIPS intent (`true`/`false`). When set, startup validation checks that the declared value matches the host kernel state. |
+| `fips_enabled` | DB Config | not set | Read-only, auto-detected: the first controller in the fleet to observe kernel FIPS mode active writes `true`, so every controller is thereafter held to the same requirement. Not settable via `config-hardening set`; inspect with `get`/`list`. |
 | `api_bind` | `regiond.conf` (per-host) | empty | IPv4 address(es) the public API binds to; may be a comma-separated list. Left unset by default: derived from `maas_url` at startup when hardening is active (same address clients already use to reach the region), otherwise binds all interfaces. Set explicitly to pin one or more addresses. |
 | `api_bind6` | `regiond.conf` (per-host) | empty | IPv6 address(es) the public API binds to; may be a comma-separated list. Same derivation as `api_bind`, restricted to an IPv6 address of `maas_url`'s host. |
+| `api_int_bind` | `regiond.conf` (per-host) | empty | IPv4 address the internal (rack-facing) plain HTTP listener binds to when TLS is enabled. Left unset by default: **not** derived from `maas_url` — binds all interfaces when unset, which is flagged under hardening. Set explicitly to pin it to a specific address. |
+| `api_int_bind6` | `regiond.conf` (per-host) | empty | IPv6 equivalent of `api_int_bind`; same derivation (none) and same requirement to set explicitly under hardening. |
 | `prometheus_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Prometheus metrics endpoint binds to. Left unset by default: when hardening is active, the runtime binds it to `127.0.0.1` — unlike the other bind keys, it defaults to loopback rather than a `maas_url`-derived address, since it's scraped locally by a co-located agent (e.g. grafana-agent), not remotely. Set explicitly to pin it elsewhere. |
 | `temporal_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Temporal services bind to. Left unset by default: derived from `maas_url` at startup, on every install mode (region, rack+region, all-in-one). Set explicitly to pin it elsewhere. |
 | `temporal_server` | `rackd.conf` (per-host) | empty | Address MAAS Agent dials to reach Temporal; not a hardening key. Left unset by default: derived from `maas_url` at startup, the same as `temporal_bind`. Set explicitly to pin it elsewhere. |
@@ -146,13 +147,14 @@ it. A violation clears automatically once the underlying setting is corrected.
 | `MISSING_TLS_CERT` | No public-API TLS certificate configured | `maas config-tls enable <key> <cert>` |
 | `MISSING_TLS_KEY` | No public-API TLS private key configured | `maas config-tls enable <key> <cert>` |
 | `TLS_CERT_KEY_MISMATCH` | Certificate and key are not a matching pair | Re-run `maas config-tls enable` with a matching pair |
+| `WEAK_TLS_CERT_KEY` | Certificate's key is DSA, an RSA key under 2048 bits, or the certificate is signed with SHA-1/MD5 (only checked when FIPS mode is active on the host) | Re-run `maas config-tls enable` with a FIPS-compliant certificate (RSA 2048 bits or larger, ECDSA, signed with SHA-256 or stronger) |
 | `TLS_CERT_PARSE_ERROR` | Certificate or key is not valid PEM | Re-run `maas config-tls enable` with a valid PEM certificate |
 | `WEAK_DH_PARAMS` | `api_tls_dhparam` file is under 2048 bits | See commands below. |
 | `DH_PARAMS_PARSE_ERROR` | `api_tls_dhparam` file is not valid PEM DH parameters | See commands below. |
-| `INVALID_BIND_ADDRESS` | A bind key (`api_bind`, `api_bind6`, `prometheus_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`, `dns_bind`, `dns_bind6`) contains a value that is not a valid IP address | `maas config-hardening set <key> <specific-ip-address>` |
-| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or is unset (except `api_bind`, `api_bind6`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, and `http_proxy_bind6`, which are derived automatically from `maas_url` when unset). `dns_bind`/`dns_bind6` are only checked on snap installs. | `maas config-hardening set <key> <specific-ip-address>` |
-| `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, or `prefer`, and `database_host` is not a Unix socket path | See commands below. |
-| `FIPS_CONFIG_STATUS_MISMATCH` | The declared `fips_enabled` value in the DB does not match the host kernel's FIPS state | `maas config-hardening set fips_enabled <true\|false>` to match the actual host state, or correct the host FIPS configuration |
+| `INVALID_BIND_ADDRESS` | A bind key (`api_bind`, `api_bind6`, `api_int_bind`, `api_int_bind6`, `prometheus_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`, `dns_bind`, `dns_bind6`) contains a value that is not a valid IP address | `maas config-hardening set <key> <specific-ip-address>` |
+| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or is unset (except `api_bind`, `api_bind6`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, and `http_proxy_bind6`, which are derived automatically from `maas_url` when unset). `api_int_bind`/`api_int_bind6` have no such derivation and are flagged when unset. `dns_bind`/`dns_bind6` are only checked on snap installs. | `maas config-hardening set <key> <specific-ip-address>` |
+| `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, `prefer`, or `require`, and `database_host` is not a Unix socket path | See commands below. |
+| `FIPS_CONFIG_STATUS_MISMATCH` | Another controller in the fleet has FIPS mode active (`fips_enabled` in the DB), but this host's kernel does not | Enable FIPS mode on this host's kernel to match the rest of the fleet. `fips_enabled` cannot be unset via `config-hardening`. |
 
 **Resolving `WEAK_DH_PARAMS` or `DH_PARAMS_PARSE_ERROR`:** generate a new DH
 parameters file and set the path:

@@ -37,26 +37,19 @@ def sync_hardening_notifications(
     # active_idents before touching the DB.
     pending: dict[str, tuple] = {}
     for v in violations:
+        context = {"code": v.code, "config_key": v.config_key}
+        if v.file_path:
+            context["file_path"] = v.file_path
         if controller_id and "bind" in v.config_key:
             # config_key as suffix keeps idents within the 40-char field limit.
             ident = (
                 f"{HARDENING_CTRL_IDENT_PREFIX}{controller_id}-{v.config_key}"
             )
             message = f"[{controller_id}] {v.message} {v.resolution}"
-            context = {
-                "code": v.code,
-                "config_key": v.config_key,
-                "file_path": v.file_path,
-                "controller_id": controller_id,
-            }
+            context["controller_id"] = controller_id
         else:
             ident = v.ident
             message = f"{v.message} {v.resolution}"
-            context = {
-                "code": v.code,
-                "config_key": v.config_key,
-                "file_path": v.file_path,
-            }
         pending[ident] = (v, message, context)
 
     # Remove stale global (non-controller-scoped) hardening notifications.

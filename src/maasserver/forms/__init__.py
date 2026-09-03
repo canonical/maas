@@ -1289,9 +1289,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
         cleaned_data = super().clean()
         cleaned_data = WithPowerTypeMixin.check_driver(self, cleaned_data)
 
-        power_type = cleaned_data.get("power_type") or cleaned_data.get(
-            "type", ""
-        )
+        power_type = cleaned_data.get("power_type", "")
         power_parameters = cleaned_data.get("power_parameters") or {}
         if isinstance(power_parameters, str):
             try:

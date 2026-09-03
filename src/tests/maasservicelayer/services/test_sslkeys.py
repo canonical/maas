@@ -8,7 +8,13 @@ import pytest
 from maasservicelayer.builders.sslkeys import SSLKeyBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.sslkeys import SSLKeysRepository
-from maasservicelayer.exceptions.catalog import AlreadyExistsException
+from maasservicelayer.exceptions.catalog import (
+    AlreadyExistsException,
+    ValidationException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_ARGUMENT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import (
     MaasBaseModel,
     MaasTimestampedBaseModel,
@@ -57,6 +63,21 @@ class TestCommonSSLKeysService(ServiceCommonTests):
         with pytest.raises(AlreadyExistsException):
             await service_instance.create(builder)
 
+        service_instance.repository.create.assert_not_called()
+
+    async def test_create_non_string_key_raises_validation_error(
+        self, service_instance
+    ):
+        # SSLKeyBuilder coerces its `key` field to `str`, so a genuinely
+        # non-string value can only reach pre_create_hook via a builder
+        # that bypasses that coercion.
+        builder = Mock(key=123, user_id=1)
+        with pytest.raises(ValidationException) as exc_info:
+            await service_instance.create(builder)
+
+        assert exc_info.value.details[0].type == (
+            INVALID_ARGUMENT_VIOLATION_TYPE
+        )
         service_instance.repository.create.assert_not_called()
 
     async def test_update_many(
