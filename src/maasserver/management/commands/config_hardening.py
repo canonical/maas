@@ -8,6 +8,8 @@ from django.core.management.base import BaseCommand
 from django.db import DEFAULT_DB_ALIAS
 
 from maascommon.fips import is_fips_enabled
+from maascommon.hardening import CONF_KEYS as _CONF_KEYS
+from maascommon.hardening import CONF_LIST_KEYS as _LIST_KEYS
 from maascommon.hardening import configure_hardening, is_hardening_enabled
 from maasserver.config import RegionConfiguration
 from maasserver.management.commands.base import BaseCommandWithConnection
@@ -18,46 +20,6 @@ from maasservicelayer.services.hardening import (
 from provisioningserver.utils.snap import running_in_snap
 
 _CONFIG_KEYS = frozenset({"hardening_enabled", "fips_enabled"})
-
-_CONF_KEYS = frozenset(
-    {
-        "api_tls_dhparam",
-        "api_bind",
-        "api_bind6",
-        "prometheus_bind",
-        "temporal_bind",
-        "rpc_bind",
-        "agent_api_bind",
-        "agent_api_bind6",
-        "dns_bind",
-        "dns_bind6",
-        "syslog_bind",
-        "http_proxy_bind",
-        "http_proxy_bind6",
-        "database_sslmode",
-        "database_sslcert",
-        "database_sslkey",
-        "database_sslrootcert",
-    }
-)
-
-# Keys backed by a comma-separated list in regiond.conf (see
-# `ForEach` in `maasserver.config`). Every other conf-backed key is a
-# plain scalar string.
-_LIST_KEYS = frozenset(
-    {
-        "api_bind",
-        "api_bind6",
-        "rpc_bind",
-        "agent_api_bind",
-        "agent_api_bind6",
-        "dns_bind",
-        "dns_bind6",
-        "syslog_bind",
-        "http_proxy_bind",
-        "http_proxy_bind6",
-    }
-)
 
 # Only meaningful in snap deployments: MAAS owns the whole named.conf
 # there. On Debian-packaged installs MAAS does not own the base
