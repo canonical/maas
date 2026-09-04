@@ -6,7 +6,7 @@ There are multiple approaches to installing MAAS, depending on your needs, use c
 
 A physical or virtual machine intended to run MAAS must meet the following requirements:
 
-- The Ubuntu LTS version required for MAAS 3.7 — see [Supported MAAS versions](/reference/supported-maas-versions.md).
+- The Ubuntu LTS version required for MAAS 3.7 — see [Supported MAAS versions](https://canonical.com/maas/docs/release-information/supported-maas-versions/).
 - `sudo` privileges.
 - `systemd-timesyncd` disabled for Ubuntu versions older than 25.10 — MAAS manages time synchronisation via `chrony` and the two conflict:
     ```bash
@@ -16,7 +16,7 @@ A physical or virtual machine intended to run MAAS must meet the following requi
 ```{admonition} Older MAAS versions
 :class: note
 
-To install older versions of MAAS, see [Supported MAAS versions](/reference/supported-maas-versions.md) for compatible PostgreSQL channels and operating system versions. For this guide, we will use the latest version of MAAS.
+To install older versions of MAAS, see [Supported MAAS versions](https://canonical.com/maas/docs/release-information/supported-maas-versions/) for compatible PostgreSQL channels and operating system versions. For this guide, we will use the latest version of MAAS.
 ```
 
 ## Install MAAS
