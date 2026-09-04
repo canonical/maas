@@ -50,6 +50,7 @@ from yarl import URL
 
 from maascommon.constants import SYSTEM_CA_FILE
 from maasservicelayer.auth.macaroons.models.exceptions import BakeryException
+from maasservicelayer.logging.tls import fips_tls_trace_config
 
 
 def _is_ip_address(host) -> bool:
@@ -130,6 +131,7 @@ class HttpBakeryAsyncClient:
             trust_env=True,
             cookie_jar=CookieJar(unsafe=True),
             connector=tcp_conn,
+            trace_configs=[fips_tls_trace_config()],
         )
         if interaction_methods is None:
             interaction_methods = []
