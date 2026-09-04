@@ -173,8 +173,8 @@ func resolveDatabaseCredentials(ctx context.Context, cfg *regionConfig) (cfgUser
 	return creds["user"], creds["pass"], creds["name"]
 }
 
-func getPostgresDSN(cfg *regionConfig, user, pass, name string) string {
-	socketPath := url.QueryEscape(cfg.DatabaseHost)
+func getPostgresDSN(dbHost, user, pass, name string) string {
+	socketPath := url.QueryEscape(dbHost)
 
 	return fmt.Sprintf(
 		"postgres://%s:%s@/%s?host=%s&search_path=openfga",
@@ -214,7 +214,7 @@ func main() {
 	dbUser, dbPass, dbName := resolveDatabaseCredentials(ctx, regionCfg)
 
 	psqlDataStore, err := postgres.New(
-		getPostgresDSN(regionCfg, dbUser, dbPass, dbName),
+		getPostgresDSN(regionCfg.DatabaseHost, dbUser, dbPass, dbName),
 		sqlcommon.NewConfig(
 			sqlcommon.WithMaxOpenConns(regionCfg.OpenFGAMaxOpenConns),
 			sqlcommon.WithMaxIdleConns(regionCfg.OpenFGAMaxIdleConns),
