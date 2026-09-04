@@ -3,6 +3,7 @@
 """FIPS structured audit-logging helpers for MAAS."""
 
 import logging
+from ssl import SSLObject, SSLSocket
 
 FIPS_MODE_DETECTED = "fips_mode_detected"
 FIPS_MODE_UNREADABLE = "fips_mode_unreadable"
@@ -36,7 +37,9 @@ def log_fips_tls_handshake(
     )
 
 
-def log_fips_tls_handshake_from_sslobj(ssl_object, peer: str) -> None:
+def log_fips_tls_handshake_from_sslobj(
+    ssl_object: SSLObject | SSLSocket | None, peer: str
+) -> None:
     """Emit a ``fips_tls_handshake`` audit event from a stdlib SSL object.
 
     ``ssl_object`` is an :class:`ssl.SSLSocket`/:class:`ssl.SSLObject` as
@@ -52,7 +55,11 @@ def log_fips_tls_handshake_from_sslobj(ssl_object, peer: str) -> None:
     peer_cert = ssl_object.getpeercert()
     cert_issuer = "unknown"
     if peer_cert:
-        issuer = dict(item[0] for item in peer_cert.get("issuer", ()))
+        issuer = {
+            name: value
+            for rdn in peer_cert.get("issuer", ())
+            for name, value in rdn
+        }
         cert_issuer = issuer.get("commonName", "unknown")
     log_fips_tls_handshake(
         cipher_suite=cipher[0] if cipher else "unknown",
