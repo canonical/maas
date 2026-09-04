@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import socket
 from typing import Any, Callable
 
 from paramiko import (
@@ -14,6 +15,8 @@ from paramiko import (
     MissingHostKeyPolicy,
     RejectPolicy,
     SSHClient,
+    SSHException,
+    Transport,
 )
 from twisted.internet.threads import blockingCallFromThread
 
@@ -206,6 +209,28 @@ def make_ssh_client() -> SSHClient:
     return client
 
 
+def _get_server_cipher_and_mac(host: str, port: int = 22) -> dict[str, str]:
+    """Probes an SSH server to determine its offered cryptographic algorithms."""
+    algorithms = {}
+    try:
+        with socket.create_connection((host, port), timeout=5) as sock:
+            with Transport(sock) as t:
+                try:
+                    t.start_client(timeout=5)
+                except SSHException:
+                    # We expect this to fail during negotiation or auth
+                    pass
+                algorithms = {
+                    "cipher": getattr(t, "remote_cipher", "unknown"),
+                    "mac": getattr(t, "remote_mac", "unknown"),
+                }
+    except Exception:
+        algorithms["cipher"] = "unknown"
+        algorithms["mac"] = "unknown"
+
+    return algorithms
+
+
 def connect_ssh_client(
     client: SSHClient,
     power_address: str,
@@ -213,12 +238,28 @@ def connect_ssh_client(
     power_pass: str,
 ) -> None:
     """Call ``SSHClient.connect`` with FIPS transport options merged in when active."""
-    client.connect(
-        power_address,
-        username=power_user,
-        password=power_pass,
-        **get_fips_transport_options(),
-    )
+    try:
+        client.connect(
+            power_address,
+            username=power_user,
+            password=power_pass,
+            **get_fips_transport_options(),
+        )
+    except SSHException as exc:
+        algorithms = _get_server_cipher_and_mac(power_address)
+        if is_fips_enabled():
+            algorithm = "unknown"
+            if "no acceptable ciphers" in str(exc).lower():
+                algorithm = algorithms.get("cipher", "unknown")
+            elif "no acceptable macs" in str(exc).lower():
+                algorithm = algorithms.get("mac", "unknown")
+            log_fips_crypto_error(
+                operation="ssh_negotiation",
+                error=str(exc),
+                algorithm=algorithm,
+                peer=power_address,
+            )
+        raise
     if is_fips_enabled():
         transport = client.get_transport()
         if transport is not None:
