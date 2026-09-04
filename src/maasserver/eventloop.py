@@ -181,6 +181,12 @@ def make_TemporalService():
     return temporal.RegionTemporalService()
 
 
+def make_OpenFGAService():
+    from maasserver.regiondservices import openfga
+
+    return openfga.RegionOpenFGAService()
+
+
 def make_WebApplicationService(postgresListener, statusWorker):
     from maasserver.webapp import WebApplicationService
 
@@ -430,6 +436,11 @@ class RegionEventLoop:
         "temporal": {
             "only_on_master": True,
             "factory": make_TemporalService,
+            "requires": [],
+        },
+        "openfga": {
+            "only_on_master": True,
+            "factory": make_OpenFGAService,
             "requires": [],
         },
         "dns-reload": {

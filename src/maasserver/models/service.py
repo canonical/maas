@@ -60,6 +60,7 @@ DEAD_STATUSES = {
     "temporal": SERVICE_STATUS.UNKNOWN,
     "agent": SERVICE_STATUS.UNKNOWN,
     "temporal-worker": SERVICE_STATUS.UNKNOWN,
+    "openfga": SERVICE_STATUS.UNKNOWN,
 }
 
 

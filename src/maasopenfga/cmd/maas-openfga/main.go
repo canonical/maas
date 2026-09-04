@@ -17,11 +17,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -42,57 +42,41 @@ const (
 	defaultMaxIdleConns = 1
 )
 
-type regionConfig struct {
-	DatabaseHost        string `yaml:"database_host"`
-	DatabaseName        string `yaml:"database_name"`
-	DatabasePass        string `yaml:"database_pass"`
-	DatabaseUser        string `yaml:"database_user"`
+type openfgaConfig struct {
+	DatabaseURI         string `yaml:"database_uri"`
 	OpenFGAMaxOpenConns int    `yaml:"openfga_max_open_conns"`
 	OpenFGAMaxIdleConns int    `yaml:"openfga_max_idle_conns"`
 }
 
-func readRegionConfig() *regionConfig {
-	configDir := os.Getenv("SNAP_DATA")
-	if configDir == "" {
-		// Deb installation
-		configDir = "/etc/maas"
+func readOpenFGAConfig() (openfgaConfig, error) {
+	configPath := os.Getenv("MAAS_OPENFGA_CONFIG")
+	if configPath == "" {
+		return openfgaConfig{}, errors.New("MAAS_OPENFGA_CONFIG environment variable is not set")
 	}
-
-	configPath := filepath.Join(configDir, "regiond.conf")
 
 	cfg, err := os.ReadFile(filepath.Clean(configPath))
 	if err != nil {
-		log.Fatalf("failed to read region config file: %v", err)
+		return openfgaConfig{}, fmt.Errorf("failed to read openfga config file: %w", err)
 	}
 
-	var regionCfg regionConfig
-
-	err = yaml.Unmarshal(cfg, &regionCfg)
-	if err != nil {
-		log.Fatalf("failed to parse region config file: %v", err)
+	var openfgaCfg openfgaConfig
+	if err := yaml.Unmarshal(cfg, &openfgaCfg); err != nil {
+		return openfgaConfig{}, fmt.Errorf("failed to parse openfga config file: %w", err)
 	}
 
-	if regionCfg.OpenFGAMaxOpenConns <= 0 {
-		regionCfg.OpenFGAMaxOpenConns = defaultMaxOpenConns
+	if openfgaCfg.DatabaseURI == "" {
+		return openfgaConfig{}, errors.New("database_uri is not set in openfga config file")
 	}
 
-	if regionCfg.OpenFGAMaxIdleConns <= 0 {
-		regionCfg.OpenFGAMaxIdleConns = defaultMaxIdleConns
+	if openfgaCfg.OpenFGAMaxOpenConns <= 0 {
+		openfgaCfg.OpenFGAMaxOpenConns = defaultMaxOpenConns
 	}
 
-	return &regionCfg
-}
+	if openfgaCfg.OpenFGAMaxIdleConns <= 0 {
+		openfgaCfg.OpenFGAMaxIdleConns = defaultMaxIdleConns
+	}
 
-func getPostgresDSN(cfg *regionConfig) string {
-	socketPath := url.QueryEscape(cfg.DatabaseHost)
-
-	return fmt.Sprintf(
-		"postgres://%s:%s@/%s?host=%s&search_path=openfga",
-		cfg.DatabaseUser,
-		cfg.DatabasePass,
-		cfg.DatabaseName,
-		socketPath,
-	)
+	return openfgaCfg, nil
 }
 
 // Tested in src/tests/e2e/test_openfga_integration.py
@@ -120,13 +104,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	regionCfg := readRegionConfig()
+	openfgaCfg, err := readOpenFGAConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	psqlDataStore, err := postgres.New(
-		getPostgresDSN(regionCfg),
+		openfgaCfg.DatabaseURI,
 		sqlcommon.NewConfig(
-			sqlcommon.WithMaxOpenConns(regionCfg.OpenFGAMaxOpenConns),
-			sqlcommon.WithMaxIdleConns(regionCfg.OpenFGAMaxIdleConns),
+			sqlcommon.WithMaxOpenConns(openfgaCfg.OpenFGAMaxOpenConns),
+			sqlcommon.WithMaxIdleConns(openfgaCfg.OpenFGAMaxIdleConns),
 		),
 	)
 	if err != nil {

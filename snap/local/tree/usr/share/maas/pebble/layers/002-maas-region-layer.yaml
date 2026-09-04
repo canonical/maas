@@ -41,7 +41,7 @@ services:
 
   openfga:
     override: replace
-    startup: enabled
+    startup: disabled
     command: sh -c "exec systemd-cat -t maas-openfga $SNAP/usr/bin/run-openfga"
     before:
       - syslog

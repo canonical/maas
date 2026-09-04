@@ -250,6 +250,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
             "ipc-master",
             "vault-secrets-cleanup",
             "temporal",
+            "openfga",
             "dns-reload",
         }
         self.assertEqual(expected_services, service.namedServices.keys())
@@ -376,6 +377,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             # "workers",  Prevented in all-in-one.
             "ipc-master",
             "temporal",
+            "openfga",
             "dns-reload",
         }
         self.assertEqual(expected_services, service.namedServices.keys())
