@@ -28,6 +28,7 @@ This section covers how to enlist machines into MAAS, test and commission them, 
 * [Deploy machines](/how-to-guides/manage-machines.md#deploy-machines)
 * [Confirm deployment](/how-to-guides/manage-machines.md#rescue-and-recovery)
 * [Customize deployment](/how-to-guides/manage-machines.md#configure-deployment)
+* [Manage deployment scripts](/how-to-guides/manage-deployment-scripts.md)
 * Special deployments
   * [Custom images: building, using, and maintaining](/how-to-guides/build-custom-images.md)
   * [Ephemeral deployments](/how-to-guides/manage-machines.md#deploy-machines)
@@ -125,6 +126,7 @@ manage-networks
 manage-network-services
 manage-switches
 manage-machines
+manage-deployment-scripts
 manage-machine-groups
 manage-images
 build-ubuntu-images
