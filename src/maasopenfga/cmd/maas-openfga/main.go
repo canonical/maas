@@ -17,6 +17,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -25,6 +26,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,11 +37,14 @@ import (
 	"github.com/openfga/openfga/pkg/storage/postgres"
 	"github.com/openfga/openfga/pkg/storage/sqlcommon"
 	"gopkg.in/yaml.v3"
+
+	"maas.io/core/src/maasopenfga/internal/vault"
 )
 
 const (
-	defaultMaxOpenConns = 3
-	defaultMaxIdleConns = 1
+	defaultMaxOpenConns      = 3
+	defaultMaxIdleConns      = 1
+	defaultVaultSecretsMount = "secret"
 )
 
 type regionConfig struct {
@@ -49,6 +54,11 @@ type regionConfig struct {
 	DatabaseUser        string `yaml:"database_user"`
 	OpenFGAMaxOpenConns int    `yaml:"openfga_max_open_conns"`
 	OpenFGAMaxIdleConns int    `yaml:"openfga_max_idle_conns"`
+	VaultURL            string `yaml:"vault_url"`
+	VaultSecretsMount   string `yaml:"vault_secrets_mount"`
+	VaultSecretsPath    string `yaml:"vault_secrets_path"`
+	VaultApproleID      string `yaml:"vault_approle_id"`
+	VaultSecretID       string `yaml:"vault_secret_id"`
 }
 
 func readRegionConfig() *regionConfig {
@@ -80,22 +90,101 @@ func readRegionConfig() *regionConfig {
 		regionCfg.OpenFGAMaxIdleConns = defaultMaxIdleConns
 	}
 
+	if regionCfg.VaultSecretsMount == "" {
+		regionCfg.VaultSecretsMount = defaultVaultSecretsMount
+	}
+
 	return &regionCfg
 }
 
-func getPostgresDSN(cfg *regionConfig) string {
+// maasDataPath returns the path of a file under the MAAS data directory,
+// mirroring maascommon.path.get_maas_data_path.
+func maasDataPath(name string) string {
+	dataDir := os.Getenv("MAAS_DATA")
+	if dataDir == "" {
+		dataDir = "/var/lib/maas"
+	}
+
+	return filepath.Join(dataDir, name)
+}
+
+// readMaasID returns the ID of this MAAS controller, as stored on disk by
+// the region/rack controller.
+func readMaasID() (string, error) {
+	data, err := os.ReadFile(filepath.Clean(maasDataPath("maas_id")))
+	if err != nil {
+		return "", fmt.Errorf("failed to read MAAS ID: %w", err)
+	}
+
+	return strings.TrimSpace(string(data)), nil
+}
+
+// vaultDatabaseCredsPath returns the Vault KV v2 secrets engine path where
+// database credentials are stored for this controller, mirroring
+// maasserver.config.get_db_creds_vault_path.
+func vaultDatabaseCredsPath(secretsPath, maasID string) string {
+	return fmt.Sprintf("%s/controller/%s/database-creds", secretsPath, maasID)
+}
+
+// resolveDatabaseCredentials returns the database user, password and name to
+// use to connect to the database. If Vault is configured in the region
+// configuration, credentials are fetched from there; otherwise (or if Vault
+// is unreachable, misconfigured, or does not hold DB credentials), the
+// credentials from the region configuration file are used as a fallback.
+//
+// This mirrors maasapiserver.settings._get_default_db_config, so that
+// OpenFGA can connect to the database when MAAS is configured to store DB
+// credentials in Vault instead of regiond.conf.
+func resolveDatabaseCredentials(ctx context.Context, cfg *regionConfig) (cfgUser, cfgPass, cfgName string) {
+	cfgUser, cfgPass, cfgName = cfg.DatabaseUser, cfg.DatabasePass, cfg.DatabaseName
+
+	if cfg.VaultURL == "" || cfg.VaultApproleID == "" || cfg.VaultSecretID == "" {
+		// Vault is not configured, use the local configuration.
+		return cfgUser, cfgPass, cfgName
+	}
+
+	maasID, err := readMaasID()
+	if err != nil {
+		log.Printf("unable to determine MAAS ID, using DB credentials from region configuration: %v", err)
+		return cfgUser, cfgPass, cfgName
+	}
+
+	client := vault.NewClient(cfg.VaultURL)
+
+	token, err := client.Login(ctx, cfg.VaultApproleID, cfg.VaultSecretID)
+	if err != nil {
+		log.Printf("unable to authenticate with Vault, using DB credentials from region configuration: %v", err)
+		return cfgUser, cfgPass, cfgName
+	}
+
+	creds, err := client.ReadSecret(ctx, token, cfg.VaultSecretsMount, vaultDatabaseCredsPath(cfg.VaultSecretsPath, maasID))
+	if err != nil {
+		if errors.Is(err, vault.ErrNotFound) {
+			// Vault does not have DB credentials, but is available. No need
+			// to report anything, use local credentials.
+			return cfgUser, cfgPass, cfgName
+		}
+
+		log.Printf("unable to fetch DB credentials from Vault, using DB credentials from region configuration: %v", err)
+
+		return cfgUser, cfgPass, cfgName
+	}
+
+	return creds["user"], creds["pass"], creds["name"]
+}
+
+func getPostgresDSN(cfg *regionConfig, user, pass, name string) string {
 	socketPath := url.QueryEscape(cfg.DatabaseHost)
 
 	return fmt.Sprintf(
 		"postgres://%s:%s@/%s?host=%s&search_path=openfga",
-		cfg.DatabaseUser,
-		cfg.DatabasePass,
-		cfg.DatabaseName,
+		user,
+		pass,
+		name,
 		socketPath,
 	)
 }
 
-// Tested in src/tests/e2e/test_openfga_integration.py
 func main() {
 	socketPath := os.Getenv("MAAS_OPENFGA_HTTP_SOCKET_PATH")
 
@@ -122,8 +211,10 @@ func main() {
 
 	regionCfg := readRegionConfig()
 
+	dbUser, dbPass, dbName := resolveDatabaseCredentials(ctx, regionCfg)
+
 	psqlDataStore, err := postgres.New(
-		getPostgresDSN(regionCfg),
+		getPostgresDSN(regionCfg, dbUser, dbPass, dbName),
 		sqlcommon.NewConfig(
 			sqlcommon.WithMaxOpenConns(regionCfg.OpenFGAMaxOpenConns),
 			sqlcommon.WithMaxIdleConns(regionCfg.OpenFGAMaxIdleConns),
