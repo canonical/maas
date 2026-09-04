@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -70,9 +71,12 @@ func (c *Client) Login(ctx context.Context, roleID, secretID string) (string, er
 		return "", fmt.Errorf("failed to marshal login request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/v1/auth/approle/login", c.baseURL)
+	endpoint, err := url.JoinPath(c.baseURL, "v1", "auth", "approle", "login")
+	if err != nil {
+		return "", fmt.Errorf("failed to build login url: %w", err)
+	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("failed to build login request: %w", err)
 	}
@@ -111,9 +115,12 @@ type kvV2ReadResponse struct {
 // ReadSecret reads a secret from the given path in a KV v2 secrets engine
 // mounted at mount, authenticating with token.
 func (c *Client) ReadSecret(ctx context.Context, token, mount, path string) (map[string]string, error) {
-	url := fmt.Sprintf("%s/v1/%s/data/%s", c.baseURL, mount, path)
+	endpoint, err := url.JoinPath(c.baseURL, "v1", mount, "data", path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build read secret url: %w", err)
+	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build read secret request: %w", err)
 	}

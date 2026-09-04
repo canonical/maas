@@ -26,8 +26,8 @@ package dbcredentials
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
+	"path"
 
 	"maas.io/core/src/maasopenfga/internal/config"
 	"maas.io/core/src/maasopenfga/internal/vault"
@@ -94,5 +94,5 @@ func Resolve(ctx context.Context, cfg *config.RegionConfig) Credentials {
 // database credentials are stored for a given controller, mirroring
 // maasserver.config.get_db_creds_vault_path.
 func credentialsPath(secretsBasePath, maasID string) string {
-	return fmt.Sprintf("%s/controller/%s/database-creds", secretsBasePath, maasID)
+	return path.Join(secretsBasePath, "controller", maasID, "database-creds")
 }
