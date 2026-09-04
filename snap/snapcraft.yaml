@@ -277,6 +277,12 @@ parts:
       INSTALL_DIR="$CRAFT_PART_INSTALL/usr/share/maas/web"
       mkdir -p "$INSTALL_DIR"
       cp -a build "$INSTALL_DIR/static"
+      # Copy vendored Swagger UI files (see src/maasserver/templates/swagger-ui-dist/README.md)
+      SWAGGER_UI_DIR="$INSTALL_DIR/static/swagger-ui-dist"
+      mkdir -p "$SWAGGER_UI_DIR"
+      cp "$CRAFT_PART_SRC/src/maasserver/templates/swagger-ui-dist/swagger-ui.css" "$SWAGGER_UI_DIR/swagger-ui.css"
+      cp "$CRAFT_PART_SRC/src/maasserver/templates/swagger-ui-dist/swagger-ui-bundle.js" "$SWAGGER_UI_DIR/swagger-ui-bundle.js"
+      cp "$CRAFT_PART_SRC/src/maasserver/templates/swagger-ui-init.js" "$SWAGGER_UI_DIR/swagger-ui-init.js"
     prime:
       - usr/share/maas/web/static
 
