@@ -17,7 +17,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -39,15 +38,17 @@ import (
 )
 
 func getPostgresDSN(dbHost, user, pass, name string) string {
-	socketPath := url.QueryEscape(dbHost)
+	q := url.Values{}
+	q.Set("host", dbHost)
+	q.Set("search_path", "openfga")
 
-	return fmt.Sprintf(
-		"postgres://%s:%s@/%s?host=%s&search_path=openfga",
-		user,
-		pass,
-		name,
-		socketPath,
-	)
+	u := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(user, pass),
+		Path:     "/" + name,
+		RawQuery: q.Encode(),
+	}
+	return u.String()
 }
 
 func main() {
