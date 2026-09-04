@@ -1,6 +1,6 @@
 # Power drivers
 
-The following page catalogs the fields in the "create machine" dialogue for each supported power driver. Note that most of the multiple-choice fields have drop-down menus to assist with your choice.  In the next section we introduce configuring power drivers using the UI. In "CLI parameter expressions," you will find how to configure them using the CLI.
+The following page catalogs the fields in the `create machine` dialogue for each supported power driver. Note that most of the multiple-choice fields have drop-down menus to assist with your choice. In the next section we introduce configuring power drivers using the UI. In [CLI parameter expressions](#cli-parameter-expressions), you will find how to configure them using the CLI.
 
 ## UI parameter expressions
 
@@ -16,7 +16,7 @@ The following page catalogs the fields in the "create machine" dialogue for each
 | Form field | Description | Required |
 |:-----|:-----|:-----|
 | IP for APC PDU | IP address of unit | Required |
-| APU PDU node outlet number (1-16) | PDU node outlet number | Required |
+| APC PDU node outlet number (1-16) | PDU node outlet number | Required |
 | Power ON outlet delay (seconds) | outlet power ON delay | Optional, default=5 |
 
 ### Digital Loggers, Inc. PDU
@@ -48,7 +48,7 @@ The following page catalogs the fields in the "create machine" dialogue for each
 
 ### IPMI
 
-Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
+Some of the fields for this power type have fixed choices, indicated in the `Choices` column.
 
 | Form field | Description | Choices | Required |
 |:-----------|:------------|:--------|:---------|
@@ -73,7 +73,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 
 ### Manual power configuration
 
-Manual power configuration means exactly that -- manually configured at the unit -- hence there are no parameters to set in the "create machine" UI.
+Manual power configuration means exactly that -- manually configured at the unit -- hence there are no parameters to set in the `create machine` UI.
 
 ### HP Moonshot - iLO4 (IPMI)
 
@@ -103,7 +103,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 | Power port | Port where unit is attached | Optional |
 | Power user | Username to login | Optional |
 | Power password | Password to access unit | Optional |
-| Blade ID | Blade ID (usu. 1-24) | Required |
+| Blade ID | Blade ID (usually 1-24) | Required |
 
 ### OpenStack Nova
 
@@ -121,12 +121,12 @@ Manual power configuration means exactly that -- manually configured at the unit
 |:-----|:-----|:-----|
 | Power type | Proxmox | Required |
 | Host name or IP | Power address for the Proxmox driver | Required |
-| Username, including realm | Power user, along with realm (i.e., Username@Realm | Required |
+| Username, including realm | Power user, along with realm (i.e., Username@Realm) | Required |
 | Password | Required if a token name and secret aren't given | Provisional |
-| API token name | Token name: must include Username without realm (i.e., Username!Token-name | Provisional |
+| API token name | Token name: must include Username without realm (i.e., Username!Token-name) | Provisional |
 | API token secret | Token secret | Provisional |
 | Node ID | VM name or ID | Optional |
-| Verify SSL connections... | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
+| Verify SSL connections… | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
 
 ### OpenBMC Power Driver
 
@@ -157,7 +157,7 @@ Manual power configuration means exactly that -- manually configured at the unit
 
 ### SeaMicro 15000
 
-Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
+Some of the fields for this power type have fixed choices, indicated in the `Choices` column.
 
 | Form field | Description | Choices | Required |
 |:-----|:-----|:-----|:-----|
@@ -210,7 +210,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 
 Consider a machine backed by VM. Below, a 'Power type' of `Virsh` has been selected, and the 'Power address' of `qemu+ssh://ubuntu@192.168.1.2/system` has been entered (replace values as appropriate). The value of 'Power ID' is the VM domain (guest) name, here `node2`.
 
-![Power configuration using 'Power type' of Virsh](/images/reference/configuration-guides/power-drivers/example-virsh.webp)
+![Power configuration using 'Power type' of Virsh](../../images/reference/configuration-guides/power-drivers/example-virsh.webp)
 
 > **Pro tip**: The machine's hostname -- according to MAAS -- is a randomly chosen string (here `dear.ant`). You should change this hostname to something descriptive, that helps you remember why this machine is in your MAAS network.
 
@@ -218,20 +218,20 @@ Consider a machine backed by VM. Below, a 'Power type' of `Virsh` has been selec
 
 It's important to understand that the Webhook power driver is more generic than other drivers, so it has some flexibility that the underlying power driver may not support. For example, Webhook doesn't require a username or password for the power driver, because not all power drivers work that way. Nevertheless, the power driver you're connecting to Webhook may actually require a username and/or password. Understanding and implementing these fields correctly for the chosen back-end power driver is the user's responsibility.
 
-To that end, the "Required" column for this driver refers only to whether Webhook requires a value in each field. Just because a field is optional for Webhook itself does not mean that the underlying power driver will ultimately allow that field to be unspecified.
+To that end, the `Required` column for this driver refers only to whether Webhook requires a value in each field. Just because a field is optional for Webhook itself does not mean that the underlying power driver will ultimately allow that field to be unspecified.
 
 | Form field | Description | Required (by Webhook) |
 |:-----|:-----|:-----|
 | Power type | Webhook (from drop-down list) | Required |
 | URI to power on the node | URI to access power driver's API for power on | Required |
 | URI to power off the node | URI to access power driver's API for power off | Required |
-| URI to query the nodes power status | URI to access power driver's API for power status | Required |
+| URI to query the node's power status | URI to access power driver's API for power status | Required |
 | Regex to confirm the node is on | Regex expression that will return a string if the power is on, and no string if the power is off | Required, defaults supplied |
 | Regex to confirm the node is off | Regex expression that will return a string if the power is off, and no string if the power is on | Required, defaults supplied |
 | Power user | Username to log into the power driver | Optional |
 | Power password | Password to access unit | Optional |
 | Power token | Power driver API token (used instead of user and password, if set) | Optional |
-| Verify SSL connections... | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
+| Verify SSL connections… | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
 
 ## CLI parameter expressions
 
@@ -305,9 +305,9 @@ All parameters are entered as `key=value`, e.g., `power_type=lxd`. The MAAS CLI 
 
 ### IPMI
 
-All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded. Power driver specific parameters should be prefixed with `power_parameters_{key}`.
+All parameters are entered as `key=value`, e.g., `power_type=ipmi`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded. Power driver specific parameters should be prefixed with `power_parameters_{key}`.
 
-Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
+Some of the fields for this power type have fixed choices, indicated in the `Choices` column.
 
 | Form field | Description | Choices | Required |
 |:-----------|:------------|:--------|:---------|
@@ -332,7 +332,7 @@ Some of the fields for this power type have fixed choices, indicated in the "Cho
 
 ### Manual power configuration
 
-Manual power configuration means exactly that -- manually configured at the unit. The only MAAS CLI parameter is `power_type=amt`.
+Manual power configuration means exactly that -- manually configured at the unit. The only MAAS CLI parameter is `power_type=manual`.
 
 ### HP Moonshot - iLO4 (IPMI)
 
@@ -340,7 +340,7 @@ All parameters are entered as `key=value`, e.g., `power_type=moonshot`. The MAAS
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
-| `power_type | `moonshot` | Required |
+| `power_type` | `moonshot` | Required |
 | `power_address` | IP address of unit | Required |
 | `power_hwaddress` | Hardware address of unit | Required |
 | `power_user` | Username to login | Optional |
@@ -352,7 +352,7 @@ All parameters are entered as `key=value`, e.g., `power_type=mscm`. The MAAS CLI
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
-| `power_type | `mscm` | Required |
+| `power_type` | `mscm` | Required |
 | `power_address` | IP address of unit | Required |
 | `node_id` | cXnY | Required |
 |  - where  | X = cartridge number | |
@@ -366,9 +366,9 @@ All parameters are entered as `key=value`, e.g., `power_type=msftocs`. The MAAS 
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
-| `power_type | `msftocs` | Required |
+| `power_type` | `msftocs` | Required |
 | `power_address` | IP address of unit | Required |
-| `blade_id` | Blade ID (usu. 1-24) | Required |
+| `blade_id` | Blade ID (usually 1-24) | Required |
 | `power_port` | Port where unit is attached | Optional |
 | `power_user` | Username to login | Optional |
 | `power_pass` | Password to access unit | Optional |
@@ -379,7 +379,7 @@ All parameters are entered as `key=value`, e.g., `power_type=nova`. The MAAS CLI
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
-| `power_type | `nova` | Required |
+| `power_type` | `nova` | Required |
 | `nova_id` | Host UUID | Required |
 | `os_tenantname` | Tenant name | Required |
 | `os_username` | Username to login | Required |
@@ -403,7 +403,7 @@ All parameters are entered as `key=value`, e.g., `power_type=recs_box`. The MAAS
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
-| `power_type | `recs_box` | Required |
+| `power_type` | `recs_box` | Required |
 | `node_id` | Node ID | Required |
 | `power_address` | IP address of unit | Required |
 | `power_port` | Port where unit is attached | Optional |
@@ -416,7 +416,7 @@ All parameters are entered as `key=value`, e.g., `power_type=redfish`. The MAAS 
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
-| `power_type | `redfish` | Required |
+| `power_type` | `redfish` | Required |
 | `power_address` | IP address of unit | Required |
 | `power_user` | Username to login | Required |
 | `power_pass` | Password to access unit | Required |
@@ -426,7 +426,7 @@ All parameters are entered as `key=value`, e.g., `power_type=redfish`. The MAAS 
 
 All parameters are entered as `key=value`, e.g., `power_type=sm15k`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
-Some of the fields for this power type have fixed choices, indicated in the "Choices" column.
+Some of the fields for this power type have fixed choices, indicated in the `Choices` column.
 
 | Parameter | Description | Choices | Required |
 |:-----|:-----|:-----|:-----|
@@ -479,7 +479,7 @@ All parameters are entered as `key=value`, e.g., `power_type=vmware`. The MAAS C
 
 ### Facebook's Wedge
 
-All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
+All parameters are entered as `key=value`, e.g., `power_type=wedge`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
@@ -538,7 +538,7 @@ Machine-readable output follows this announcement. The JSON generated by this co
     "address_ttl": null,
     "memory_test_status": -1,
     "other_test_status_name": "Unknown",
-    "osystem": ",
+    "osystem": "",
     "status_message": "Commissioning",
     "netboot": true,
     "physicalblockdevice_set": [],
@@ -572,9 +572,9 @@ Machine-readable output follows this announcement. The JSON generated by this co
     "blockdevice_set": [],
     "testing_status_name": "Pending",
     "power_state": "unknown",
-    "min_hwe_kernel": ",
+    "min_hwe_kernel": "",
     "owner": "admin",
-    "distro_series": ",
+    "distro_series": "",
     "storage_test_status_name": "Pending",
     "cpu_speed": 0,
     "swap_size": null,
@@ -590,7 +590,7 @@ Machine-readable output follows this announcement. The JSON generated by this co
     "cache_sets": [],
     "iscsiblockdevice_set": [],
     "disable_ipv4": false,
-    "status_action": ",
+    "status_action": "",
     "boot_interface": {
         "name": "eth0",
         "id": 10,
@@ -605,7 +605,7 @@ Machine-readable output follows this announcement. The JSON generated by this co
         "firmware_version": null,
         "parents": [],
         "discovered": null,
-        "params": ",
+        "params": "",
         "links": [],
         "sriov_max_vf": 0,
         "tags": [],
@@ -652,7 +652,7 @@ Machine-readable output follows this announcement. The JSON generated by this co
             "firmware_version": null,
             "parents": [],
             "discovered": null,
-            "params": ",
+            "params": "",
             "links": [],
             "sriov_max_vf": 0,
             "tags": [],
@@ -670,13 +670,13 @@ Machine-readable output follows this announcement. The JSON generated by this co
     "ip_addresses": [],
     "raids": [],
     "network_test_status_name": "Unknown",
-    "description": ",
+    "description": "",
     "current_commissioning_result_id": 6,
     "interface_test_status_name": "Unknown",
     "current_installation_result_id": null,
     "zone": {
         "name": "default",
-        "description": ",
+        "description": "",
         "id": 1,
         "resource_uri": "/MAAS/api/2.0/zones/default/"
     },
@@ -837,7 +837,7 @@ Machine-readable output follows this announcement. The JSON generated by this co
 <td></td>
 </tr>
 <tr class="odd">
-<td align="left">VMWare</td>
+<td align="left">VMware</td>
 <td>X</td>
 <td>X</td>
 <td>X</td>
