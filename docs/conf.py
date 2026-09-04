@@ -200,6 +200,7 @@ html_context = {
     "display_contributors": False,
     # Required for feedback button
     "feedback_link": "https://bugs.launchpad.net/maas/+filebug?",
+    "release_information": "https://canonical.com/maas/docs/release-information",
 }
 
 html_extra_path = []
