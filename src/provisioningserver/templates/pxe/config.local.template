@@ -1,4 +1,0 @@
-DEFAULT local
-
-LABEL local
-  LOCALBOOT 0

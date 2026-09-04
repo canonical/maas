@@ -1,51 +1,8 @@
 import datetime
-import importlib
 import os
-from pathlib import Path
-import sys
 import warnings
 
 import yaml
-
-IS_ONLINE = os.getenv("MAAS_OFFLINE_DOCS", "").lower() != "true"
-
-# Add custom extensions directory to Python path
-sys.path.insert(0, str(Path(__file__).parent / "_ext"))
-
-from types import ModuleType
-
-extensions = []
-
-if (
-    len(Path(__file__).parents) >= 2
-    and not (Path(__file__).parents[1] / ".git").exists()
-    # A shallow clone has a .git/shallow file; sphinx_last_updated_by_git
-    # produces warnings when git log cannot traverse full history.
-    or (Path(__file__).parents[1] / ".git" / "shallow").exists()
-):
-    # Some surgery in order to accomodate the fact that
-    # canonical_sphinx and sphinx_sitemap both require
-    # sphinx_last_updated_by_git in a way that is not possible
-    # to circumvent externally.
-    mock_git_ext = ModuleType("sphinx_last_updated_by_git")
-    mock_git_ext.__path__ = []
-    mock_git_ext.__file__ = "mock_sphinx_last_updated_by_git.py"
-    mock_git_ext.__spec__ = importlib.machinery.ModuleSpec(
-        name="sphinx_last_updated_by_git", loader=None, origin="mock"
-    )
-
-    def dummy_setup(app):
-        app.connect(
-            "env-updated",
-            lambda _, env: setattr(env, "git_last_updated", {}),
-        )
-        return {"version": "0.1", "parallel_read_safe": True}
-
-    mock_git_ext.setup = dummy_setup
-
-    sys.modules["sphinx_last_updated_by_git"] = mock_git_ext
-else:
-    extensions.append("sphinx_last_updated_by_git")
 
 
 # Suppress the specific warning message from sphinx_sitemap
@@ -200,6 +157,7 @@ html_context = {
     "display_contributors": False,
     # Required for feedback button
     "github_issues": "enabled",
+    "release_information": "https://canonical.com/maas/docs/release-information",
 }
 
 html_extra_path = []
@@ -261,8 +219,7 @@ sitemap_excludes = [
 html_static_path = ["_static"]
 
 # Our _templates folder are only being used for google analytics.
-if IS_ONLINE:
-    templates_path = ["_templates"]
+templates_path = ["_templates"]
 
 
 #############
@@ -331,9 +288,7 @@ myst_enable_extensions = {
 
 # NOTE: The canonical_sphinx extension is required for the starter pack.
 
-extensions += [
-    "generate_api_docs_extension",  # Auto-generate API docs during build
-    "generate_cli_docs_extension",  # Auto-generate CLI docs during build
+extensions = [
     "canonical_sphinx",
     "notfound.extension",
     "sphinx_design",
@@ -349,9 +304,7 @@ extensions += [
     "sphinx_terminal",
     "sphinx_ubuntu_images",
     "sphinx_youtube_links",
-    "sphinxcontrib.cairosvgconverter",
     "sphinx.ext.intersphinx",
-    "sphinx_sitemap",
 ]
 
 
@@ -373,10 +326,7 @@ exclude_patterns = [
 html_css_files = []
 
 # CSS for google analytics tracker settings:
-if IS_ONLINE:
-    html_css_files.append(
-        "https://assets.ubuntu.com/v1/d86746ef-cookie_banner.css"
-    )
+html_css_files.append("https://assets.ubuntu.com/v1/d86746ef-cookie_banner.css")
 
 
 # Adds custom JavaScript files, located under 'html_static_path'
@@ -385,8 +335,7 @@ if IS_ONLINE:
 html_js_files = ["js/overwrite_links.js", "js/github_issue_links.js"]
 
 # JS for google analytics tracker setup:
-if IS_ONLINE:
-    html_js_files.append("https://assets.ubuntu.com/v1/287a5e8f-bundle.js")
+html_js_files.append("https://assets.ubuntu.com/v1/287a5e8f-bundle.js")
 
 
 # Specifies a reST snippet to be appended to each .rst file
