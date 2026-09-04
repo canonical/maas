@@ -566,6 +566,38 @@ This section mentions changes that affect users only indirectly:
 
 This section recaps the release history of MAAS version 3.5.
 
+### MAAS 3.5.13 has been released
+
+We are happy to announce that MAAS 3.5.13 has been released, with the following bug fixes
+
+- [2074122](https://bugs.launchpad.net/bugs/2074122): MAAS rack is scaling up the number of connections without limit due to a race condition
+- [2044378](https://bugs.launchpad.net/bugs/2044378): Custom image without title shows as blank in UI when deploying
+
+### MAAS 3.5.12 has been released
+
+We are happy to announce that MAAS 3.5.12 has been released, with the following bug fixes
+
+- [2147514](https://bugs.launchpad.net/bugs/2147514): Power state not refreshed when a node transitions from COMMISSIONING to NEW (enlistment commissioning)
+
+### MAAS 3.5.11 has been released
+
+We are happy to announce that MAAS 3.5.11 has been released, with the following bug fixes
+
+- [2080646](https://bugs.launchpad.net/bugs/2080646): MAAS_PATH env variable missing from snap env, causes maas not to be able to connect to virsh
+- [2136694](https://bugs.launchpad.net/bugs/2136694): Ephemeral deployments lack control over the amount of RAM allocated for the rootfs
+- [2137724](https://bugs.launchpad.net/bugs/2137724): Temporal worker pool configuration failure on NULL IP
+- [2141598](https://bugs.launchpad.net/bugs/2141598): Custom images stuck in "Loading Queued for download" after upgrade to 3.5
+
+### MAAS 3.5.10 has been released
+
+We are happy to announce that MAAS 3.5.10 has been released, with the following bug fixes
+
+- [2132663](https://bugs.launchpad.net/bugs/2132663): Custom images fail to deploy in memory
+- [2133828](https://bugs.launchpad.net/bugs/2133828): MAAS 3.5.9: Uploaded images fail with 404 on /images/<blobid>/custom/.../uploaded/root.tgz (3.5.8 OK)
+- [2134059](https://bugs.launchpad.net/bugs/2134059): In-memory deployments cause incorrect netplan
+- [2115797](https://bugs.launchpad.net/bugs/2115797): LXD VM host not always deploys in 3.6
+- [2132282](https://bugs.launchpad.net/bugs/2132282): 20-maas-03-machine-resources fails for uint64 counters
+
 ### MAAS 3.5.9 has been released
 
 We are happy to announce that MAAS 3.5.9 has been released, with the following bug fixes
@@ -963,11 +995,25 @@ There are no exposed controls, and there is no need for users to take any action
 
 This section recaps the release history of MAAS version 3.4.
 
+### MAAS 3.4.10 has been released
+
+We are happy to announce that MAAS 3.4.10 has been released, with the following bug fixes:
+
+- [2111831](https://bugs.launchpad.net/bugs/2111831): MAAS snap uses setuptools from pip - UserWarning: pkg_resources is deprecated as an API.
+- [2130237](https://bugs.launchpad.net/bugs/2130237): RPC RegisterRackController can saturate all the database threads, causing region controllers to become unresponsive for minutes
+- [2130269](https://bugs.launchpad.net/bugs/2130269): Build is failing to download pre-built UI assets
+
+### MAAS 3.4.9 has been released
+
+We are happy to announce that MAAS 3.4.9 has been released, with the following bug fixes:
+
+- [2091271](https://bugs.launchpad.net/bugs/2091271): HW sync is not able to detect a bridge interface configured with OVS
+- [2115714](https://bugs.launchpad.net/bugs/2115714): local priviledge escalation: users can self-promote to admin
+
 ### MAAS 3.4.8 has been released
 
 We are happy to announce that MAAS 3.4.8 has been released, with the following bug fixes:
 
-- [2091271](https://bugs.launchpad.net/bugs/2091271): HW sync is not able to detect a bridge interface configured with OVS
 - [2095477](https://bugs.launchpad.net/bugs/2095477): boot-resources read is slow when there are a lot of images that have been deployed a lot of times
 - [2104260](https://bugs.launchpad.net/bugs/2104260): Cloud-init 24.04.1 requires OVS bridge interface not to be optional in the netplan preseed network
 - [2104530](https://bugs.launchpad.net/bugs/2104530): Plucky deployments fail after reboot to disk due to no network
