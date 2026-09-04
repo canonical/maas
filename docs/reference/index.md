@@ -2,10 +2,6 @@
 
 Find the precise details to set parameters, make informed decisions, and take the right actions in MAAS.
 
-## Release notes
-
-The MAAS [release notes](/reference/release-notes.md) provide a comprehensive record of the last few versions of MAAS.
-
 ## MAAS API and CLI reference
 
 Every feature available in the UI is also accessible through the MAAS API and CLI.
@@ -36,8 +32,6 @@ These essential reference materials will help make better choices, resolve issue
 :maxdepth: 2
 :hidden:
 
-release-notes
-supported-maas-versions
 api-reference/index
 cli-reference/index
 configuration-guides/index
