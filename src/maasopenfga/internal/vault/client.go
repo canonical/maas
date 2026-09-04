@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -87,7 +88,12 @@ func (c *Client) Login(ctx context.Context, roleID, secretID string) (string, er
 	if err != nil {
 		return "", fmt.Errorf("failed to reach vault: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("failed to close response body: %v", err)
+		}
+	}()
 
 	if err := raiseForStatus(resp); err != nil {
 		return "", err
@@ -131,7 +137,12 @@ func (c *Client) ReadSecret(ctx context.Context, token, mount, path string) (map
 	if err != nil {
 		return nil, fmt.Errorf("failed to reach vault: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("failed to close response body: %v", err)
+		}
+	}()
 
 	if err := raiseForStatus(resp); err != nil {
 		return nil, err

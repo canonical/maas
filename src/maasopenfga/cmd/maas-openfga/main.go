@@ -48,6 +48,7 @@ func getPostgresDSN(dbHost, user, pass, name string) string {
 		Path:     "/" + name,
 		RawQuery: q.Encode(),
 	}
+
 	return u.String()
 }
 

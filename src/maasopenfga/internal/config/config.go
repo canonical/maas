@@ -40,13 +40,13 @@ type RegionConfig struct {
 	DatabaseName        string `yaml:"database_name"`
 	DatabasePass        string `yaml:"database_pass"`
 	DatabaseUser        string `yaml:"database_user"`
-	OpenFGAMaxOpenConns int    `yaml:"openfga_max_open_conns"`
-	OpenFGAMaxIdleConns int    `yaml:"openfga_max_idle_conns"`
 	VaultURL            string `yaml:"vault_url"`
 	VaultSecretsMount   string `yaml:"vault_secrets_mount"`
 	VaultSecretsPath    string `yaml:"vault_secrets_path"`
 	VaultApproleID      string `yaml:"vault_approle_id"`
 	VaultSecretID       string `yaml:"vault_secret_id"`
+	OpenFGAMaxOpenConns int    `yaml:"openfga_max_open_conns"`
+	OpenFGAMaxIdleConns int    `yaml:"openfga_max_idle_conns"`
 }
 
 // VaultEnabled reports whether enough Vault settings are present in the

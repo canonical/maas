@@ -54,6 +54,7 @@ func TestResolveVaultSuccessOverridesLocalCreds(t *testing.T) {
 			_, _ = w.Write([]byte(`{"auth": {"client_token": "s.faketoken"}}`))
 		case "/v1/secret/data/prefix/controller/abc123/database-creds":
 			assert.Equal(t, "s.faketoken", r.Header.Get("X-Vault-Token"))
+
 			_, _ = w.Write([]byte(`{"data": {"data": {"user": "vault-user", "pass": "vault-pass", "name": "vault-name"}}}`))
 		default:
 			t.Fatalf("unexpected request to %s", r.URL.Path)
