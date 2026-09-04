@@ -370,7 +370,8 @@ exclude_patterns = [
 
 # Adds custom CSS files, located under 'html_static_path'
 
-html_css_files = []
+# Override canonical_sphinx theme's external font URLs with local copies.
+html_css_files = ["offline-fonts.css"]
 
 # CSS for google analytics tracker settings:
 if IS_ONLINE:

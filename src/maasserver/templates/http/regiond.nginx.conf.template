@@ -118,6 +118,11 @@ server {
         try_files /$1 =404;
     }
 
+    location ~ ^/MAAS/swagger-ui/(.*)$ {
+        root {{static_dir}}/web/static/swagger-ui-dist;
+        try_files /$1 =404;
+    }
+
     location ~ ^/MAAS/r/(.*)$ {
         root {{static_dir}}/web/static;
         try_files /$1 /index.html =404;
