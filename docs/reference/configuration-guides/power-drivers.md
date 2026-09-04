@@ -1,6 +1,6 @@
 # Power drivers
 
-The following page catalogs the fields in the `create machine` dialogue for each supported power driver. Note that most of the multiple-choice fields have drop-down menus to assist with your choice. In the next section we introduce configuring power drivers using the UI. In `CLI parameter expressions`, you will find how to configure them using the CLI.
+The following page catalogs the fields in the `create machine` dialogue for each supported power driver. Note that most of the multiple-choice fields have drop-down menus to assist with your choice. In the next section we introduce configuring power drivers using the UI. In [CLI parameter expressions](#cli-parameter-expressions), you will find how to configure them using the CLI.
 
 ## UI parameter expressions
 
