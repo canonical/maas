@@ -247,12 +247,20 @@ class BootResourcesActivity(ActivityBase):
                 response.raise_for_status()
 
                 if url.startswith("https"):
-                    ssl_object = response.extensions[
-                        "network_stream"
-                    ].get_extra_info("ssl_object")
-                    log_fips_tls_handshake_from_sslobj(
-                        ssl_object, peer=urlparse(url).hostname or "unknown"
+                    network_stream = response.extensions.get("network_stream")
+                    ssl_object = (
+                        network_stream.get_extra_info("ssl_object")
+                        if network_stream
+                        else None
                     )
+                    parsed = urlparse(url)
+                    port = parsed.port or 443
+                    peer = (
+                        f"{parsed.hostname}:{port}"
+                        if parsed.hostname
+                        else "unknown"
+                    )
+                    log_fips_tls_handshake_from_sslobj(ssl_object, peer=peer)
 
                 last_update = datetime.now(timezone.utc)
 
