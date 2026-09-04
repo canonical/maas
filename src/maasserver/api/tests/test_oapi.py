@@ -57,6 +57,19 @@ class TestApiEndpoint(MAASServerTestCase):
         )
         self.assertEqual(maasserver["description"], f"{maas_name} API")
 
+    def test_external_docs(self):
+        request = factory.make_fake_request()
+        page = endpoint(request)
+        content = yaml.safe_load(page.content)
+        self.assertIn("externalDocs", content)
+        external_docs = content["externalDocs"]
+        self.assertIsInstance(external_docs, dict)
+        self.assertIn("description", external_docs)
+        self.assertEqual(
+            external_docs["url"],
+            "/MAAS/docs/reference/api-reference/api-v2-generated/",
+        )
+
 
 class TestOAPISpec(MAASServerTestCase):
     def setUp(self):
