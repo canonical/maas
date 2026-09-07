@@ -208,3 +208,89 @@ Structured JSON events. View them with `journalctl -o json`.
 | `hardening_mode_determined` | INFO | Resolved hardening state (`setting`, `fips_enabled`, `hardening_active`). |
 | `hardening_violation` | ERROR | A prerequisite is unmet (`ident`, `code`, `config_key`, `file_path`, `message`). |
 | `hardening_notification_posted` | INFO | An admin notification was posted for a violation (`ident`, `code`). |
+
+## Content Security Policy (CSP)
+
+When hardening is active, the region controller's nginx configuration emits a
+strict `Content-Security-Policy` header on every response:
+
+```
+default-src 'self';
+script-src 'self' 'sha256-…';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data:;
+font-src 'self';
+connect-src 'self';
+frame-ancestors 'none'
+```
+
+The `script-src` directive lists a single SHA-256 hash that whitelists the
+one static inline `<script>` block emitted by the Furo documentation theme
+that is required for the docs to render correctly. Inline scripts are
+otherwise forbidden by `script-src 'self'`, which would leave the page
+flashing in the wrong theme on first paint.
+
+The CSP header is defined in
+`src/maasserver/templates/http/regiond.nginx.conf.template` inside the
+`{{if hardening}}` block. It is only emitted when hardening is active.
+
+### Whitelisted inline script
+
+The single hash corresponds to the Furo theme's dark/light mode
+initialisation script. If Furo is upgraded and this script changes (even by
+a single character of whitespace), the browser will refuse to execute it
+and log a CSP violation. The expected hash is included in the violation
+report, which makes rotation straightforward.
+
+#### Furo theme initialisation (dark/light mode)
+
+**Hash**: `sha256-ySvT2PEZeueHGC1y2crNuNTfphBynFPP7i+U21fEgX0=`
+
+**Script** (emitted on every documentation page):
+
+```html
+<script>
+  document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+</script>
+```
+
+Reads the user's stored theme preference from `localStorage` and applies it to
+`<body>` before the page paints, so the correct theme is used from the first
+frame. Without this script the page briefly flashes in the wrong theme, and
+the light/dark/auto toggle no longer takes effect on the first visit.
+
+Source: [Furo theme](https://github.com/pradyunsg/furo).
+
+### Regenerating a hash
+
+If an upgrade changes the exact bytes of any inline script (including
+leading/trailing whitespace and newlines, which are part of the hashed
+content), compute the new hash from the built HTML and update
+`regiond.nginx.conf.template`:
+
+```bash
+python3 - <<'EOF'
+import hashlib, base64
+# Paste the exact script body between the <script> and </script> tags,
+# including any surrounding whitespace / newlines, into `script` below.
+script = """
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    """
+h = hashlib.sha256(script.encode("utf-8")).digest()
+print("sha256-" + base64.b64encode(h).decode())
+EOF
+```
+
+The browser's CSP violation report also prints the expected hash, so you can
+copy it directly from the developer console instead of computing it locally.
+
+### Other directives
+
+| Directive | Value | Rationale |
+|-----------|-------|-----------|
+| `default-src` | `'self'` | Deny by default; every resource type must be same-origin unless overridden below. |
+| `style-src` | `'self' 'unsafe-inline'` | Sphinx and Furo emit inline `style` attributes on generated elements. Hashing every style is not tractable; `'unsafe-inline'` is accepted for styles only, which cannot execute code. |
+| `img-src` | `'self' data:` | `data:` allows inline SVG/PNG data URIs used by the theme's icons and diagrams. |
+| `font-src` | `'self'` | Fonts must be same-origin. The Ubuntu fonts referenced by the theme are vendored under `docs/_static/fonts/` and served from the region controller. See `docs/_static/fonts/README.md`. |
+| `connect-src` | `'self'` | `fetch()` / `XMLHttpRequest` restricted to same-origin. |
+| `frame-ancestors` | `'none'` | Prevents MAAS pages from being embedded in any frame (clickjacking defence). |
