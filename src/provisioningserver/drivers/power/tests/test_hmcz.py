@@ -11,7 +11,7 @@ from unittest.mock import call, Mock
 
 import pytest
 from twisted.internet.defer import inlineCallbacks, succeed
-from zhmcclient import StatusTimeout
+from zhmcclient import HTTPError, StatusTimeout
 from zhmcclient_mock import FakedSession
 
 from maastesting import get_testing_timeout
@@ -562,7 +562,7 @@ class TestHMCZPowerDriver(MAASTestCase):
         )
 
         mock_get_partition.return_value.wait_for_status.assert_called_once_with(
-            ["stopped", "active"], 120
+            ["stopped", "active", "degraded", "paused", "terminated"], 120
         )
 
     @inlineCallbacks
@@ -579,8 +579,100 @@ class TestHMCZPowerDriver(MAASTestCase):
         )
 
         mock_get_partition.return_value.wait_for_status.assert_called_once_with(
-            ["stopped", "active"], 120
+            ["stopped", "active", "degraded", "paused", "terminated"], 120
         )
+
+
+class TestRetryOnBusy(MAASTestCase):
+    """Tests for `hmcz._retry_on_busy`."""
+
+    def make_busy_error(self):
+        return HTTPError(
+            {
+                "http-status": 409,
+                "reason": 2,
+                "message": "object is busy with another operation",
+                "request-method": "POST",
+                "request-uri": "/api/partitions/abc",
+            }
+        )
+
+    def test_returns_result_without_retrying_on_success(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        func = Mock(return_value="ok")
+
+        result = hmcz_module._retry_on_busy(
+            func, "arg", op_desc="op", system_id="sys", kw=1
+        )
+
+        self.assertEqual(result, "ok")
+        func.assert_called_once_with("arg", kw=1)
+        mock_sleep.assert_not_called()
+
+    def test_retries_while_409_2_busy_then_succeeds(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        func = Mock(
+            side_effect=[
+                self.make_busy_error(),
+                self.make_busy_error(),
+                "ok",
+            ]
+        )
+
+        result = hmcz_module._retry_on_busy(
+            func, op_desc="op", system_id="sys", retry_delay=5
+        )
+
+        self.assertEqual(result, "ok")
+        self.assertEqual(func.call_count, 3)
+        self.assertEqual(mock_sleep.call_count, 2)
+        mock_sleep.assert_called_with(5)
+
+    def test_reraises_other_http_errors_immediately(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        other = HTTPError({"http-status": 500, "reason": 1})
+        func = Mock(side_effect=other)
+
+        self.assertRaises(
+            HTTPError,
+            hmcz_module._retry_on_busy,
+            func,
+            op_desc="op",
+            system_id="sys",
+        )
+        func.assert_called_once()
+        mock_sleep.assert_not_called()
+
+    def test_reraises_409_with_other_reason_immediately(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        other = HTTPError({"http-status": 409, "reason": 1})
+        func = Mock(side_effect=other)
+
+        self.assertRaises(
+            HTTPError,
+            hmcz_module._retry_on_busy,
+            func,
+            op_desc="op",
+            system_id="sys",
+        )
+        func.assert_called_once()
+        mock_sleep.assert_not_called()
+
+    def test_gives_up_and_reraises_after_max_attempts(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        func = Mock(side_effect=self.make_busy_error())
+
+        self.assertRaises(
+            HTTPError,
+            hmcz_module._retry_on_busy,
+            func,
+            op_desc="op",
+            system_id="sys",
+            max_attempts=3,
+        )
+        self.assertEqual(func.call_count, 3)
+        # No sleep after the final (failing) attempt.
+        self.assertEqual(mock_sleep.call_count, 2)
 
 
 @dataclass
