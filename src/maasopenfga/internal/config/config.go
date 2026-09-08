@@ -19,6 +19,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -61,8 +62,7 @@ func (c *RegionConfig) VaultEnabled() bool {
 func ReadRegionConfig() (*RegionConfig, error) {
 	configDir := os.Getenv("SNAP_DATA")
 	if configDir == "" {
-		// Deb installation
-		configDir = "/etc/maas"
+		return nil, errors.New("environment variable 'SNAP_DATA' is not set")
 	}
 
 	configPath := filepath.Join(configDir, "regiond.conf")
@@ -95,19 +95,24 @@ func ReadRegionConfig() (*RegionConfig, error) {
 
 // DataPath returns the path of a file under the MAAS data directory,
 // mirroring maascommon.path.get_maas_data_path.
-func DataPath(name string) string {
+func DataPath(name string) (string, error) {
 	dataDir := os.Getenv("MAAS_DATA")
 	if dataDir == "" {
-		dataDir = "/var/lib/maas"
+		return "", errors.New("environment variable 'MAAS_DATA' is not set")
 	}
 
-	return filepath.Join(dataDir, name)
+	return filepath.Join(dataDir, name), nil
 }
 
 // MaasID returns the ID of this MAAS controller, as stored on disk by the
 // region/rack controller, mirroring provisioningserver.utils.env.MAAS_ID.
 func MaasID() (string, error) {
-	data, err := os.ReadFile(filepath.Clean(DataPath("maas_id")))
+	dataPath, err := DataPath("maas_id")
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve maas_id: %w", err)
+	}
+
+	data, err := os.ReadFile(filepath.Clean(dataPath))
 	if err != nil {
 		return "", fmt.Errorf("failed to read MAAS ID: %w", err)
 	}
