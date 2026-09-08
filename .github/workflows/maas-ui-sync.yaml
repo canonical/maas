@@ -183,7 +183,8 @@ jobs:
       - name: Push submodule update
         if: |
           steps.compare.outputs.has_update == 'true' &&
-          matrix.maas_branch != 'debug'
+          matrix.maas_branch != 'debug' &&
+          !startsWith(github.ref_name, 'maas-ui-sync-debug-')
         env:
           TARGET_BRANCH: ${{ steps.compare.outputs.target_branch }}
         run: |
