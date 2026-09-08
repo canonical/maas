@@ -13,6 +13,7 @@ from aiohttp import ClientResponseError, ClientSession
 from aiohttp.client import TCPConnector
 
 from maascommon.constants import SYSTEM_CA_FILE
+from maasservicelayer.logging.tls import fips_tls_trace_config
 from maasservicelayer.simplestreams.models import (
     SimpleStreamsIndexList,
     SimpleStreamsProductList,
@@ -89,7 +90,11 @@ class SimpleStreamsClient:
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
         # TODO: set proxy on the session when we upgrade aiohttp to v3.11+
-        return ClientSession(trust_env=True, connector=tcp_conn)
+        return ClientSession(
+            trust_env=True,
+            connector=tcp_conn,
+            trace_configs=[fips_tls_trace_config()],
+        )
 
     async def _validate_pgp_signature(self, content: str):
         if shutil.which("gpgv"):
