@@ -9,6 +9,7 @@ from macaroonbakery import bakery
 from macaroonbakery.httpbakery import BAKERY_PROTOCOL_HEADER, ThirdPartyLocator
 
 from maascommon.constants import SYSTEM_CA_FILE
+from maasservicelayer.logging.tls import fips_tls_trace_config
 
 
 class AsyncThirdPartyLocator(ThirdPartyLocator):
@@ -34,6 +35,7 @@ class AsyncThirdPartyLocator(ThirdPartyLocator):
             trust_env=True,
             cookie_jar=CookieJar(unsafe=True),
             connector=tcp_conn,
+            trace_configs=[fips_tls_trace_config()],
         )
 
     async def third_party_info(self, loc):

@@ -14,6 +14,7 @@ from maascommon.logging.security import (
     log_fips_driver_rejected,
     log_fips_ssh_authentication,
     log_fips_tls_handshake,
+    log_fips_tls_handshake_from_sslobj,
 )
 
 
@@ -230,3 +231,50 @@ class TestLogFipsDriverRejected:
             record.__dict__["reason"]
             == "SNMPv1 — no FIPS-approved authentication"
         )
+
+
+class TestLogFipsTlsHandshakeFromSslobj:
+    def test_noop_when_ssl_object_is_none(self, caplog, mocker):
+        mocker.patch("maascommon.fips.is_fips_enabled", return_value=True)
+        with caplog.at_level(logging.INFO, logger="maas.fips"):
+            log_fips_tls_handshake_from_sslobj(None, peer="10.0.0.1:443")
+        assert caplog.records == []
+
+    def test_noop_when_not_fips(self, caplog, mocker):
+        mocker.patch("maascommon.fips.is_fips_enabled", return_value=False)
+        ssl_object = _FakeSSLObject(
+            cipher=("ECDHE-RSA-AES256-GCM-SHA384", "TLSv1.3", 256),
+        )
+        with caplog.at_level(logging.INFO, logger="maas.fips"):
+            log_fips_tls_handshake_from_sslobj(ssl_object, peer="10.0.0.1:443")
+        assert caplog.records == []
+
+    def test_emits_negotiated_values_when_fips(self, caplog, mocker):
+        mocker.patch("maascommon.fips.is_fips_enabled", return_value=True)
+        ssl_object = _FakeSSLObject(
+            cipher=("ECDHE-RSA-AES256-GCM-SHA384", "TLSv1.3", 256),
+            peercert={"issuer": (((("commonName", "My CA"),),))},
+            version="TLSv1.3",
+        )
+        with caplog.at_level(logging.INFO, logger="maas.fips"):
+            log_fips_tls_handshake_from_sslobj(ssl_object, peer="10.0.0.1:443")
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert FIPS_TLS_HANDSHAKE in record.message
+        assert record.__dict__["cipher_suite"] == "ECDHE-RSA-AES256-GCM-SHA384"
+        assert record.__dict__["protocol_version"] == "TLSv1.3"
+        assert record.__dict__["peer"] == "10.0.0.1:443"
+        assert record.__dict__["cert_issuer"] == "My CA"
+        assert record.__dict__["cert_valid"] is True
+
+    def test_unknown_values_when_cert_absent(self, caplog, mocker):
+        mocker.patch("maascommon.fips.is_fips_enabled", return_value=True)
+        # verify=False connections yield an empty peer cert dict.
+        ssl_object = _FakeSSLObject(cipher=None, peercert={}, version=None)
+        with caplog.at_level(logging.INFO, logger="maas.fips"):
+            log_fips_tls_handshake_from_sslobj(ssl_object, peer="10.0.0.1:443")
+        record = caplog.records[0]
+        assert record.__dict__["cipher_suite"] == "unknown"
+        assert record.__dict__["protocol_version"] == "unknown"
+        assert record.__dict__["cert_issuer"] == "unknown"
+        assert record.__dict__["cert_valid"] is False
