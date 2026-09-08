@@ -209,14 +209,14 @@ def make_ssh_client() -> SSHClient:
     return client
 
 
-def _get_server_cipher_and_mac(host: str, port: int = 22) -> dict[str, str]:
+def _get_server_cipher_and_mac(host: str, timeout: int = 5) -> dict[str, str]:
     """Probes an SSH server to determine its offered cryptographic algorithms."""
     algorithms = {}
     try:
-        with socket.create_connection((host, port), timeout=5) as sock:
+        with socket.create_connection((host, 22), timeout=timeout) as sock:
             with Transport(sock) as t:
                 try:
-                    t.start_client(timeout=5)
+                    t.start_client(timeout=timeout)
                 except SSHException:
                     # We expect this to fail during negotiation or auth
                     pass

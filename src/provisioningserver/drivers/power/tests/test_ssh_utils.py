@@ -159,27 +159,17 @@ class TestGetServerCipherAndMac(MAASTestCase):
         probe = transport.return_value.__enter__.return_value
         probe.remote_cipher = "aes128-ctr"
         probe.remote_mac = "hmac-sha2-256"
+        timeout = 3
 
-        result = ssh_utils_module._get_server_cipher_and_mac("host", 2222)
+        result = ssh_utils_module._get_server_cipher_and_mac(
+            "host", timeout=timeout
+        )
 
         self.assertEqual(
             result, {"cipher": "aes128-ctr", "mac": "hmac-sha2-256"}
         )
         ssh_utils_module.socket.create_connection.assert_called_once_with(
-            ("host", 2222), timeout=5
-        )
-
-    def test_defaults_to_port_22(self):
-        self.patch(ssh_utils_module.socket, "create_connection")
-        transport = self.patch(ssh_utils_module, "Transport")
-        probe = transport.return_value.__enter__.return_value
-        probe.remote_cipher = "aes128-ctr"
-        probe.remote_mac = "hmac-sha2-256"
-
-        ssh_utils_module._get_server_cipher_and_mac("host")
-
-        ssh_utils_module.socket.create_connection.assert_called_once_with(
-            ("host", 22), timeout=5
+            ("host", 22), timeout=timeout
         )
 
     def test_swallows_ssh_exception_during_negotiation(self):
@@ -214,6 +204,11 @@ class TestConnectSshClientFipsErrorLogging(MAASTestCase):
     def _enable_fips(self):
         original = ssh_utils_module.is_fips_enabled
         ssh_utils_module.is_fips_enabled = lambda: True
+        self.addCleanup(setattr, ssh_utils_module, "is_fips_enabled", original)
+
+    def _disable_fips(self):
+        original = ssh_utils_module.is_fips_enabled
+        ssh_utils_module.is_fips_enabled = lambda: False
         self.addCleanup(setattr, ssh_utils_module, "is_fips_enabled", original)
 
     def test_logs_cipher_on_no_acceptable_ciphers(self):
@@ -293,8 +288,7 @@ class TestConnectSshClientFipsErrorLogging(MAASTestCase):
         )
 
     def test_does_not_log_when_fips_disabled(self):
-        if is_fips_enabled():
-            self.skipTest("Running on a FIPS host")
+        self._disable_fips()
         client = Mock(spec=SSHClient)
         client.connect.side_effect = SSHException("no acceptable ciphers")
         self.patch(ssh_utils_module, "_get_server_cipher_and_mac")
