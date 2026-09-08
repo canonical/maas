@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import socket
 from typing import Any, Callable
 
@@ -221,8 +222,8 @@ def _get_server_cipher_and_mac(host: str, timeout: int = 5) -> dict[str, str]:
                     # We expect this to fail during negotiation or auth
                     pass
                 algorithms = {
-                    "cipher": getattr(t, "remote_cipher", "unknown"),
-                    "mac": getattr(t, "remote_mac", "unknown"),
+                    "cipher": getattr(t, "remote_cipher", "") or "unknown",
+                    "mac": getattr(t, "remote_mac", "") or "unknown",
                 }
     except Exception:
         algorithms["cipher"] = "unknown"
@@ -246,13 +247,12 @@ def connect_ssh_client(
             **get_fips_transport_options(),
         )
     except SSHException as exc:
-        algorithms = _get_server_cipher_and_mac(power_address)
         if is_fips_enabled():
             algorithm = "unknown"
-            if "no acceptable ciphers" in str(exc).lower():
-                algorithm = algorithms.get("cipher", "unknown")
-            elif "no acceptable macs" in str(exc).lower():
-                algorithm = algorithms.get("mac", "unknown")
+            match = re.search(r"no acceptable (cipher|mac)s", str(exc).lower())
+            if match:
+                algorithms = _get_server_cipher_and_mac(power_address)
+                algorithm = algorithms.get(match.group(1), "unknown")
             log_fips_crypto_error(
                 operation="ssh_negotiation",
                 error=str(exc),

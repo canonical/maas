@@ -271,6 +271,9 @@ class TestConnectSshClientFipsErrorLogging(MAASTestCase):
             ssh_utils_module, "_get_server_cipher_and_mac"
         ).return_value = {"cipher": "aes256-cbc", "mac": "hmac-md5"}
         log = self.patch(ssh_utils_module, "log_fips_crypto_error")
+        get_cipher_and_mac = self.patch(
+            ssh_utils_module, "_get_server_cipher_and_mac"
+        )
 
         self.assertRaises(
             SSHException,
@@ -280,6 +283,7 @@ class TestConnectSshClientFipsErrorLogging(MAASTestCase):
             power_user="user",
             power_pass="pw",
         )
+        get_cipher_and_mac.assert_not_called()
         log.assert_called_once_with(
             operation="ssh_negotiation",
             error="Authentication failed",
@@ -293,6 +297,9 @@ class TestConnectSshClientFipsErrorLogging(MAASTestCase):
         client.connect.side_effect = SSHException("no acceptable ciphers")
         self.patch(ssh_utils_module, "_get_server_cipher_and_mac")
         log = self.patch(ssh_utils_module, "log_fips_crypto_error")
+        get_cipher_and_mac = self.patch(
+            ssh_utils_module, "_get_server_cipher_and_mac"
+        )
 
         self.assertRaises(
             SSHException,
@@ -302,6 +309,7 @@ class TestConnectSshClientFipsErrorLogging(MAASTestCase):
             power_user="user",
             power_pass="pw",
         )
+        get_cipher_and_mac.assert_not_called()
         log.assert_not_called()
 
     def test_reraises_original_exception(self):
