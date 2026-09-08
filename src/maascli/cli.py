@@ -268,6 +268,22 @@ REGIOND_COMMANDS = (
     ("changepassword", "maasserver"),
 )
 
+# All entries here must also be present in REGIOND_COMMANDS above.
+# These commands require the region database and have no rack-side
+# equivalent. Hidden on a rack-only snap, which has no local database.
+DB_ONLY_REGIOND_COMMANDS = frozenset(
+    {
+        "apikey",
+        "configauth",
+        "config-tls",
+        "config-vault",
+        "msm",
+        "createadmin",
+        "changepassword",
+    }
+)
+assert DB_ONLY_REGIOND_COMMANDS <= {name for name, _ in REGIOND_COMMANDS}
+
 
 def register_cli_commands(parser):
     """Register the CLI's meta-subcommands on `parser`."""
@@ -300,10 +316,20 @@ def register_cli_commands(parser):
             ("status", snap.cmd_status),
             ("migrate", snap.cmd_migrate),
         ]
+        # A rack-only snap has no local database, so DB-only regiond
+        # commands (which have no rack-side equivalent) must be hidden.
+        skip_regiond_commands = (
+            DB_ONLY_REGIOND_COMMANDS
+            if "SNAP_COMMON" in os.environ
+            and snap.get_current_mode() == "rack"
+            else frozenset()
+        )
     elif is_maasserver_available():
         extra_commands = [("init", cmd_init)]
+        skip_regiond_commands = frozenset()
     else:
         extra_commands = []
+        skip_regiond_commands = frozenset()
 
     for name, command in extra_commands:
         add_command(name, command)
@@ -314,7 +340,7 @@ def register_cli_commands(parser):
         os.environ.setdefault(
             "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings"
         )
-        load_regiond_commands(management, parser)
+        load_regiond_commands(management, parser, skip=skip_regiond_commands)
 
 
 def get_django_management():
@@ -344,7 +370,7 @@ def run_regiond_command(management, parser):
     management.execute()
 
 
-def load_regiond_commands(management, parser):
+def load_regiond_commands(management, parser, skip=frozenset()):
     """Load the allowed regiond commands into the MAAS cli."""
 
     # XXX: Define custom non-Django Command Management in order to follow
@@ -365,6 +391,8 @@ def load_regiond_commands(management, parser):
     canonicalized_management = CanonicalizedCommandManagement()
 
     for name, app in REGIOND_COMMANDS:
+        if name in skip:
+            continue
         klass = management.load_command_class(app, name.replace("-", "_"))
         help_text = klass.help
         command_parser = parser.subparsers.add_parser(
