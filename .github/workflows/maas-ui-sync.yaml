@@ -19,17 +19,17 @@ jobs:
     name: Sync ${{ matrix.maas_branch }}
     runs-on: ubuntu-24.04
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.maas_branch == 'debug' && github.ref_name || matrix.maas_branch }}
+      group: ${{ github.workflow }}-${{ startsWith(github.ref_name, 'maas-ui-sync-debug-') && github.ref_name || 'sync' }}-${{ matrix.maas_branch }}
       cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:
-        maas_branch: ${{ fromJSON(github.event_name == 'push' && '["debug"]' || '["master", "3.6", "3.7", "3.8"]') }}
+        maas_branch: ["master", "3.6", "3.7", "3.8"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          ref: ${{ matrix.maas_branch == 'debug' && github.ref_name || matrix.maas_branch }}
+          ref: ${{ matrix.maas_branch }}
           submodules: recursive
           fetch-depth: 0
           token: ${{ secrets.LANDER_GH_TOKEN }}
@@ -41,14 +41,10 @@ jobs:
         run: |
           set -o pipefail
 
-          if [[ "$SYNC_BRANCH" == "debug" ]]; then
-            target_branch=$GITHUB_REF_NAME
-            ui_branch=main
-          elif [[ "$SYNC_BRANCH" == "master" ]]; then
-            target_branch=master
+          target_branch=$SYNC_BRANCH
+          if [[ "$SYNC_BRANCH" == "master" ]]; then
             ui_branch=main
           else
-            target_branch=$SYNC_BRANCH
             ui_branch=$SYNC_BRANCH
           fi
 
@@ -183,7 +179,6 @@ jobs:
       - name: Push submodule update
         if: |
           steps.compare.outputs.has_update == 'true' &&
-          matrix.maas_branch != 'debug' &&
           !startsWith(github.ref_name, 'maas-ui-sync-debug-')
         env:
           TARGET_BRANCH: ${{ steps.compare.outputs.target_branch }}
