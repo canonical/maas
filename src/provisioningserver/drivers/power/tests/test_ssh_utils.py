@@ -7,7 +7,7 @@ import json
 import os
 from unittest.mock import Mock
 
-from paramiko import AutoAddPolicy, SSHClient
+from paramiko import AutoAddPolicy, SSHClient, SSHException
 
 from maascommon.fips import FIPS_SSH_CONFIG, is_fips_enabled
 from maastesting.testcase import MAASTestCase
@@ -148,6 +148,189 @@ class TestConnectSshClient(MAASTestCase):
             set(kwargs["disabled_algorithms"].keys()),
             {"ciphers", "kex", "macs", "keys"},
         )
+
+
+class TestGetServerCipherAndMac(MAASTestCase):
+    """Behaviour of :func:`_get_server_cipher_and_mac`."""
+
+    def test_returns_remote_cipher_and_mac(self):
+        self.patch(ssh_utils_module.socket, "create_connection")
+        transport = self.patch(ssh_utils_module, "Transport")
+        probe = transport.return_value.__enter__.return_value
+        probe.remote_cipher = "aes128-ctr"
+        probe.remote_mac = "hmac-sha2-256"
+        timeout = 3
+
+        result = ssh_utils_module._get_server_cipher_and_mac(
+            "host", timeout=timeout
+        )
+
+        self.assertEqual(
+            result, {"cipher": "aes128-ctr", "mac": "hmac-sha2-256"}
+        )
+        ssh_utils_module.socket.create_connection.assert_called_once_with(
+            ("host", 22), timeout=timeout
+        )
+
+    def test_swallows_ssh_exception_during_negotiation(self):
+        self.patch(ssh_utils_module.socket, "create_connection")
+        transport = self.patch(ssh_utils_module, "Transport")
+        probe = transport.return_value.__enter__.return_value
+        probe.start_client.side_effect = SSHException("negotiation failed")
+        probe.remote_cipher = "aes256-gcm@openssh.com"
+        probe.remote_mac = "hmac-sha2-512"
+
+        result = ssh_utils_module._get_server_cipher_and_mac("host")
+
+        self.assertEqual(
+            result,
+            {"cipher": "aes256-gcm@openssh.com", "mac": "hmac-sha2-512"},
+        )
+
+    def test_returns_unknown_on_connection_failure(self):
+        create_connection = self.patch(
+            ssh_utils_module.socket, "create_connection"
+        )
+        create_connection.side_effect = OSError("connection refused")
+
+        result = ssh_utils_module._get_server_cipher_and_mac("host")
+
+        self.assertEqual(result, {"cipher": "unknown", "mac": "unknown"})
+
+
+class TestConnectSshClientFipsErrorLogging(MAASTestCase):
+    """FIPS crypto-error logging in :func:`connect_ssh_client`."""
+
+    def _enable_fips(self):
+        original = ssh_utils_module.is_fips_enabled
+        ssh_utils_module.is_fips_enabled = lambda: True
+        self.addCleanup(setattr, ssh_utils_module, "is_fips_enabled", original)
+
+    def _disable_fips(self):
+        original = ssh_utils_module.is_fips_enabled
+        ssh_utils_module.is_fips_enabled = lambda: False
+        self.addCleanup(setattr, ssh_utils_module, "is_fips_enabled", original)
+
+    def test_logs_cipher_on_no_acceptable_ciphers(self):
+        self._enable_fips()
+        client = Mock(spec=SSHClient)
+        client.connect.side_effect = SSHException(
+            "Incompatible ssh peer (no acceptable ciphers)"
+        )
+        self.patch(
+            ssh_utils_module, "_get_server_cipher_and_mac"
+        ).return_value = {"cipher": "aes256-cbc", "mac": "hmac-md5"}
+        log = self.patch(ssh_utils_module, "log_fips_crypto_error")
+
+        self.assertRaises(
+            SSHException,
+            connect_ssh_client,
+            client,
+            power_address="host",
+            power_user="user",
+            power_pass="pw",
+        )
+        log.assert_called_once_with(
+            operation="ssh_negotiation",
+            error="Incompatible ssh peer (no acceptable ciphers)",
+            algorithm="aes256-cbc",
+            peer="host",
+        )
+
+    def test_logs_mac_on_no_acceptable_macs(self):
+        self._enable_fips()
+        client = Mock(spec=SSHClient)
+        client.connect.side_effect = SSHException(
+            "Incompatible ssh server (no acceptable macs)"
+        )
+        self.patch(
+            ssh_utils_module, "_get_server_cipher_and_mac"
+        ).return_value = {"cipher": "aes256-cbc", "mac": "hmac-md5"}
+        log = self.patch(ssh_utils_module, "log_fips_crypto_error")
+
+        self.assertRaises(
+            SSHException,
+            connect_ssh_client,
+            client,
+            power_address="host",
+            power_user="user",
+            power_pass="pw",
+        )
+        log.assert_called_once_with(
+            operation="ssh_negotiation",
+            error="Incompatible ssh server (no acceptable macs)",
+            algorithm="hmac-md5",
+            peer="host",
+        )
+
+    def test_logs_unknown_algorithm_on_other_ssh_exception(self):
+        self._enable_fips()
+        client = Mock(spec=SSHClient)
+        client.connect.side_effect = SSHException("Authentication failed")
+        self.patch(
+            ssh_utils_module, "_get_server_cipher_and_mac"
+        ).return_value = {"cipher": "aes256-cbc", "mac": "hmac-md5"}
+        log = self.patch(ssh_utils_module, "log_fips_crypto_error")
+        get_cipher_and_mac = self.patch(
+            ssh_utils_module, "_get_server_cipher_and_mac"
+        )
+
+        self.assertRaises(
+            SSHException,
+            connect_ssh_client,
+            client,
+            power_address="host",
+            power_user="user",
+            power_pass="pw",
+        )
+        get_cipher_and_mac.assert_not_called()
+        log.assert_called_once_with(
+            operation="ssh_negotiation",
+            error="Authentication failed",
+            algorithm="unknown",
+            peer="host",
+        )
+
+    def test_does_not_log_when_fips_disabled(self):
+        self._disable_fips()
+        client = Mock(spec=SSHClient)
+        client.connect.side_effect = SSHException("no acceptable ciphers")
+        self.patch(ssh_utils_module, "_get_server_cipher_and_mac")
+        log = self.patch(ssh_utils_module, "log_fips_crypto_error")
+        get_cipher_and_mac = self.patch(
+            ssh_utils_module, "_get_server_cipher_and_mac"
+        )
+
+        self.assertRaises(
+            SSHException,
+            connect_ssh_client,
+            client,
+            power_address="host",
+            power_user="user",
+            power_pass="pw",
+        )
+        get_cipher_and_mac.assert_not_called()
+        log.assert_not_called()
+
+    def test_reraises_original_exception(self):
+        self._enable_fips()
+        client = Mock(spec=SSHClient)
+        original = SSHException("no acceptable ciphers")
+        client.connect.side_effect = original
+        self.patch(
+            ssh_utils_module, "_get_server_cipher_and_mac"
+        ).return_value = {"cipher": "aes256-cbc", "mac": "hmac-md5"}
+        self.patch(ssh_utils_module, "log_fips_crypto_error")
+
+        raised = self.assertRaises(
+            SSHException,
+            connect_ssh_client,
+            client,
+            power_address="host",
+            power_user="user",
+            power_pass="pw",
+        )
+        self.assertIs(raised, original)
 
 
 class TestTrustedHostKeyPolicy(MAASTestCase):
