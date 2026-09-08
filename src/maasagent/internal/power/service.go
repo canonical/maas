@@ -314,7 +314,7 @@ func (s *PowerService) PowerReset(ctx context.Context, param PowerResetParam) (*
 type SetBootOrderParam struct {
 	SystemID    string           `json:"system_id"`
 	Order       []map[string]any `json:"order"`
-	PowerParams PowerParam       `json:"power_param"`
+	PowerParams PowerParam       `json:"power_params"`
 }
 
 func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam) error {
@@ -322,7 +322,7 @@ func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam
 
 	log.Info("setting boot order of " + param.SystemID)
 
-	_, err := powerCommand(ctx, "set-boot-order", false, param.PowerParams.DriverType, param.PowerParams.DriverOpts, param.Order...)
+	_, err := powerCommand(ctx, "set-boot-order", false, param.PowerParams.DriverType, param.PowerParams.DriverOpts, param.PowerParams.TrustedSSHHostKeys, param.Order...)
 
 	return err
 }

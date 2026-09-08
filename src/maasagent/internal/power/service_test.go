@@ -617,10 +617,11 @@ func TestSetBootOrder(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, _, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, _, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		return mockedPowerProc
@@ -661,10 +662,11 @@ func TestSetBootOrderEmptyOrderOmitsFlag(t *testing.T) {
 
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, _, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, _, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		return mockedPowerProc
@@ -861,11 +863,18 @@ func TestSetBootOrderWithTrustedSSHHostKeys(t *testing.T) {
 		Order: []map[string]any{{"boot_type": "network", "device": "pxe"}},
 	}
 
-	expectedArgs := []string{"set-boot-order", "wedge", "--order", `'{"boot_type":"network","device":"pxe"}'`, "--power-address", "10.0.0.1", "--power-pass", "maas", "--power-user", "maas"}
+	orderJSON, err := json.Marshal(param.Order)
+	assert.NoError(t, err)
+
+	expectedArgs := append(
+		[]string{"set-boot-order", param.PowerParams.DriverType},
+		fmtPowerOpts(param.PowerParams.DriverOpts)...,
+	)
+	expectedArgs = append(expectedArgs, "--order", string(orderJSON))
 
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, _, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
@@ -885,7 +894,7 @@ func TestSetBootOrderWithTrustedSSHHostKeys(t *testing.T) {
 	env := testSuite.NewTestActivityEnvironment()
 	env.RegisterActivity(ps.SetBootOrder)
 
-	_, err := env.ExecuteActivity(ps.SetBootOrder, param)
+	_, err = env.ExecuteActivity(ps.SetBootOrder, param)
 
 	assert.Equal(t, expectedMAASCLIName, mockedPowerProc.name)
 	assert.ElementsMatch(t, expectedArgs, mockedPowerProc.arg)
