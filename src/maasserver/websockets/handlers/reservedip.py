@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The Reserved IP handler for the WebSocket connection"""
@@ -10,6 +10,7 @@ from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.forms.reservedip import ReservedIPForm
 from maasserver.models import Interface
 from maasserver.models.reservedip import ReservedIP
+from maasserver.permissions import NodePermission
 from maasserver.utils.orm import post_commit_do
 from maasserver.websockets.base import (
     HandlerPermissionError,
@@ -36,6 +37,7 @@ class ReservedIPHandler(TimestampedModelHandler):
             "get",
             "list",
         ]
+        view_permission = NodePermission.view
 
     def _load_extra_data_before_dehydrate(self, objs, for_list=False):
         # We want to fetch all the nodes related to the reserved ips in just one shot.

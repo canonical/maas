@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The VLAN handler for the WebSocket connection."""
@@ -44,6 +44,7 @@ class VLANHandler(TimestampedModelHandler):
             "delete",
         ]
         listen_channels = ["vlan"]
+        view_permission = NodePermission.view
 
     def dehydrate_primary_rack(self, rack):
         if rack is None:

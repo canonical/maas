@@ -6,6 +6,7 @@
 from maasserver.authorization import can_edit_global_entities
 from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
+from maasserver.permissions import NodePermission
 from maasserver.websockets.base import HandlerPermissionError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -20,6 +21,7 @@ class StaticRouteHandler(TimestampedModelHandler):
         form_requires_request = False
         allowed_methods = ["list", "get", "create", "update", "delete"]
         listen_channels = ["staticroute"]
+        view_permission = NodePermission.view
 
     def create(self, params):
         """Create a static route."""

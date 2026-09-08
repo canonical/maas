@@ -1,10 +1,10 @@
-# Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The Script handler for the WebSocket connection."""
 
+from maasserver.authorization import can_edit_global_entities
 from maasserver.models import Script
-from maasserver.permissions import NodePermission
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerPermissionError,
@@ -27,7 +27,7 @@ class ScriptHandler(TimestampedModelHandler):
 
     def delete(self, params):
         script = self.get_object(params)
-        if not self.user.has_perm(NodePermission.admin) or script.default:
+        if not can_edit_global_entities(self.user) or script.default:
             raise HandlerPermissionError()
         script.delete()
 

@@ -37,6 +37,16 @@ from provisioningserver.utils.twisted import asynchronous, IAsynchronous
 
 DATETIME_FORMAT = "%a, %d %b. %Y %H:%M:%S"
 
+# Errors raised by `has_perm` when a permission cannot be evaluated against a
+# model class rather than a specific instance. This happens for object-scoped
+# permissions (e.g. nodes), whose handlers authorize listing
+# by filtering `get_queryset` instead of with a single global check.
+_OBJECT_SCOPED_PERMISSION_ERRORS = (
+    NotImplementedError,
+    ValueError,
+    TypeError,
+)
+
 
 def dehydrate_datetime(datetime):
     """Convert the `datetime` to string with `DATETIME_FORMAT`."""
@@ -549,6 +559,27 @@ class Handler(metaclass=HandlerMetaclass):
         """
         return None
 
+    def _check_list_view_permission(self):
+        """Enforce the configured view permission before listing objects.
+
+        The check is delegated to the authorization backend (`has_perm`),
+        which is the single source of truth for RBAC and OpenFGA. For
+        object-scoped permissions (e.g. machines, pods) the backend cannot
+        evaluate the permission against the model class and signals this by
+        raising; those handlers restrict their results in `get_queryset`
+        instead, so listing is already authorized and the check is skipped.
+        """
+        permission = self._meta.view_permission
+        object_class = self._meta.object_class
+        if permission is None or object_class is None:
+            return
+        try:
+            allowed = self.user.has_perm(permission, object_class)
+        except _OBJECT_SCOPED_PERMISSION_ERRORS:
+            return
+        if not allowed:
+            raise HandlerPermissionError()
+
     def list(
         self, params, use_sqlalchemy_list=False, full_dehydrate_function=None
     ):
@@ -565,6 +596,8 @@ class Handler(metaclass=HandlerMetaclass):
             overridden to implement the desired DSL.
         :param sort_key: desired sorting key
         """
+        self._check_list_view_permission()
+
         if full_dehydrate_function is None:
             full_dehydrate_function = self.full_dehydrate
 

@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The subnet handler for the WebSocket connection."""
@@ -38,6 +38,7 @@ class SubnetHandler(TimestampedModelHandler):
             "scan",
         ]
         listen_channels = ["subnet"]
+        view_permission = NodePermission.view
 
     def dehydrate_dns_servers(self, dns_servers):
         if dns_servers is None:

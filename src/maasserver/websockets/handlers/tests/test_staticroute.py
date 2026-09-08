@@ -1,4 +1,4 @@
-# Copyright 2016-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.staticrange`"""
@@ -176,4 +176,20 @@ class TestStaticRouteHandlerOpenFGAIntegration(
         handler.delete({"id": staticroute.id})
         self.openfga_client.can_edit_global_entities.assert_called_once_with(
             user
+        )
+
+    def test_list_requires_can_view_global_entities(self):
+        self.openfga_client.can_view_global_entities.return_value = False
+        user = factory.make_User()
+        factory.make_StaticRoute()
+        handler = StaticRouteHandler(user, {}, None)
+        self.assertRaises(HandlerPermissionError, handler.list, {})
+
+    def test_get_requires_can_view_global_entities(self):
+        self.openfga_client.can_view_global_entities.return_value = False
+        user = factory.make_User()
+        staticroute = factory.make_StaticRoute()
+        handler = StaticRouteHandler(user, {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.get, {"id": staticroute.id}
         )

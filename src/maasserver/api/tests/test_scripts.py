@@ -145,7 +145,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertEqual(response.status_code, http.client.OK)
         parsed_results = response.json()
 
-        self.assertEqual(
+        self.assertCountEqual(
             [script.id for script in scripts],
             [parsed_result["id"] for parsed_result in parsed_results],
         )

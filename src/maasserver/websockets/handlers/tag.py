@@ -1,4 +1,4 @@
-# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from django.db.models import Count, Q, QuerySet
@@ -10,6 +10,7 @@ from maasserver.enum import ENDPOINT, NODE_TYPE
 from maasserver.forms import TagForm
 from maasserver.models.tag import Tag
 from maasserver.node_constraint_filter_forms import FreeTextFilterNodeForm
+from maasserver.permissions import NodePermission
 from maasserver.websockets.base import AdminOnlyMixin, HandlerValidationError
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.timestampedmodel import (
@@ -52,6 +53,7 @@ class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
             "delete",
         ]
         listen_channels = ["tag"]
+        view_permission = NodePermission.view
 
     def _create(self, params):
         obj = super()._create(params)
@@ -110,6 +112,7 @@ class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
 
     def list(self, params):
         """List objects."""
+        self._check_list_view_permission()
         if "node_filter" in params:
             node_ids = self._node_filter(params["node_filter"])
             qs_tags = _annotate_qs_with_counts(
