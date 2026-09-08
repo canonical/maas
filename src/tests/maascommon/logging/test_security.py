@@ -47,11 +47,12 @@ class TestLogFipsTlsHandshake:
         record = caplog.records[0]
         assert record.levelno == logging.INFO
         assert FIPS_TLS_HANDSHAKE in record.message
-        assert "cipher_suite='ECDHE-RSA-AES256-GCM-SHA384'" in record.message
-        assert "protocol_version='TLSv1.3'" in record.message
-        assert "peer='10.0.0.1:443'" in record.message
-        assert "cert_issuer='CN=My CA'" in record.message
-        assert "cert_valid='True'" in record.message
+        assert record.event == FIPS_TLS_HANDSHAKE
+        assert record.cipher_suite == "ECDHE-RSA-AES256-GCM-SHA384"
+        assert record.protocol_version == "TLSv1.3"
+        assert record.peer == "10.0.0.1:443"
+        assert record.cert_issuer == "CN=My CA"
+        assert record.cert_valid is True
 
 
 class TestLogFipsSshAuthentication:
@@ -69,12 +70,13 @@ class TestLogFipsSshAuthentication:
         record = caplog.records[0]
         assert record.levelno == logging.INFO
         assert FIPS_SSH_AUTHENTICATION in record.message
-        assert "key_type='ecdsa-sha2-nistp256'" in record.message
-        assert "kex='ecdh-sha2-nistp256'" in record.message
-        assert "cipher='aes256-ctr'" in record.message
-        assert "mac='hmac-sha2-256'" in record.message
-        assert "peer='10.0.0.2'" in record.message
-        assert "result='success'" in record.message
+        assert record.event == FIPS_SSH_AUTHENTICATION
+        assert record.key_type == "ecdsa-sha2-nistp256"
+        assert record.kex == "ecdh-sha2-nistp256"
+        assert record.cipher == "aes256-ctr"
+        assert record.mac == "hmac-sha2-256"
+        assert record.peer == "10.0.0.2"
+        assert record.result == "success"
 
 
 class TestLogFipsCryptoError:
@@ -90,10 +92,11 @@ class TestLogFipsCryptoError:
         record = caplog.records[0]
         assert record.levelno == logging.ERROR
         assert FIPS_CRYPTO_ERROR in record.message
-        assert "operation='tls_handshake'" in record.message
-        assert "error='weak cipher'" in record.message
-        assert "algorithm='RC4'" in record.message
-        assert "peer='10.0.0.5'" in record.message
+        assert record.event == FIPS_CRYPTO_ERROR
+        assert record.operation == "tls_handshake"
+        assert record.error == "weak cipher"
+        assert record.algorithm == "RC4"
+        assert record.peer == "10.0.0.5"
 
     def test_peer_defaults_to_empty_string(self, caplog):
         with caplog.at_level(logging.ERROR, logger="maas.fips"):
@@ -102,7 +105,7 @@ class TestLogFipsCryptoError:
                 error="DSA not permitted",
                 algorithm="dsa",
             )
-        assert caplog.records[0].message.endswith("peer='')")
+        assert caplog.records[0].peer == ""
 
 
 class TestLogFipsDriverRejected:
@@ -116,11 +119,9 @@ class TestLogFipsDriverRejected:
         record = caplog.records[0]
         assert record.levelno == logging.ERROR
         assert FIPS_DRIVER_REJECTED in record.message
-        assert "driver='apc'" in record.message
-        assert (
-            "reason='SNMPv1 — no FIPS-approved authentication'"
-            in record.message
-        )
+        assert record.event == FIPS_DRIVER_REJECTED
+        assert record.driver == "apc"
+        assert record.reason == "SNMPv1 — no FIPS-approved authentication"
 
 
 class TestLogFipsTlsHandshakeFromSslobj:
@@ -151,11 +152,12 @@ class TestLogFipsTlsHandshakeFromSslobj:
         assert len(caplog.records) == 1
         record = caplog.records[0]
         assert FIPS_TLS_HANDSHAKE in record.message
-        assert "cipher_suite='ECDHE-RSA-AES256-GCM-SHA384'" in record.message
-        assert "protocol_version='TLSv1.3'" in record.message
-        assert "peer='10.0.0.1:443'" in record.message
-        assert "cert_issuer='My CA'" in record.message
-        assert "cert_valid='True'" in record.message
+        assert record.event == FIPS_TLS_HANDSHAKE
+        assert record.cipher_suite == "ECDHE-RSA-AES256-GCM-SHA384"
+        assert record.protocol_version == "TLSv1.3"
+        assert record.peer == "10.0.0.1:443"
+        assert record.cert_issuer == "My CA"
+        assert record.cert_valid is True
 
     def test_unknown_values_when_cert_absent(self, caplog, mocker):
         mocker.patch("maascommon.fips.is_fips_enabled", return_value=True)
@@ -165,8 +167,9 @@ class TestLogFipsTlsHandshakeFromSslobj:
             log_fips_tls_handshake_from_sslobj(ssl_object, peer="10.0.0.1:443")
         record = caplog.records[0]
         assert FIPS_TLS_HANDSHAKE in record.message
-        assert "cipher_suite='unknown'" in record.message
-        assert "protocol_version='unknown'" in record.message
-        assert "peer='10.0.0.1:443'" in record.message
-        assert "cert_issuer='unknown'" in record.message
-        assert "cert_valid='False'" in record.message
+        assert record.event == FIPS_TLS_HANDSHAKE
+        assert record.cipher_suite == "unknown"
+        assert record.protocol_version == "unknown"
+        assert record.peer == "10.0.0.1:443"
+        assert record.cert_issuer == "unknown"
+        assert record.cert_valid is False

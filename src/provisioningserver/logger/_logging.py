@@ -91,7 +91,14 @@ def get_logging_config(verbosity: int):
                 "format": DEFAULT_LOG_FORMAT,
                 "datefmt": "",  # To prevent using the default format
             },
-            "syslog": {"format": "%(name)s: [%(levelname)s] %(message)s"},
+            "syslog": {
+                "format": "%(name)s: [%(levelname)s] %(message)s",
+            },
+            # JSON formatter matching maasapiserver / temporal worker output,
+            # so FIPS audit records serialise identically across components.
+            "fips_json": {
+                "()": "maasservicelayer.logging.configure.CustomJsonFormatter",
+            },
         },
         "handlers": {
             "stdout": {
@@ -104,6 +111,17 @@ def get_logging_config(verbosity: int):
                 "facility": logging.handlers.SysLogHandler.LOG_DAEMON,
                 "address": get_syslog_address_path(),
                 "formatter": "syslog",
+            },
+            "fips_stdout": {
+                "class": "logging.StreamHandler",
+                "stream": sys.__stdout__,
+                "formatter": "fips_json",
+            },
+            "fips_syslog": {
+                "class": "provisioningserver.logger.MAASSysLogHandler",
+                "facility": logging.handlers.SysLogHandler.LOG_DAEMON,
+                "address": get_syslog_address_path(),
+                "formatter": "fips_json",
             },
         },
         "root": {
@@ -119,6 +137,14 @@ def get_logging_config(verbosity: int):
                 "level": get_logging_level(verbosity),
                 "handlers": [] if is_dev else ["syslog"],
                 "propagate": is_dev,
+            },
+            # FIPS audit records are emitted as JSON (matching the apiserver /
+            # temporal worker) instead of the plaintext `maas` format. It does
+            # not propagate, so it never hits the parent `maas` handlers.
+            "maas.fips": {
+                "level": get_logging_level(verbosity),
+                "handlers": ["fips_stdout"] if is_dev else ["fips_syslog"],
+                "propagate": False,
             },
             # The `requests` and `urllib3` modules talk too much.
             "requests": {"level": get_logging_level(verbosity - 1)},
