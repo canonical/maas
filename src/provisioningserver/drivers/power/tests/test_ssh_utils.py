@@ -214,9 +214,7 @@ class TestConnectSshClientFipsErrorLogging(MAASTestCase):
     def _enable_fips(self):
         original = ssh_utils_module.is_fips_enabled
         ssh_utils_module.is_fips_enabled = lambda: True
-        self.addCleanup(
-            setattr, ssh_utils_module, "is_fips_enabled", original
-        )
+        self.addCleanup(setattr, ssh_utils_module, "is_fips_enabled", original)
 
     def test_logs_cipher_on_no_acceptable_ciphers(self):
         self._enable_fips()
