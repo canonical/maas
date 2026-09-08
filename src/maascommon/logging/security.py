@@ -24,16 +24,14 @@ def log_fips_tls_handshake(
     cert_valid: bool,
 ) -> None:
     _log.info(
-        "%s",
+        "%s (cipher_suite=%s protocol_version=%s peer=%s "
+        "cert_issuer=%s cert_valid=%s)",
         FIPS_TLS_HANDSHAKE,
-        extra={
-            "event": FIPS_TLS_HANDSHAKE,
-            "cipher_suite": cipher_suite,
-            "protocol_version": protocol_version,
-            "peer": peer,
-            "cert_issuer": cert_issuer,
-            "cert_valid": cert_valid,
-        },
+        cipher_suite,
+        protocol_version,
+        peer,
+        cert_issuer,
+        cert_valid,
     )
 
 
@@ -80,17 +78,14 @@ def log_fips_ssh_authentication(
     result: str,
 ) -> None:
     _log.info(
-        "%s",
+        "%s (key_type=%s kex=%s cipher=%s mac=%s peer=%s result=%s)",
         FIPS_SSH_AUTHENTICATION,
-        extra={
-            "event": FIPS_SSH_AUTHENTICATION,
-            "key_type": key_type,
-            "kex": kex,
-            "cipher": cipher,
-            "mac": mac,
-            "peer": peer,
-            "result": result,
-        },
+        key_type,
+        kex,
+        cipher,
+        mac,
+        peer,
+        result,
     )
 
 
@@ -102,25 +97,19 @@ def log_fips_crypto_error(
     peer: str = "",
 ) -> None:
     _log.error(
-        "%s",
+        "%s (operation=%s error=%s algorithm=%s peer=%s)",
         FIPS_CRYPTO_ERROR,
-        extra={
-            "event": FIPS_CRYPTO_ERROR,
-            "operation": operation,
-            "error": error,
-            "algorithm": algorithm,
-            "peer": peer,
-        },
+        operation,
+        error,
+        algorithm,
+        peer,
     )
 
 
 def log_fips_driver_rejected(*, driver: str, reason: str) -> None:
     _log.error(
-        "%s",
+        "%s (driver=%s reason=%s)",
         FIPS_DRIVER_REJECTED,
-        extra={
-            "event": FIPS_DRIVER_REJECTED,
-            "driver": driver,
-            "reason": reason,
-        },
+        driver,
+        reason,
     )
