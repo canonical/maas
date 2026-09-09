@@ -75,6 +75,24 @@ def get_syslog_address_path() -> str:
     return os.sep.join([path, "rsyslog", "log.sock"])
 
 
+def make_fips_syslog_formatter():
+    """Build the JSON formatter used for FIPS audit records over syslog.
+
+    The rendered JSON is prefixed with the logger name (`maas.fips:`) so that
+    rsyslog parses a `maas`-containing syslog tag and routes the record to the
+    MAAS journal; rsyslog then strips the tag, leaving standalone JSON. The
+    import is deferred so the servicelayer isn't pulled in until logging is
+    actually configured.
+    """
+    from maasservicelayer.logging.configure import CustomJsonFormatter
+
+    class _FipsSyslogFormatter(CustomJsonFormatter):
+        def format(self, record: logging.LogRecord) -> str:
+            return f"{record.name}: {super().format(record)}"
+
+    return _FipsSyslogFormatter()
+
+
 def get_logging_config(verbosity: int):
     """Return a configuration dict usable with `logging.config.dictConfig`.
 
@@ -92,6 +110,16 @@ def get_logging_config(verbosity: int):
                 "datefmt": "",  # To prevent using the default format
             },
             "syslog": {"format": "%(name)s: [%(levelname)s] %(message)s"},
+            # Pure JSON for stdout capture (dev): journald reads stdout
+            # directly, so no syslog tag is needed.
+            "fips_json": {
+                "()": "maasservicelayer.logging.configure.CustomJsonFormatter",
+            },
+            # Tag-prefixed JSON for the syslog path (production): the tag lets
+            # rsyslog route the record; rsyslog strips it back to pure JSON.
+            "fips_syslog": {
+                "()": "provisioningserver.logger._logging.make_fips_syslog_formatter",
+            },
         },
         "handlers": {
             "stdout": {
@@ -104,6 +132,17 @@ def get_logging_config(verbosity: int):
                 "facility": logging.handlers.SysLogHandler.LOG_DAEMON,
                 "address": get_syslog_address_path(),
                 "formatter": "syslog",
+            },
+            "fips_stdout": {
+                "class": "logging.StreamHandler",
+                "stream": sys.__stdout__,
+                "formatter": "fips_json",
+            },
+            "fips_syslog": {
+                "class": "provisioningserver.logger.MAASSysLogHandler",
+                "facility": logging.handlers.SysLogHandler.LOG_DAEMON,
+                "address": get_syslog_address_path(),
+                "formatter": "fips_syslog",
             },
         },
         "root": {
@@ -119,6 +158,14 @@ def get_logging_config(verbosity: int):
                 "level": get_logging_level(verbosity),
                 "handlers": [] if is_dev else ["syslog"],
                 "propagate": is_dev,
+            },
+            # FIPS audit records are emitted as JSON (matching the apiserver /
+            # temporal worker) rather than the plaintext `maas` format. They do
+            # not propagate, so they never hit the parent `maas` handlers.
+            "maas.fips": {
+                "level": get_logging_level(verbosity),
+                "handlers": ["fips_stdout"] if is_dev else ["fips_syslog"],
+                "propagate": False,
             },
             # The `requests` and `urllib3` modules talk too much.
             "requests": {"level": get_logging_level(verbosity - 1)},
