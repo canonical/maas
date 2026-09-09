@@ -248,17 +248,16 @@ def connect_ssh_client(
         )
     except SSHException as exc:
         if is_fips_enabled():
-            algorithm = "unknown"
             match = re.search(r"no acceptable (cipher|mac)s", str(exc).lower())
             if match:
                 algorithms = _get_server_cipher_and_mac(power_address)
                 algorithm = algorithms.get(match.group(1), "unknown")
-            log_fips_crypto_error(
-                operation="ssh_negotiation",
-                error=str(exc),
-                algorithm=algorithm,
-                peer=power_address,
-            )
+                log_fips_crypto_error(
+                    operation="ssh_negotiation",
+                    error=str(exc),
+                    algorithm=algorithm,
+                    peer=power_address,
+                )
         raise
     if is_fips_enabled():
         transport = client.get_transport()
