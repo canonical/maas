@@ -31,6 +31,18 @@ class TrustedSshHostKeysService(
         super().__init__(context, repository)
 
     async def pre_create_hook(self, builder: TrustedSshHostKeyBuilder) -> None:
+        self._validate_fips_public_key(builder)
+
+    async def pre_update_instance(
+        self,
+        existing_resource: TrustedSshHostKey,
+        builder: TrustedSshHostKeyBuilder,
+    ) -> None:
+        self._validate_fips_public_key(builder)
+
+    def _validate_fips_public_key(
+        self, builder: TrustedSshHostKeyBuilder
+    ) -> None:
         if is_fips_enabled():
             normalized_key = f"{builder.key_type} {builder.public_key}"
             violation = validate_fips_ssh_public_key(normalized_key)
