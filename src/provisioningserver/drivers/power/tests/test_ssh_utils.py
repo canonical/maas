@@ -263,13 +263,10 @@ class TestConnectSshClientFipsErrorLogging(MAASTestCase):
             peer="host",
         )
 
-    def test_logs_unknown_algorithm_on_other_ssh_exception(self):
+    def test_does_not_log_on_other_ssh_exception(self):
         self._enable_fips()
         client = Mock(spec=SSHClient)
         client.connect.side_effect = SSHException("Authentication failed")
-        self.patch(
-            ssh_utils_module, "_get_server_cipher_and_mac"
-        ).return_value = {"cipher": "aes256-cbc", "mac": "hmac-md5"}
         log = self.patch(ssh_utils_module, "log_fips_crypto_error")
         get_cipher_and_mac = self.patch(
             ssh_utils_module, "_get_server_cipher_and_mac"
@@ -284,12 +281,7 @@ class TestConnectSshClientFipsErrorLogging(MAASTestCase):
             power_pass="pw",
         )
         get_cipher_and_mac.assert_not_called()
-        log.assert_called_once_with(
-            operation="ssh_negotiation",
-            error="Authentication failed",
-            algorithm="unknown",
-            peer="host",
-        )
+        log.assert_not_called()
 
     def test_does_not_log_when_fips_disabled(self):
         self._disable_fips()
