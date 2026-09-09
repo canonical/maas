@@ -391,7 +391,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
                 ]
             )
 
-        if current_password and not PBKDF2PasswordHasher().verify(
+        if current_password is not None and not PBKDF2PasswordHasher().verify(
             current_password, user.password
         ):
             raise BadRequestException(

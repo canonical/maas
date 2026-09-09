@@ -87,7 +87,7 @@ class UserUpdateRequestSelf(BaseUserRequest):
 
     @model_validator(mode="after")
     def check_passwords(self):
-        if self.new_password and self.current_password is None:
+        if self.new_password is not None and self.current_password is None:
             raise ValueError(
                 "The current password must be provided when changing password."
             )
@@ -96,7 +96,7 @@ class UserUpdateRequestSelf(BaseUserRequest):
     def to_builder(self) -> UserBuilder:
         password = (
             UserBuilder.hash_password(self.new_password)
-            if self.new_password
+            if self.new_password is not None
             else UNSET
         )
         return UserBuilder(
@@ -120,7 +120,7 @@ class UserUpdateRequestAdmin(BaseUserRequest):
     def to_builder(self) -> UserBuilder:
         password = (
             UserBuilder.hash_password(self.password)
-            if self.password
+            if self.password is not None
             else UNSET
         )
         return UserBuilder(
