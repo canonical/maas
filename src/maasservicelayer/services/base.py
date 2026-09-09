@@ -220,6 +220,12 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         """
         return None
 
+    async def pre_update_hook(self, builder: B) -> None:
+        """
+        Override this function in your Service to perform pre-hooks for the object to update
+        """
+        return None
+
     async def pre_update_instance(
         self, existing_resource: M, builder: B
     ) -> None:
@@ -266,6 +272,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
                 ]
             )
 
+        await self.pre_update_hook(builder)
         await self.pre_update_instance(existing_resource, builder)
         self.etag_check(existing_resource, etag_if_match)
         updated_resource = await self.repository.update_by_id(
