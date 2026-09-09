@@ -4,11 +4,34 @@
 
 This section recaps the release history of MAAS version 3.4.
 
+### MAAS 3.4.11 has been released
+
+We are happy to announce that MAAS 3.4.11 has been released, with the following bug fixes:
+
+- [2143090](https://bugs.launchpad.net/bugs/2143090): Unable to Resize Dynamic Range Reservations if any IP in the Range is Allocated
+- [2161260](https://bugs.launchpad.net/bugs/2161260): 64KB packet hard limit on DHCP configuration RPC
+- [2161952](https://bugs.launchpad.net/bugs/2161952): Several MAAS code paths perform N+1 node queries on large deployments
+- [1980000](https://bugs.launchpad.net/bugs/1980000): dhcpd.conf not written due to byte size of hosts value in rpc
+
+### MAAS 3.4.10 has been released
+
+We are happy to announce that MAAS 3.4.10 has been released, with the following bug fixes:
+
+- [2111831](https://bugs.launchpad.net/bugs/2111831): MAAS snap uses setuptools from pip - UserWarning: pkg_resources is deprecated as an API.
+- [2130237](https://bugs.launchpad.net/bugs/2130237): RPC RegisterRackController can saturate all the database threads, causing region controllers to become unresponsive for minutes
+- [2130269](https://bugs.launchpad.net/bugs/2130269): Build is failing to download pre-built UI assets
+
+### MAAS 3.4.9 has been released
+
+We are happy to announce that MAAS 3.4.9 has been released, with the following bug fixes:
+
+- [2091271](https://bugs.launchpad.net/bugs/2091271): HW sync is not able to detect a bridge interface configured with OVS
+- [2115714](https://bugs.launchpad.net/bugs/2115714): local privilege escalation: users can self-promote to admin
+
 ### MAAS 3.4.8 has been released
 
 We are happy to announce that MAAS 3.4.8 has been released, with the following bug fixes:
 
-- [2091271](https://bugs.launchpad.net/bugs/2091271): HW sync is not able to detect a bridge interface configured with OVS
 - [2095477](https://bugs.launchpad.net/bugs/2095477): boot-resources read is slow when there are a lot of images that have been deployed a lot of times
 - [2104260](https://bugs.launchpad.net/bugs/2104260): Cloud-init 24.04.1 requires OVS bridge interface not to be optional in the netplan preseed network
 - [2104530](https://bugs.launchpad.net/bugs/2104530): Plucky deployments fail after reboot to disk due to no network
@@ -24,7 +47,7 @@ We are happy to announce that MAAS 3.4.7 has been released, with the following b
 
 ### MAAS 3.4.6 has been released
 
-We are happy to announce that MAAS 3.4.6 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.4.6 has been released, with the following bug fixes:
 
 - [2040324](https://bugs.launchpad.net/bugs/2040324)^: Power configuration change fails with <image> is not a valid distro series error
 - [2055347](https://bugs.launchpad.net/bugs/2055347)^: MAAS IPMI k_g validation error
@@ -39,7 +62,7 @@ We are happy to announce that MAAS 3.4.6 has been released, with the following b
 
 ### MAAS 3.4.5 has been released
 
-We are happy to announce that MAAS 3.4.5 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.4.5 has been released, with the following bug fixes:
 
 - [2004661](https://bugs.launchpad.net/bugs/2004661): MAAS deployment failures on server with Redfish
 - [2024242](https://bugs.launchpad.net/bugs/2024242): Unable to Deploy Machines; get() returned more than one Neighbour -- it returned 2!
@@ -48,14 +71,14 @@ We are happy to announce that MAAS 3.4.5 has been released, with the following b
 
 ### MAAS 3.4.4 has been released
 
-We are happy to announce that MAAS 3.4.4 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.4.4 has been released, with the following bug fixes:
 
 - [2073731](https://bugs.launchpad.net/bugs/2073731): BMC commissioning error on HPE Gen 10 with ILO 5
 - [1953049](https://bugs.launchpad.net/bugs/1953049): Error while calling ScanNetworks: Unable to get RPC connection for rack controller
 
 ### MAAS 3.4.3 has been released
 
-We are happy to announce that MAAS 3.4.3 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.4.3 has been released, with the following bug fixes:
 
 - [2029522](https://bugs.launchpad.net/bugs/2029522): stacktrace on \_reap_extra_connection()
 - [2031482](https://bugs.launchpad.net/bugs/2031482): Subnet changed to wrong fabric, impacting DHCP

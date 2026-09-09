@@ -4,9 +4,50 @@
 
 This section recaps the release history of MAAS version 3.5.
 
+### MAAS 3.5.14 has been released
+
+We are happy to announce that MAAS 3.5.14 has been released, with the following bug fixes:
+
+- [2143090](https://bugs.launchpad.net/bugs/2143090): Unable to Resize Dynamic Range Reservations if any IP in the Range is Allocated
+- [2160731](https://bugs.launchpad.net/bugs/2160731): Redfish power driver fails on upgraded Dell iDRAC 10
+- [2161260](https://bugs.launchpad.net/bugs/2161260): 64KB packet hard limit on DHCP configuration RPC
+- [2161952](https://bugs.launchpad.net/bugs/2161952): Several MAAS code paths perform N+1 node queries on large deployments
+
+### MAAS 3.5.13 has been released
+
+We are happy to announce that MAAS 3.5.13 has been released, with the following bug fixes:
+
+- [2074122](https://bugs.launchpad.net/bugs/2074122): MAAS rack is scaling up the number of connections without limit due to a race condition
+- [2044378](https://bugs.launchpad.net/bugs/2044378): Custom image without title shows as blank in UI when deploying
+
+### MAAS 3.5.12 has been released
+
+We are happy to announce that MAAS 3.5.12 has been released, with the following bug fixes:
+
+- [2147514](https://bugs.launchpad.net/bugs/2147514): Power state not refreshed when a node transitions from COMMISSIONING to NEW (enlistment commissioning)
+
+### MAAS 3.5.11 has been released
+
+We are happy to announce that MAAS 3.5.11 has been released, with the following bug fixes:
+
+- [2080646](https://bugs.launchpad.net/bugs/2080646): MAAS_PATH env variable missing from snap env, causes maas not to be able to connect to virsh
+- [2136694](https://bugs.launchpad.net/bugs/2136694): Ephemeral deployments lack control over the amount of RAM allocated for the rootfs
+- [2137724](https://bugs.launchpad.net/bugs/2137724): Temporal worker pool configuration failure on NULL IP
+- [2141598](https://bugs.launchpad.net/bugs/2141598): Custom images stuck in "Loading Queued for download" after upgrade to 3.5
+
+### MAAS 3.5.10 has been released
+
+We are happy to announce that MAAS 3.5.10 has been released, with the following bug fixes:
+
+- [2132663](https://bugs.launchpad.net/bugs/2132663): Custom images fail to deploy in memory
+- [2133828](https://bugs.launchpad.net/bugs/2133828): MAAS 3.5.9: Uploaded images fail with 404 on `/images/<blobid>/custom/.../uploaded/root.tgz` (3.5.8 OK)
+- [2134059](https://bugs.launchpad.net/bugs/2134059): In-memory deployments cause incorrect netplan
+- [2115797](https://bugs.launchpad.net/bugs/2115797): LXD VM host not always deploys in 3.6
+- [2132282](https://bugs.launchpad.net/bugs/2132282): 20-maas-03-machine-resources fails for uint64 counters
+
 ### MAAS 3.5.9 has been released
 
-We are happy to announce that MAAS 3.5.9 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.5.9 has been released, with the following bug fixes:
 
 - [2083076](https://bugs.launchpad.net/maas/+bug/2083076): MAAS nodes that fail commissioning continue to use stale commissioning scripts
 - [2125396](https://bugs.launchpad.net/bugs/2125396): StaticIPAddress auto IP allocation fails because of unhandled exception
@@ -20,7 +61,7 @@ Please note that with the bugfix for [2110046](https://bugs.launchpad.net/bugs/2
 
 ### MAAS 3.5.8 has been released
 
-We are happy to announce that MAAS 3.5.8 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.5.8 has been released, with the following bug fixes:
 
 - [2118408](https://bugs.launchpad.net/maas/+bug/2118408): add tftp_max_blksize rackd configuration to limit the tftp blksize requested by the clients
 - [2117200](https://bugs.launchpad.net/maas/+bug/2117200): when the machine is configured with redfish and the bmc_config commissioning script is setting up IPMI, the metadataserver should discard the IPMI specific power parameters and update only the username, password and address.
@@ -30,7 +71,7 @@ We are happy to announce that MAAS 3.5.8 has been released, with the following b
 
 ### MAAS 3.5.7 has been released
 
-We are happy to announce that MAAS 3.5.7 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.5.7 has been released, with the following bug fixes:
 
 - [2091271](https://bugs.launchpad.net/maas/+bug/2091271): HW sync is not able to detect a bridge interface configured with OVS
 - [2097079](https://bugs.launchpad.net/maas/+bug/2097079): Failed to initialize MAAS on PostgreSQL with pgaudit plugin enabled
@@ -46,7 +87,7 @@ We are happy to announce that MAAS 3.5.7 has been released, with the following b
 
 ### MAAS 3.5.6 has been released
 
-We are happy to announce that MAAS 3.5.6 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.5.6 has been released, with the following bug fixes:
 
 - [2109681](https://bugs.launchpad.net/bugs/2109681): Proxmox power driver is broken
 - [2109864](https://bugs.launchpad.net/bugs/2109864): No rack controller can access BMC of node [MAAS 3.5.5]
@@ -56,7 +97,7 @@ We are happy to announce that MAAS 3.5.6 has been released, with the following b
 
 ### MAAS 3.5.5 has been released
 
-We are happy to announce that MAAS 3.5.5 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.5.5 has been released, with the following bug fixes:
 
 - [2103903](https://bugs.launchpad.net/bugs/2103903): Deployment fails when using interface with OVS bridge
 - [2104260](https://bugs.launchpad.net/bugs/2104260): Cloud-init 24.04.1 requires OVS bridge interface not to be optional in the netplan preseed network
@@ -67,7 +108,7 @@ We are happy to announce that MAAS 3.5.5 has been released, with the following b
 
 ### MAAS 3.5.4 has been released
 
-We are happy to announce that MAAS 3.5.4 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.5.4 has been released, with the following bug fixes:
 
 - [2095477](https://bugs.launchpad.net/maas/+bug/2095477): boot-resources read is slow when there are a lot of images that have been deployed a lot of times
 - [2092172](https://bugs.launchpad.net/bugs/2092172): Redfish powerdriver I/O operation on closed file.
@@ -78,7 +119,7 @@ We are happy to announce that MAAS 3.5.4 has been released, with the following b
 
 ### MAAS 3.5.3 has been released
 
-We are happy to announce that MAAS 3.5.3 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.5.3 has been released, with the following bug fixes:
 
 - [2040324](https://bugs.launchpad.net/maas/3.5/+bug/2040324) : Power configuration change fails with <image> is not a valid distro series error
 - [2058496](https://bugs.launchpad.net/maas/3.5/+bug/2058496) : Commissioning failed during 1st pxe install 24.04
@@ -94,7 +135,7 @@ We are happy to announce that MAAS 3.5.3 has been released, with the following b
 
 ### MAAS 3.5.2 has been released
 
-We are happy to announce that MAAS 3.5.2 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.5.2 has been released, with the following bug fixes:
 
 - [2079987](https://bugs.launchpad.net/bugs/2079987): LeaseSocketService is sending 10 RPC calls to the region every second even if there are no updates
 - [2079797](https://bugs.launchpad.net/bugs/2079797): Redfish powerdriver should be able to handle the reset power status
@@ -109,7 +150,7 @@ We are happy to announce that MAAS 3.5.2 has been released, with the following b
 
 ### MAAS 3.5.1 has been released
 
-We are happy to announce that MAAS 3.5.1 has been released, with the following bug fixes
+We are happy to announce that MAAS 3.5.1 has been released, with the following bug fixes:
 
 - [2073731](https://bugs.launchpad.net/bugs/2073731): BMC commissioning error on HPE Gen 10 with ILO 5
 - [1953049](https://bugs.launchpad.net/bugs/1953049): Error while calling ScanNetworks: Unable to get RPC connection for rack controller
