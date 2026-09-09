@@ -77,7 +77,7 @@ class TestRegisterCommands(MAASTestCase):
         parser = ArgumentParser()
         cli.register_cli_commands(parser)
         mock_load_regiond_commands.assert_called_once_with(
-            sentinel.management, parser
+            sentinel.management, parser, skip=frozenset()
         )
 
     def test_loads_all_regiond_commands(self):
@@ -126,6 +126,38 @@ class TestRegisterCommands(MAASTestCase):
         error = self.assertRaises(SystemExit, parser.parse_args, ["--help"])
         self.assertEqual(error.code, 0)
         self.assertNotIn("reconfigure-supervisord", stdout.getvalue())
+
+    def test_hides_db_only_regiond_commands_in_rack_mode(self):
+        snap_common = self.make_dir()
+        with open(os.path.join(snap_common, "snap_mode"), "w") as fp:
+            fp.write("rack")
+        environ = {
+            "SNAP": "snap-path",
+            "SNAP_COMMON": snap_common,
+            "SNAP_DATA": self.make_dir(),
+        }
+        self.patch(os, "environ", environ)
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        for name in cli.DB_ONLY_REGIOND_COMMANDS:
+            self.assertNotIn(name, parser.subparsers.choices)
+        self.assertIn("migrate", parser.subparsers.choices)
+
+    def test_keeps_db_only_regiond_commands_in_region_mode(self):
+        snap_common = self.make_dir()
+        with open(os.path.join(snap_common, "snap_mode"), "w") as fp:
+            fp.write("region")
+        environ = {
+            "SNAP": "snap-path",
+            "SNAP_COMMON": snap_common,
+            "SNAP_DATA": self.make_dir(),
+        }
+        self.patch(os, "environ", environ)
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        for name in cli.DB_ONLY_REGIOND_COMMANDS:
+            self.assertIn(name, parser.subparsers.choices)
+        self.assertIn("migrate", parser.subparsers.choices)
 
 
 class TestLogin(MAASTestCase):
