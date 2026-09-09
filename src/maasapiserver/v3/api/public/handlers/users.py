@@ -18,10 +18,11 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.users import (
     UserChangePasswordRequest,
+    UserChangePasswordRequestAdmin,
     UserCreateRequest,
     UsersFiltersParams,
-    UserUpdateRequest,
     UserUpdateRequestAdmin,
+    UserUpdateRequestSelf,
 )
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
@@ -210,6 +211,7 @@ class UsersHandler(Handler):
         tags=TAGS,
         responses={
             204: {},
+            400: {"model": BadRequestBodyResponse},
             401: {"model": UnauthorizedBodyResponse},
         },
         response_model_exclude_none=True,
@@ -225,9 +227,12 @@ class UsersHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         assert authenticated_user is not None
-        await services.users.change_password(
+        await services.users.change_password_checks(
             user_id=authenticated_user.id,
-            password=change_password_request.password,
+            current_password=change_password_request.current_password,
+        )
+        await services.users.update_by_id(
+            authenticated_user.id, change_password_request.to_builder()
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -237,6 +242,7 @@ class UsersHandler(Handler):
         tags=TAGS,
         responses={
             200: {"model": UserResponse},
+            400: {"model": BadRequestBodyResponse},
             401: {"model": UnauthorizedBodyResponse},
         },
         response_model_exclude_none=True,
@@ -245,7 +251,7 @@ class UsersHandler(Handler):
     )
     async def update_user_me(
         self,
-        user_request: UserUpdateRequest,
+        user_request: UserUpdateRequestSelf,
         response: Response,
         authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
@@ -253,6 +259,12 @@ class UsersHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
         assert authenticated_user is not None
+        if user_request.new_password is not None:
+            await services.users.change_password_checks(
+                user_id=authenticated_user.id,
+                current_password=user_request.current_password,
+            )
+
         user = await services.users.update_by_id(
             authenticated_user.id, user_request.to_builder()
         )
@@ -425,6 +437,7 @@ class UsersHandler(Handler):
                 "model": UserResponse,
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
+            400: {"model": BadRequestBodyResponse},
             404: {"model": NotFoundBodyResponse},
         },
         status_code=200,
@@ -444,6 +457,10 @@ class UsersHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
+        if user_request.password is not None:
+            await services.users.change_password_checks(
+                user_id=user_id, current_password=None
+            )
         user = await services.users.update_by_id(
             user_id, user_request.to_builder()
         )
@@ -544,7 +561,7 @@ class UsersHandler(Handler):
         tags=TAGS,
         responses={
             204: {},
-            401: {"model": UnauthorizedBodyResponse},
+            400: {"model": BadRequestBodyResponse},
             404: {"model": NotFoundBodyResponse},
         },
         response_model_exclude_none=True,
@@ -560,11 +577,14 @@ class UsersHandler(Handler):
     async def change_password_admin(
         self,
         user_id: int,
-        change_password_request: UserChangePasswordRequest,
+        change_password_request: UserChangePasswordRequestAdmin,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
-        await services.users.change_password(
-            user_id=user_id, password=change_password_request.password
+        await services.users.change_password_checks(
+            user_id=user_id, current_password=None
+        )
+        await services.users.update_by_id(
+            user_id, change_password_request.to_builder()
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
