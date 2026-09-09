@@ -224,65 +224,13 @@ connect-src 'self';
 frame-ancestors 'none'
 ```
 
-The `script-src` directive lists a single SHA-256 hash that whitelists the
-one static inline `<script>` block emitted by the Furo documentation theme
-that is required for the docs to render correctly. Inline scripts are
-otherwise forbidden by `script-src 'self'`, which would leave the page
-flashing in the wrong theme on first paint.
+The `script-src` directive includes a single SHA-256 hash that whitelists
+one static inline `<script>` block required by the documentation theme.
+Inline scripts are otherwise forbidden by `script-src 'self'`.
 
 The CSP header is defined in
 `src/maasserver/templates/http/regiond.nginx.conf.template` inside the
 `{{if hardening}}` block. It is only emitted when hardening is active.
-
-### Whitelisted inline script
-
-The single hash corresponds to the Furo theme's dark/light mode
-initialisation script. If Furo is upgraded and this script changes (even by
-a single character of whitespace), the browser will refuse to execute it
-and log a CSP violation. The expected hash is included in the violation
-report, which makes rotation straightforward.
-
-#### Furo theme initialisation (dark/light mode)
-
-**Hash**: `sha256-ySvT2PEZeueHGC1y2crNuNTfphBynFPP7i+U21fEgX0=`
-
-**Script** (emitted on every documentation page):
-
-```html
-<script>
-  document.body.dataset.theme = localStorage.getItem("theme") || "auto";
-</script>
-```
-
-Reads the user's stored theme preference from `localStorage` and applies it to
-`<body>` before the page paints, so the correct theme is used from the first
-frame. Without this script the page briefly flashes in the wrong theme, and
-the light/dark/auto toggle no longer takes effect on the first visit.
-
-Source: [Furo theme](https://github.com/pradyunsg/furo).
-
-### Regenerating a hash
-
-If an upgrade changes the exact bytes of any inline script (including
-leading/trailing whitespace and newlines, which are part of the hashed
-content), compute the new hash from the built HTML and update
-`regiond.nginx.conf.template`:
-
-```bash
-python3 - <<'EOF'
-import hashlib, base64
-# Paste the exact script body between the <script> and </script> tags,
-# including any surrounding whitespace / newlines, into `script` below.
-script = """
-      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
-    """
-h = hashlib.sha256(script.encode("utf-8")).digest()
-print("sha256-" + base64.b64encode(h).decode())
-EOF
-```
-
-The browser's CSP violation report also prints the expected hash, so you can
-copy it directly from the developer console instead of computing it locally.
 
 ### Other directives
 
