@@ -395,7 +395,7 @@ class UnknownPowerActionException(Exception):
 SSH_POWER_DRIVERS = frozenset({"hmc", "mscm", "wedge"})
 
 
-def _fetch_trusted_ssh_host_keys(
+def fetch_trusted_ssh_host_keys(
     driver_type: str, driver_opts: dict
 ) -> list[TrustedSshHostKeyEntry] | None:
     if (
@@ -441,7 +441,7 @@ def convert_power_action_to_power_workflow(
     activity, replacing the legacy region RPC SetBootOrder call.
     """
 
-    trusted_keys = _fetch_trusted_ssh_host_keys(
+    trusted_keys = fetch_trusted_ssh_host_keys(
         extra_params.power_type, extra_params.power_parameters
     )
 

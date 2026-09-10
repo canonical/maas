@@ -26,6 +26,7 @@ from twisted.internet.defer import (
 )
 from twisted.internet.threads import deferToThread
 
+from maascommon.hardening import is_hardening_enabled
 from provisioningserver.agent import config as agent_config
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.logger import LegacyLogger
@@ -250,8 +251,6 @@ class RackProxy(RackOnlyExternalService):
 
     def _configure(self, configuration):
         """Update the proxy configuration for the rack."""
-        from maascommon.hardening import is_hardening_enabled
-
         peers = sorted(
             f"http://{upstream}:{configuration.port}"
             for upstream in configuration.upstream_proxies
@@ -337,8 +336,6 @@ class RackSyslog(RackOnlyExternalService):
 
     def _configure(self, configuration):
         """Update the syslog configuration for the rack."""
-        from maascommon.hardening import is_hardening_enabled
-
         # Convert the frozenset to a dictionary before constructing the
         # dictionary that `syslog_config.write_config` expects. This ensures
         # that only unique regions are included in the forwarders.

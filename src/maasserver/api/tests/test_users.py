@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from maascommon.events import AUDIT
+import maascommon.hardening as _hardening
 import maasserver.api.auth
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models import Node, SSHKey, SSLKey, StaticIPAddress
@@ -236,6 +237,46 @@ class TestUsers(APITestCase.ForUser):
 
         created_user = User.objects.get(username=username)
         self.assertFalse(created_user.has_usable_password())
+
+    def test_POST_rejects_weak_password_when_hardening_active(self):
+        self.become_admin()
+        username = factory.make_name("user")
+        self.patch(_hardening, "_hardening_active", True)
+        response = self.client.post(
+            reverse("users_handler"),
+            {
+                "username": username,
+                "email": factory.make_email_address(),
+                "password": "short",
+                "is_superuser": "0",
+            },
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+        self.assertIn(
+            "password",
+            json.loads(response.content.decode(settings.DEFAULT_CHARSET)),
+        )
+        self.assertFalse(User.objects.filter(username=username).exists())
+
+    def test_POST_accepts_strong_password_when_hardening_active(self):
+        self.become_admin()
+        username = factory.make_name("user")
+        self.patch(_hardening, "_hardening_active", True)
+        response = self.client.post(
+            reverse("users_handler"),
+            {
+                "username": username,
+                "email": factory.make_email_address(),
+                "password": "Str0ng!Passw0rd#1",
+                "is_superuser": "0",
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        self.assertTrue(User.objects.filter(username=username).exists())
 
     def test_GET_lists_users(self):
         users = [factory.make_User() for counter in range(2)]

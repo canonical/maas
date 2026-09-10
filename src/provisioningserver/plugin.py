@@ -83,10 +83,10 @@ class ProvisioningServiceMaker:
         from provisioningserver.config import ClusterConfiguration
         from provisioningserver.rackdservices.tftp import TFTPService
 
-        tftp_bind = ""
+        tftp_bind = []
         try:
             with ClusterConfiguration.open() as cfg:
-                tftp_bind = str(cfg.tftp_bind)
+                tftp_bind = list(cfg.tftp_bind)
         except Exception:
             pass
 
@@ -95,7 +95,7 @@ class ProvisioningServiceMaker:
             port=tftp_port,
             max_blksize=tftp_max_blksize,
             client_service=rpc_service,
-            bind_address=tftp_bind,
+            bind_addresses=tftp_bind,
         )
         tftp_service.setName("tftp")
 
