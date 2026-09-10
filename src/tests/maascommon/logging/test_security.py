@@ -85,6 +85,12 @@ def _fips_records(caplog):
     return [r for r in caplog.records if r.name == "maas.fips"]
 
 
+def _fips_records(caplog):
+    """Only the ``maas.fips`` records, ignoring unrelated logger noise
+    (e.g. asyncio warnings about unclosed sessions from other tests)."""
+    return [r for r in caplog.records if r.name == "maas.fips"]
+
+
 class _FakeSSLObject:
     def __init__(self, cipher=None, peercert=None, version="TLSv1.3"):
         self._cipher = cipher
@@ -111,8 +117,9 @@ class TestLogFipsTlsHandshake:
                 cert_issuer="CN=My CA",
                 cert_valid=True,
             )
-        assert len(caplog.records) == 1
-        record = caplog.records[0]
+        records = _fips_records(caplog)
+        assert len(records) == 1
+        record = records[0]
         assert record.levelno == logging.INFO
         assert FIPS_TLS_HANDSHAKE in record.message
         assert record.event == FIPS_TLS_HANDSHAKE
@@ -134,8 +141,9 @@ class TestLogFipsSshAuthentication:
                 peer="10.0.0.2",
                 result="success",
             )
-        assert len(caplog.records) == 1
-        record = caplog.records[0]
+        records = _fips_records(caplog)
+        assert len(records) == 1
+        record = records[0]
         assert record.levelno == logging.INFO
         assert FIPS_SSH_AUTHENTICATION in record.message
         assert record.event == FIPS_SSH_AUTHENTICATION
@@ -156,8 +164,9 @@ class TestLogFipsCryptoError:
                 algorithm="RC4",
                 peer="10.0.0.5",
             )
-        assert len(caplog.records) == 1
-        record = caplog.records[0]
+        records = _fips_records(caplog)
+        assert len(records) == 1
+        record = records[0]
         assert record.levelno == logging.ERROR
         assert FIPS_CRYPTO_ERROR in record.message
         assert record.event == FIPS_CRYPTO_ERROR
@@ -173,7 +182,7 @@ class TestLogFipsCryptoError:
                 error="DSA not permitted",
                 algorithm="dsa",
             )
-        assert caplog.records[0].peer == ""
+        assert _fips_records(caplog)[0].peer == ""
 
 
 class TestLogFipsDriverRejected:
@@ -183,8 +192,9 @@ class TestLogFipsDriverRejected:
                 driver="apc",
                 reason="SNMPv1 — no FIPS-approved authentication",
             )
-        assert len(caplog.records) == 1
-        record = caplog.records[0]
+        records = _fips_records(caplog)
+        assert len(records) == 1
+        record = records[0]
         assert record.levelno == logging.ERROR
         assert FIPS_DRIVER_REJECTED in record.message
         assert record.event == FIPS_DRIVER_REJECTED
@@ -197,7 +207,7 @@ class TestLogFipsTlsHandshakeFromSslobj:
         mocker.patch("maascommon.fips.is_fips_enabled", return_value=True)
         with caplog.at_level(logging.INFO, logger="maas.fips"):
             log_fips_tls_handshake_from_sslobj(None, peer="10.0.0.1:443")
-        assert caplog.records == []
+        assert _fips_records(caplog) == []
 
     def test_noop_when_not_fips(self, caplog, mocker):
         mocker.patch("maascommon.fips.is_fips_enabled", return_value=False)
@@ -206,7 +216,7 @@ class TestLogFipsTlsHandshakeFromSslobj:
         )
         with caplog.at_level(logging.INFO, logger="maas.fips"):
             log_fips_tls_handshake_from_sslobj(ssl_object, peer="10.0.0.1:443")
-        assert caplog.records == []
+        assert _fips_records(caplog) == []
 
     def test_emits_negotiated_values_when_fips(self, caplog, mocker):
         mocker.patch("maascommon.fips.is_fips_enabled", return_value=True)
@@ -217,8 +227,9 @@ class TestLogFipsTlsHandshakeFromSslobj:
         )
         with caplog.at_level(logging.INFO, logger="maas.fips"):
             log_fips_tls_handshake_from_sslobj(ssl_object, peer="10.0.0.1:443")
-        assert len(caplog.records) == 1
-        record = caplog.records[0]
+        records = _fips_records(caplog)
+        assert len(records) == 1
+        record = records[0]
         assert FIPS_TLS_HANDSHAKE in record.message
         assert record.event == FIPS_TLS_HANDSHAKE
         assert record.cipher_suite == "ECDHE-RSA-AES256-GCM-SHA384"
@@ -233,7 +244,7 @@ class TestLogFipsTlsHandshakeFromSslobj:
         ssl_object = _FakeSSLObject(cipher=None, peercert={}, version=None)
         with caplog.at_level(logging.INFO, logger="maas.fips"):
             log_fips_tls_handshake_from_sslobj(ssl_object, peer="10.0.0.1:443")
-        record = caplog.records[0]
+        record = _fips_records(caplog)[0]
         assert FIPS_TLS_HANDSHAKE in record.message
         assert record.event == FIPS_TLS_HANDSHAKE
         assert record.cipher_suite == "unknown"
