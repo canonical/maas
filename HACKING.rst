@@ -613,3 +613,16 @@ Run
             --wt $WF_NAME \
             -i $PARAMS
 
+
+Security hardening
+==================
+
+CSP inline script hash management
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When upgrading the Furo documentation theme or other components that emit
+inline scripts, the Content-Security-Policy hash in the hardened nginx
+config may need regeneration. See
+``src/maasserver/templates/http/CSP-INLINE-SCRIPTS.md`` for background
+(FIPS/STIG rationale) and the step-by-step regeneration procedure.
+

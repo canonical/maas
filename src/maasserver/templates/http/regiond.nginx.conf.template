@@ -61,7 +61,7 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header X-XSS-Protection "1; mode=block" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-ySvT2PEZeueHGC1y2crNuNTfphBynFPP7i+U21fEgX0='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'" always;
     {{endif}}
     {{if api_rate_limit_rate}}
     limit_req zone=regiond_rate burst={{api_rate_limit_burst}} nodelay;
