@@ -57,6 +57,7 @@ from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.logging.tls import fips_tls_trace_config
 from maasservicelayer.models.configurations import UpstreamDnsConfig
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
@@ -203,7 +204,10 @@ class MSMConnectorActivity(ActivityBase):
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
         return ClientSession(
-            trust_env=True, timeout=timeout, connector=tcp_conn
+            trust_env=True,
+            timeout=timeout,
+            connector=tcp_conn,
+            trace_configs=[fips_tls_trace_config()],
         )
 
     @activity_defn_with_context(name=MSM_SEND_ENROL_ACTIVITY_NAME)

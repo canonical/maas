@@ -21,7 +21,9 @@ from twisted.web import resource
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.static import NoRangeStaticProducer
 
+from maascommon.hardening import is_hardening_enabled
 from provisioningserver import services
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import (
@@ -34,6 +36,10 @@ from provisioningserver.prometheus.resource import PrometheusMetricsResource
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import load_template
 from provisioningserver.utils.fs import atomic_write, get_root_path
+from provisioningserver.utils.network import (
+    partition_by_family,
+    resolve_dual_stack_bind_addresses,
+)
 from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
@@ -54,6 +60,28 @@ def get_http_config_dir():
 def compose_http_config_path(filename):
     """Return the full path for a HTTP config."""
     return os.path.join(get_http_config_dir(), filename)
+
+
+def compose_listen_addresses(port, binds=()):
+    """Return the list of addresses for nginx ``listen`` directives.
+
+    When ``binds`` is empty, returns the IPv6 and IPv4 wildcard addresses
+    so nginx listens on all interfaces. Otherwise, returns one ``listen``
+    entry per address in ``binds`` (nginx has no trouble listening on any
+    number of specific addresses). IPv6 addresses are bracketed.
+
+    Templates render the result with a ``for`` loop::
+
+        {{for addr in main_listen}}
+        listen {{addr}};
+        {{endfor}}
+    """
+    if binds:
+        v4, v6 = partition_by_family(binds)
+        return [f"{addr}:{port}" for addr in v4] + [
+            f"[{addr}]:{port}" for addr in v6
+        ]
+    return [f"[::]:{port}", str(port)]
 
 
 class HTTPConfigFail(Exception):
@@ -176,15 +204,51 @@ class RackHTTPService(TimerService):
         )
         agent_http_socket_path = str(get_maas_run_path() / "agent-http.sock")
 
+        hardening_active = is_hardening_enabled()
+        api_bind = []
+        maas_url = ""
+        api_upstream_port = 5240
+        api_rate_limit_rate = "20r/s"
+        api_rate_limit_burst = 60
+        api_conn_limit = 100
+        try:
+            with ClusterConfiguration.open() as cluster_config:
+                api_bind = list(cluster_config.api_bind)
+                maas_url = (
+                    cluster_config.maas_url[0]
+                    if cluster_config.maas_url
+                    else ""
+                )
+                api_upstream_port = cluster_config.api_upstream_port
+                api_rate_limit_rate = cluster_config.api_rate_limit_rate
+                api_rate_limit_burst = cluster_config.api_rate_limit_burst
+                api_conn_limit = cluster_config.api_conn_limit
+        except Exception:
+            log.err(
+                _why="Could not read ClusterConfiguration; using defaults for "
+                "bind, rate-limit, and upstream-port settings."
+            )
+
+        api_bind = resolve_dual_stack_bind_addresses(
+            api_bind,
+            maas_url,
+            hardening_active=hardening_active,
+        )
+
         try:
             rendered = template.substitute(
                 {
                     "upstream_http": list(sorted(upstream_http)),
-                    "resource_root": self._resource_root,
                     "machine_resources": str(root_prefix / "usr/share/maas"),
                     "maas_agent_httpproxy_socket_path": httpproxy_socket_path,
                     "maas_agent_http_socket_path": agent_http_socket_path,
                     "boot_resources_dir": get_maas_data_path("image-storage"),
+                    "hardening": hardening_active,
+                    "api_listen": compose_listen_addresses(5248, api_bind),
+                    "api_upstream_port": api_upstream_port,
+                    "api_rate_limit_rate": api_rate_limit_rate,
+                    "api_rate_limit_burst": api_rate_limit_burst,
+                    "api_conn_limit": api_conn_limit,
                 }
             )
         except NameError as error:

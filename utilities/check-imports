@@ -223,6 +223,7 @@ APIServerRule = Rule(
     ),  # TODO: Remove when moved to maascommon
     Allow("provisioningserver.utils.env.MAAS_UUID"),
     Allow("provisioningserver.utils.ipaddr.get_machine_default_gateway_ip"),
+    Allow("provisioningserver.utils.version.get_running_version"),
     Allow("pydantic|pydantic.**"),
     Allow("pymacaroons|pymacaroons.**"),
     # TODO: Remove when we move the APIClient to maasserver
@@ -303,10 +304,12 @@ RackControllerRule = Rule(
     #     https://cryptography.io/en/latest/fernet/#using-passwords-with-fernet
     Allow("cryptography.exceptions"),
     Allow("cryptography.fernet.**"),
+    Allow("cryptography.hazmat.primitives.ciphers.aead.AESGCM"),
     Allow("cryptography.hazmat.backends.default_backend"),
     Allow("cryptography.hazmat.primitives.asymmetric.padding"),
     Allow("cryptography.hazmat.primitives.hashes"),
     Allow("cryptography.hazmat.primitives.kdf.pbkdf2.PBKDF2HMAC"),
+    Allow("cryptography.exceptions.InvalidTag"),
     Allow("curtin|curtin.**"),
     Allow("distro_info|distro_info.*"),
     Allow("formencode|formencode.**"),
@@ -422,6 +425,7 @@ RegionControllerWorkerRule = Rule(
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasapiserver.**"),
     Allow("apiclient.maas_client.MAASOAuth"),
+    Allow("maasserver.config.get_temporal_connect_address"),
     Allow("maasserver.rpc.getAllClients"),
     Allow("maasserver.workflow.**"),
     Allow("maasserver.utils.**"),
@@ -505,6 +509,8 @@ ServiceLayerRule = Rule(
     Allow("provisioningserver.utils.env.**"),
     Allow("provisioningserver.utils.network.**"),
     Allow("provisioningserver.utils.version.**"),
+    Allow("cryptography.hazmat.primitives.**"),
+    Allow("cryptography.x509|cryptography.x509.**"),
     Allow("psycopg2|psycopg2.**"),
     Allow("pydantic|pydantic.**"),
     Allow("pydantic_core|pydantic_core.**"),

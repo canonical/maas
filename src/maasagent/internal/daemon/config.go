@@ -92,10 +92,20 @@ func loadConfig(fs afero.Fs, file string) (*Config, error) {
 // Config represents the set of configuration options required by the MAAS agent.
 type Config struct {
 	// Unmarshalled via rawConfig
-	ControllerURL *url.URL            `yaml:"-"`
-	TLS           TLSConfig           `yaml:"tls"`
-	Observability ObservabilityConfig `yaml:"observability"`
-	Services      Services            `yaml:"services"`
+	ControllerURL *url.URL             `yaml:"-"`
+	TLS           TLSConfig            `yaml:"tls"`
+	Temporal      TemporalServerConfig `yaml:"temporal"`
+	Observability ObservabilityConfig  `yaml:"observability"`
+	Services      Services             `yaml:"services"`
+}
+
+// TemporalServerConfig holds the address the agent dials to reach the
+// Temporal frontend. When empty, the address is derived from the
+// controller URL. An explicit value is required when hardening binds
+// Temporal to a specific, non-default address.
+type TemporalServerConfig struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
 }
 
 // TLSConfig holds certificate and key file locations.
@@ -215,10 +225,11 @@ func (x *ByteSize[T]) UnmarshalYAML(value *yaml.Node) error {
 // rawConfig can be considered a helper, having simple types for un/marshaling.
 // For example Controller is a string instead of *url.URL.
 type rawConfig struct {
-	TLS           TLSConfig           `yaml:"tls"`
-	Controller    string              `yaml:"controller"`
-	Observability ObservabilityConfig `yaml:"observability"`
-	Services      Services            `yaml:"services"`
+	TLS           TLSConfig            `yaml:"tls"`
+	Controller    string               `yaml:"controller"`
+	Temporal      TemporalServerConfig `yaml:"temporal"`
+	Observability ObservabilityConfig  `yaml:"observability"`
+	Services      Services             `yaml:"services"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for Config.
@@ -239,6 +250,7 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 	c.Services = t.Services
 	c.Observability = t.Observability
 	c.TLS = t.TLS
+	c.Temporal = t.Temporal
 
 	return nil
 }

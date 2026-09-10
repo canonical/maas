@@ -3,6 +3,7 @@
 
 """Tests for `provisioningserver.rackdservices.external`."""
 
+from socket import AF_INET, AF_INET6
 from unittest.mock import Mock
 
 import attr
@@ -24,6 +25,15 @@ from provisioningserver.utils.service_monitor import SERVICE_STATE
 from provisioningserver.utils.testing import MAASIDFixture, MAASUUIDFixture
 
 TIMEOUT = get_testing_timeout()
+
+
+def _fake_dual_stack_source_address(v4="10.0.0.9", v6="fd00::9"):
+    """Return a `get_source_address_for_url` stub keyed by address family."""
+
+    def fake_source_address(maas_url, family=None):
+        return {AF_INET: v4, AF_INET6: v6}[family]
+
+    return fake_source_address
 
 
 def prepareRegion(
@@ -491,6 +501,7 @@ class TestRackProxy(MAASTestCase):
             peer_proxies=expected_peers,
             prefer_v4_proxy=proxy_prefer_v4_proxy,
             maas_proxy_port=proxy_port,
+            http_proxy_bind=[],
         )
         service_monitor.reloadService.assert_called_once_with("proxy_rack")
         # If the configuration has not changed then a second call to
@@ -501,8 +512,91 @@ class TestRackProxy(MAASTestCase):
             peer_proxies=expected_peers,
             prefer_v4_proxy=proxy_prefer_v4_proxy,
             maas_proxy_port=proxy_port,
+            http_proxy_bind=[],
         )
         service_monitor.reloadService.assert_called_once_with("proxy_rack")
+
+    def _make_proxy_configuration(self, **overrides):
+        defaults = dict(
+            enabled=True,
+            port=8000,
+            allowed_cidrs=frozenset(),
+            prefer_v4_proxy=False,
+            upstream_proxies=frozenset(),
+            is_region=False,
+            is_rack=True,
+        )
+        defaults.update(overrides)
+        return external._ProxyConfiguration(**defaults)
+
+    def test_configure_hardening_off_unset_stays_wildcard(self):
+        from provisioningserver.config import ClusterConfiguration
+
+        self.patch(external, "is_hardening_enabled").return_value = False
+        mock_open = self.patch(ClusterConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.http_proxy_bind = []
+        mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
+        mock_open.return_value.__exit__.return_value = False
+        write_config = self.patch_autospec(
+            external.proxy_config, "write_config"
+        )
+
+        external.RackProxy()._configure(self._make_proxy_configuration())
+
+        self.assertEqual([], write_config.call_args.kwargs["http_proxy_bind"])
+
+    def test_configure_hardening_on_unset_derives_both_families(self):
+        from provisioningserver.config import ClusterConfiguration
+        import provisioningserver.utils.network as network_module
+
+        fake_source_address = _fake_dual_stack_source_address()
+
+        self.patch(external, "is_hardening_enabled").return_value = True
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).side_effect = fake_source_address
+        mock_open = self.patch(ClusterConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.http_proxy_bind = []
+        mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
+        mock_open.return_value.__exit__.return_value = False
+        write_config = self.patch_autospec(
+            external.proxy_config, "write_config"
+        )
+
+        external.RackProxy()._configure(self._make_proxy_configuration())
+
+        self.assertEqual(
+            ["10.0.0.9", "fd00::9"],
+            write_config.call_args.kwargs["http_proxy_bind"],
+        )
+
+    def test_configure_explicit_v4_backfills_v6_under_hardening(self):
+        from provisioningserver.config import ClusterConfiguration
+        import provisioningserver.utils.network as network_module
+
+        fake_source_address = _fake_dual_stack_source_address()
+
+        self.patch(external, "is_hardening_enabled").return_value = True
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).side_effect = fake_source_address
+        mock_open = self.patch(ClusterConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.http_proxy_bind = ["10.0.0.5"]
+        mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
+        mock_open.return_value.__exit__.return_value = False
+        write_config = self.patch_autospec(
+            external.proxy_config, "write_config"
+        )
+
+        external.RackProxy()._configure(self._make_proxy_configuration())
+
+        self.assertEqual(
+            ["10.0.0.5", "fd00::9"],
+            write_config.call_args.kwargs["http_proxy_bind"],
+        )
 
     @inlineCallbacks
     def test_sets_proxy_rack_service_to_any_when_is_region(self):
@@ -624,6 +718,7 @@ class TestRackSyslog(MAASTestCase):
             forwarders=expected_forwards,
             port=port,
             promtail_port=5555,
+            bind=[],
         )
         service_monitor.restartService.assert_called_once_with("syslog_rack")
         # If the configuration has not changed then a second call to
@@ -634,8 +729,75 @@ class TestRackSyslog(MAASTestCase):
             forwarders=expected_forwards,
             port=port,
             promtail_port=5555,
+            bind=[],
         )
         service_monitor.restartService.assert_called_once_with("syslog_rack")
+
+    def _make_syslog_configuration(self, **overrides):
+        defaults = dict(
+            port=5247,
+            forwarders=frozenset(),
+            is_region=False,
+            is_rack=True,
+            promtail_port=None,
+        )
+        defaults.update(overrides)
+        return external._SyslogConfiguration(**defaults)
+
+    def test_configure_hardening_off_unset_stays_wildcard(self):
+        from provisioningserver.config import ClusterConfiguration
+
+        self.patch(external, "is_hardening_enabled").return_value = False
+        mock_open = self.patch(ClusterConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.syslog_bind = []
+        mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
+        mock_open.return_value.__exit__.return_value = False
+        write_config = self.patch_autospec(
+            external.syslog_config, "write_config"
+        )
+
+        external.RackSyslog()._configure(self._make_syslog_configuration())
+
+        self.assertEqual([], write_config.call_args.kwargs["bind"])
+
+    def test_configure_hardening_on_unset_derives_from_maas_url(self):
+        from provisioningserver.config import ClusterConfiguration
+        import provisioningserver.utils.network as network_module
+
+        self.patch(external, "is_hardening_enabled").return_value = True
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.9"
+        mock_open = self.patch(ClusterConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.syslog_bind = []
+        mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
+        mock_open.return_value.__exit__.return_value = False
+        write_config = self.patch_autospec(
+            external.syslog_config, "write_config"
+        )
+
+        external.RackSyslog()._configure(self._make_syslog_configuration())
+
+        self.assertEqual(["10.0.0.9"], write_config.call_args.kwargs["bind"])
+
+    def test_configure_explicit_bind_wins_over_derivation(self):
+        from provisioningserver.config import ClusterConfiguration
+
+        self.patch(external, "is_hardening_enabled").return_value = True
+        mock_open = self.patch(ClusterConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.syslog_bind = ["10.0.0.5"]
+        mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
+        mock_open.return_value.__exit__.return_value = False
+        write_config = self.patch_autospec(
+            external.syslog_config, "write_config"
+        )
+
+        external.RackSyslog()._configure(self._make_syslog_configuration())
+
+        self.assertEqual(["10.0.0.5"], write_config.call_args.kwargs["bind"])
 
     @inlineCallbacks
     def test_sets_syslog_rack_service_to_any_when_is_region(self):
@@ -707,6 +869,23 @@ class TestRackAgent(MAASTestCase):
         self.assertEqual(observed.controller, "https://127.0.0.1:5242")
         self.assertEqual(observed.observability.logging.level, "info")
         self.assertTrue(observed.observability.metrics.enabled)
+        self.assertEqual(observed.temporal.host, "127.0.0.1")
+
+    def test_getConfiguration_forwards_temporal_server(self):
+        self.useFixture(MAASUUIDFixture(factory.make_UUID()))
+        self.useFixture(MAASIDFixture(factory.make_name("system-id")))
+        self.useFixture(
+            ClusterConfigurationFixture(
+                debug=False,
+                maas_url=["http://127.0.0.1:5240/MAAS"],
+                temporal_server="10.0.0.9",
+            )
+        )
+
+        agent = external.RackAgent()
+        observed = agent._getConfiguration()
+
+        self.assertEqual(observed.temporal.host, "10.0.0.9")
 
     @inlineCallbacks
     def test_maybeApplyConfiguration_only_restarts_when_new_config(self):

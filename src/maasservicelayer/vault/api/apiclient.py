@@ -7,6 +7,7 @@ from typing import Dict
 from aiohttp import ClientResponse, ClientSession, TCPConnector
 
 from maascommon.constants import SYSTEM_CA_FILE
+from maasservicelayer.logging.tls import fips_tls_trace_config
 from maasservicelayer.vault.api.models.exceptions import (
     VaultAuthenticationException,
     VaultException,
@@ -32,7 +33,11 @@ class AsyncVaultApiClient:
     ):
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
-        self._session = ClientSession(base_url=base_url, connector=tcp_conn)
+        self._session = ClientSession(
+            base_url=base_url,
+            connector=tcp_conn,
+            trace_configs=[fips_tls_trace_config()],
+        )
 
     @classmethod
     def build_headers_with_token(cls, token: str) -> Dict[str, str]:

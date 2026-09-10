@@ -76,7 +76,10 @@ class TestConfigurationReset(MAASTestCase):
         self.useFixture(RegionConfigurationFixture())
         with RegionConfiguration.open_for_update() as configuration:
             # Give the option a random value.
-            if isinstance(getattr(configuration, self.option), str):
+            current = getattr(configuration, self.option)
+            if isinstance(current, list):
+                value = [factory.make_ipv4_address()]
+            elif isinstance(current, str):
                 value = factory.make_name("foobar")
             else:
                 value = factory.pick_port()
@@ -107,8 +110,12 @@ class TestConfigurationSet(MAASTestCase):
             "database_keepalive_count",
             "database_keepalive_interval",
             "database_keepalive_idle",
+            "api_conn_limit",
+            "api_rate_limit_burst",
+            "dns_fetches_per_zone",
+            "dns_fetches_per_server",
         ):
-            value = random.randint(0, 60)
+            value = random.randint(1, 60)
         elif self.option == "num_workers":
             value = random.randint(1, 16)
         elif self.option in [

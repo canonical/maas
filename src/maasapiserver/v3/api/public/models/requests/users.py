@@ -6,6 +6,7 @@ import re
 from fastapi import Query
 from pydantic import BaseModel, Field, field_validator
 
+from maascommon.password_policy import enforce_password_complexity
 from maasservicelayer.builders.users import UserBuilder
 from maasservicelayer.db.filters import Clause
 from maasservicelayer.db.repositories.users import UserClauseFactory
@@ -43,6 +44,16 @@ class UsersFiltersParams(BaseModel):
         return "&".join(parts) if parts else ""
 
 
+def _enforce_password_complexity(password: str) -> str:
+    """Reject weak passwords when hardening is active; no-op otherwise.
+
+    Thin adapter over :func:`enforce_password_complexity` that returns the
+    password so it can be used directly as a pydantic validator.
+    """
+    enforce_password_complexity(password)
+    return password
+
+
 class BaseUserRequest(BaseModel):
     username: str
     first_name: str
@@ -67,6 +78,11 @@ class UserCreateRequest(BaseUserRequest):
         description="The IDs of the groups the user will be a member of.",
     )
 
+    @field_validator("password")
+    @classmethod
+    def _check_password(cls, v: str) -> str:
+        return _enforce_password_complexity(v)
+
     def to_builder(self) -> UserBuilder:
         hashed_password = UserBuilder.hash_password(self.password)
         return UserBuilder(
@@ -88,6 +104,13 @@ class UserUpdateRequest(BaseUserRequest):
         description="The IDs of the groups the user will be a member of.",
     )
 
+    @field_validator("password")
+    @classmethod
+    def _check_password(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return _enforce_password_complexity(v)
+
     def to_builder(self) -> UserBuilder:
         password = (
             UserBuilder.hash_password(self.password)
@@ -107,3 +130,8 @@ class UserUpdateRequest(BaseUserRequest):
 
 class UserChangePasswordRequest(BaseModel):
     password: str = Field(..., min_length=1)
+
+    @field_validator("password")
+    @classmethod
+    def _check_password(cls, v: str) -> str:
+        return _enforce_password_complexity(v)

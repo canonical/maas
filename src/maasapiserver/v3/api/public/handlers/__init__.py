@@ -32,6 +32,7 @@ from maasapiserver.v3.api.public.handlers.operations import OperationsHandler
 from maasapiserver.v3.api.public.handlers.package_repositories import (
     PackageRepositoriesHandler,
 )
+from maasapiserver.v3.api.public.handlers.power_types import PowerTypesHandler
 from maasapiserver.v3.api.public.handlers.racks import RacksHandler
 from maasapiserver.v3.api.public.handlers.reservedips import ReservedIPsHandler
 from maasapiserver.v3.api.public.handlers.resource_pools import (
@@ -52,6 +53,7 @@ from maasapiserver.v3.api.public.handlers.subnets import (
     UISubnetsHandler,
 )
 from maasapiserver.v3.api.public.handlers.switches import SwitchesHandler
+from maasapiserver.v3.api.public.handlers.system import SystemHandler
 from maasapiserver.v3.api.public.handlers.tags import TagsHandler
 from maasapiserver.v3.api.public.handlers.usergroups import UserGroupsHandler
 from maasapiserver.v3.api.public.handlers.users import UsersHandler
@@ -81,9 +83,11 @@ APIv3 = API(
         OperationsHandler(),
         PackageRepositoriesHandler(),
         RacksHandler(),
+        PowerTypesHandler(),
         ReservedIPsHandler(),
         ResourcePoolHandler(),
         RootHandler(),
+        SystemHandler(),
         StaticRoutesHandler(),
         SpacesHandler(),
         SshKeysHandler(),

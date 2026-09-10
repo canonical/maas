@@ -7,6 +7,7 @@ from unittest.mock import Mock
 
 from twisted.internet.defer import inlineCallbacks
 
+import maascommon.fips as fips_module
 import maascommon.worker as worker_module
 from maascommon.worker import get_worker_ids
 from maasserver.listener import notify, PostgresListenerUnregistrationError
@@ -20,6 +21,7 @@ from maastesting.crochet import wait_for
 from provisioningserver.testing.certificates import (
     get_sample_cert_with_cacerts,
 )
+import provisioningserver.utils.network as network_module
 
 wait_for_reactor = wait_for()
 
@@ -203,6 +205,139 @@ class TestRegionHTTPService(
         nginx_config = nginx_conf.read_text()
         self.assertIn(
             "add_header X-Content-Type-Options 'nosniff';",
+            nginx_config,
+        )
+
+    def _configure_to_file(self, configuration):
+        tempdir = self.make_dir()
+        nginx_conf = Path(tempdir) / "regiond.nginx.conf"
+        nginx_stream_conf = Path(tempdir) / "regiond.nginx.stream.conf"
+        service = http.RegionHTTPService()
+        self.patch(http, "compose_http_config_path").side_effect = [
+            str(nginx_conf),
+            str(nginx_stream_conf),
+        ]
+        mock_create_cert_files = self.patch(service, "_create_cert_files")
+        mock_create_cert_files.return_value = ("key_path", "cert_path")
+        service._configure(configuration)
+        return nginx_conf.read_text()
+
+    def test_tls_main_server_binds_to_api_bind(self):
+        cert = get_sample_cert_with_cacerts()
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=cert,
+                port=5443,
+                api_bind=["10.0.0.5", "fd00::5"],
+            )
+        )
+        self.assertIn("listen 10.0.0.5:5443 ssl http2;", nginx_config)
+        self.assertIn("listen [fd00::5]:5443 ssl http2;", nginx_config)
+        self.assertNotIn("listen [::]:5443 ssl http2;", nginx_config)
+
+    def test_hardening_on_ipv4_only_backfills_ipv6_main_bind(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "fd00::9"
+        cert = get_sample_cert_with_cacerts()
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=cert,
+                port=5443,
+                hardening_active=True,
+                maas_url="http://10.0.0.1:5240/MAAS",
+                api_bind=["10.0.0.5"],
+            )
+        )
+        self.assertIn("listen 10.0.0.5:5443 ssl http2;", nginx_config)
+        self.assertIn("listen [fd00::9]:5443 ssl http2;", nginx_config)
+
+    def test_plain_http_binds_to_api_bind_without_tls(self):
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=None, port=None, api_bind=["10.0.0.5"])
+        )
+        self.assertIn("listen 10.0.0.5:5240;", nginx_config)
+        self.assertNotIn("listen [::]:5240;", nginx_config)
+
+    def test_wildcard_when_no_bind_and_hardening_off(self):
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=None, port=None)
+        )
+        self.assertIn("listen [::]:5240;", nginx_config)
+        self.assertIn("listen 5240;", nginx_config)
+
+    def test_hardening_on_derives_api_bind_from_maas_url(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.9"
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=None,
+                port=None,
+                hardening_active=True,
+                maas_url="http://10.0.0.9:5240/MAAS",
+            )
+        )
+        self.assertIn("listen 10.0.0.9:5240;", nginx_config)
+        self.assertNotIn("listen [::]:5240;", nginx_config)
+        self.assertNotIn("listen 5240;", nginx_config)
+
+    def test_tls_internal_server_binds_to_api_int_bind(self):
+        cert = get_sample_cert_with_cacerts()
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=cert,
+                port=5443,
+                api_int_bind=["192.168.0.2", "fe80::2"],
+            )
+        )
+        self.assertIn("listen 192.168.0.2:5240;", nginx_config)
+        self.assertIn("listen [fe80::2]:5240;", nginx_config)
+
+    def test_ssl_dhparam_emitted_when_set(self):
+        cert = get_sample_cert_with_cacerts()
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=cert, port=5443, api_tls_dhparam="/etc/maas/dhparam.pem"
+            )
+        )
+        self.assertIn("ssl_dhparam /etc/maas/dhparam.pem;", nginx_config)
+
+    def test_ssl_dhparam_absent_when_unset(self):
+        cert = get_sample_cert_with_cacerts()
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=cert, port=5443)
+        )
+        self.assertNotIn("ssl_dhparam", nginx_config)
+
+    def test_ssl_non_fips_includes_x25519_and_chacha20(self):
+        """Non-FIPS mode: X25519 curve and ChaCha20-Poly1305 ciphers present."""
+        cert = get_sample_cert_with_cacerts()
+        self.patch(
+            fips_module, "get_fips_status"
+        ).return_value = fips_module.FIPSStatus(enabled=False)
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=cert, port=5443)
+        )
+        self.assertIn("X25519:prime256v1:secp384r1", nginx_config)
+        self.assertIn("CHACHA20-POLY1305", nginx_config)
+        self.assertNotIn("ssl_conf_command", nginx_config)
+
+    def test_ssl_fips_omits_x25519_and_chacha20(self):
+        """FIPS mode: X25519 and ChaCha20-Poly1305 must not appear in nginx SSL config."""
+        cert = get_sample_cert_with_cacerts()
+        self.patch(
+            fips_module, "get_fips_status"
+        ).return_value = fips_module.FIPSStatus(enabled=True)
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=cert, port=5443)
+        )
+        self.assertNotIn("X25519", nginx_config)
+        self.assertNotIn("CHACHA20-POLY1305", nginx_config)
+        self.assertIn("prime256v1:secp384r1", nginx_config)
+        self.assertIn("ECDHE-RSA-AES256-GCM-SHA384", nginx_config)
+        self.assertIn(
+            "ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256;",
             nginx_config,
         )
 

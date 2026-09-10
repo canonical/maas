@@ -127,6 +127,27 @@ class TestRegisterCommands(MAASTestCase):
         self.assertEqual(error.code, 0)
         self.assertNotIn("reconfigure-supervisord", stdout.getvalue())
 
+    def test_replaces_config_hardening_with_rack_command_in_rack_mode(self):
+        snap_common = self.make_dir()
+        with open(os.path.join(snap_common, "snap_mode"), "w") as fp:
+            fp.write("rack")
+        environ = {
+            "SNAP": "snap-path",
+            "SNAP_COMMON": snap_common,
+            "SNAP_DATA": self.make_dir(),
+        }
+        self.patch(os, "environ", environ)
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        subparser = parser.subparsers.choices.get("config-hardening")
+        self.assertIsInstance(
+            subparser.get_default("execute"), cli.cmd_config_hardening_rack
+        )
+        rack_subcommands = set(subparser.subparsers.choices)
+        self.assertEqual(rack_subcommands, {"list", "get", "set", "validate"})
+        self.assertNotIn("enable", rack_subcommands)
+        self.assertNotIn("disable", rack_subcommands)
+
 
 class TestLogin(MAASTestCase):
     def setUp(self):

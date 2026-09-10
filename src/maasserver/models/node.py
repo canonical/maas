@@ -188,6 +188,7 @@ from maasserver.workflow import (
 from maastemporalworker.workflow.deploy import DeployManyParam, DeployParam
 from maastemporalworker.workflow.power import (
     convert_power_action_to_power_workflow,
+    fetch_trusted_ssh_host_keys,
     get_temporal_task_queue_for_bmc,
 )
 from metadataserver.enum import (
@@ -6095,6 +6096,10 @@ class Node(CleanSave, TimestampedModel):
                             driver_opts=dict(power_info.power_parameters),
                             task_queue=power_wf_task_queue,
                             is_dpu=self.is_dpu,
+                            trusted_ssh_host_keys=fetch_trusted_ssh_host_keys(
+                                power_info.power_type,
+                                power_info.power_parameters,
+                            ),
                         ),
                         ephemeral_deploy=bool(self.ephemeral_deploy),
                         can_set_boot_order=bool(power_info.can_set_boot_order),
