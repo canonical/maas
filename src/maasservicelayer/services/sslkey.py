@@ -22,10 +22,20 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.exceptions.constants import (
     FIPS_VIOLATION_TYPE,
+    INVALID_ARGUMENT_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.sslkeys import SSLKey
 from maasservicelayer.services.base import BaseService
+
+# `ObjectIdentifier` has no public human-readable name accessor (`._name`
+# is private); spell these out explicitly instead.
+_WEAK_SIGNATURE_ALGORITHM_NAMES = {
+    SignatureAlgorithmOID.RSA_WITH_SHA1: "RSA-SHA1",
+    SignatureAlgorithmOID.ECDSA_WITH_SHA1: "ECDSA-SHA1",
+    SignatureAlgorithmOID.DSA_WITH_SHA1: "DSA-SHA1",
+    SignatureAlgorithmOID.RSA_WITH_MD5: "RSA-MD5",
+}
 
 
 class SSLKeysService(BaseService[SSLKey, SSLKeysRepository, SSLKeyBuilder]):
@@ -41,7 +51,7 @@ class SSLKeysService(BaseService[SSLKey, SSLKeysRepository, SSLKeyBuilder]):
             raise ValidationException(
                 details=[
                     BaseExceptionDetail(
-                        type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
                         message="SSL key must be a string.",
                     )
                 ]
@@ -71,21 +81,17 @@ class SSLKeysService(BaseService[SSLKey, SSLKeysRepository, SSLKeyBuilder]):
             # Not a valid PEM certificate; let existing validation handle it
             return
 
-        sig_alg = cert.signature_algorithm_oid
-        # Reject SHA-1 and MD5 signatures
-        if sig_alg in (
-            SignatureAlgorithmOID.RSA_WITH_SHA1,
-            SignatureAlgorithmOID.ECDSA_WITH_SHA1,
-            SignatureAlgorithmOID.DSA_WITH_SHA1,
-            SignatureAlgorithmOID.RSA_WITH_MD5,
-        ):
+        weak_signature_algorithm = _WEAK_SIGNATURE_ALGORITHM_NAMES.get(
+            cert.signature_algorithm_oid
+        )
+        if weak_signature_algorithm is not None:
             raise FIPSViolationException(
                 details=[
                     BaseExceptionDetail(
                         type=FIPS_VIOLATION_TYPE,
                         message=(
-                            f"Certificate signed with {sig_alg._name} is not "
-                            "FIPS-compliant. Use SHA-256 or stronger."
+                            f"Certificate signed with {weak_signature_algorithm} "
+                            "is not FIPS-compliant. Use SHA-256 or stronger."
                         ),
                     )
                 ]

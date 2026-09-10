@@ -6,8 +6,8 @@ mkdir -p \
       "$SNAP_DATA/temporal"
 
 # Set GODEBUG=fips140=on when the host kernel has FIPS mode enabled, so Go's
-# crypto stack activates its FIPS-140-2 approved algorithms.  On
-# non-FIPS hosts the variable is left unset and the binary behaves normally.
+# crypto stack activates its FIPS-approved algorithms.  On non-FIPS hosts
+# the variable is left unset and the binary behaves normally.
 if [ -f /proc/sys/crypto/fips_enabled ] && \
    [ "$(cat /proc/sys/crypto/fips_enabled)" = "1" ]; then
     export GODEBUG="fips140=on"

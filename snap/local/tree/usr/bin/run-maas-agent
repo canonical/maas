@@ -15,8 +15,8 @@ PERLVER=$(perl -MConfig -e 'printf("%d.%d", $Config{"PERL_REVISION"}, $Config{PE
 PERL5LIB="$SNAP/usr/share/perl5:$SNAP/usr/share/perl/${PERLVER}:$SNAP/usr/lib/$(uname -m)-linux-gnu/perl/${PERLVER}"
 
 # Set GODEBUG=fips140=on when the host kernel has FIPS mode enabled, so Go's
-# crypto stack activates its FIPS-140-2 approved algorithms.  On
-# non-FIPS hosts the variable is left unset and the binary behaves normally.
+# crypto stack activates its FIPS-approved algorithms.  On non-FIPS hosts
+# the variable is left unset and the binary behaves normally.
 if [ -f /proc/sys/crypto/fips_enabled ] && \
    [ "$(cat /proc/sys/crypto/fips_enabled)" = "1" ]; then
     export GODEBUG="fips140=on"

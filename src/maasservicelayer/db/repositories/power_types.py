@@ -4,10 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from provisioningserver.drivers.power.fips import (
-    DRIVER_FIPS_REGISTRY,
-    DriverFIPSStatus,
-)
+from provisioningserver.drivers.power.fips import get_fips_status_for_driver
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
 
@@ -34,10 +31,8 @@ class PowerTypeRepository(AbstractPowerTypeRepository):
         for pt in power_types:
             entry = dict(pt)
             name = entry.get("name", "")
-            status, reason = DRIVER_FIPS_REGISTRY.get(
-                name, (DriverFIPSStatus.COMPLIANT, None)
-            )
-            entry["fips_supported"] = status == DriverFIPSStatus.COMPLIANT
+            fips_supported, reason = get_fips_status_for_driver(name)
+            entry["fips_supported"] = fips_supported
             entry["fips_unsupported_reason"] = reason
             result.append(entry)
         return result

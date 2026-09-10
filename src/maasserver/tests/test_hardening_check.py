@@ -213,13 +213,25 @@ class TestSyncHardeningNotificationsWithControllerId(MAASServerTestCase):
 class TestHardeningIdentLength(MAASServerTestCase):
     """Controller-scoped idents must stay within Notification.ident max_length=40."""
 
-    # All bind config_keys produced by HardeningValidator._validate_binds().
+    # All bind config_keys produced by HardeningValidator.__init__'s
+    # self._binds (including api_int_bind/api_int_bind6, which have no
+    # maas_url-derived fallback, and dns_bind/dns_bind6, which are
+    # snap-only).
     BIND_CONFIG_KEYS = (
         "api_bind",
         "api_bind6",
+        "api_int_bind",
+        "api_int_bind6",
         "prometheus_bind",
         "temporal_bind",
         "rpc_bind",
+        "agent_api_bind",
+        "agent_api_bind6",
+        "syslog_bind",
+        "http_proxy_bind",
+        "http_proxy_bind6",
+        "dns_bind",
+        "dns_bind6",
     )
 
     def _ctrl_ident(self, ctrl: str, config_key: str) -> str:
@@ -241,9 +253,9 @@ class TestHardeningIdentLength(MAASServerTestCase):
 
     def test_scoped_ident_can_be_stored_and_retrieved(self):
         """An ident at the expected maximum length round-trips through the DB."""
-        # prometheus_bind produces the longest ident; verify it persists.
+        # http_proxy_bind6 produces the longest ident; verify it persists.
         system_id = "abc123"
-        config_key = "prometheus_bind"
+        config_key = "http_proxy_bind6"
         ident = self._ctrl_ident(system_id, config_key)
         v = _make_bind_violation(config_key=config_key)
         sync_hardening_notifications([v], controller_id=system_id)

@@ -41,6 +41,9 @@ DRIVER_FIPS_REGISTRY = {
         DriverFIPSStatus.UNSUPPORTED,
         "SNMPv1 — no FIPS-approved authentication",
     ),
+    # Unlike `ipmi.py`, `moonshot.py` shells out to `ipmitool` directly
+    # (see `MoonshotIPMIPowerDriver._issue_ipmitool_command`) with no `-C`
+    # cipher-suite flag, so it never requests or enforces Cipher Suite 17.
     "moonshot": (
         DriverFIPSStatus.UNSUPPORTED,
         "IPMI without Cipher Suite 17 support",

@@ -45,6 +45,16 @@ class TestCmdSetGetList(_Base):
         with ClusterConfiguration.open() as config:
             self.assertEqual("10.0.0.5", config.rpc_bind)
 
+    def test_set_and_get_tftp_bind(self):
+        hardening_command._cmd_set("tftp_bind", "10.0.0.5")
+        with ClusterConfiguration.open() as config:
+            self.assertEqual(["10.0.0.5"], config.tftp_bind)
+
+    def test_set_and_get_tftp_bind_multiple_addresses(self):
+        hardening_command._cmd_set("tftp_bind", "10.0.0.5,fd00::5")
+        with ClusterConfiguration.open() as config:
+            self.assertEqual(["10.0.0.5", "fd00::5"], config.tftp_bind)
+
     def test_set_and_get_list_key(self):
         hardening_command._cmd_set("api_bind", "10.0.0.5,10.0.0.6")
         with ClusterConfiguration.open() as config:
@@ -150,6 +160,31 @@ class TestCmdValidate(_Base):
             ("api_bind", "10.0.0.5"),
             ("api_bind6", "fd00::5"),
             ("rpc_bind", "10.0.0.5"),
+            ("tftp_bind", "10.0.0.5"),
+            ("syslog_bind", "10.0.0.5"),
+            ("http_proxy_bind", "10.0.0.5"),
+            ("http_proxy_bind6", "fd00::5"),
+        ):
+            hardening_command._cmd_set(key, value)
+        with (
+            patch.object(
+                hardening_command, "running_in_snap", return_value=False
+            ),
+            patch.object(
+                hardening_command, "is_hardening_enabled", return_value=True
+            ),
+        ):
+            output, code = self._capture(hardening_command._cmd_validate)
+        self.assertIn("OK", output)
+        self.assertEqual(0, code)
+
+    def test_multi_subnet_tftp_bind_reports_ok(self):
+        hardening_command._cmd_set("hardening_enabled", "on")
+        for key, value in (
+            ("api_bind", "10.0.0.5"),
+            ("api_bind6", "fd00::5"),
+            ("rpc_bind", "10.0.0.5"),
+            ("tftp_bind", "10.0.0.5,10.0.1.5,fd00::5"),
             ("syslog_bind", "10.0.0.5"),
             ("http_proxy_bind", "10.0.0.5"),
             ("http_proxy_bind6", "fd00::5"),
