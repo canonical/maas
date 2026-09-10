@@ -6,7 +6,6 @@
 from collections import defaultdict
 from datetime import timedelta
 import os
-from socket import AF_INET, AF_INET6
 import sys
 
 import attr
@@ -37,7 +36,10 @@ from provisioningserver.prometheus.resource import PrometheusMetricsResource
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import load_template
 from provisioningserver.utils.fs import atomic_write, get_root_path
-from provisioningserver.utils.network import resolve_bind_addresses
+from provisioningserver.utils.network import (
+    partition_by_family,
+    resolve_dual_stack_bind_addresses,
+)
 from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
@@ -60,13 +62,13 @@ def compose_http_config_path(filename):
     return os.path.join(get_http_config_dir(), filename)
 
 
-def compose_listen_addresses(port, binds4=(), binds6=()):
+def compose_listen_addresses(port, binds=()):
     """Return the list of addresses for nginx ``listen`` directives.
 
-    When both ``binds4`` and ``binds6`` are empty, returns the IPv6 and
-    IPv4 wildcard addresses so nginx listens on all interfaces. Otherwise,
-    returns one ``listen`` entry per address in ``binds4``/``binds6``
-    (nginx has no trouble listening on any number of specific addresses).
+    When ``binds`` is empty, returns the IPv6 and IPv4 wildcard addresses
+    so nginx listens on all interfaces. Otherwise, returns one ``listen``
+    entry per address in ``binds`` (nginx has no trouble listening on any
+    number of specific addresses). IPv6 addresses are bracketed.
 
     Templates render the result with a ``for`` loop::
 
@@ -74,10 +76,11 @@ def compose_listen_addresses(port, binds4=(), binds6=()):
         listen {{addr}};
         {{endfor}}
     """
-    if binds4 or binds6:
-        addresses = [f"{addr}:{port}" for addr in binds4]
-        addresses += [f"[{addr}]:{port}" for addr in binds6]
-        return addresses
+    if binds:
+        v4, v6 = partition_by_family(binds)
+        return [f"{addr}:{port}" for addr in v4] + [
+            f"[{addr}]:{port}" for addr in v6
+        ]
     return [f"[::]:{port}", str(port)]
 
 
@@ -203,7 +206,6 @@ class RackHTTPService(TimerService):
 
         hardening_active = is_hardening_enabled()
         api_bind = []
-        api_bind6 = []
         maas_url = ""
         api_upstream_port = 5240
         api_rate_limit_rate = "20r/s"
@@ -212,7 +214,6 @@ class RackHTTPService(TimerService):
         try:
             with ClusterConfiguration.open() as cluster_config:
                 api_bind = list(cluster_config.api_bind)
-                api_bind6 = list(cluster_config.api_bind6)
                 maas_url = (
                     cluster_config.maas_url[0]
                     if cluster_config.maas_url
@@ -228,17 +229,10 @@ class RackHTTPService(TimerService):
                 "bind, rate-limit, and upstream-port settings."
             )
 
-        api_bind = resolve_bind_addresses(
+        api_bind = resolve_dual_stack_bind_addresses(
             api_bind,
             maas_url,
             hardening_active=hardening_active,
-            family=AF_INET,
-        )
-        api_bind6 = resolve_bind_addresses(
-            api_bind6,
-            maas_url,
-            hardening_active=hardening_active,
-            family=AF_INET6,
         )
 
         try:
@@ -250,9 +244,7 @@ class RackHTTPService(TimerService):
                     "maas_agent_http_socket_path": agent_http_socket_path,
                     "boot_resources_dir": get_maas_data_path("image-storage"),
                     "hardening": hardening_active,
-                    "api_listen": compose_listen_addresses(
-                        5248, api_bind, api_bind6
-                    ),
+                    "api_listen": compose_listen_addresses(5248, api_bind),
                     "api_upstream_port": api_upstream_port,
                     "api_rate_limit_rate": api_rate_limit_rate,
                     "api_rate_limit_burst": api_rate_limit_burst,

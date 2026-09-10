@@ -14,6 +14,7 @@ import tempita
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import locate_template, snap
 from provisioningserver.utils.fs import atomic_write
+from provisioningserver.utils.network import partition_by_family
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("proxy")
@@ -47,17 +48,14 @@ def write_config(
     prefer_v4_proxy=False,
     maas_proxy_port=8000,
     http_proxy_bind=(),
-    http_proxy_bind6=(),
 ):
     """Write the proxy configuration."""
     if peer_proxies is None:
         peer_proxies = []
 
     snap_paths = snap.SnapPaths.from_environ()
-    http_proxy_binds = [
-        *http_proxy_bind,
-        *(f"[{a}]" for a in http_proxy_bind6),
-    ]
+    v4, v6 = partition_by_family(http_proxy_bind)
+    http_proxy_binds = v4 + [f"[{addr}]" for addr in v6]
     context = {
         "modified": str(datetime.date.today()),
         "fqdn": socket.getfqdn(),

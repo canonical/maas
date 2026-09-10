@@ -1157,24 +1157,17 @@ def resolve_bind_addresses(
     ]
 
 
-def resolve_service_bind(
+def _read_bind_config(
     open_config: Callable[[], ContextManager],
     bind_attr: str,
-    *,
-    hardening_active: bool = False,
-    family: Optional[int] = None,
-    maas_url_attr: str = "maas_url",
-) -> List[str]:
-    """Read `bind_attr`/`maas_url_attr` from `open_config()` and resolve.
+    maas_url_attr: str,
+):
+    """Read `bind_attr`/`maas_url_attr` from `open_config()`.
 
-    Centralizes the "open a Configuration, read a list-valued bind key
-    and maas_url, and fall back to no configured value on any error"
-    pattern shared by every hardened service, then defers to
-    `resolve_bind_addresses` for the actual derivation.
+    Shared by `resolve_service_bind` and `resolve_dual_stack_service_bind`:
+    open a Configuration, read a list-valued bind key and maas_url, and
+    fall back to no configured value on any error.
 
-    :param open_config: A zero-argument callable returning a
-        `Configuration.open()` context manager, e.g.
-        ``RegionConfiguration.open`` or ``ClusterConfiguration.open``.
     :param maas_url_attr: ``maas_url`` is a plain string on
         `RegionConfiguration` but a list on `ClusterConfiguration`
         (one per configured region); the first entry is used in the
@@ -1195,11 +1188,117 @@ def resolve_service_bind(
             f"configuration; falling back to no configured bind address.",
             exc_info=True,
         )
+    return configured, maas_url
+
+
+def resolve_service_bind(
+    open_config: Callable[[], ContextManager],
+    bind_attr: str,
+    *,
+    hardening_active: bool = False,
+    family: Optional[int] = None,
+    maas_url_attr: str = "maas_url",
+) -> List[str]:
+    """Read `bind_attr`/`maas_url_attr` from `open_config()` and resolve.
+
+    Centralizes the "open a Configuration, read a list-valued bind key
+    and maas_url, and fall back to no configured value on any error"
+    pattern shared by every hardened service, then defers to
+    `resolve_bind_addresses` for the actual derivation.
+
+    :param open_config: A zero-argument callable returning a
+        `Configuration.open()` context manager, e.g.
+        ``RegionConfiguration.open`` or ``ClusterConfiguration.open``.
+    """
+    configured, maas_url = _read_bind_config(
+        open_config, bind_attr, maas_url_attr
+    )
     return resolve_bind_addresses(
         configured,
         maas_url,
         hardening_active=hardening_active,
         family=family,
+    )
+
+
+def partition_by_family(
+    addresses: Iterable[str],
+) -> tuple[List[str], List[str]]:
+    """Split IP address strings into ``(ipv4, ipv6)`` lists.
+
+    Order within each returned list is preserved. Shared by every
+    consumer of a mixed-family bind key (dual-stack derivation, nginx
+    ``listen`` directives, squid ``http_port`` directives, BIND9
+    ``listen-on``/``listen-on-v6``) so the family classification lives
+    in one place. This runs at service-config render time, not
+    validation time (see `check_bind_violations` for that), so a
+    malformed address (e.g. a typo in a conf file) is skipped with a
+    warning rather than raising -- it must not crash nginx/squid/BIND9
+    config generation.
+    """
+    v4: List[str] = []
+    v6: List[str] = []
+    for addr in addresses:
+        try:
+            family = IPAddress(addr).version
+        except AddrFormatError:
+            maaslog.warning(
+                f"Ignoring malformed bind address {addr!r}: not a "
+                f"valid IP address."
+            )
+            continue
+        (v6 if family == 6 else v4).append(addr)
+    return v4, v6
+
+
+def resolve_dual_stack_bind_addresses(
+    configured: Iterable[str],
+    maas_url: str,
+    *,
+    hardening_active: bool = False,
+) -> List[str]:
+    """Mixed-family counterpart to `resolve_bind_addresses`.
+
+    Each address family is resolved independently, so pinning one
+    family explicitly still backfills the other family's
+    ``maas_url``-derived default under hardening -- unlike a single
+    ``resolve_bind_addresses(..., family=None)`` call, which would treat
+    any non-empty ``configured`` as "wins verbatim" and never backfill
+    the still-missing family.
+    """
+    addrs = [addr for addr in configured if addr]
+    v4, v6 = partition_by_family(addrs)
+    result = v4 + v6
+    if not v4:
+        result += resolve_bind_addresses(
+            [], maas_url, hardening_active=hardening_active, family=AF_INET
+        )
+    if not v6:
+        result += resolve_bind_addresses(
+            [], maas_url, hardening_active=hardening_active, family=AF_INET6
+        )
+    return result
+
+
+def resolve_dual_stack_service_bind(
+    open_config: Callable[[], ContextManager],
+    bind_attr: str,
+    *,
+    hardening_active: bool = False,
+    maas_url_attr: str = "maas_url",
+) -> List[str]:
+    """Mixed-family counterpart to `resolve_service_bind`.
+
+    Same "open a Configuration, read a list-valued bind key and
+    maas_url" pattern, but defers to `resolve_dual_stack_bind_addresses`
+    so a bind key backing both address families in one list still gets
+    each family's default derived independently.
+    """
+    configured, maas_url = _read_bind_config(
+        open_config, bind_attr, maas_url_attr
+    )
+    return resolve_dual_stack_bind_addresses(
+        configured, maas_url, hardening_active=hardening_active
     )
 
 

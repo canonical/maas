@@ -11,7 +11,6 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from datetime import timedelta
-from socket import AF_INET, AF_INET6
 from urllib.parse import urlparse
 
 import attr
@@ -46,7 +45,10 @@ from provisioningserver.service_monitor import service_monitor
 from provisioningserver.syslog import config as syslog_config
 from provisioningserver.utils import snap
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET, MAAS_UUID
-from provisioningserver.utils.network import resolve_service_bind
+from provisioningserver.utils.network import (
+    resolve_dual_stack_service_bind,
+    resolve_service_bind,
+)
 from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
@@ -256,17 +258,10 @@ class RackProxy(RackOnlyExternalService):
             for upstream in configuration.upstream_proxies
         )
         hardening_active = is_hardening_enabled()
-        http_proxy_bind = resolve_service_bind(
+        http_proxy_bind = resolve_dual_stack_service_bind(
             ClusterConfiguration.open,
             "http_proxy_bind",
             hardening_active=hardening_active,
-            family=AF_INET,
-        )
-        http_proxy_bind6 = resolve_service_bind(
-            ClusterConfiguration.open,
-            "http_proxy_bind6",
-            hardening_active=hardening_active,
-            family=AF_INET6,
         )
         proxy_config.write_config(
             configuration.allowed_cidrs,
@@ -274,7 +269,6 @@ class RackProxy(RackOnlyExternalService):
             prefer_v4_proxy=configuration.prefer_v4_proxy,
             maas_proxy_port=configuration.port,
             http_proxy_bind=http_proxy_bind,
-            http_proxy_bind6=http_proxy_bind6,
         )
 
 

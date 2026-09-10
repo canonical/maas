@@ -61,13 +61,14 @@ automatically.
 
 `enable` is a convenience shortcut for
 `maas config-hardening set hardening_enabled on`: it writes only the DB
-`Config` store. No bind key is seeded. `api_bind`, `api_bind6`,
-`temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`,
-`syslog_bind`, `http_proxy_bind`, and `http_proxy_bind6` derive a specific
-address from `maas_url` at startup when left unset; `prometheus_bind`
-instead defaults to loopback (`127.0.0.1`) when left unset, since it's
-scraped locally rather than reached via `maas_url` (see the parameter
-table below).
+`Config` store. No bind key is seeded. `api_bind`, `agent_api_bind`,
+and `http_proxy_bind` each derive a specific address **per family**
+from `maas_url` at startup when left unset; `temporal_bind`,
+`rpc_bind`, and `syslog_bind` derive a single address matching
+whichever family `maas_url` resolves to. `prometheus_bind` instead
+defaults to loopback (`127.0.0.1`) when left unset, since it's scraped
+locally rather than reached via `maas_url` (see the parameter table
+below).
 
 ## Parameters and stores
 
@@ -75,21 +76,16 @@ table below).
 |-----|-------|---------|---------|
 | `hardening_enabled` | DB Config | `auto` | `auto`/`on`/`off` — see the activation model above. Set with `maas config-hardening set hardening_enabled <value>`. |
 | `fips_enabled` | DB Config | not set | Read-only, auto-detected: the first controller in the fleet to observe kernel FIPS mode active writes `true`, so every controller is thereafter held to the same requirement. Not settable via `config-hardening set`; inspect with `get`/`list`. |
-| `api_bind` | `regiond.conf` (per-host) | empty | IPv4 address(es) the public API binds to; may be a comma-separated list. Left unset by default: derived from `maas_url` at startup when hardening is active (same address clients already use to reach the region), otherwise binds all interfaces. Set explicitly to pin one or more addresses. |
-| `api_bind6` | `regiond.conf` (per-host) | empty | IPv6 address(es) the public API binds to; may be a comma-separated list. Same derivation as `api_bind`, restricted to an IPv6 address of `maas_url`'s host. |
-| `api_int_bind` | `regiond.conf` (per-host) | empty | IPv4 address the internal (rack-facing) plain HTTP listener binds to when TLS is enabled. Left unset by default: **not** derived from `maas_url` — binds all interfaces when unset, which is flagged under hardening. Set explicitly to pin it to a specific address. |
-| `api_int_bind6` | `regiond.conf` (per-host) | empty | IPv6 equivalent of `api_int_bind`; same derivation (none) and same requirement to set explicitly under hardening. |
+| `api_bind` | `regiond.conf` (per-host) | empty | Address(es) the public API binds to; may be a comma-separated list mixing IPv4 and IPv6. Left unset by default: each family derives its own address from `maas_url` at startup when hardening is active (same address clients already use to reach the region), otherwise binds all interfaces. Set explicitly to pin one or more addresses; any family not present in an explicit value is still auto-derived. |
+| `api_int_bind` | `regiond.conf` (per-host) | empty | Address(es) the internal (rack-facing) plain HTTP listener binds to when TLS is enabled; may be a comma-separated list mixing IPv4 and IPv6. Left unset by default: **not** derived from `maas_url` — binds all interfaces when unset, which is flagged under hardening. Set explicitly to pin it to one or more specific addresses. |
 | `prometheus_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Prometheus metrics endpoint binds to. Left unset by default: when hardening is active, the runtime binds it to `127.0.0.1` — unlike the other bind keys, it defaults to loopback rather than a `maas_url`-derived address, since it's scraped locally by a co-located agent (e.g. grafana-agent), not remotely. Set explicitly to pin it elsewhere. |
-| `temporal_bind` | `regiond.conf` (per-host) | empty | IPv4 address the Temporal services bind to. Left unset by default: derived from `maas_url` at startup, on every install mode (region, rack+region, all-in-one). Set explicitly to pin it elsewhere. |
+| `temporal_bind` | `regiond.conf` (per-host) | empty | Address the Temporal services bind to. Left unset by default: derived from `maas_url` at startup, on every install mode (region, rack+region, all-in-one). Set explicitly to pin it elsewhere. |
 | `temporal_server` | `rackd.conf` (per-host) | empty | Address MAAS Agent dials to reach Temporal; not a hardening key. Left unset by default: derived from `maas_url` at startup, the same as `temporal_bind`. Set explicitly to pin it elsewhere. |
-| `rpc_bind` | `regiond.conf` (per-host) | empty | Address(es) the region RPC service binds to; may be a comma-separated list. Left unset by default: derived from `maas_url` at startup (same address rack controllers already use to reach the region), falling back to binding and advertising every interface only if `maas_url` cannot be resolved. When set, rack controllers dial exactly the configured address(es). |
-| `agent_api_bind` | `regiond.conf` (per-host) | empty | IPv4 address(es) the internal API server (dialed by `maas-agent` on rack controllers, port 5242) binds to; may be a comma-separated list. Left unset by default: derived from `maas_url` at startup, the same as `rpc_bind`. |
-| `agent_api_bind6` | `regiond.conf` (per-host) | empty | IPv6 equivalent of `agent_api_bind`; may be a comma-separated list. Same derivation. |
+| `rpc_bind` | `regiond.conf` (per-host) | empty | Address(es) the region RPC service binds to; may be a comma-separated list mixing IPv4 and IPv6. Left unset by default: derived from `maas_url` at startup (same address rack controllers already use to reach the region), falling back to binding and advertising every interface only if `maas_url` cannot be resolved. When set, rack controllers dial exactly the configured address(es). |
+| `agent_api_bind` | `regiond.conf` (per-host) | empty | Address(es) the internal API server (dialed by `maas-agent` on rack controllers, port 5242) binds to; may be a comma-separated list mixing IPv4 and IPv6. Left unset by default: each family derives its own address from `maas_url` at startup, the same as `rpc_bind`. |
 | `syslog_bind` | `regiond.conf`/`rackd.conf` (per-host) | empty | Address(es) the syslog service binds to; may be a comma-separated list. Left unset by default: derived from `maas_url` at startup (same address enrolled machines and rack controllers already reach MAAS on), the same as `rpc_bind`/`temporal_bind`. Set it explicitly to pin syslog to a different interface. |
-| `dns_bind` | `regiond.conf` (per-host) | empty | IPv4 address(es) the DNS (BIND9) service binds to when hardening is active; may be a comma-separated list. **Not** derived from `maas_url`: DNS must serve every managed subnet, not just the interface that reaches the API, so a specific address is always required explicitly under hardening. **Snap installs only**: MAAS owns the whole `named.conf` there; not available (nor validated) on Debian-packaged installs, where MAAS does not own the base `named.conf.options`. |
-| `dns_bind6` | `regiond.conf` (per-host) | empty | IPv6 equivalent of `dns_bind`; may be a comma-separated list. Same derivation, and same snap-only restriction. |
-| `http_proxy_bind` | `regiond.conf`/`rackd.conf` (per-host) | empty | IPv4 address(es) the HTTP proxy (squid) service binds to; may be a comma-separated list. Left unset by default: binds all interfaces outside hardening, or derives from `maas_url` at startup when hardening is active, the same as `rpc_bind`/`syslog_bind`. |
-| `http_proxy_bind6` | `regiond.conf`/`rackd.conf` (per-host) | empty | IPv6 equivalent of `http_proxy_bind`; may be a comma-separated list. Same derivation. |
+| `dns_bind` | `regiond.conf` (per-host) | empty | Address(es) the DNS (BIND9) service binds to when hardening is active; may be a comma-separated list mixing IPv4 and IPv6 (rendered into BIND9's separate `listen-on`/`listen-on-v6` directives automatically). **Not** derived from `maas_url`: DNS must serve every managed subnet, not just the interface that reaches the API, so a specific address per family is always required explicitly under hardening. **Snap installs only**: MAAS owns the whole `named.conf` there; not available (nor validated) on Debian-packaged installs, where MAAS does not own the base `named.conf.options`. |
+| `http_proxy_bind` | `regiond.conf`/`rackd.conf` (per-host) | empty | Address(es) the HTTP proxy (squid) service binds to; may be a comma-separated list mixing IPv4 and IPv6. Left unset by default: binds all interfaces outside hardening, or each family derives its own address from `maas_url` at startup when hardening is active, the same as `rpc_bind`/`syslog_bind`. |
 | `api_tls_dhparam` | `regiond.conf` (per-host) | empty | Path to a DH parameters PEM file. When present, it must be at least 2048 bits. |
 | `database_sslmode` | `regiond.conf` (per-host) | `prefer` | PostgreSQL client SSL mode. Under hardening, use `verify-ca` or `verify-full`. |
 | `database_sslcert` | `regiond.conf` (per-host) | empty | Path to the PostgreSQL client certificate. Required when `database_sslmode` is `verify-full`. |
@@ -122,17 +118,17 @@ subcommands:
              violations; exit non-zero if any exist.
 ```
 
-Keys: `hardening_enabled`, `api_bind`, `api_bind6`, `rpc_bind`,
-`tftp_bind`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`, and
-(snap installs only) `dns_bind`/`dns_bind6`. `api_bind`, `api_bind6`,
-`syslog_bind`, `http_proxy_bind`, and `http_proxy_bind6` derive a
-specific address from `maas_url` when left unset, the same as their
-region counterparts. `rpc_bind`, `tftp_bind`, and `dns_bind`/`dns_bind6`
-have no such derivation: leaving `rpc_bind` unset binds all interfaces
-and is flagged under hardening; `tftp_bind` (like `dns_bind`) must
-serve every managed subnet rather than just the interface that reaches
-the API, so it takes a comma-separated list — one address per subnet —
-and is flagged under hardening when left unset.
+Keys: `hardening_enabled`, `api_bind`, `rpc_bind`, `tftp_bind`,
+`syslog_bind`, `http_proxy_bind`, and (snap installs only) `dns_bind`.
+`api_bind` and `http_proxy_bind` each derive a specific address per
+family from `maas_url` when left unset, the same as their region
+counterparts; `syslog_bind` derives a single address matching
+whichever family `maas_url` resolves to. `rpc_bind`, `tftp_bind`, and
+`dns_bind` have no such derivation: leaving `rpc_bind` unset binds all
+interfaces and is flagged under hardening; `tftp_bind` and `dns_bind`
+must serve every managed subnet rather than just the interface that
+reaches the API, so each takes a comma-separated list — one address
+per subnet/family — and is flagged under hardening when left unset.
 
 `maas-rack config-hardening validate` checks only bind-wildcard rules —
 the rack has no TLS certificate, DH parameters, or database to validate;
@@ -155,8 +151,8 @@ it. A violation clears automatically once the underlying setting is corrected.
 | `TLS_CERT_PARSE_ERROR` | Certificate or key is not valid PEM | Re-run `maas config-tls enable` with a valid PEM certificate |
 | `WEAK_DH_PARAMS` | `api_tls_dhparam` file is under 2048 bits | See commands below. |
 | `DH_PARAMS_PARSE_ERROR` | `api_tls_dhparam` file is not valid PEM DH parameters | See commands below. |
-| `INVALID_BIND_ADDRESS` | A bind key (`api_bind`, `api_bind6`, `api_int_bind`, `api_int_bind6`, `prometheus_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`, `dns_bind`, `dns_bind6`) contains a value that is not a valid IP address | `maas config-hardening set <key> <specific-ip-address>` |
-| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or is unset (except `api_bind`, `api_bind6`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `agent_api_bind6`, `syslog_bind`, `http_proxy_bind`, and `http_proxy_bind6`, which are derived automatically from `maas_url` when unset). `api_int_bind`/`api_int_bind6` have no such derivation and are flagged when unset. `dns_bind`/`dns_bind6` are only checked on snap installs. | `maas config-hardening set <key> <specific-ip-address>` |
+| `INVALID_BIND_ADDRESS` | A bind key (`api_bind`, `api_int_bind`, `prometheus_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `syslog_bind`, `http_proxy_bind`, `dns_bind`) contains a value that is not a valid IP address | `maas config-hardening set <key> <specific-ip-address>` |
+| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or is unset (except `api_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `syslog_bind`, and `http_proxy_bind`, which are derived automatically from `maas_url` when unset). `api_int_bind` has no such derivation and is flagged when unset. `dns_bind` is only checked on snap installs. | `maas config-hardening set <key> <specific-ip-address>` |
 | `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, `prefer`, or `require`, and `database_host` is not a Unix socket path | See commands below. |
 | `FIPS_CONFIG_STATUS_MISMATCH` | Another controller in the fleet has FIPS mode active (`fips_enabled` in the DB), but this host's kernel does not | Enable FIPS mode on this host's kernel to match the rest of the fleet. `fips_enabled` cannot be unset via `config-hardening`. |
 
