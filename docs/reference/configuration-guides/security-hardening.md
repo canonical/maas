@@ -152,7 +152,7 @@ it. A violation clears automatically once the underlying setting is corrected.
 | `WEAK_DH_PARAMS` | `api_tls_dhparam` file is under 2048 bits | See commands below. |
 | `DH_PARAMS_PARSE_ERROR` | `api_tls_dhparam` file is not valid PEM DH parameters | See commands below. |
 | `INVALID_BIND_ADDRESS` | A bind key (`api_bind`, `api_int_bind`, `prometheus_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `syslog_bind`, `http_proxy_bind`, `dns_bind`) contains a value that is not a valid IP address | `maas config-hardening set <key> <specific-ip-address>` |
-| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or is unset (except `api_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `syslog_bind`, and `http_proxy_bind`, which are derived automatically from `maas_url` when unset). `api_int_bind` has no such derivation and is flagged when unset. `dns_bind` is only checked on snap installs. | `maas config-hardening set <key> <specific-ip-address>` |
+| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or is unset (except `api_bind`, `prometheus_bind`, `temporal_bind`, `rpc_bind`, `agent_api_bind`, `syslog_bind`, and `http_proxy_bind`, which are derived automatically from `maas_url` when unset). `api_int_bind` has no such derivation and is flagged when unset. `dns_bind` is only checked on snap installs. | `maas config-hardening set <key> <specific-ip-address>` |
 | `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, `prefer`, or `require`, and `database_host` is not a Unix socket path | See commands below. |
 | `FIPS_CONFIG_STATUS_MISMATCH` | Another controller in the fleet has FIPS mode active (`fips_enabled` in the DB), but this host's kernel does not | Enable FIPS mode on this host's kernel to match the rest of the fleet. `fips_enabled` cannot be unset via `config-hardening`. |
 
@@ -206,7 +206,7 @@ Structured JSON events. View them with `journalctl -o json`.
 
 | Event | Level | Meaning |
 |-------|-------|---------|
-| `fips_mode_detected` | INFO | FIPS state read at startup (`fips_mode`, `source`). |
+| `fips_mode_detected` | INFO | FIPS state read at startup (`fips_mode`). |
 | `hardening_mode_determined` | INFO | Resolved hardening state (`setting`, `fips_enabled`, `hardening_active`). |
 | `hardening_violation` | ERROR | A prerequisite is unmet (`ident`, `code`, `config_key`, `file_path`, `message`). |
 | `hardening_notification_posted` | INFO | An admin notification was posted for a violation (`ident`, `code`). |
@@ -230,9 +230,9 @@ The `script-src` directive includes a single SHA-256 hash that whitelists
 one static inline `<script>` block required by the documentation theme.
 Inline scripts are otherwise forbidden by `script-src 'self'`.
 
-The CSP header is defined in
-`src/maasserver/templates/http/regiond.nginx.conf.template` inside the
-`{{if hardening}}` block. It is only emitted when hardening is active.
+The CSP header is defined in the region controller's nginx configuration
+template inside a hardening-only conditional block. It is only emitted
+when hardening is active.
 
 ### Other directives
 

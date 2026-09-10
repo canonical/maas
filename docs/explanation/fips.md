@@ -9,7 +9,10 @@ MAAS reads the host FIPS state at startup from `/proc/sys/crypto/fips_enabled`.
 A value of `1` means FIPS mode is active. MAAS never enables or disables FIPS
 mode itself.
 
-> **Snap install required.** MAAS supports FIPS mode only when installed as a snap.
+> **Snap install required.** FIPS-certified cryptography is only available
+> through the MAAS snap; its `core24` base must run the FIPS-updates
+> channel for FIPS-approved cryptographic modules to apply. Debian package
+> installs do not currently support FIPS mode.
 
 ## FIPS-conditional controls
 
@@ -59,8 +62,15 @@ A rejected key is logged with its fingerprint for review.
 
 ### Public key type restrictions
 
-SSH and SSL public keys must be RSA (at least 2048 bits) or ECDSA
-(P-256, P-384, or P-521). Ed25519 keys are not accepted on FIPS hosts.
+MAAS validates public keys against a FIPS-approved allowlist on FIPS hosts:
+
+- **SSH public keys** (added for machine access, or matched against trusted
+  host keys): must be RSA (at least 2048 bits) or ECDSA (P-256, P-384, or
+  P-521). Ed25519 keys are not accepted.
+- **SSL public keys** (used for Windows WinRM access): must be RSA (at
+  least 2048 bits) or ECDSA (P-256, P-384, or P-521), signed with SHA-256
+  or stronger. DSA keys, weaker signature algorithms, and Ed25519 keys are
+  rejected.
 
 ### Power driver restrictions
 
@@ -70,11 +80,11 @@ On a FIPS host, the API enforces FIPS compliance on power driver configuration:
   HMAC-SHA256 with AES-CBC-128; all lower suites rely on HMAC-MD5, RC4, or
   SHA-1.
 - **Unsupported drivers**: The following drivers are rejected because they
-  cannot be made FIPS-compliant: APC, Eaton, Raritan, DLI, MSFTOCS, RECS,
-  SeaMicro, UCSM, Moonshot. The API returns the rejection reason and a list
-  of supported alternatives.
+  cannot be made FIPS-compliant: APC, Eaton, Raritan, DLI, MSFTOCS,
+  RECS (`recs_box`), SeaMicro (`sm15k`), UCSM, and Moonshot. The API
+  returns the rejection reason and a list of supported alternatives.
 - **SSL verification**: Drivers that support an SSL verification option
-  (Webhook, Proxmox, HMCz) require `verify_ssl: true`.
+  (Webhook, Proxmox, HMCz) require it enabled (`power_verify_ssl: y`).
 
 Attempting to configure a non-compliant setting returns HTTP 422 with a
 structured error identifying the violation.
