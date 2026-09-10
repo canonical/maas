@@ -9,10 +9,11 @@ MAAS reads the host FIPS state at startup from `/proc/sys/crypto/fips_enabled`.
 A value of `1` means FIPS mode is active. MAAS never enables or disables FIPS
 mode itself.
 
-> **Snap install required.** FIPS-certified cryptography is only available
-> through the MAAS snap; its `core24` base must run the FIPS-updates
-> channel for FIPS-approved cryptographic modules to apply. Debian package
-> installs do not currently support FIPS mode.
+> **Snap installs:** MAAS requires the `core24` snap base to come from a
+> FIPS-updates channel for FIPS-approved cryptographic modules to apply
+> inside the snap. Refreshing `core24` to the appropriate channel is a
+> manual step — see
+> [Enable FIPS on the host](/how-to-guides/enhance-maas-security.md#enable-fips-on-the-host).
 
 ## FIPS-conditional controls
 
