@@ -176,20 +176,10 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
 
     api_bind = ConfigurationOption(
         "api_bind",
-        "IPv4 address(es) the public API server binds to; empty means "
-        "all interfaces. A specific address is required when hardening "
-        "is active (derived from maas_url if unset). May be a list.",
-        ForEach(
-            UnicodeString(accept_python=False),
-            convert_to_list=True,
-            if_missing=[],
-        ),
-    )
-    api_bind6 = ConfigurationOption(
-        "api_bind6",
-        "IPv6 address(es) the public API server binds to; empty means "
-        "all interfaces. A specific address is required when hardening "
-        "is active (derived from maas_url if unset). May be a list.",
+        "Address(es) the public API server binds to; empty means all "
+        "interfaces. A specific address per family is required when "
+        "hardening is active (each family derived from maas_url if "
+        "unset). May be a list mixing IPv4 and IPv6 addresses.",
         ForEach(
             UnicodeString(accept_python=False),
             convert_to_list=True,
@@ -198,15 +188,14 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     api_int_bind = ConfigurationOption(
         "api_int_bind",
-        "IPv4 address the internal (rack-facing) plain HTTP service binds to "
-        "when TLS is enabled; empty means all interfaces.",
-        UnicodeString(if_missing=""),
-    )
-    api_int_bind6 = ConfigurationOption(
-        "api_int_bind6",
-        "IPv6 address the internal (rack-facing) plain HTTP service binds to "
-        "when TLS is enabled; empty means all interfaces.",
-        UnicodeString(if_missing=""),
+        "Address(es) the internal (rack-facing) plain HTTP service "
+        "binds to when TLS is enabled; empty means all interfaces. "
+        "May be a list mixing IPv4 and IPv6 addresses.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
     )
     prometheus_bind = ConfigurationOption(
         "prometheus_bind",
@@ -232,20 +221,10 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     agent_api_bind = ConfigurationOption(
         "agent_api_bind",
-        "IPv4 address the internal API server (dialed by maas-agent on "
-        "rack controllers, port 5242) binds to; empty derives a specific "
-        "address from maas_url. May be a list.",
-        ForEach(
-            UnicodeString(accept_python=False),
-            convert_to_list=True,
-            if_missing=[],
-        ),
-    )
-    agent_api_bind6 = ConfigurationOption(
-        "agent_api_bind6",
-        "IPv6 address the internal API server (dialed by maas-agent on "
-        "rack controllers, port 5242) binds to; empty derives a specific "
-        "address from maas_url. May be a list.",
+        "Address(es) the internal API server (dialed by maas-agent on "
+        "rack controllers, port 5242) binds to; empty derives a "
+        "specific address per family from maas_url. May be a list "
+        "mixing IPv4 and IPv6 addresses.",
         ForEach(
             UnicodeString(accept_python=False),
             convert_to_list=True,
@@ -265,20 +244,10 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     http_proxy_bind = ConfigurationOption(
         "http_proxy_bind",
-        "IPv4 address(es) the HTTP proxy service binds to; empty means "
-        "all interfaces. A specific address is required when hardening "
-        "is active. May be a list.",
-        ForEach(
-            UnicodeString(accept_python=False),
-            convert_to_list=True,
-            if_missing=[],
-        ),
-    )
-    http_proxy_bind6 = ConfigurationOption(
-        "http_proxy_bind6",
-        "IPv6 address(es) the HTTP proxy service binds to; empty means "
-        "all interfaces. A specific address is required when hardening "
-        "is active. May be a list.",
+        "Address(es) the HTTP proxy service binds to; empty means all "
+        "interfaces. A specific address per family is required when "
+        "hardening is active. May be a list mixing IPv4 and IPv6 "
+        "addresses.",
         ForEach(
             UnicodeString(accept_python=False),
             convert_to_list=True,
@@ -287,22 +256,11 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     dns_bind = ConfigurationOption(
         "dns_bind",
-        "IPv4 address(es) the DNS (Bind9) service binds to when hardening "
-        "is active. May be a list. Snap installs only: MAAS does not own "
-        "the base named.conf.options on Debian-packaged installs, so this "
-        "key is not available (nor validated) there.",
-        ForEach(
-            UnicodeString(accept_python=False),
-            convert_to_list=True,
-            if_missing=[],
-        ),
-    )
-    dns_bind6 = ConfigurationOption(
-        "dns_bind6",
-        "IPv6 address(es) the DNS (Bind9) service binds to when hardening "
-        "is active. May be a list. Snap installs only: MAAS does not own "
-        "the base named.conf.options on Debian-packaged installs, so this "
-        "key is not available (nor validated) there.",
+        "Address(es) the DNS (Bind9) service binds to when hardening "
+        "is active. May be a list mixing IPv4 and IPv6 addresses. Snap "
+        "installs only: MAAS does not own the base named.conf.options "
+        "on Debian-packaged installs, so this key is not available "
+        "(nor validated) there.",
         ForEach(
             UnicodeString(accept_python=False),
             convert_to_list=True,

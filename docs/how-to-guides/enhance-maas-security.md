@@ -234,11 +234,13 @@ A value of `1` means FIPS mode is active.
 
 Run `maas config-hardening enable`. This sets `hardening_enabled=on` in the
 MAAS database; it is a pure database operation and does not touch
-`regiond.conf`. `api_bind`, `api_bind6`, `temporal_bind`, and `rpc_bind` are
-all left unset: MAAS derives a specific, non-wildcard address for each from
-`maas_url` at startup. `prometheus_bind` is also left unset, but defaults to
-loopback (`127.0.0.1`) instead, since it's scraped locally rather than
-reached via `maas_url`.
+`regiond.conf`. `api_bind`, `temporal_bind`, and `rpc_bind` are all left
+unset: MAAS derives a non-wildcard address at startup from `maas_url`
+for each of them (`api_bind` derives one address per family;
+`temporal_bind`/`rpc_bind` derive a single address matching whichever
+family `maas_url` resolves to). `prometheus_bind` is also left unset,
+but defaults to loopback (`127.0.0.1`) instead, since it's scraped
+locally rather than reached via `maas_url`.
 
 ```text
 sudo maas config-hardening enable
@@ -260,13 +262,13 @@ When hardening is active, MAAS validates transport-security prerequisites at
 startup. Use `maas config-hardening set` to configure each parameter:
 
 ```text
-# api_bind/api_bind6 are left unset by default: MAAS derives them from
-# maas_url when hardening is active. Only set them explicitly to pin the
-# public API to a different interface, or to bind several at once
-# (comma-separated).
+# api_bind is left unset by default: MAAS derives a specific address
+# per address family from maas_url when hardening is active. Only set
+# it explicitly to pin the public API to a different interface, or to
+# bind several at once (comma-separated, may mix IPv4 and IPv6 -- any
+# family not present in the explicit value is still auto-derived).
 sudo maas config-hardening set api_bind 10.0.0.5
-sudo maas config-hardening set api_bind6 fd00::5
-sudo maas config-hardening set api_bind 10.0.0.5,10.0.0.6
+sudo maas config-hardening set api_bind 10.0.0.5,fd00::5
 
 # Bind Prometheus metrics to loopback (already seeded by
 # maas config-hardening enable; only needed if you skipped that step).
@@ -288,14 +290,14 @@ sudo maas config-hardening set rpc_bind 10.0.0.5
 # than the one maas_url resolves to.
 sudo maas config-hardening set syslog_bind 10.0.0.5
 
-# dns_bind/dns_bind6 have no maas_url-derived default: DNS must serve
-# every managed subnet, not just the interface that reaches the API, so
-# hardening always requires picking address(es) explicitly. Snap installs
-# only: MAAS owns the whole named.conf there; on Debian-packaged installs
-# these keys are not available (nor validated), since MAAS does not own
-# the base named.conf.options.
-sudo maas config-hardening set dns_bind 10.0.0.5
-sudo maas config-hardening set dns_bind6 fd00::5
+# dns_bind has no maas_url-derived default: DNS must serve every
+# managed subnet, not just the interface that reaches the API, so
+# hardening always requires picking address(es) explicitly (may mix
+# IPv4 and IPv6 in one comma-separated list). Snap installs only: MAAS
+# owns the whole named.conf there; on Debian-packaged installs this key
+# is not available (nor validated), since MAAS does not own the base
+# named.conf.options.
+sudo maas config-hardening set dns_bind 10.0.0.5,fd00::5
 
 # Verify the PostgreSQL server certificate.
 sudo maas config-hardening set database_sslmode verify-full
@@ -319,15 +321,18 @@ Check the effective values and their source stores:
 maas config-hardening list
 ```
 
-For a bind key that's left unset but auto-derives from `maas_url` (`api_bind`,
-`api_bind6`, `agent_api_bind`, `agent_api_bind6`, `rpc_bind`,
-`temporal_bind`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`),
-`list` appends the address MAAS would actually bind to right now, e.g.
-`api_bind [conf ]  (effective: 10.0.0.5)`. `prometheus_bind` gets the same
-treatment but with a loopback default instead of a `maas_url`-derived one.
-Nothing is appended when the key is explicitly set, or when no derivation
-is possible (e.g. hardening is inactive for the keys that only derive
-under hardening).
+For a bind key that's left unset but auto-derives from `maas_url`
+(`api_bind`, `agent_api_bind`, `http_proxy_bind`, `rpc_bind`,
+`temporal_bind`, `syslog_bind`), `list` appends the address(es) MAAS
+would actually bind to right now, e.g. `api_bind [conf ]  (effective:
+10.0.0.5,fd00::5)`. `api_bind`, `agent_api_bind`, and `http_proxy_bind`
+show one address per family; `rpc_bind`, `temporal_bind`, and
+`syslog_bind` show a single address matching whichever family
+`maas_url` resolves to. `prometheus_bind` gets the same treatment but
+with a loopback default instead of a `maas_url`-derived one. Nothing
+is appended when the key is explicitly set for every derivable
+family, or when no derivation is possible (e.g. hardening is inactive
+for the keys that only derive under hardening).
 
 Run validation on demand. It prints every violation and exits non-zero when any exist, so it doubles as audit evidence:
 

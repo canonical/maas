@@ -136,9 +136,9 @@ class TestWriteConfig(MAASTestCase):
             self.assertIn("http_port 10.0.0.5:8000", lines)
             self.assertIn("http_port 10.0.0.6:8000", lines)
 
-    def test_http_proxy_bind6_uses_bracketed_address(self):
+    def test_http_proxy_bind_ipv6_only_uses_bracketed_address(self):
         cidr = factory.make_ipv4_network()
-        config.write_config([cidr], http_proxy_bind6=["fd00::5"])
+        config.write_config([cidr], http_proxy_bind=["fd00::5"])
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
             self.assertIn("http_port [fd00::5]:3128 transparent", lines)
@@ -148,13 +148,14 @@ class TestWriteConfig(MAASTestCase):
         cidr = factory.make_ipv4_network()
         config.write_config(
             [cidr],
-            http_proxy_bind=["10.0.0.5"],
-            http_proxy_bind6=["fd00::5"],
+            http_proxy_bind=["10.0.0.5", "fd00::5"],
         )
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
             self.assertIn("http_port 10.0.0.5:3128 transparent", lines)
             self.assertIn("http_port [fd00::5]:3128 transparent", lines)
+            self.assertIn("http_port 10.0.0.5:8000", lines)
+            self.assertIn("http_port [fd00::5]:8000", lines)
 
     def test_no_http_proxy_bind_listens_on_all_interfaces(self):
         cidr = factory.make_ipv4_network()

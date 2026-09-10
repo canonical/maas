@@ -228,13 +228,29 @@ class TestRegionHTTPService(
             http._Configuration(
                 cert=cert,
                 port=5443,
-                api_bind=["10.0.0.5"],
-                api_bind6=["fd00::5"],
+                api_bind=["10.0.0.5", "fd00::5"],
             )
         )
         self.assertIn("listen 10.0.0.5:5443 ssl http2;", nginx_config)
         self.assertIn("listen [fd00::5]:5443 ssl http2;", nginx_config)
         self.assertNotIn("listen [::]:5443 ssl http2;", nginx_config)
+
+    def test_hardening_on_ipv4_only_backfills_ipv6_main_bind(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "fd00::9"
+        cert = get_sample_cert_with_cacerts()
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=cert,
+                port=5443,
+                hardening_active=True,
+                maas_url="http://10.0.0.1:5240/MAAS",
+                api_bind=["10.0.0.5"],
+            )
+        )
+        self.assertIn("listen 10.0.0.5:5443 ssl http2;", nginx_config)
+        self.assertIn("listen [fd00::9]:5443 ssl http2;", nginx_config)
 
     def test_plain_http_binds_to_api_bind_without_tls(self):
         nginx_config = self._configure_to_file(
@@ -272,8 +288,7 @@ class TestRegionHTTPService(
             http._Configuration(
                 cert=cert,
                 port=5443,
-                api_int_bind="192.168.0.2",
-                api_int_bind6="fe80::2",
+                api_int_bind=["192.168.0.2", "fe80::2"],
             )
         )
         self.assertIn("listen 192.168.0.2:5240;", nginx_config)

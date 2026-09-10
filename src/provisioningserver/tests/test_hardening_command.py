@@ -135,12 +135,10 @@ class TestCmdValidate(_Base):
 
     def test_active_hardening_with_invalid_address_reports_invalid_bind(self):
         hardening_command._cmd_set("hardening_enabled", "on")
-        hardening_command._cmd_set("api_bind", "not-an-ip")
+        hardening_command._cmd_set("api_bind", "not-an-ip,fd00::5")
         hardening_command._cmd_set("rpc_bind", "10.0.0.5")
         hardening_command._cmd_set("syslog_bind", "10.0.0.5")
-        hardening_command._cmd_set("http_proxy_bind", "10.0.0.5")
-        hardening_command._cmd_set("http_proxy_bind6", "fd00::5")
-        hardening_command._cmd_set("api_bind6", "fd00::5")
+        hardening_command._cmd_set("http_proxy_bind", "10.0.0.5,fd00::5")
         with (
             patch.object(
                 hardening_command, "running_in_snap", return_value=False
@@ -157,13 +155,11 @@ class TestCmdValidate(_Base):
     def test_all_binds_set_reports_ok(self):
         hardening_command._cmd_set("hardening_enabled", "on")
         for key, value in (
-            ("api_bind", "10.0.0.5"),
-            ("api_bind6", "fd00::5"),
+            ("api_bind", "10.0.0.5,fd00::5"),
             ("rpc_bind", "10.0.0.5"),
             ("tftp_bind", "10.0.0.5"),
             ("syslog_bind", "10.0.0.5"),
-            ("http_proxy_bind", "10.0.0.5"),
-            ("http_proxy_bind6", "fd00::5"),
+            ("http_proxy_bind", "10.0.0.5,fd00::5"),
         ):
             hardening_command._cmd_set(key, value)
         with (
@@ -181,13 +177,11 @@ class TestCmdValidate(_Base):
     def test_multi_subnet_tftp_bind_reports_ok(self):
         hardening_command._cmd_set("hardening_enabled", "on")
         for key, value in (
-            ("api_bind", "10.0.0.5"),
-            ("api_bind6", "fd00::5"),
+            ("api_bind", "10.0.0.5,fd00::5"),
             ("rpc_bind", "10.0.0.5"),
             ("tftp_bind", "10.0.0.5,10.0.1.5,fd00::5"),
             ("syslog_bind", "10.0.0.5"),
-            ("http_proxy_bind", "10.0.0.5"),
-            ("http_proxy_bind6", "fd00::5"),
+            ("http_proxy_bind", "10.0.0.5,fd00::5"),
         ):
             hardening_command._cmd_set(key, value)
         with (
