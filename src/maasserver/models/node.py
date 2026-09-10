@@ -5694,11 +5694,13 @@ class Node(CleanSave, TimestampedModel):
                 node=self,
                 status=NODE_STATUS.ALLOCATED,
             )
-            from maasserver.models import ScriptSet
+            # Ephemeral deployments don't involve deployment scripts.
+            if not self.ephemeral_deploy:
+                from maasserver.models import ScriptSet
 
-            self.current_deployment_script_set = (
-                ScriptSet.objects.create_deployment_script_set(self)
-            )
+                self.current_deployment_script_set = (
+                    ScriptSet.objects.create_deployment_script_set(self)
+                )
 
         # Bug #1630361: Make sure that there is a maas_facing_server_address in
         # the same address family as our configured interfaces.

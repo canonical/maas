@@ -9372,6 +9372,34 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node.start(admin)
         self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
 
+    def test_ephemeral_deploy_does_not_create_deployment_script_set(self):
+        load_builtin_scripts()
+        admin = factory.make_admin()
+        with transaction.atomic():
+            factory.make_RegionController()
+            factory.make_usable_boot_resource(
+                name="ubuntu/focal",
+                architecture="amd64/ga-20.04",
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            )
+        node = self.make_acquired_node_with_interface(
+            admin,
+            power_type="manual",
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            architecture="amd64/generic",
+        )
+        node.osystem = "ubuntu"
+        node.distro_series = "focal"
+        node.start(admin)
+
+        self.assertIsNone(node.current_deployment_script_set)
+        self.assertFalse(
+            ScriptSet.objects.filter(
+                node=node, result_type=RESULT_TYPE.DEPLOYMENT
+            ).exists()
+        )
+
     def test_doesnt_raise_network_validation_when_all_dhcp(self):
         admin = factory.make_admin()
         node = self.make_acquired_node_with_interface(
