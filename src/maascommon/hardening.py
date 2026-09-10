@@ -29,6 +29,8 @@ CONF_KEYS = frozenset(
         "api_tls_dhparam",
         "api_bind",
         "api_bind6",
+        "api_int_bind",
+        "api_int_bind6",
         "prometheus_bind",
         "temporal_bind",
         "rpc_bind",
@@ -104,11 +106,14 @@ def is_hardening_enabled() -> bool:
 
 @dataclass(frozen=True)
 class BindViolation:
-    """A single bind-configuration hardening failure.
+    """A single hardening validation failure.
 
-    Shared between the region (`maasservicelayer.services.hardening`) and
-    the rack (`provisioningserver.hardening_command`), which each validate
-    their own bind keys against the same wildcard/invalid-address rules.
+    Shared between the region (`maasservicelayer.services.hardening`,
+    where it is re-exported as ``HardeningViolation``) and the rack
+    (`provisioningserver.hardening_command`). Bind-key checks populate
+    every field except ``file_path``; region-only checks (TLS
+    certificate, DH parameters) use ``file_path`` to point at the
+    offending file on disk.
     """
 
     code: str
@@ -116,6 +121,7 @@ class BindViolation:
     resolution: str
     config_key: str
     ident: str
+    file_path: str | None = None
 
 
 def _wildcard_bind_violation(

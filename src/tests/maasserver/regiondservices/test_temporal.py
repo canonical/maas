@@ -1,7 +1,8 @@
-#  Copyright 2025 Canonical Ltd.  This software is licensed under the
+#  Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for TLS configuration in RegionTemporalService._configure()."""
+"""Tests for RegionTemporalService (config rendering, service reload,
+and service startup)."""
 
 from unittest import mock
 
@@ -265,3 +266,77 @@ def test_broadcast_address_falls_back_when_temporal_bind_is_wildcard(
     # The broadcast-address fallback consults maas_url directly, on top
     # of resolve_bind_address's own internal (separately mocked) lookup.
     assert get_source_address_calls == 1
+
+
+def test_temporal_bind_falls_back_to_loopback_under_hardening(
+    tmp_path, monkeypatch
+):
+    """Under hardening, an unresolvable temporal_bind falls back to
+    loopback rather than a wildcard bind."""
+    monkeypatch.setenv("MAAS_TEMPORAL_CONFIG_DIR", str(tmp_path))
+    environ, _ = _run_configure(
+        _BASE_DATABASES,
+        monkeypatch,
+        temporal_bind="",
+        broadcast_address="",
+        hardening_active=True,
+        source_address_for_url=None,
+    )
+    assert environ["temporal_bind"] == "127.0.0.1"
+
+
+class TestReloadService:
+    def test_restarts_service_in_snap(self, monkeypatch):
+        from maasserver.regiondservices import temporal as temporal_module
+
+        monkeypatch.setattr(
+            temporal_module.snap, "running_in_snap", lambda: True
+        )
+        restart = mock.Mock()
+        reload_ = mock.Mock()
+        monkeypatch.setattr(
+            temporal_module.service_monitor, "restartService", restart
+        )
+        monkeypatch.setattr(
+            temporal_module.service_monitor, "reloadService", reload_
+        )
+        RegionTemporalService()._reload_service()
+        restart.assert_called_once_with("temporal")
+        reload_.assert_not_called()
+
+    def test_reloads_service_outside_snap(self, monkeypatch):
+        from maasserver.regiondservices import temporal as temporal_module
+
+        monkeypatch.setattr(
+            temporal_module.snap, "running_in_snap", lambda: False
+        )
+        restart = mock.Mock()
+        reload_ = mock.Mock()
+        monkeypatch.setattr(
+            temporal_module.service_monitor, "restartService", restart
+        )
+        monkeypatch.setattr(
+            temporal_module.service_monitor, "reloadService", reload_
+        )
+        RegionTemporalService()._reload_service()
+        reload_.assert_called_once_with("temporal")
+        restart.assert_not_called()
+
+
+class TestStartService:
+    def test_configures_then_reloads_then_starts(self, monkeypatch):
+        svc = RegionTemporalService()
+        calls = []
+        monkeypatch.setattr(
+            svc, "_configure", lambda: calls.append("configure")
+        )
+        monkeypatch.setattr(
+            svc,
+            "_reload_service",
+            lambda: calls.append("reload_service"),
+        )
+        assert svc.running == 0
+        svc.startService()
+        assert calls == ["configure", "reload_service"]
+        # super().startService() marks the Twisted service as running.
+        assert svc.running == 1

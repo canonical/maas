@@ -361,13 +361,22 @@ def set_up_options_conf(overwrite=True, **kwargs):
     kwargs.setdefault("hardening", False)
     kwargs.setdefault("dns_bind", [])
     kwargs.setdefault("dns_bind6", [])
-    # When hardening is active and no explicit value was provided, fall back to
-    # the safe hardening defaults.  An explicit falsy value (empty string / 0)
-    # keeps the directive out of the config entirely.
+    # When hardening is active and no explicit value was provided, fall back
+    # to the safe hardening defaults. Since falsy is the documented
+    # "unconfigured" sentinel (see RegionConfiguration.dns_allow_transfer),
+    # this applies whether the key is missing entirely or was passed in as
+    # an explicit empty string / 0 -- setdefault() alone cannot express
+    # that, since callers always pass these keys explicitly.
     _hardening = kwargs["hardening"]
-    kwargs.setdefault("dns_allow_transfer", "none" if _hardening else "")
-    kwargs.setdefault("dns_fetches_per_zone", 100 if _hardening else 0)
-    kwargs.setdefault("dns_fetches_per_server", 100 if _hardening else 0)
+    kwargs["dns_allow_transfer"] = kwargs.get("dns_allow_transfer") or (
+        "none" if _hardening else ""
+    )
+    kwargs["dns_fetches_per_zone"] = kwargs.get("dns_fetches_per_zone") or (
+        100 if _hardening else 0
+    )
+    kwargs["dns_fetches_per_server"] = kwargs.get(
+        "dns_fetches_per_server"
+    ) or (100 if _hardening else 0)
 
     # Parse the options file and make sure MAAS doesn't define any options
     # that the user has already customized.
