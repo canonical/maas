@@ -179,7 +179,6 @@ def bind_write_options(
     upstream_dns,
     dnssec_validation,
     dns_bind=(),
-    dns_bind6=(),
     hardening: bool = False,
     dns_allow_transfer="",
     dns_fetches_per_zone=0,
@@ -189,14 +188,11 @@ def bind_write_options(
 
     :param upstream_dns: A sequence of upstream DNS servers.
     :param dnssec_validation: Whether to enable DNSSec.
-    :param dns_bind: IPv4 address(es) BIND listens on.  When non-empty, a
-        ``listen-on { <addr>; ...; 127.0.0.1; };`` directive is emitted
-        with one entry per address.  Defaults to empty (no listen-on
-        directive).
-    :param dns_bind6: IPv6 address(es) BIND listens on.  When non-empty, a
-        ``listen-on-v6 { <addr>; ...; ::1; };`` directive is emitted with
-        one entry per address.  Defaults to empty (no listen-on-v6
-        directive).
+    :param dns_bind: IP address(es) BIND listens on.  May contain a mix of
+        IPv4 and IPv6 addresses; they are classified by family and emitted
+        as ``listen-on { <v4>; ...; 127.0.0.1; };`` and/or
+        ``listen-on-v6 { <v6>; ...; ::1; };`` directives.  Defaults to
+        empty (no listen-on/listen-on-v6 directives).
     :param hardening: When True, emit version hiding and apply safe defaults
         for transfer/fetch limits when none are explicitly configured.
         Defaults to False.
@@ -218,7 +214,6 @@ def bind_write_options(
         upstream_dns=upstream_dns,
         dnssec_validation=dnssec_validation,
         dns_bind=dns_bind,
-        dns_bind6=dns_bind6,
         hardening=hardening,
         dns_allow_transfer=dns_allow_transfer,
         dns_fetches_per_zone=dns_fetches_per_zone,

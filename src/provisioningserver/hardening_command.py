@@ -25,16 +25,14 @@ _HARDENING_ENABLED_VALUES = frozenset({"auto", "on", "off"})
 
 # Keys backed by a comma-separated list in rackd.conf (`ForEach` in
 # `provisioningserver.config.ClusterConfiguration`). `rpc_bind` is a plain
-# scalar string there, unlike its region counterpart.
+# scalar string there, unlike its region counterpart. Each of these may
+# mix IPv4 and IPv6 addresses in one list.
 _LIST_KEYS = frozenset(
     {
         "api_bind",
-        "api_bind6",
         "dns_bind",
-        "dns_bind6",
         "syslog_bind",
         "http_proxy_bind",
-        "http_proxy_bind6",
         "tftp_bind",
     }
 )
@@ -45,24 +43,22 @@ _ALL_KEYS = _BIND_KEYS | frozenset({"hardening_enabled"})
 
 # Keys whose empty value derives a specific, non-wildcard address from
 # maas_url at rack startup (see `rackdservices/http.py`, `dns/config.py`,
-# and their tests). `rpc_bind`, `tftp_bind`, and `dns_bind`/`dns_bind6`
-# have no such derivation: an unset `rpc_bind` really does bind all
-# interfaces, and TFTP/DNS must be explicitly picked to serve every
-# managed subnet (hence being list-valued, unlike `rpc_bind`).
+# and their tests). `rpc_bind`, `tftp_bind`, and `dns_bind` have no such
+# derivation: an unset `rpc_bind` really does bind all interfaces, and
+# TFTP/DNS must be explicitly picked to serve every managed subnet
+# (hence being list-valued, unlike `rpc_bind`).
 _AUTO_DERIVED_BIND_KEYS = frozenset(
     {
         "api_bind",
-        "api_bind6",
         "syslog_bind",
         "http_proxy_bind",
-        "http_proxy_bind6",
     }
 )
 
 # Only meaningful in snap deployments: MAAS owns the whole named.conf
 # there. On Debian-packaged installs MAAS does not own the base
-# named.conf.options, so these keys are refused entirely.
-_SNAP_ONLY_KEYS = frozenset({"dns_bind", "dns_bind6"})
+# named.conf.options, so this key is refused entirely.
+_SNAP_ONLY_KEYS = frozenset({"dns_bind"})
 
 
 def _format_value(key: str, value) -> str:

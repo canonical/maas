@@ -79,8 +79,8 @@ class TestCheckBindViolations:
 
     def test_ipv6_wildcard_address_is_a_violation(self):
         violations = check_bind_violations(
-            {"api_bind6": ["::"]},
-            frozenset({"api_bind6"}),
+            {"api_bind": ["::"]},
+            frozenset({"api_bind"}),
             "maas config-hardening",
         )
         assert len(violations) == 1
@@ -106,6 +106,32 @@ class TestCheckBindViolations:
         assert len(violations) == 1
         assert violations[0].code == "INVALID_BIND_ADDRESS"
         assert "not-an-ip" in violations[0].message
+
+    def test_multiple_wildcard_values_produce_one_aggregated_violation(self):
+        # A mixed-family key with both an IPv4 and an IPv6 wildcard must
+        # still report as ONE violation under ONE ident: two violations
+        # sharing an ident would collide when posted as Notifications,
+        # silently dropping one (see check_bind_violations docstring).
+        violations = check_bind_violations(
+            {"api_bind": ["0.0.0.0", "::"]},
+            frozenset({"api_bind"}),
+            "maas config-hardening",
+        )
+        assert len(violations) == 1
+        assert violations[0].code == "WILDCARD_BIND_NOT_ALLOWED"
+        assert "0.0.0.0" in violations[0].message
+        assert "::" in violations[0].message
+
+    def test_multiple_invalid_values_produce_one_aggregated_violation(self):
+        violations = check_bind_violations(
+            {"api_bind": ["not-an-ip", "also-bad"]},
+            frozenset({"api_bind"}),
+            "maas config-hardening",
+        )
+        assert len(violations) == 1
+        assert violations[0].code == "INVALID_BIND_ADDRESS"
+        assert "not-an-ip" in violations[0].message
+        assert "also-bad" in violations[0].message
 
     def test_resolution_uses_command_prefix(self):
         violations = check_bind_violations(

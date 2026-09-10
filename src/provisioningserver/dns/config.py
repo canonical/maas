@@ -22,6 +22,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import load_template, locate_config
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.isc import read_isc_file
+from provisioningserver.utils.network import partition_by_family
 from provisioningserver.utils.shell import call_and_check
 from provisioningserver.utils.snap import running_in_snap
 
@@ -359,8 +360,11 @@ def set_up_options_conf(overwrite=True, **kwargs):
     kwargs.setdefault("upstream_dns")
     kwargs.setdefault("dnssec_validation", "auto")
     kwargs.setdefault("hardening", False)
-    kwargs.setdefault("dns_bind", [])
-    kwargs.setdefault("dns_bind6", [])
+    # ``dns_bind`` is a single mixed-family list; split it into the
+    # per-family lists the named.conf.options.inside.maas template uses.
+    kwargs["dns_bind"], kwargs["dns_bind6"] = partition_by_family(
+        kwargs.get("dns_bind") or []
+    )
     # When hardening is active and no explicit value was provided, fall back
     # to the safe hardening defaults. Since falsy is the documented
     # "unconfigured" sentinel (see RegionConfiguration.dns_allow_transfer),

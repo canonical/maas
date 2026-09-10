@@ -27,17 +27,14 @@ class HardeningConfiguration(BaseModel):
 
     api_tls_dhparam: str
     api_bind: list[str]
-    api_bind6: list[str]
+    api_int_bind: list[str]
     prometheus_bind: str
     temporal_bind: str
     rpc_bind: list[str]
     agent_api_bind: list[str]
-    agent_api_bind6: list[str]
     dns_bind: list[str]
-    dns_bind6: list[str]
     syslog_bind: list[str]
     http_proxy_bind: list[str]
-    http_proxy_bind6: list[str]
     database_sslmode: str
     database_sslcert: str
     database_sslkey: str

@@ -28,19 +28,14 @@ CONF_KEYS = frozenset(
     {
         "api_tls_dhparam",
         "api_bind",
-        "api_bind6",
         "api_int_bind",
-        "api_int_bind6",
         "prometheus_bind",
         "temporal_bind",
         "rpc_bind",
         "agent_api_bind",
-        "agent_api_bind6",
         "dns_bind",
-        "dns_bind6",
         "syslog_bind",
         "http_proxy_bind",
-        "http_proxy_bind6",
         "database_sslmode",
         "database_sslcert",
         "database_sslkey",
@@ -50,19 +45,17 @@ CONF_KEYS = frozenset(
 
 #: Subset of :data:`CONF_KEYS` backed by a comma-separated list in
 #: regiond.conf (see ``ForEach`` in ``maasserver.config``). Every other
-#: conf-backed key is a plain scalar string.
+#: conf-backed key is a plain scalar string. Each of these may mix
+#: IPv4 and IPv6 addresses in one list.
 CONF_LIST_KEYS = frozenset(
     {
         "api_bind",
-        "api_bind6",
+        "api_int_bind",
         "rpc_bind",
         "agent_api_bind",
-        "agent_api_bind6",
         "dns_bind",
-        "dns_bind6",
         "syslog_bind",
         "http_proxy_bind",
-        "http_proxy_bind6",
     }
 )
 
@@ -145,11 +138,16 @@ def check_bind_violations(
 ) -> list[BindViolation]:
     """Per-key wildcard/empty/invalid-address check.
 
-    A key with at least one malformed address is reported as one
-    ``INVALID_BIND_ADDRESS`` violation per bad value and nothing else for
-    that key: once a value fails to parse, the rest of the list cannot be
-    trusted, so the wildcard check is skipped rather than layering an
-    unreliable second finding on top (the invalid-address finding wins).
+    A key with at least one malformed address reports a single
+    ``INVALID_BIND_ADDRESS`` violation naming every bad value, and
+    nothing else for that key -- the wildcard check is skipped rather
+    than layering an unreliable second finding on top. A key with one
+    or more wildcard values likewise reports a single
+    ``WILDCARD_BIND_NOT_ALLOWED`` violation naming every wildcard
+    value. One violation per key per code keeps each key's ident
+    unique, so multiple bad values in one mixed-family key (e.g. an
+    IPv4 and an IPv6 wildcard) don't collide and silently drop one
+    another when posted as `Notification`s.
 
     ``auto_derived_keys`` are keys whose empty value resolves to a
     specific, non-wildcard address elsewhere at runtime (e.g. derived from
@@ -185,25 +183,26 @@ def check_bind_violations(
                 wildcard_values.append(value)
 
         if invalid_values:
-            for value in invalid_values:
-                violations.append(
-                    BindViolation(
-                        code="INVALID_BIND_ADDRESS",
-                        message=f"{key} '{value}' is not a valid IP address",
-                        resolution=(
-                            f"Run: {command_prefix} set {key} "
-                            f"<specific-ip-address>"
-                        ),
-                        config_key=key,
-                        ident=f"hardening-invalid-bind-{key.replace('_', '-')}",
-                    )
+            quoted = ", ".join(f"'{v}'" for v in invalid_values)
+            violations.append(
+                BindViolation(
+                    code="INVALID_BIND_ADDRESS",
+                    message=f"{key} contains invalid IP address(es): {quoted}",
+                    resolution=(
+                        f"Run: {command_prefix} set {key} "
+                        f"<specific-ip-address>"
+                    ),
+                    config_key=key,
+                    ident=f"hardening-invalid-bind-{key.replace('_', '-')}",
                 )
+            )
             continue
 
-        for value in wildcard_values:
+        if wildcard_values:
+            quoted = ", ".join(f"'{v}'" for v in wildcard_values)
             violations.append(
                 _wildcard_bind_violation(
-                    key, f"'{value}' binds to all interfaces", command_prefix
+                    key, f"{quoted} binds to all interfaces", command_prefix
                 )
             )
 
