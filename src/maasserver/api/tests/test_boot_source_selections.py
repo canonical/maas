@@ -73,13 +73,6 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
             returned_boot_source_selection.items(),
         )
 
-    def test_GET_requires_admin(self):
-        boot_source_selection = factory.make_BootSourceSelection()
-        response = self.client.get(
-            get_boot_source_selection_uri(boot_source_selection)
-        )
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
     def test_DELETE_deletes_boot_source_selection(self):
         self.patch(bootsourceselection_module, "stop_workflow")
         self.become_admin()
@@ -237,13 +230,6 @@ class TestBootSourceSelectionsAPI(APITestCase.ForUser):
             [selection.id for selection in selections],
             [selection.get("id") for selection in parsed_result],
         )
-
-    def test_GET_requires_admin(self):
-        boot_source = factory.make_BootSource()
-        response = self.client.get(
-            reverse("boot_source_selections_handler", args=[boot_source.id])
-        )
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_creates_boot_source_selection(self):
         self.become_admin()

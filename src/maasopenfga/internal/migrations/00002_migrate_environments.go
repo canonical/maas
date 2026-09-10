@@ -291,7 +291,7 @@ func Up00002(ctx context.Context, tx *sql.Tx) error {
 		return fmt.Errorf("failed to create administrators group: %w", err)
 	}
 
-	relations = []string{"can_deploy_machines", "can_view_available_machines", "can_view_global_entities"}
+	relations = []string{"can_deploy_machines", "can_view_available_machines", "can_view_global_entities", "can_view_boot_entities"}
 	if err := createGroup(ctx, tx, usersGroupID, &relations); err != nil {
 		return fmt.Errorf("failed to create users group: %w", err)
 	}
